@@ -1,0 +1,1646 @@
+SYSTEM CORE
+│
+├── USER MANAGEMENT (Core Authentication & Authorization)
+│   │
+│   ├── users (Tabel utama pengguna)
+│   │   ├── id (char(36) PK)
+│   │   ├── name (varchar(191))
+│   │   ├── email (varchar(191) UNIQUE)
+│   │   ├── email_verified_at (timestamp)
+│   │   ├── password (varchar(191))
+│   │   ├── avatar (varchar(191))
+│   │   ├── remember_token (varchar(100))
+│   │   ├── is_active (tinyint(1))
+│   │   ├── failed_login_attempts (tinyint)
+│   │   ├── locked_until (timestamp)
+│   │   ├── last_login_at (timestamp)
+│   │   ├── locked_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── roles (Daftar peran dengan level)
+│   │   ├── id (char(36) PK)
+│   │   ├── name (varchar(191))
+│   │   ├── guard_name (varchar(191))
+│   │   ├── level (tinyint)
+│   │   ├── description (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── permissions (Hak akses granular)
+│   │   ├── id (char(36) PK)
+│   │   ├── name (varchar(191))
+│   │   ├── guard_name (varchar(191))
+│   │   ├── description (varchar(191))
+│   │   ├── group (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── model_has_roles (User ↔ Role assignment)
+│   │   ├── role_id (char(36) PK) → roles.id
+│   │   ├── model_type (varchar(191) PK)
+│   │   └── model_id (char(36) PK) → users.id
+│   │
+│   ├── model_has_permissions (User ↔ Permission assignment)
+│   │   ├── permission_id (char(36) PK) → permissions.id
+│   │   ├── model_type (varchar(191) PK)
+│   │   └── model_id (char(36) PK) → users.id
+│   │
+│   └── role_has_permissions (Role ↔ Permission mapping)
+│       ├── permission_id (char(36) PK) → permissions.id
+│       └── role_id (char(36) PK) → roles.id
+│
+├── REGIONAL DATA (Master wilayah Indonesia)
+│   │
+│   ├── indonesia_provinces (Provinsi)
+│   │   ├── id (bigint PK)
+│   │   ├── code (char(2) UNIQUE)
+│   │   ├── name (varchar(255))
+│   │   ├── meta (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── indonesia_cities (Kota/Kabupaten)
+│   │   ├── id (bigint PK)
+│   │   ├── code (char(4) UNIQUE)
+│   │   ├── province_code (char(2)) → indonesia_provinces.code
+│   │   ├── name (varchar(255))
+│   │   ├── meta (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── indonesia_districts (Kecamatan)
+│   │   ├── id (bigint PK)
+│   │   ├── code (char(7) UNIQUE)
+│   │   ├── city_code (char(4)) → indonesia_cities.code
+│   │   ├── name (varchar(255))
+│   │   ├── meta (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── indonesia_villages (Desa/Kelurahan)
+│       ├── id (bigint PK)
+│       ├── code (char(10) UNIQUE)
+│       ├── district_code (char(7)) → indonesia_districts.code
+│       ├── name (varchar(255))
+│       ├── meta (text)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── WORK UNIT ECOSYSTEM (Manajemen Unit Kerja & Sekolah)
+│   │
+│   ├── work_units (Master unit kerja)
+│   │   ├── id (char(36) PK)
+│   │   ├── name (varchar(191))
+│   │   ├── code (varchar(191) UNIQUE)
+│   │   ├── type (enum: 'Unsur Pimpinan','Unit Akademik','Unit Penunjang')
+│   │   ├── induk (varchar(200))
+│   │   ├── parent_id (char(36)) → work_units.id
+│   │   ├── is_active (tinyint(1))
+│   │   ├── metadata (longtext)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── schools (Data sekolah)
+│   │   ├── id (char(36) PK)
+│   │   ├── work_unit_id (char(36)) → work_units.id
+│   │   ├── npsn (varchar(20) UNIQUE)
+│   │   ├── nss (varchar(30))
+│   │   ├── name (varchar(255))
+│   │   ├── address (text)
+│   │   ├── province_code (char(2)) → indonesia_provinces.code
+│   │   ├── city_code (char(4)) → indonesia_cities.code
+│   │   ├── district_code (char(7)) → indonesia_districts.code
+│   │   ├── village_code (char(10)) → indonesia_villages.code
+│   │   ├── postal_code (varchar(10))
+│   │   ├── phone (varchar(20))
+│   │   ├── email (varchar(100))
+│   │   ├── website (varchar(100))
+│   │   ├── school_level (enum: 'sd','smp','sma','smk')
+│   │   ├── school_status (enum: 'negeri','swasta')
+│   │   ├── accreditation (varchar(10))
+│   │   ├── accreditation_year (year)
+│   │   ├── principal_name (varchar(255))
+│   │   ├── principal_nip (varchar(30))
+│   │   ├── operational_hours (enum: 'pagi','siang','full_day')
+│   │   ├── established_date (date)
+│   │   ├── established_decree (varchar(100))
+│   │   ├── land_area (decimal(10,2))
+│   │   ├── building_area (decimal(10,2))
+│   │   ├── is_active (tinyint(1))
+│   │   ├── logo_path (varchar(255))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── academic_years (Tahun ajaran)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── name (varchar(50))
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── is_active (tinyint(1))
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── registration_start (date)
+│   │   ├── registration_end (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── grade_levels (Tingkat kelas)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── level (int)
+│   │   ├── name (varchar(50))
+│   │   ├── code (varchar(20))
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── study_groups (Rombongan belajar)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── grade_level_id (char(36)) → grade_levels.id
+│   │   ├── homeroom_teacher_id (char(36)) → users.id
+│   │   ├── name (varchar(50))
+│   │   ├── code (varchar(20))
+│   │   ├── capacity (int)
+│   │   ├── room (varchar(50))
+│   │   ├── curriculum_type (enum: 'merdeka','2013','ktsp')
+│   │   ├── shift (enum: 'pagi','siang')
+│   │   ├── is_active (tinyint(1))
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── subjects (Mata pelajaran)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── code (varchar(20))
+│   │   ├── name (varchar(100))
+│   │   ├── category (enum: 'nasional','lokal','muatan_lokal')
+│   │   ├── credit_hours (int)
+│   │   ├── description (text)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── gtk_work_unit (Pivot: GTK ↔ Unit Kerja)
+│       ├── id (char(36) PK)
+│       ├── user_id (char(36)) → users.id
+│       ├── work_unit_id (char(36)) → work_units.id
+│       ├── jabatan (varchar(191))
+│       ├── is_primary (tinyint(1))
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── GTK DATA MANAGEMENT (Data Guru & Tenaga Kependidikan)
+│   │
+│   ├── gtk_profiles (Data biodata GTK) [1:1 dengan users]
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36) UNIQUE) → users.id
+│   │   ├── nik (text)
+│   │   ├── no_kk (text)
+│   │   ├── tempat_lahir (varchar(191))
+│   │   ├── tanggal_lahir (date)
+│   │   ├── nama_ibu_kandung (text)
+│   │   ├── golongan_darah (enum: 'A','B','AB','O')
+│   │   ├── jenis_kelamin (enum: 'L','P')
+│   │   ├── agama (enum: 'islam','kristen','katolik','hindu','buddha','khonghucu')
+│   │   ├── status_perkawinan (enum: 'belum_kawin','kawin','cerai_hidup','cerai_mati')
+│   │   ├── npwp (text)
+│   │   ├── work_unit_id (char(36)) → work_units.id
+│   │   ├── jabatan (varchar(191))
+│   │   ├── tmt_kerja (date)
+│   │   ├── no_hp (varchar(191))
+│   │   ├── no_whatsapp (varchar(191))
+│   │   ├── kontak_darurat (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── gtk_addresses (Alamat GTK)
+│   │   ├── id (char(36) PK)
+│   │   ├── gtk_profile_id (char(36)) → gtk_profiles.id
+│   │   ├── type (enum: 'ktp','domisili')
+│   │   ├── jalan (text)
+│   │   ├── rt_rw (varchar(10))
+│   │   ├── dusun (varchar(191))
+│   │   ├── desa (varchar(191))
+│   │   ├── kode_pos (varchar(191))
+│   │   ├── kecamatan (varchar(191))
+│   │   ├── kab_kota (varchar(191))
+│   │   ├── provinsi (varchar(191))
+│   │   ├── province_code (char(2)) → indonesia_provinces.code
+│   │   ├── city_code (char(4)) → indonesia_cities.code
+│   │   ├── district_code (char(7)) → indonesia_districts.code
+│   │   ├── village_code (char(10)) → indonesia_villages.code
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_family_members (Anggota keluarga)
+│   │   ├── id (char(36) PK)
+│   │   ├── gtk_profile_id (char(36)) → gtk_profiles.id
+│   │   ├── relationship (enum: 'suami','istri','anak','ayah','ibu')
+│   │   ├── nama (text)
+│   │   ├── pekerjaan (varchar(191))
+│   │   ├── jenis_kelamin (varchar(191))
+│   │   ├── pendidikan_terakhir (varchar(191))
+│   │   ├── alamat (varchar(191))
+│   │   ├── tanggal_lahir (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_contacts (Kontak & media sosial) [1:1]
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36) UNIQUE) → users.id
+│   │   ├── no_hp (varchar(191))
+│   │   ├── no_whatsapp (varchar(191))
+│   │   ├── kontak_darurat (varchar(191))
+│   │   ├── instagram (varchar(191))
+│   │   ├── facebook (varchar(191))
+│   │   ├── twitter (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_employments (Status kepegawaian)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── status_kepegawaian (enum: 'PTT','PTY','Percobaan','Magang','GTT','GTY')
+│   │   ├── nupy (varchar(50) UNIQUE)
+│   │   ├── satuan_kerja (varchar(100))
+│   │   ├── jenis_gtk (varchar(100))
+│   │   ├── jabatan (varchar(100))
+│   │   ├── position_type (enum: 'guru_mapel','guru_kelas','guru_bk','kepala_sekolah')
+│   │   ├── is_homeroom (tinyint(1))
+│   │   ├── tmt (date)
+│   │   ├── nomor_sk (varchar(100))
+│   │   ├── decree_number (varchar(100))
+│   │   ├── tanggal_sk (date)
+│   │   ├── decree_date (date)
+│   │   ├── pangkat_golongan (varchar(50))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_educations (Riwayat pendidikan)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── jenjang_pendidikan (varchar(191))
+│   │   ├── nama_satuan_pendidikan (varchar(191))
+│   │   ├── jurusan (varchar(191))
+│   │   ├── fakultas (varchar(191))
+│   │   ├── tahun_masuk (year)
+│   │   ├── tahun_lulus (year)
+│   │   ├── no_ijazah (varchar(191))
+│   │   ├── nama_kepala_sekolah (varchar(191))
+│   │   ├── nama_rektor (varchar(191))
+│   │   ├── nilai_akhir (decimal(5,2))
+│   │   ├── skala_nilai (varchar(10))
+│   │   ├── is_aktif (tinyint(1))
+│   │   ├── status (enum: 'LULUS','DROPOUT','PINDAH','BELUM_LULUS')
+│   │   ├── is_verified (tinyint(1))
+│   │   ├── verified_at (timestamp)
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── ijazah_path (varchar(191))
+│   │   ├── transkrip_path (varchar(191))
+│   │   ├── keterangan (text)
+│   │   ├── urutan (int)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── gtk_competencies (Kompetensi GTK)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── bidang_kompetensi (varchar(150))
+│   │   ├── status (enum: 'AHLI','INTERMEDIET','BIASA')
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_trainings (Pelatihan)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── bidang_pelatihan (varchar(150))
+│   │   ├── nama_pelatihan (varchar(200))
+│   │   ├── penyelenggara (varchar(150))
+│   │   ├── tahun (year)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_additional_tasks (Tugas tambahan)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── nama_tugas (varchar(150))
+│   │   ├── nomor_sk (varchar(100))
+│   │   ├── tmt (date)
+│   │   ├── tst (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_career_paths (Riwayat karir)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── jabatan_fungsi (varchar(150))
+│   │   ├── nomor_sk (varchar(100))
+│   │   ├── tmt (date)
+│   │   ├── tst (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_work_unit_histories (Riwayat perpindahan unit)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── from_work_unit_id (char(36)) → work_units.id
+│   │   ├── to_work_unit_id (char(36)) → work_units.id
+│   │   ├── jabatan (varchar(191))
+│   │   ├── action (enum: 'ASSIGN','TRANSFER','REMOVE')
+│   │   ├── reason (text)
+│   │   ├── performed_by (char(36)) → users.id
+│   │   ├── ip_address (varchar(45))
+│   │   ├── user_agent (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── gtk_transfer_requests (Permintaan transfer)
+│       ├── id (char(36) PK)
+│       ├── user_id (char(36)) → users.id
+│       ├── from_work_unit_id (char(36)) → work_units.id
+│       ├── to_work_unit_id (char(36)) → work_units.id
+│       ├── jabatan (varchar(191))
+│       ├── reason (text)
+│       ├── status (enum: 'PENDING','APPROVED','REJECTED','CANCELLED')
+│       ├── requested_by (char(36)) → users.id
+│       ├── approved_by (char(36)) → users.id
+│       ├── approved_at (timestamp)
+│       ├── approval_note (text)
+│       ├── request_ip (varchar(45))
+│       ├── request_user_agent (varchar(191))
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── RECRUITMENT MANAGEMENT (Manajemen Rekrutmen)
+│   │
+│   ├── recruitment_profiles (Profil pelamar) [1:1 dengan users]
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36) UNIQUE) → users.id
+│   │   ├── nik (text)
+│   │   ├── no_kk (text)
+│   │   ├── tempat_lahir (varchar(191))
+│   │   ├── tanggal_lahir (date)
+│   │   ├── nama_ibu_kandung (text)
+│   │   ├── golongan_darah (enum: 'A','B','AB','O')
+│   │   ├── jenis_kelamin (enum: 'L','P')
+│   │   ├── agama (enum: 'islam','kristen','katolik','hindu','buddha','khonghucu')
+│   │   ├── status_perkawinan (enum: 'belum_kawin','kawin','cerai_hidup','cerai_mati')
+│   │   ├── no_hp (varchar(191))
+│   │   ├── no_whatsapp (varchar(191))
+│   │   ├── kontak_darurat (varchar(191))
+│   │   ├── hubungan_kontak_darurat (varchar(191))
+│   │   ├── alamat_lengkap (text)
+│   │   ├── rt_rw (varchar(191))
+│   │   ├── kelurahan_desa (varchar(191))
+│   │   ├── kecamatan (varchar(191))
+│   │   ├── kota_kabupaten (varchar(191))
+│   │   ├── provinsi (varchar(191))
+│   │   ├── kode_pos (varchar(191))
+│   │   ├── status (enum: 'draft','menunggu_verifikasi','verifikasi_berhasil','verifikasi_ditolak')
+│   │   ├── submitted_at (timestamp)
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── recruitment_educations (Riwayat pendidikan pelamar)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── jenjang (enum: 'sd','smp','sma','smk','d1','d2','d3','d4','s1','s2','s3')
+│   │   ├── nama_satuan_pendidikan (varchar(191))
+│   │   ├── jurusan (varchar(191))
+│   │   ├── fakultas (varchar(191))
+│   │   ├── tahun_masuk (year)
+│   │   ├── tahun_lulus (year)
+│   │   ├── is_ijazah_ada (tinyint(1))
+│   │   ├── no_ijazah (varchar(191))
+│   │   ├── nilai_akhir (decimal(5,2))
+│   │   ├── skala_nilai (varchar(10))
+│   │   ├── ipk (decimal(4,2))
+│   │   ├── predikat_kelulusan (varchar(191))
+│   │   ├── ijazah_path (varchar(191))
+│   │   ├── transkrip_path (varchar(191))
+│   │   ├── sertifikat_akreditasi_path (varchar(191))
+│   │   ├── is_verified (tinyint(1))
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── catatan_verifikasi (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── recruitment_work_experiences (Pengalaman kerja)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── nama_perusahaan (varchar(191))
+│   │   ├── jenis_perusahaan (enum: 'pemerintah','swasta','bumn','bumd','nirlaba')
+│   │   ├── bidang_perusahaan (varchar(191))
+│   │   ├── posisi_terakhir (varchar(191))
+│   │   ├── status_kepegawaian (enum: 'tetap','kontrak','magang','harian_lepas','outsourcing')
+│   │   ├── tanggal_mulai (date)
+│   │   ├── tanggal_selesai (date)
+│   │   ├── is_saat_ini (tinyint(1))
+│   │   ├── lama_bekerja_bulan (int)
+│   │   ├── jobdesc (text)
+│   │   ├── kompetensi_utama (longtext)
+│   │   ├── pencapaian (longtext)
+│   │   ├── gaji_terakhir (decimal(15,2))
+│   │   ├── gaji_periode (enum: 'bulan','tahun')
+│   │   ├── nama_atasan (varchar(191))
+│   │   ├── kontak_atasan (varchar(191))
+│   │   ├── email_atasan (varchar(191))
+│   │   ├── sertifikat_kerja_path (varchar(191))
+│   │   ├── referensi_path (varchar(191))
+│   │   ├── paklaring_path (varchar(191))
+│   │   ├── alasan_keluar (enum: 'mengundurkan_diri','kontrak_selesai','phk','pensiun','lainnya')
+│   │   ├── alasan_keluar_lainnya (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── recruitment_skills (Keahlian)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── kategori (enum: 'teknis','non_teknis','bahasa','sertifikasi')
+│   │   ├── nama_skill (varchar(191))
+│   │   ├── level (varchar(50))
+│   │   ├── tahun_pengalaman (int)
+│   │   ├── sumber (enum: 'pendidikan','kursus','otodidak','pengalaman_kerja')
+│   │   ├── kemampuan_lisan (enum: 'pasif','aktif','native')
+│   │   ├── kemampuan_menulis (enum: 'pasif','aktif','native')
+│   │   ├── sertifikasi_path (varchar(191))
+│   │   ├── tanggal_sertifikasi (date)
+│   │   ├── berlaku_sampai (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── recruitment_trainings (Pelatihan)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── jenis (enum: 'pelatihan','workshop','seminar','kursus','sertifikasi')
+│   │   ├── nama_pelatihan (varchar(191))
+│   │   ├── penyelenggara (varchar(191))
+│   │   ├── tingkat (enum: 'lokal','nasional','internasional')
+│   │   ├── tanggal_mulai (date)
+│   │   ├── tanggal_selesai (date)
+│   │   ├── durasi_jam (int)
+│   │   ├── memiliki_sertifikat (tinyint(1))
+│   │   ├── no_sertifikat (varchar(191))
+│   │   ├── tanggal_sertifikat (date)
+│   │   ├── masa_berlaku (date)
+│   │   ├── status_sertifikat (enum: 'aktif','kadaluarsa','dalam_proses')
+│   │   ├── deskripsi_materi (text)
+│   │   ├── kompetensi_diperoleh (longtext)
+│   │   ├── nilai (varchar(191))
+│   │   ├── sertifikat_path (varchar(191))
+│   │   ├── materi_path (varchar(191))
+│   │   ├── is_verified (tinyint(1))
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── recruitment_documents (Dokumen)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── jenis_dokumen (enum: 'cv','surat_lamaran','portofolio','foto','ktp','kk','ijazah','transkrip','sertifikat')
+│   │   ├── nama_dokumen (varchar(191))
+│   │   ├── file_path (varchar(191))
+│   │   ├── file_size (varchar(191))
+│   │   ├── file_extension (varchar(10))
+│   │   ├── ringkasan_profesional (text)
+│   │   ├── tujuan_karir (text)
+│   │   ├── keahlian_unggulan (longtext)
+│   │   ├── pencapaian_utama (longtext)
+│   │   ├── is_public (tinyint(1))
+│   │   ├── is_primary (tinyint(1))
+│   │   ├── version (int)
+│   │   ├── is_verified (tinyint(1))
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── catatan (text)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── recruitment_jobs (Lowongan pekerjaan)
+│   │   ├── id (char(36) PK)
+│   │   ├── work_unit_id (char(36)) → work_units.id
+│   │   ├── kode_lowongan (varchar(191) UNIQUE)
+│   │   ├── judul (varchar(191))
+│   │   ├── posisi (varchar(191))
+│   │   ├── jenis_pegawai (enum: 'pns','pppk','honor','kontrak','magang')
+│   │   ├── status_pegawai (enum: 'tetap','kontrak','probation')
+│   │   ├── persyaratan_umum (longtext)
+│   │   ├── persyaratan_khusus (longtext)
+│   │   ├── kualifikasi_pendidikan (longtext)
+│   │   ├── kualifikasi_pengalaman (longtext)
+│   │   ├── kompetensi_dibutuhkan (longtext)
+│   │   ├── kuota (int)
+│   │   ├── kuota_terisi (int)
+│   │   ├── deskripsi_pekerjaan (text)
+│   │   ├── fasilitas (text)
+│   │   ├── rentang_gaji (longtext)
+│   │   ├── tanggal_mulai (date)
+│   │   ├── tanggal_selesai (date)
+│   │   ├── status (enum: 'draft','aktif','ditutup','dibatalkan')
+│   │   ├── tahapan_seleksi (longtext)
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── approved_by (char(36)) → users.id
+│   │   ├── approved_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── recruitment_applications (Lamaran pekerjaan)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_profile_id (char(36)) → recruitment_profiles.id
+│   │   ├── recruitment_job_id (char(36)) → recruitment_jobs.id
+│   │   ├── no_lamaran (varchar(191) UNIQUE)
+│   │   ├── status (enum: 'draft','menunggu_seleksi','seleksi_administrasi','tes','wawancara','diterima','ditolak','cadangan')
+│   │   ├── skor_administrasi (int)
+│   │   ├── nilai_tes (decimal(5,2))
+│   │   ├── nilai_wawancara (decimal(5,2))
+│   │   ├── nilai_akhir (decimal(5,2))
+│   │   ├── ranking (int)
+│   │   ├── tanggal_melamar (date)
+│   │   ├── diproses_at (timestamp)
+│   │   ├── selesai_at (timestamp)
+│   │   ├── catatan_pelamar (text)
+│   │   ├── catatan_rekruter (text)
+│   │   ├── feedback (longtext)
+│   │   ├── processed_by (char(36)) → users.id
+│   │   ├── current_stage_id (char(36)) → recruitment_pipeline_stages.id
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── recruitment_pipelines (Alur rekrutmen)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_job_id (char(36)) → recruitment_jobs.id
+│   │   ├── nama_tahapan (varchar(191))
+│   │   ├── urutan (int)
+│   │   ├── deskripsi (text)
+│   │   ├── durasi_hari (int)
+│   │   ├── warna (varchar(191))
+│   │   ├── icon (varchar(191))
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── recruitment_pipeline_stages (Tahapan rekrutmen)
+│   │   ├── id (char(36) PK)
+│   │   ├── recruitment_pipeline_id (char(36)) → recruitment_pipelines.id
+│   │   ├── nama_tahapan (varchar(191))
+│   │   ├── urutan (int)
+│   │   ├── deskripsi (text)
+│   │   ├── durasi_hari (int)
+│   │   ├── warna (varchar(191))
+│   │   ├── icon (varchar(191))
+│   │   ├── is_wajib (tinyint(1))
+│   │   ├── kriteria_kelulusan (longtext)
+│   │   ├── form_penilaian (longtext)
+│   │   ├── notification_template (longtext)
+│   │   ├── email_template (longtext)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── recruitment_application_stages (Progress lamaran per tahap)
+│       ├── id (char(36) PK)
+│       ├── recruitment_application_id (char(36)) → recruitment_applications.id
+│       ├── recruitment_pipeline_stage_id (char(36)) → recruitment_pipeline_stages.id
+│       ├── urutan (int)
+│       ├── status (enum: 'menunggu','sedang_berlangsung','lolos','tidak_lolos')
+│       ├── jadwal_mulai (datetime)
+│       ├── jadwal_selesai (datetime)
+│       ├── lokasi (varchar(191))
+│       ├── penilai_id (char(36)) → users.id
+│       ├── tim_penilai (longtext)
+│       ├── nilai (decimal(5,2))
+│       ├── catatan (text)
+│       ├── detail_penilaian (longtext)
+│       ├── hasil_path (varchar(191))
+│       ├── dimulai_at (datetime)
+│       ├── selesai_at (datetime)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── ACADEMIC MANAGEMENT (Manajemen Akademik)
+│   │
+│   ├── homeroom_teachers (Wali kelas)
+│   │   ├── id (char(36) PK)
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── decree_number (varchar(100))
+│   │   ├── decree_date (date)
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── homeroom_assignments (Penugasan wali kelas)
+│   │   ├── id (char(36) PK)
+│   │   ├── decree_id (char(36)) → institution_decrees.id
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── status (enum: 'active','inactive','ended')
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── teachings (Pengajaran)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── subject_id (char(36)) → subjects.id
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── is_primary (tinyint(1))
+│   │   ├── status (enum: 'active','inactive')
+│   │   ├── decree_number (varchar(100))
+│   │   ├── decree_date (date)
+│   │   ├── weekly_hours (int)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── teaching_assignments (Penugasan mengajar)
+│   │   ├── id (char(36) PK)
+│   │   ├── decree_id (char(36)) → institution_decrees.id
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── subject_id (char(36)) → subjects.id
+│   │   ├── role (enum: 'guru_mapel','guru_pendamping','guru_praktik')
+│   │   ├── is_coordinator (tinyint(1))
+│   │   ├── weekly_hours (int)
+│   │   ├── status (enum: 'active','inactive')
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── coordinator_assignments (Penugasan koordinator)
+│   │   ├── id (char(36) PK)
+│   │   ├── decree_id (char(36)) → institution_decrees.id
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── coordination_area (varchar(191))
+│   │   ├── coordination_type (varchar(191))
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── status (enum: 'active','inactive','ended')
+│   │   ├── description (text)
+│   │   ├── responsibilities (text)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── institution_decrees (SK Institusi)
+│   │   ├── id (char(36) PK)
+│   │   ├── decree_number (varchar(100) UNIQUE)
+│   │   ├── decree_type (varchar(50))
+│   │   ├── title (varchar(255))
+│   │   ├── description (text)
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── issued_date (date)
+│   │   ├── effective_date (date)
+│   │   ├── end_date (date)
+│   │   ├── signed_by (char(36)) → users.id
+│   │   ├── signed_position (varchar(100))
+│   │   ├── document_path (varchar(255))
+│   │   ├── document_filename (varchar(255))
+│   │   ├── status (enum: 'draft','active','archived')
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── gtk_histories (Riwayat GTK)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── assignable_type (varchar(191))
+│   │   ├── assignable_id (char(36))
+│   │   ├── assignment_type (varchar(191))
+│   │   ├── assignment_data (longtext)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── gtk_recruitments (Rekrutmen kebutuhan GTK)
+│   │   ├── id (char(36) PK)
+│   │   ├── work_unit_id (char(36)) → work_units.id
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── jabatan (varchar(191))
+│   │   ├── kebutuhan (tinyint)
+│   │   ├── kualifikasi (text)
+│   │   ├── tanggal_dibutuhkan (date)
+│   │   ├── status (enum: 'draft','submitted','approved','rejected')
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── gtk_requests (Permintaan penambahan GTK)
+│       ├── id (char(36) PK)
+│       ├── work_unit_id (char(36)) → work_units.id
+│       ├── requested_by (char(36)) → users.id
+│       ├── jabatan (varchar(191))
+│       ├── jumlah (tinyint)
+│       ├── alasan (text)
+│       ├── status (enum: 'draft','submitted','approved','rejected')
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── STUDENT MANAGEMENT (Manajemen Siswa)
+│   │
+│   ├── students (Data siswa)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── nisn (varchar(20) UNIQUE)
+│   │   ├── nis (varchar(20))
+│   │   ├── photo_path (varchar(225))
+│   │   ├── alumi_year (varchar(225))
+│   │   ├── nik (varchar(30) UNIQUE)
+│   │   ├── no_kk (varchar(30))
+│   │   ├── name (varchar(255))
+│   │   ├── gender (enum: 'L','P')
+│   │   ├── birth_place (varchar(100))
+│   │   ├── birth_date (date)
+│   │   ├── religion (varchar(50))
+│   │   ├── special_needs (enum: 'tidak','fisik','intelektual','mental','sosial')
+│   │   ├── address (text)
+│   │   ├── rt (varchar(5))
+│   │   ├── rw (varchar(5))
+│   │   ├── hamlet (varchar(100))
+│   │   ├── village_code (char(10)) → indonesia_villages.code
+│   │   ├── district_code (char(7)) → indonesia_districts.code
+│   │   ├── city_code (char(4)) → indonesia_cities.code
+│   │   ├── province_code (char(2)) → indonesia_provinces.code
+│   │   ├── postal_code (varchar(10))
+│   │   ├── phone (varchar(20))
+│   │   ├── mobile_phone (varchar(20))
+│   │   ├── email (varchar(100))
+│   │   ├── residence_type (enum: 'milik_orangtua','sewa','asrama','panti','lainnya')
+│   │   ├── transportation (enum: 'jalan_kaki','sepeda','motor','mobil','angkutan_umum')
+│   │   ├── distance_to_school (decimal(5,2))
+│   │   ├── latitude (decimal(10,8))
+│   │   ├── longitude (decimal(11,8))
+│   │   ├── height (int)
+│   │   ├── weight (int)
+│   │   ├── head_circumference (int)
+│   │   ├── sibling_count (int)
+│   │   ├── father_name (varchar(255))
+│   │   ├── father_birth_year (year)
+│   │   ├── father_education (varchar(50))
+│   │   ├── father_occupation (varchar(100))
+│   │   ├── father_income (decimal(15,2))
+│   │   ├── father_nik (varchar(30))
+│   │   ├── mother_name (varchar(255))
+│   │   ├── mother_birth_year (year)
+│   │   ├── mother_education (varchar(50))
+│   │   ├── mother_occupation (varchar(100))
+│   │   ├── mother_income (decimal(15,2))
+│   │   ├── mother_nik (varchar(30))
+│   │   ├── guardian_name (varchar(255))
+│   │   ├── guardian_birth_year (year)
+│   │   ├── guardian_education (varchar(50))
+│   │   ├── guardian_occupation (varchar(100))
+│   │   ├── guardian_income (decimal(15,2))
+│   │   ├── guardian_nik (varchar(30))
+│   │   ├── child_number (int)
+│   │   ├── previous_school (varchar(255))
+│   │   ├── entry_date (date)
+│   │   ├── entry_grade_level (int)
+│   │   ├── skhun (varchar(50))
+│   │   ├── ujian_national_number (varchar(50))
+│   │   ├── certificate_number (varchar(50))
+│   │   ├── birth_certificate_number (varchar(50))
+│   │   ├── is_kps_receiver (tinyint(1))
+│   │   ├── kps_number (varchar(50))
+│   │   ├── is_kip_receiver (tinyint(1))
+│   │   ├── kip_number (varchar(50))
+│   │   ├── kip_name (varchar(255))
+│   │   ├── kks_number (varchar(50))
+│   │   ├── is_pip_eligible (tinyint(1))
+│   │   ├── pip_reason (text)
+│   │   ├── bank_name (varchar(100))
+│   │   ├── bank_account_number (varchar(50))
+│   │   ├── bank_account_name (varchar(255))
+│   │   ├── status (enum: 'active','inactive','graduate','dropped','transfer')
+│   │   ├── graduation_year (year)
+│   │   ├── graduation_date (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── student_class_histories (Riwayat kelas siswa)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── attendance_number (int)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── notes (text)
+│   │   ├── join_date (date)
+│   │   ├── leave_date (date)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── student_transfers (Mutasi siswa)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── from_school_id (char(36)) → schools.id
+│   │   ├── to_school_id (char(36)) → schools.id
+│   │   ├── approved_by (char(36)) → users.id
+│   │   ├── transfer_date (date)
+│   │   ├── reason (text)
+│   │   ├── transfer_type (enum: 'masuk','keluar','pindah')
+│   │   ├── approval_status (enum: 'pending','approved','rejected')
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── violation_points (Poin pelanggaran)
+│       ├── id (char(36) PK)
+│       ├── student_id (char(36)) → students.id
+│       ├── study_group_id (char(36)) → study_groups.id
+│       ├── recorded_by (char(36)) → users.id
+│       ├── violation_date (date)
+│       ├── violation_type (varchar(100))
+│       ├── points (int)
+│       ├── description (text)
+│       ├── action_taken (text)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── STRUCTURAL POSITION MANAGEMENT (Manajemen Jabatan Struktural)
+│   │
+│   ├── structural_positions (Jabatan struktural)
+│   │   ├── id (char(36) PK)
+│   │   ├── code (varchar(50) UNIQUE)
+│   │   ├── name (varchar(100))
+│   │   ├── level (varchar(50))
+│   │   ├── hierarchy_level (int)
+│   │   ├── description (text)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── structural_assignments (Penugasan struktural)
+│       ├── id (char(36) PK)
+│       ├── user_id (char(36)) → users.id
+│       ├── position_id (char(36)) → structural_positions.id
+│       ├── school_id (char(36)) → schools.id
+│       ├── academic_year_id (char(36)) → academic_years.id
+│       ├── decree_id (char(36)) → institution_decrees.id
+│       ├── additional_info (varchar(255))
+│       ├── start_date (date)
+│       ├── end_date (date)
+│       ├── status (enum: 'active','inactive','ended')
+│       ├── notes (text)
+│       ├── created_at (timestamp)
+│       ├── updated_at (timestamp)
+│       └── deleted_at (timestamp)
+│
+├── SUBJECT & KKTP MANAGEMENT (Manajemen Mata Pelajaran & KKTP)
+│   │
+│   └── subject_kktp (KKTP/KKM per mapel per kelas per tahun ajaran)
+│       ├── id (char(36) PK)
+│       ├── subject_id (char(36)) → subjects.id
+│       ├── school_id (char(36)) → schools.id
+│       ├── grade_level_id (char(36)) → grade_levels.id
+│       ├── academic_year_id (char(36)) → academic_years.id
+│       ├── semester (enum: 'ganjil','genap')
+│       ├── kktp_score (decimal(5,2))
+│       ├── kkm_score (decimal(5,2))
+│       ├── notes (text)
+│       ├── created_by (char(36)) → users.id
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── STUDENT ATTENDANCE MODULE (Modul Absensi Siswa)
+│   │
+│   ├── student_attendances (Absensi harian siswa - dikelola wali kelas)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── recorded_by (char(36)) → users.id [wali kelas]
+│   │   ├── attendance_date (date)
+│   │   ├── status (enum: 'hadir','izin','sakit','alpa')
+│   │   ├── arrival_time (time)
+│   │   ├── leave_time (time)
+│   │   ├── notes (text)
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── attendance_permits (Surat izin / keterangan sakit)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── permit_type (enum: 'izin','sakit')
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── reason (text)
+│   │   ├── document_path (varchar(255))
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── attendance_recaps (Rekap kehadiran per siswa per semester)
+│       ├── id (char(36) PK)
+│       ├── student_id (char(36)) → students.id
+│       ├── study_group_id (char(36)) → study_groups.id
+│       ├── academic_year_id (char(36)) → academic_years.id
+│       ├── school_id (char(36)) → schools.id
+│       ├── semester (enum: 'ganjil','genap')
+│       ├── total_hadir (int)
+│       ├── total_izin (int)
+│       ├── total_sakit (int)
+│       ├── total_alpa (int)
+│       ├── total_hari_efektif (int)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── TEACHER ADMINISTRATION BOOK (Buku Administrasi Guru Mapel)
+│   │
+│   ├── teacher_admin_books (Header buku administrasi - 1 buku per guru per mapel per kelas)
+│   │   ├── id (char(36) PK)
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── subject_id (char(36)) → subjects.id
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── teaching_id (char(36)) → teachings.id
+│   │   ├── kktp_id (char(36)) → subject_kktp.id
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── admin_presensi_guru (Presensi guru mapel saat mengajar)
+│   │   ├── id (char(36) PK)
+│   │   ├── admin_book_id (char(36)) → teacher_admin_books.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── attendance_date (date)
+│   │   ├── time_in (time)
+│   │   ├── time_out (time)
+│   │   ├── status (enum: 'hadir','izin','sakit','alpa','pengganti')
+│   │   ├── substitute_teacher_id (char(36)) → users.id
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── admin_jurnal_pembelajaran (Jurnal kegiatan pembelajaran)
+│   │   ├── id (char(36) PK)
+│   │   ├── admin_book_id (char(36)) → teacher_admin_books.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── meeting_number (int)
+│   │   ├── meeting_date (date)
+│   │   ├── time_in (time)
+│   │   ├── time_out (time)
+│   │   ├── material (text)
+│   │   ├── teacher_signature (varchar(255))
+│   │   ├── class_leader_signature (varchar(255))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── admin_nilai_sumatif (Penilaian sumatif & nilai raport)
+│   │   ├── id (char(36) PK)
+│   │   ├── admin_book_id (char(36)) → teacher_admin_books.id
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── s1 (decimal(5,2))
+│   │   ├── s2 (decimal(5,2))
+│   │   ├── s3 (decimal(5,2))
+│   │   ├── s4 (decimal(5,2))
+│   │   ├── s5 (decimal(5,2))
+│   │   ├── s6 (decimal(5,2))
+│   │   ├── rs (decimal(5,2))
+│   │   ├── sts (decimal(5,2))
+│   │   ├── sas (decimal(5,2))
+│   │   ├── rsa (decimal(5,2))
+│   │   ├── nr_murni (decimal(5,2))
+│   │   ├── nr_final (decimal(5,2))
+│   │   ├── ket (varchar(100))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── admin_nilai_formatif (Penilaian asesmen formatif)
+│   │   ├── id (char(36) PK)
+│   │   ├── admin_book_id (char(36)) → teacher_admin_books.id
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── skor_lkpd (decimal(5,2))
+│   │   ├── skor_diskusi (decimal(5,2))
+│   │   ├── skor_kuis (decimal(5,2))
+│   │   ├── skor_antarteman (decimal(5,2))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── admin_penghargaan_akademik (Penghargaan akademik / karakter siswa)
+│   │   ├── id (char(36) PK)
+│   │   ├── admin_book_id (char(36)) → teacher_admin_books.id
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── jujur (tinyint)
+│   │   ├── disiplin (tinyint)
+│   │   ├── peduli (tinyint)
+│   │   ├── adab (tinyint)
+│   │   ├── kehadiran (tinyint)
+│   │   ├── keaktifan (tinyint)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── admin_catatan_guru (Catatan harian guru)
+│       ├── id (char(36) PK)
+│       ├── admin_book_id (char(36)) → teacher_admin_books.id
+│       ├── academic_year_id (char(36)) → academic_years.id
+│       ├── semester (enum: 'ganjil','genap')
+│       ├── note_date (date)
+│       ├── student_note (text)
+│       ├── learning_note (text)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── CLASS SCHEDULE & TEACHER ATTENDANCE (Jadwal Pelajaran & Absensi Guru)
+│   │
+│   ├── class_schedule_slots (Master slot waktu pelajaran per sekolah)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── slot_number (tinyint)
+│   │   ├── label (varchar(20))
+│   │   ├── time_start (time)
+│   │   ├── time_end (time)
+│   │   ├── is_break (tinyint(1))
+│   │   ├── day_of_week (tinyint)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── class_schedules (Jadwal pelajaran per kelas per minggu)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── study_group_id (char(36)) → study_groups.id
+│   │   ├── subject_id (char(36)) → subjects.id
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── teaching_assignment_id (char(36)) → teaching_assignments.id
+│   │   ├── schedule_slot_id (char(36)) → class_schedule_slots.id
+│   │   ├── day_of_week (tinyint)
+│   │   ├── time_start (time)
+│   │   ├── time_end (time)
+│   │   ├── schedule_type (enum)
+│   │   ├── room (varchar(50))
+│   │   ├── is_active (tinyint(1))
+│   │   ├── effective_date (date)
+│   │   ├── end_date (date)
+│   │   ├── notes (text)
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── teacher_attendances (Absensi guru harian berdasarkan jadwal)
+│   │   ├── id (char(36) PK)
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── teacher_id (char(36)) → users.id
+│   │   ├── class_schedule_id (char(36)) → class_schedules.id
+│   │   ├── attendance_date (date)
+│   │   ├── scheduled_time_start (time)
+│   │   ├── scheduled_time_end (time)
+│   │   ├── actual_time_in (time)
+│   │   ├── actual_time_out (time)
+│   │   ├── status (enum: 'hadir','izin','sakit','alpa','cuti','dinas_luar')
+│   │   ├── is_substituted (tinyint(1))
+│   │   ├── recorded_by (char(36)) → users.id
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── teacher_attendance_substitutes (Data guru pengganti per jam)
+│   │   ├── id (char(36) PK)
+│   │   ├── teacher_attendance_id (char(36)) → teacher_attendances.id
+│   │   ├── substitute_teacher_id (char(36)) → users.id
+│   │   ├── class_schedule_id (char(36)) → class_schedules.id
+│   │   ├── substitute_date (date)
+│   │   ├── time_start (time)
+│   │   ├── time_end (time)
+│   │   ├── substitute_type (enum: 'guru_lain','piket','tugas_mandiri','digabung')
+│   │   ├── task_given (text)
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── teacher_attendance_recaps (Rekap absensi guru per bulan/semester)
+│       ├── id (char(36) PK)
+│       ├── teacher_id (char(36)) → users.id
+│       ├── school_id (char(36)) → schools.id
+│       ├── academic_year_id (char(36)) → academic_years.id
+│       ├── semester (enum: 'ganjil','genap')
+│       ├── recap_month (tinyint)
+│       ├── recap_year (year)
+│       ├── total_hadir (int)
+│       ├── total_izin (int)
+│       ├── total_sakit (int)
+│       ├── total_alpa (int)
+│       ├── total_cuti (int)
+│       ├── total_dinas_luar (int)
+│       ├── total_jam_hadir (int)
+│       ├── total_jam_jadwal (int)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── DORMITORY MANAGEMENT (Manajemen Asrama / Pondok)
+│   │
+│   ├── dormitories (Master gedung / komplek asrama)
+│   │   ├── id (char(36) PK)
+│   │   ├── work_unit_id (char(36)) → work_units.id
+│   │   ├── school_id (char(36)) → schools.id
+│   │   ├── code (varchar(20) UNIQUE)
+│   │   ├── name (varchar(191))
+│   │   ├── gender (enum: 'putra','putri','campuran')
+│   │   ├── address (text)
+│   │   ├── phone (varchar(20))
+│   │   ├── capacity (int)
+│   │   ├── total_rooms (int)
+│   │   ├── total_wings (int)
+│   │   ├── head_id (char(36)) → users.id
+│   │   ├── is_active (tinyint(1))
+│   │   ├── logo_path (varchar(255))
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── dormitory_wings (Blok / Lantai / Sayap dalam asrama)
+│   │   ├── id (char(36) PK)
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── code (varchar(20))
+│   │   ├── name (varchar(100))
+│   │   ├── floor (tinyint)
+│   │   ├── gender (enum: 'putra','putri')
+│   │   ├── capacity (int)
+│   │   ├── total_rooms (int)
+│   │   ├── supervisor_id (char(36)) → users.id
+│   │   ├── is_active (tinyint(1))
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_rooms (Kamar asrama)
+│   │   ├── id (char(36) PK)
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── wing_id (char(36)) → dormitory_wings.id
+│   │   ├── code (varchar(20) UNIQUE)
+│   │   ├── name (varchar(100))
+│   │   ├── floor (tinyint)
+│   │   ├── gender (enum: 'putra','putri')
+│   │   ├── capacity (int)
+│   │   ├── room_type (enum: 'reguler','khusus','isolasi','musyrif')
+│   │   ├── facility_notes (text)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── room_supervisors (Wali kamar — paralel homeroom_teachers)
+│   │   ├── id (char(36) PK)
+│   │   ├── user_id (char(36)) → users.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── decree_id (char(36)) → institution_decrees.id
+│   │   ├── start_date (date)
+│   │   ├── end_date (date)
+│   │   ├── status (enum: 'active','inactive','ended')
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   ├── updated_at (timestamp)
+│   │   └── deleted_at (timestamp)
+│   │
+│   ├── dormitory_residents (Penghuni kamar — paralel student_class_histories)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── bed_number (tinyint)
+│   │   ├── is_active (tinyint(1))
+│   │   ├── check_in_date (date)
+│   │   ├── check_out_date (date)
+│   │   ├── check_out_reason (enum: 'lulus','pindah_kamar','keluar','sakit','lainnya')
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_attendances (Absensi santri di asrama — paralel student_attendances)
+│   │   ├── id (char(36) PK)
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── recorded_by (char(36)) → users.id
+│   │   ├── attendance_date (date)
+│   │   ├── session (enum: 'subuh','pagi','siang','sore','isya','malam')
+│   │   ├── status (enum: 'hadir','izin','sakit','alpa','pulang')
+│   │   ├── notes (text)
+│   │   ├── verified_by (char(36)) → users.id
+│   │   ├── verified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_attendance_recaps (Rekap absensi asrama per santri per bulan)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── semester (enum: 'ganjil','genap')
+│   │   ├── recap_month (tinyint)
+│   │   ├── recap_year (year)
+│   │   ├── total_hadir (int)
+│   │   ├── total_izin (int)
+│   │   ├── total_sakit (int)
+│   │   ├── total_alpa (int)
+│   │   ├── total_pulang (int)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_permits (Surat izin keluar / pulang santri)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── permit_type (enum: 'pulang','keluar_kota','berobat','keperluan_keluarga','lainnya')
+│   │   ├── destination (varchar(191))
+│   │   ├── purpose (text)
+│   │   ├── departure_datetime (datetime)
+│   │   ├── expected_return_datetime (datetime)
+│   │   ├── actual_return_datetime (datetime)
+│   │   ├── companion_name (varchar(191))
+│   │   ├── companion_relation (varchar(100))
+│   │   ├── companion_phone (varchar(20))
+│   │   ├── status (enum: 'pending','approved','rejected','returned','overdue')
+│   │   ├── approved_by (char(36)) → users.id
+│   │   ├── approved_at (timestamp)
+│   │   ├── approval_note (text)
+│   │   ├── document_path (varchar(255))
+│   │   ├── created_by (char(36)) → users.id
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_violations (Pelanggaran tata tertib asrama — paralel violation_points)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── room_id (char(36)) → dormitory_rooms.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── recorded_by (char(36)) → users.id
+│   │   ├── violation_date (date)
+│   │   ├── violation_category (enum: 'ringan','sedang','berat')
+│   │   ├── violation_type (varchar(100))
+│   │   ├── description (text)
+│   │   ├── points (int)
+│   │   ├── action_taken (text)
+│   │   ├── follow_up (text)
+│   │   ├── witness_id (char(36)) → users.id
+│   │   ├── parent_notified_at (timestamp)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── dormitory_room_moves (Riwayat pindah kamar — paralel student_transfers)
+│   │   ├── id (char(36) PK)
+│   │   ├── student_id (char(36)) → students.id
+│   │   ├── from_room_id (char(36)) → dormitory_rooms.id
+│   │   ├── to_room_id (char(36)) → dormitory_rooms.id
+│   │   ├── dormitory_id (char(36)) → dormitories.id
+│   │   ├── academic_year_id (char(36)) → academic_years.id
+│   │   ├── move_date (date)
+│   │   ├── reason (text)
+│   │   ├── move_type (enum: 'rotasi','permintaan','sanksi','kondisi_kesehatan','lainnya')
+│   │   ├── approved_by (char(36)) → users.id
+│   │   ├── approval_status (enum: 'pending','approved','rejected')
+│   │   ├── notes (text)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── dormitory_inventories (Inventaris fasilitas per kamar)
+│       ├── id (char(36) PK)
+│       ├── room_id (char(36)) → dormitory_rooms.id
+│       ├── dormitory_id (char(36)) → dormitories.id
+│       ├── item_name (varchar(191))
+│       ├── item_code (varchar(50))
+│       ├── quantity (int)
+│       ├── condition (enum: 'baik','rusak_ringan','rusak_berat','hilang')
+│       ├── last_checked_at (date)
+│       ├── checked_by (char(36)) → users.id
+│       ├── notes (text)
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── APPROVAL WORKFLOW ENGINE (Sistem Persetujuan)
+│   │
+│   ├── approval_flows (Template alur)
+│   │   ├── id (char(36) PK)
+│   │   ├── name (varchar(191))
+│   │   ├── description (varchar(191))
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── approval_flow_steps (Step-step approval)
+│   │   ├── id (char(36) PK)
+│   │   ├── approval_flow_id (char(36)) → approval_flows.id
+│   │   ├── step_order (tinyint)
+│   │   ├── role_name (varchar(191))
+│   │   ├── min_role_level (tinyint)
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   ├── approval_requests (Request yang perlu approval)
+│   │   ├── id (char(36) PK)
+│   │   ├── request_type (varchar(191))
+│   │   ├── reference_id (char(36))
+│   │   ├── requested_by (char(36)) → users.id
+│   │   ├── status (enum: 'PENDING','APPROVED','REJECTED')
+│   │   ├── created_at (timestamp)
+│   │   └── updated_at (timestamp)
+│   │
+│   └── approval_actions (Histori tindakan approval)
+│       ├── id (char(36) PK)
+│       ├── approval_request_id (char(36)) → approval_requests.id
+│       ├── step_order (tinyint)
+│       ├── role_name (varchar(191))
+│       ├── approved_by (char(36)) → users.id
+│       ├── action (enum: 'PENDING','APPROVED','REJECTED')
+│       ├── action_at (timestamp)
+│       ├── note (text)
+│       ├── ip_address (varchar(45))
+│       ├── user_agent (varchar(191))
+│       ├── created_at (timestamp)
+│       └── updated_at (timestamp)
+│
+├── NOTIFICATION SYSTEM (Sistem Notifikasi)
+│   │
+│   └── notifications_universal (Notifikasi universal)
+│       ├── id (char(36) PK)
+│       ├── user_id (char(36)) → users.id
+│       ├── module (varchar(191))
+│       ├── reference_type (varchar(191))
+│       ├── reference_id (char(36))
+│       ├── reference_code (varchar(191))
+│       ├── type (varchar(191))
+│       ├── action (varchar(191))
+│       ├── title (varchar(191))
+│       ├── message (text)
+│       ├── data (longtext)
+│       ├── is_read (tinyint(1))
+│       ├── read_at (timestamp)
+│       ├── is_archived (tinyint(1))
+│       ├── archived_at (timestamp)
+│       ├── is_email_sent (tinyint(1))
+│       ├── email_sent_at (timestamp)
+│       ├── is_whatsapp_sent (tinyint(1))
+│       ├── whatsapp_sent_at (timestamp)
+│       ├── is_push_sent (tinyint(1))
+│       ├── push_sent_at (timestamp)
+│       ├── action_url (varchar(191))
+│       ├── action_text (varchar(191))
+│       ├── priority (enum: 'low','medium','high','urgent')
+│       ├── expires_at (timestamp)
+│       ├── created_at (timestamp)
+│       ├── updated_at (timestamp)
+│       └── deleted_at (timestamp)
+│
+└── SYSTEM SUPPORT & AUDIT (Dukungan Sistem & Audit)
+    │
+    ├── audit_logs (Log aktivitas sistem)
+    │   ├── id (char(36) PK)
+    │   ├── user_id (char(36)) → users.id
+    │   ├── action (varchar(191))
+    │   ├── table_name (varchar(191))
+    │   ├── record_id (char(36))
+    │   ├── record_type (varchar(191))
+    │   ├── ip_address (varchar(45))
+    │   ├── user_agent (text)
+    │   ├── created_at (timestamp)
+    │   └── updated_at (timestamp)
+    │
+    ├── password_otps (OTP untuk reset password)
+    │   ├── id (char(36) PK)
+    │   ├── user_id (char(36)) → users.id
+    │   ├── otp_hash (varchar(191))
+    │   ├── expires_at (timestamp)
+    │   ├── created_at (timestamp)
+    │   └── updated_at (timestamp)
+    │
+    ├── password_reset_tokens (Reset password)
+    │   ├── email (varchar(191) PK) → users.email
+    │   ├── token (varchar(191))
+    │   └── created_at (timestamp)
+    │
+    ├── personal_access_tokens (API tokens)
+    │   ├── id (char(36) PK)
+    │   ├── tokenable_type (varchar(191))
+    │   ├── tokenable_id (char(36)) → users.id
+    │   ├── name (varchar(191))
+    │   ├── token (varchar(64) UNIQUE)
+    │   ├── abilities (text)
+    │   ├── last_used_at (timestamp)
+    │   ├── expires_at (timestamp)
+    │   ├── created_at (timestamp)
+    │   └── updated_at (timestamp)
+    │
+    ├── secure_access_tokens (Token akses aman)
+    │   ├── id (char(36) PK)
+    │   ├── user_id (char(36)) → users.id
+    │   ├── role_name (varchar(191))
+    │   ├── token (varchar(64) UNIQUE)
+    │   ├── ip_address (varchar(45))
+    │   ├── user_agent (text)
+    │   ├── expires_at (timestamp)
+    │   ├── used_at (timestamp)
+    │   ├── created_at (timestamp)
+    │   └── updated_at (timestamp)
+    │
+    ├── sessions (Session management)
+    │   ├── id (varchar(191) PK)
+    │   ├── user_id (char(36)) → users.id
+    │   ├── ip_address (varchar(45))
+    │   ├── user_agent (text)
+    │   ├── payload (longtext)
+    │   └── last_activity (int)
+    │
+    ├── migrations (Migrasi database)
+    │   ├── id (int PK)
+    │   ├── migration (varchar(191))
+    │   └── batch (int)
+    │
+    └── failed_jobs (Failed queue jobs)
+        ├── id (char(36) PK)
+        ├── uuid (varchar(191) UNIQUE)
+        ├── connection (text)
+        ├── queue (text)
+        ├── payload (longtext)
+        ├── exception (longtext)
+        └── failed_at (timestamp)
+
+
+RINGKASAN TOTAL TABEL PER MODUL
+No	Modul	Jumlah Tabel
+1	User Management	6
+2	Regional Data	4
+3	Work Unit Ecosystem	7
+4	GTK Data Management	12
+5	Recruitment Management	11
+6	Academic Management	8
+7	Student Management	4
+8	Structural Position Management	2
+9	Subject & KKTP Management	1
+10	Student Attendance Module	3
+11	Teacher Administration Book	7
+12	Class Schedule & Teacher Attendance	5
+13	Dormitory Management	9
+14	Approval Workflow Engine	4
+15	Notification System	1
+16	System Support & Audit	7
+Total Tabel Aplikasi		91
+
+
+## CATATAN RELASI LENGKAP
+
+### Core Relations
+1. `users` → `gtk_profiles` [1:1]
+2. `users` → `recruitment_profiles` [1:1]
+3. `users` → `students` [1:1] (optional)
+4. `users` → `gtk_employments` [1:N]
+5. `users` → `gtk_educations` [1:N]
+6. `users` → `approval_requests` [1:N]
+7. `users` → `approval_actions` [1:N]
+
+### Work Unit & School Relations
+8. `work_units` → `schools` [1:1]
+9. `work_units` → `gtk_work_unit` [1:N]
+10. `schools` → `academic_years` [1:N]
+11. `schools` → `study_groups` [1:N]
+12. `academic_years` → `study_groups` [1:N]
+13. `study_groups` → `homeroom_teachers` [1:1]
+14. `study_groups` → `students` (via `student_class_histories`) [N:M]
+
+### Regional Relations
+15. `indonesia_provinces` → `indonesia_cities` [1:N]
+16. `indonesia_cities` → `indonesia_districts` [1:N]
+17. `indonesia_districts` → `indonesia_villages` [1:N]
+
+### Approval Relations
+18. `approval_flows` → `approval_flow_steps` [1:N]
+19. `approval_requests` → `approval_actions` [1:N]
+
+### Recruitment Relations
+20. `recruitment_jobs` → `recruitment_applications` [1:N]
+21. `recruitment_profiles` → `recruitment_applications` [1:N]
+22. `recruitment_pipelines` → `recruitment_pipeline_stages` [1:N]
+23. `recruitment_applications` → `recruitment_application_stages` [1:N]
+
+### Student Attendance Relations
+24. `students` → `student_attendances` [1:N]
+25. `study_groups` → `student_attendances` [1:N]
+26. `students` → `attendance_permits` [1:N]
+27. `students` → `attendance_recaps` [1:N]
+
+### Subject & KKTP Relations
+28. `subjects` → `subject_kktp` [1:N]
+29. `grade_levels` → `subject_kktp` [1:N]
+30. `academic_years` → `subject_kktp` [1:N]
+
+### Teacher Administration Book Relations
+31. `users` (teacher) → `teacher_admin_books` [1:N]
+32. `subjects` → `teacher_admin_books` [1:N]
+33. `study_groups` → `teacher_admin_books` [1:N]
+34. `teacher_admin_books` → `admin_presensi_guru` [1:N]
+35. `teacher_admin_books` → `admin_jurnal_pembelajaran` [1:N]
+36. `teacher_admin_books` → `admin_nilai_sumatif` [1:N]
+37. `teacher_admin_books` → `admin_nilai_formatif` [1:N]
+38. `teacher_admin_books` → `admin_penghargaan_akademik` [1:N]
+39. `teacher_admin_books` → `admin_catatan_guru` [1:N]
+40. `students` → `admin_nilai_sumatif` [1:N] (per mapel)
+41. `students` → `admin_nilai_formatif` [1:N] (per mapel)
+42. `students` → `admin_penghargaan_akademik` [1:N] (per mapel)
+
+### Class Schedule & Teacher Attendance Relations
+43. `schools` → `class_schedule_slots` [1:N]
+44. `schools` → `class_schedules` [1:N]
+45. `study_groups` → `class_schedules` [1:N]
+46. `subjects` → `class_schedules` [1:N]
+47. `users` (teacher) → `class_schedules` [1:N]
+48. `teaching_assignments` → `class_schedules` [1:N]
+49. `institution_decrees` → `teaching_assignments` → `class_schedules` [chain]
+50. `class_schedules` → `teacher_attendances` [1:N]
+51. `teacher_attendances` → `teacher_attendance_substitutes` [1:N]
+52. `users` (teacher) → `teacher_attendance_recaps` [1:N]
+
+### Dormitory Management Relations
+53. `work_units` → `dormitories` [1:1]
+54. `schools` → `dormitories` [1:N]
+55. `dormitories` → `dormitory_wings` [1:N]
+56. `dormitory_wings` → `dormitory_rooms` [1:N]
+57. `dormitory_rooms` → `room_supervisors` [1:N]
+58. `institution_decrees` → `room_supervisors` [1:N]
+59. `dormitory_rooms` → `dormitory_residents` [1:N]
+60. `students` → `dormitory_residents` [1:N]
+61. `dormitory_rooms` → `dormitory_attendances` [1:N]
+62. `students` → `dormitory_attendances` [1:N]
+63. `students` → `dormitory_permits` [1:N]
+64. `students` → `dormitory_violations` [1:N]
+65. `students` → `dormitory_room_moves` [1:N]
+66. `dormitory_rooms` → `dormitory_inventories` [1:N]
+
+
+CATATAN RELASI TAMBAHAN (lanjutan dari relasi 52):
+
+53. work_units → dormitories [1:1]
+54. schools → dormitories [1:N]
+55. dormitories → dormitory_wings [1:N]
+56. dormitory_wings → dormitory_rooms [1:N]
+57. dormitory_rooms → room_supervisors [1:N]           [satu kamar bisa berganti wali tiap tahun ajaran]
+58. institution_decrees → room_supervisors [1:N]       [SK wali kamar]
+59. dormitory_rooms → dormitory_residents [1:N]
+60. students → dormitory_residents [1:N]               [riwayat kamar per tahun ajaran]
+61. dormitory_rooms → dormitory_attendances [1:N]
+62. students → dormitory_attendances [1:N]
+63. students → dormitory_permits [1:N]
+64. students → dormitory_violations [1:N]
+65. students → dormitory_room_moves [1:N]
+66. dormitory_rooms → dormitory_inventories [1:N]

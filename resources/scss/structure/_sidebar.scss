@@ -1,0 +1,57 @@
+// ===============================================
+// Sidebar Active Menu Styles
+// ===============================================
+
+.app-menu .scrollbar-sidebar {
+    height: calc(110vh - 70px - 80px) !important;
+    overflow-y: auto !important;
+}
+
+.app-menu .scrollbar-sidebar .simplebar-content-wrapper,
+.app-menu .scrollbar-sidebar .simplebar-content {
+    overflow: unset !important;
+    overflow-y: auto !important;
+}
+
+// Active sidebar item — light mode (white background)
+.navbar-nav .nav-item .nav-link.active,
+.navbar-nav .nav-item .nav-link.active i {
+    color: #405189 !important;
+    border-radius: 0.25rem;
+    font-weight: 410 !important;
+}
+
+.navbar-nav .nav-item .nav-link.active {
+    background: #40518923;
+}
+
+// Submenu (nested) active — hapus background
+.navbar-menu .menu-dropdown .nav-item .nav-link.active,
+.navbar-menu .menu-dropdown .nav-link.active {
+    background: transparent !important;
+}
+
+.navbar-nav .nav-item .nav-link.active i {
+    color: #405189 !important;
+}
+
+// Active sidebar item — dark mode
+[data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active,
+[data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active i {
+    color: #fff !important;
+    font-weight: 410 !important;
+}
+
+[data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active {
+    background: #ffffff23;
+}
+
+[data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active i {
+    color: #fff !important;
+}
+
+// Submenu (nested) active dark mode — hapus background
+[data-bs-theme="dark"] .navbar-menu .menu-dropdown .nav-item .nav-link.active,
+[data-bs-theme="dark"] .navbar-menu .menu-dropdown .nav-link.active {
+    background: transparent !important;
+}

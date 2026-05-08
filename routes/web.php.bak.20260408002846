@@ -1,0 +1,575 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\SecureAccessController;
+use App\Http\Controllers\GtkRecruitmentController;
+use App\Http\Controllers\GTKController;
+use App\Http\Controllers\WorkUnitController;
+use App\Http\Controllers\GtkRequestController;
+use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\GTKEducationController;
+use App\Http\Controllers\GtkWizardController;
+use App\Http\Controllers\WilayahController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserSecurityController;
+use App\Http\Controllers\RecruitmentPipelineController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\SidebarMenuController;
+use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\CandidateController;
+use App\Http\Controllers\InterviewController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\JenjangKarirController;
+use App\Http\Controllers\SuperAdmin\UserController;
+use App\Http\Controllers\SuperAdmin\RoleController;
+use App\Http\Controllers\SuperAdmin\PermissionController;
+use App\Http\Controllers\SuperAdmin\AuditLogController;
+use App\Http\Controllers\SuperAdmin\TokenSesiController;
+use App\Http\Controllers\SuperAdmin\FailedJobController;
+use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
+use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController;
+use App\Http\Controllers\SuperAdmin\PasswordResetLogController;
+use App\Http\Controllers\SuperAdmin\SystemSettingController;
+use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\AcademicYearController;
+use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\StudyGroupController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\GradeLevelApiController;
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC AUTH ROUTES (NO MIDDLEWARE!)
+|--------------------------------------------------------------------------
+*/
+Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->name('login.process');
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::middleware('guest')->group(function () {
+    Route::prefix('password')->name('password.')->group(function () {
+        Route::get('/forgot', [ForgotPasswordController::class, 'showForm'])->name('request');
+        Route::post('/forgot', [ForgotPasswordController::class, 'sendOtp'])->name('email');
+        Route::get('/otp', [ForgotPasswordController::class, 'showOtpForm'])->name('otp.form');
+        Route::post('/otp', [ForgotPasswordController::class, 'verifyOtp'])->name('otp.verify');
+        Route::post('/otp/resend', [ForgotPasswordController::class, 'resendOtp'])->name('otp.resend');
+        Route::post('/otp/check', [ForgotPasswordController::class, 'checkOtpValidity'])->name('otp.check');
+        Route::get('/reset', [ForgotPasswordController::class, 'showResetForm'])->name('reset.form');
+        Route::post('/reset', [ForgotPasswordController::class, 'resetPassword'])->name('update');
+        Route::post('/cancel', [ForgotPasswordController::class, 'cancelReset'])->name('cancel');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED BASE ROUTES
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->group(function () {
+    Route::get('/', [HomeController::class, 'root'])->name('root');
+
+    Route::get('/access/{token}/data-pegawai', [SecureAccessController::class, 'dataPegawai'])
+        ->name('secure.data.pegawai')
+        ->middleware(['verify.secure.token', 'role.enforced']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | GENERIC ROLE ROUTES: /{roleId}/{menuId}/{uuid?}
+    |
+    | {roleId} = UUID role user (misal 6ca92faf-...gtk, 7ab.../recruitment)
+    | Route name: role.{menu}.{action} (sama untuk semua role)
+    | Middleware: role.access → validasi user punya role tsb
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('{roleId}')
+        ->where(['roleId' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+        ->middleware(['auth', 'role.access'])
+        ->name('role.')
+        ->group(function () {
+
+        // ── GTK ──────────────────────────────────────────────────
+        Route::prefix('gtk')->name('gtk.')->group(function () {
+            Route::get('/',                      [GtkWizardController::class, 'index'])->name('index');
+            Route::get('/create',                [GtkWizardController::class, 'create'])->name('create');
+            Route::post('/',                     [GtkWizardController::class, 'store'])->name('store');
+            Route::get('/import',                [GtkWizardController::class, 'import'])->name('import');
+            Route::get('/import/template/{workUnitId}', [GtkWizardController::class, 'importTemplate'])->name('import.template');
+            Route::post('/import/store',          [GtkWizardController::class, 'importStore'])->name('import.store');
+            Route::post('/datatable',             [GtkWizardController::class, 'datatable'])->name('datatable');
+            Route::get('/export-preview',         [GtkWizardController::class, 'exportPreview'])->name('export.preview');
+            Route::get('/export',                [GtkWizardController::class, 'export'])->name('export');
+
+            Route::post('/verify-password', [GtkWizardController::class, 'verifyPassword'])->name('verify-password');
+
+            // Education standalone
+            Route::prefix('educations')->name('educations.')->group(function () {
+                Route::post('/',      [App\Http\Controllers\GTKEducationController::class, 'store'])->name('store');
+                Route::get('/{id}',   [App\Http\Controllers\GTKEducationController::class, 'show'])->name('show');
+                Route::put('/{id}',   [App\Http\Controllers\GTKEducationController::class, 'update'])->name('update');
+                Route::delete('/{id}', [App\Http\Controllers\GTKEducationController::class, 'destroy'])->name('destroy');
+            });
+
+            // GTK by work unit
+            Route::get('/satuan-kerja/{satuanKerja}', [GTKController::class, 'indexByWorkUnit'])->name('by-work-unit');
+
+            // GTK detail / edit / profile (UUID)
+            Route::prefix('{uuid}')
+                ->where(['uuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+                ->group(function () {
+                    Route::get('/',          [GtkWizardController::class, 'show'])->name('show');
+                    Route::get('/edit',      [GtkWizardController::class, 'edit'])->name('edit');
+                    Route::put('/',          [GtkWizardController::class, 'update'])->name('update');
+                    Route::delete('/',       [GtkWizardController::class, 'destroy'])->name('destroy');
+                    Route::post('/toggle-status',  [GtkWizardController::class, 'toggleStatus'])->name('toggle-status');
+                    Route::post('/reset-password', [GtkWizardController::class, 'resetPassword'])->name('reset-password');
+
+                    // Profile
+                    Route::prefix('profile')->name('profile.')->group(function () {
+                        Route::get('/',  [ProfileController::class, 'show'])->name('show');
+                        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+                        Route::put('/',  [ProfileController::class, 'update'])->name('update');
+                        Route::post('/photo',   [ProfileController::class, 'uploadPhoto'])->name('photo.upload');
+                        Route::delete('/photo', [ProfileController::class, 'deletePhoto'])->name('photo.delete');
+                    });
+
+                    // Family member
+                    Route::prefix('family-member')->name('family-member.')->group(function () {
+                        Route::post('/store',      [GtkWizardController::class, 'storeFamilyMember'])->name('store');
+                        Route::get('/{id}/edit',  [GtkWizardController::class, 'editFamilyMember'])->name('edit');
+                        Route::put('/{id}',        [GtkWizardController::class, 'updateFamilyMember'])->name('update');
+                        Route::delete('/{id}',     [GtkWizardController::class, 'deleteFamilyMember'])->name('delete');
+                    });
+
+                    // Education
+                    Route::prefix('education')->name('education.')->group(function () {
+                        Route::post('/store',         [GtkWizardController::class, 'storeEducationModal'])->name('store');
+                        Route::get('/{id}/edit',      [GtkWizardController::class, 'editEducation'])->name('edit');
+                        Route::put('/{id}',           [GtkWizardController::class, 'updateEducation'])->name('update');
+                        Route::delete('/{id}',        [GtkWizardController::class, 'deleteEducation'])->name('delete');
+                        Route::post('/{id}/verify',   [GtkWizardController::class, 'verifyEducation'])->name('verify');
+                    });
+                });
+        });
+
+        // ── MASTER DATA ──────────────────────────────────────────
+        Route::prefix('master-data')->name('master-data.')->group(function () {
+            Route::get('/jenis-gtk',  [MasterDataController::class, 'jenisGtkIndex'])->name('jenis-gtk.index');
+            Route::post('/jenis-gtk', [MasterDataController::class, 'jenisGtkStore'])->name('jenis-gtk.store');
+            Route::put('/jenis-gtk/{id}',  [MasterDataController::class, 'jenisGtkUpdate'])->name('jenis-gtk.update');
+            Route::delete('/jenis-gtk/{id}', [MasterDataController::class, 'jenisGtkDestroy'])->name('jenis-gtk.destroy');
+
+            Route::get('/jabatan',    [MasterDataController::class, 'jabatanIndex'])->name('jabatan.index');
+            Route::post('/jabatan',   [MasterDataController::class, 'jabatanStore'])->name('jabatan.store');
+            Route::put('/jabatan/{id}',   [MasterDataController::class, 'jabatanUpdate'])->name('jabatan.update');
+            Route::delete('/jabatan/{id}', [MasterDataController::class, 'jabatanDestroy'])->name('jabatan.destroy');
+            Route::get('/jabatan-by-jenis', [MasterDataController::class, 'getJabatanByJenis'])->name('jabatan.by-jenis');
+
+            Route::get('/satuan-kerja',    [MasterDataController::class, 'satuanKerjaIndex'])->name('satuan-kerja.index');
+            Route::post('/satuan-kerja',   [MasterDataController::class, 'satuanKerjaStore'])->name('satuan-kerja.store');
+            Route::put('/satuan-kerja/{id}',   [MasterDataController::class, 'satuanKerjaUpdate'])->name('satuan-kerja.update');
+            Route::delete('/satuan-kerja/{id}', [MasterDataController::class, 'satuanKerjaDestroy'])->name('satuan-kerja.destroy');
+        });
+
+        // ── JENJANG KARIR ────────────────────────────────────────
+        Route::prefix('jenjang-karir')->name('jenjang-karir.')->group(function () {
+            Route::get('/career-path',      [App\Http\Controllers\JenjangKarirController::class, 'careerPathIndex'])->name('career-path.index');
+            Route::post('/career-path',     [App\Http\Controllers\JenjangKarirController::class, 'careerPathStore'])->name('career-path.store');
+            Route::put('/career-path/{id}', [App\Http\Controllers\JenjangKarirController::class, 'careerPathUpdate'])->name('career-path.update');
+            Route::delete('/career-path/{id}', [App\Http\Controllers\JenjangKarirController::class, 'careerPathDestroy'])->name('career-path.destroy');
+
+            Route::get('/mutasi-rotasi',    [App\Http\Controllers\JenjangKarirController::class, 'mutasiIndex'])->name('mutasi.index');
+            Route::post('/mutasi-rotasi',   [App\Http\Controllers\JenjangKarirController::class, 'mutasiStore'])->name('mutasi.store');
+            Route::put('/mutasi-rotasi/{id}', [App\Http\Controllers\JenjangKarirController::class, 'mutasiUpdate'])->name('mutasi.update');
+            Route::post('/mutasi-rotasi/{id}/approve', [App\Http\Controllers\JenjangKarirController::class, 'mutasiApprove'])->name('mutasi.approve');
+            Route::post('/mutasi-rotasi/{id}/reject',  [App\Http\Controllers\JenjangKarirController::class, 'mutasiReject'])->name('mutasi.reject');
+            Route::delete('/mutasi-rotasi/{id}', [App\Http\Controllers\JenjangKarirController::class, 'mutasiDestroy'])->name('mutasi.destroy');
+
+            Route::get('/promosi-demosi',    [App\Http\Controllers\JenjangKarirController::class, 'promosiIndex'])->name('promosi.index');
+            Route::post('/promosi-demosi',   [App\Http\Controllers\JenjangKarirController::class, 'promosiStore'])->name('promosi.store');
+            Route::put('/promosi-demosi/{id}', [App\Http\Controllers\JenjangKarirController::class, 'promosiUpdate'])->name('promosi.update');
+            Route::delete('/promosi-demosi/{id}', [App\Http\Controllers\JenjangKarirController::class, 'promosiDestroy'])->name('promosi.destroy');
+
+            Route::get('/talent-pool',    [App\Http\Controllers\JenjangKarirController::class, 'talentPoolIndex'])->name('talent.index');
+            Route::post('/talent-pool',   [App\Http\Controllers\JenjangKarirController::class, 'talentPoolStore'])->name('talent.store');
+            Route::put('/talent-pool/{id}', [App\Http\Controllers\JenjangKarirController::class, 'talentPoolUpdate'])->name('talent.update');
+            Route::delete('/talent-pool/{id}', [App\Http\Controllers\JenjangKarirController::class, 'talentPoolDestroy'])->name('talent.destroy');
+
+            Route::get('/succession-plan',    [App\Http\Controllers\JenjangKarirController::class, 'successionIndex'])->name('succession.index');
+            Route::post('/succession-plan',   [App\Http\Controllers\JenjangKarirController::class, 'successionStore'])->name('succession.store');
+            Route::put('/succession-plan/{id}', [App\Http\Controllers\JenjangKarirController::class, 'successionUpdate'])->name('succession.update');
+            Route::delete('/succession-plan/{id}', [App\Http\Controllers\JenjangKarirController::class, 'successionDestroy'])->name('succession.destroy');
+            Route::post('/succession-plan/{id}/kandidat', [App\Http\Controllers\JenjangKarirController::class, 'successionKandidatStore'])->name('succession.kandidat.store');
+            Route::delete('/succession-kandidat/{kandidatId}', [App\Http\Controllers\JenjangKarirController::class, 'successionKandidatDestroy'])->name('succession.kandidat.destroy');
+        });
+
+        // ── RECRUITMENT ──────────────────────────────────────────
+        Route::prefix('recruitment')->name('recruitment.')->group(function () {
+            // Jobs
+            Route::resource('jobs', JobController::class);
+            Route::get('jobs/{job}/applications', [JobController::class, 'applications'])->name('jobs.applications');
+            Route::post('jobs/{job}/duplicate',    [JobController::class, 'duplicate'])->name('jobs.duplicate');
+            Route::post('jobs/{job}/toggle-status', [JobController::class, 'toggleStatus'])->name('jobs.toggle-status');
+
+            // Pipeline
+            Route::get('jobs/{jobId}/pipeline',      [RecruitmentPipelineController::class, 'index'])->name('pipeline.index');
+            Route::get('jobs/{jobId}/pipeline/board', [RecruitmentPipelineController::class, 'board'])->name('pipeline.board');
+            Route::get('jobs/{jobId}/pipeline/statistics', [RecruitmentPipelineController::class, 'getStatistics'])->name('pipeline.statistics');
+            Route::post('jobs/{jobId}/pipeline/create', [RecruitmentPipelineController::class, 'createPipeline'])->name('pipeline.create');
+
+            // Applications
+            Route::resource('applications', ApplicationController::class);
+            Route::get('applications/{application}/stages',    [ApplicationController::class, 'stages'])->name('applications.stages');
+            Route::post('applications/{application}/update-status', [ApplicationController::class, 'updateStatus'])->name('applications.update-status');
+            Route::post('applications/{application}/add-note',  [ApplicationController::class, 'addNote'])->name('applications.add-note');
+            Route::post('applications/{application}/send-message', [ApplicationController::class, 'sendMessage'])->name('applications.send-message');
+            Route::post('applications/bulk-action', [ApplicationController::class, 'bulkAction'])->name('applications.bulk-action');
+            Route::get('applications/export/excel', [ApplicationController::class, 'exportExcel'])->name('applications.export-excel');
+            Route::get('applications/export/pdf',   [ApplicationController::class, 'exportPdf'])->name('applications.export-pdf');
+            Route::post('applications/{applicationId}/move-next',    [RecruitmentPipelineController::class, 'moveToNextStage'])->name('pipeline.move-next');
+            Route::post('applications/{applicationId}/move-to-stage', [RecruitmentPipelineController::class, 'moveToStage'])->name('pipeline.move-to-stage');
+
+            // Candidates
+            Route::resource('candidates', CandidateController::class);
+            Route::get('candidates/{candidate}/download-cv', [CandidateController::class, 'downloadCv'])->name('candidates.download-cv');
+            Route::get('candidates/{candidate}/timeline',    [CandidateController::class, 'timeline'])->name('candidates.timeline');
+            Route::post('candidates/{candidate}/add-skill',  [CandidateController::class, 'addSkill'])->name('candidates.add-skill');
+            Route::delete('candidates/{candidate}/remove-skill/{skill}', [CandidateController::class, 'removeSkill'])->name('candidates.remove-skill');
+
+            // Interviews
+            Route::resource('interviews', InterviewController::class);
+            Route::get('calendar-events', [InterviewController::class, 'calendarEvents'])->name('interviews.calendar-events');
+            Route::post('interviews/{interview}/reschedule',  [InterviewController::class, 'reschedule'])->name('interviews.reschedule');
+            Route::post('interviews/{interview}/complete',     [InterviewController::class, 'markComplete'])->name('interviews.complete');
+            Route::post('interviews/{interview}/add-feedback', [InterviewController::class, 'addFeedback'])->name('interviews.add-feedback');
+
+            // Reports
+            Route::get('reports',                       [ReportController::class, 'index'])->name('reports.index');
+            Route::get('reports/dashboard',             [ReportController::class, 'dashboard'])->name('reports.dashboard');
+            Route::get('reports/hiring-funnel',         [ReportController::class, 'hiringFunnel'])->name('reports.hiring-funnel');
+            Route::get('reports/time-to-hire',          [ReportController::class, 'timeToHire'])->name('reports.time-to-hire');
+            Route::get('reports/source-effectiveness',   [ReportController::class, 'sourceEffectiveness'])->name('reports.source-effectiveness');
+            Route::get('reports/export/{type}',          [ReportController::class, 'export'])->name('reports.export');
+            Route::post('reports/schedule',              [ReportController::class, 'schedule'])->name('reports.schedule');
+
+            // Settings
+            Route::get('settings',                       [SettingController::class, 'index'])->name('settings.index');
+            Route::post('settings',                      [SettingController::class, 'update'])->name('settings.update');
+            Route::post('settings/stages',               [SettingController::class, 'updateStages'])->name('settings.stages');
+            Route::post('settings/email-templates',      [SettingController::class, 'updateEmailTemplates'])->name('settings.email-templates');
+
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | MY PROFILE (logged-in user)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/my',          [ProfileController::class, 'myProfile'])->name('my');
+        Route::get('/my/edit',     [ProfileController::class, 'editMyProfile'])->name('my.edit');
+        Route::put('/my',          [ProfileController::class, 'updateMyProfile'])->name('my.update');
+        Route::post('/my/photo',   [ProfileController::class, 'uploadPhoto'])->name('my.photo.upload');
+        Route::delete('/my/photo', [ProfileController::class, 'deletePhoto'])->name('my.photo.delete');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | STANDALONE (OUTSIDE ROLE CONTEXT)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('gtk-requests')->name('gtk-requests.')->group(function () {
+        Route::get('/',            [GtkRequestController::class, 'index'])->name('index');
+        Route::get('/create',      [GtkRequestController::class, 'create'])->name('create');
+        Route::post('/',           [GtkRequestController::class, 'store'])->name('store');
+        Route::post('/{id}/submit', [GtkRequestController::class, 'submit'])->name('submit');
+        Route::prefix('{requestUuid}')
+            ->where(['requestUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+            ->group(function () {
+                Route::get('/',       [GtkRequestController::class, 'show'])->name('show');
+                Route::get('/edit',   [GtkRequestController::class, 'edit'])->name('edit');
+                Route::put('/',       [GtkRequestController::class, 'update'])->name('update');
+                Route::delete('/',    [GtkRequestController::class, 'destroy'])->name('destroy');
+            });
+    });
+
+    Route::prefix('recruitment')->name('recruitment.')->group(function () {
+        Route::get('/', [GtkRecruitmentController::class, 'index'])->name('index');
+        Route::get('/create', [GtkRecruitmentController::class, 'create'])->name('create');
+        Route::post('/', [GtkRecruitmentController::class, 'store'])->name('store');
+        Route::prefix('{recruitmentUuid}')
+            ->where(['recruitmentUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+            ->group(function () {
+                Route::get('/',       [GtkRecruitmentController::class, 'show'])->name('show');
+                Route::get('/edit',   [GtkRecruitmentController::class, 'edit'])->name('edit');
+                Route::put('/',       [GtkRecruitmentController::class, 'update'])->name('update');
+                Route::delete('/',    [GtkRecruitmentController::class, 'destroy'])->name('destroy');
+            });
+    });
+
+    Route::prefix('approvals')->name('approvals.')->group(function () {
+        Route::get('/',               [ApprovalController::class, 'index'])->name('index');
+        Route::get('/my-pending',     [ApprovalController::class, 'myPending'])->name('my-pending');
+        Route::get('/history',        [ApprovalController::class, 'history'])->name('history');
+        Route::prefix('{approvalUuid}')
+            ->where(['approvalUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+            ->group(function () {
+                Route::get('/',      [ApprovalController::class, 'show'])->name('show');
+                Route::post('/approve', [ApprovalController::class, 'approve'])->name('approve');
+                Route::post('/reject',  [ApprovalController::class, 'reject'])->name('reject');
+                Route::get('/track',    [ApprovalController::class, 'track'])->name('track');
+            });
+    });
+
+    Route::prefix('schools')->name('schools.')->group(function () {
+        Route::get('/',                        [SchoolController::class, 'index'])->name('index');
+        Route::get('/create',                  [SchoolController::class, 'create'])->name('create');
+        Route::post('/',                       [SchoolController::class, 'store'])->name('store');
+        Route::get('/{id}',                   [SchoolController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',              [SchoolController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                   [SchoolController::class, 'update'])->name('update');
+        Route::delete('/{id}',                [SchoolController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('academic-years')->name('academic-years.')->group(function () {
+        Route::get('/',                        [AcademicYearController::class, 'index'])->name('index');
+        Route::get('/create',                  [AcademicYearController::class, 'create'])->name('create');
+        Route::post('/',                       [AcademicYearController::class, 'store'])->name('store');
+        Route::get('/{id}',                   [AcademicYearController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',              [AcademicYearController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                   [AcademicYearController::class, 'update'])->name('update');
+        Route::delete('/{id}',                [AcademicYearController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/toggle-active',     [AcademicYearController::class, 'toggleActive'])->name('toggle-active');
+    });
+
+    Route::prefix('grade-levels')->name('grade-levels.')->group(function () {
+        Route::get('/',                        [GradeLevelController::class, 'index'])->name('index');
+        Route::get('/create',                  [GradeLevelController::class, 'create'])->name('create');
+        Route::post('/',                       [GradeLevelController::class, 'store'])->name('store');
+        Route::get('/{id}',                   [GradeLevelController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',              [GradeLevelController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                   [GradeLevelController::class, 'update'])->name('update');
+        Route::delete('/{id}',                [GradeLevelController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('study-groups')->name('study-groups.')->group(function () {
+        Route::get('/',                        [StudyGroupController::class, 'index'])->name('index');
+        Route::get('/create',                  [StudyGroupController::class, 'create'])->name('create');
+        Route::post('/',                       [StudyGroupController::class, 'store'])->name('store');
+        Route::get('/{id}',                   [StudyGroupController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',              [StudyGroupController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                   [StudyGroupController::class, 'update'])->name('update');
+        Route::delete('/{id}',                [StudyGroupController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('students')->name('students.')->group(function () {
+        Route::get('/',                        [StudentController::class, 'index'])->name('index');
+        Route::get('/create',                  [StudentController::class, 'create'])->name('create');
+        Route::post('/',                       [StudentController::class, 'store'])->name('store');
+        Route::get('/{id}',                   [StudentController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',              [StudentController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                   [StudentController::class, 'update'])->name('update');
+        Route::delete('/{id}',                [StudentController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('work-units')->name('work-units.')->group(function () {
+        Route::get('/',                              [WorkUnitController::class, 'index'])->name('index');
+        Route::post('/',                             [WorkUnitController::class, 'store'])->name('store');
+        Route::get('/{id}',                         [WorkUnitController::class, 'show'])->name('show');
+        Route::put('/{id}',                         [WorkUnitController::class, 'update'])->name('update');
+        Route::delete('/{id}',                      [WorkUnitController::class, 'destroy'])->name('destroy');
+        Route::post('/bulk-delete',                  [WorkUnitController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::patch('/{id}/toggle-status',          [WorkUnitController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/generate-code',                [WorkUnitController::class, 'generateCode'])->name('generate-code');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | API WILAYAH
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/api/grade-levels/by-school/{schoolId}', [GradeLevelApiController::class, 'bySchool'])->name('api.grade-levels.by-school');
+
+    Route::prefix('api/wilayah')->name('api.wilayah.')->group(function () {
+        Route::get('/provinces',                      [WilayahController::class, 'provinces'])->name('provinces');
+        Route::get('/cities/{provinceCode}',          [WilayahController::class, 'cities'])->name('cities');
+        Route::get('/districts/{cityCode}',          [WilayahController::class, 'districts'])->name('districts');
+        Route::get('/villages/{districtCode}',        [WilayahController::class, 'villages'])->name('villages');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | SIDEBAR MENU MANAGEMENT
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('admin/sidebar-menu')->name('admin.sidebar-menu.')->group(function () {
+        Route::get('/',    [SidebarMenuController::class, 'index'])->name('index');
+        Route::post('/',   [SidebarMenuController::class, 'store'])->name('store');
+        Route::put('/{id}',    [SidebarMenuController::class, 'update'])->name('update');
+        Route::delete('/{id}', [SidebarMenuController::class, 'destroy'])->name('destroy');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| USER SECURITY (standalone, used by Super Admin via API/modal)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->group(function () {
+    // Unlock account — called from Super Admin user management
+    Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])
+        ->name('users.unlock')
+        ->middleware('role:Super Admin');
+});
+
+/*
+|--------------------------------------------------------------------------
+| SUPER ADMIN MANAGEMENT ROUTES (under /{roleId}/sa/{menu})
+| All use UUID roleId — no text-based URLs
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:Super Admin'])->prefix('{roleId}/sa')->name('role.sa.')->group(function () {
+
+    // Manajemen User  →  /{roleId}/sa/users
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/',                  [UserController::class, 'index'])->name('index');
+        Route::get('/create',            [UserController::class, 'create'])->name('create');
+        Route::post('/',                 [UserController::class, 'store'])->name('store');
+        Route::get('/{id}/edit',        [UserController::class, 'edit'])->name('edit');
+        Route::put('/{id}',             [UserController::class, 'update'])->name('update');
+        Route::delete('/{id}',          [UserController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/{id}/assign-roles', [UserController::class, 'assignRoles'])->name('assign-roles');
+    });
+
+    // Roles & Permissions  →  /{roleId}/sa/roles
+    Route::prefix('roles')->name('roles.')->group(function () {
+        Route::get('/',     [RoleController::class, 'index'])->name('index');
+        Route::post('/',    [RoleController::class, 'store'])->name('store');
+        Route::put('/{id}', [RoleController::class, 'update'])->name('update');
+        Route::delete('/{id}', [RoleController::class, 'destroy'])->name('destroy');
+    });
+
+    // Permissions  →  /{roleId}/sa/permissions
+    Route::prefix('permissions')->name('permissions.')->group(function () {
+        Route::get('/',      [PermissionController::class, 'index'])->name('index');
+        Route::post('/',     [PermissionController::class, 'store'])->name('store');
+        Route::put('/{id}', [PermissionController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PermissionController::class, 'destroy'])->name('destroy');
+    });
+
+    // Audit Log  →  /{roleId}/sa/audit-logs
+    Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
+        Route::get('/',      [AuditLogController::class, 'index'])->name('index');
+        Route::get('/{id}', [AuditLogController::class, 'show'])->name('show');
+    });
+
+    // Token & Sesi  →  /{roleId}/sa/tokens
+    Route::prefix('tokens')->name('tokens.')->group(function () {
+        Route::get('/',                           [TokenSesiController::class, 'index'])->name('index');
+        Route::post('/',                          [TokenSesiController::class, 'createToken'])->name('create');
+        Route::delete('/sessions/{id}',           [TokenSesiController::class, 'revokeToken'])->name('sessions.revoke');
+        Route::delete('/secure/{id}',             [TokenSesiController::class, 'revokeSecureToken'])->name('secure.revoke');
+    });
+
+    // Failed Jobs  →  /{roleId}/sa/failed-jobs
+    Route::prefix('failed-jobs')->name('failed-jobs.')->group(function () {
+        Route::get('/',             [FailedJobController::class, 'index'])->name('index');
+        Route::post('/{id}/retry',  [FailedJobController::class, 'retry'])->name('retry');
+        Route::post('/retry-all',   [FailedJobController::class, 'retryAll'])->name('retry-all');
+        Route::delete('/{id}',     [FailedJobController::class, 'destroy'])->name('destroy');
+        Route::post('/flush',       [FailedJobController::class, 'flush'])->name('flush');
+    });
+
+    // Notifikasi Universal  →  /{roleId}/sa/notifications
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/',                    [NotificationUniversalController::class, 'index'])->name('index');
+        Route::get('/create',              [NotificationUniversalController::class, 'create'])->name('create');
+        Route::post('/',                   [NotificationUniversalController::class, 'store'])->name('store');
+        Route::post('/{id}/mark-read',     [NotificationUniversalController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read',      [NotificationUniversalController::class, 'markAllRead'])->name('mark-all-read');
+        Route::delete('/{id}',             [NotificationUniversalController::class, 'destroy'])->name('destroy');
+    });
+
+    // Kelola Menu Sidebar  →  /{roleId}/sa/sidebar-menus
+    Route::prefix('sidebar-menus')->name('sidebar-menus.')->group(function () {
+        Route::get('/',             [SidebarMenuManagementController::class, 'index'])->name('index');
+        Route::post('/',            [SidebarMenuManagementController::class, 'store'])->name('store');
+        Route::put('/{id}',       [SidebarMenuManagementController::class, 'update'])->name('update');
+        Route::delete('/{id}',    [SidebarMenuManagementController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder',    [SidebarMenuManagementController::class, 'reorder'])->name('reorder');
+    });
+
+    // Password Reset Logs  →  /{roleId}/sa/password-reset-logs
+    Route::get('/password-reset-logs', [PasswordResetLogController::class, 'index'])->name('password-reset-logs.index');
+
+    // Pengaturan Sistem  →  /{roleId}/sa/system-settings
+    Route::prefix('system-settings')->name('system-settings.')->group(function () {
+        Route::get('/',         [SystemSettingController::class, 'index'])->name('index');
+        Route::post('/',        [SystemSettingController::class, 'update'])->name('update');
+        Route::get('/clear-cache', [SystemSettingController::class, 'clearCache'])->name('clear-cache');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| WADIR 1 SUBDOMAIN (READ ONLY)
+|--------------------------------------------------------------------------
+*/
+Route::domain('wadir1.' . env('APP_DOMAIN', 'localhost'))
+    ->middleware(['auth', 'role:Wadir 1'])
+    ->name('wadir1.')
+    ->group(function () {
+        Route::get('/', fn() => redirect()->route('wadir1.gtk.index'));
+
+        Route::prefix('gtk')->name('gtk.')->group(function () {
+            Route::get('/', [GTKController::class, 'index'])->name('index');
+            Route::get('/filter', [GTKController::class, 'filter'])->name('filter');
+            Route::get('/{gtkUuid}', [GTKController::class, 'show'])
+                ->where(['gtkUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+                ->name('show');
+            Route::get('/by-work-unit/{workUnitUuid}', [GTKController::class, 'indexByWorkUnit'])
+                ->where(['workUnitUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+                ->name('by-work-unit');
+        });
+
+
+        Route::prefix('work-units')->name('work-units.')->group(function () {
+            Route::get('/', [WorkUnitController::class, 'index'])->name('index');
+            Route::get('/{workUnitUuid}', [WorkUnitController::class, 'show'])
+                ->where(['workUnitUuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])
+                ->name('show');
+        });
+
+        Route::get('/reports', fn() => view('wadir1.reports.index'))->name('reports.index');
+
+        Route::get('/statistics', function () {
+            $gtkCount    = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'gtk'))->count();
+            $workUnitCount = \App\Models\WorkUnit::count();
+            return response()->json(['gtk_count' => $gtkCount, 'work_unit_count' => $workUnitCount]);
+        })->name('statistics');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| GLOBAL ROUTE PATTERNS
+|--------------------------------------------------------------------------
+*/
+Route::pattern('uuid',   '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+Route::pattern('gtk',   '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+Route::pattern('roleId','[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+
+/*
+|--------------------------------------------------------------------------
+| SPA FALLBACK
+|--------------------------------------------------------------------------
+*/
+Route::get('{any}', [HomeController::class, 'index'])
+    ->where('any', '.*')
+    ->fallback();
