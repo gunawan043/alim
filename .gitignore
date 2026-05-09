@@ -17,7 +17,6 @@ true,
 /storage/logs/
 /public/hot
 /public/storage
-/public/build/
 /bootstrap/cache/
 /.idea/
 /.vscode/
