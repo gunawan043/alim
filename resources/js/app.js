@@ -755,9 +755,12 @@ File: Main Js File
 
     function toggleHamburgerMenu() {
         var windowSize = document.documentElement.clientWidth;
+        var hamburgerIcon = document.querySelector(".hamburger-icon");
 
-        if (windowSize > 767)
-            document.querySelector(".hamburger-icon").classList.toggle("open");
+        // Toggle hamburger icon animation
+        if (hamburgerIcon) {
+            hamburgerIcon.classList.toggle("open");
+        }
 
         //For collapse horizontal menu
         if (document.documentElement.getAttribute("data-layout") === "horizontal") {
@@ -766,26 +769,28 @@ File: Main Js File
 
         //For collapse vertical menu
         if (document.documentElement.getAttribute("data-layout") === "vertical") {
-            if (windowSize <= 1025 && windowSize > 767) {
+            if (windowSize <= 767) {
+                // Mobile: toggle sidebar visibility
+                document.body.classList.toggle("vertical-sidebar-enable");
+                document.documentElement.setAttribute("data-sidebar-size", "lg");
+            } else if (windowSize <= 1025) {
+                // Tablet: toggle between sm and default
                 document.body.classList.remove("vertical-sidebar-enable");
                 document.documentElement.getAttribute("data-sidebar-size") == "sm" ?
                     document.documentElement.setAttribute("data-sidebar-size", "") :
                     document.documentElement.setAttribute("data-sidebar-size", "sm");
-            } else if (windowSize > 1025) {
+            } else {
+                // Desktop: toggle between lg and sm
                 document.body.classList.remove("vertical-sidebar-enable");
                 document.documentElement.getAttribute("data-sidebar-size") == "lg" ?
                     document.documentElement.setAttribute("data-sidebar-size", "sm") :
                     document.documentElement.setAttribute("data-sidebar-size", "lg");
-            } else if (windowSize <= 767) {
-                document.body.classList.add("vertical-sidebar-enable");
-                document.documentElement.setAttribute("data-sidebar-size", "lg");
             }
         }
 
         // semibox menu
         if (document.documentElement.getAttribute("data-layout") === "semibox") {
             if (windowSize > 767) {
-                // (document.querySelector(".hamburger-icon").classList.contains("open")) ? document.documentElement.setAttribute('data-sidebar-visibility', "show"): '';
                 if (document.documentElement.getAttribute('data-sidebar-visibility') == "show") {
                     document.documentElement.getAttribute("data-sidebar-size") == "lg" ?
                         document.documentElement.setAttribute("data-sidebar-size", "sm") :
@@ -794,8 +799,8 @@ File: Main Js File
                     document.getElementById("sidebar-visibility-show").click();
                     document.documentElement.setAttribute("data-sidebar-size", document.documentElement.getAttribute("data-sidebar-size"));
                 }
-            } else if (windowSize <= 767) {
-                document.body.classList.add("vertical-sidebar-enable");
+            } else {
+                document.body.classList.toggle("vertical-sidebar-enable");
                 document.documentElement.setAttribute("data-sidebar-size", "lg");
             }
         }
