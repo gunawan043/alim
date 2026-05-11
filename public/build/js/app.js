@@ -2105,6 +2105,7 @@ File: Main Js File
     function setLayoutMode(mode, modeType, modeTypeId, html) {
         var isModeTypeId = document.getElementById(modeTypeId);
         html.setAttribute(mode, modeType);
+        sessionStorage.setItem(mode, modeType);
         if (isModeTypeId) {
             document.getElementById(modeTypeId).click();
         }
