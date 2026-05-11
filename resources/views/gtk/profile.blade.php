@@ -698,58 +698,149 @@
                         @endphp
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="mb-0"><i class="ri-umbrella-line text-primary me-2"></i>Informasi Pensiun</h5>
+                                <h5 class="mb-0"><i class="ri-time-line text-primary me-2"></i>Informasi Pensiun</h5>
                                 <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="btn btn-sm btn-primary">
                                     <i class="ri-edit-2-line me-1"></i> Edit
                                 </a>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">Usia Sekarang</div>
-                                        <div class="fw-bold" style="font-size:0.9rem">{{ $gtk->gtkProfile?->tanggal_lahir ? \Carbon\Carbon::parse($gtk->gtkProfile->tanggal_lahir)->age . ' th' : '–' }}</div>
+                            <div class="row g-3">
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-primary-subtle rounded fs-2">
+                                                        <i class="bx bx-user text-primary"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Usia Sekarang</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0">
+                                                        @if($gtk->gtkProfile?->tanggal_lahir)
+                                                            {{ \Carbon\Carbon::parse($gtk->gtkProfile->tanggal_lahir)->age }} th
+                                                        @else
+                                                            –
+                                                        @endif
+                                                    </h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">BUP</div>
-                                        <div class="fw-bold" style="font-size:0.9rem">{{ $pensionBupAge }} th</div>
+
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-success-subtle rounded fs-2">
+                                                        <i class="bx bx-time-five text-success"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">BUP</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0">{{ $pensionBupAge }} th</h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">TMT Pensiun</div>
-                                        <div class="fw-bold" style="font-size:0.9rem">{{ $pensionTmt ? $pensionTmt->format('d/m/Y') : '–' }}</div>
+
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-info-subtle rounded fs-2">
+                                                        <i class="bx bx-calendar-check text-info"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">TMT Pensiun</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0">
+                                                        @if($pensionTmt)
+                                                            {{ $pensionTmt->format('d/m/Y') }}
+                                                        @else
+                                                            –
+                                                        @endif
+                                                    </h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">Sisa Waktu</div>
-                                        <div class="fw-bold badge bg-{{ $pensionColor }}" style="font-size:0.8rem">{{ $pensionSisaLabel }}</div>
+
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-warning-subtle rounded fs-2">
+                                                        <i class="ri-time-line text-warning"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Sisa Waktu</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0 {{ $pensionColor }}">{{ $pensionSisaLabel }}</h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                @if($gtk->pension)
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">Jenis Pensiun</div>
-                                        <div class="fw-bold" style="font-size:0.8rem">@if($gtk->pension->pension_type === 'normal') Pensi Normal @elseif($gtk->pension->pension_type === 'dini') Pensi Dini @elseif($gtk->pension->pension_type === 'cacat') Pensi Cacat @elseif($gtk->pension->pension_type === 'janda') Pensi Janda/Duda @else – @endif</div>
+
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-secondary-subtle rounded fs-2">
+                                                        <i class="bx bx-tag text-secondary"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Jenis</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0" style="font-size:0.8rem;">
+                                                        @if($gtk->pension)
+                                                            @if($gtk->pension->pension_type === 'normal') Normal
+                                                            @elseif($gtk->pension->pension_type === 'dini') Dini
+                                                            @elseif($gtk->pension->pension_type === 'cacat') Cacat
+                                                            @elseif($gtk->pension->pension_type === 'janda') Janda/Duda
+                                                            @else – @endif
+                                                        @else – @endif
+                                                    </h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">Status</div>
-                                        <div class="fw-bold" style="font-size:0.8rem">@if($gtk->pension->pension_status === 'draft') Draft @elseif($gtk->pension->pension_status === 'pending') Pending @elseif($gtk->pension->pension_status === 'approved') Disetujui @elseif($gtk->pension->pension_status === 'completed') Selesai @elseif($gtk->pension->pension_status === 'cancelled') Batal @else – @endif</div>
+
+                                <div class="col-xl-2 col-md-4 col-6">
+                                    <div class="card card-animate h-100">
+                                        <div class="card-body py-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-sm flex-shrink-0">
+                                                    <span class="avatar-title bg-danger-subtle rounded fs-2">
+                                                        <i class="bx bx-flag text-danger"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Status</p>
+                                                    <h6 class="fw-bold ff-secondary mb-0" style="font-size:0.8rem;">
+                                                        @if($gtk->pension)
+                                                            @if($gtk->pension->pension_status === 'draft') Draft
+                                                            @elseif($gtk->pension->pension_status === 'pending') Pending
+                                                            @elseif($gtk->pension->pension_status === 'approved') Disetujui
+                                                            @elseif($gtk->pension->pension_status === 'completed') Selesai
+                                                            @elseif($gtk->pension->pension_status === 'cancelled') Batal
+                                                            @else – @endif
+                                                        @else – @endif
+                                                    </h6>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                @else
-                                <div class="col-md-4">
-                                    <div class="bg-light rounded p-3 text-center">
-                                        <div class="text-muted" style="font-size:0.7rem">Dana Pensiun</div>
-                                        <div class="fw-bold text-muted" style="font-size:0.8rem">Belum ada data</div>
-                                    </div>
-                                </div>
-                                @endif
                             </div>
                         </div>
 
