@@ -606,21 +606,33 @@ File: Main Js File
          * Vertical layout menu scroll add
          */
         if (document.documentElement.getAttribute("data-layout") == "vertical" || document.documentElement.getAttribute("data-layout") == "semibox") {
-            document.getElementById("two-column-menu").innerHTML = "";
+            var twoColumnMenu = document.getElementById("two-column-menu");
+            if (twoColumnMenu) {
+                twoColumnMenu.innerHTML = "";
+            }
             if (document.querySelector(".navbar-menu")) {
                 document.querySelector(".navbar-menu").innerHTML = navbarMenuHTML;
             }
-            document.getElementById("scrollbar").setAttribute("data-simplebar", "");
-            document.getElementById("navbar-nav").setAttribute("data-simplebar", "");
-            document.getElementById("scrollbar").classList.add("h-100");
+            var scrollbar = document.getElementById("scrollbar");
+            if (scrollbar) {
+                scrollbar.setAttribute("data-simplebar", "");
+                scrollbar.classList.add("h-100");
+            }
+            var navbarNav = document.getElementById("navbar-nav");
+            if (navbarNav) {
+                navbarNav.setAttribute("data-simplebar", "");
+            }
         }
 
         /**
          * Two-column layout menu scroll add
          */
         if (document.documentElement.getAttribute("data-layout") == "twocolumn") {
-            document.getElementById("scrollbar").removeAttribute("data-simplebar");
-            document.getElementById("scrollbar").classList.remove("h-100");
+            var scrollbar = document.getElementById("scrollbar");
+            if (scrollbar) {
+                scrollbar.removeAttribute("data-simplebar");
+                scrollbar.classList.remove("h-100");
+            }
         }
 
         /**
@@ -1140,13 +1152,22 @@ File: Main Js File
     }
 
     function updateHorizontalMenus() {
-        document.getElementById("two-column-menu").innerHTML = "";
+        var twoColumnMenu = document.getElementById("two-column-menu");
+        if (twoColumnMenu) {
+            twoColumnMenu.innerHTML = "";
+        }
         if (document.querySelector(".navbar-menu")) {
             document.querySelector(".navbar-menu").innerHTML = navbarMenuHTML;
         }
-        document.getElementById("scrollbar").removeAttribute("data-simplebar");
-        document.getElementById("navbar-nav").removeAttribute("data-simplebar");
-        document.getElementById("scrollbar").classList.remove("h-100");
+        var scrollbar = document.getElementById("scrollbar");
+        if (scrollbar) {
+            scrollbar.removeAttribute("data-simplebar");
+            scrollbar.classList.remove("h-100");
+        }
+        var navbarNav = document.getElementById("navbar-nav");
+        if (navbarNav) {
+            navbarNav.removeAttribute("data-simplebar");
+        }
 
         var splitMenu = horizontalMenuSplit;
         var extraMenuName = "More";
@@ -1214,8 +1235,11 @@ File: Main Js File
             }
             initActiveMenu();
         } else if (dataLayout == "twocolumn") {
-            document.getElementById("scrollbar").removeAttribute("data-simplebar");
-            document.getElementById("scrollbar").classList.remove("h-100");
+            var scrollbar = document.getElementById("scrollbar");
+            if (scrollbar) {
+                scrollbar.removeAttribute("data-simplebar");
+                scrollbar.classList.remove("h-100");
+            }
             if (document.getElementById("theme-settings-offcanvas")) {
                 document.getElementById("sidebar-size").style.display = "none";
                 document.getElementById("sidebar-view").style.display = "none";

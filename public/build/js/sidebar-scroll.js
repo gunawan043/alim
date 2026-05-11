@@ -1,0 +1,1 @@
+// sidebar-scroll.js - Empty placeholder
