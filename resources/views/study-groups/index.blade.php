@@ -24,6 +24,25 @@
         </div>
     @endif
 
+    {{-- Warning: rombel yang melebihi kapasitas --}}
+    @php
+        $overCapacityGroups = $studyGroups->filter(fn($sg) => ($sg->studentCount ?? 0) > $sg->capacity);
+    @endphp
+    @if($overCapacityGroups->isNotEmpty())
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+            <i class="ri-error-warning-fill fs-4"></i>
+            <div>
+                <strong>{{ $overCapacityGroups->count() }} rombel melebihi kapasitas:</strong>
+                @foreach($overCapacityGroups->take(5) as $sg)
+                    {{ $sg->full_name }} ({{ $sg->studentCount }}/{{ $sg->capacity }})@if(!$loop->last), @endif
+                @endforeach
+                @if($overCapacityGroups->count() > 5)
+                    dan {{ $overCapacityGroups->count() - 5 }} rombel lainnya.
+                @endif
+            </div>
+        </div>
+    @endif
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -80,7 +99,7 @@
                                     <th>Rombel</th>
                                     <th>Tahun Ajaran</th>
                                     <th>Tingkat</th>
-                                    <th>Kapasitas</th>
+                                    <th>Santri</th>
                                     <th>Ruang</th>
                                     <th>Wali Kelas</th>
                                     <th>Status</th>
@@ -109,7 +128,25 @@
                                             </span>
                                         </td>
                                         <td>{{ $sg->gradeLevel?->name ?? '-' }}</td>
-                                        <td>{{ $sg->capacity }}</td>
+                                        <td>
+                                            @php
+                                                $filled = $sg->studentCount ?? 0;
+                                                $cap    = $sg->capacity;
+                                                $pct    = $cap > 0 ? min(100, round($filled / $cap * 100)) : 0;
+                                                $color  = $filled >= $cap ? 'danger' : ($filled >= $cap * 0.9 ? 'warning' : 'success');
+                                            @endphp
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height:6px;min-width:60px">
+                                                    <div class="progress-bar bg-{{ $color }}" style="width:{{ $pct }}%"></div>
+                                                </div>
+                                                <span class="badge bg-{{ $color }}-subtle text-{{ $color }} fw-normal" style="font-size:11px;white-space:nowrap">
+                                                    {{ $filled }}/{{ $cap }}
+                                                    @if($filled >= $cap)
+                                                        <i class="ri-error-warning-fill ms-1"></i>
+                                                    @endif
+                                                </span>
+                                            </div>
+                                        </td>
                                         <td>{{ $sg->room ?? '-' }}</td>
                                         <td>
                                             @if($sg->homeroomTeacher)

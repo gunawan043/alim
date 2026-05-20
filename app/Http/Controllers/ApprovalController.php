@@ -52,7 +52,7 @@ class ApprovalController extends Controller
         return view('approvals.my-pending', compact('requests'));
     }
 
-    public function history(Request $request)
+    public function history(Request $request, string $userId = null)
     {
         $user = auth()->user();
         $query = ApprovalRequest::with(['requestedBy', 'actions'])

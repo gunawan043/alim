@@ -9,6 +9,7 @@ use App\Http\Controllers\GtkRecruitmentController;
 use App\Http\Controllers\GTKController;
 use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
+use App\Http\Controllers\StudentMoveController;
 use App\Http\Controllers\WorkUnitController;
 use App\Http\Controllers\GtkRequestController;
 use App\Http\Controllers\Akademik\KktpController;
@@ -56,6 +57,19 @@ use App\Http\Controllers\OtherTeacherTaskController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\StudyGroupController;
+use App\Http\Controllers\Sarpras\SarprasBaseController;
+use App\Http\Controllers\Sarpras\SarprasDashboardController;
+use App\Http\Controllers\Sarpras\SarprasGedungController;
+use App\Http\Controllers\Sarpras\SarprasRuangController;
+use App\Http\Controllers\Sarpras\SarprasAsetController;
+use App\Http\Controllers\Sarpras\SarprasLoanController;
+use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
+use App\Http\Controllers\Sarpras\SarprasBookingController;
+use App\Http\Controllers\Sarpras\SarprasMovementController;
+use App\Http\Controllers\Sarpras\SarprasProcurementController;
+use App\Http\Controllers\Sarpras\SarprasQRController;
+use App\Http\Controllers\Sarpras\SarprasReportController;
+use App\Http\Controllers\Sarpras\SarprasUserController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudentController;
@@ -67,6 +81,7 @@ use App\Http\Controllers\KaldikController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
+use App\Http\Controllers\OperatorDashboardController;
 use App\Http\Controllers\WakaController;
 use App\Http\Controllers\StudentImmunizationController;
 use App\Http\Controllers\StudentHealthCheckupController;
@@ -92,6 +107,20 @@ use App\Http\Controllers\DormitoryRoomApiController;
 use App\Http\Controllers\DormitoryMasterController;
 use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentPromotionController;
+use App\Http\Controllers\Personalia\AbsensiGtkController;
+use App\Http\Controllers\Personalia\PayrollController;
+use App\Http\Controllers\Personalia\CutiController;
+use App\Http\Controllers\Personalia\KontrakController;
+use App\Http\Controllers\Personalia\KinerjaController;
+use App\Http\Controllers\Personalia\PelatihanController;
+use App\Http\Controllers\Personalia\KesejahteraanController;
+use App\Http\Controllers\Personalia\PeraturanController;
+use App\Http\Controllers\Personalia\JamKerjaController;
+use App\Http\Controllers\Personalia\PersonaliaDashboardController;
+use App\Http\Controllers\Personalia\KehadiranController;
+use App\Http\Controllers\Personalia\RaporGtkController;
+use App\Http\Controllers\Personalia\KalenderKegiatanController;
+use App\Http\Controllers\Personalia\AnalisisGtkController;
 
 /*
 |--------------------------------------------------------------------------
@@ -477,6 +506,150 @@ Route::middleware('auth')->group(function () {
                 Route::post('settings/email-templates', [SettingController::class, 'updateEmailTemplates'])->name('settings.email-templates');
             });
 
+            // ═══════════════════════════════════════════════════════════
+            // PERSONDALIA — FULL HRD/SDM MENU
+            // ═══════════════════════════════════════════════════════════
+
+            // ── DASHBOARD PERSONALIA ──────────────────────────────────
+            Route::get('/dashboard', [PersonaliaDashboardController::class, 'dashboard'])->name('dashboard');
+
+            // ── ABSENSI GTK ───────────────────────────────────────────
+            Route::prefix('absensi-gtk')->name('absensi-gtk.')->group(function () {
+                Route::get('/',                  [AbsensiGtkController::class, 'index'])->name('index');
+                Route::get('/harian',            [AbsensiGtkController::class, 'harian'])->name('harian');
+                Route::get('/rekap-bulanan',     [AbsensiGtkController::class, 'rekapBulanan'])->name('rekap-bulanan');
+                Route::get('/izin',              [AbsensiGtkController::class, 'izin'])->name('izin');
+                Route::get('/settings',          [AbsensiGtkController::class, 'settings'])->name('settings');
+                Route::post('/settings',         [AbsensiGtkController::class, 'settingsStore'])->name('settings.store');
+                Route::post('/store',            [AbsensiGtkController::class, 'store'])->name('store');
+                Route::put('/{id}/update',      [AbsensiGtkController::class, 'update'])->name('update');
+                Route::post('/datatable',        [AbsensiGtkController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── PAYROLL & GAJI ────────────────────────────────────────
+            Route::prefix('payroll')->name('payroll.')->group(function () {
+                Route::get('/',              [PayrollController::class, 'index'])->name('index');
+                Route::get('/create',       [PayrollController::class, 'create'])->name('create');
+                Route::post('/',             [PayrollController::class, 'store'])->name('store');
+                Route::get('/{id}/edit',   [PayrollController::class, 'edit'])->name('edit');
+                Route::put('/{id}',         [PayrollController::class, 'update'])->name('update');
+                Route::delete('/{id}',      [PayrollController::class, 'destroy'])->name('destroy');
+                Route::get('/potongan',     [PayrollController::class, 'potongan'])->name('potongan');
+                Route::get('/tunjangan',    [PayrollController::class, 'tunjangan'])->name('tunjangan');
+                Route::get('/bpjstk',       [PayrollController::class, 'bpjstk'])->name('bpjstk');
+                Route::get('/bpjs-kes',    [PayrollController::class, 'bpjsKes'])->name('bpjs-kes');
+                Route::get('/settings',     [PayrollController::class, 'settings'])->name('settings');
+                Route::post('/datatable',   [PayrollController::class, 'datatable'])->name('datatable');
+            });
+            Route::prefix('payroll-slip')->name('payroll-slip.')->group(function () {
+                Route::get('/',       [PayrollController::class, 'slipIndex'])->name('index');
+                Route::get('/{id}',  [PayrollController::class, 'slipShow'])->name('show');
+                Route::get('/{id}/pdf', [PayrollController::class, 'slipPdf'])->name('pdf');
+            });
+
+            // ── CUTI & IZIN ───────────────────────────────────────────
+            Route::prefix('cuti')->name('cuti.')->group(function () {
+                Route::get('/',           [CutiController::class, 'index'])->name('index');
+                Route::get('/create',     [CutiController::class, 'create'])->name('create');
+                Route::post('/',          [CutiController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [CutiController::class, 'edit'])->name('edit');
+                Route::put('/{id}',      [CutiController::class, 'update'])->name('update');
+                Route::delete('/{id}',   [CutiController::class, 'destroy'])->name('destroy');
+                Route::get('/approval',  [CutiController::class, 'approval'])->name('approval');
+                Route::post('/{id}/approve', [CutiController::class, 'approve'])->name('approve');
+                Route::post('/{id}/reject',  [CutiController::class, 'reject'])->name('reject');
+                Route::get('/rekap',     [CutiController::class, 'rekap'])->name('rekap');
+                Route::get('/quota',     [CutiController::class, 'quota'])->name('quota');
+                Route::get('/settings',  [CutiController::class, 'settings'])->name('settings');
+                Route::post('/settings', [CutiController::class, 'settingsStore'])->name('settings.store');
+                Route::post('/datatable', [CutiController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── KONTRAK KERJA ─────────────────────────────────────────
+            Route::prefix('kontrak')->name('kontrak.')->group(function () {
+                Route::get('/',             [KontrakController::class, 'index'])->name('index');
+                Route::get('/create',      [KontrakController::class, 'create'])->name('create');
+                Route::post('/',           [KontrakController::class, 'store'])->name('store');
+                Route::get('/{id}/edit',  [KontrakController::class, 'edit'])->name('edit');
+                Route::put('/{id}',       [KontrakController::class, 'update'])->name('update');
+                Route::delete('/{id}',    [KontrakController::class, 'destroy'])->name('destroy');
+                Route::get('/expiring',   [KontrakController::class, 'expiring'])->name('expiring');
+                Route::get('/template',   [KontrakController::class, 'template'])->name('template');
+                Route::get('/settings',   [KontrakController::class, 'settings'])->name('settings');
+                Route::post('/datatable', [KontrakController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── PENILAIAN KINERJA ─────────────────────────────────────
+            Route::prefix('kinerja')->name('kinerja.')->group(function () {
+                Route::get('/',             [KinerjaController::class, 'index'])->name('index');
+                Route::get('/create',      [KinerjaController::class, 'create'])->name('create');
+                Route::post('/',           [KinerjaController::class, 'store'])->name('store');
+                Route::get('/{id}/edit',  [KinerjaController::class, 'edit'])->name('edit');
+                Route::put('/{id}',       [KinerjaController::class, 'update'])->name('update');
+                Route::delete('/{id}',    [KinerjaController::class, 'destroy'])->name('destroy');
+                Route::get('/periode',     [KinerjaController::class, 'periode'])->name('periode');
+                Route::get('/indikator',   [KinerjaController::class, 'indikator'])->name('indikator');
+                Route::get('/reward',      [KinerjaController::class, 'reward'])->name('reward');
+                Route::get('/laporan',     [KinerjaController::class, 'laporan'])->name('laporan');
+                Route::post('/datatable',  [KinerjaController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── PELATIHAN & PENGEMBANGAN ─────────────────────────────
+            Route::prefix('pelatihan')->name('pelatihan.')->group(function () {
+                Route::get('/',            [PelatihanController::class, 'index'])->name('index');
+                Route::get('/create',     [PelatihanController::class, 'create'])->name('create');
+                Route::post('/',          [PelatihanController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [PelatihanController::class, 'edit'])->name('edit');
+                Route::put('/{id}',      [PelatihanController::class, 'update'])->name('update');
+                Route::delete('/{id}',   [PelatihanController::class, 'destroy'])->name('destroy');
+                Route::get('/peserta',   [PelatihanController::class, 'peserta'])->name('peserta');
+                Route::get('/jenis',     [PelatihanController::class, 'jenis'])->name('jenis');
+                Route::get('/sertifikasi', [PelatihanController::class, 'sertifikasi'])->name('sertifikasi');
+                Route::get('/rekap',     [PelatihanController::class, 'rekap'])->name('rekap');
+                Route::post('/datatable', [PelatihanController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── KESEJAHTERAAN GTK ─────────────────────────────────────
+            Route::prefix('kesejahteraan')->name('kesejahteraan.')->group(function () {
+                Route::get('/',              [KesejahteraanController::class, 'index'])->name('index');
+                Route::get('/create',       [KesejahteraanController::class, 'create'])->name('create');
+                Route::post('/',            [KesejahteraanController::class, 'store'])->name('store');
+                Route::get('/{id}/edit',  [KesejahteraanController::class, 'edit'])->name('edit');
+                Route::put('/{id}',        [KesejahteraanController::class, 'update'])->name('update');
+                Route::delete('/{id}',     [KesejahteraanController::class, 'destroy'])->name('destroy');
+                Route::get('/asuransi',    [KesejahteraanController::class, 'asuransi'])->name('asuransi');
+                Route::get('/benefit',     [KesejahteraanController::class, 'benefit'])->name('benefit');
+                Route::get('/umum',        [KesejahteraanController::class, 'umum'])->name('umum');
+                Route::get('/laporan',     [KesejahteraanController::class, 'laporan'])->name('laporan');
+                Route::post('/datatable',   [KesejahteraanController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── PERATURAN & KEBIJAKAN ─────────────────────────────────
+            Route::prefix('peraturan')->name('peraturan.')->group(function () {
+                Route::get('/',             [PeraturanController::class, 'index'])->name('index');
+                Route::get('/create',      [PeraturanController::class, 'create'])->name('create');
+                Route::post('/',           [PeraturanController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [PeraturanController::class, 'edit'])->name('edit');
+                Route::put('/{id}',       [PeraturanController::class, 'update'])->name('update');
+                Route::delete('/{id}',    [PeraturanController::class, 'destroy'])->name('destroy');
+                Route::get('/kategori',   [PeraturanController::class, 'kategori'])->name('kategori');
+                Route::get('/violation',  [PeraturanController::class, 'violation'])->name('violation');
+                Route::post('/datatable',  [PeraturanController::class, 'datatable'])->name('datatable');
+            });
+
+            // ── JAM KERJA & SHIFT ─────────────────────────────────────
+            Route::prefix('jam-kerja')->name('jam-kerja.')->group(function () {
+                Route::get('/',       [JamKerjaController::class, 'index'])->name('index');
+                Route::get('/create',[JamKerjaController::class, 'create'])->name('create');
+                Route::post('/',     [JamKerjaController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [JamKerjaController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [JamKerjaController::class, 'update'])->name('update');
+                Route::delete('/{id}', [JamKerjaController::class, 'destroy'])->name('destroy');
+                Route::get('/shift', [JamKerjaController::class, 'shift'])->name('shift');
+                Route::get('/kalender', [JamKerjaController::class, 'kalender'])->name('kalender');
+                Route::post('/datatable', [JamKerjaController::class, 'datatable'])->name('datatable');
+            });
+
             // ── GTK REQUESTS ───────────────────────────────────────
             Route::prefix('gtk-requests')->name('gtk-requests.')->group(function () {
                 Route::get('/',             [GtkRequestController::class, 'index'])->name('index');
@@ -634,6 +807,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/create',        [StudentController::class, 'create'])->name('create');
                 Route::post('/',             [StudentController::class, 'store'])->name('store');
                 Route::get('/find-student',  [StudentController::class, 'findStudent'])->name('find-student');
+                Route::get('/import',         [StudentController::class, 'importForm'])->name('import-form');
+                Route::post('/import',        [StudentController::class, 'importProcess'])->name('import-process');
+                Route::get('/template',       [StudentController::class, 'downloadTemplate'])->name('template');
                 Route::get('/{santriUuid}',        [StudentController::class, 'show'])->name('show');
                 Route::get('/{santriUuid}/edit',   [StudentController::class, 'edit'])->name('edit');
                 Route::put('/{santriUuid}',        [StudentController::class, 'update'])->name('update');
@@ -1001,6 +1177,17 @@ Route::middleware('auth')->group(function () {
                 Route::post('/promote',           [BulkPromotionController::class, 'promote'])->name('promote');
             });
 
+            // ── STUDENT MOVE (PINDAH ROMBEL, TINGKAT SAMA) ──────────
+            Route::prefix('student-move')->name('student-move.')->group(function () {
+                Route::get('/',  [StudentMoveController::class, 'index'])->name('index');
+                Route::post('/', [StudentMoveController::class, 'store'])->name('store');
+            });
+
+            // ── OPERATOR / ADMIN TU / WAKA DASHBOARD (shared dashboard) ──
+            Route::prefix('operator')->name('operator.')->group(function () {
+                Route::get('/dashboard', [WakaController::class, 'dashboard'])->name('dashboard');
+            });
+
             // ── WORK UNITS ─────────────────────────────────────────
             Route::prefix('work-units')->name('work-units.')->group(function () {
                 Route::get('/',                      [WorkUnitController::class, 'index'])->name('index');
@@ -1125,40 +1312,40 @@ Route::middleware('auth')->group(function () {
                 Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])->name('users.unlock');
             });
 
-            // ── SARANA PRASARANA ──────────────────────────────────
-            Route::prefix('sarpras')->name('sarpras.')->group(function () {
-                // Gedung
-                Route::get('/gedung',              [SarprasController::class, 'gedungIndex'])->name('gedung.index');
-                Route::get('/gedung/create',       [SarprasController::class, 'gedungCreate'])->name('gedung.create');
-                Route::post('/gedung',             [SarprasController::class, 'gedungStore'])->name('gedung.store');
-                Route::get('/gedung/{id}',        [SarprasController::class, 'gedungShow'])->name('gedung.show');
-                Route::get('/gedung/{id}/edit',   [SarprasController::class, 'gedungEdit'])->name('gedung.edit');
-                Route::put('/gedung/{id}',        [SarprasController::class, 'gedungUpdate'])->name('gedung.update');
-                Route::delete('/gedung/{id}',     [SarprasController::class, 'gedungDestroy'])->name('gedung.destroy');
+            // ── SARANA PRASARANA (MANDIRI) ─────────────────────────
+            // Dikelola oleh akun Sarpras / Unit Rumah Tangga (PAH-ADM-003)
+            
 
-                // Ruang
-                Route::get('/ruang',              [SarprasController::class, 'ruangIndex'])->name('ruang.index');
-                Route::get('/ruang/create',       [SarprasController::class, 'ruangCreate'])->name('ruang.create');
-                Route::post('/ruang',             [SarprasController::class, 'ruangStore'])->name('ruang.store');
-                Route::get('/ruang/{id}',        [SarprasController::class, 'ruangShow'])->name('ruang.show');
-                Route::get('/ruang/{id}/edit',   [SarprasController::class, 'ruangEdit'])->name('ruang.edit');
-                Route::put('/ruang/{id}',        [SarprasController::class, 'ruangUpdate'])->name('ruang.update');
-                Route::delete('/ruang/{id}',     [SarprasController::class, 'ruangDestroy'])->name('ruang.destroy');
+            // ── KE HADIRAN (REKAP & LAPORAN) ──────────────────────────
+            Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
+                Route::get('/pergantian-jam',  [KehadiranController::class, 'pergantianJam'])->name('pergantian-jam');
+                Route::get('/rekap',           [KehadiranController::class, 'rekap'])->name('rekap');
+                Route::get('/cuti-izin',       [KehadiranController::class, 'cutiIzin'])->name('cuti-izin');
+            });
 
-                // Aset / Inventaris
-                Route::get('/aset',               [SarprasController::class, 'asetIndex'])->name('aset.index');
-                Route::get('/aset/create',        [SarprasController::class, 'asetCreate'])->name('aset.create');
-                Route::post('/aset',              [SarprasController::class, 'asetStore'])->name('aset.store');
-                Route::get('/aset/import',        [SarprasController::class, 'asetImportForm'])->name('aset.import');
-                Route::post('/aset/import',       [SarprasController::class, 'asetImportProcess'])->name('aset.import.process');
-                Route::get('/aset/template',      [SarprasController::class, 'asetTemplate'])->name('aset.template');
-                Route::get('/aset/{id}',         [SarprasController::class, 'asetShow'])->name('aset.show');
-                Route::get('/aset/{id}/edit',    [SarprasController::class, 'asetEdit'])->name('aset.edit');
-                Route::put('/aset/{id}',         [SarprasController::class, 'asetUpdate'])->name('aset.update');
-                Route::delete('/aset/{id}',      [SarprasController::class, 'asetDestroy'])->name('aset.destroy');
+            // ── RAPOR GTK ───────────────────────────────────────────
+            Route::prefix('rapor-gtk')->name('rapor-gtk.')->group(function () {
+                Route::get('/akademik',       [RaporGtkController::class, 'akademik'])->name('akademik');
+                Route::get('/disiplin',        [RaporGtkController::class, 'disiplin'])->name('disiplin');
+                Route::get('/kepribadian',    [RaporGtkController::class, 'kepribadian'])->name('kepribadian');
+                Route::get('/administrasi',   [RaporGtkController::class, 'administrasi'])->name('administrasi');
+                Route::get('/tahunan',        [RaporGtkController::class, 'tahunan'])->name('tahunan');
+            });
 
-                // Kategori (Ajax)
-                Route::post('/kategori', [SarprasController::class, 'kategoriStore'])->name('kategori.store');
+            // ── KALENDER KEGIATAN ────────────────────────────────────
+            Route::prefix('kalender-kegiatan')->name('kalender-kegiatan.')->group(function () {
+                Route::get('/akademik',   [KalenderKegiatanController::class, 'akademik'])->name('akademik');
+                Route::get('/kontrak',    [KalenderKegiatanController::class, 'kontrak'])->name('kontrak');
+                Route::get('/evaluasi',   [KalenderKegiatanController::class, 'evaluasi'])->name('evaluasi');
+                Route::get('/training',   [KalenderKegiatanController::class, 'training'])->name('training');
+            });
+
+            // ── ANALISIS GTK ──────────────────────────────────────────
+            Route::prefix('analisis-gtk')->name('analisis-gtk.')->group(function () {
+                Route::get('/beban-kerja',  [AnalisisGtkController::class, 'bebanKerja'])->name('beban-kerja');
+                Route::get('/rasio-ideal',  [AnalisisGtkController::class, 'rasioIdeal'])->name('rasio-ideal');
+                Route::get('/proyeksi',     [AnalisisGtkController::class, 'proyeksi'])->name('proyeksi');
+                Route::get('/gap',          [AnalisisGtkController::class, 'gap'])->name('gap');
             });
 
             // ── TODO LIST ──────────────────────────────────────────
@@ -1208,6 +1395,177 @@ Route::middleware('auth')->group(function () {
             });
         });
     });
+
+
+
+/*
+|--------------------------------------------------------------------------
+| SARANA PRASARANA (MANDIRI)
+|--------------------------------------------------------------------------
+| Dikelola oleh akun Sarpras / Unit Rumah Tangga (PAH-ADM-003)
+| Akses langsung di /sarpras/* — TIDAK menggunakan prefix {userId}
+*/
+Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarpras')->name('sarpras.')->group(function () {
+
+    // Dashboard
+    Route::get('/',               [SarprasDashboardController::class, 'index'])->name('dashboard');
+
+    // Dashboard user satuan kerja (info aset saja)
+    Route::get('/user/dashboard',      [SarprasUserController::class, 'dashboard'])->name('user.dashboard');
+
+    // ── ASET ───────────────────────────────────────────
+    Route::get('/user/aset',               [SarprasUserController::class, 'indexAsset'])->name('user.aset.index');
+    Route::get('/user/aset/create',        [SarprasUserController::class, 'createAsset'])->name('user.aset.create');
+    Route::get('/user/aset/{id}',           [SarprasUserController::class, 'showAsset'])->name('user.aset.show');
+    Route::post('/user/aset',               [SarprasUserController::class, 'storeAsset'])->name('user.aset.store');
+    Route::get('/user/aset/{id}/edit',      [SarprasUserController::class, 'editAsset'])->name('user.aset.edit');
+    Route::put('/user/aset/{id}',           [SarprasUserController::class, 'updateAsset'])->name('user.aset.update');
+    Route::delete('/user/aset/{id}',        [SarprasUserController::class, 'destroyAsset'])->name('user.aset.destroy');
+
+    // ── IMPORT ASET ───────────────────────────────────
+    Route::get('/user/aset/import',          [SarprasUserController::class, 'importForm'])->name('user.aset.import');
+    Route::post('/user/aset/import',          [SarprasUserController::class, 'importProcess'])->name('user.aset.import.process');
+    Route::get('/user/aset/import/template', [SarprasUserController::class, 'importTemplate'])->name('user.aset.import.template');
+    Route::get('/user/aset/import/{roomId}',           [SarprasUserController::class, 'importForm'])->name('user.aset.import.room');
+    Route::post('/user/aset/import/{roomId}',           [SarprasUserController::class, 'importProcess'])->name('user.aset.import.room.process');
+    Route::get('/user/aset/import/{roomId}/template',   [SarprasUserController::class, 'importTemplate'])->name('user.aset.import.room.template');
+
+    // ── RUANG ─────────────────────────────────────────
+    Route::get('/user/ruang',              [SarprasUserController::class, 'indexRoom'])->name('user.ruang.index');
+    Route::get('/user/ruang/create',       [SarprasUserController::class, 'createRoom'])->name('user.ruang.create');
+    Route::post('/user/ruang',             [SarprasUserController::class, 'storeRoom'])->name('user.ruang.store');
+    Route::get('/user/ruang/{id}',         [SarprasUserController::class, 'showRoom'])->name('user.ruang.show');
+    Route::put('/user/ruang/{id}',         [SarprasUserController::class, 'updateRoom'])->name('user.ruang.update');
+    Route::delete('/user/ruang/{id}',      [SarprasUserController::class, 'destroyRoom'])->name('user.ruang.destroy');
+
+    // ── KERUSAKAN ──────────────────────────────────────
+    Route::get('/user/kerusakan',          [SarprasUserController::class, 'indexKerusakan'])->name('user.kerusakan.index');
+    Route::get('/user/kerusakan/create',  [SarprasUserController::class, 'createKerusakan'])->name('user.kerusakan.create');
+    Route::post('/user/kerusakan',         [SarprasUserController::class, 'storeDamageReport'])->name('user.kerusakan.store');
+
+    // ── PENGADAAN ──────────────────────────────────────
+    Route::get('/user/pengadaan',          [SarprasUserController::class, 'indexPengadaan'])->name('user.pengadaan.index');
+    Route::get('/user/pengadaan/create',   [SarprasUserController::class, 'createPengadaan'])->name('user.pengadaan.create');
+    Route::post('/user/pengadaan',         [SarprasUserController::class, 'storeProcurementRequest'])->name('user.pengadaan.store');
+
+    // Gedung
+    Route::get('/gedung',              [SarprasGedungController::class, 'index'])->name('gedung.index');
+    Route::get('/gedung/create',       [SarprasGedungController::class, 'create'])->name('gedung.create');
+    Route::post('/gedung',             [SarprasGedungController::class, 'store'])->name('gedung.store');
+    Route::get('/gedung/{id}',         [SarprasGedungController::class, 'show'])->name('gedung.show');
+    Route::get('/gedung/{id}/edit',   [SarprasGedungController::class, 'edit'])->name('gedung.edit');
+    Route::put('/gedung/{id}',         [SarprasGedungController::class, 'update'])->name('gedung.update');
+    Route::delete('/gedung/{id}',      [SarprasGedungController::class, 'destroy'])->name('gedung.destroy');
+
+    // Ruang
+    Route::get('/ruang',              [SarprasRuangController::class, 'index'])->name('ruang.index');
+    Route::get('/ruang/create',       [SarprasRuangController::class, 'create'])->name('ruang.create');
+    Route::post('/ruang',             [SarprasRuangController::class, 'store'])->name('ruang.store');
+    Route::get('/ruang/{id}',         [SarprasRuangController::class, 'show'])->name('ruang.show');
+    Route::get('/ruang/{id}/edit',   [SarprasRuangController::class, 'edit'])->name('ruang.edit');
+    Route::put('/ruang/{id}',         [SarprasRuangController::class, 'update'])->name('ruang.update');
+    Route::delete('/ruang/{id}',      [SarprasRuangController::class, 'destroy'])->name('ruang.destroy');
+
+    // Aset / Inventaris
+    Route::get('/aset',                    [SarprasAsetController::class, 'index'])->name('aset.index');
+    Route::get('/aset/create',             [SarprasAsetController::class, 'create'])->name('aset.create');
+    Route::post('/aset',                   [SarprasAsetController::class, 'store'])->name('aset.store');
+    Route::get('/aset/import',             [SarprasAsetController::class, 'importForm'])->name('aset.import');
+    Route::post('/aset/import',            [SarprasAsetController::class, 'importProcess'])->name('aset.import.process');
+    Route::get('/aset/template',           [SarprasAsetController::class, 'template'])->name('aset.template');
+    Route::get('/aset/{id}',               [SarprasAsetController::class, 'show'])->name('aset.show');
+    Route::get('/aset/{id}/edit',         [SarprasAsetController::class, 'edit'])->name('aset.edit');
+    Route::put('/aset/{id}',              [SarprasAsetController::class, 'update'])->name('aset.update');
+    Route::delete('/aset/{id}',           [SarprasAsetController::class, 'destroy'])->name('aset.destroy');
+    Route::post('/aset/{id}/photo',       [SarprasAsetController::class, 'addPhoto'])->name('aset.photo.add');
+    Route::delete('/aset/{id}/photo/{photoId}', [SarprasAsetController::class, 'deletePhoto'])->name('aset.photo.delete');
+
+    // Kategori (Ajax)
+    Route::post('/kategori', [SarprasController::class, 'kategoriStore'])->name('kategori.store');
+
+    // Peminjaman Aset
+    Route::get('/peminjaman',               [SarprasLoanController::class, 'index'])->name('peminjaman.index');
+    Route::get('/peminjaman/create',        [SarprasLoanController::class, 'create'])->name('peminjaman.create');
+    Route::post('/peminjaman',              [SarprasLoanController::class, 'store'])->name('peminjaman.store');
+    Route::get('/peminjaman/{id}',         [SarprasLoanController::class, 'show'])->name('peminjaman.show');
+    Route::post('/peminjaman/{id}/approve', [SarprasLoanController::class, 'approve'])->name('peminjaman.approve');
+    Route::post('/peminjaman/{id}/reject',  [SarprasLoanController::class, 'reject'])->name('peminjaman.reject');
+    Route::post('/peminjaman/{id}/handover', [SarprasLoanController::class, 'handover'])->name('peminjaman.handover');
+    Route::post('/peminjaman/{id}/return', [SarprasLoanController::class, 'return'])->name('peminjaman.return');
+    Route::delete('/peminjaman/{id}',      [SarprasLoanController::class, 'destroy'])->name('peminjaman.destroy');
+
+    // Pemeliharaan - Jadwal
+    Route::get('/pemeliharaan/jadwal',       [SarprasMaintenanceController::class, 'scheduleIndex'])->name('pemeliharaan.schedule.index');
+    Route::get('/pemeliharaan/jadwal/create', [SarprasMaintenanceController::class, 'scheduleCreate'])->name('pemeliharaan.schedule.create');
+    Route::post('/pemeliharaan/jadwal',       [SarprasMaintenanceController::class, 'scheduleStore'])->name('pemeliharaan.schedule.store');
+    Route::get('/pemeliharaan/jadwal/{id}',   [SarprasMaintenanceController::class, 'scheduleShow'])->name('pemeliharaan.schedule.show');
+    Route::get('/pemeliharaan/jadwal/{id}/edit', [SarprasMaintenanceController::class, 'scheduleEdit'])->name('pemeliharaan.schedule.edit');
+    Route::put('/pemeliharaan/jadwal/{id}',   [SarprasMaintenanceController::class, 'scheduleUpdate'])->name('pemeliharaan.schedule.update');
+    Route::delete('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleDestroy'])->name('pemeliharaan.schedule.destroy');
+
+    // Pemeliharaan - Riwayat Perawatan
+    Route::get('/pemeliharaan/riwayat',      [SarprasMaintenanceController::class, 'logIndex'])->name('pemeliharaan.log.index');
+    Route::get('/pemeliharaan/riwayat/create', [SarprasMaintenanceController::class, 'logCreate'])->name('pemeliharaan.log.create');
+    Route::post('/pemeliharaan/riwayat',     [SarprasMaintenanceController::class, 'logStore'])->name('pemeliharaan.log.store');
+    Route::get('/pemeliharaan/riwayat/{id}', [SarprasMaintenanceController::class, 'logShow'])->name('pemeliharaan.log.show');
+
+    // Booking Ruangan
+    Route::get('/booking',             [SarprasBookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/create',      [SarprasBookingController::class, 'create'])->name('booking.create');
+    Route::post('/booking',            [SarprasBookingController::class, 'store'])->name('booking.store');
+    Route::get('/booking/{id}',        [SarprasBookingController::class, 'show'])->name('booking.show');
+    Route::post('/booking/{id}/approve',  [SarprasBookingController::class, 'approve'])->name('booking.approve');
+    Route::post('/booking/{id}/reject',  [SarprasBookingController::class, 'reject'])->name('booking.reject');
+    Route::post('/booking/{id}/cancel',   [SarprasBookingController::class, 'cancel'])->name('booking.cancel');
+    Route::post('/booking/{id}/complete', [SarprasBookingController::class, 'complete'])->name('booking.complete');
+
+    // Riwayat Perpindahan
+    Route::get('/perpindahan',            [SarprasMovementController::class, 'index'])->name('perpindahan.index');
+    Route::get('/perpindahan/create',    [SarprasMovementController::class, 'create'])->name('perpindahan.create');
+    Route::post('/perpindahan',           [SarprasMovementController::class, 'store'])->name('perpindahan.store');
+    Route::get('/perpindahan/aset/{id}', [SarprasMovementController::class, 'byAsset'])->name('perpindahan.by-asset');
+    Route::get('/perpindahan/{id}',      [SarprasMovementController::class, 'show'])->name('perpindahan.show');
+
+    // Pengadaan Barang
+    Route::get('/pengadaan',               [SarprasProcurementController::class, 'index'])->name('pengadaan.index');
+    Route::get('/pengadaan/create',       [SarprasProcurementController::class, 'create'])->name('pengadaan.create');
+    Route::post('/pengadaan',             [SarprasProcurementController::class, 'store'])->name('pengadaan.store');
+    Route::get('/pengadaan/{id}',        [SarprasProcurementController::class, 'show'])->name('pengadaan.show');
+    Route::get('/pengadaan/{id}/edit',    [SarprasProcurementController::class, 'edit'])->name('pengadaan.edit');
+    Route::put('/pengadaan/{id}',        [SarprasProcurementController::class, 'update'])->name('pengadaan.update');
+    Route::get('/pengadaan/{id}/receive', [SarprasProcurementController::class, 'receiveForm'])->name('pengadaan.receive-form');
+    Route::get('/pengadaan/{id}/convert', [SarprasProcurementController::class, 'convertForm'])->name('pengadaan.convert-form');
+    Route::post('/pengadaan/{id}/approve', [SarprasProcurementController::class, 'approve'])->name('pengadaan.approve');
+    Route::post('/pengadaan/{id}/reject',   [SarprasProcurementController::class, 'reject'])->name('pengadaan.reject');
+    Route::post('/pengadaan/{id}/receive',  [SarprasProcurementController::class, 'receive'])->name('pengadaan.receive');
+    Route::post('/pengadaan/{id}/convert',  [SarprasProcurementController::class, 'convertToAsset'])->name('pengadaan.convert');
+    Route::delete('/pengadaan/{id}',       [SarprasProcurementController::class, 'destroy'])->name('pengadaan.destroy');
+
+    // QR Code & Audit
+    Route::get('/qr',                    [SarprasQRController::class, 'index'])->name('qr.index');
+    Route::post('/qr/generate-all',     [SarprasQRController::class, 'generateAll'])->name('qr.generate-all');
+    Route::post('/qr/generate/{id}',   [SarprasQRController::class, 'generateOne'])->name('qr.generate');
+    Route::get('/qr/print',            [SarprasQRController::class, 'printLabel'])->name('qr.print');
+    Route::get('/qr/pdf',                [SarprasQRController::class, 'downloadPdf'])->name('qr.pdf');
+    Route::get('/qr/lookup-page',     [SarprasQRController::class, 'lookupPage'])->name('qr.lookup-page');
+    Route::get('/qr/scanner',           [SarprasQRController::class, 'scanner'])->name('qr.scanner');
+    Route::post('/qr/lookup',           [SarprasQRController::class, 'lookup'])->name('qr.lookup');
+    Route::get('/qr/audit/{id}',        [SarprasQRController::class, 'audit'])->name('qr.audit');
+    Route::post('/qr/audit/{id}',       [SarprasQRController::class, 'auditSubmit'])->name('qr.audit.submit');
+    Route::get('/qr/bulk-audit',         [SarprasQRController::class, 'bulkAudit'])->name('qr.bulk-audit');
+    Route::post('/qr/bulk-audit',        [SarprasQRController::class, 'bulkAuditSubmit'])->name('qr.bulk-audit.submit');
+
+    // Laporan
+    Route::get('/laporan',                              [SarprasReportController::class, 'index'])->name('laporan.index');
+    Route::get('/laporan/inventaris-per-ruang',        [SarprasReportController::class, 'inventarisPerRuang'])->name('laporan.inventaris-per-ruang');
+    Route::get('/laporan/inventaris-per-ruang/pdf',    [SarprasReportController::class, 'inventarisPerRuangPdf'])->name('laporan.inventaris-per-ruang.pdf');
+    Route::get('/laporan/kondisi-aset',                 [SarprasReportController::class, 'kondisiAset'])->name('laporan.kondisi-aset');
+    Route::get('/laporan/kondisi-aset/pdf',            [SarprasReportController::class, 'kondisiAsetPdf'])->name('laporan.kondisi-aset.pdf');
+    Route::get('/laporan/peminjaman',                  [SarprasReportController::class, 'peminjaman'])->name('laporan.peminjaman');
+    Route::get('/laporan/pemeliharaan',                [SarprasReportController::class, 'pemeliharaan'])->name('laporan.pemeliharaan');
+    Route::get('/laporan/nilai-aset',                  [SarprasReportController::class, 'nilaiAset'])->name('laporan.nilai-aset');
+    Route::get('/laporan/export',                       [SarprasReportController::class, 'exportExcel'])->name('laporan.export');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -1261,7 +1619,7 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
         Route::get('/peserta-didik/masuk', fn() => redirect()->route('user.mutations-in.index', ['userId' => auth()->user()->id]))->name('peserta-didik.masuk');
         Route::get('/peserta-didik/keluar', fn() => redirect()->route('user.mutations-out.index', ['userId' => auth()->user()->id]))->name('peserta-didik.keluar');
 
-        Route::get('/poin-pelanggaran',    fn() => view('waka.dashboard'))->name('poin-pelanggaran');
+        Route::get('/poin-pelanggaran', fn() => redirect()->route('user.violation-points.dashboard', ['userId' => auth()->user()->id]))->name('poin-pelanggaran');
         Route::get('/kisi-kisi-soal',      fn() => view('waka.dashboard'))->name('kisi-kisi-soal');
         Route::get('/soal-sumatif',        fn() => view('waka.dashboard'))->name('soal-sumatif');
         Route::get('/nilai-sts/{kelas}',   fn($kelas) => view('waka.dashboard'))->name('nilai-sts');

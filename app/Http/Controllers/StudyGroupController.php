@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\User;
+use App\Models\StudentClassHistory;
 use Illuminate\Http\Request;
 
 class StudyGroupController extends Controller
@@ -38,6 +39,21 @@ class StudyGroupController extends Controller
         }
 
         $studyGroups = $query->orderBy('name')->paginate(15)->withQueryString();
+
+        // Load student counts per study group
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+        $sgIds = $studyGroups->pluck('id');
+        $counts = StudentClassHistory::whereIn('study_group_id', $sgIds)
+            ->where('is_active', true)
+            ->when($activeYearId, fn($q) => $q->where('academic_year_id', $activeYearId))
+            ->groupBy('study_group_id')
+            ->selectRaw('study_group_id, COUNT(*) as total')
+            ->pluck('total', 'study_group_id');
+
+        $studyGroups->getCollection()->transform(function ($sg) use ($counts) {
+            $sg->studentCount = $counts[$sg->id] ?? 0;
+            return $sg;
+        });
 
         $schools = School::orderBy('name')->get();
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
@@ -125,7 +141,6 @@ class StudyGroupController extends Controller
 
         $activeHistories = $studyGroup->studentClassHistories()
             ->with('student:id,name,nisn,nis,gender')
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
             ->where('is_active', true)
             ->orderBy('attendance_number')
             ->get();

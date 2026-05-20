@@ -183,6 +183,6 @@ class DormitoryResidentController extends Controller
             'gender_text' => $s->gender_text,
             'birth_place' => $s->birth_place,
             'birth_date'  => $s->birth_date?->format('d/m/Y'),
-        ])])
+        ])]);
     }
 }

@@ -30,4 +30,18 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Recruitment API (untuk Applicant App)
+    |--------------------------------------------------------------------------
+    |
+    | Konfigurasi untuk koneksi ke Applicant App (recruitment) untuk
+    | mengirim notifikasi email ke applicant melalui shared database.
+    |
+    */
+    'recruitment_api' => [
+        'url' => env('RECRUITMENT_API_URL', 'http://localhost:8000'),
+        'token' => env('RECRUITMENT_API_TOKEN'),
+    ],
+
 ];

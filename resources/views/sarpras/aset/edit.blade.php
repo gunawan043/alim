@@ -4,8 +4,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.aset.index', ['userId' => $userId]) }}">Aset</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
+        @slot('li_3') <a href="{{ route('sarpras.aset.index') }}">Aset</a> @endslot
         @slot('title') Edit: {{ $aset->asset_name }} @endslot
     @endcomponent
 
@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('user.sarpras.aset.update', ['userId' => $userId, 'id' => $aset->id]) }}">
+    <form method="POST" action="{{ route('sarpras.aset.update', ['id' => $aset->id]) }}">
         @csrf
         @method('PUT')
         <div class="row">
@@ -147,7 +147,7 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-3">
-            <a href="{{ route('user.sarpras.aset.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+            <a href="{{ route('sarpras.aset.index') }}" class="btn btn-light">Batal</a>
             <button type="submit" class="btn btn-success">
                 <i class="ri-save-line me-1"></i> Simpan Perubahan
             </button>
@@ -210,7 +210,7 @@
 @push('scripts')
 <script>
 (function() {
-    var userId = '{{ $userId }}';
+    var userId = \'\' ;
 
     document.getElementById('addCategoryForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -223,7 +223,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="ri-loader-4-line me-1"></i> Menyimpan...';
 
-        fetch('/' + userId + '/sarpras/kategori', {
+        fetch('/sarpras/kategori', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,

@@ -4,8 +4,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.aset.index', ['userId' => $userId]) }}">Aset</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
+        @slot('li_3') <a href="{{ route('sarpras.aset.index') }}">Aset</a> @endslot
         @slot('title') Import Aset @endslot
     @endcomponent
 
@@ -60,7 +60,7 @@
             <div class="card mt-3">
                 <div class="card-header"><h5 class="mb-0">Upload File Excel</h5></div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('user.sarpras.aset.import', ['userId' => $userId]) }}"
+                    <form method="POST" action="{{ route('sarpras.aset.import') }}"
                           enctype="multipart/form-data">
                         @csrf
 
@@ -79,8 +79,8 @@
 
                         <div class="d-flex justify-content-end gap-2">
                             <a href="{{ $forcedRoom
-                                ? route('user.sarpras.aset.index', ['userId' => $userId, 'room_id' => $forcedRoom->id])
-                                : route('user.sarpras.aset.index', ['userId' => $userId]) }}"
+                                ? route('sarpras.aset.index', ['room_id' => $forcedRoom->id])
+                                : route('sarpras.aset.index') }}"
                                class="btn btn-light">
                                 <i class="ri-arrow-left-line me-1"></i> Kembali
                             </a>
@@ -97,7 +97,7 @@
                 <div class="card-header"><h5 class="mb-0">Panduan Import Aset</h5></div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <a href="{{ route('user.sarpras.aset.template', ['userId' => $userId]) }}{{ $forcedRoom ? '?room_id=' . $forcedRoom->id : '' }}" class="btn btn-outline-primary">
+                        <a href="{{ route('sarpras.aset.template') }}{{ $forcedRoom ? '?room_id=' . $forcedRoom->id : '' }}" class="btn btn-outline-primary">
                             <i class="ri-download-line me-1"></i> Download Template Excel
                         </a>
                     </div>
@@ -366,7 +366,7 @@
 
         const btn = document.getElementById('btnSaveCategory');
         const form = this;
-        const userId = '{{ $userId }}';
+        const userId = \'\' ;
 
         // Reset errors
         form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
@@ -374,7 +374,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="ri-loader-4-line me-1"></i> Menyimpan...';
 
-        fetch('/' + userId + '/sarpras/kategori', {
+        fetch('/sarpras/kategori', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,

@@ -467,6 +467,24 @@
                                                         <div class="detail-value">{{ $student->distance_to_school ? $student->distance_to_school . ' km' : '-' }}</div>
                                                     </div>
                                                 </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label detail-label">Asal Sekolah</label>
+                                                        <div class="detail-value">{{ $student->previous_school ?: '-' }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label detail-label">Tingkat Masuk</label>
+                                                        <div class="detail-value">{{ $student->entry_grade_level ? 'Kelas ' . $student->entry_grade_level : '-' }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label detail-label">Tanggal Masuk</label>
+                                                        <div class="detail-value">{{ $student->entry_date ? \Carbon\Carbon::parse($student->entry_date)->format('d/m/Y') : '-' }}</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

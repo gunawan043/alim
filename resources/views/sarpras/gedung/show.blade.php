@@ -4,8 +4,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Gedung</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
+        @slot('li_3') <a href="{{ route('sarpras.gedung.index') }}">Gedung</a> @endslot
         @slot('title') {{ $gedung->building_name }} @endslot
     @endcomponent
 
@@ -18,7 +18,7 @@
                             <h5 class="mb-0">Detail Gedung</h5>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.sarpras.gedung.edit', ['userId' => $userId, 'id' => $gedung->id]) }}" class="btn btn-sm btn-warning">
+                            <a href="{{ route('sarpras.gedung.edit', ['id' => $gedung->id]) }}" class="btn btn-sm btn-warning">
                                 <i class="ri-pencil-line me-1"></i> Edit
                             </a>
                         </div>
@@ -119,7 +119,7 @@
                             <p class="text-muted mb-0">{{ $gedung->rooms->count() }} ruang terdaftar</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.sarpras.ruang.create', ['userId' => $userId]) }}?building_id={{ $gedung->id }}" class="btn btn-sm btn-success">
+                            <a href="{{ route('sarpras.ruang.create') }}?building_id={{ $gedung->id }}" class="btn btn-sm btn-success">
                                 <i class="ri-add-line me-1"></i> Tambah Ruang
                             </a>
                         </div>
@@ -144,7 +144,7 @@
                                     @foreach($gedung->rooms as $r)
                                         <tr>
                                             <td>
-                                                <a href="{{ route('user.sarpras.ruang.show', ['userId' => $userId, 'id' => $r->id]) }}" class="fw-medium link-primary">
+                                                <a href="{{ route('sarpras.ruang.show', ['id' => $r->id]) }}" class="fw-medium link-primary">
                                                     {{ $r->room_name }}
                                                 </a>
                                             </td>
@@ -166,7 +166,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <a href="{{ route('user.sarpras.ruang.show', ['userId' => $userId, 'id' => $r->id]) }}" class="btn btn-sm btn-soft-primary">
+                                                <a href="{{ route('sarpras.ruang.show', ['id' => $r->id]) }}" class="btn btn-sm btn-soft-primary">
                                                     <i class="ri-eye-line"></i>
                                                 </a>
                                             </td>
@@ -183,7 +183,7 @@
                                 </div>
                             </div>
                             <h6 class="text-muted">Belum ada ruang di gedung ini</h6>
-                            <a href="{{ route('user.sarpras.ruang.create', ['userId' => $userId]) }}?building_id={{ $gedung->id }}" class="btn btn-sm btn-success mt-2">
+                            <a href="{{ route('sarpras.ruang.create') }}?building_id={{ $gedung->id }}" class="btn btn-sm btn-success mt-2">
                                 <i class="ri-add-line me-1"></i> Tambah Ruang
                             </a>
                         </div>

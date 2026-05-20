@@ -90,7 +90,7 @@ class PermissionRoleSeeder extends Seeder
             'view_global_school_data',
         ]);
 
-        // ── PERSONALIA — urus data GTK ────────────────────────────────
+        // ── PERSONDALIA — urus data GTK (global access) ─────────────────
         $sync($roleId('Personalia') ?? '', [
             'dashboard_view',
             'gtk_view', 'gtk_create', 'gtk_edit', 'gtk_delete',
@@ -102,6 +102,14 @@ class PermissionRoleSeeder extends Seeder
             'gtk_address_view', 'gtk_address_edit',
             'profile_view', 'profile_edit',
             'laporan_view', 'laporan_export',
+            'view_global_school_data',
+            // Personalia HRD modules
+            'payroll_view', 'payroll_create', 'payroll_edit',
+            'cuti_view', 'cuti_approve',
+            'kontrak_view', 'kontrak_create', 'kontrak_edit',
+            'kinerja_view', 'kinerja_create', 'kinerja_edit',
+            'pelatihan_view', 'pelatihan_create', 'pelatihan_edit',
+            'kesejahteraan_view', 'kesejahteraan_create', 'kesejahteraan_edit',
         ]);
 
         // ── ADMIN TATA USAHA — scoped: GTK edit + Santri CRUD ─────────

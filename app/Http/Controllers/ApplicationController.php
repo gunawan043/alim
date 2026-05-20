@@ -8,6 +8,7 @@ use App\Models\RecruitmentJob;
 use App\Models\User;
 use App\Models\RecruitmentProfile;
 use App\Services\NotificationUniversalService;
+use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -142,15 +143,17 @@ class ApplicationController extends Controller
 
             // Simpan ke tabel stages (riwayat)
             $application->stages()->create([
-                // 'nama_tahapan' => 'Update Status',
                 'status'       => $application->status,
                 'catatan'      => $validated['catatan'] ?? 'Status diupdate dari ' . $oldStatus,
                 'penilai_id'   => auth()->id(),
-                'nilai'        => $application->nilai_akhir, // simpan nilai akhir di stage
+                'nilai'        => $application->nilai_akhir,
             ]);
 
-            // Kirim notifikasi ke pelamar (gunakan service)
+            // Kirim notifikasi ke pelamar via applicant app (EMAIL)
+            // Ini akan di-queue dan diproses async oleh applicant app
             $user = $application->recruitmentProfile->user;
+
+            // 1. Kirim notifikasi internal (database notification)
             $this->notificationService->send($user->id, [
                 'module'        => 'recruitment',
                 'reference_type' => RecruitmentApplication::class,
@@ -170,10 +173,18 @@ class ApplicationController extends Controller
                 'send_email'    => true
             ]);
 
+            // 2. Kirim notifikasi email ke applicant via recruitment app
+            RecruitmentNotificationService::notifyApplicationStatusChanged(
+                $application,
+                $oldStatus,
+                $application->status,
+                $validated['catatan'] ?? null
+            );
+
             DB::commit();
 
             return redirect()->route('recruitment.applications.show', $application->id)
-                ->with('success', 'Status berhasil diupdate.');
+                ->with('success', 'Status berhasil diupdate dan notifikasi email telah dikirim.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -258,15 +269,13 @@ class ApplicationController extends Controller
                     $application->status = $validated['status'];
                     $application->save();
 
-                    // Notify each applicant
-                    $this->notificationService->send($application->recruitmentProfile->user_id, [
-                        'module' => 'recruitment',
-                        'type' => 'info',
-                        'action' => 'bulk_status_update',
-                        'title' => 'Update Status Massal',
-                        'message' => "Status lamaran Anda untuk {$application->recruitmentJob->judul} telah berubah menjadi {$validated['status']}.",
-                        'action_url' => route('recruitment.applications.show', $application->id)
-                    ]);
+                    // Notify each applicant via applicant app
+                    RecruitmentNotificationService::notifyApplicationStatusChanged(
+                        $application,
+                        $oldStatus,
+                        $validated['status'],
+                        null
+                    );
                 }
             }
 

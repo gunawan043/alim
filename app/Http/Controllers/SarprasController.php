@@ -128,7 +128,7 @@ class SarprasController extends Controller
         AssetBuilding::create($validated);
 
         return redirect()
-            ->route('user.sarpras.gedung.index', ['userId' => $userId])
+            ->route('sarpras.gedung.index', ['userId' => $userId])
             ->with('success', 'Gedung berhasil ditambahkan.');
     }
 
@@ -180,7 +180,7 @@ class SarprasController extends Controller
         $gedung->update($validated);
 
         return redirect()
-            ->route('user.sarpras.gedung.show', ['userId' => $userId, 'id' => $gedung->id])
+            ->route('sarpras.gedung.show', ['userId' => $userId, 'id' => $gedung->id])
             ->with('success', 'Gedung berhasil diperbarui.');
     }
 
@@ -198,7 +198,7 @@ class SarprasController extends Controller
         $gedung->delete();
 
         return redirect()
-            ->route('user.sarpras.gedung.index', ['userId' => $userId])
+            ->route('sarpras.gedung.index', ['userId' => $userId])
             ->with('success', 'Gedung berhasil dihapus.');
     }
 
@@ -290,7 +290,7 @@ class SarprasController extends Controller
         AssetRoom::create($validated);
 
         return redirect()
-            ->route('user.sarpras.ruang.index', ['userId' => $userId])
+            ->route('sarpras.ruang.index', ['userId' => $userId])
             ->with('success', 'Ruang berhasil ditambahkan.');
     }
 
@@ -351,7 +351,7 @@ class SarprasController extends Controller
         $ruang->update($validated);
 
         return redirect()
-            ->route('user.sarpras.ruang.show', ['userId' => $userId, 'id' => $ruang->id])
+            ->route('sarpras.ruang.show', ['userId' => $userId, 'id' => $ruang->id])
             ->with('success', 'Ruang berhasil diperbarui.');
     }
 
@@ -369,7 +369,7 @@ class SarprasController extends Controller
         $ruang->delete();
 
         return redirect()
-            ->route('user.sarpras.ruang.index', ['userId' => $userId])
+            ->route('sarpras.ruang.index', ['userId' => $userId])
             ->with('success', 'Ruang berhasil dihapus.');
     }
 
@@ -461,7 +461,7 @@ class SarprasController extends Controller
         Asset::create($validated);
 
         return redirect()
-            ->route('user.sarpras.aset.index', ['userId' => $userId])
+            ->route('sarpras.aset.index', ['userId' => $userId])
             ->with('success', 'Aset berhasil ditambahkan.');
     }
 
@@ -532,7 +532,7 @@ class SarprasController extends Controller
         $aset->update($validated);
 
         return redirect()
-            ->route('user.sarpras.aset.show', ['userId' => $userId, 'id' => $aset->id])
+            ->route('sarpras.aset.show', ['userId' => $userId, 'id' => $aset->id])
             ->with('success', 'Aset berhasil diperbarui.');
     }
 
@@ -546,7 +546,7 @@ class SarprasController extends Controller
         $aset->delete();
 
         return redirect()
-            ->route('user.sarpras.aset.index', ['userId' => $userId])
+            ->route('sarpras.aset.index', ['userId' => $userId])
             ->with('success', 'Aset berhasil dihapus.');
     }
 
@@ -597,21 +597,21 @@ class SarprasController extends Controller
 
             if ($createdCount > 0 && empty($errors)) {
                 return redirect()
-                    ->route('user.sarpras.aset.index', ['userId' => $userId])
+                    ->route('sarpras.aset.index', ['userId' => $userId])
                     ->with('success', "Berhasil mengimport {$createdCount} aset.");
             }
 
             // Some succeeded, some failed
             if ($createdCount > 0) {
                 return redirect()
-                    ->route('user.sarpras.aset.index', ['userId' => $userId])
+                    ->route('sarpras.aset.index', ['userId' => $userId])
                     ->with('success', "Berhasil mengimport {$createdCount} aset. " . count($errors) . " baris dilewati karena error.")
                     ->with('import_errors', $errors);
             }
 
             // All failed
             return redirect()
-                ->route('user.sarpras.aset.import', ['userId' => $userId])
+                ->route('sarpras.aset.import', ['userId' => $userId])
                 ->with('error', 'Gagal mengimport. Silakan perbaiki file sesuai panduan.')
                 ->with('import_errors', $errors);
 
@@ -622,14 +622,14 @@ class SarprasController extends Controller
                 $errMsgs[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
             }
             return redirect()
-                ->route('user.sarpras.aset.import', ['userId' => $userId])
+                ->route('sarpras.aset.import', ['userId' => $userId])
                 ->with('error', 'Validasi gagal. Perbaiki data Excel Anda.')
                 ->with('import_errors', $errMsgs);
 
         } catch (\Throwable $e) {
             Log::error('AssetImport error: ' . $e->getMessage());
             return redirect()
-                ->route('user.sarpras.aset.import', ['userId' => $userId])
+                ->route('sarpras.aset.import', ['userId' => $userId])
                 ->with('error', 'Gagal memproses file: ' . $e->getMessage());
         }
     }

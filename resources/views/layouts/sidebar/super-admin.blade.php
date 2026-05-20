@@ -364,6 +364,14 @@ $sa_pension_approaching = DB::table('users')
     </div>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'user.student-move.') ? ' active' : '' }}"
+       href="{{ route('user.student-move.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-left-right-line"></i>
+        <span>Pindahkan Santri</span>
+    </a>
+</li>
+
 {{-- ============================================================
      5. AKADEMIK
      ============================================================ --}}
@@ -537,8 +545,8 @@ $sa_pension_approaching = DB::table('users')
 <li class="menu-title"><span>Data Pendukung</span></li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'user.sarpras.') ? ' active' : '' }}"
-       href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'sarpras.') || isActiveSA($currentRoute, 'user.sarpras.') || isActiveSA($currentRoute, 'sarpras.user.') ? ' active' : '' }}"
+       href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">
         <i class="ri-community-line"></i>
         <span>Sarana Prasarana</span>
     </a>

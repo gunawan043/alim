@@ -74,6 +74,8 @@
                     @include('layouts.sidebar.gtk')
                 @elseif($user->hasRole('Admin Tata Usaha'))
                     @include('layouts.sidebar.admin-tu')
+                @elseif($user->hasRole('Admin Sarpras') || $user->hasRole('Sarpras'))
+                    @include('layouts.sidebar.gtk-sarpras')
                 @elseif($user->hasRole('Personalia'))
                     @include('layouts.sidebar.personalia')
                 @elseif($user->hasRole('Wakil Kepala Sekolah'))

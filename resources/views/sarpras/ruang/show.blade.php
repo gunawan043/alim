@@ -3,9 +3,8 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}">Ruang</a> @endslot
+        @slot('li_1') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}#tab-ruang">Ruang</a> @endslot
         @slot('title') {{ $ruang->room_name }} @endslot
     @endcomponent
 
@@ -20,15 +19,15 @@
                         </div>
                         <div class="col-sm-auto">
                             <div class="hstack gap-2 justify-content-end">
-                                <a href="{{ route('user.sarpras.aset.import', ['userId' => $userId, 'room_id' => $ruang->id]) }}" class="btn btn-sm btn-outline-primary">
+                                <a href="{{ route('sarpras.user.aset.import.room', ['userId' => $userId, 'roomId' => $ruang->id]) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="ri-upload-cloud-line me-1"></i> Import Aset
                                 </a>
-                                <a href="{{ route('user.sarpras.aset.create', ['userId' => $userId, 'room_id' => $ruang->id]) }}" class="btn btn-sm btn-success">
+                                <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}#tab-aset" class="btn btn-sm btn-success">
                                     <i class="ri-add-line me-1"></i> Tambah Aset
                                 </a>
-                                <a href="{{ route('user.sarpras.ruang.edit', ['userId' => $userId, 'id' => $ruang->id]) }}" class="btn btn-sm btn-warning">
+                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditRuang">
                                     <i class="ri-pencil-line me-1"></i> Edit
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -57,9 +56,7 @@
                                     <td class="text-muted fw-medium">Gedung</td>
                                     <td>
                                         @if($ruang->building)
-                                            <a href="{{ route('user.sarpras.gedung.show', ['userId' => $userId, 'id' => $ruang->building_id]) }}">
-                                                {{ $ruang->building->building_name }}
-                                            </a>
+                                            {{ $ruang->building->building_name }}
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif
@@ -151,9 +148,9 @@
                             <p class="text-muted mb-0">{{ $ruang->assets->count() }} item terdaftar</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.sarpras.aset.create', ['userId' => $userId]) }}?room_id={{ $ruang->id }}" class="btn btn-sm btn-success">
+                            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalTambahAset">
                                 <i class="ri-add-line me-1"></i> Tambah Aset
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -175,7 +172,7 @@
                                     @foreach($ruang->assets as $aset)
                                         <tr>
                                             <td>
-                                                <a href="{{ route('user.sarpras.aset.show', ['userId' => $userId, 'id' => $aset->id]) }}" class="fw-medium link-primary">
+                                                <a href="{{ route('sarpras.aset.show', ['id' => $aset->id]) }}" class="fw-medium link-primary">
                                                     {{ $aset->asset_name }}
                                                 </a>
                                             </td>
@@ -203,7 +200,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <a href="{{ route('user.sarpras.aset.show', ['userId' => $userId, 'id' => $aset->id]) }}" class="btn btn-sm btn-soft-primary">
+                                                <a href="{{ route('sarpras.aset.show', ['id' => $aset->id]) }}" class="btn btn-sm btn-soft-primary">
                                                     <i class="ri-eye-line"></i>
                                                 </a>
                                             </td>
@@ -220,9 +217,9 @@
                                 </div>
                             </div>
                             <h6 class="text-muted">Belum ada aset di ruang ini</h6>
-                            <a href="{{ route('user.sarpras.aset.create', ['userId' => $userId]) }}?room_id={{ $ruang->id }}" class="btn btn-sm btn-success mt-2">
+                            <button class="btn btn-sm btn-success mt-2" data-bs-toggle="modal" data-bs-target="#modalTambahAset">
                                 <i class="ri-add-line me-1"></i> Tambah Aset
-                            </a>
+                            </button>
                         </div>
                     @endif
                 </div>
@@ -254,4 +251,70 @@
             </div>
         </div>
     </div>
+</div>
+
+{{-- Modal: Tambah Aset ke Ruang Ini --}}
+<div class="modal fade" id="modalTambahAset" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-archive-line text-primary me-2"></i>Tambah Aset ke {{ $ruang->room_name }}</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('sarpras.user.aset.store', ['userId' => $userId]) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <input type="hidden" name="room_id" value="{{ $ruang->id }}">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Nama Aset <span class="text-danger">*</span></label>
+                            <input type="text" name="asset_name" class="form-control" required placeholder="Contoh: Meja Guru MDF">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Kategori <span class="text-danger">*</span></label>
+                            <select name="asset_category_id" class="form-select" required>
+                                <option value="">-- Pilih --</option>
+                                @foreach(\App\Models\AssetCategory::where('is_active', true)->orderBy('name')->get() as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Merk / Brand</label>
+                            <input type="text" name="brand" class="form-control" placeholder="Contoh: Yamaha">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Model / Tipe</label>
+                            <input type="text" name="model" class="form-control" placeholder="Contoh: P-45B">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Kondisi <span class="text-danger">*</span></label>
+                            <select name="condition" class="form-select" required>
+                                @foreach(\App\Models\Asset::CONDITION_OPTIONS as $c)
+                                    <option value="{{ $c }}">{{ ucfirst(str_replace('_',' ',$c)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Tanggal Perolehan</label>
+                            <input type="date" name="acquisition_date" class="form-control" value="{{ now()->format('Y-m-d') }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Harga Perolehan (Rp)</label>
+                            <input type="number" name="acquisition_price" class="form-control" min="0" placeholder="0">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Catatan</label>
+                            <textarea name="notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

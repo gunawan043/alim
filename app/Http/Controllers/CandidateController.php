@@ -7,9 +7,9 @@ use App\Models\RecruitmentProfile;
 use App\Models\RecruitmentSkill;
 use App\Models\RecruitmentEducation;
 use App\Models\User;
+use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class CandidateController extends Controller
 {

@@ -8,7 +8,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
         @slot('title') Ruang
     @endcomponent
 
@@ -33,7 +33,7 @@
                             <p class="text-muted mb-0">Kelola ruang pada satuan pendidikan.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.sarpras.ruang.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            <a href="{{ route('sarpras.ruang.create') }}" class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Ruang
                             </a>
                         </div>
@@ -65,7 +65,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}" class="btn btn-light w-100">
+                            <a href="{{ route('sarpras.ruang.index') }}" class="btn btn-light w-100">
                                 <i class="ri-refresh-line me-1"></i> Reset
                             </a>
                         </div>
@@ -93,7 +93,7 @@
                                     <tr>
                                         <td>{{ $loop->iteration + ($ruangs->currentPage() - 1) * $ruangs->perPage() }}</td>
                                         <td>
-                                            <a href="{{ route('user.sarpras.ruang.show', ['userId' => $userId, 'id' => $r->id]) }}"
+                                            <a href="{{ route('sarpras.ruang.show', ['id' => $r->id]) }}"
                                                class="fw-medium link-primary">{{ $r->room_name }}</a>
                                             @if($r->study_group_id)
                                                 <span class="badge bg-info-subtle text-info ms-1" title="Ruang Kelas — Rombongan Belajar">
@@ -105,7 +105,7 @@
                                         <td>{{ ucfirst(str_replace('_', ' ', $r->room_type)) }}</td>
                                         <td>
                                             @if($r->building)
-                                                <a href="{{ route('user.sarpras.gedung.show', ['userId' => $userId, 'id' => $r->building_id]) }}">
+                                                <a href="{{ route('sarpras.gedung.show', ['id' => $r->building_id]) }}">
                                                     {{ $r->building->building_name }}
                                                 </a>
                                             @else
@@ -142,17 +142,17 @@
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.ruang.show', ['userId' => $userId, 'id' => $r->id]) }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.ruang.show', ['id' => $r->id]) }}">
                                                             <i class="ri-eye-line me-2"></i>Detail
                                                         </a>
                                                     </li>
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.aset.index', ['userId' => $userId, 'room_id' => $r->id]) }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.aset.index', ['room_id' => $r->id]) }}">
                                                             <i class="ri-archive-line me-2"></i>Daftar Aset
                                                         </a>
                                                     </li>
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.ruang.edit', ['userId' => $userId, 'id' => $r->id]) }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.ruang.edit', ['id' => $r->id]) }}">
                                                             <i class="ri-pencil-line me-2"></i>Edit
                                                         </a>
                                                     </li>
@@ -177,7 +177,7 @@
                                             </div>
                                             <h5 class="text-muted">Belum ada data ruang</h5>
                                             <p class="text-muted">Tambah ruang untuk memulai pencatatan sarana prasarana.</p>
-                                            <a href="{{ route('user.sarpras.ruang.create', ['userId' => $userId]) }}" class="btn btn-success">
+                                            <a href="{{ route('sarpras.ruang.create') }}" class="btn btn-success">
                                                 <i class="ri-add-line me-1"></i>Tambah Ruang
                                             </a>
                                         </td>
@@ -213,7 +213,7 @@
                     if (result.isConfirmed) {
                         var form = document.createElement('form');
                         form.method = 'POST';
-                        form.action = '/{{ $userId }}/sarpras/ruang/' + id;
+                        form.action = '/sarpras/ruang/' + id;
                         ['_token','_method'].forEach(function(n, i) {
                             var inp = document.createElement('input');
                             inp.type = 'hidden';

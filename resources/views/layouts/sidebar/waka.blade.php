@@ -39,6 +39,15 @@ function isActiveWaka($routeName, $pattern) {
     if (!$routeName) return false;
     return str_starts_with($routeName, $pattern);
 }
+
+// Cek akses sarpras — Unit Rumah Tangga dapat dashboard lengkap, lainnya dashboard sederhana
+$userSarprasAccess = \App\Models\GtkWorkUnit::where('user_id', $currentUser->id)
+    ->whereHas('workUnit', fn($q) => $q->where('code', 'PAH-ADM-003'))
+    ->exists()
+    || $currentUser->can('sarpras_all_access')
+    || $currentUser->can('inventory_view');
+
+$sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 @endphp
 
 <li class="menu-title"><span>Menu</span></li>
@@ -389,8 +398,8 @@ function isActiveWaka($routeName, $pattern) {
     </div>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveWaka($currentRoute, 'user.sarpras.') ? ' active' : '' }}"
-       href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveWaka($currentRoute, 'sarpras.') || isActiveWaka($currentRoute, 'user.sarpras.') || isActiveWaka($currentRoute, 'sarpras.user.') ? ' active' : '' }}"
+       href="{{ $sarprasDashboardRoute }}">
         <i class="ri-community-line"></i>
         <span>Sarana Prasarana</span>
     </a>

@@ -288,7 +288,7 @@ class DormitoryPostSeeder extends Seeder
 <ul>
 <li><strong>Tanggal:</strong> 20-21 Juni 2026</li>
 <li><strong>Tempat:</strong> Taman Pondok Abu Hurairah</li>
-<li><strong>Peserta:</strong> Semua santo asrama putri</li>
+<li><strong>Peserta:</strong> Semua Santri asrama putri</li>
 <li><strong>Persyaratan:</strong> Membawa sleeping bag, Al-Quran, dan air minum</li>
 </ul>
 <p>Konfirmasi kehadiran melalui link berikut: <a href="#">[LINK]</a></p>
@@ -511,7 +511,7 @@ class DormitoryPostSeeder extends Seeder
             [
                 'dorm' => $dormPutra,
                 'title' => 'Peringatan DBD — Fogging Akan Dilakukan',
-                'content' => 'Mohon perhatian. Dalam rangka pencegahan DBD, akan dilakukan fogging/pengasapan di seluruh area asrama putra pada hari Sabtu, 7 Mei 2026 pukul 07.00 - 09.00 WITA. Semua santo diminta membersihkan makanan dan minuman dari kamar. Fogging tidak berbahaya bagi kesehatan.',
+                'content' => 'Mohon perhatian. Dalam rangka pencegahan DBD, akan dilakukan fogging/pengasapan di seluruh area asrama putra pada hari Sabtu, 7 Mei 2026 pukul 07.00 - 09.00 WITA. Semua Santri diminta membersihkan makanan dan minuman dari kamar. Fogging tidak berbahaya bagi kesehatan.',
                 'broadcast_via' => 'all',
                 'severity' => 'warning',
                 'ack_required' => false,
@@ -520,7 +520,7 @@ class DormitoryPostSeeder extends Seeder
             [
                 'dorm' => $dormPutri,
                 'title' => 'Jadwal Pemadaman Listrik — Perbaikan Jaringan',
-                'content' => 'Akan dilakukan perbaikan jaringan listrik di area asrama putri. Pemadaman dijadwalkan hari Minggu, 8 Mei 2026 pukul 13.00 - 16.00 WITA. Semua santo agar menyiapkan lampu darurat dan mengisi daya HP sebelum pemadaman.',
+                'content' => 'Akan dilakukan perbaikan jaringan listrik di area asrama putri. Pemadaman dijadwalkan hari Minggu, 8 Mei 2026 pukul 13.00 - 16.00 WITA. Semua Santri agar menyiapkan lampu darurat dan mengisi daya HP sebelum pemadaman.',
                 'broadcast_via' => 'all',
                 'severity' => 'info',
                 'ack_required' => false,
@@ -529,7 +529,7 @@ class DormitoryPostSeeder extends Seeder
             [
                 'dorm' => $dormPutra,
                 'title' => 'Orientasi Tahun Ajaran Baru 2026/2027',
-                'content' => 'Pengumuman penting untuk semua santo dan wali. Orientasi tahun ajaran baru akan dimulai tanggal 13 Juli 2026. Santo baru wajib hadir lebih awal pada 10 Juli 2026 untuk proses check-in dan orientasi asrama.',
+                'content' => 'Pengumuman penting untuk semua Santri dan wali. Orientasi tahun ajaran baru akan dimulai tanggal 13 Juli 2026. Santri baru wajib hadir lebih awal pada 10 Juli 2026 untuk proses check-in dan orientasi asrama.',
                 'broadcast_via' => 'all',
                 'severity' => 'info',
                 'ack_required' => true,

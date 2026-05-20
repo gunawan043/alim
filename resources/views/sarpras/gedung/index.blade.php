@@ -33,7 +33,7 @@
                             <p class="text-muted mb-0">Kelola gedung pada satuan pendidikan.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.sarpras.gedung.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Gedung
                             </a>
                         </div>
@@ -75,7 +75,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}" class="btn btn-light w-100">
+                            <a href="{{ route('sarpras.gedung.index') }}" class="btn btn-light w-100">
                                 <i class="ri-refresh-line me-1"></i> Reset
                             </a>
                         </div>
@@ -103,7 +103,7 @@
                                     <tr>
                                         <td>{{ $loop->iteration + ($gedungs->currentPage() - 1) * $gedungs->perPage() }}</td>
                                         <td>
-                                            <a href="{{ route('user.sarpras.gedung.show', ['userId' => $userId, 'id' => $g->id]) }}"
+                                            <a href="{{ route('sarpras.gedung.show', ['id' => $g->id]) }}"
                                                class="fw-medium link-primary">{{ $g->building_name }}</a>
                                         </td>
                                         <td><code>{{ $g->building_code ?? '-' }}</code></td>
@@ -139,17 +139,17 @@
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.gedung.show', ['userId' => $userId, 'id' => $g->id]) }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.gedung.show', ['id' => $g->id]) }}">
                                                             <i class="ri-eye-line me-2"></i>Detail
                                                         </a>
                                                     </li>
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}?building_id={{ $g->id }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.ruang.index') }}?building_id={{ $g->id }}">
                                                             <i class="ri-community-line me-2"></i>Daftar Ruang
                                                         </a>
                                                     </li>
                                                     <li>
-                                                        <a class="dropdown-item" href="{{ route('user.sarpras.gedung.edit', ['userId' => $userId, 'id' => $g->id]) }}">
+                                                        <a class="dropdown-item" href="{{ route('sarpras.gedung.edit', ['id' => $g->id]) }}">
                                                             <i class="ri-pencil-line me-2"></i>Edit
                                                         </a>
                                                     </li>
@@ -174,7 +174,7 @@
                                             </div>
                                             <h5 class="text-muted">Belum ada data gedung</h5>
                                             <p class="text-muted">Tambah gedung untuk memulai pencatatan sarana prasarana.</p>
-                                            <a href="{{ route('user.sarpras.gedung.create', ['userId' => $userId]) }}" class="btn btn-success">
+                                            <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
                                                 <i class="ri-add-line me-1"></i>Tambah Gedung
                                             </a>
                                         </td>
@@ -210,7 +210,7 @@
                     if (result.isConfirmed) {
                         var form = document.createElement('form');
                         form.method = 'POST';
-                        form.action = '/{{ $userId }}/sarpras/gedung/' + id;
+                        form.action = '/sarpras/gedung/' + id;
                         ['_token','_method'].forEach(function(n, i) {
                             var inp = document.createElement('input');
                             inp.type = 'hidden';

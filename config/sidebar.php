@@ -398,17 +398,49 @@ return [
         'icon'    => 'ri-community-line',
         'is_group' => true,
         'children' => [
-            'sarpras_7a' => [
-                'label' => 'Sarpras 7A',
-                'route' => null,
+            'sarpras.dashboard' => [
+                'label' => 'Dashboard',
+                'route' => 'sarpras.dashboard',
             ],
-            'sarpras_7b' => [
-                'label' => 'Sarpras 7B',
-                'route' => null,
+            'sarpras.gedung' => [
+                'label' => 'Gedung',
+                'route' => 'sarpras.gedung.index',
             ],
-            'sarpras_7c' => [
-                'label' => 'Sarpras 7C',
-                'route' => null,
+            'sarpras.ruang' => [
+                'label' => 'Ruangan',
+                'route' => 'sarpras.ruang.index',
+            ],
+            'sarpras.aset' => [
+                'label' => 'Aset / Inventaris',
+                'route' => 'sarpras.aset.index',
+            ],
+            'sarpras.peminjaman' => [
+                'label' => 'Peminjaman Aset',
+                'route' => 'sarpras.peminjaman.index',
+            ],
+            'sarpras.pemeliharaan' => [
+                'label' => 'Pemeliharaan',
+                'route' => 'sarpras.pemeliharaan.index',
+            ],
+            'sarpras.booking' => [
+                'label' => 'Booking Ruangan',
+                'route' => 'sarpras.booking.index',
+            ],
+            'sarpras.perpindahan' => [
+                'label' => 'Riwayat Perpindahan',
+                'route' => 'sarpras.perpindahan.index',
+            ],
+            'sarpras.pengadaan' => [
+                'label' => 'Pengadaan Barang',
+                'route' => 'sarpras.pengadaan.index',
+            ],
+            'sarpras.qr' => [
+                'label' => 'QR Code & Audit',
+                'route' => 'sarpras.qr.index',
+            ],
+            'sarpras.laporan' => [
+                'label' => 'Laporan',
+                'route' => 'sarpras.laporan.index',
             ],
         ],
     ],

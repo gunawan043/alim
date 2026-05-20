@@ -4,8 +4,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}">Ruang</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
+        @slot('li_3') <a href="{{ route('sarpras.ruang.index') }}">Ruang</a> @endslot
         @slot('title') Tambah Ruang @endslot
     @endcomponent
 
@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('user.sarpras.ruang.store', ['userId' => $userId]) }}">
+    <form method="POST" action="{{ route('sarpras.ruang.store') }}">
         @csrf
         <div class="row">
             <div class="col-lg-8">
@@ -128,7 +128,7 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-3">
-            <a href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+            <a href="{{ route('sarpras.ruang.index') }}" class="btn btn-light">Batal</a>
             <button type="submit" class="btn btn-success">
                 <i class="ri-save-line me-1"></i> Simpan
             </button>

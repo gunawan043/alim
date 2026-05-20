@@ -7,6 +7,7 @@ use App\Models\RecruitmentApplicationStage;
 use App\Models\RecruitmentApplication;
 use App\Models\User;
 use App\Services\NotificationUniversalService;
+use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -153,7 +154,16 @@ class InterviewController extends Controller
             $application->status = str_contains($validated['stage_name'], 'Wawancara') ? 'wawancara' : 'tes_tertulis';
             $application->save();
 
-            // Notify candidate
+            // Prepare stage data for notification
+            $stageData = [
+                'stage_type' => $validated['stage_name'],
+                'schedule_date' => $validated['jadwal_mulai'],
+                'schedule_time' => date('H:i', strtotime($validated['jadwal_mulai'])),
+                'lokasi' => $validated['lokasi'] ?? 'Akan diinformasikan',
+                'catatan' => $validated['catatan'] ?? null,
+            ];
+
+            // Notify candidate (database notification)
             $this->notificationService->send($application->recruitmentProfile->user_id, [
                 'module' => 'recruitment',
                 'type' => 'info',
@@ -170,6 +180,9 @@ class InterviewController extends Controller
                 'send_email' => true,
                 'send_whatsapp' => true
             ]);
+
+            // Send EMAIL notification via recruitment app
+            RecruitmentNotificationService::notifyInterviewScheduled($application, $stageData);
 
             // Notify interviewer
             if ($validated['penilai_id']) {
@@ -188,7 +201,7 @@ class InterviewController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Jadwal interview berhasil disimpan',
+                'message' => 'Jadwal interview berhasil disimpan dan notifikasi email telah dikirim',
                 'data' => $stage
             ]);
 
@@ -232,7 +245,16 @@ class InterviewController extends Controller
         $interview->jadwal_selesai = $validated['jadwal_selesai'] ?? null;
         $interview->save();
 
-        // Notify candidate
+        // Prepare stage data for notification
+        $stageData = [
+            'stage_type' => $interview->recruitmentPipelineStage->nama_tahapan,
+            'schedule_date' => $validated['jadwal_mulai'],
+            'schedule_time' => date('H:i', strtotime($validated['jadwal_mulai'])),
+            'lokasi' => $interview->lokasi ?? 'Akan diinformasikan',
+            'catatan' => 'Jadwal diubah dari ' . $oldDate . '. Alasan: ' . $validated['alasan'],
+        ];
+
+        // Notify candidate (database notification)
         $this->notificationService->send($interview->recruitmentApplication->recruitmentProfile->user_id, [
             'module' => 'recruitment',
             'type' => 'warning',
@@ -244,9 +266,12 @@ class InterviewController extends Controller
             'send_email' => true
         ]);
 
+        // Send EMAIL notification via recruitment app
+        RecruitmentNotificationService::notifyInterviewRescheduled($interview->recruitmentApplication, $stageData);
+
         return response()->json([
             'success' => true,
-            'message' => 'Jadwal berhasil diubah'
+            'message' => 'Jadwal berhasil diubah dan notifikasi email telah dikirim'
         ]);
     }
 
@@ -291,7 +316,15 @@ class InterviewController extends Controller
             $application->nilai_akhir = $validated['nilai'] ?? $application->nilai_akhir;
             $application->save();
 
-            // Notify candidate
+            // Prepare stage data for notification
+            $stageData = [
+                'stage_type' => $stageName,
+                'schedule_date' => $interview->jadwal_mulai,
+                'schedule_time' => date('H:i', strtotime($interview->jadwal_mulai)),
+                'lokasi' => $interview->lokasi ?? null,
+            ];
+
+            // Notify candidate (database notification)
             $statusText = $validated['hasil'] == 'lolos' ? 'Lolos' : 'Tidak Lolos';
             $this->notificationService->send($application->recruitmentProfile->user_id, [
                 'module' => 'recruitment',
@@ -304,11 +337,19 @@ class InterviewController extends Controller
                 'send_email' => true
             ]);
 
+            // Send EMAIL notification via recruitment app
+            RecruitmentNotificationService::notifyStageResult(
+                $application,
+                $validated['hasil'],
+                $stageData,
+                $validated['feedback'] ?? null
+            );
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Hasil interview berhasil disimpan'
+                'message' => 'Hasil interview berhasil disimpan dan notifikasi email telah dikirim'
             ]);
 
         } catch (\Exception $e) {

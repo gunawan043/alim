@@ -13,6 +13,7 @@ use App\Models\GtkContact;
 use App\Models\GtkEducation;
 use App\Models\School;
 use App\Models\GtkWorkUnit;
+use App\Models\JenisGtk;
 use App\Models\Province;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -1477,7 +1478,8 @@ class GtkWizardController extends Controller
     public function import()
     {
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
-        return view('gtk.import', compact('workUnits'));
+        $jenisGtk  = JenisGtk::where('is_active', true)->orderBy('urutan')->get();
+        return view('gtk.import', compact('workUnits', 'jenisGtk'));
     }
 
     public function importTemplate(string $workUnitId)

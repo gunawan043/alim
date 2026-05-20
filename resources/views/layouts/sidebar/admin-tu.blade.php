@@ -26,6 +26,15 @@ function isActiveTU($routeName, $pattern) {
     return str_starts_with($routeName, $pattern);
 }
 $isActiveFn = 'isActiveTU';
+
+// Cek akses sarpras — Unit Rumah Tangga dapat dashboard lengkap, lainnya dashboard sederhana
+$userSarprasAccess = \App\Models\GtkWorkUnit::where('user_id', $currentUser->id)
+    ->whereHas('workUnit', fn($q) => $q->where('code', 'PAH-ADM-003'))
+    ->exists()
+    || $currentUser->can('sarpras_all_access')
+    || $currentUser->can('inventory_view');
+
+$sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 @endphp
 
 <li class="menu-title"><span>Menu</span></li>
@@ -181,6 +190,11 @@ $isActiveFn = 'isActiveTU';
                             <a class="nav-link{{ $currentRoute === 'user.mutations-lulus.index' ? ' active' : '' }}"
                                href="{{ route('user.mutations-lulus.index', ['userId' => $userId]) }}"
                                style="font-size:0.80rem">Lulus</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link{{ isActiveTU($currentRoute, 'user.student-move.') ? ' active' : '' }}"
+                               href="{{ route('user.student-move.index', ['userId' => $userId]) }}"
+                               style="font-size:0.85rem">Pindahkan Santri</a>
                         </li>
                     </ul>
                 </div>
@@ -389,8 +403,8 @@ $isActiveFn = 'isActiveTU';
     </div>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveTU($currentRoute, 'user.sarpras.') ? ' active' : '' }}"
-       href="{{ route('user.sarpras.ruang.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveTU($currentRoute, 'sarpras.') || isActiveTU($currentRoute, 'user.sarpras.') || isActiveTU($currentRoute, 'sarpras.user.') ? ' active' : '' }}"
+       href="{{ $sarprasDashboardRoute }}">
         <i class="ri-community-line"></i>
         <span>Sarana Prasarana</span>
     </a>

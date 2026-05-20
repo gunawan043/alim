@@ -4,8 +4,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
-        @slot('li_2') <a href="{{ route('user.sarpras.gedung.index', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('li_3') <a href="{{ route('user.sarpras.aset.index', ['userId' => $userId]) }}">Aset</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
+        @slot('li_3') <a href="{{ route('sarpras.aset.index') }}">Aset</a> @endslot
         @slot('title') Tambah Aset @endslot
     @endcomponent
 
@@ -22,14 +22,14 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('user.sarpras.aset.store', ['userId' => $userId]) }}">
+    <form method="POST" action="{{ route('sarpras.aset.store') }}">
         @csrf
         <div class="row">
             <div class="col-lg-8">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Informasi Aset</h5>
-                        <a href="{{ route('user.sarpras.aset.import', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('sarpras.aset.import') }}" class="btn btn-outline-primary btn-sm">
                             <i class="ri-upload-cloud-2-line me-1"></i> Import dari Excel
                         </a>
                     </div>
@@ -153,7 +153,7 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-3">
-            <a href="{{ route('user.sarpras.aset.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+            <a href="{{ route('sarpras.aset.index') }}" class="btn btn-light">Batal</a>
             <button type="submit" class="btn btn-success">
                 <i class="ri-save-line me-1"></i> Simpan
             </button>
@@ -216,7 +216,7 @@
 @push('scripts')
 <script>
 (function() {
-    var userId = '{{ $userId }}';
+    var userId = \'\' ;
 
     document.getElementById('addCategoryForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -229,7 +229,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="ri-loader-4-line me-1"></i> Menyimpan...';
 
-        fetch('/' + userId + '/sarpras/kategori', {
+        fetch('/sarpras/kategori', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,

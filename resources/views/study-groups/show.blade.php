@@ -15,6 +15,21 @@
         </div>
     @endif
 
+    {{-- Warning: kapasitas penuh --}}
+    @php $sgFilled = $activeHistories->count(); @endphp
+    @if($sgFilled > $studyGroup->capacity)
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="ri-error-warning-fill fs-4"></i>
+            <div>
+                <strong>Kapasitas melebihi batas!</strong>
+                Rombel ini sudah berisi <strong>{{ $sgFilled }} siswa</strong>,
+                sedangkan kapasitas hanya <strong>{{ $studyGroup->capacity }} siswa</strong>
+                ({{ $sgFilled - $studyGroup->capacity }} siswa lebih).
+                Segera pindahkan atau naikkan kapasitas rombel.
+            </div>
+        </div>
+    @endif
+
     <div class="row">
         {{-- Info Rombel --}}
         <div class="col-lg-5">
@@ -50,7 +65,27 @@
                         </tr>
                         <tr>
                             <th class="text-muted">Kapasitas</th>
-                            <td>{{ $studyGroup->capacity }} siswa</td>
+                            <td>
+                                @php
+                                    $filled = $activeHistories->count();
+                                    $cap    = $studyGroup->capacity;
+                                    $pct    = $cap > 0 ? min(100, round($filled / $cap * 100)) : 0;
+                                    $full   = $filled >= $cap;
+                                @endphp
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="progress flex-grow-1" style="height:8px;max-width:200px">
+                                        <div class="progress-bar bg-{{ $full ? 'danger' : ($pct >= 90 ? 'warning' : 'success') }}" style="width:{{ $pct }}%"></div>
+                                    </div>
+                                    <span class="{{ $full ? 'text-danger fw-bold' : 'text-muted' }}" style="font-size:13px">
+                                        {{ $filled }}/{{ $cap }} siswa
+                                        @if($full)
+                                            <i class="ri-error-warning-fill ms-1 align-middle"></i> PENUH
+                                        @elseif($pct >= 90)
+                                            <span class="text-warning ms-1">(hampir penuh)</span>
+                                        @endif
+                                    </span>
+                                </div>
+                            </td>
                         </tr>
                         <tr>
                             <th class="text-muted">Ruang</th>
