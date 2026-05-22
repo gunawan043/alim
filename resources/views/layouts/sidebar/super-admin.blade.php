@@ -29,6 +29,17 @@ if (!$hasAsramaContext && in_array($currentRoute, ['user.dormitory-master.index'
     }
 }
 
+// Auto-select first active sekolah so Operasi Sekolah sub-menu links work immediately
+$sekolahUuid = $routeParams['sekolahUuid'] ?? $routeParams['schoolId'] ?? session('sa_school_id') ?? null;
+$hasSekolahContext = !empty($sekolahUuid);
+if (!$hasSekolahContext && in_array($currentRoute, ['user.schools-global.index', 'user.schools.index'])) {
+    $firstSekolah = \App\Models\School::where('is_active', true)->first();
+    if ($firstSekolah) {
+        $sekolahUuid = $firstSekolah->id;
+        $hasSekolahContext = true;
+    }
+}
+
 $asramaFallback = route('user.dormitory-master.index', ['userId' => $userId]);
 
 function isActiveSA($routeName, $pattern) {
@@ -238,15 +249,15 @@ function saMenuActive($patterns = []) {
      2B. OPERASI SEKOLAH
      ============================================================ --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'user.sekolah.') || isset($sekolahUuid) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? ' active' : '' }}"
        href="#manajemen_sekolah" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveSA($currentRoute, 'user.sekolah.') || isset($sekolahUuid) ? 'true' : 'false' }}"
+       aria-expanded="{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? 'true' : 'false' }}"
        aria-controls="manajemen_sekolah">
         <i class="ri-school-line"></i>
         <span>Operasi Sekolah</span>
         <span class="menu-arrow"></span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveSA($currentRoute, 'user.sekolah.') || isset($sekolahUuid) ? ' show' : '' }}"
+    <div class="collapse menu-dropdown{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? ' show' : '' }}"
          id="manajemen_sekolah">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
