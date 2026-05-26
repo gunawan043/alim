@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Str;
@@ -66,6 +67,17 @@ class User extends Authenticatable
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    public function divisiSubscriptions()
+    {
+        return $this->belongsToMany(Divisi::class, 'user_divisi_subscriptions')
+            ->withTimestamps();
+    }
+
+    public function subscribedDivisis(): BelongsToMany
+    {
+        return $this->divisiSubscriptions();
     }
 
     public function workUnitHistories()

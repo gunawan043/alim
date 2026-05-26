@@ -445,11 +445,11 @@
 @section('script')
 <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
 <script>
-const baseUrl = '/personalia/' + window.userId + '/dokumen-iso';
-
 document.querySelectorAll('.btn-edit').forEach(btn => {
     btn.addEventListener('click', function () {
-        document.getElementById('formEdit').action = baseUrl + '/' + this.dataset.id;
+        // Gunakan route() helper langsung agar URL selalu benar
+        const updateUrl = '{{ route('user.dokumen-iso.update', ['userId' => $userId, 'id' => '__ID__']) }}'.replace('__ID__', this.dataset.id);
+        document.getElementById('formEdit').action = updateUrl;
         document.getElementById('edit_nama_dokumen').value = this.dataset.nama_dokumen || '';
         document.getElementById('edit_divisi_id').value = this.dataset.divisi_id || '';
         document.getElementById('edit_prosedur_konsultan').value = this.dataset.prosedur_konsultan || '';

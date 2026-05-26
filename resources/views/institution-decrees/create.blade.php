@@ -250,21 +250,52 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Nama Tugas</label>
-                        <input type="text" id="taskName" class="form-control" placeholder="cth: Wali Kelas 7A, Koordinator Bahasa">
+                        <label class="form-label">Jenis Tugas</label>
+                        <select id="taskTypeSelect" class="form-control" onchange="toggleTaskFields()">
+                            <option value="wali_kelas">Wali Kelas</option>
+                            <option value="koordinator">Koordinator Mata Pelajaran</option>
+                            <option value="kesiswaan">Kesiswaan / PD / PO</option>
+                            <option value="custom">Tugas Lain (Custom)</option>
+                        </select>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Kode Tugas (opsional)</label>
-                        <input type="text" id="taskCode" class="form-control" placeholder="cth: walikelas, koordinator">
+
+                    {{-- Rombel select (shown when Wali Kelas) --}}
+                    <div class="mb-2" id="rombelSelectWrap">
+                        <label class="form-label">Rombel</label>
+                        <select id="taskRombelSelect" class="form-control">
+                            <option value="">-- Pilih Rombel --</option>
+                            @foreach($studyGroups as $sg)
+                                <option value="{{ $sg->id }}">{{ $sg->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Jam per Minggu</label>
-                        <input type="number" id="taskHours" class="form-control" value="3" min="0" max="40">
+
+                    {{-- Custom task fields (shown when custom) --}}
+                    <div id="customTaskWrap" style="display:none;">
+                        <div class="mb-2">
+                            <label class="form-label">Nama Tugas</label>
+                            <input type="text" id="taskName" class="form-control" placeholder="cth: Wali Kelas 7A, Koordinator Bahasa">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Jam per Minggu</label>
+                            <input type="number" id="taskHours" class="form-control" value="3" min="0" max="40">
+                        </div>
+                    </div>
+
+                    {{-- Kordinator mapel select (shown when koordinator) --}}
+                    <div class="mb-2" id="koordinatorMapelWrap" style="display:none;">
+                        <label class="form-label">Mata Pelajaran</label>
+                        <select id="koordinatorMapelSelect" class="form-control">
+                            <option value="">-- Pilih Mapel --</option>
+                            @foreach($subjects as $s)
+                                <option value="{{ $s->id }}">{{ $s->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-warning" onclick="addTaskFromModal()">
+                    <button type="button" class="btn btn-primary" onclick="addTaskFromModal()">
                         <i class="ri-add-line me-1"></i> Tambah
                     </button>
                 </div>
@@ -639,82 +670,97 @@ function updateInfoPreview() {
     }
 }
 
-// Show add subject modal for a teacher
-// (see renderSubjectRow() and confirmAddSubjects() above)
-function updateHours(input) {
-    const tid = input.dataset.tid;
-    const sid = input.dataset.sid;
-    const val = input.value;
-    input.className = 'col-jp-input' + (val ? ' has-val' : '');
-    // Update sebaran
-    const row = input.closest('tr');
-    const inputs = row.querySelectorAll('.col-jp-input');
-    let sebaran = 0;
-    inputs.forEach(i => { if (i.value) sebaran += parseInt(i.value); });
-    document.getElementById(`sebaran-${tid}-${sid}`).textContent = sebaran;
-    document.getElementById(`subtotal-${tid}-${sid}`).textContent = sebaran;
-    refreshTotal(tid);
-}
-
-function refreshTotal(tid) {
-    const rows = document.querySelectorAll(`tr[data-teacher="${tid}"]`);
-    let sebaran = 0;
-    rows.forEach(r => {
-        r.querySelectorAll('.col-jp-input').forEach(i => { if (i.value) sebaran += parseInt(i.value); });
-    });
-    const taskHours = (activeTasks[tid] || []).reduce((sum, t) => sum + (parseInt(t.hours) || 0), 0);
-    // Update via named IDs
-    const el = document.getElementById(`teacher-total-${tid}`);
-    if (el) el.textContent = sebaran + taskHours;
-    const seb = document.getElementById(`teacher-sebaran-${tid}`);
-    if (seb) seb.textContent = sebaran;
-    const tug = document.getElementById(`teacher-tugas-${tid}`);
-    if (tug) tug.textContent = taskHours ? taskHours + ' JP' : '';
-}
-
-// Add task from modal
-function showAddTask() {
-    new bootstrap.Modal(document.getElementById('addTaskModal')).show();
-}
-
 function addTaskFromModal() {
     const tid = document.getElementById('taskTeacherSelect').value;
-    const name = document.getElementById('taskName').value;
-    const code = document.getElementById('taskCode').value;
-    const hours = parseInt(document.getElementById('taskHours').value) || 0;
-    if (!tid || !name) { alert('Pilih guru dan isi nama tugas.'); return; }
+    const type = document.getElementById('taskTypeSelect').value;
+    if (!tid) { alert('Pilih guru terlebih dahulu.'); return; }
+
+    let taskCode = '';
+    let taskName = '';
+    let hours = 0;
+    let rombelId = null;
+
+    if (type === 'wali_kelas') {
+        const sgId = document.getElementById('taskRombelSelect').value;
+        const sgName = document.querySelector(`#taskRombelSelect option[value="${sgId}"]`)?.text || '';
+        if (!sgId) { alert('Pilih rombel untuk Wali Kelas.'); return; }
+        taskCode = 'wali_kelas';
+        taskName = `Wali Kelas ${sgName}`;
+        hours = 0;
+        rombelId = sgId;
+    } else if (type === 'koordinator') {
+        const mapelId = document.getElementById('koordinatorMapelSelect').value;
+        const mapelName = document.querySelector(`#koordinatorMapelSelect option[value="${mapelId}"]`)?.text || '';
+        if (!mapelId) { alert('Pilih mata pelajaran.'); return; }
+        taskCode = 'koordinator';
+        taskName = `Koordinator ${mapelName}`;
+        hours = 3;
+    } else if (type === 'kesiswaan') {
+        taskCode = 'kesiswaan';
+        taskName = document.getElementById('taskName')?.value || 'Kesiswaan / PD / PO';
+        hours = parseInt(document.getElementById('taskHours')?.value) || 3;
+    } else {
+        taskName = document.getElementById('taskName')?.value;
+        taskCode = 'custom';
+        hours = parseInt(document.getElementById('taskHours')?.value) || 3;
+        if (!taskName) { alert('Isi nama tugas.'); return; }
+    }
 
     if (!activeTasks[tid]) activeTasks[tid] = [];
-    activeTasks[tid].push({ name, code, hours, studyGroupId: null });
+    activeTasks[tid].push({ name: taskName, code: taskCode, hours, studyGroupId: rombelId });
+
+    // Ensure teacher row exists
+    if (!document.getElementById(`teacher-row-${tid}`)) {
+        const teacher = teachers.find(t => t.id === tid);
+        if (!teacher) return;
+        teacherCounter++;
+        activeSubjects[tid] = [];
+        const tbody = document.getElementById('matrixBody');
+        const emptyRow = tbody.querySelector('tr td[colspan]');
+        if (emptyRow) tbody.innerHTML = '';
+        const trow = document.createElement('tr');
+        trow.id = `teacher-row-${tid}`;
+        trow.innerHTML = `
+            <td class="text-center" style="width:25px; border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600;">${teacherCounter}</td>
+            <td style="border-right:1px solid #dee2e6; background:#f8f9fa;">
+                <button type="button" class="btn btn-sm p-0" style="color:#555;" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
+                    <i class="ri-add-circle-line me-1"></i>
+                </button>
+                <span style="font-weight:600; font-size:12px;">${teacher.name}</span>
+            </td>
+            ${sgCells()}
+            <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="teacher-sebaran-${tid}">0</td>
+            <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="teacher-tugas-${tid}"></td>
+            <td class="text-center" style="background:#e8e8e8; width:44px; font-size:11px; font-weight:700;" id="teacher-total-${tid}">0</td>
+            <td style="width:26px;">
+                <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTeacher('${tid}')" title="Hapus Guru">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(trow);
+    }
 
     // Render task row
-    const taskRowsEl = document.getElementById(`task-rows-${tid}`);
     const rowId = `task-row-${tid}-${Date.now()}`;
     const tr = document.createElement('tr');
     tr.id = rowId;
-    tr.className = 'task-row';
+    tr.style = 'background:#f0f0f0; border-top:1px dashed #ccc;';
     tr.innerHTML = `
-        <td style="width:25px;"></td>
-        <td style="padding-left:16px; border-right:1px solid #dee2e6;">
-            <span style="font-size:11px; color:#8b5e00;">${name}</span>
-        </td>
-        ${studyGroups.map(() => `<td style="background:#fffdf5;"></td>`).join('')}
-        <td class="text-center total-col total-sebaran" style="width:48px;"></td>
-        <td class="text-center total-col total-tugas"  style="width:48px; font-weight:700; font-size:12px;">${hours}</td>
-        <td class="text-center total-col total-all"   style="width:44px; font-weight:700; font-size:12px;">${hours}</td>
-        <td style="width:26px; border-left:1px solid #dee2e6;">
-            <button type="button" class="btn btn-sm p-0 del-btn" onclick="removeTask('${tid}', '${rowId}')">
+        <td style="width:25px; border-right:1px solid #dee2e6;"></td>
+        <td style="border-right:1px solid #dee2e6; padding-left:20px; font-size:11px; font-style:italic; color:#666;">${taskName}</td>
+        ${sgCells()}
+        <td class="text-center" style="background:#e8e8e8; width:48px;"></td>
+        <td class="text-center" style="background:#e8e8e8; width:48px; font-weight:600; font-size:11px;">${hours}</td>
+        <td class="text-center" style="background:#e8e8e8; width:44px; font-weight:700; font-size:11px;">${hours}</td>
+        <td style="width:26px;">
+            <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTask('${tid}', '${rowId}')">
                 <i class="ri-delete-bin-line"></i>
             </button>
         </td>
     `;
-    taskRowsEl.appendChild(tr);
+    document.querySelector(`#teacher-row-${tid}`)?.after(tr);
     refreshTotal(tid);
-
-    // Clear form
-    document.getElementById('taskName').value = '';
-    document.getElementById('taskCode').value = '';
-    document.getElementById('taskHours').value = '3';
     bootstrap.Modal.getInstance(document.getElementById('addTaskModal')).hide();
 }
 

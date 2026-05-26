@@ -102,4 +102,44 @@ class DokumenIsoController extends Controller
 
         return redirect()->back()->with('success', 'Dokumen ISO berhasil dihapus.');
     }
+
+    public function subscriptions(string $userId)
+    {
+        $user = \App\Models\User::with('divisiSubscriptions')->findOrFail($userId);
+        $isSuperAdmin = $user->hasRole('Super Admin');
+
+        $allDivisis = \App\Models\Divisi::orderBy('sort_order')->get();
+        $subscribedIds = $user->divisiSubscriptions->pluck('id')->toArray();
+
+        $divisiList = $allDivisis->map(function ($d) use ($subscribedIds) {
+            return [
+                'id'       => $d->id,
+                'nama'     => $d->nama,
+                'kode'     => $d->kode,
+                'subscribed' => in_array($d->id, $subscribedIds),
+            ];
+        });
+
+        return view('dokumen-iso.subscriptions', compact(
+            'user', 'divisiList', 'isSuperAdmin'
+        ));
+    }
+
+    public function subscribe(string $userId, string $divisiId)
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        $divisi = \App\Models\Divisi::findOrFail($divisiId);
+        $user->divisiSubscriptions()->syncWithoutDetaching([$divisi->id]);
+
+        return redirect()->back()->with('success', "Berhasil subscribe ke {$divisi->nama}.");
+    }
+
+    public function unsubscribe(string $userId, string $divisiId)
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        $divisi = \App\Models\Divisi::findOrFail($divisiId);
+        $user->divisiSubscriptions()->detach($divisi->id);
+
+        return redirect()->back()->with('success', "Berhasil unsubscribe dari {$divisi->nama}.");
+    }
 }

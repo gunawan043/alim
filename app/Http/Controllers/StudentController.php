@@ -9,6 +9,8 @@ use App\Models\AcademicYear;
 use App\Models\StudentClassHistory;
 use App\Models\GradeLevel;
 use App\Models\Province;
+use App\Models\StudentMutationIn;
+use App\Models\StudentMutationOut;
 use App\Imports\StudentImport;
 use App\Exports\StudentTemplateExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -208,13 +210,24 @@ class StudentController extends Controller
             $isCurrentRombelOverCapacity = $inClass > $capacity;
         }
 
+        // Mutation stats (bulan ini)
+        $monthStart = now()->startOfMonth();
+        $mutationInCount = StudentMutationIn::whereIn('status', ['approved', 'submitted'])
+            ->whereDate('created_at', '>=', $monthStart)
+            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->count();
+        $mutationOutCount = StudentMutationOut::whereIn('status', ['approved', 'submitted'])
+            ->whereDate('created_at', '>=', $monthStart)
+            ->when($schoolId, fn($q) => $q->whereHas('student', fn($sq) => $sq->where('school_id', $schoolId)))
+            ->count();
+
         return view('students.index', compact(
             'students', 'schools', 'userId',
             'totalAll', 'totalActive',
             'byRombel', 'studyGroup', 'capacity', 'inClass',
             'distribusiPerTingkat', 'isFilteredByClass',
             'provinces', 'overCapacityRombels', 'isCurrentRombelOverCapacity',
-            'gradeLevels',
+            'gradeLevels', 'mutationInCount', 'mutationOutCount',
         ));
     }
 

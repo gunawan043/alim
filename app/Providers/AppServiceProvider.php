@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Student;
 use App\Models\GradeLevel;
 use App\Models\StudyGroup;
+use App\Models\DokumenIso;
 use App\Observers\StudyGroupObserver;
+use App\Observers\DokumenIsoObserver;
 use App\View\Composers\SidebarComposer;
 
 use Illuminate\View\View;
@@ -88,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Observers ───────────────────────────────────────────────
         StudyGroup::observe(StudyGroupObserver::class);
+        DokumenIso::observe(DokumenIsoObserver::class);
     }
 
     /**

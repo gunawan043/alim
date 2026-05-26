@@ -47,6 +47,22 @@ function isActiveSA($routeName, $pattern) {
     return str_starts_with($routeName, $pattern);
 }
 
+function sekolahMenuActive($currentRoute, $hasSekolahContext) {
+    $sekolahPatterns = [
+        'user.students.',
+        'user.absensi.harian.',
+        'user.schools.nilai.',
+        'user.study-groups.',
+        'user.student-achievement.',
+        'user.violation-points.',
+    ];
+    if ($hasSekolahContext) return true;
+    foreach ($sekolahPatterns as $p) {
+        if (str_starts_with($currentRoute, $p)) return true;
+    }
+    return false;
+}
+
 function saMenuActive($patterns = []) {
     global $currentRoute;
     foreach ($patterns as $p) {
@@ -249,69 +265,69 @@ function saMenuActive($patterns = []) {
      2B. OPERASI SEKOLAH
      ============================================================ --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ sekolahMenuActive($currentRoute, $hasSekolahContext) ? ' active' : '' }}"
        href="#manajemen_sekolah" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? 'true' : 'false' }}"
+       aria-expanded="{{ sekolahMenuActive($currentRoute, $hasSekolahContext) ? 'true' : 'false' }}"
        aria-controls="manajemen_sekolah">
         <i class="ri-school-line"></i>
         <span>Operasi Sekolah</span>
         <span class="menu-arrow"></span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveSA($currentRoute, 'user.sekolah.') || $hasSekolahContext ? ' show' : '' }}"
+    <div class="collapse menu-dropdown{{ sekolahMenuActive($currentRoute, $hasSekolahContext) ? ' show' : '' }}"
          id="manajemen_sekolah">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.students.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.students.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.students.') || ($currentRoute === 'user.students.index' && request('sekolahUuid')) ? ' active' : '' }}"
+                   href="{{ isset($sekolahUuid) ? route('user.students.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-user-heart-line me-1"></i> Data Santri
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.absensi.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.absensi.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.absensi.harian.') ? ' active' : '' }}"
+                   href="{{ isset($sekolahUuid) ? route('user.absensi.harian.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-calendar-check-line me-1"></i> Absensi Santri
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.nilai.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.nilai.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.schools.nilai.') ? ' active' : '' }}"
+                   href="{{ isset($sekolahUuid) ? route('user.schools.nilai.index', ['userId' => $userId]) : route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-survey-line me-1"></i> Nilai Santri
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.kelas.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.kelas.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.study-groups.') ? ' active' : '' }}"
+                   href="{{ isset($sekolahUuid) ? route('user.study-groups.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-stack-line me-1"></i> Kelas & Rombel
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.jadwal.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.jadwal.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link"
+                   href="{{ route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-time-line me-1"></i> Jadwal Pelajaran
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.ekskul.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.ekskul.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link"
+                   href="{{ route('user.schools-global.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-basketball-line me-1"></i> Ekstrakurikuler
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.prestasi.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.prestasi.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.student-achievement.') ? ' active' : '' }}"
+                   href="{{ route('user.student-achievement.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-trophy-line me-1"></i> Prestasi
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveSA($currentRoute, 'user.sekolah.pelanggaran.') ? ' active' : '' }}"
-                   href="{{ isset($sekolahUuid) ? route('user.sekolah.pelanggaran.index', ['userId' => $userId, 'sekolahUuid' => $sekolahUuid]) : route('user.schools-global.index', ['userId' => $userId]) }}"
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.violation-points.') ? ' active' : '' }}"
+                   href="{{ route('user.violation-points.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
                     <i class="ri-spam-line me-1"></i> Pelanggaran
                 </a>

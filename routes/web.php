@@ -136,6 +136,7 @@ Route::pattern('uuid',           $uuidPattern);
 Route::pattern('gtk',            $uuidPattern);
 Route::pattern('userId',         $uuidPattern);
 Route::pattern('id',             $uuidPattern);   // <-- FIX UTAMA: global pattern untuk {id}
+Route::pattern('divisiId',      $uuidPattern);
 Route::pattern('schoolId',       $uuidPattern);
 Route::pattern('workUnitId',     $uuidPattern);
 Route::pattern('recruitmentUuid',$uuidPattern);
@@ -732,6 +733,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/',       [DokumenIsoController::class, 'store'])->name('store');
                 Route::put('/{id}',   [DokumenIsoController::class, 'update'])->name('update');
                 Route::delete('/{id}', [DokumenIsoController::class, 'destroy'])->name('destroy');
+                Route::get('/subscriptions',  [DokumenIsoController::class, 'subscriptions'])->name('subscriptions');
+                Route::post('/subscriptions/{divisiId}/subscribe',   [DokumenIsoController::class, 'subscribe'])->name('subscribe');
+                Route::post('/subscriptions/{divisiId}/unsubscribe', [DokumenIsoController::class, 'unsubscribe'])->name('unsubscribe');
             });
 
             // ── DIVISI ──────────────────────────────────────────────

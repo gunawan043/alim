@@ -116,8 +116,8 @@
     </div>
 
     @php
-        $masked_nik   = $student->nik   ? (substr($student->nik, 0, 6) . str_repeat('•', strlen($student->nik) - 10) . substr($student->nik, -4)) : str_repeat('•', 16);
-        $masked_no_kk = $student->no_kk ? (substr($student->no_kk, 0, 6) . str_repeat('•', strlen($student->no_kk) - 10) . substr($student->no_kk, -4)) : str_repeat('•', 16);
+        $masked_nik   = $student->nik   ? (strlen($student->nik) >= 10 ? substr($student->nik, 0, 6) . str_repeat('•', strlen($student->nik) - 10) . substr($student->nik, -4) : str_repeat('•', strlen($student->nik))) : str_repeat('•', 16);
+        $masked_no_kk = $student->no_kk ? (strlen($student->no_kk) >= 10 ? substr($student->no_kk, 0, 6) . str_repeat('•', strlen($student->no_kk) - 10) . substr($student->no_kk, -4) : str_repeat('•', strlen($student->no_kk))) : str_repeat('•', 16);
 
         $activeHistory = $student->classHistories->where('is_active', true)->first();
         $currentRombel = $activeHistory?->studyGroup;
