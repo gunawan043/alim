@@ -1,5 +1,5 @@
 {{-- Rapor GTK: Penilaian Kepribadian --}}
-@extends('layouts.metronics.master')
+@extends('layouts.master')
 
 @section('content')
 <div class="d-flex flex-column flex-lg-row flex-column-fluid">

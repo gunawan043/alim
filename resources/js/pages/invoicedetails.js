@@ -106,7 +106,7 @@ if ((localStorage.getItem("invoices-list") !== null) && (localStorage.getItem("o
                                 <td class="text-end">$` + viewobj.order_summary.estimated_tex + `</td>
                             </tr>
                             <tr>
-                                <td>Discount <small class="text-muted">(VELZON15)</small></td>
+                                <td>Discount <small class="text-muted">(PROMO15)</small></td>
                                 <td class="text-end">- $` + viewobj.order_summary.discount + `</td>
                             </tr>
                             <tr>

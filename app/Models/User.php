@@ -27,11 +27,19 @@ class User extends Authenticatable
         'avatar',
         'is_active',
         'last_login_at',
+        'google_id',
+        'no_kk',
+        'nik_wali',
+        'no_hp',
+        'hubungan',
+        'is_wali',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'google_id',
+        'google_token',
     ];
 
     protected $casts = [
@@ -42,13 +50,33 @@ class User extends Authenticatable
         'locked_at' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
+        'is_wali' => 'boolean',
         'failed_login_attempts' => 'integer',
+        'google_id' => 'string',
+        'no_kk' => 'string',
+        'nik_wali' => 'string',
+        'no_hp' => 'string',
+        'hubungan' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
 
-    // RELATIONSHIPS
+    // ── Wali Relations ───────────────────────────────────────────────────────
+
+    public function students()
+    {
+        return $this->hasManyThrough(
+            Student::class,
+            WaliSantri::class,
+            'user_id',
+            'id',
+            'id',
+            'student_id'
+        )->where('wali_santri.status', WaliSantri::STATUS_ACTIVE);
+    }
+
+    // ── Relations ─────────────────────────────────────────────────────────────
     public function gtkProfile()
     {
         return $this->hasOne(GtkProfile::class);
@@ -195,11 +223,11 @@ class User extends Authenticatable
             ->where('locked_until', '>', now());
     }
 
-    public function incrementFailedLoginAttempts()
+    public function incrementFailedLoginAttempts(): void
     {
         $this->failed_login_attempts += 1;
 
-        if ($this->failed_login_attempts >= 5) {
+        if ($this->failed_login_attempts >= 9) {
             $this->locked_until = now()->addHours(24);
             $this->locked_at = now();
         }
@@ -207,7 +235,7 @@ class User extends Authenticatable
         $this->save();
     }
 
-    public function resetFailedLoginAttempts()
+    public function resetFailedLoginAttempts(): void
     {
         $this->failed_login_attempts = 0;
         $this->locked_until = null;
@@ -302,6 +330,35 @@ class User extends Authenticatable
             return substr($no_kk, 0, 4) . '••••••••' . substr($no_kk, -4);
         }
         return str_repeat('•', 16);
+    }
+
+    // ── Wali-Santri relationships ──────────────────────────────────────────
+
+    public function waliSantri()
+    {
+        return $this->hasMany(WaliSantri::class, 'user_id');
+    }
+
+    public function activeWaliSantri()
+    {
+        return $this->hasMany(WaliSantri::class, 'user_id')->where('status', 'active');
+    }
+
+    public function linkedStudents()
+    {
+        return $this->belongsToMany(
+            Student::class,
+            'wali_santri',
+            'user_id',
+            'student_id'
+        )->withPivot(['role', 'is_primary', 'status', 'created_at'])
+         ->wherePivot('status', 'active')
+         ->withTimestamps();
+    }
+
+    public function verifiedWaliLinks()
+    {
+        return $this->hasMany(WaliSantri::class, 'verified_by');
     }
 
     public function recruitmentProfile()

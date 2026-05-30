@@ -1086,18 +1086,20 @@ File: Main Js File
             });
 
             var removeItem = document.getElementById('removeNotificationModal');
-            removeItem.addEventListener('show.bs.modal', function (event) {
-                document.getElementById("delete-notification").addEventListener("click", function () {
-                    Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
-                        if (element.classList.contains("active")) {
-                            element.remove();
-                        }
-                    });
-                    emptyNotification();
+            if (removeItem) {
+                removeItem.addEventListener('show.bs.modal', function (event) {
+                    document.getElementById("delete-notification").addEventListener("click", function () {
+                        Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
+                            if (element.classList.contains("active")) {
+                                element.remove();
+                            }
+                        });
+                        emptyNotification();
 
-                    document.getElementById("NotificationModalbtn-close").click();
+                        document.getElementById("NotificationModalbtn-close").click();
+                    })
                 })
-            })
+            }
         }
     }
 

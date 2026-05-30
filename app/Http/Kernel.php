@@ -40,6 +40,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ShareRoleId::class,
             \App\Http\Middleware\SchoolContextMiddleware::class,
+            \App\Http\Middleware\CheckIpBlocked::class,
         ],
 
         'api' => [
@@ -71,5 +72,7 @@ class Kernel extends HttpKernel
         'role.level' => \App\Http\Middleware\RoleLevelMiddleware::class,
         'role.access' => \App\Http\Middleware\EnsureRoleAccess::class,
         'school.context' => \App\Http\Middleware\SchoolContextMiddleware::class,
+        'ip.blocked' => \App\Http\Middleware\CheckIpBlocked::class,
+        'employee.access' => \App\Http\Middleware\EnsureEmployeeAccess::class,
     ];
 }

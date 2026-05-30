@@ -102,7 +102,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -166,7 +166,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -230,7 +230,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -294,7 +294,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -358,7 +358,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -422,7 +422,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -486,7 +486,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -550,7 +550,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -614,7 +614,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -678,7 +678,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -742,7 +742,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -806,7 +806,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -870,7 +870,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -934,7 +934,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -998,7 +998,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1062,7 +1062,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1126,7 +1126,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1190,7 +1190,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1254,7 +1254,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1318,7 +1318,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1382,7 +1382,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',
@@ -1446,7 +1446,7 @@ var Invoices = [{
     },
     company_details: {
         legal_registration_no: "987654",
-        email: 'velzon@gunawan_wawan43.com',
+        email: 'admin@example.com',
         website: 'www.gunawan_wawan43.com',
         contact_no: '0123456789',
         address: 'California, United States',

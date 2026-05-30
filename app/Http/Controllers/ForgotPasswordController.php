@@ -30,9 +30,9 @@ class ForgotPasswordController extends Controller
 
             $otp = random_int(100000, 999999);
 
-            // Gunakan user_uuid untuk referensi
+            // Gunakan user_id (foreignUuid ke users.id yang merupakan UUID) untuk referensi
             PasswordOtp::updateOrCreate(
-                ['user_uuid' => $user->uuid],
+                ['user_id' => $user->id],
                 [
                     'uuid' => Str::uuid(),
                     'otp_hash' => Hash::make($otp),
@@ -49,12 +49,17 @@ class ForgotPasswordController extends Controller
                 // Jangan throw error, tapi log saja
             }
 
-            // Simpan user_uuid di session
-            session(['reset_user_uuid' => $user->uuid]);
+            // Simpan user_id dan email di session (bukan flash, agar survive redirect)
+            session(['reset_user_uuid' => $user->id]);
+            session(['reset_email' => $user->email]);
+
+            $savedOtp = PasswordOtp::where('user_id', $user->id)->first();
+
+            // Simpan expiry timestamp di session agar survive refresh
+            session(['otp_expires_at' => $savedOtp->expires_at->timestamp]);
 
             return redirect()->route('password.otp.form')
-                ->with('status', 'Kode OTP dikirim ke email Anda.')
-                ->with('email', $user->email);
+                ->with('status', 'Kode OTP dikirim ke email Anda.');
                 
         } catch (\Exception $e) {
             Log::error('Error sending OTP: ' . $e->getMessage());
@@ -72,8 +77,16 @@ class ForgotPasswordController extends Controller
                 ->with('error', 'Sesi tidak valid. Silakan request OTP lagi.');
         }
 
+        $otpData = PasswordOtp::where('user_id', session('reset_user_uuid'))
+            ->where('expires_at', '>', now())
+            ->first();
+
+        $expiresAt = $otpData?->expires_at
+            ?? (session()->has('otp_expires_at') ? now()->setTimestamp((int) session('otp_expires_at')) : null);
+
         return view('auth.passwords.verify-otp', [
-            'email' => session('email')
+            'email' => session('email'),
+            'expiresAt' => $expiresAt,
         ]);
     }
 
@@ -90,7 +103,7 @@ class ForgotPasswordController extends Controller
         }
 
         try {
-            $otpData = PasswordOtp::where('user_uuid', session('reset_user_uuid'))
+            $otpData = PasswordOtp::where('user_id', session('reset_user_uuid'))
                 ->where('expires_at', '>', now())
                 ->first();
 
@@ -151,12 +164,17 @@ class ForgotPasswordController extends Controller
                 ->with('error', 'Sesi tidak valid. Silakan mulai dari awal.');
         }
 
-        return view('auth.passwords.reset');
+        $userEmail = User::where('id', session('reset_user_uuid'))->value('email');
+
+        return view('auth.passwords.reset', [
+            'email' => $userEmail,
+        ]);
     }
 
     public function resetPassword(Request $request)
     {
         $request->validate([
+            'email' => 'required|email|exists:users,email',
             'password' => 'required|min:8|confirmed',
         ]);
 
@@ -166,7 +184,7 @@ class ForgotPasswordController extends Controller
         }
 
         try {
-            $user = User::where('uuid', session('reset_user_uuid'))->firstOrFail();
+            $user = User::where('id', session('reset_user_uuid'))->firstOrFail();
 
             // Update password
             $user->update([
@@ -174,7 +192,7 @@ class ForgotPasswordController extends Controller
             ]);
 
             // Hapus semua OTP untuk user ini
-            PasswordOtp::where('user_uuid', $user->uuid)->delete();
+            PasswordOtp::where('user_id', $user->id)->delete();
 
             // Clear semua session terkait
             session()->forget([
@@ -207,12 +225,12 @@ class ForgotPasswordController extends Controller
         }
 
         try {
-            $user = User::where('uuid', session('reset_user_uuid'))->firstOrFail();
+            $user = User::where('id', session('reset_user_uuid'))->firstOrFail();
 
             $otp = random_int(100000, 999999);
 
             PasswordOtp::updateOrCreate(
-                ['user_uuid' => $user->uuid],
+                ['user_id' => $user->id],
                 [
                     'uuid' => Str::uuid(),
                     'otp_hash' => Hash::make($otp),
@@ -221,6 +239,8 @@ class ForgotPasswordController extends Controller
                 ]
             );
 
+            $newOtpData = PasswordOtp::where('user_id', $user->id)->first();
+
             // Kirim email OTP
             try {
                 Mail::to($user->email)
@@ -228,6 +248,9 @@ class ForgotPasswordController extends Controller
             } catch (\Exception $e) {
                 Log::error('Error resending OTP email: ' . $e->getMessage());
             }
+
+            // Simpan expiry timestamp di session agar survive refresh
+            session(['otp_expires_at' => $newOtpData->expires_at->timestamp]);
 
             return back()->with('status', 'Kode OTP baru telah dikirim ke email Anda.')
                          ->with('email', $user->email);
@@ -255,7 +278,7 @@ class ForgotPasswordController extends Controller
         }
 
         try {
-            $otpData = PasswordOtp::where('user_uuid', session('reset_user_uuid'))
+            $otpData = PasswordOtp::where('user_id', session('reset_user_uuid'))
                 ->where('expires_at', '>', now())
                 ->where('is_used', false)
                 ->first();
@@ -293,7 +316,7 @@ class ForgotPasswordController extends Controller
     {
         // Hapus OTP yang belum digunakan
         if (session('reset_user_uuid')) {
-            PasswordOtp::where('user_uuid', session('reset_user_uuid'))
+            PasswordOtp::where('user_id', session('reset_user_uuid'))
                 ->where('is_used', false)
                 ->delete();
         }

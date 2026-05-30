@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\AccessValidatorController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\SecureAccessController;
@@ -176,6 +177,10 @@ Route::get('/login',  [LoginController::class, 'showLogin'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.process');
 Route::post('/logout',[LoginController::class, 'logout'])->name('logout');
 
+// ── Public Auth Routes ──────────────────────────────────────────────
+Route::get('/access-denied', fn() => view('errors.wali-santri-blocked'))->name('access-denied');
+Route::get('/auth/validator', [AccessValidatorController::class, 'show'])->middleware('auth')->name('auth.validator');
+Route::post('/auth/validator/verify', [AccessValidatorController::class, 'verify'])->middleware('auth')->name('auth.validator.verify');
 
 Route::middleware('guest')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
@@ -196,7 +201,7 @@ Route::middleware('guest')->group(function () {
 | AUTHENTICATED ROUTES — ALL under /{userId}
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'employee.access'])->group(function () {
 
     Route::get('/', [HomeController::class, 'root'])->name('root');
 
@@ -224,7 +229,7 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('{userId}')
-        ->middleware(['auth', 'role.access', 'school.context'])
+        ->middleware(['auth', 'employee.access', 'role.access', 'school.context'])
         ->name('user.')
         ->group(function () {
 
@@ -1314,6 +1319,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])->name('users.unlock');
+                Route::post('/ip-unblock', [UserSecurityController::class, 'unblockIp'])->name('ip.unblock');
             });
 
             // ── SARANA PRASARANA (MANDIRI) ─────────────────────────

@@ -17,7 +17,7 @@
     <!-- HEADER -->
     <tr>
         <td style="background:#0f4c9e;padding:20px;text-align:center">
-            <img src="{{ asset('images/logo-email.png') }}"
+            <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png"
                  alt="ALIM"
                  height="70"
                  style="display:block;margin:auto">

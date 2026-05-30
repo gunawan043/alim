@@ -1,141 +1,68 @@
-@extends('layouts.master-without-nav')
-@section('title')
-@lang('translation.reset-mail')
-@endsection
-@section('content')
-
-        <div class="auth-page-wrapper pt-5">
-            <!-- auth page bg -->
-            <div class="auth-one-bg-position auth-one-bg"  id="auth-particles">
-                <div class="bg-overlay"></div>
-
-                <div class="shape">
-                    <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1440 120">
-                        <path d="M 0,36 C 144,53.6 432,123.2 720,124 C 1008,124.8 1296,56.8 1440,40L1440 140L0 140z"></path>
-                    </svg>
-                </div>
-            </div>
-
-            <!-- auth page content -->
-            <div class="auth-page-content">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="text-center mt-sm-5 mb-4 text-white-50">
-                                <div>
-                                    <a href="index" class="d-inline-block auth-logo">
-                                        <img src="{{ URL::asset('build/images/logo-light.png') }}" alt="" height="20">
-                                    </a>
-                                </div>
-                                <p class="mt-3 fs-15 fw-medium">Academic Learning & Information Management</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- end row -->
-
-                    <div class="row justify-content-center">
-                        <div class="col-md-8 col-lg-6 col-xl-5">
-                            <div class="card mt-4">
-
-                                <div class="card-body p-4">
-                                    <div class="mb-4">
-                                        <div class="avatar-lg mx-auto">
-                                            <div class="avatar-title bg-light text-primary display-5 rounded-circle">
-                                                <i class="ri-mail-line"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="p-2 mt-4">
-                                        <div class="text-muted text-center mb-4 mx-lg-3">
-                                            <h4 class="">Verify Your Email</h4>
-                                            <p>Please enter the 4 digit code sent to <span class="fw-semibold">example@abc.com</span></p>
-                                        </div>
-
-                                        <form>
-                                            <div class="row">
-                                                <div class="col-3">
-                                                    <div class="mb-3">
-                                                        <label for="digit1-input" class="visually-hidden">Dight 1</label>
-                                                        <input type="text"
-                                                            class="form-control form-control-lg bg-light border-light text-center"
-                                                            onkeyup="moveToNext(this, 2)" maxLength="1"
-                                                            id="digit1-input">
-                                                    </div>
-                                                </div><!-- end col -->
-
-                                                <div class="col-3">
-                                                    <div class="mb-3">
-                                                        <label for="digit2-input" class="visually-hidden">Dight 2</label>
-                                                        <input type="text"
-                                                            class="form-control form-control-lg bg-light border-light text-center"
-                                                            onkeyup="moveToNext(this, 3)" maxLength="1"
-                                                            id="digit2-input">
-                                                    </div>
-                                                </div><!-- end col -->
-
-                                                <div class="col-3">
-                                                    <div class="mb-3">
-                                                        <label for="digit3-input" class="visually-hidden">Dight 3</label>
-                                                        <input type="text"
-                                                            class="form-control form-control-lg bg-light border-light text-center"
-                                                            onkeyup="moveToNext(this, 4)" maxLength="1"
-                                                            id="digit3-input">
-                                                    </div>
-                                                </div><!-- end col -->
-
-                                                <div class="col-3">
-                                                    <div class="mb-3">
-                                                        <label for="digit4-input" class="visually-hidden">Dight 4</label>
-                                                        <input type="text"                          class="form-control form-control-lg bg-light border-light text-center"
-                                                            onkeyup="moveToNext(this, 4)" maxLength="1"
-                                                            id="digit4-input">
-                                                    </div>
-                                                </div><!-- end col -->
-                                            </div>
-                                        </form><!-- end form -->
-
-                                        <div class="mt-3">
-                                            <button type="button" class="btn btn-success w-100">Confirm</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- end card body -->
-                            </div>
-                            <!-- end card -->
-
-                            <div class="mt-4 text-center">
-                                <p class="mb-0">Didn't receive a code ? <a href="auth-pass-reset-basic" class="fw-semibold text-primary text-decoration-underline">Resend</a> </p>
-                            </div>
-
-                        </div>
-                    </div>
-                    <!-- end row -->
-                </div>
-                <!-- end container -->
-            </div>
-            <!-- end auth page content -->
-
-            <!-- footer -->
-            <footer class="footer">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="text-center">
-                                <p class="mb-0 text-muted">&copy; <script>document.write(new Date().getFullYear())</script> Alim. Crafted with <i class="mdi mdi-heart text-danger"></i> by friday</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-            <!-- end Footer -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Email | ALIM</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #001e2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image: linear-gradient(rgba(0,89,129,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,89,129,0.06) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none; z-index: 0;
+        }
+        .bg-glow { position: fixed; border-radius: 50%; filter: blur(140px); pointer-events: none; z-index: 0; }
+        .glow-1 { width: 700px; height: 700px; background: #005981; opacity: 0.09; top: -200px; left: -150px; }
+        .glow-2 { width: 500px; height: 500px; background: #ffae01; opacity: 0.07; bottom: -150px; right: -100px; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .logo-mark { position: fixed; top: 1.75rem; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo-mark img { height: 30px; opacity: 0.75; }
+        .logo-mark span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,89,129,0.5); }
+        .container { position: relative; z-index: 10; text-align: center; max-width: 480px; padding: 2rem; animation: fadeInUp 0.6s ease-out; }
+        .success-icon { display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; background: rgba(0,89,129,0.15); border: 1.5px solid rgba(0,89,129,0.4); border-radius: 24px; margin-bottom: 1.5rem; animation: float 4s ease-in-out infinite; }
+        .success-icon i { font-size: 2.5rem; color: #ffae01; }
+        .error-title { font-size: 1.5rem; font-weight: 700; color: #e0eaf2; margin-bottom: 0.5rem; }
+        .error-desc { font-size: 0.9rem; color: #7a9ab5; line-height: 1.7; margin-bottom: 1.5rem; }
+        .alert-box { background: rgba(0,89,129,0.1); border: 1px solid rgba(0,89,129,0.25); border-radius: 18px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left; font-size: 0.875rem; color: #8aaecf; line-height: 1.6; }
+        .alert-box i { color: #ffae01; margin-right: 6px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 10px; font-size: 0.875rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-primary { background: linear-gradient(135deg, #005981, #004a67); color: #fff; border: 1px solid rgba(0,89,129,0.5); box-shadow: 0 4px 14px rgba(0,89,129,0.25); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,89,129,0.35); }
+        .footer-note { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.73rem; color: #2a4a60; white-space: nowrap; z-index: 20; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+    <a href="{{ url('/') }}" class="logo-mark">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png" alt="ALIM">
+        <span>ALIM</span>
+    </a>
+    <div class="container">
+        <div class="success-icon"><i class="ri-mail-check-line"></i></div>
+        <h1 class="error-title">Link Verifikasi Terkirim!</h1>
+        <p class="error-desc">Kami telah mengirim link verifikasi ke email Anda. Silakan buka email dan klik tautan tersebut untuk mengaktifkan akun.</p>
+        <div class="alert-box"><i class="ri-time-line"></i> Link verifikasi berlaku selama 60 menit.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a href="{{ url('/') }}" class="btn btn-primary"><i class="ri-home-4-line"></i> Kembali ke Beranda</a>
         </div>
-        <!-- end auth-page-wrapper -->
-
-
-@endsection
-@section('script')
-    <script src="{{ URL::asset('build/libs/particles.js/particles.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/particles.app.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/two-step-verification.init.js') }}"></script>
-@endsection
+    </div>
+    <div class="footer-note">&copy; {{ date('Y') }} ALIM &mdash; Ponpes Abu Hurairah Mataram</div>
+</body>
+</html>

@@ -1,127 +1,65 @@
-@@extends('layouts.master-without-nav')
-@section('title')
-@lang('translation.reset-mail')
-@endsection
-@section('content')
-
-        <div class="auth-page">
-            <div class="container-fluid p-0">
-                <div class="row g-0 align-items-center">
-                    <div class="col-xxl-4 col-lg-4 col-md-6">
-                        <div class="row justify-content-center g-0">
-                            <div class="col-xl-9">
-                               <div class="p-4">
-                                    <div class="card mb-0">
-                                        <div class="card-body">
-                                            <div class="auth-full-page-content rounded d-flex p-3 my-2">
-                                                <div class="w-100">
-                                                    <div class="d-flex flex-column h-100">
-                                                        <div class="mb-4 mb-md-5">
-                                                            <a href="index" class="d-block auth-logo">
-                                                                <img src="{{ URL::asset('build/images/logo-dark.png')}}" alt="" height="22" class="auth-logo-dark me-start">
-                                                                <img src="{{ URL::asset('build/images/logo-light.png')}}" alt="" height="22" class="auth-logo-light me-start">
-                                                            </a>
-                                                        </div>
-                                                        <div class="auth-content my-auto">
-                                                            <div class="text-center">
-                                                                <div class="avatar-md mx-auto">
-                                                                    <div class="avatar-title rounded-circle bg-light">
-                                                                        <i class="bx bx-mail-send h2 mb-0 text-primary"></i>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="mt-4">
-                                                                    <h4>Success !</h4>
-                                                                    <p class="text-muted">At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et</p>
-                                                                    <div class="mt-4">
-                                                                        <a href="index" class="btn btn-primary w-100">Back to Home</a>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-4 text-center">
-                                                            <p class="mb-0">© <script>document.write(new Date().getFullYear())</script> Borex   . Crafted with <i class="mdi mdi-heart text-danger"></i> by friday</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                               </div>
-                            </div>
-                        </div>
-                        <!-- end auth full page content -->
-                    </div>
-                    <!-- end col -->
-                    <div class="col-xxl-8 col-lg-8 col-md-6">
-                        <div class="auth-bg bg-white py-md-5 p-4 d-flex">
-                            <div class="bg-overlay bg-white"></div>
-                            <!-- end bubble effect -->
-                            <div class="row justify-content-center align-items-center">
-                                <div class="col-xl-8">
-                                    <div class="mt-4">
-                                        <img src="{{URL::asset('build/images/login-img.png')}}" class="img-fluid" alt="">
-                                    </div>
-                                    <div class="p-0 p-sm-4 px-xl-0 py-5">
-                                        <div id="reviewcarouselIndicators" class="carousel slide auth-carousel" data-bs-ride="carousel">
-                                            <div class="carousel-indicators carousel-indicators-rounded">
-                                                <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-                                                <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                                                <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
-                                            </div>
-
-                                            <!-- end carouselIndicators -->
-                                            <div class="carousel-inner w-75 mx-auto">
-                                                <div class="carousel-item active">
-                                                    <div class="testi-contain text-center">
-                                                        <h5 class="font-size-20 mt-4">“I feel confident
-                                                            imposing change
-                                                            on myself”
-                                                        </h5>
-                                                        <p class="font-size-15 text-muted mt-3 mb-0">Vestibulum auctor orci in risus iaculis consequat suscipit felis rutrum aliquet iaculis
-                                                            augue sed tempus In elementum ullamcorper lectus vitae pretium Aenean sed odio dolor Nullam ultricies diam
-                                                            eu ultrices tellus eifend sagittis.</p>
-                                                    </div>
-                                                </div>
-
-                                                <div class="carousel-item">
-                                                    <div class="testi-contain text-center">
-                                                        <h5 class="font-size-20 mt-4">“Our task must be to
-                                                            free widening our circle”</h5>
-                                                        <p class="font-size-15 text-muted mt-3 mb-0">
-                                                            Curabitur eget nulla eget augue dignissim condintum Nunc imperdiet ligula porttitor commodo elementum
-                                                            Vivamus justo risus fringilla suscipit faucibus orci luctus
-                                                            ultrices posuere cubilia curae lectus non ultricies cursus.
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div class="carousel-item">
-                                                    <div class="testi-contain text-center">
-                                                        <h5 class="font-size-20 mt-4">“I've learned that
-                                                            people will forget what you”</h5>
-                                                        <p class="font-size-15 text-muted mt-3 mb-0">
-                                                            Pellentesque lacinia scelerisque arcu in aliquam augue molestie rutrum magna Fusce dignissim dolor id auctor accumsan
-                                                            vehicula dolor
-                                                            vivamus feugiat odio erat sed vehicula lorem tempor quis Donec nec scelerisque magna
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <!-- end carousel-inner -->
-                                        </div>
-                                        <!-- end review carousel -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- end col -->
-                </div>
-                <!-- end row -->
-            </div>
-            <!-- end container fluid -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konfirmasi Reset Password | ALIM</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #001e2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .bg-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,89,129,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,89,129,0.06) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+        .bg-glow { position: fixed; border-radius: 50%; filter: blur(140px); pointer-events: none; z-index: 0; }
+        .glow-1 { width: 700px; height: 700px; background: #005981; opacity: 0.09; top: -200px; left: -150px; }
+        .glow-2 { width: 500px; height: 500px; background: #ffae01; opacity: 0.07; bottom: -150px; right: -100px; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .logo-mark { position: fixed; top: 1.75rem; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo-mark img { height: 30px; opacity: 0.75; }
+        .logo-mark span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,89,129,0.5); }
+        .container { position: relative; z-index: 10; text-align: center; max-width: 480px; padding: 2rem; animation: fadeInUp 0.6s ease-out; }
+        .success-icon { display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; background: rgba(0,89,129,0.15); border: 1.5px solid rgba(0,89,129,0.4); border-radius: 24px; margin-bottom: 1.5rem; animation: float 4s ease-in-out infinite; }
+        .success-icon i { font-size: 2.5rem; color: #ffae01; }
+        .error-title { font-size: 1.5rem; font-weight: 700; color: #e0eaf2; margin-bottom: 0.5rem; }
+        .error-desc { font-size: 0.9rem; color: #7a9ab5; line-height: 1.7; margin-bottom: 1.5rem; }
+        .alert-box { background: rgba(0,89,129,0.1); border: 1px solid rgba(0,89,129,0.25); border-radius: 18px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left; font-size: 0.875rem; color: #8aaecf; line-height: 1.6; }
+        .alert-box i { color: #ffae01; margin-right: 6px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 10px; font-size: 0.875rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-primary { background: linear-gradient(135deg, #005981, #004a67); color: #fff; border: 1px solid rgba(0,89,129,0.5); box-shadow: 0 4px 14px rgba(0,89,129,0.25); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,89,129,0.35); }
+        .btn-accent { background: linear-gradient(135deg, #ffae01, #e69500); color: #001e2e; box-shadow: 0 4px 14px rgba(255,174,1,0.25); }
+        .btn-accent:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,174,1,0.35); }
+        .footer-note { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.73rem; color: #2a4a60; white-space: nowrap; z-index: 20; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+    <a href="{{ url('/') }}" class="logo-mark">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png" alt="ALIM">
+        <span>ALIM</span>
+    </a>
+    <div class="container">
+        <div class="success-icon"><i class="ri-lock-unlock-line"></i></div>
+        <h1 class="error-title">Password Berhasil Diatur Ulang!</h1>
+        <p class="error-desc">Password akun Anda telah berhasil diperbarui. Silakan login dengan password baru.</p>
+        <div class="alert-box"><i class="ri-shield-check-line"></i> Jika Anda tidak merasa melakukan reset password, segera hubungi HRD.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a href="{{ route('login') }}" class="btn btn-primary"><i class="ri-home-4-line"></i> Login Sekarang</a>
         </div>
-        @endsection
-@section('script')
-    <script src="{{ URL::asset('build/js/pages/eva-icon.init.js') }}"></script>
-@endsection
+    </div>
+    <div class="footer-note">&copy; {{ date('Y') }} ALIM &mdash; Ponpes Abu Hurairah Mataram</div>
+</body>
+</html>

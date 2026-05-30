@@ -1,173 +1,316 @@
-@extends('layouts.master-without-nav')
-@section('title')
-@lang('translation.two-step-verification')
-@endsection
-@section('content')
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi OTP | ALIM</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <div class="auth-page-wrapper pt-5">
-            <!-- auth page bg -->
-            <div class="auth-one-bg-position auth-one-bg"  id="auth-particles">
-                <div class="bg-overlay"></div>
+        body {
+            font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #001e2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-                <div class="shape">
-                    <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1440 120">
-                        <path d="M 0,36 C 144,53.6 432,123.2 720,124 C 1008,124.8 1296,56.8 1440,40L1440 140L0 140z"></path>
-                    </svg>
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 89, 129, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 89, 129, 0.06) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-1 { width: 700px; height: 700px; background: #005981; opacity: 0.09; top: -200px; left: -150px; }
+        .glow-2 { width: 500px; height: 500px; background: #ffae01; opacity: 0.07; bottom: -150px; right: -100px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-mark {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .logo-mark img { height: 68px; }
+        .logo-mark span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0, 89, 129, 0.5); }
+
+        .auth-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 440px;
+            padding: 2rem 1.5rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .auth-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(0, 89, 129, 0.2);
+            border-radius: 24px;
+            padding: 2.25rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            background: rgba(0, 89, 129, 0.12);
+            border: 1.5px solid rgba(0, 89, 129, 0.3);
+            border-radius: 20px;
+            margin-bottom: 1rem;
+        }
+        .auth-icon i { font-size: 1.75rem; color: #ffae01; }
+
+        .auth-title-main {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #4a6a80;
+            margin-bottom: 0.3rem;
+        }
+        .auth-title-sub {
+            font-size: 0.8rem;
+            color: #7a9ab5;
+        }
+
+        .otp-inputs {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .otp-digit {
+            width: 48px;
+            height: 54px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: rgba(0, 89, 129, 0.06);
+            border: 1.5px solid rgba(0, 89, 129, 0.25);
+            border-radius: 12px;
+            color: #00416c;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .otp-digit::placeholder { color: #2a4a60; }
+        .otp-digit:focus {
+            border-color: #005981;
+            box-shadow: 0 0 0 3px rgba(0, 89, 129, 0.12);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #005981, #004a67);
+            color: #fff;
+            border: 1px solid rgba(0, 89, 129, 0.5);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(0, 89, 129, 0.25);
+        }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 89, 129, 0.35); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .resend-text {
+            text-align: center;
+            font-size: 0.82rem;
+            color: #7a9ab5;
+            margin-top: 1.25rem;
+        }
+        .resend-text a { color: #ffae01; text-decoration: none; font-weight: 600; }
+        .resend-text a:hover { text-decoration: underline; }
+
+        .alert-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 174, 1, 0.08);
+            border: 1px solid rgba(255, 174, 1, 0.25);
+            color: #b87a00;
+            text-align: left;
+        }
+        .alert-box i { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+        .timer-text {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #7a9ab5;
+            margin-top: 0.75rem;
+        }
+        .timer-text span { font-weight: 700; color: #ffae01; }
+        .timer-expired span { color: #ff6464; }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.73rem;
+            color: #2a4a60;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+
+    <a href="{{ url('/') }}" class="logo-mark">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-dark.png" alt="ALIM">
+    </a>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+
+            <div class="auth-header">
+                <div class="auth-icon">
+                    <i class="ri-shield-check-line"></i>
                 </div>
+                <div class="auth-title-main">Verifikasi Email</div>
+                <div class="auth-title-sub">Masukkan 6 digit kode OTP yang dikirim ke email Anda</div>
             </div>
 
-            <!-- auth page content -->
-            <div class="auth-page-content">
-                <div class="container">
-                    
-                    <div class="row justify-content-center">
-                        <div class="col-md-8 col-lg-6 col-xl-5">
-                            <div class="card mt-4">
-
-                                <div class="card-body p-4">
-                                    <div class="col-lg-12">
-                                        <div class="text-center  mb-4 text-white-50">
-                                            <div>
-                                                <a href="index" class="d-inline-block auth-logo">
-                                                    <img src="{{ URL::asset('build/images/logo-dark.png') }}" alt="" height="70">
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="p-2 mt-4">
-
-                                        <div class="text-muted text-center mb-4">
-                                            <h4>Verifikasi Email</h4>
-                                            <p>Masukkan 6 digit kode OTP yang dikirim ke email Anda</p>
-                                        </div>
-
-                                        <form method="POST" action="{{ route('password.otp.verify') }}" id="otp-form" autocomplete="off">
-                                            @csrf
-
-                                            <input type="hidden" name="otp" id="otp">
-
-                                            <div class="row justify-content-center gap-1">
-                                                @for ($i = 1; $i <= 6; $i++)
-                                                    <div class="col-lg-1" style="width: 50px; padding: 0;">
-                                                        <input
-                                                            type="text"
-                                                            class="form-control form-control-lg text-center otp-input"
-                                                            maxlength="1"
-                                                            data-index="{{ $i }}"
-                                                            inputmode="numeric"
-                                                            pattern="[0-9]*"
-                                                            required
-                                                        >
-                                                    </div>
-                                                @endfor
-                                            </div>
-
-                                            @error('otp')
-                                                <div class="alert alert-danger mt-3 text-center">
-                                                    {{ $message }}
-                                                </div>
-                                            @enderror
-
-                                            <div class="mt-4">
-                                                <button type="submit" class="btn btn-success w-100">
-                                                    Verifikasi OTP
-                                                </button>
-                                            </div>
-
-                                        </form>
-                                    </div>
-
-                                </div>
-                                <!-- end card body -->
-                            </div>
-                            <!-- end card -->
-                            <script>
-                                document.addEventListener('DOMContentLoaded', () => {
-                                    const inputs = document.querySelectorAll('.otp-input');
-                                    const otpHidden = document.getElementById('otp');
-
-                                    inputs.forEach((input, index) => {
-
-                                        input.addEventListener('input', (e) => {
-                                            input.value = input.value.replace(/[^0-9]/g, '');
-
-                                            if (input.value && index < inputs.length - 1) {
-                                                inputs[index + 1].focus();
-                                            }
-
-                                            updateOtp();
-                                        });
-
-                                        input.addEventListener('keydown', (e) => {
-                                            if (e.key === 'Backspace' && !input.value && index > 0) {
-                                                inputs[index - 1].focus();
-                                            }
-                                        });
-
-                                        input.addEventListener('paste', (e) => {
-                                            e.preventDefault();
-                                            const data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-                                            data.split('').forEach((num, i) => {
-                                                if (inputs[i]) inputs[i].value = num;
-                                            });
-                                            updateOtp();
-                                            inputs[Math.min(data.length, 5)].focus();
-                                        });
-                                    });
-
-                                    function updateOtp() {
-                                        otpHidden.value = Array.from(inputs).map(i => i.value).join('');
-                                    }
-                                });
-                            </script>
-
-
-                            <div class="mt-4 text-center">
-                                OTP berlaku <span id="timer">10:00</span>
-                            </div>
-
-                            <script>
-                                let time = 600;
-                                setInterval(() => {
-                                    let m = Math.floor(time/60);
-                                    let s = time%60;
-                                    document.getElementById('timer').innerText =
-                                        m+":"+(s<10?'0':'')+s;
-                                    time--;
-                                },1000);
-                            </script>
-
-                        </div>
-                    </div>
-                    <!-- end row -->
+            @error('otp')
+                <div class="alert-box">
+                    <i class="ri-error-warning-line"></i>
+                    <span>{{ $message }}</span>
                 </div>
-                <!-- end container -->
-            </div>
-            <!-- end auth page content -->
+            @enderror
 
-            <!-- footer -->
-            <footer class="footer start-0">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="text-center">
-                                &copy; <script>
-                                    document.write(new Date().getFullYear())
-                                </script> Alim. by Ponpes Abu Hurairah Mataram</p>
-                        </div>
-                        </div>
-                    </div>
+            <form method="POST" action="{{ route('password.otp.verify') }}" id="otp-form" autocomplete="off">
+                @csrf
+                <input type="hidden" name="otp" id="otp">
+
+                <div class="otp-inputs">
+                    @for ($i = 1; $i <= 6; $i++)
+                        <input type="text"
+                               class="otp-digit otp-input"
+                               maxlength="1"
+                               data-index="{{ $i }}"
+                               inputmode="numeric"
+                               pattern="[0-9]*"
+                               required>
+                    @endfor
                 </div>
-            </footer>
-            <!-- end Footer -->
+
+                <button class="btn-submit" type="submit">
+                    <i class="ri-checkbox-circle-line"></i> Verifikasi OTP
+                </button>
+            </form>
+
+            <p class="timer-text" id="timer-wrap">
+                OTP berlaku <span id="timer">--:--</span>
+            </p>
         </div>
-        <!-- end auth-page-wrapper -->
 
+        <div class="footer-note">&copy; {{ date('Y') }} ALIM &mdash; Ponpes Abu Hurairah Mataram</div>
+    </div>
 
-@endsection
-@section('script')
-    <script src="{{ URL::asset('build/libs/particles.js/particles.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/particles.app.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/two-step-verification.init.js') }}"></script>
-@endsection
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var inputs = document.querySelectorAll('.otp-input');
+            var otpHidden = document.getElementById('otp');
+
+            inputs.forEach(function (input, index) {
+                input.addEventListener('input', function (e) {
+                    input.value = input.value.replace(/[^0-9]/g, '');
+                    if (input.value && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                    updateOtp();
+                });
+
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Backspace' && !input.value && index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                });
+
+                input.addEventListener('paste', function (e) {
+                    e.preventDefault();
+                    var data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                    data.split('').forEach(function (num, i) {
+                        if (inputs[i]) inputs[i].value = num;
+                    });
+                    updateOtp();
+                    if (inputs[Math.min(data.length, 5)]) inputs[Math.min(data.length, 5)].focus();
+                });
+            });
+
+            function updateOtp() {
+                if (otpHidden) otpHidden.value = Array.from(inputs).map(function (i) { return i.value; }).join('');
+            }
+
+            // Timer
+            var timerEl = document.getElementById('timer');
+            var timerWrap = document.getElementById('timer-wrap');
+            var expiresAt = {{ $expiresAt?->timestamp ?? 'null' }};
+            var form = document.getElementById('otp-form');
+            var btn = form ? form.querySelector('button[type=submit]') : null;
+
+            if (!expiresAt) {
+                if (timerEl) timerEl.innerText = '00:00';
+            } else {
+                function tick() {
+                    var remaining = expiresAt - Math.floor(Date.now() / 1000);
+                    if (remaining <= 0) {
+                        if (timerEl) timerEl.innerText = '00:00';
+                        if (timerEl) timerEl.style.color = '#ff6464';
+                        if (timerWrap) timerWrap.classList.add('timer-expired');
+                        if (btn) btn.disabled = true;
+                        clearInterval(interval);
+                        return;
+                    }
+                    var m = Math.floor(remaining / 60);
+                    var s = remaining % 60;
+                    if (timerEl) timerEl.innerText = m + ':' + (s < 10 ? '0' : '') + s;
+                }
+                tick();
+                var interval = setInterval(tick, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
