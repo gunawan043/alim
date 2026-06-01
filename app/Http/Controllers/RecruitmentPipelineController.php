@@ -15,7 +15,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Display pipeline for a specific job.
      */
-    public function index($jobId)
+    public function index(string $userId, $jobId)
     {
         $job = RecruitmentJob::with(['pipeline.stages', 'applications'])->findOrFail($jobId);
         $pipeline = $job->pipeline;
@@ -38,7 +38,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Show pipeline board view.
      */
-    public function board($jobId)
+    public function board(string $userId, $jobId)
     {
         $userId = request()->route('userId');
         $job = RecruitmentJob::with(['pipeline.stages'])->findOrFail($jobId);
@@ -63,7 +63,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Move application to next stage.
      */
-    public function moveToNextStage(Request $request, $applicationId)
+    public function moveToNextStage(Request $request, string $userId, $applicationId)
     {
         $application = RecruitmentApplication::findOrFail($applicationId);
         $currentStage = $application->currentStage;
@@ -108,7 +108,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Move application to a specific stage (drag-and-drop).
      */
-    public function moveToStage(Request $request, $applicationId)
+    public function moveToStage(Request $request, string $userId, $applicationId)
     {
         $request->validate([
             'stage_id' => 'required|exists:recruitment_pipeline_stages,id'
@@ -137,7 +137,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Create custom pipeline for job.
      */
-    public function createPipeline(Request $request, $jobId)
+    public function createPipeline(Request $request, string $userId, $jobId)
     {
         $request->validate([
             'nama_tahapan' => 'required|array',
@@ -183,7 +183,7 @@ class RecruitmentPipelineController extends Controller
     /**
      * Get stage statistics.
      */
-    public function getStatistics($jobId)
+    public function getStatistics(string $userId, $jobId)
     {
         $job = RecruitmentJob::with('pipeline.stages')->findOrFail($jobId);
         

@@ -224,7 +224,7 @@ class WorkUnit extends Model
 
     public function recruitmentJobs()
     {
-        return $this->hasMany(RecruitmentJob::class, 'work_unit_id_uuid', 'uuid');
+        return $this->hasMany(RecruitmentJob::class, 'work_unit_id', 'uuid');
     }
 
     public function divisi()

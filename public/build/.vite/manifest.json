@@ -171,26 +171,6 @@
     "file": "icons/us.svg",
     "src": "resources/images/flags/us.svg"
   },
-  "resources/images/galaxy/img-1.png": {
-    "file": "icons/img-1.png",
-    "src": "resources/images/galaxy/img-1.png"
-  },
-  "resources/images/galaxy/img-2.png": {
-    "file": "icons/img-2.png",
-    "src": "resources/images/galaxy/img-2.png"
-  },
-  "resources/images/galaxy/img-3.png": {
-    "file": "icons/img-3.png",
-    "src": "resources/images/galaxy/img-3.png"
-  },
-  "resources/images/galaxy/img-4.png": {
-    "file": "icons/img-4.png",
-    "src": "resources/images/galaxy/img-4.png"
-  },
-  "resources/images/galaxy/img-5.png": {
-    "file": "icons/img-5.png",
-    "src": "resources/images/galaxy/img-5.png"
-  },
   "resources/images/landing/bg-pattern.png": {
     "file": "icons/bg-pattern.png",
     "src": "resources/images/landing/bg-pattern.png"

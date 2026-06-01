@@ -136,16 +136,6 @@ File: Main Js File
         /**
          * Choices Select plugin
          */
-        var choicesExamples = document.querySelectorAll("[data-choices1]");
-        Array.from(choicesExamples).forEach(function (item) {
-            var choices = new Choices(item, {
-                shouldSort: false,
-                searchEnabled: true,
-                removeItemButton: true
-            });
-        });
-
-
         var choicesExamples = document.querySelectorAll("[data-choices]");
         Array.from(choicesExamples).forEach(function (item) {
             var choiceData = {};
@@ -1096,18 +1086,23 @@ File: Main Js File
             });
 
             var removeItem = document.getElementById('removeNotificationModal');
-            removeItem.addEventListener('show.bs.modal', function (event) {
-                document.getElementById("delete-notification").addEventListener("click", function () {
-                    Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
-                        if (element.classList.contains("active")) {
-                            element.remove();
-                        }
-                    });
-                    emptyNotification();
+            if (removeItem) {
+                removeItem.addEventListener('show.bs.modal', function (event) {
+                    var deleteNotificationBtn = document.getElementById("delete-notification");
+                    if (deleteNotificationBtn) {
+                        deleteNotificationBtn.addEventListener("click", function () {
+                            Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
+                                if (element.classList.contains("active")) {
+                                    element.remove();
+                                }
+                            });
+                            emptyNotification();
 
-                    document.getElementById("NotificationModalbtn-close").click();
+                            document.getElementById("NotificationModalbtn-close").click();
+                        })
+                    }
                 })
-            })
+            }
         }
     }
 

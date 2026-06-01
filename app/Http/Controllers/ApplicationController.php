@@ -9,9 +9,10 @@ use App\Models\User;
 use App\Models\RecruitmentProfile;
 use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentNotificationService;
+use App\Services\CandidateConversionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class ApplicationController extends Controller
 {
@@ -25,7 +26,7 @@ class ApplicationController extends Controller
     /**
      * Display a listing of applications.
      */
-    public function index(Request $request)
+    public function index(Request $request, string $userId)
     {
         $query = RecruitmentApplication::with([
             'recruitmentProfile.user',
@@ -38,7 +39,23 @@ class ApplicationController extends Controller
             $query->where('recruitment_job_id', $request->job_id);
         }
 
-        // Filter by status
+        // Handle tab filter (maps tab names to status arrays)
+        $tab = $request->get('tab');
+        if ($tab) {
+            $tabMap = [
+                'menunggu' => ['menunggu_seleksi'],
+                'seleksi_adm' => ['seleksi_administrasi'],
+                'tes' => ['tes_tertulis', 'lolos_tes', 'tidak_lolos_tes', 'lolos_administrasi'],
+                'diterima' => ['diterima'],
+                'ditolak' => ['ditolak'],
+                'ditolak' => ['ditolak', 'tidak_lolos_administrasi', 'tidak_lolos_tes', 'tidak_lolos_wawancara'],
+            ];
+            if (isset($tabMap[$tab])) {
+                $query->whereIn('status', $tabMap[$tab]);
+            }
+        }
+
+        // Filter by status (direct filter)
         if ($request->has('status') && $request->status != 'all') {
             $query->where('status', $request->status);
         }
@@ -73,16 +90,18 @@ class ApplicationController extends Controller
 
         $jobs = RecruitmentJob::where('status', 'aktif')->get();
 
-        return view('recruitment.applications.index', compact('applications', 'stats', 'jobs'));
+        return view('recruitment.applications.index', compact('applications', 'stats', 'jobs', 'userId'));
     }
 
-    public function show(RecruitmentApplication $application)
+    public function show(string $userId, RecruitmentApplication $application)
     {
         $application->load([
             'recruitmentProfile.user',
             'recruitmentProfile.educations',
             'recruitmentProfile.workExperiences',
             'recruitmentProfile.skills',
+            'recruitmentProfile.trainings',
+            'recruitmentProfile.documents',
             'recruitmentJob',
             'stages.recruitmentPipelineStage',
             'stages.penilai'
@@ -90,18 +109,18 @@ class ApplicationController extends Controller
 
         $interviewers = User::role(['personalia'])->get();
 
-        return view('recruitment.applications.show', compact('application', 'interviewers'));
+        return view('recruitment.applications.show', compact('application', 'interviewers', 'userId'));
     }
 
     /**
      * Update application status and scores.
      */
-    public function stages(RecruitmentApplication $application)
+    public function stages(string $userId, RecruitmentApplication $application)
     {
-        return view('recruitment.applications.stages', compact('application'));
+        return view('recruitment.applications.stages', compact('application', 'userId'));
     }
 
-    public function updateStatus(Request $request, RecruitmentApplication $application)
+    public function updateStatus(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
             'status'              => 'required|string',
@@ -168,7 +187,7 @@ class ApplicationController extends Controller
                     'new_status' => $application->status,
                     'job_title'  => $application->recruitmentJob->judul
                 ],
-                'action_url'    => route('recruitment.applications.show', $application->id),
+                'action_url'    => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
                 'priority'      => 'high',
                 'send_email'    => true
             ]);
@@ -183,7 +202,7 @@ class ApplicationController extends Controller
 
             DB::commit();
 
-            return redirect()->route('recruitment.applications.show', $application->id)
+            return redirect()->route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id])
                 ->with('success', 'Status berhasil diupdate dan notifikasi email telah dikirim.');
 
         } catch (\Exception $e) {
@@ -195,7 +214,7 @@ class ApplicationController extends Controller
     /**
      * Send message to applicant.
      */
-    public function sendMessage(Request $request, RecruitmentApplication $application)
+    public function sendMessage(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
             'message' => 'required|string'
@@ -211,7 +230,7 @@ class ApplicationController extends Controller
             'action'        => 'message_from_recruiter',
             'title'         => 'Pesan dari Rekruter',
             'message'       => $validated['message'],
-            'action_url'    => route('recruitment.applications.show', $application->id),
+            'action_url'    => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
             'priority'      => 'high',
             'send_email'    => true,
             'send_whatsapp' => true
@@ -230,7 +249,7 @@ class ApplicationController extends Controller
     /**
      * Add note to application.
      */
-    public function addNote(Request $request, RecruitmentApplication $application)
+    public function addNote(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
             'note' => 'required|string'
@@ -248,7 +267,7 @@ class ApplicationController extends Controller
     /**
      * Bulk action on applications.
      */
-    public function bulkAction(Request $request)
+    public function bulkAction(Request $request, string $userId)
     {
         $validated = $request->validate([
             'action' => 'required|in:delete,export,update_status',
@@ -298,7 +317,7 @@ class ApplicationController extends Controller
     /**
      * Export applications to Excel.
      */
-    public function exportExcel(Request $request)
+    public function exportExcel(Request $request, string $userId)
     {
         $query = RecruitmentApplication::with([
             'recruitmentProfile.user',
@@ -321,15 +340,121 @@ class ApplicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Export berhasil',
-            'url' => route('recruitment.applications.export-excel.download')
+            'url' => route('user.ats.applications.export-excel', ['userId' => $userId])
         ]);
     }
 
     /**
      * Export applications to PDF.
      */
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request, string $userId)
     {
         // PDF export implementation
+    }
+
+    /**
+     * Mass announcement for administrative selection results.
+     * Send notifications to all specified candidates about their admin selection status.
+     */
+    public function announceAdminResults(Request $request, string $userId)
+    {
+        $validated = $request->validate([
+            'application_ids' => 'required|array',
+            'application_ids.*' => 'exists:recruitment_applications,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $applications = RecruitmentApplication::with('recruitmentProfile.user', 'recruitmentJob')
+                ->whereIn('id', $validated['application_ids'])
+                ->whereIn('status', ['lolos_administrasi', 'tidak_lolos_administrasi'])
+                ->get();
+
+            $sent = 0;
+            foreach ($applications as $app) {
+                $isLolos = $app->status === 'lolos_administrasi';
+                $statusText = $isLolos ? 'LULOS SELEKSI ADMINISTRASI' : 'TIDAK LULOS SELEKSI ADMINISTRASI';
+
+                $this->notificationService->send($app->recruitmentProfile->user_id, [
+                    'module' => 'recruitment',
+                    'reference_type' => RecruitmentApplication::class,
+                    'reference_id' => $app->id,
+                    'reference_code' => $app->no_lamaran,
+                    'type' => $isLolos ? 'success' : 'error',
+                    'action' => 'hasil_seleksi_administrasi',
+                    'title' => 'Pengumuman Hasil Seleksi Administrasi',
+                    'message' => "Hasil seleksi administrasi untuk posisi {$app->recruitmentJob->judul}: {$statusText}",
+                    'data' => [
+                        'posisi' => $app->recruitmentJob->judul,
+                        'status' => $statusText,
+                        'no_lamaran' => $app->no_lamaran,
+                    ],
+                    'action_url' => route('user.ats.applications.show', ['userId' => $userId, 'application' => $app->id]),
+                    'priority' => 'high',
+                    'send_email' => true,
+                    'send_whatsapp' => true,
+                ]);
+
+                $sent++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Pengumuman berhasil dikirim ke {$sent} kandidat"
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim pengumuman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Konversi pelamar yang diterima menjadi GTK/pegawai.
+     */
+    public function convertToEmployee(Request $request, string $userId, RecruitmentApplication $application)
+    {
+        if ($request->isMethod('get')) {
+            $application->load(['recruitmentProfile.user', 'recruitmentJob']);
+            $workUnits = \App\Models\WorkUnit::orderBy('name')->get();
+            return view('recruitment.applications.convert', compact('application', 'userId', 'workUnits'));
+        }
+
+        $validated = $request->validate([
+            'jenis_gtk'        => 'required|in:guru,tendik,staf,kopf',
+            'status_kepegawaian' => 'required|in:tetap,kontrak,probation,magang,honor',
+            'unit_kerja'       => 'required|string|max:150',
+            'jabatan'          => 'required|string|max:100',
+            'tmt'              => 'required|date',
+            'penempatan'      => 'nullable|string|max:200',
+            'kontrak_jenis'    => 'nullable|string|max:50',
+            'kontrak_berakhir' => 'nullable|date',
+            'durasi_bulan'     => 'nullable|integer|min:1|max:60',
+            'gaji_pokok'       => 'nullable|numeric|min:0',
+            'tunjangan_tetap'  => 'nullable|numeric|min:0',
+            'tunjangan_tidak_tetap' => 'nullable|numeric|min:0',
+            'catatan'          => 'nullable|string|max:500',
+        ]);
+
+        try {
+            (new \App\Services\CandidateConversionService)->convert($application, $validated);
+
+            return redirect()
+                ->route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id])
+                ->with('success', 'Pelamar berhasil dikonversi menjadi GTK.');
+
+        } catch (\Exception $e) {
+            \Log::error('Konversi pelamar gagal', [
+                'application_id' => $application->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()
+                ->with('error', 'Gagal mengkonversi: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 }

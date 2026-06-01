@@ -82,8 +82,11 @@
                         <div class="flex-grow-1 ms-3">
                             <div class="card border">
                                 <div class="card-header bg-light">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
                                         <h6 class="card-title mb-0 flex-grow-1">{{ $stage->recruitmentPipelineStage->nama_tahapan }}</h6>
+                                        <span class="text-muted fs-sm">
+                                            <i class="ri-calendar-event-line me-1"></i>{{ $stage->created_at->translatedFormat('d M Y, H:i') }}
+                                        </span>
                                         <span class="badge bg-{{ $stage->status == 'lolos' ? 'success' : ($stage->status == 'tidak_lolos' ? 'danger' : 'warning') }}">
                                             {{ ucfirst($stage->status) }}
                                         </span>

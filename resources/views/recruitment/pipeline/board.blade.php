@@ -1,221 +1,242 @@
 @extends('layouts.master')
+@section('title') Pipeline Board — {{ $job->judul }} @endsection
+@section('css')
+<link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css">
+<style>
+    .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; }
+    .pipeline-col {
+        min-width: 280px;
+        max-width: 280px;
+        background: var(--bs-gray-100);
+        border-radius: 12px;
+        padding: 12px;
+        flex-shrink: 0;
+    }
+    .col-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 4px 12px; border-bottom: 2px solid var(--bs-border-color);
+        margin-bottom: 10px;
+    }
+    .col-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .col-count { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; }
+    .stage-cards { min-height: 60px; }
+    .ats-card {
+        background: white; border-radius: 10px; padding: 12px;
+        margin-bottom: 8px; cursor: grab; border: 1px solid var(--bs-border-color);
+        transition: box-shadow 0.2s, transform 0.15s; position: relative; overflow: hidden;
+    }
+    .ats-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 3px; background: var(--stage-color, #667eea);
+    }
+    .ats-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.1); transform: translateY(-2px); }
+    .ats-card.dragging { opacity: 0.4; cursor: grabbing; }
+    .ats-card .card-avatar {
+        width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
+        border: 2px solid var(--bs-border-color);
+    }
+    .ats-card .score-badge {
+        font-size: 0.7rem; font-weight: 700; padding: 2px 7px;
+        border-radius: 20px; background: var(--bs-light-bg-subtle);
+    }
+    .ats-card .app-no { font-size: 0.68rem; color: var(--bs-secondary-color); }
+    .ats-card .stage-tag {
+        font-size: 0.65rem; padding: 1px 6px; border-radius: 4px;
+    }
+    .ats-card .action-row { display: flex; gap: 4px; margin-top: 8px; }
+    .ats-card .action-row .btn { font-size: 0.68rem; padding: 2px 8px; }
+    .sortable-ghost { opacity: 0.3; background: var(--bs-primary-bg-subtle) !important; }
+    .empty-stage {
+        text-align: center; padding: 24px 12px; color: var(--bs-secondary-color);
+        font-size: 0.78rem; border: 2px dashed var(--bs-border-color); border-radius: 8px;
+    }
+    .drop-zone-active { background: var(--bs-primary-bg-subtle) !important; border-color: var(--bs-primary) !important; }
+</style>
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        Pipeline: {{ $job->judul }}
-                        <small class="text-muted">({{ $job->kode_lowongan }})</small>
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{{ route('user.ats.pipeline.statistics', ['userId' => $userId, 'jobId' => $job->id]) }}" 
-                           class="btn btn-info btn-sm">
-                            <i class="fas fa-chart-bar"></i> Statistics
-                        </a>
-                        <a href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}" 
-                           class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> Back to Job
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="card-body">
-                    {{-- Pipeline Kanban Board --}}
-                    <div class="pipeline-board" style="display: flex; gap: 20px; overflow-x: auto; padding: 10px 0;">
-                        @foreach($boardData as $stageId => $data)
-                            <div class="pipeline-column" 
-                                 style="min-width: 300px; background: #f4f6f9; border-radius: 8px; padding: 15px;">
-                                
-                                {{-- Stage Header --}}
-                                <div class="stage-header" style="margin-bottom: 15px;">
-                                    <h5 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                                        <i class="{{ $data['stage']->icon ?? 'fas fa-circle' }}" 
-                                           style="color: {{ $data['stage']->warna }}"></i>
-                                        {{ $data['stage']->nama_tahapan }}
-                                        <span class="badge badge-secondary ml-auto">
-                                            {{ $data['applications']->count() }}
-                                        </span>
-                                    </h5>
-                                    <small class="text-muted">
-                                        Target: {{ $data['stage']->durasi_hari }} hari
-                                    </small>
-                                </div>
-                                
-                                {{-- Applications --}}
-                                <div class="stage-applications" 
-                                     style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                    @foreach($data['applications'] as $application)
-                                        <div class="card application-card mb-2" 
-                                             data-application-id="{{ $application->id }}"
-                                             style="cursor: pointer; border-left: 4px solid {{ $data['stage']->warna }};">
-                                            
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between">
-                                                    <strong>{{ $application->recruitmentProfile->user->name }}</strong>
-                                                    <small class="text-muted">
-                                                        #{{ $application->no_lamaran }}
-                                                    </small>
-                                                </div>
-                                                
-                                                <div class="mt-2">
-                                                    <small class="d-block">
-                                                        <i class="fas fa-calendar"></i> 
-                                                        {{ $application->tanggal_melamar->format('d M Y') }}
-                                                    </small>
-                                                    
-                                                    @if($application->nilai_akhir)
-                                                        <small class="d-block">
-                                                            <i class="fas fa-star"></i> 
-                                                            Nilai: {{ $application->nilai_akhir }}
-                                                        </small>
-                                                    @endif
-                                                </div>
-                                                
-                                                {{-- Progress Bar --}}
-                                                <div class="progress mt-2" style="height: 5px;">
-                                                    @php
-                                                        $progress = $application->getPipelineProgress();
-                                                    @endphp
-                                                    <div class="progress-bar" 
-                                                         style="width: {{ $progress }}%; 
-                                                                background-color: {{ $data['stage']->warna }};">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            {{-- Action Buttons --}}
-                                            <div class="card-footer bg-transparent p-2 text-right">
-                                                @if(!$loop->last)
-                                                    <button class="btn btn-xs btn-success move-next" 
-                                                            onclick="moveToNextStage('{{ $application->id }}')">
-                                                        <i class="fas fa-arrow-right"></i> Next
-                                                    </button>
-                                                @endif
-                                                
-                                                <button class="btn btn-xs btn-info view-details"
-                                                        onclick="viewApplication('{{ $application->id }}')">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                    
-                                    @if($data['applications']->isEmpty())
-                                        <div class="text-center text-muted p-4">
-                                            <i class="fas fa-empty fa-2x"></i>
-                                            <p class="mt-2">No applications in this stage</p>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
+@component('components.breadcrumb')
+    @slot('li_1') Rekrutmen @endslot
+    @slot('li_2') {{ $job->judul }} @endslot
+    @slot('title') Pipeline Board @endslot
+@endcomponent
+
+{{-- Header --}}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h5 class="mb-0">{{ $job->judul }}</h5>
+        <span class="badge bg-secondary mt-1">{{ $job->kode_lowongan }}</span>
+        <span class="badge bg-{{ $job->status === 'aktif' ? 'success' : 'secondary' }} mt-1">{{ ucfirst($job->status) }}</span>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}"
+           class="btn btn-secondary btn-sm">
+            <i class="ri-arrow-left-line"></i> Detail Lowongan
+        </a>
+        <a href="{{ route('user.ats.pipeline.index', ['userId' => $userId, 'jobId' => $job->id]) }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="ri-list-check"></i> List View
+        </a>
     </div>
 </div>
 
-@push('scripts')
-<script>
-function moveToNextStage(applicationId) {
-    if (!confirm('Move this application to next stage?')) return;
-    
-    $.post('/{{ $userId }}/ats/applications/' + applicationId + '/move-next', {
-        _token: '{{ csrf_token() }}'
-    }).done(function(response) {
-        if (response.success) {
-            toastr.success('Application moved successfully');
-            location.reload();
-        }
-    }).fail(function(xhr) {
-        toastr.error('Failed to move application');
-    });
-}
+{{-- Kanban Board --}}
+<div class="pipeline-board" id="pipelineBoard">
+    @forelse($boardData as $stageId => $data)
+    <div class="pipeline-col"
+         data-stage-id="{{ $data['stage']->id }}"
+         style="--stage-color: {{ $data['stage']->warna ?? '#667eea' }}">
+        <div class="col-header">
+            <div>
+                <div class="col-title" style="color: {{ $data['stage']->warna ?? '#667eea' }}">
+                    <i class="{{ $data['stage']->icon ?? 'ri-checkbox-circle-line' }} me-1"></i>
+                    {{ $data['stage']->nama_tahapan }}
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-{{ $data['stage']->warna ?? 'primary' }}-subtle text-{{ $data['stage']->warna ?? 'primary' }} col-count">
+                    {{ $data['applications']->count() }}
+                </span>
+            </div>
+        </div>
 
-function viewApplication(applicationId) {
-    window.location.href = '/{{ $userId }}/ats/applications/' + applicationId;
-}
+        <div class="stage-cards" data-stage-id="{{ $data['stage']->id }}">
+            @forelse($data['applications'] as $application)
+            <div class="ats-card" data-application-id="{{ $application->id }}" data-stage-color="{{ $data['stage']->warna ?? '#667eea' }}">
+                <div class="d-flex align-items-start gap-2 mb-2">
+                    <img src="{{ $application->recruitmentProfile->user->avatar_url ?? 'https://ui-avatars.com/api/?name=' . urlencode($application->recruitmentProfile->user->name ?? 'U') . '&background=667eea&color=fff&size=34' }}"
+                         class="card-avatar" alt="{{ $application->recruitmentProfile->user->name ?? 'U' }}">
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold text-truncate" style="font-size:0.82rem">
+                            <a href="{{ route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]) }}"
+                               class="text-body text-decoration-none">
+                                {{ $application->recruitmentProfile->user->name ?? 'N/A' }}
+                            </a>
+                        </div>
+                        <span class="app-no">#{{ $application->no_lamaran }}</span>
+                    </div>
+                    @if($application->nilai_akhir)
+                    <span class="score-badge">
+                        <i class="ri-star-s-line text-warning me-1"></i>{{ number_format($application->nilai_akhir, 1) }}
+                    </span>
+                    @endif
+                </div>
 
-// Drag & Drop functionality
-$(function() {
-    $(".application-card").draggable({
-        helper: "clone",
-        revert: "invalid",
-        start: function(event, ui) {
-            $(this).addClass('dragging');
-        },
-        stop: function(event, ui) {
-            $(this).removeClass('dragging');
-        }
-    });
+                {{-- Tags --}}
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    <span class="stage-tag bg-{{ $data['stage']->warna ?? 'primary' }}-subtle text-{{ $data['stage']->warna ?? 'primary' }}">
+                        {{ $data['stage']->nama_tahapan }}
+                    </span>
+                    <span class="stage-tag bg-light text-muted">
+                        <i class="ri-time-line me-1"></i>{{ $application->tanggal_melamar->diffForHumans() }}
+                    </span>
+                </div>
 
-    $(".stage-applications").droppable({
-        accept: ".application-card",
-        drop: function(event, ui) {
-            var applicationId = ui.draggable.data('application-id');
-            var targetStage = $(this).closest('.pipeline-column');
+                {{-- Action Buttons --}}
+                <div class="action-row">
+                    <a href="{{ route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]) }}"
+                       class="btn btn-light btn-sm flex-grow-1">
+                        <i class="ri-eye-line me-1"></i> Detail
+                    </a>
+                    @if(!$loop->last)
+                    <button class="btn btn-success btn-sm"
+                            onclick="moveNext('{{ $application->id }}', '{{ $data['stage']->id }}', this)"
+                            title="Pindahkan ke tahap berikutnya">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </button>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="empty-stage">
+                <i class="ri-inbox-2-line fs-2 d-block mb-1"></i>
+                Belum ada pelamar
+            </div>
+            @endforelse
+        </div>
 
-            // Move application to new stage
-            $.post('/{{ $userId }}/ats/applications/' + applicationId + '/move-to-stage', {
-                _token: '{{ csrf_token() }}',
-                stage_id: targetStage.data('stage-id')
-            }).done(function() {
-                location.reload();
-            });
-        }
-    });
-});
-</script>
-
-<style>
-.application-card.dragging {
-    opacity: 0.5;
-    transform: rotate(2deg);
-}
-
-.pipeline-column {
-    transition: all 0.3s ease;
-}
-
-.pipeline-column:hover {
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.application-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.stage-applications {
-    scrollbar-width: thin;
-    scrollbar-color: #c0c0c0 #f4f6f9;
-}
-
-.stage-applications::-webkit-scrollbar {
-    width: 6px;
-}
-
-.stage-applications::-webkit-scrollbar-track {
-    background: #f4f6f9;
-}
-
-.stage-applications::-webkit-scrollbar-thumb {
-    background-color: #c0c0c0;
-    border-radius: 3px;
-}
-</style>
-@endpush
+        {{-- Add Stage Info --}}
+        @if($data['stage']->durasi_hari)
+        <div class="text-center mt-2">
+            <small class="text-muted">Target: {{ $data['stage']->durasi_hari }} hari</small>
+        </div>
+        @endif
+    </div>
+    @empty
+    <div class="col-12 text-center py-5">
+        <i class="ri-list-check fs-1 text-muted"></i>
+        <p class="text-muted mt-2">Pipeline belum dibuat untuk lowongan ini.</p>
+        <a href="{{ route('user.ats.pipeline.index', ['userId' => $userId, 'jobId' => $job->id]) }}"
+           class="btn btn-primary btn-sm">
+            <i class="ri-settings-line me-1"></i> Buat Pipeline
+        </a>
+    </div>
+    @endforelse
+</div>
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-    <!-- apexcharts -->
-    <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/job-list.init.js') }}"></script>
-    <!-- App js -->
-    <script src="{{ URL::asset('build/js/app.js') }}"></script>
+<script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ── SortableJS Drag & Drop ──────────────────────────────────
+    var el = document.getElementById('pipelineBoard');
+    if (el && typeof Sortable !== 'undefined') {
+        Sortable.create(el, {
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            draggable: '.ats-card',
+            handle: '.ats-card',
+            group: 'pipeline-cards',
+            onEnd: function(evt) {
+                var appId  = evt.item.dataset.applicationId;
+                var stageId = evt.to.closest('.pipeline-col').dataset.stageId;
+
+                // Skip if dropped in same column
+                if (evt.from === evt.to) return;
+
+                fetch('/' + '{{ $userId }}/ats/applications/' + appId + '/move-to-stage', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ stage_id: stageId })
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.success) {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: d.message || 'Gagal memindahkan' });
+                        location.reload();
+                    }
+                })
+                .catch(() => { Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan' }); location.reload(); });
+            }
+        });
+    }
+
+    // ── Move to Next Stage ───────────────────────────────────
+    window.moveNext = function(appId, fromStageId, btn) {
+        var $btn = $(btn);
+        $btn.prop('disabled', true).html('<i class="ri-loader-2-line fa-spin"></i>');
+
+        fetch('/' + '{{ $userId }}/ats/applications/' + appId + '/move-next', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) location.reload();
+            else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: d.error || 'Gagal memindahkan' });
+                $btn.prop('disabled', false).html('<i class="ri-arrow-right-s-line"></i>');
+            }
+        })
+        .catch(() => { Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan' }); location.reload(); });
+    };
+});
+</script>
 @endsection

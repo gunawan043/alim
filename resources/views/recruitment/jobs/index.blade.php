@@ -1,217 +1,282 @@
 @extends('layouts.master')
-@section('title')
-    Job Lists
-@endsection
+@section('title') Lowongan @endsection
 @section('css')
-    <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet">
 @endsection
-
 @section('content')
-    @component('components.breadcrumb')
-        @slot('li_1')
-            Jobs
-        @endslot
-        @slot('title')
-            Job Lists
-        @endslot
-    @endcomponent
+@component('components.breadcrumb')
+    @slot('li_1') Rekrutmen @endslot
+    @slot('title') Lowongan @endslot
+@endcomponent
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <h6 class="card-title mb-0 flex-grow-1">Search Jobs</h6>
-                        <div class="flex-shrink-0">
-                            <a href="{{ route('user.ats.jobs.create', ['userId' => $userId]) }}" class="btn btn-primary">
-                                <i class="ri-add-line align-bottom me-1"></i> Create New Job
-                            </a>
+{{-- Stat Cards --}}
+<div class="row mb-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="card border-start border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-primary-subtle text-primary rounded-2 fs-5">
+                                <i class="ri-briefcase-line"></i>
+                            </span>
                         </div>
                     </div>
-
-                    <form method="GET" action="{{ route('user.ats.jobs.index', ['userId' => $userId]) }}" id="searchForm">
-                        <div class="row mt-3 gy-3">
-                            <div class="col-xxl-10 col-md-6">
-                                <div class="search-box">
-                                    <input type="text" class="form-control search bg-light border-light" id="searchJob"
-                                        name="search" autocomplete="off" placeholder="Search for jobs or companies..."
-                                        value="{{ request('search') }}">
-                                    <i class="ri-search-line search-icon"></i>
-                                </div>
-                            </div>
-                            <div class="col-xxl-2 col-md-6">
-                                <div class="input-light">
-                                    <select class="form-control" data-choices data-choices-search-false name="sort"
-                                        id="idStatus" onchange="this.form.submit()">
-                                        <option value="terbaru" {{ request('sort') == 'terbaru' ? 'selected' : '' }}>Terbaru
-                                        </option>
-                                        <option value="terlama" {{ request('sort') == 'terlama' ? 'selected' : '' }}>Terlama
-                                        </option>
-                                        <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Populer
-                                        </option>
-                                        <option value="akan_tutup" {{ request('sort') == 'akan_tutup' ? 'selected' : '' }}>
-                                            Akan Tutup</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                    <div class="flex-grow-1 ms-2">
+                        <p class="text-muted mb-0" style="font-size:0.75rem">Total Lowongan</p>
+                        <h5 class="mb-0">{{ $statusCounts['all'] ?? 0 }}</h5>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card border-start border-success border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-success-subtle text-success rounded-2 fs-5">
+                                <i class="ri-checkbox-circle-line"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-2">
+                        <p class="text-muted mb-0" style="font-size:0.75rem">Aktif</p>
+                        <h5 class="mb-0">{{ $statusCounts['aktif'] ?? 0 }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card border-start border-warning border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-warning-subtle text-warning rounded-2 fs-5">
+                                <i class="ri-time-line"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-2">
+                        <p class="text-muted mb-0" style="font-size:0.75rem">Draft</p>
+                        <h5 class="mb-0">{{ $statusCounts['draft'] ?? 0 }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card border-start border-danger border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-danger-subtle text-danger rounded-2 fs-5">
+                                <i class="ri-close-circle-line"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-2">
+                        <p class="text-muted mb-0" style="font-size:0.75rem">Ditutup</p>
+                        <h5 class="mb-0">{{ $statusCounts['ditutup'] ?? 0 }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <div class="row">
-        <div class="col-xxl-12">
-            <div id="job-list">
-                @forelse($jobs as $job)
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-sm flex-shrink-0 me-3">
-                                    <div class="avatar-title bg-light rounded">
-                                        <img src="{{ $job->company_logo ?? URL::asset('build/images/companies/img-1.png') }}"
-                                            alt="" class="avatar-xs">
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center flex-wrap gap-2">
-                                        <h5 class="mb-1">
-                                            <a href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}"
-                                                class="text-body">{{ $job->judul }}</a>
-                                        </h5>
-                                        <span
-                                            class="badge bg-{{ $job->status == 'aktif' ? 'success' : ($job->status == 'ditutup' ? 'danger' : 'warning') }}-subtle text-{{ $job->status == 'aktif' ? 'success' : ($job->status == 'ditutup' ? 'danger' : 'warning') }}">
-                                            {{ ucfirst($job->status) }}
-                                        </span>
-                                        @if ($job->jenis_pegawai)
-                                            <span
-                                                class="badge bg-primary-subtle text-primary">{{ $job->jenis_pegawai }}</span>
-                                        @endif
-                                    </div>
-                                    <div class="hstack gap-3 flex-wrap">
-                                        <div><i class="ri-building-line me-1 align-bottom"></i>
-                                            {{ $job->workUnit->name ?? 'friday' }}</div>
-                                        <div class="vr"></div>
-                                        <div><i class="ri-map-pin-2-line me-1 align-bottom"></i>
-                                            {{ $job->location ?? 'Mataram' }}</div>
-                                        <div class="vr"></div>
-                                        <div>Post Date : <span
-                                                class="fw-medium">{{ $job->created_at->format('d M, Y') }}</span></div>
-                                        <div class="vr"></div>
-                                        <div class="text-warning">
-                                            <i class="ri-bar-chart-line"></i> {{ $job->applications_count ?? 0 }} Pelamar
+{{-- Table Card --}}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex align-items-center">
+            <h6 class="card-title mb-0 flex-grow-1">Daftar Lowongan</h6>
+            <a href="{{ route('user.ats.jobs.create', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
+                <i class="ri-add-line me-1"></i> Buat Lowongan
+            </a>
+        </div>
+    </div>
+
+    {{-- Filter Bar --}}
+    <div class="card-body border-bottom py-2">
+        <form method="GET" action="{{ route('user.ats.jobs.index', ['userId' => $userId]) }}" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <div class="search-box">
+                    <input type="text" class="form-control" name="search"
+                        placeholder="Cari judul, posisi, atau unit kerja..."
+                        value="{{ request('search') }}">
+                    <i class="ri-search-line search-icon"></i>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-control form-select" data-choices data-choices-search-false name="status">
+                    <option value="">Semua Status</option>
+                    <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
+                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                    <option value="ditutup" {{ request('status') == 'ditutup' ? 'selected' : '' }}>Ditutup</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-control form-select" data-choices data-choices-search-false name="sort">
+                    <option value="terbaru" {{ request('sort') == 'terbaru' ? 'selected' : '' }}>Terbaru</option>
+                    <option value="terlama" {{ request('sort') == 'terlama' ? 'selected' : '' }}>Terlama</option>
+                    <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Terpopuler</option>
+                </select>
+            </div>
+            <div class="col-md-3" class="d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="ri-filter-line me-1"></i> Filter
+                </button>
+                <a href="{{ route('user.ats.jobs.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
+                    <i class="ri-refresh-line"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-nowrap table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Lowongan</th>
+                        <th>Unit Kerja</th>
+                        <th>Lokasi</th>
+                        <th>Kuota</th>
+                        <th>Pelamar</th>
+                        <th>Status</th>
+                        <th class="text-center" style="width:90px">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($jobs as $job)
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar-sm">
+                                        <div class="avatar-title bg-light text-primary rounded fs-5">
+                                            <i class="ri-briefcase-4-line"></i>
                                         </div>
                                     </div>
-                                    <div class="mt-3">
-                                        <p class="text-muted">{{ Str::limit($job->deskripsi_pekerjaan, 200) }}</p>
-                                    </div>
-                                    <div class="hstack gap-2 mt-2">
-                                        @if ($job->kualifikasi_pendidikan)
-                                            @foreach (json_decode($job->kualifikasi_pendidikan) as $pendidikan)
-                                                <span class="badge bg-info-subtle text-info">{{ $pendidikan }}</span>
-                                            @endforeach
-                                        @endif
-                                        @if ($job->kompetensi_dibutuhkan)
-                                            @foreach (json_decode($job->kompetensi_dibutuhkan) as $skill)
-                                                <span
-                                                    class="badge bg-secondary-subtle text-secondary">{{ $skill }}</span>
-                                            @endforeach
-                                        @endif
-                                    </div>
-                                    <div class="mt-3 hstack gap-2">
-                                        <a href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}"
-                                            class="btn btn-soft-primary btn-sm">
-                                            <i class="ri-eye-line"></i> Overview
-                                        </a>
-                                        <a href="{{ route('user.ats.applications.index', ['userId' => $userId, 'job' => $job->id]) }}"
-                                            class="btn btn-soft-success btn-sm">
-                                            <i class="ri-user-line"></i> Lihat Pelamar
-                                        </a>
-                                        <a href="{{ route('user.ats.jobs.edit', ['userId' => $userId, 'job' => $job->id]) }}"
-                                            class="btn btn-soft-warning btn-sm">
-                                            <i class="ri-edit-line"></i> Edit
-                                        </a>
-                                        @if ($job->status == 'aktif')
-                                            <button type="button" class="btn btn-soft-danger btn-sm"
-                                                onclick="toggleStatus('{{ $job->id }}')">
-                                                <i class="ri-close-line"></i> Tutup
-                                            </button>
-                                        @elseif($job->status == 'ditutup')
-                                            <button type="button" class="btn btn-soft-success btn-sm"
-                                                onclick="toggleStatus('{{ $job->id }}')">
-                                                <i class="ri-restart-line"></i> Buka Kembali
-                                            </button>
-                                        @endif
-                                    </div>
+                                </div>
+                                <div>
+                                    <a href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}"
+                                        class="fw-semibold text-body">{{ $job->judul }}</a>
+                                    <div class="small text-muted">{{ $job->kode_lowongan ?? '-' }}</div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="card">
-                        <div class="card-body text-center py-5">
-                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop"
-                                style="width:72px;height:72px"></lord-icon>
-                            <h5 class="mt-3">Belum Ada Lowongan</h5>
-                            <p class="text-muted">Silakan buat lowongan baru untuk mulai merekrut.</p>
-                            <a href="{{ route('user.ats.jobs.create', ['userId' => $userId]) }}" class="btn btn-primary">Buat Lowongan</a>
-                        </div>
-                    </div>
-                @endforelse
-            </div>
-
-            <div class="row g-0 justify-content-end mb-4" id="pagination-element">
-                <div class="col-sm-6">
-                    @include('shared._pagination', ['paginator' => $jobs])
-                </div>
-            </div>
+                        </td>
+                        <td>{{ $job->workUnit->name ?? '-' }}</td>
+                        <td>
+                            <i class="ri-map-pin-2-line text-muted me-1"></i>{{ $job->location ?? '-' }}
+                        </td>
+                        <td>
+                            <span class="badge bg-dark-subtle text-dark">{{ $job->kuota ?? 1 }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary">{{ $job->applications_count ?? 0 }}</span>
+                        </td>
+                        <td>
+                            @php
+                                $sClass = match($job->status) {
+                                    'aktif' => 'success',
+                                    'ditutup' => 'danger',
+                                    default => 'secondary',
+                                };
+                            @endphp
+                            <span class="badge bg-{{ $sClass }}-subtle text-{{ $sClass }}">
+                                {{ ucfirst($job->status) }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm" data-bs-toggle="dropdown">
+                                    <i class="ri-more-2-fill"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('user.ats.jobs.show', ['userId' => $userId, 'job' => $job->id]) }}">
+                                            <i class="ri-eye-line me-2 text-muted"></i>Lihat Detail
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('user.ats.applications.index', ['userId' => $userId, 'job' => $job->id]) }}">
+                                            <i class="ri-user-follow-line me-2 text-muted"></i>Lihat Pelamar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('user.ats.jobs.edit', ['userId' => $userId, 'job' => $job->id]) }}">
+                                            <i class="ri-edit-line me-2 text-muted"></i>Edit
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="toggleStatus('{{ $job->id }}')">
+                                            <i class="ri-toggle-line me-2"></i>{{ $job->status == 'aktif' ? 'Tutup Lowongan' : 'Buka Kembali' }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="py-4">
+                                <i class="ri-briefcase-line display-5 text-muted"></i>
+                                <h6 class="mt-2 mb-1">Belum Ada Lowongan</h6>
+                                <p class="text-muted mb-3">Buat lowongan pertama Anda untuk mulai merekrut.</p>
+                                <a href="{{ route('user.ats.jobs.create', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
+                                    <i class="ri-add-line me-1"></i> Buat Lowongan
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    </div>
 
+        @if($jobs->hasPages())
+        <div class="border-top px-3 py-2">
+            @include('shared._pagination', ['paginator' => $jobs])
+        </div>
+        @endif
+    </div>
+</div>
 @endsection
 
 @section('script')
-    <!-- apexcharts -->
-    <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/job-list.init.js') }}"></script>
-    <!-- App js -->
-    <script src="{{ URL::asset('build/js/app.js') }}"></script>
-    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.lordicon.com/lordicon.js"></script>
-    <script>
-        function toggleStatus(id) {
-            Swal.fire({
-                title: 'Konfirmasi',
-                text: "Apakah Anda yakin ingin mengubah status lowongan ini?",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Ubah!',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.post('/{{ $userId }}/ats/jobs/' + id + '/toggle-status', {
-                        _token: '{{ csrf_token() }}'
-                    }).then(response => {
-                        Swal.fire('Berhasil!', response.message, 'success').then(() => {
-                            location.reload();
-                        });
-                    });
-                }
+<script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+<script src="{{ URL::asset('build/js/app.js') }}"></script>
+<script src="https://cdn.lordicon.com/lordicon.js"></script>
+<script>
+function toggleStatus(id) {
+    Swal.fire({
+        title: 'Konfirmasi',
+        text: 'Ubah status lowongan ini?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Batal'
+    }).then(r => {
+        if (r.isConfirmed) {
+            $.post('/{{ $userId }}/ats/jobs/' + id + '/toggle-status', {
+                _token: '{{ csrf_token() }}'
+            }).then(res => {
+                Swal.fire('Berhasil', res.message, 'success').then(() => location.reload());
             });
         }
-
-        // Auto-submit search after typing
-        let timeout = null;
-        document.getElementById('searchJob').addEventListener('keyup', function() {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                document.getElementById('searchForm').submit();
-            }, 500);
-        });
-    </script>
+    });
+}
+let st = null;
+document.getElementById('search')?.addEventListener('keyup', function() {
+    clearTimeout(st);
+    st = setTimeout(() => document.querySelector('#searchForm').submit(), 600);
+});
+</script>
 @endsection

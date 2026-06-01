@@ -23,7 +23,7 @@ class JobController extends Controller
     /**
      * Display a listing of jobs.
      */
-    public function index(Request $request)
+    public function index(Request $request, string $userId)
     {
         $query = RecruitmentJob::with(['workUnit', 'creator'])
             ->withCount('applications');
@@ -71,25 +71,25 @@ class JobController extends Controller
             'draft' => RecruitmentJob::where('status', 'draft')->count(),
         ];
 
-        return view('recruitment.jobs.index', compact('jobs', 'workUnits', 'statusCounts'));
+        return view('recruitment.jobs.index', compact('jobs', 'workUnits', 'statusCounts', 'userId'));
     }
 
     /**
      * Show form for creating new job.
      */
-    public function create()
+    public function create(string $userId)
     {
         $workUnits = WorkUnit::all();
-        return view('recruitment.jobs.create', compact('workUnits'));
+        return view('recruitment.jobs.create', compact('workUnits', 'userId'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, string $userId)
     {
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
             'work_unit_id'          => 'nullable|exists:work_units,uuid',
-            'status_pegawai'           => 'nullable|in:pns,pppk,honor,kontrak,magang,tetap,probation',
+            'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
             'deskripsi_pekerjaan'      => 'required|string',
             'kuota'                    => 'required|integer|min:1',
             'tanggal_mulai'            => 'required|date',
@@ -104,7 +104,8 @@ class JobController extends Controller
             'persyaratan_khusus'       => 'nullable|string',
             'kualifikasi_pendidikan'   => 'nullable|string',
             'kualifikasi_pengalaman'   => 'nullable|string',
-            'kompetensi_dibutuhkan'    => 'nullable|string',
+            'kompetensi_dibutuhkan'    => 'nullable|array',
+            'kompetensi_dibutuhkan.*'  => 'nullable|string|max:255',
             'fasilitas'                => 'nullable|string',
             // Tahapan seleksi dikirim sebagai array[] dari input
             'tahapan_seleksi'          => 'nullable|array',
@@ -130,7 +131,8 @@ class JobController extends Controller
             'kode_lowongan'          => $this->generateKode(),
             'judul'                  => $validated['judul'],
             'posisi'                 => $validated['posisi'],
-            'work_unit_id'      => $validated['work_unit_id_uuid'] ?? null,
+            'work_unit_id'           => $validated['work_unit_id'] ?? null,
+            'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
             'status_pegawai'         => $validated['status_pegawai'] ?? null,
             'deskripsi_pekerjaan'    => $validated['deskripsi_pekerjaan'],
             'kuota'                  => $validated['kuota'],
@@ -150,17 +152,18 @@ class JobController extends Controller
         ]);
 
         return redirect()
-            ->route('recruitment.jobs.index')
+            ->route('user.ats.jobs.index', ['userId' => $userId])
             ->with('success', "Lowongan \"{$job->judul}\" berhasil dibuat.");
     }
 
-    public function update(Request $request, RecruitmentJob $job)
+    public function update(Request $request, string $userId, RecruitmentJob $job)
     {
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
-            'work_unit_id_uuid'        => 'nullable|exists:work_units,uuid',
-            'status_pegawai'           => 'nullable|in:pns,pppk,honor,kontrak,magang,tetap,probation',
+            'work_unit_id'             => 'nullable|exists:work_units,uuid',
+            'jenis_pegawai'            => 'nullable|in:pns,pppk,honor,kontrak,magang',
+            'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
             'deskripsi_pekerjaan'      => 'required|string',
             'kuota'                    => 'required|integer|min:1',
             'tanggal_mulai'            => 'required|date',
@@ -173,7 +176,8 @@ class JobController extends Controller
             'persyaratan_khusus'       => 'nullable|string',
             'kualifikasi_pendidikan'   => 'nullable|string',
             'kualifikasi_pengalaman'   => 'nullable|string',
-            'kompetensi_dibutuhkan'    => 'nullable|string',
+            'kompetensi_dibutuhkan'    => 'nullable|array',
+            'kompetensi_dibutuhkan.*'  => 'nullable|string|max:255',
             'fasilitas'                => 'nullable|string',
             'tahapan_seleksi'          => 'nullable|array',
             'tahapan_seleksi.*'        => 'nullable|string|max:255',
@@ -196,7 +200,8 @@ class JobController extends Controller
         $job->update([
             'judul'                  => $validated['judul'],
             'posisi'                 => $validated['posisi'],
-            'work_unit_id_uuid'      => $validated['work_unit_id_uuid'] ?? null,
+            'work_unit_id'           => $validated['work_unit_id'] ?? null,
+            'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
             'status_pegawai'         => $validated['status_pegawai'] ?? null,
             'deskripsi_pekerjaan'    => $validated['deskripsi_pekerjaan'],
             'kuota'                  => $validated['kuota'],
@@ -214,17 +219,17 @@ class JobController extends Controller
         ]);
 
         return redirect()
-            ->route('recruitment.jobs.index')
+            ->route('user.ats.jobs.index', ['userId' => $userId])
             ->with('success', "Lowongan \"{$job->judul}\" berhasil diperbarui.");
     }
 
-    public function destroy(RecruitmentJob $job)
+    public function destroy(string $userId, RecruitmentJob $job)
     {
         $judul = $job->judul;
         $job->delete(); // SoftDeletes
 
         return redirect()
-            ->route('recruitment.jobs.index')
+            ->route('user.ats.jobs.index', ['userId' => $userId])
             ->with('success', "Lowongan \"{$judul}\" berhasil dihapus.");
     }
 
@@ -272,7 +277,7 @@ class JobController extends Controller
     /**
      * Display job details.
      */
-    public function show(RecruitmentJob $job)
+    public function show(string $userId, RecruitmentJob $job)
     {
         $job->load(['workUnit', 'creator', 'applications' => function($q) {
             $q->with('recruitmentProfile.user');
@@ -287,22 +292,22 @@ class JobController extends Controller
             'ditolak' => $job->applications->where('status', 'ditolak')->count(),
         ];
 
-        return view('recruitment.jobs.show', compact('job', 'applicationStats'));
+        return view('recruitment.jobs.show', compact('job', 'applicationStats', 'userId'));
     }
 
     /**
      * Show form for editing job.
      */
-    public function edit(RecruitmentJob $job)
+    public function edit(string $userId, RecruitmentJob $job)
     {
         $workUnits = WorkUnit::all();
-        return view('recruitment.jobs.edit', compact('job', 'workUnits'));
+        return view('recruitment.jobs.edit', compact('job', 'workUnits', 'userId'));
     }
 
     /**
      * Duplicate job.
      */
-    public function duplicate(RecruitmentJob $job)
+    public function duplicate(string $userId, RecruitmentJob $job)
     {
         try {
             DB::beginTransaction();
@@ -317,7 +322,7 @@ class JobController extends Controller
 
             DB::commit();
 
-            return redirect()->route('recruitment.jobs.edit', $newJob->id)
+            return redirect()->route('user.ats.jobs.edit', ['userId' => $userId, 'job' => $newJob->id])
                 ->with('success', 'Lowongan berhasil digandakan. Silakan edit sesuai kebutuhan.');
 
         } catch (\Exception $e) {
@@ -329,7 +334,7 @@ class JobController extends Controller
     /**
      * Toggle job status.
      */
-    public function toggleStatus(RecruitmentJob $job)
+    public function toggleStatus(string $userId, RecruitmentJob $job)
     {
         $job->status = $job->status == 'aktif' ? 'ditutup' : 'aktif';
         $job->closed_at = $job->status == 'ditutup' ? now() : null;
@@ -342,6 +347,43 @@ class JobController extends Controller
             'success' => true,
             'message' => $message,
             'status' => $job->status
+        ]);
+    }
+
+    /**
+     * Show applications for a specific job.
+     */
+    public function applications(Request $request, string $userId, RecruitmentJob $job)
+    {
+        $query = $job->applications()
+            ->with(['recruitmentProfile.user', 'recruitmentJob'])
+            ->latest('tanggal_melamar');
+
+        if ($search = $request->string('q')->toString()) {
+            $query->whereHas('recruitmentProfile.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->string('status')->toString()) {
+            $query->where('status', $status);
+        }
+
+        $applications = $query->paginate(20)->withQueryString();
+
+        $stats = [
+            'total'      => $job->applications()->count(),
+            'diterima'   => $job->applications()->where('status', 'diterima')->count(),
+            'ditolak'    => $job->applications()->where('status', 'ditolak')->count(),
+            'proses'     => $job->applications()->whereNotIn('status', ['diterima', 'ditolak'])->count(),
+        ];
+
+        return view('recruitment.jobs.applications', [
+            'job'          => $job,
+            'applications' => $applications,
+            'stats'        => $stats,
+            'userId'       => $userId,
         ]);
     }
 

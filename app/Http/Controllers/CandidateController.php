@@ -16,7 +16,7 @@ class CandidateController extends Controller
     /**
      * Display a listing of candidates.
      */
-    public function index(Request $request)
+    public function index(Request $request, string $userId)
     {
         $query = RecruitmentProfile::with(['user', 'educations', 'workExperiences', 'skills'])
             ->withCount('applications');
@@ -53,17 +53,25 @@ class CandidateController extends Controller
 
         $candidates = $query->orderBy('created_at', 'desc')->paginate(15);
 
+        // Stats
+        $stats = [
+            'total' => RecruitmentProfile::count(),
+            'terverifikasi' => RecruitmentProfile::whereNotNull('verified_at')->count(),
+            'pending' => RecruitmentProfile::whereNull('verified_at')->count(),
+            'ditolak' => RecruitmentProfile::where('status', 'ditolak')->count(),
+        ];
+
         // Get filter options
         $pendidikanOptions = RecruitmentEducation::distinct('jenjang')->pluck('jenjang');
         $skillOptions = RecruitmentSkill::distinct('nama_skill')->limit(50)->pluck('nama_skill');
 
-        return view('recruitment.candidates.index', compact('candidates', 'pendidikanOptions', 'skillOptions'));
+        return view('recruitment.candidates.index', compact('candidates', 'stats', 'pendidikanOptions', 'skillOptions', 'userId'));
     }
 
     /**
      * Show candidate profile.
      */
-    public function show(RecruitmentProfile $candidate)
+    public function show(string $userId, RecruitmentProfile $candidate)
     {
         $candidate->load([
             'user',
@@ -72,16 +80,36 @@ class CandidateController extends Controller
             'skills',
             'trainings',
             'documents',
-            'applications.recruitmentJob'
+            'applications.recruitmentJob',
+            'applications.stages',
         ]);
 
-        return view('recruitment.candidates.show', compact('candidate'));
+        return view('recruitment.candidates.show', compact('candidate', 'userId'));
+    }
+
+    /**
+     * List all applications for a specific candidate.
+     */
+    public function candidateApplications(string $userId, RecruitmentProfile $candidate)
+    {
+        $candidate->load([
+            'user',
+            'applications.recruitmentJob',
+            'applications.stages.recruitmentPipelineStage',
+        ]);
+
+        $applications = $candidate->applications()
+            ->with(['recruitmentJob', 'stages.recruitmentPipelineStage'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('recruitment.candidates.applications', compact('candidate', 'applications', 'userId'));
     }
 
     /**
      * Download candidate CV.
      */
-    public function downloadCv(RecruitmentProfile $candidate)
+    public function downloadCv(string $userId, RecruitmentProfile $candidate)
     {
         $cv = $candidate->documents()->where('jenis_dokumen', 'cv')->first();
 
@@ -101,7 +129,7 @@ class CandidateController extends Controller
     /**
      * Get candidate timeline.
      */
-    public function timeline(RecruitmentProfile $candidate)
+    public function timeline(string $userId, RecruitmentProfile $candidate)
     {
         $timeline = collect();
 
@@ -143,7 +171,7 @@ class CandidateController extends Controller
     /**
      * Add skill to candidate.
      */
-    public function addSkill(Request $request, RecruitmentProfile $candidate)
+    public function addSkill(Request $request, string $userId, RecruitmentProfile $candidate)
     {
         $validated = $request->validate([
             'kategori' => 'required|in:teknis,non_teknis,bahasa,sertifikasi',
@@ -164,7 +192,7 @@ class CandidateController extends Controller
     /**
      * Remove skill from candidate.
      */
-    public function removeSkill(RecruitmentProfile $candidate, $skillId)
+    public function removeSkill(string $userId, RecruitmentProfile $candidate, string $skillId)
     {
         $skill = $candidate->skills()->findOrFail($skillId);
         $skill->delete();
@@ -176,17 +204,45 @@ class CandidateController extends Controller
     }
 
     /**
+     * Verify password to reveal NIK and KK.
+     */
+    public function verifyPassword(Request $request, string $userId, RecruitmentProfile $candidate)
+    {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        $user = $candidate->user;
+
+        if (!\Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password yang Anda masukkan tidak valid.'
+            ], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Identitas berhasil diverifikasi.',
+            'data' => [
+                'nik' => $candidate->nik ?? '-',
+                'no_kk' => $candidate->no_kk ?? '-',
+            ]
+        ]);
+    }
+
+    /**
      * Create new candidate manually.
      */
-    public function create()
+    public function create(string $userId)
     {
-        return view('recruitment.candidates.create');
+        return view('recruitment.candidates.create', compact('userId'));
     }
 
     /**
      * Store new candidate.
      */
-    public function store(Request $request)
+    public function store(Request $request, string $userId)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -232,7 +288,7 @@ class CandidateController extends Controller
 
             DB::commit();
 
-            return redirect()->route('recruitment.candidates.show', $profile->id)
+            return redirect()->route('user.ats.candidates.show', ['userId' => $userId, 'candidate' => $profile->id])
                 ->with('success', 'Kandidat berhasil ditambahkan');
 
         } catch (\Exception $e) {

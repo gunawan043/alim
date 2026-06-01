@@ -18,7 +18,7 @@ class RecruitmentJob extends Model
     protected $table = 'recruitment_jobs'; // Tambahkan jika nama tabel tidak sesuai default
 
     protected $fillable = [
-        'work_unit_id_uuid', 
+        'work_unit_id',
         'kode_lowongan', 
         'judul', 
         'posisi',
@@ -125,7 +125,7 @@ class RecruitmentJob extends Model
      */
     public function workUnit()
     {
-        return $this->belongsTo(WorkUnit::class, 'work_unit_id_uuid', 'uuid');
+        return $this->belongsTo(WorkUnit::class, 'work_unit_id', 'id');
     }
 
     /**
@@ -369,7 +369,7 @@ class RecruitmentJob extends Model
      */
     public function scopeByWorkUnit($query, $workUnitId)
     {
-        return $query->where('work_unit_id_uuid', $workUnitId);
+        return $query->where('work_unit_id', $workUnitId);
     }
 
     /**

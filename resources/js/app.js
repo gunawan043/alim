@@ -13,7 +13,7 @@ File: Main Js File
     /**
      *  global variables
      */
-    var navbarMenuHTML = document.querySelector(".navbar-menu").innerHTML;
+    var navbarMenuHTML = document.querySelector(".navbar-menu") ? document.querySelector(".navbar-menu").innerHTML : "";
     var horizontalMenuSplit = 7; // after this number all horizontal menus will be moved in More menu options
     var default_lang = "en"; // set Default Language
     var language = localStorage.getItem("language");
@@ -1088,16 +1088,19 @@ File: Main Js File
             var removeItem = document.getElementById('removeNotificationModal');
             if (removeItem) {
                 removeItem.addEventListener('show.bs.modal', function (event) {
-                    document.getElementById("delete-notification").addEventListener("click", function () {
-                        Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
-                            if (element.classList.contains("active")) {
-                                element.remove();
-                            }
-                        });
-                        emptyNotification();
+                    var deleteNotificationBtn = document.getElementById("delete-notification");
+                    if (deleteNotificationBtn) {
+                        deleteNotificationBtn.addEventListener("click", function () {
+                            Array.from(document.querySelectorAll(".notification-item")).forEach(function (element) {
+                                if (element.classList.contains("active")) {
+                                    element.remove();
+                                }
+                            });
+                            emptyNotification();
 
-                        document.getElementById("NotificationModalbtn-close").click();
-                    })
+                            document.getElementById("NotificationModalbtn-close").click();
+                        })
+                    }
                 })
             }
         }

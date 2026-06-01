@@ -707,34 +707,39 @@ $sa_pension_approaching = DB::table('users')
     <div class="collapse menu-dropdown{{ isActiveSA($currentRoute, 'user.ats.') ? ' show' : '' }}" id="recruitment">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
+                <a class="nav-link{{ $currentRoute === 'user.ats.index' ? ' active' : '' }}"
+                   href="{{ route('user.ats.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem"><i class="ri-dashboard-line me-1"></i>Dashboard</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.ats.jobs.index' ? ' active' : '' }}"
                    href="{{ route('user.ats.jobs.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Lowongan</a>
+                   style="font-size:0.85rem"><i class="ri-briefcase-line me-1"></i>Lowongan</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.ats.candidates.index' ? ' active' : '' }}"
                    href="{{ route('user.ats.candidates.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Kandidat</a>
+                   style="font-size:0.85rem"><i class="ri-user-line me-1"></i>Kandidat</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.ats.applications.index' ? ' active' : '' }}"
                    href="{{ route('user.ats.applications.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Lamaran</a>
+                   style="font-size:0.85rem"><i class="ri-file-list-3-line me-1"></i>Lamaran</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ $currentRoute === 'user.ats.interviews.index' ? ' active' : '' }}"
-                   href="{{ route('user.ats.interviews.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Jadwal Interview</a>
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.ats.data-nilai') ? ' active' : '' }}"
+                   href="{{ route('user.ats.data-nilai.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem"><i class="ri-file-chart-line me-1"></i>Data Nilai</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.ats.reports.index' ? ' active' : '' }}"
                    href="{{ route('user.ats.reports.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Reports</a>
+                   style="font-size:0.85rem"><i class="ri-bar-chart-box-line me-1"></i>Laporan</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.ats.settings.index' ? ' active' : '' }}"
                    href="{{ route('user.ats.settings.index', ['userId' => $userId]) }}"
-                   style="font-size:0.85rem">Settings</a>
+                   style="font-size:0.85rem"><i class="ri-settings-3-line me-1"></i>Pengaturan</a>
             </li>
         </ul>
     </div>

@@ -241,7 +241,7 @@ class ProfileController extends Controller
                         DB::table('gtk_work_unit')->insert([
                             'id' => Str::id(),
                             'user_id' => $user->id,
-                            'work_unit_id_uuid' => $workUnit->id,
+                            'work_unit_id' => $workUnit->id,
                             'jabatan' => $validated['employment']['jabatan'] ?? null,
                             'is_primary' => $index === 0, // Work unit pertama sebagai primary
                             'created_at' => now(),

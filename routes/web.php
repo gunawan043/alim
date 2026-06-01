@@ -22,6 +22,7 @@ use App\Http\Controllers\WilayahController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserSecurityController;
 use App\Http\Controllers\RecruitmentPipelineController;
+use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
@@ -465,6 +466,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── ATS RECRUITMENT ────────────────────────────────────
             Route::prefix('ats')->name('ats.')->group(function () {
+                Route::get('/',              [AtsDashboardController::class, 'index'])->name('index');
                 Route::resource('jobs', JobController::class);
                 Route::get('jobs/{job}/applications',   [JobController::class, 'applications'])->name('jobs.applications');
                 Route::post('jobs/{job}/duplicate',     [JobController::class, 'duplicate'])->name('jobs.duplicate');
@@ -481,12 +483,17 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('applications/{application}/add-note',      [ApplicationController::class, 'addNote'])->name('applications.add-note');
                 Route::post('applications/{application}/send-message',  [ApplicationController::class, 'sendMessage'])->name('applications.send-message');
                 Route::post('applications/bulk-action',                 [ApplicationController::class, 'bulkAction'])->name('applications.bulk-action');
+                Route::post('applications/announce-admin',              [ApplicationController::class, 'announceAdminResults'])->name('applications.announce-admin');
                 Route::get('applications/export/excel',                 [ApplicationController::class, 'exportExcel'])->name('applications.export-excel');
                 Route::get('applications/export/pdf',                   [ApplicationController::class, 'exportPdf'])->name('applications.export-pdf');
-                Route::post('applications/{applicationId}/move-next',     [RecruitmentPipelineController::class, 'moveToNextStage'])->name('pipeline.move-next');
-                Route::post('applications/{applicationId}/move-to-stage', [RecruitmentPipelineController::class, 'moveToStage'])->name('pipeline.move-to-stage');
+                Route::post('applications/{applicationId}/move-next',       [RecruitmentPipelineController::class, 'moveToNextStage'])->name('pipeline.move-next');
+                Route::post('applications/{applicationId}/move-to-stage',   [RecruitmentPipelineController::class, 'moveToStage'])->name('pipeline.move-to-stage');
+                Route::get('applications/{application}/convert',            [ApplicationController::class, 'convertToEmployee'])->name('applications.convert');
+                Route::post('applications/{application}/convert',           [ApplicationController::class, 'convertToEmployee'])->name('applications.convert');
 
                 Route::resource('candidates', CandidateController::class);
+                Route::post('candidates/{candidate}/verify-password',        [CandidateController::class, 'verifyPassword'])->name('candidates.verify-password');
+                Route::get('candidates/{candidate}/applications',            [CandidateController::class, 'candidateApplications'])->name('candidates.applications');
                 Route::get('candidates/{candidate}/download-cv',             [CandidateController::class, 'downloadCv'])->name('candidates.download-cv');
                 Route::get('candidates/{candidate}/timeline',                [CandidateController::class, 'timeline'])->name('candidates.timeline');
                 Route::post('candidates/{candidate}/add-skill',              [CandidateController::class, 'addSkill'])->name('candidates.add-skill');
@@ -497,19 +504,33 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('interviews/{interview}/reschedule',    [InterviewController::class, 'reschedule'])->name('interviews.reschedule');
                 Route::post('interviews/{interview}/complete',      [InterviewController::class, 'markComplete'])->name('interviews.complete');
                 Route::post('interviews/{interview}/add-feedback',  [InterviewController::class, 'addFeedback'])->name('interviews.add-feedback');
+                Route::post('interviews/save-all',                  [InterviewController::class, 'saveAllResults'])->name('interviews.save-all');
+                Route::post('interviews/announce-all',             [InterviewController::class, 'announceAll'])->name('interviews.announce-all');
+                Route::get('interviews/export',                    [InterviewController::class, 'exportResults'])->name('interviews.export');
+
+                // Data Nilai - menampilkan semua pelamar dengan nilai & filter
+                Route::prefix('data-nilai')->name('data-nilai.')->group(function () {
+                    Route::get('/',          [InterviewController::class, 'dataNilai'])->name('index');
+                    Route::get('/dt',        [InterviewController::class, 'dataNilaiDatatable'])->name('datatable');
+                    Route::get('/export',    [InterviewController::class, 'dataNilaiExport'])->name('export');
+                });
 
                 Route::get('reports',                      [ReportController::class, 'index'])->name('reports.index');
                 Route::get('reports/dashboard',            [ReportController::class, 'dashboard'])->name('reports.dashboard');
                 Route::get('reports/hiring-funnel',        [ReportController::class, 'hiringFunnel'])->name('reports.hiring-funnel');
-                Route::get('reports/time-to-hire',         [ReportController::class, 'timeToHire'])->name('reports.time-to-hire');
+                Route::get('reports/time-to-hire',          [ReportController::class, 'timeToHire'])->name('reports.time-to-hire');
                 Route::get('reports/source-effectiveness', [ReportController::class, 'sourceEffectiveness'])->name('reports.source-effectiveness');
-                Route::get('reports/export/{type}',        [ReportController::class, 'export'])->name('reports.export');
-                Route::post('reports/schedule',            [ReportController::class, 'schedule'])->name('reports.schedule');
+                Route::get('reports/export/{type}',         [ReportController::class, 'export'])->name('reports.export');
+                Route::post('reports/schedule',             [ReportController::class, 'schedule'])->name('reports.schedule');
 
                 Route::get('settings',                  [SettingController::class, 'index'])->name('settings.index');
                 Route::post('settings',                 [SettingController::class, 'update'])->name('settings.update');
                 Route::post('settings/stages',          [SettingController::class, 'updateStages'])->name('settings.stages');
                 Route::post('settings/email-templates', [SettingController::class, 'updateEmailTemplates'])->name('settings.email-templates');
+
+                Route::get('applications/{application}/convert',      [ApplicationController::class, 'convertToEmployee'])->name('applications.convert');
+                Route::post('applications/{application}/convert',     [ApplicationController::class, 'doConvert'])->name('applications.do-convert');
+
             });
 
             // ═══════════════════════════════════════════════════════════
@@ -558,6 +579,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/',           [CutiController::class, 'index'])->name('index');
                 Route::get('/create',     [CutiController::class, 'create'])->name('create');
                 Route::post('/',          [CutiController::class, 'store'])->name('store');
+                Route::get('/{id}',       [CutiController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [CutiController::class, 'edit'])->name('edit');
                 Route::put('/{id}',      [CutiController::class, 'update'])->name('update');
                 Route::delete('/{id}',   [CutiController::class, 'destroy'])->name('destroy');
@@ -576,71 +598,113 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/',             [KontrakController::class, 'index'])->name('index');
                 Route::get('/create',      [KontrakController::class, 'create'])->name('create');
                 Route::post('/',           [KontrakController::class, 'store'])->name('store');
+                Route::get('/{id}',        [KontrakController::class, 'show'])->name('show');
                 Route::get('/{id}/edit',  [KontrakController::class, 'edit'])->name('edit');
                 Route::put('/{id}',       [KontrakController::class, 'update'])->name('update');
                 Route::delete('/{id}',    [KontrakController::class, 'destroy'])->name('destroy');
+                Route::post('/{id}/perpanjang', [KontrakController::class, 'perpanjang'])->name('perpanjang');
+                Route::get('/{id}/generate', [KontrakController::class, 'generate'])->name('generate');
                 Route::get('/expiring',   [KontrakController::class, 'expiring'])->name('expiring');
                 Route::get('/template',   [KontrakController::class, 'template'])->name('template');
+                Route::post('/template',  [KontrakController::class, 'templateStore'])->name('template.store');
+                Route::put('/template/{id}', [KontrakController::class, 'templateUpdate'])->name('template.update');
+                Route::delete('/template/{id}', [KontrakController::class, 'templateDestroy'])->name('template.destroy');
+                Route::post('/expiring/remind', [KontrakController::class, 'remindExpiring'])->name('expiring.remind');
                 Route::get('/settings',   [KontrakController::class, 'settings'])->name('settings');
                 Route::post('/datatable', [KontrakController::class, 'datatable'])->name('datatable');
             });
 
             // ── PENILAIAN KINERJA ─────────────────────────────────────
             Route::prefix('kinerja')->name('kinerja.')->group(function () {
-                Route::get('/',             [KinerjaController::class, 'index'])->name('index');
-                Route::get('/create',      [KinerjaController::class, 'create'])->name('create');
-                Route::post('/',           [KinerjaController::class, 'store'])->name('store');
-                Route::get('/{id}/edit',  [KinerjaController::class, 'edit'])->name('edit');
-                Route::put('/{id}',       [KinerjaController::class, 'update'])->name('update');
-                Route::delete('/{id}',    [KinerjaController::class, 'destroy'])->name('destroy');
-                Route::get('/periode',     [KinerjaController::class, 'periode'])->name('periode');
-                Route::get('/indikator',   [KinerjaController::class, 'indikator'])->name('indikator');
-                Route::get('/reward',      [KinerjaController::class, 'reward'])->name('reward');
-                Route::get('/laporan',     [KinerjaController::class, 'laporan'])->name('laporan');
+                Route::get('/',              [KinerjaController::class, 'index'])->name('index');
+                Route::get('/create',       [KinerjaController::class, 'create'])->name('create');
+                Route::post('/',            [KinerjaController::class, 'store'])->name('store');
+                Route::get('/{id}',        [KinerjaController::class, 'show'])->name('show');
+                Route::get('/{id}/edit',   [KinerjaController::class, 'edit'])->name('edit');
+                Route::put('/{id}',        [KinerjaController::class, 'update'])->name('update');
+                Route::delete('/{id}',     [KinerjaController::class, 'destroy'])->name('destroy');
+                Route::get('/periode',      [KinerjaController::class, 'periode'])->name('periode');
+                Route::post('/periode',     [KinerjaController::class, 'periodeStore'])->name('periode.store');
+                Route::put('/periode/{id}', [KinerjaController::class, 'periodeUpdate'])->name('periode.update');
+                Route::delete('/periode/{id}', [KinerjaController::class, 'periodeDestroy'])->name('periode.destroy');
+                Route::get('/indikator',    [KinerjaController::class, 'indikator'])->name('indikator');
+                Route::post('/komponen',     [KinerjaController::class, 'komponenStore'])->name('komponen.store');
+                Route::put('/komponen/{id}', [KinerjaController::class, 'komponenUpdate'])->name('komponen.update');
+                Route::post('/indikator',    [KinerjaController::class, 'indikatorStore'])->name('indikator.store');
+                Route::put('/indikator/{id}',[KinerjaController::class, 'indikatorUpdate'])->name('indikator.update');
+                Route::delete('/indikator/{id}', [KinerjaController::class, 'indikatorDestroy'])->name('indikator.destroy');
+                Route::get('/reward',       [KinerjaController::class, 'reward'])->name('reward');
+                Route::post('/reward',      [KinerjaController::class, 'rewardStore'])->name('reward.store');
+                Route::delete('/reward/{id}', [KinerjaController::class, 'rewardDestroy'])->name('reward.destroy');
+                Route::get('/laporan',      [KinerjaController::class, 'laporan'])->name('laporan');
                 Route::post('/datatable',  [KinerjaController::class, 'datatable'])->name('datatable');
             });
 
             // ── PELATIHAN & PENGEMBANGAN ─────────────────────────────
             Route::prefix('pelatihan')->name('pelatihan.')->group(function () {
-                Route::get('/',            [PelatihanController::class, 'index'])->name('index');
-                Route::get('/create',     [PelatihanController::class, 'create'])->name('create');
-                Route::post('/',          [PelatihanController::class, 'store'])->name('store');
+                Route::get('/',               [PelatihanController::class, 'index'])->name('index');
+                Route::get('/create',        [PelatihanController::class, 'create'])->name('create');
+                Route::post('/',             [PelatihanController::class, 'store'])->name('store');
+                Route::get('/{id}', [PelatihanController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [PelatihanController::class, 'edit'])->name('edit');
-                Route::put('/{id}',      [PelatihanController::class, 'update'])->name('update');
-                Route::delete('/{id}',   [PelatihanController::class, 'destroy'])->name('destroy');
-                Route::get('/peserta',   [PelatihanController::class, 'peserta'])->name('peserta');
-                Route::get('/jenis',     [PelatihanController::class, 'jenis'])->name('jenis');
-                Route::get('/sertifikasi', [PelatihanController::class, 'sertifikasi'])->name('sertifikasi');
-                Route::get('/rekap',     [PelatihanController::class, 'rekap'])->name('rekap');
-                Route::post('/datatable', [PelatihanController::class, 'datatable'])->name('datatable');
+                Route::put('/{id}',         [PelatihanController::class, 'update'])->name('update');
+                Route::delete('/{id}',      [PelatihanController::class, 'destroy'])->name('destroy');
+                Route::get('/{id}/peserta', [PelatihanController::class, 'peserta'])->name('peserta');
+                Route::post('/{id}/peserta-daftar', [PelatihanController::class, 'pesertaDaftar'])->name('peserta.daftar');
+                Route::post('/peserta/{pesertaId}/{status}', [PelatihanController::class, 'pesertaUpdateStatus'])->name('peserta.status');
+                Route::delete('/peserta/{pesertaId}', [PelatihanController::class, 'pesertaHapus'])->name('peserta.destroy');
+                Route::get('/sertifikasi',  [PelatihanController::class, 'sertifikasi'])->name('sertifikasi');
+                Route::post('/sertifikasi',  [PelatihanController::class, 'sertifikasiStore'])->name('sertifikasi.store');
+                Route::get('/rekap', [PelatihanController::class, 'rekap'])->name('rekap');
+                Route::post('/datatable',   [PelatihanController::class, 'datatable'])->name('datatable');
             });
 
             // ── KESEJAHTERAAN GTK ─────────────────────────────────────
             Route::prefix('kesejahteraan')->name('kesejahteraan.')->group(function () {
-                Route::get('/',              [KesejahteraanController::class, 'index'])->name('index');
-                Route::get('/create',       [KesejahteraanController::class, 'create'])->name('create');
-                Route::post('/',            [KesejahteraanController::class, 'store'])->name('store');
-                Route::get('/{id}/edit',  [KesejahteraanController::class, 'edit'])->name('edit');
-                Route::put('/{id}',        [KesejahteraanController::class, 'update'])->name('update');
-                Route::delete('/{id}',     [KesejahteraanController::class, 'destroy'])->name('destroy');
-                Route::get('/asuransi',    [KesejahteraanController::class, 'asuransi'])->name('asuransi');
-                Route::get('/benefit',     [KesejahteraanController::class, 'benefit'])->name('benefit');
-                Route::get('/umum',        [KesejahteraanController::class, 'umum'])->name('umum');
-                Route::get('/laporan',     [KesejahteraanController::class, 'laporan'])->name('laporan');
+                Route::get('/',               [KesejahteraanController::class, 'index'])->name('index');
+                Route::get('/create',        [KesejahteraanController::class, 'create'])->name('create');
+                Route::post('/',             [KesejahteraanController::class, 'store'])->name('store');
+                Route::get('/{id}', [KesejahteraanController::class, 'show'])->name('show');
+                Route::get('/{id}/edit',    [KesejahteraanController::class, 'edit'])->name('edit');
+                Route::put('/{id}',         [KesejahteraanController::class, 'update'])->name('update');
+                Route::delete('/{id}',      [KesejahteraanController::class, 'destroy'])->name('destroy');
+                Route::get('/asuransi',     [KesejahteraanController::class, 'asuransi'])->name('asuransi');
+                Route::post('/asuransi',     [KesejahteraanController::class, 'bpjsStore'])->name('bpjs.store');
+                Route::put('/asuransi/{id}', [KesejahteraanController::class, 'bpjsUpdate'])->name('bpjs.update');
+                Route::delete('/asuransi/{id}', [KesejahteraanController::class, 'bpjsDestroy'])->name('bpjs.destroy');
+                Route::get('/benefit',      [KesejahteraanController::class, 'benefit'])->name('benefit');
+                Route::post('/benefit',      [KesejahteraanController::class, 'benefitStore'])->name('benefit.store');
+                Route::put('/benefit/{id}', [KesejahteraanController::class, 'benefitUpdate'])->name('benefit.update');
+                Route::delete('/benefit/{id}', [KesejahteraanController::class, 'benefitDestroy'])->name('benefit.destroy');
+                Route::get('/klaim',        [KesejahteraanController::class, 'klaim'])->name('klaim');
+                Route::post('/klaim',        [KesejahteraanController::class, 'klaimStore'])->name('klaim.store');
+                Route::post('/klaim/{id}/{status}', [KesejahteraanController::class, 'klaimProses'])->name('klaim.proses');
+                Route::get('/laporan',      [KesejahteraanController::class, 'laporan'])->name('laporan');
                 Route::post('/datatable',   [KesejahteraanController::class, 'datatable'])->name('datatable');
             });
 
             // ── PERATURAN & KEBIJAKAN ─────────────────────────────────
             Route::prefix('peraturan')->name('peraturan.')->group(function () {
-                Route::get('/',             [PeraturanController::class, 'index'])->name('index');
-                Route::get('/create',      [PeraturanController::class, 'create'])->name('create');
-                Route::post('/',           [PeraturanController::class, 'store'])->name('store');
-                Route::get('/{id}/edit', [PeraturanController::class, 'edit'])->name('edit');
-                Route::put('/{id}',       [PeraturanController::class, 'update'])->name('update');
-                Route::delete('/{id}',    [PeraturanController::class, 'destroy'])->name('destroy');
-                Route::get('/kategori',   [PeraturanController::class, 'kategori'])->name('kategori');
-                Route::get('/violation',  [PeraturanController::class, 'violation'])->name('violation');
-                Route::post('/datatable',  [PeraturanController::class, 'datatable'])->name('datatable');
+                Route::get('/',              [PeraturanController::class, 'index'])->name('index');
+                Route::get('/create',       [PeraturanController::class, 'create'])->name('create');
+                Route::post('/',            [PeraturanController::class, 'store'])->name('store');
+                Route::get('/{id}',[PeraturanController::class, 'show'])->name('show');
+                Route::get('/{id}/edit',    [PeraturanController::class, 'edit'])->name('edit');
+                Route::put('/{id}',         [PeraturanController::class, 'update'])->name('update');
+                Route::delete('/{id}',      [PeraturanController::class, 'destroy'])->name('destroy');
+                Route::get('/kategori',      [PeraturanController::class, 'kategori'])->name('kategori');
+                Route::post('/kategori',      [PeraturanController::class, 'kategoriStore'])->name('kategori.store');
+                Route::put('/kategori/{id}', [PeraturanController::class, 'kategoriUpdate'])->name('kategori.update');
+                Route::delete('/kategori/{id}', [PeraturanController::class, 'kategoriDestroy'])->name('kategori.destroy');
+                Route::get('/pelanggaran',   [PeraturanController::class, 'pelanggaran'])->name('pelanggaran');
+                Route::post('/pelanggaran',   [PeraturanController::class, 'pelanggaranStore'])->name('pelanggaran.store');
+                Route::put('/pelanggaran/{id}', [PeraturanController::class, 'pelanggaranUpdate'])->name('pelanggaran.update');
+                Route::delete('/pelanggaran/{id}', [PeraturanController::class, 'pelanggaranDestroy'])->name('pelanggaran.destroy');
+                Route::get('/violation',     [PeraturanController::class, 'violation'])->name('violation');
+                Route::post('/violation',    [PeraturanController::class, 'violationStore'])->name('violation.store');
+                Route::delete('/violation/{id}', [PeraturanController::class, 'violationDestroy'])->name('violation.destroy');
+                Route::post('/{id}/acknowledge', [PeraturanController::class, 'acknowledge'])->name('acknowledge');
+                Route::post('/datatable',    [PeraturanController::class, 'datatable'])->name('datatable');
             });
 
             // ── JAM KERJA & SHIFT ─────────────────────────────────────

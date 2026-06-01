@@ -206,16 +206,16 @@
 
             <div class="col-lg-6">
                 <label class="form-label">Unit Kerja</label>
-                <select class="form-control @error('work_unit_id_uuid') is-invalid @enderror"
-                    data-choices name="work_unit_id_uuid">
+                <select class="form-control @error('work_unit_id') is-invalid @enderror"
+                    data-choices name="work_unit_id">
                     <option value="">-- Pilih Unit Kerja --</option>
                     @foreach ($workUnits as $unit)
-                        <option value="{{ $unit->uuid }}" {{ old('work_unit_id_uuid') == $unit->uuid ? 'selected' : '' }}>
+                        <option value="{{ $unit->uuid }}" {{ old('work_unit_id') == $unit->uuid ? 'selected' : '' }}>
                             {{ $unit->name }}
                         </option>
                     @endforeach
                 </select>
-                @error('work_unit_id_uuid')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @error('work_unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="col-lg-6">
@@ -240,11 +240,23 @@
             </div>
 
             <div class="col-lg-6">
+                <label class="form-label">Jenis Pegawai</label>
+                <select class="form-control @error('jenis_pegawai') is-invalid @enderror"
+                    data-choices name="jenis_pegawai" id="jenis_pegawai">
+                    <option value="">-- Pilih Jenis --</option>
+                    @foreach(['pns'=>'PNS','pppk'=>'PPPK','honor'=>'Honor','kontrak'=>'Kontrak','magang'=>'Magang'] as $val => $label)
+                        <option value="{{ $val }}" {{ old('jenis_pegawai') == $val ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('jenis_pegawai')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="col-lg-6">
                 <label class="form-label">Status Pegawai</label>
                 <select class="form-control @error('status_pegawai') is-invalid @enderror"
-                    data-choices name="status_pegawai">
+                    data-choices name="status_pegawai" id="status_pegawai">
                     <option value="">-- Pilih Status --</option>
-                    @foreach(['pns'=>'PNS','pppk'=>'PPPK','honor'=>'Honor','kontrak'=>'Kontrak','magang'=>'Magang','tetap'=>'Tetap','probation'=>'Probation'] as $val => $label)
+                    @foreach(['tetap'=>'Tetap','kontrak'=>'Kontrak','probation'=>'Probation'] as $val => $label)
                         <option value="{{ $val }}" {{ old('status_pegawai') == $val ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -415,10 +427,19 @@
 
             <div class="col-lg-6">
                 <label class="form-label">Kompetensi / Skill yang Dibutuhkan</label>
-                <textarea class="form-control @error('kompetensi_dibutuhkan') is-invalid @enderror"
-                    id="kompetensi_dibutuhkan" name="kompetensi_dibutuhkan" rows="4"
-                    placeholder="- Microsoft Excel&#10;- Analisis Laporan Keuangan">{{ old('kompetensi_dibutuhkan') }}</textarea>
-                <div class="form-hint"><i class="ri-information-line"></i> Satu poin per baris</div>
+                <select class="form-control @error('kompetensi_dibutuhkan') is-invalid @enderror"
+                    id="kompetensi_dibutuhkan" name="kompetensi_dibutuhkan[]"
+                    multiple data-choices data-choices-removeItem
+                    data-placeholder="Pilih / ketik skill...">
+                    @php
+                        $oldKompetensi = old('kompetensi_dibutuhkan');
+                        $oldKompetensi = is_array($oldKompetensi) ? $oldKompetensi : ($oldKompetensi ? [$oldKompetensi] : []);
+                    @endphp
+                    @foreach ($oldKompetensi as $skill)
+                        <option value="{{ $skill }}" selected>{{ $skill }}</option>
+                    @endforeach
+                </select>
+                <div class="form-hint"><i class="ri-information-line"></i> Bisa pilih dari daftar atau ketik skill baru (tekan Enter)</div>
                 @error('kompetensi_dibutuhkan')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 

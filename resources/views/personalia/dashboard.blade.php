@@ -308,7 +308,7 @@
                         </a>
                     </div>
                     <div class="col-xl-2 col-md-4 col-6">
-                        <a href="{{ route('user.cuti.index', ['userId' => $userId]) }}"
+                        <a href="{{ route('user.ats.cuti.index', ['userId' => $userId]) }}"
                            class="quick-action-btn d-flex flex-column align-items-center justify-content-center p-3 rounded text-decoration-none">
                             <i class="ri-calendar-check-line fs-2 text-warning mb-2"></i>
                             <span class="text-dark fw-medium">Cuti & Izin</span>
@@ -324,7 +324,7 @@
                         </a>
                     </div>
                     <div class="col-xl-2 col-md-4 col-6">
-                        <a href="{{ route('user.pelatihan.index', ['userId' => $userId]) }}"
+                        <a href="{{ route('user.ats.pelatihan.index', ['userId' => $userId]) }}"
                            class="quick-action-btn d-flex flex-column align-items-center justify-content-center p-3 rounded text-decoration-none">
                             <i class="ri-graduation-cap-line fs-2 text-danger mb-2"></i>
                             <span class="text-dark fw-medium">Pelatihan</span>

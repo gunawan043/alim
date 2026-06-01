@@ -37,7 +37,7 @@ var options = {
     "customer_name",
     "email",
     "date",
-    "no_hp",
+    "phone",
     "status",
   ],
   page: perPage,
@@ -243,7 +243,7 @@ Array.prototype.slice.call(forms).forEach(function (form) {
                 customer_name: customerNameField.value,
                 email: emailField.value,
                 date: dateField.value,
-                no_hp: phoneField.value,
+                phone: phoneField.value,
                 status: isStatus(statusField.value),
               });
               customerList.sort('id', { order: "desc" });
@@ -278,7 +278,7 @@ Array.prototype.slice.call(forms).forEach(function (form) {
                   customer_name: customerNameField.value,
                   email: emailField.value,
                   date: dateField.value,
-                  no_hp: phoneField.value,
+                  phone: phoneField.value,
                   status: isStatus(statusField.value),
                 });
               }
@@ -381,7 +381,7 @@ function refreshCallbacks() {
             customerNameField.value = x._values.customer_name;
             emailField.value = x._values.email;
             dateField.value = x._values.date;
-            phoneField.value = x._values.no_hp;
+            phoneField.value = x._values.phone;
   
             if (statusVal) statusVal.destroy();
             statusVal = new Choices(statusField, {
