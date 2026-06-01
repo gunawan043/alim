@@ -233,4 +233,9 @@ return [
 
     ],
 
+    'deploy' => [
+        'webhook_secret' => env('DEPLOY_WEBHOOK_SECRET'),
+        'branch' => env('DEPLOY_BRANCH', 'main'),
+    ],
+
 ];
