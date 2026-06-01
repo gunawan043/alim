@@ -152,6 +152,16 @@ class RecruitmentJob extends Model
         return $this->hasMany(RecruitmentApplication::class, 'recruitment_job_id');
     }
 
+    public function pipelines()
+    {
+        return $this->hasMany(RecruitmentPipeline::class, 'recruitment_job_id');
+    }
+
+    public function pipeline()
+    {
+        return $this->hasOne(RecruitmentPipeline::class, 'recruitment_job_id');
+    }
+
     /**
      * Get the applications count
      */

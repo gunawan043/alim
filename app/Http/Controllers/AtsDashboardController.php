@@ -76,6 +76,9 @@ class AtsDashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // ── Lowongan Baru (30 hari terakhir) ─────────────────────────
+        $lowonganBaru = RecruitmentJob::where('created_at', '>=', $now->copy()->subDays(30))->count();
+
         // ── Top Lowongan ─────────────────────────────────────────────
         $topJobs = RecruitmentJob::withCount([
             'applications',
@@ -126,7 +129,7 @@ class AtsDashboardController extends Controller
             'userId', 'stats', 'funnel', 'chartData',
             'expiringJobs', 'topJobs', 'topCandidates',
             'interviewReminders', 'recentActivities',
-            'konversiRate', 'demographics'
+            'konversiRate', 'demographics', 'lowonganBaru'
         ));
     }
 
