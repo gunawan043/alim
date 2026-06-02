@@ -60,10 +60,6 @@ Route::prefix('mobile/v1')->group(function () {
     });
 });
 
-// ── DEPLOY WEBHOOK (GitHub push to deploy) ────────────────────────────────────
-Route::post('webhook/deploy', [App\Http\Controllers\Api\DeployWebhookController::class, 'github'])
-    ->name('api.webhook.deploy');
-
 // ── AUTHENTICATED ─────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
