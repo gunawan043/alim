@@ -88,6 +88,7 @@ class JobController extends Controller
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
+            'kategori'                 => 'nullable|in:guru,staff,tenaga_kependidikan,manajerial,teknisi,kesehatan,keamanan,kebersihan,lainnya',
             'work_unit_id'          => 'nullable|exists:work_units,uuid',
             'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
             'deskripsi_pekerjaan'      => 'required|string',
@@ -131,6 +132,7 @@ class JobController extends Controller
             'kode_lowongan'          => $this->generateKode(),
             'judul'                  => $validated['judul'],
             'posisi'                 => $validated['posisi'],
+            'kategori'               => $validated['kategori'] ?? null,
             'work_unit_id'           => $validated['work_unit_id'] ?? null,
             'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
             'status_pegawai'         => $validated['status_pegawai'] ?? null,
@@ -161,6 +163,7 @@ class JobController extends Controller
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
+            'kategori'                 => 'nullable|in:guru,staff,tenaga_kependidikan,manajerial,teknisi,kesehatan,keamanan,kebersihan,lainnya',
             'work_unit_id'             => 'nullable|exists:work_units,uuid',
             'jenis_pegawai'            => 'nullable|in:pns,pppk,honor,kontrak,magang',
             'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
@@ -200,6 +203,7 @@ class JobController extends Controller
         $job->update([
             'judul'                  => $validated['judul'],
             'posisi'                 => $validated['posisi'],
+            'kategori'               => $validated['kategori'] ?? null,
             'work_unit_id'           => $validated['work_unit_id'] ?? null,
             'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
             'status_pegawai'         => $validated['status_pegawai'] ?? null,

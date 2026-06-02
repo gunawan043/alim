@@ -19,10 +19,11 @@ class RecruitmentJob extends Model
 
     protected $fillable = [
         'work_unit_id',
-        'kode_lowongan', 
-        'judul', 
+        'kode_lowongan',
+        'judul',
         'posisi',
-        'jenis_pegawai', 
+        'kategori',
+        'jenis_pegawai',
         'status_pegawai', 
         'persyaratan_umum',
         'persyaratan_khusus', 
@@ -718,5 +719,10 @@ class RecruitmentJob extends Model
         return $this->applications()
             ->where('user_id', $userId)
             ->first();
+    }
+
+    public function getUuidAttribute(): string
+    {
+        return (string) $this->id;
     }
 }
