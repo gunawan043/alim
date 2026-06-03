@@ -123,6 +123,7 @@ use App\Http\Controllers\Personalia\KehadiranController;
 use App\Http\Controllers\Personalia\RaporGtkController;
 use App\Http\Controllers\Personalia\KalenderKegiatanController;
 use App\Http\Controllers\Personalia\AnalisisGtkController;
+use App\Http\Controllers\DeployController;
 
 /*
 |--------------------------------------------------------------------------
@@ -1724,3 +1725,8 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
 |--------------------------------------------------------------------------
 */
 Route::fallback([HomeController::class, 'index']);
+
+// ── AUTO-DEPLOY WEBHOOK ────────────────────────────────────────────────────────
+// Lihat: app/Http/Controllers/DeployController.php
+Route::post('/webhook/deploy', [DeployController::class, 'handle']);
+Route::get('/health',          [DeployController::class, 'health']);
