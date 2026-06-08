@@ -725,4 +725,46 @@ class RecruitmentJob extends Model
     {
         return (string) $this->id;
     }
+
+    /**
+     * Get jabatan records from kategori UUIDs (casted to array).
+     */
+    public function getKategoriJabatanAttribute()
+    {
+        $uuids = $this->kategori;
+        if (empty($uuids) || !is_array($uuids)) {
+            return collect();
+        }
+        return Jabatan::whereIn('uuid', $uuids)->orderBy('nama')->get();
+    }
+
+    /**
+     * Get array of jabatan names.
+     */
+    public function getKategoriNamesAttribute(): array
+    {
+        return $this->kategori_jabatan->pluck('nama')->toArray();
+    }
+
+    /**
+     * Get comma-separated kategori names for display.
+     */
+    public function getKategoriLabelAttribute(): string
+    {
+        $names = $this->kategori_names;
+        return empty($names) ? '-' : implode(', ', $names);
+    }
+
+    /**
+     * Get comma-separated kategori UUIDs.
+     */
+    public function getKategoriListAttribute(): array
+    {
+        $val = $this->kategori;
+        if (is_string($val)) {
+            $decoded = json_decode($val, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return is_array($val) ? $val : [];
+    }
 }

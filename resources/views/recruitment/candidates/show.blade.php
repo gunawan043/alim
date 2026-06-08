@@ -221,6 +221,12 @@
                                 class="btn btn-success">
                                 <i class="ri-file-list-line align-middle me-1"></i> Lihat Lamaran
                             </a>
+                            <form action="{{ route('user.ats.candidates.sync-documents', ['userId' => $userId, 'candidate' => $candidate->id]) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-info" title="Sinkronkan dokumen dari recruitment.abuhurairah.id">
+                                    <i class="ri-refresh-line align-middle me-1"></i> Sync Dokumen
+                                </button>
+                            </form>
                             <a href="{{ route('user.ats.candidates.index', ['userId' => $userId]) }}" class="btn btn-light">
                                 <i class="ri-arrow-left-line align-middle me-1"></i> Kembali
                             </a>
@@ -779,17 +785,100 @@
                         </div>
 
                         {{-- ============================================================
-                             TAB 5: DOKUMEN
+                             TAB 5: DOKUMEN (External — recruitment.abuhurairah.id)
                         ============================================================ --}}
                         <div class="tab-pane fade" id="dokumen" role="tabpanel">
-                            @if ($candidate->documents->count() > 0)
+                            {{-- Info Banner --}}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="alert alert-info border-0 mb-0" role="alert">
+                                        <i class="ri-cloud-line me-2"></i>
+                                        <strong>Informasi:</strong> Dokumen dan foto pelamar disimpan di
+                                        <a href="https://recruitment.abuhurairah.id" target="_blank" rel="noopener" class="alert-link">recruitment.abuhurairah.id</a>.
+                                        Klik tombol di bawah untuk mengambil data dokumen terbaru.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Action Buttons --}}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <button type="button" onclick="syncDocuments({{ $candidate->id }})"
+                                                class="btn btn-primary w-100" id="btnSyncAll">
+                                                <i class="ri-refresh-line me-1"></i> Sync Dokumen
+                                            </button>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button type="button" onclick="syncPhoto({{ $candidate->id }})"
+                                                class="btn btn-success w-100" id="btnSyncPhoto">
+                                                <i class="ri-camera-line me-1"></i> Sync Foto Profil
+                                            </button>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <a href="https://recruitment.abuhurairah.id" target="_blank" rel="noopener"
+                                                class="btn btn-outline-info w-100">
+                                                <i class="ri-external-link-line me-1"></i> Buka Recruitment App
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {{-- Status Sync --}}
+                                    <div id="syncStatus" class="mt-3 d-none">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                                        </div>
+                                        <small class="text-muted mt-1 d-block" id="syncStatusText">Mengambil data dari recruitment.abuhurairah.id...</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Photo Section --}}
+                            @if ($candidate->foto_url_external)
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="card-title mb-0 d-flex align-items-center">
+                                            <i class="ri-camera-line text-success me-2"></i>Foto Profil
+                                        </h6>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <img src="{{ $candidate->foto_url_external }}"
+                                             alt="Foto {{ $candidate->user->name }}"
+                                             class="img-thumbnail rounded-circle"
+                                             style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="mt-2">
+                                            <a href="{{ $candidate->foto_url_external }}" target="_blank" rel="noopener"
+                                                class="btn btn-sm btn-soft-success">
+                                                <i class="ri-external-link-line"></i> Buka di recruitment.abuhurairah.id
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Documents List --}}
+                            @php
+                                // Prioritaskan dokumen external_url, fallback ke local
+                                $docs = $candidate->documents
+                                    ->sortByDesc('is_external')
+                                    ->sortByDesc('is_primary')
+                                    ->sortBy('jenis_dokumen');
+                                $hasExternalDocs = $candidate->documents->where('is_external', true)->isNotEmpty();
+                            @endphp
+
+                            @if ($docs->count() > 0)
                                 <div class="card">
                                     <div class="card-body">
-                                        <div class="d-flex align-items-center mb-4">
-                                            <h5 class="card-title flex-grow-1 mb-0 d-flex align-items-center">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <h6 class="card-title flex-grow-1 mb-0 d-flex align-items-center">
                                                 <i class="ri-folder-line text-primary me-2"></i>Dokumen Terlampir
-                                            </h5>
-                                            <span class="badge bg-primary">{{ $candidate->documents->count() }} Dokumen</span>
+                                            </h6>
+                                            <div class="d-flex gap-2">
+                                                @if ($hasExternalDocs)
+                                                    <span class="badge bg-info"><i class="ri-cloud-line me-1"></i>{{ $candidate->documents->where('is_external', true)->count() }} External</span>
+                                                @endif
+                                                <span class="badge bg-primary">{{ $docs->count() }} Dokumen</span>
+                                            </div>
                                         </div>
                                         <div class="table-responsive">
                                             <table class="table table-borderless align-middle mb-0">
@@ -798,16 +887,16 @@
                                                         <th>Nama File</th>
                                                         <th>Jenis</th>
                                                         <th>Ukuran</th>
-                                                        <th>Tanggal Upload</th>
+                                                        <th>Status</th>
                                                         <th>Aksi</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @foreach($candidate->documents as $doc)
+                                                    @foreach($docs as $doc)
                                                         <tr>
                                                             <td>
                                                                 <div class="d-flex align-items-center">
-                                                                    <div class="avatar-sm">
+                                                                    <div class="avatar-sm flex-shrink-0">
                                                                         <div class="avatar-title bg-{{ $doc->jenis_dokumen == 'cv' ? 'primary' : 'info' }}-subtle rounded fs-20">
                                                                             <i class="ri-file-{{ $doc->file_extension ?? 'document' }}-line text-{{ $doc->jenis_dokumen == 'cv' ? 'primary' : 'info' }}"></i>
                                                                         </div>
@@ -825,13 +914,35 @@
                                                                     {{ strtoupper($doc->jenis_dokumen) }}
                                                                 </span>
                                                             </td>
-                                                            <td>{{ $doc->file_size ?? '-' }}</td>
-                                                            <td>{{ $doc->created_at->format('d M Y') }}</td>
                                                             <td>
-                                                                <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank"
-                                                                    class="btn btn-sm btn-soft-primary">
-                                                                    <i class="ri-download-line"></i>
-                                                                </a>
+                                                                @if ($doc->file_size)
+                                                                    @php $size = number_format($doc->file_size / 1024, 1); @endphp
+                                                                    {{ $size }} KB
+                                                                @else
+                                                                    -
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if ($doc->is_external)
+                                                                    <span class="badge bg-info">
+                                                                        <i class="ri-cloud-line"></i> External
+                                                                    </span>
+                                                                @else
+                                                                    <span class="badge bg-secondary">Local</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if ($doc->is_external && $doc->external_url)
+                                                                    <a href="{{ $doc->external_url }}" target="_blank" rel="noopener"
+                                                                        class="btn btn-sm btn-soft-info" title="Buka di recruitment.abuhurairah.id">
+                                                                        <i class="ri-external-link-line"></i>
+                                                                    </a>
+                                                                @elseif ($doc->file_path)
+                                                                    <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank"
+                                                                        class="btn btn-sm btn-soft-primary" title="Download">
+                                                                        <i class="ri-download-line"></i>
+                                                                    </a>
+                                                                @endif
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -844,7 +955,10 @@
                                 <div class="text-center py-5">
                                     <div class="mb-4"><i class="ri-folder-upload-line text-muted" style="font-size: 5rem;"></i></div>
                                     <h5 class="text-muted mb-3">Belum Ada Dokumen</h5>
-                                    <p class="text-muted mb-4">Kandidat ini belum mengunggah dokumen apapun.</p>
+                                    <p class="text-muted mb-4">Klik tombol <strong>"Sync Dokumen"</strong> di atas untuk mengambil data dari recruitment.abuhurairah.id</p>
+                                    <button type="button" onclick="syncDocuments({{ $candidate->id }})" class="btn btn-primary">
+                                        <i class="ri-refresh-line"></i> Sync Sekarang
+                                    </button>
                                 </div>
                             @endif
                         </div>
@@ -936,5 +1050,104 @@
             $(this).removeClass('is-invalid');
         });
     });
+
+    /* ==========================================================================
+       SYNC DOKUMEN DAN FOTO PROFIL dari recruitment.abuhurairah.id
+       ========================================================================== */
+    function showSyncStatus() {
+        $('#syncStatus').removeClass('d-none');
+        $('#btnSyncAll, #btnSyncPhoto').prop('disabled', true).addClass('opacity-50');
+    }
+
+    function hideSyncStatus() {
+        $('#syncStatus').addClass('d-none');
+        $('#btnSyncAll, #btnSyncPhoto').prop('disabled', false).removeClass('opacity-50');
+    }
+
+    function syncDocuments(candidateId) {
+        showSyncStatus();
+        $('#syncStatusText').text('Mengambil data dokumen dari recruitment.abuhurairah.id...');
+
+        $.ajax({
+            url: '{{ route('recruitment.sync-documents', ['userId' => $userId, 'candidate' => $candidate->id]) }}',
+            type: 'POST',
+            data: { _token: '{{ csrf_token() }}' },
+            success: function(response) {
+                if (response.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: response.message || 'Dokumen berhasil disinkronkan.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                    // Reload halaman untuk update tab dokumen
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    hideSyncStatus();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: response.message || 'Gagal menyinkronkan dokumen.' });
+                    }
+                }
+            },
+            error: function(xhr) {
+                hideSyncStatus();
+                var msg = 'Gagal menyinkronkan dokumen.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                }
+            }
+        });
+    }
+
+    function syncPhoto(candidateId) {
+        showSyncStatus();
+        $('#syncStatusText').text('Mengambil foto profil dari recruitment.abuhurairah.id...');
+
+        $.ajax({
+            url: '{{ route('recruitment.sync-photo', ['userId' => $userId, 'candidate' => $candidate->id]) }}',
+            type: 'POST',
+            data: { _token: '{{ csrf_token() }}' },
+            success: function(response) {
+                if (response.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Foto profil berhasil disinkronkan.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    hideSyncStatus();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: response.message || 'Gagal menyinkronkan foto profil.' });
+                    }
+                }
+            },
+            error: function(xhr) {
+                hideSyncStatus();
+                var msg = 'Gagal menyinkronkan foto profil.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                }
+            }
+        });
+    }
+
     </script>
 @endsection

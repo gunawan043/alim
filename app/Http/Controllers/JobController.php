@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\RecruitmentJob;
 use App\Models\WorkUnit;
+use App\Models\Jabatan;
+use App\Models\JenisGtk;
 use App\Services\NotificationUniversalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -80,7 +82,14 @@ class JobController extends Controller
     public function create(string $userId)
     {
         $workUnits = WorkUnit::all();
-        return view('recruitment.jobs.create', compact('workUnits', 'userId'));
+        $jabatanList = Jabatan::with('jenisGtk')->active()->orderBy('urutan')->orderBy('nama')->get();
+        $jenisGtkList = JenisGtk::orderBy('nama')->get();
+        $kategoriList = Jabatan::active()
+            ->whereNotNull('kategori')
+            ->distinct()
+            ->orderBy('kategori')
+            ->pluck('kategori');
+        return view('recruitment.jobs.create', compact('workUnits', 'jabatanList', 'jenisGtkList', 'kategoriList', 'userId'));
     }
 
     public function store(Request $request, string $userId)
@@ -88,7 +97,8 @@ class JobController extends Controller
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
-            'kategori'                 => 'nullable|in:guru,staff,tenaga_kependidikan,manajerial,teknisi,kesehatan,keamanan,kebersihan,lainnya',
+            'kategori'                 => 'nullable|array',
+            'kategori.*'               => 'nullable|uuid|exists:jabatan,uuid',
             'work_unit_id'          => 'nullable|exists:work_units,uuid',
             'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
             'deskripsi_pekerjaan'      => 'required|string',
@@ -163,7 +173,8 @@ class JobController extends Controller
         $validated = $request->validate([
             'judul'                    => 'required|string|max:255',
             'posisi'                   => 'required|string|max:255',
-            'kategori'                 => 'nullable|in:guru,staff,tenaga_kependidikan,manajerial,teknisi,kesehatan,keamanan,kebersihan,lainnya',
+            'kategori'                 => 'nullable|array',
+            'kategori.*'               => 'nullable|uuid|exists:jabatan,uuid',
             'work_unit_id'             => 'nullable|exists:work_units,uuid',
             'jenis_pegawai'            => 'nullable|in:pns,pppk,honor,kontrak,magang',
             'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
@@ -305,7 +316,9 @@ class JobController extends Controller
     public function edit(string $userId, RecruitmentJob $job)
     {
         $workUnits = WorkUnit::all();
-        return view('recruitment.jobs.edit', compact('job', 'workUnits', 'userId'));
+        $jabatanList = Jabatan::with('jenisGtk')->active()->orderBy('urutan')->orderBy('nama')->get();
+        $jenisGtkList = JenisGtk::orderBy('nama')->get();
+        return view('recruitment.jobs.edit', compact('job', 'workUnits', 'jabatanList', 'jenisGtkList', 'userId'));
     }
 
     /**

@@ -198,10 +198,19 @@
 
             <div class="col-lg-6">
                 <label class="form-label">Posisi / Jabatan <span class="required-star">*</span></label>
-                <input type="text" class="form-control @error('posisi') is-invalid @enderror"
-                    name="posisi" placeholder="Contoh: Kepala Seksi Anggaran"
-                    value="{{ old('posisi') }}" required />
+                <select class="form-control @error('posisi') is-invalid @enderror"
+                    data-choices name="posisi" id="posisi-select" required>
+                    <option value="">-- Pilih Jabatan --</option>
+                    @foreach ($jabatanList as $jab)
+                        <option value="{{ $jab->nama }}"
+                            data-jenis="{{ $jab->jenisGtk?->nama ?? '' }}"
+                            {{ old('posisi') == $jab->nama ? 'selected' : '' }}>
+                            {{ $jab->nama }}{{ $jab->jenisGtk ? ' — ' . $jab->jenisGtk->nama : '' }}
+                        </option>
+                    @endforeach
+                </select>
                 @error('posisi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <small class="text-muted">Sumber: tabel <code>jabatan</code> (master jabatan sekolah)</small>
             </div>
 
             <div class="col-lg-6">
@@ -219,24 +228,21 @@
             </div>
 
             <div class="col-lg-6">
-                <label class="form-label">Kategori Pekerjaan <span class="required-star">*</span></label>
-                <select class="form-control @error('kategori') is-invalid @enderror"
-                    data-choices name="kategori" required>
-                    <option value="">-- Pilih Kategori --</option>
-                    @php
-                        $kategoriList = [
-                            'Akuntansi & Keuangan','Administrasi & Perkantoran','Teknologi Informasi',
-                            'Pemasaran & Periklanan','Pemasaran Digital','Pendidikan & Pelatihan',
-                            'Pengadaan & Logistik','Hukum & Kepatuhan','Sumber Daya Manusia',
-                            'Kesehatan & Medis','Teknik & Rekayasa','Pelayanan Publik',
-                            'Kehumasan & Komunikasi','Penelitian & Pengembangan','Lainnya',
-                        ];
-                    @endphp
-                    @foreach ($kategoriList as $kat)
-                        <option value="{{ $kat }}" {{ old('kategori') == $kat ? 'selected' : '' }}>{{ $kat }}</option>
-                    @endforeach
+                <label class="form-label">Kategori Jabatan <span class="required-star">*</span></label>
+                <select class="form-control @error('kategori') is-invalid @enderror @error('kategori.*') is-invalid @enderror"
+                    data-choices data-choices-multiple-remove="true" multiple
+                    name="kategori[]" id="kategoriSelect" required>
+                    @forelse ($jabatanList as $jab)
+                        <option value="{{ $jab->uuid }}" {{ collect(old('kategori', []))->contains($jab->uuid) ? 'selected' : '' }}>
+                            {{ $jab->nama }}{{ $jab->jenisGtk ? ' — ' . $jab->jenisGtk->nama : '' }}
+                        </option>
+                    @empty
+                        <option value="" disabled>Belum ada data jabatan aktif</option>
+                    @endforelse
                 </select>
+                <small class="text-muted">Bisa pilih lebih dari satu jabatan (otomatis dari tabel Jabatan)</small>
                 @error('kategori')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @error('kategori.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="col-lg-6">

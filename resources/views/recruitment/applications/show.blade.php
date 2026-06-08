@@ -200,6 +200,7 @@
                                     <div class="d-flex justify-content-between mb-2"><span class="text-muted">Skor Adm</span><span class="fw-medium">{{ $application->skor_administrasi ?? '-' }}</span></div>
                                     <div class="d-flex justify-content-between mb-2"><span class="text-muted">Nilai Tes</span><span class="fw-medium">{{ $application->nilai_tes ?? '-' }}</span></div>
                                     <div class="d-flex justify-content-between mb-2"><span class="text-muted">Nilai Wawancara</span><span class="fw-medium">{{ $application->nilai_wawancara ?? '-' }}</span></div>
+                                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Nilai Praktikum</span><span class="fw-medium">{{ $application->nilai_praktikum ?? '-' }}</span></div>
                                     <div class="d-flex justify-content-between mb-2"><span class="text-muted">Nilai Akhir</span><span class="fw-medium">{{ $application->nilai_akhir ? number_format($application->nilai_akhir, 2) : '-' }}</span></div>
                                 </div>
                             </div>
@@ -252,6 +253,42 @@
                                                 <label class="form-label">Nilai Wawancara (0-100)</label>
                                                 <input type="number" step="0.01" class="form-control" name="nilai_wawancara" value="{{ $application->nilai_wawancara }}" placeholder="0 - 100">
                                             </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Nilai Praktikum (0-100)</label>
+                                                <input type="number" step="0.01" class="form-control" name="nilai_praktikum" value="{{ $application->nilai_praktikum }}" placeholder="0 - 100">
+                                            </div>
+
+                                            {{-- Detail Penilaian per-Kriteria --}}
+                                            <div class="col-12">
+                                                <hr class="my-2">
+                                                <h6 class="text-muted mb-2"><i class="ri-list-check-2"></i> Detail Penilaian per-Kriteria</h6>
+                                                <div class="row g-2">
+                                                    @php
+                                                        $kriteria = [
+                                                            'komunikasi' => 'Komunikasi',
+                                                            'attitude' => 'Attitude / Sikap',
+                                                            'teknis' => 'Kompetensi Teknis',
+                                                            'leadership' => 'Leadership',
+                                                            'problem_solving' => 'Problem Solving',
+                                                            'kerjasama_tim' => 'Kerja Sama Tim',
+                                                        ];
+                                                        $existingDetail = is_array($application->detail_penilaian)
+                                                            ? $application->detail_penilaian
+                                                            : (json_decode($application->detail_penilaian ?? '{}', true) ?: []);
+                                                    @endphp
+                                                    @foreach($kriteria as $key => $label)
+                                                        <div class="col-md-4">
+                                                            <label class="form-label small">{{ $label }} (0-100)</label>
+                                                            <input type="number" step="0.01" min="0" max="100"
+                                                                class="form-control form-control-sm"
+                                                                name="detail_penilaian[{{ $key }}]"
+                                                                value="{{ $existingDetail[$key] ?? '' }}"
+                                                                placeholder="0 - 100">
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+
                                             <div class="col-12">
                                                 <label class="form-label">Catatan</label>
                                                 <textarea class="form-control" name="catatan" rows="2" placeholder="Tambahkan catatan proses seleksi...">{{ $application->catatan_rekruter }}</textarea>

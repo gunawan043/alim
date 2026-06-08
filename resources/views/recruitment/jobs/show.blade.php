@@ -439,6 +439,20 @@
                                 </tr>
                             @endif
                             <tr>
+                                <td class="fw-medium"><i class="ri-government-line me-1 text-muted"></i> Jabatan / Kategori</td>
+                                <td>
+                                    @if($job->jabatans->count() > 0)
+                                        @foreach($job->jabatans as $j)
+                                            <span class="badge bg-info-subtle text-info me-1 mb-1">
+                                                <i class="ri-government-line me-1"></i>{{ $j->nama_jabatan }}
+                                            </span>
+                                        @endforeach
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
                                 <td class="fw-medium"><i class="ri-building-line me-1 text-muted"></i> Unit Kerja</td>
                                 <td>{{ $workUnitName }}</td>
                             </tr>

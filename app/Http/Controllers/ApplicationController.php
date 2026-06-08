@@ -10,6 +10,7 @@ use App\Models\RecruitmentProfile;
 use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentNotificationService;
 use App\Services\CandidateConversionService;
+use App\Services\RecruitmentDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -120,6 +121,65 @@ class ApplicationController extends Controller
         return view('recruitment.applications.stages', compact('application', 'userId'));
     }
 
+    /**
+     * Update nilai aplikasi (nilai tes, wawancara, praktikum, detail penilaian)
+     * dan push ke recruitment.abuhurairah.id
+     */
+    public function updateNilai(Request $request, string $userId, RecruitmentApplication $application)
+    {
+        $validated = $request->validate([
+            'skor_administrasi'   => 'nullable|numeric|min:0|max:100',
+            'nilai_tes'           => 'nullable|numeric|min:0|max:100',
+            'nilai_wawancara'     => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum'     => 'nullable|numeric|min:0|max:100',
+            'ranking'             => 'nullable|integer|min:0',
+            'status_akhir'        => 'nullable|string',
+            'detail_penilaian'    => 'nullable|array',
+            'detail_penilaian.komunikasi'     => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.attitude'       => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teknis'         => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.leadership'     => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teamwork'      => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.motivasi'      => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.appearance'    => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.pengalaman'    => 'nullable|numeric|min:0|max:100',
+            'catatan_penilaian'               => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            // Update ke database lokal dulu
+            $application->fill($validated);
+            $application->save();
+
+            // Push ke recruitment.abuhurairah.id (non-blocking failure)
+            $syncResult = RecruitmentDocumentService::pushNilaiToRecruitment(
+                $application->id,
+                array_merge($validated, ['detail_penilaian' => $validated['detail_penilaian'] ?? []])
+            );
+
+            if (!$syncResult) {
+                // Log warning tapi jangan fail request - data lokal sudah tersimpan
+                logger()->warning('Failed to push nilai to recruitment API, but local DB updated', [
+                    'application_id' => $application->id,
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'Nilai berhasil diperbarui.' . ($syncResult ? '' : ' (Peringatan: sinkronisasi ke recruitment.abuhurairah.id gagal)'));
+        } catch (\Exception $e) {
+            logger()->error('Failed to update nilai', [
+                'application_id' => $application->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui nilai: ' . $e->getMessage());
+        }
+    }
+
     public function updateStatus(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
@@ -128,6 +188,14 @@ class ApplicationController extends Controller
             'skor_administrasi'   => 'nullable|numeric|min:0|max:100',
             'nilai_tes'           => 'nullable|numeric|min:0|max:100',
             'nilai_wawancara'     => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum'     => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian'    => 'nullable|array',
+            'detail_penilaian.komunikasi'     => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.attitude'       => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teknis'         => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.leadership'     => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.problem_solving'=> 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.kerjasama_tim'  => 'nullable|numeric|min:0|max:100',
         ]);
 
         DB::beginTransaction();
@@ -140,12 +208,23 @@ class ApplicationController extends Controller
             $application->skor_administrasi = $validated['skor_administrasi'] ?? $application->skor_administrasi;
             $application->nilai_tes = $validated['nilai_tes'] ?? $application->nilai_tes;
             $application->nilai_wawancara = $validated['nilai_wawancara'] ?? $application->nilai_wawancara;
+            $application->nilai_praktikum = $validated['nilai_praktikum'] ?? $application->nilai_praktikum;
+
+            // Simpan detail penilaian per-kriteria (JSON) — drop nilai kosong
+            if ($request->has('detail_penilaian') && is_array($request->detail_penilaian)) {
+                $detail = array_filter(
+                    $request->detail_penilaian,
+                    fn ($v) => $v !== null && $v !== ''
+                );
+                $application->detail_penilaian = !empty($detail) ? json_encode($detail) : null;
+            }
 
             // Hitung nilai_akhir (rata-rata dari nilai yang ada)
             $nilai = array_filter([
                 $application->skor_administrasi,
                 $application->nilai_tes,
-                $application->nilai_wawancara
+                $application->nilai_wawancara,
+                $application->nilai_praktikum,
             ]);
             if (count($nilai) > 0) {
                 $application->nilai_akhir = array_sum($nilai) / count($nilai);
@@ -185,7 +264,8 @@ class ApplicationController extends Controller
                 'data'          => [
                     'old_status' => $oldStatus,
                     'new_status' => $application->status,
-                    'job_title'  => $application->recruitmentJob->judul
+                    'job_title'  => $application->recruitmentJob->judul,
+                    'detail_penilaian' => $application->detail_penilaian,
                 ],
                 'action_url'    => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
                 'priority'      => 'high',

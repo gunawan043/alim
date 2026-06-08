@@ -120,6 +120,16 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <select class="form-control form-select" data-choices data-choices-search-false name="kategori">
+                    <option value="">Semua Jabatan</option>
+                    @foreach($jabatanList ?? [] as $jab)
+                        <option value="{{ $jab->uuid }}" {{ request('kategori') == $jab->uuid ? 'selected' : '' }}>
+                            {{ $jab->nama }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <select class="form-control form-select" data-choices data-choices-search-false name="sort">
                     <option value="terbaru" {{ request('sort') == 'terbaru' ? 'selected' : '' }}>Terbaru</option>
                     <option value="terlama" {{ request('sort') == 'terlama' ? 'selected' : '' }}>Terlama</option>
@@ -143,6 +153,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Lowongan</th>
+                        <th>Kategori Jabatan</th>
                         <th>Unit Kerja</th>
                         <th>Lokasi</th>
                         <th>Kuota</th>
@@ -169,6 +180,13 @@
                                     <div class="small text-muted">{{ $job->kode_lowongan ?? '-' }}</div>
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            @if($job->jabatan)
+                                <span class="badge bg-info-subtle text-info">{{ $job->jabatan->nama }}</span>
+                            @else
+                                <span class="text-muted small">-</span>
+                            @endif
                         </td>
                         <td>{{ $job->workUnit->name ?? '-' }}</td>
                         <td>

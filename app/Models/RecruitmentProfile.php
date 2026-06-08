@@ -20,7 +20,8 @@ class RecruitmentProfile extends Model
         'status_perkawinan', 'no_hp', 'no_whatsapp', 'kontak_darurat',
         'hubungan_kontak_darurat', 'alamat_lengkap', 'rt_rw', 'kelurahan_desa',
         'kecamatan', 'kota_kabupaten', 'provinsi', 'kode_pos',
-        'status', 'submitted_at', 'verified_by', 'verified_at'
+        'status', 'submitted_at', 'verified_by', 'verified_at',
+        'external_id', 'foto_url_external'
     ];
 
     protected $casts = [

@@ -422,25 +422,27 @@
             </div>
 
             <div class="col-lg-6">
-                <label class="form-label">Kategori Pekerjaan <span class="required-star">*</span></label>
-                <select class="form-control @error('kategori') is-invalid @enderror"
-                    data-choices name="kategori" required>
-                    <option value="">-- Pilih Kategori --</option>
+                <label class="form-label">Kategori Jabatan <span class="required-star">*</span></label>
+                <select class="form-control @error('kategori') is-invalid @enderror @error('kategori.*') is-invalid @enderror"
+                    data-choices data-choices-multiple-remove="true" multiple
+                    name="kategori[]" required>
                     @php
-                        $kategoriList = [
-                            'Akuntansi & Keuangan','Administrasi & Perkantoran','Teknologi Informasi',
-                            'Pemasaran & Periklanan','Pemasaran Digital','Pendidikan & Pelatihan',
-                            'Pengadaan & Logistik','Hukum & Kepatuhan','Sumber Daya Manusia',
-                            'Kesehatan & Medis','Teknik & Rekayasa','Pelayanan Publik',
-                            'Kehumasan & Komunikasi','Penelitian & Pengembangan','Lainnya',
-                        ];
+                        $selectedKategori = old('kategori', $job->kategori ?? []);
+                        if (is_string($selectedKategori)) {
+                            $decoded = json_decode($selectedKategori, true);
+                            $selectedKategori = is_array($decoded) ? $decoded : [];
+                        }
                     @endphp
-                    @foreach ($kategoriList as $kat)
-                        <option value="{{ $kat }}"
-                            {{ old('kategori', $job->kategori) == $kat ? 'selected' : '' }}>{{ $kat }}</option>
+                    @foreach ($jabatanList as $jab)
+                        <option value="{{ $jab->uuid }}"
+                            {{ in_array($jab->uuid, (array) $selectedKategori) ? 'selected' : '' }}>
+                            {{ $jab->nama }}{{ $jab->jenisGtk ? ' — ' . $jab->jenisGtk->nama : '' }}
+                        </option>
                     @endforeach
                 </select>
+                <small class="text-muted">Bisa pilih lebih dari satu jabatan (otomatis dari tabel Jabatan)</small>
                 @error('kategori')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @error('kategori.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="col-lg-6">

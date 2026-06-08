@@ -481,6 +481,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::resource('applications', ApplicationController::class);
                 Route::get('applications/{application}/stages',         [ApplicationController::class, 'stages'])->name('applications.stages');
                 Route::post('applications/{application}/update-status', [ApplicationController::class, 'updateStatus'])->name('applications.update-status');
+                Route::post('applications/{application}/update-nilai',  [ApplicationController::class, 'updateNilai'])->name('applications.update-nilai');
+                Route::post('applications/{application}/push-nilai',    [ApplicationController::class, 'pushNilaiToRecruitment'])->name('applications.push-nilai');
                 Route::post('applications/{application}/add-note',      [ApplicationController::class, 'addNote'])->name('applications.add-note');
                 Route::post('applications/{application}/send-message',  [ApplicationController::class, 'sendMessage'])->name('applications.send-message');
                 Route::post('applications/bulk-action',                 [ApplicationController::class, 'bulkAction'])->name('applications.bulk-action');
@@ -499,6 +501,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('candidates/{candidate}/timeline',                [CandidateController::class, 'timeline'])->name('candidates.timeline');
                 Route::post('candidates/{candidate}/add-skill',              [CandidateController::class, 'addSkill'])->name('candidates.add-skill');
                 Route::delete('candidates/{candidate}/remove-skill/{skill}', [CandidateController::class, 'removeSkill'])->name('candidates.remove-skill');
+                Route::post('candidates/{candidate}/sync-documents',     [CandidateController::class, 'syncDocuments'])->name('candidates.sync-documents');
+                Route::post('candidates/{candidate}/sync-photo',         [CandidateController::class, 'syncPhoto'])->name('candidates.sync-photo');
 
                 Route::resource('interviews', InterviewController::class);
                 Route::get('calendar-events',                       [InterviewController::class, 'calendarEvents'])->name('interviews.calendar-events');

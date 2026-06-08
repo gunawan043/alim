@@ -7,6 +7,7 @@ use App\Models\RecruitmentProfile;
 use App\Models\RecruitmentSkill;
 use App\Models\RecruitmentEducation;
 use App\Models\User;
+use App\Services\RecruitmentDocumentService;
 use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +85,27 @@ class CandidateController extends Controller
             'applications.stages',
         ]);
 
+        // Sync dokumen dari recruitment.abuhurairah.id jika belum ada atau kadaluarsa
+        // Sync hanya jika service configured dan belum sync dalam 1 jam
+        if (RecruitmentDocumentService::isConfigured()) {
+            $lastSync = $candidate->documents()->whereNotNull('synced_at')->max('synced_at');
+            $shouldSync = !$lastSync || now()->diffInHours($lastSync) >= 1;
+
+            if ($shouldSync) {
+                try {
+                    RecruitmentDocumentService::syncToLocal($candidate->id);
+                    // Reload documents setelah sync
+                    $candidate->load('documents');
+                } catch (\Exception $e) {
+                    // Silent fail — dokumen yang sudah ada tetap ditampilkan
+                    logger()->warning('Failed to sync documents from recruitment API', [
+                        'profile_id' => $candidate->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
         return view('recruitment.candidates.show', compact('candidate', 'userId'));
     }
 
@@ -115,6 +137,11 @@ class CandidateController extends Controller
 
         if (!$cv) {
             return back()->with('error', 'CV tidak ditemukan');
+        }
+
+        // Jika dokumen dari external (recruitment.abuhurairah.id), redirect ke URL external
+        if ($cv->is_external && $cv->external_url) {
+            return redirect()->away($cv->external_url);
         }
 
         $path = storage_path('app/public/' . $cv->file_path);
@@ -294,6 +321,34 @@ class CandidateController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal menambah kandidat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Sync dokumen kandidat dari recruitment.abuhurairah.id
+     * Fetch data dokumen & foto via API lalu simpan/upsert ke recruitment_documents.
+     */
+    public function syncDocuments(string $candidate): \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $profile = RecruitmentProfile::with('documents')->where('id', $candidate)->firstOrFail();
+
+            if (! $profile->external_id) {
+                return back()->with('error', 'Kandidat ini belum terhubung ke recruitment.abuhurairah.id (external_id kosong).');
+            }
+
+            $service = app(\App\Services\RecruitmentDocumentService::class);
+            $result  = $service->syncDocumentsForProfile($profile);
+
+            return back()->with(
+                $result['success'] ? 'success' : 'error',
+                $result['message']
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return back()->with('error', 'Kandidat tidak ditemukan.');
+        } catch (\Exception $e) {
+            \Log::error('syncDocuments failed', ['candidate' => $candidate, 'error' => $e->getMessage()]);
+            return back()->with('error', 'Gagal sinkronisasi dokumen: ' . $e->getMessage());
         }
     }
 }
