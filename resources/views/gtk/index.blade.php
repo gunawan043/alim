@@ -95,15 +95,35 @@
         $nonaktif  = $statistics['nonaktif'] ?? 0;
         $genderL   = $statistics['gender_l'] ?? 0;
         $genderP   = $statistics['gender_p'] ?? 0;
-        $totalJk   = $genderL + $genderP;
-        $pctL      = $totalJk > 0 ? round($genderL / $totalJk * 100) : 0;
-        $pctP      = $totalJk > 0 ? round($genderP / $totalJk * 100) : 0;
+        $totalJk   = $statistics['total_gender'] ?? ($genderL + $genderP);
+        $pctL      = $statistics['pct_l'] ?? ($totalJk > 0 ? round($genderL / $totalJk * 100) : 0);
+        $pctP      = $statistics['pct_p'] ?? ($totalJk > 0 ? round($genderP / $totalJk * 100) : 0);
+        $ratioAktif = $statistics['ratio_aktif'] ?? ($total > 0 ? round($aktif / $total * 100) : 0);
+
+        $guru                 = $statistics['guru'] ?? 0;
+        $tenagaKependidikan   = $statistics['tenaga_kependidikan'] ?? 0;
+        $kepalaSekolah        = $statistics['kepala_sekolah'] ?? 0;
+        $pimpinanPondok       = $statistics['pimpinan_pondok'] ?? 0;
+        $tenagaPendidikPondok = $statistics['tenaga_pendidik_pondok'] ?? 0;
+        $tenagaAdministrasiPondok = $statistics['tenaga_administrasi_pondok'] ?? 0;
+
+        $statusCounts = $statistics['status_counts'] ?? [];
+        $pendidikanTertinggi = $statistics['pendidikan_tertinggi'] ?? [];
+        $contextLabel = $statistics['context_label'] ?? 'Semua GTK';
+
+        $totalJenis = $guru + $tenagaKependidikan + $kepalaSekolah + $pimpinanPondok + $tenagaPendidikPondok + $tenagaAdministrasiPondok;
+        $pctGuru    = $totalJenis > 0 ? round($guru / $totalJenis * 100) : 0;
+        $pctTenk    = $totalJenis > 0 ? round($tenagaKependidikan / $totalJenis * 100) : 0;
+        $pctKepsek  = $totalJenis > 0 ? round($kepalaSekolah / $totalJenis * 100) : 0;
+        $pctPimPondok = $totalJenis > 0 ? round($pimpinanPondok / $totalJenis * 100) : 0;
+        $pctTenPondok = $totalJenis > 0 ? round($tenagaPendidikPondok / $totalJenis * 100) : 0;
+        $pctAdPondok = $totalJenis > 0 ? round($tenagaAdministrasiPondok / $totalJenis * 100) : 0;
     @endphp
 
     <div class="row g-3 mb-3">
 
         {{-- 1. Total GTK --}}
-        <div class="col-xl-4 col-md-4">
+        <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-100">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -112,39 +132,157 @@
                                 <i class="bx bx-group text-primary"></i>
                             </span>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total GTK</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($total) }}</h3>
                         </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <small class="text-muted"><i class="ri-checkbox-circle-fill text-success me-1"></i>{{ number_format($aktif) }} Aktif</small>
-                        <small class="text-muted"><i class="ri-close-circle-fill text-danger me-1"></i>{{ number_format($nonaktif) }} Nonaktif</small>
+                    <p class="text-muted mb-2" style="font-size:11px;">
+                        <i class="ri-information-line me-1"></i>{{ $contextLabel }}
+                    </p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="badge bg-success-subtle text-success" style="font-size:10px;">
+                            <i class="ri-checkbox-circle-fill me-1"></i>{{ number_format($aktif) }} Aktif
+                        </span>
+                        <span class="badge bg-danger-subtle text-danger" style="font-size:10px;">
+                            <i class="ri-close-circle-fill me-1"></i>{{ number_format($nonaktif) }} Nonaktif
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- 2. Perbandingan Jenis Kelamin --}}
-        <div class="col-xl-4 col-md-4">
+        {{-- 2. Distribusi Jenis GTK --}}
+        <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-100">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="bx bx-user text-info"></i>
+                                <i class="ri-briefcase-line text-info"></i>
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Jenis Kelamin</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($genderL) }} <small class="fw-normal text-muted">/</small> {{ number_format($genderP) }}</h3>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Jenis GTK</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalJenis) }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">total</small></h3>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex flex-column gap-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted" style="font-size:11px;min-width:80px;"><i class="ri-user-star-line me-1 text-primary"></i>Guru</span>
+                            <div class="progress flex-grow-1" style="height:5px;">
+                                <div class="progress-bar bg-primary" style="width:{{ $pctGuru }}%"></div>
+                            </div>
+                            <span class="fw-semibold" style="font-size:11px;min-width:50px;text-align:right;">{{ number_format($guru) }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted" style="font-size:11px;min-width:80px;"><i class="ri-user-settings-line me-1 text-info"></i>Tendik</span>
+                            <div class="progress flex-grow-1" style="height:5px;">
+                                <div class="progress-bar bg-info" style="width:{{ $pctTenk }}%"></div>
+                            </div>
+                            <span class="fw-semibold" style="font-size:11px;min-width:50px;text-align:right;">{{ number_format($tenagaKependidikan) }}</span>
+                        </div>
+                        @if ($kepalaSekolah > 0 || $pimpinanPondok > 0)
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted" style="font-size:11px;min-width:80px;"><i class="ri-vip-crown-line me-1 text-warning"></i>Kepsek</span>
+                                <div class="progress flex-grow-1" style="height:5px;">
+                                    <div class="progress-bar bg-warning" style="width:{{ $pctKepsek }}%"></div>
+                                </div>
+                                <span class="fw-semibold" style="font-size:11px;min-width:50px;text-align:right;">{{ number_format($kepalaSekolah) }}</span>
+                            </div>
+                        @endif
+                        @if ($pimpinanPondok > 0)
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted" style="font-size:11px;min-width:80px;"><i class="ri-shield-star-line me-1 text-danger"></i>Pimpondok</span>
+                                <div class="progress flex-grow-1" style="height:5px;">
+                                    <div class="progress-bar bg-danger" style="width:{{ $pctPimPondok }}%"></div>
+                                </div>
+                                <span class="fw-semibold" style="font-size:11px;min-width:50px;text-align:right;">{{ number_format($pimpinanPondok) }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- 3. Status Kepegawaian --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2">
+                                <i class="ri-id-card-line text-warning"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Status Kepegawaian</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($total) }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">terdata</small></h3>
+                        </div>
+                    </div>
+                    @php
+                        $statusList = [
+                            'GTY' => ['label' => 'GTY', 'color' => 'success'],
+                            'PTY' => ['label' => 'PTY', 'color' => 'success'],
+                            'Tetap' => ['label' => 'Tetap', 'color' => 'primary'],
+                            'PTT' => ['label' => 'PTT', 'color' => 'info'],
+                            'GTT' => ['label' => 'GTT', 'color' => 'info'],
+                            'KONTRAK' => ['label' => 'Kontrak', 'color' => 'warning'],
+                            'Percobaan' => ['label' => 'Percobaan', 'color' => 'secondary'],
+                            'Magang' => ['label' => 'Magang', 'color' => 'dark'],
+                        ];
+                    @endphp
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach ($statusList as $key => $meta)
+                            @if (($statusCounts[$key] ?? 0) > 0)
+                                <span class="badge bg-{{ $meta['color'] }}-subtle text-{{ $meta['color'] }}" style="font-size:10px;">
+                                    {{ $meta['label'] }} {{ number_format($statusCounts[$key]) }}
+                                </span>
+                            @endif
+                        @endforeach
+                        @if (empty(array_filter($statusCounts)))
+                            <span class="text-muted" style="font-size:11px;">Belum ada data status</span>
+                        @endif
+                    </div>
+                    @if (!empty($pendidikanTertinggi))
+                        <hr class="my-2">
+                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;">
+                            <i class="ri-graduation-cap-line me-1"></i>Pendidikan Tertinggi
+                        </p>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (array_slice($pendidikanTertinggi, 0, 3, true) as $jenjang => $cnt)
+                                <span class="badge bg-light text-dark" style="font-size:10px;">
+                                    {{ $jenjang }} <span class="fw-bold">{{ $cnt }}</span>
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- 4. Jenis Kelamin & Aktif/Nonaktif --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2">
+                                <i class="ri-user-line text-success"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">JK & Status</p>
+                            <h3 class="fw-bold ff-secondary mb-0">
+                                {{ number_format($genderL) }}<small class="fw-normal text-muted"> / </small>{{ number_format($genderP) }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 mb-2">
                         <span class="badge bg-primary-subtle text-primary" style="font-size:10px;">
                             <i class="ri-men-line me-1"></i>L {{ $pctL }}%
                         </span>
-                        <div class="progress flex-grow-1" style="height:6px;">
+                        <div class="progress flex-grow-1" style="height:5px;">
                             <div class="progress-bar bg-primary" style="width:{{ $pctL }}%"></div>
                             <div class="progress-bar bg-danger" style="width:{{ $pctP }}%"></div>
                         </div>
@@ -152,31 +290,15 @@
                             P {{ $pctP }}% <i class="ri-women-line ms-1"></i>
                         </span>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- 3. Aktif / Nonaktif --}}
-        <div class="col-xl-4 col-md-4">
-            <div class="card card-animate h-100">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="bx bx-check-circle text-success"></i>
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Aktif & Nonaktif</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($aktif) }} <small class="fw-normal text-muted">/</small> {{ number_format($nonaktif) }}</h3>
-                        </div>
-                    </div>
-                    <div class="progress" style="height:6px;">
-                        @php $ratioAktif = $total > 0 ? round($aktif / $total * 100) : 0; @endphp
+                    <div class="progress" style="height:5px;">
                         <div class="progress-bar bg-success" style="width:{{ $ratioAktif }}%"></div>
                         <div class="progress-bar bg-danger" style="width:{{ 100 - $ratioAktif }}%"></div>
                     </div>
-                    <small class="text-muted">{{ $ratioAktif }}% aktif &middot; {{ 100 - $ratioAktif }}% nonaktif</small>
+                    <small class="text-muted d-block mt-1" style="font-size:11px;">
+                        <i class="ri-checkbox-circle-fill text-success me-1"></i>{{ $ratioAktif }}% aktif
+                        <span class="mx-1">&middot;</span>
+                        <i class="ri-close-circle-fill text-danger me-1"></i>{{ 100 - $ratioAktif }}% nonaktif
+                    </small>
                 </div>
             </div>
         </div>
