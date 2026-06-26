@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentMutationOut;
-use App\Models\Student;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentMutationOut;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,7 +25,7 @@ class StudentMutationOutController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('student_name', 'like', "%{$q}%")
                 ->orWhere('student_nisn', 'like', "%{$q}%")
                 ->orWhere('letter_number', 'like', "%{$q}%")
@@ -94,15 +94,21 @@ class StudentMutationOutController extends Controller
         // Load all active students grouped by class — no AJAX needed
         $studentQuery = Student::with(['currentClassHistory.studyGroup'])
             ->where('status', 'active');
-        if ($schoolContextId) $studentQuery->where('school_id', $schoolContextId);
-        if ($schoolGender) $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        if ($schoolContextId) {
+            $studentQuery->where('school_id', $schoolContextId);
+        }
+        if ($schoolGender) {
+            $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        }
 
         $allStudents = $studentQuery->orderBy('name')->get();
         $groupedStudents = [];
         foreach ($allStudents as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
-            if (!isset($groupedStudents[$label])) $groupedStudents[$label] = [];
+            if (! isset($groupedStudents[$label])) {
+                $groupedStudents[$label] = [];
+            }
             $groupedStudents[$label][] = $s;
         }
 
@@ -178,7 +184,7 @@ class StudentMutationOutController extends Controller
                 'status' => $request->boolean('submit_now') ? 'submitted' : 'draft',
             ]);
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: '.$e->getMessage());
         }
 
         return redirect()->route('user.mutations-out.show', ['userId' => $userId, 'mutationUuid' => $mutation->id])
@@ -189,6 +195,7 @@ class StudentMutationOutController extends Controller
     {
         $mutation = StudentMutationOut::with(['student', 'school', 'requestedBy', 'approvedBy'])
             ->findOrFail($mutationUuid);
+
         return view('mutations-out.show', compact('mutation', 'userId'));
     }
 
@@ -196,6 +203,7 @@ class StudentMutationOutController extends Controller
     {
         $mutation = StudentMutationOut::findOrFail($mutationUuid);
         $mutation->update(['status' => 'submitted']);
+
         return back()->with('success', 'PD Keluar berhasil diajukan.');
     }
 
@@ -209,12 +217,19 @@ class StudentMutationOutController extends Controller
         ]);
 
         if ($mutation->student) {
-            $newStatus = match ($mutation->out_type) {
-                'graduation' => 'graduate',
-                'dropout'    => 'dropped',
-                default      => 'transfer_out',
+            $outType = match ($mutation->out_type) {
+                'graduation' => \App\Events\StudentMutatedOut::TYPE_GRADUATION,
+                'dropout' => \App\Events\StudentMutatedOut::TYPE_DROPOUT,
+                default => \App\Events\StudentMutatedOut::TYPE_MUTATION,
             };
-            $mutation->student->update(['status' => $newStatus]);
+
+            \App\Events\StudentMutatedOut::dispatch(
+                student: $mutation->student,
+                mutation: $mutation,
+                outType: $outType,
+                leaveDate: $mutation->established_date?->toDateString() ?? now()->toDateString(),
+                actorId: auth()->id(),
+            );
         }
 
         return back()->with('success', 'PD Keluar berhasil disetujui.');
@@ -227,6 +242,7 @@ class StudentMutationOutController extends Controller
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
+
         return back()->with('success', 'PD Keluar ditolak.');
     }
 
@@ -237,6 +253,7 @@ class StudentMutationOutController extends Controller
             return back()->with('error', 'Data yang sudah diajukan tidak bisa dihapus.');
         }
         $mutation->delete();
+
         return redirect()->route('user.mutations-out.index', ['userId' => $userId])
             ->with('success', 'PD Keluar berhasil dihapus.');
     }
@@ -250,20 +267,22 @@ class StudentMutationOutController extends Controller
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4');
         $dompdf->render();
-        return $dompdf->stream('Surat-Pindah-' . ($mutation->student_name ?: 'Santri') . '.pdf', ['Attachment' => false]);
+
+        return $dompdf->stream('Surat-Pindah-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
     }
 
     private function toHijri(string $date): string
     {
         try {
             $monthsID = [
-                'Muharram','Safar','Rabiul Awwal','Rabiul Akhir',
-                'Jumadil Awwal','Jumadil Akhir','Rajab','Syakban',
-                'Ramadan','Syawal','Dzulqa\'dah','Dzulhijjah',
+                'Muharram', 'Safar', 'Rabiul Awwal', 'Rabiul Akhir',
+                'Jumadil Awwal', 'Jumadil Akhir', 'Rajab', 'Syakban',
+                'Ramadan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah',
             ];
             \Pharaonic\Hijri\Hijri::getInstance();
             $h = \Pharaonic\Hijri\Hijri::parse($date);
-            return $h->day . ' ' . $monthsID[$h->month - 1] . ' ' . $h->year . ' H';
+
+            return $h->day.' '.$monthsID[$h->month - 1].' '.$h->year.' H';
         } catch (\Throwable $e) {
             return '';
         }
@@ -273,8 +292,11 @@ class StudentMutationOutController extends Controller
     public function hijriConvert(Request $request)
     {
         $date = $request->get('date');
-        if (!$date) return response()->json(['error' => 'date required'], 422);
+        if (! $date) {
+            return response()->json(['error' => 'date required'], 422);
+        }
         $hijri = $this->toHijri($date);
+
         return response()->json(compact('hijri'));
     }
 }

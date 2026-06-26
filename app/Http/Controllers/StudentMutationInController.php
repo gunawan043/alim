@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentMutationIn;
-use App\Models\Student;
+use App\Models\AcademicYear;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentMutationIn;
+use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,7 +26,7 @@ class StudentMutationInController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('student_name', 'like', "%{$q}%")
                 ->orWhere('student_nisn', 'like', "%{$q}%")
                 ->orWhere('letter_number', 'like', "%{$q}%")
@@ -121,7 +123,7 @@ class StudentMutationInController extends Controller
                 'status' => $request->boolean('submit_now') ? 'submitted' : 'draft',
             ]);
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: '.$e->getMessage());
         }
 
         return redirect()->route('user.mutations-in.show', ['userId' => $userId, 'mutationUuid' => $mutation->id])
@@ -132,6 +134,7 @@ class StudentMutationInController extends Controller
     {
         $mutation = StudentMutationIn::with(['student', 'school', 'requestedBy', 'approvedBy'])
             ->findOrFail($mutationUuid);
+
         return view('mutations-in.show', compact('mutation', 'userId'));
     }
 
@@ -139,6 +142,7 @@ class StudentMutationInController extends Controller
     {
         $mutation = StudentMutationIn::findOrFail($mutationUuid);
         $mutation->update(['status' => 'submitted']);
+
         return back()->with('success', 'PD Masuk berhasil diajukan.');
     }
 
@@ -153,31 +157,55 @@ class StudentMutationInController extends Controller
 
         // Simpan / update data ke tabel students
         $studentData = [
-            'school_id'   => $mutation->school_id,
-            'nisn'        => $mutation->student_nisn,
-            'nis'         => $mutation->student_nis,
-            'name'        => $mutation->student_name,
-            'gender'     => $mutation->student_gender,
+            'school_id' => $mutation->school_id,
+            'nisn' => $mutation->student_nisn,
+            'nis' => $mutation->student_nis,
+            'name' => $mutation->student_name,
+            'gender' => $mutation->student_gender,
             'birth_place' => $mutation->student_birth_place,
             'birth_date' => $mutation->student_birth_date,
-            'religion'   => $mutation->student_religion ?? 'Islam',
-            'address'    => $mutation->parent_address,
-            'phone'      => $mutation->parent_phone,
+            'religion' => $mutation->student_religion ?? 'Islam',
+            'address' => $mutation->parent_address,
+            'phone' => $mutation->parent_phone,
             'father_name' => $mutation->father_name,
             'father_occupation' => $mutation->father_occupation,
             'mother_name' => $mutation->mother_name,
             'mother_occupation' => $mutation->mother_occupation,
             'previous_school' => $mutation->student_previous_school,
             'entry_date' => $mutation->established_date,
-            'status'    => 'active',
+            'status' => 'active',
         ];
 
         if ($mutation->student_id && $mutation->student) {
             $mutation->student->update($studentData);
+            $student = $mutation->student;
         } else {
-            $student = \App\Models\Student::create($studentData);
+            $student = Student::create($studentData);
             $mutation->update(['student_id' => $student->id]);
         }
+
+        $targetStudyGroup = null;
+        $targetAcademicYear = null;
+        if (! empty($mutation->accepted_class) && ! empty($mutation->accepted_academic_year)) {
+            $targetAcademicYear = AcademicYear::where('name', $mutation->accepted_academic_year)
+                ->orWhere('id', $mutation->accepted_academic_year)
+                ->first();
+            if ($targetAcademicYear) {
+                $targetStudyGroup = StudyGroup::where('school_id', $mutation->school_id)
+                    ->where('academic_year_id', $targetAcademicYear->id)
+                    ->where('name', $mutation->accepted_class)
+                    ->first();
+            }
+        }
+
+        \App\Events\StudentMutatedIn::dispatch(
+            student: $student,
+            mutation: $mutation,
+            enrollInStudyGroup: $targetStudyGroup,
+            enrollInAcademicYear: $targetAcademicYear,
+            joinDate: $mutation->established_date?->toDateString() ?? now()->toDateString(),
+            actorId: auth()->id(),
+        );
 
         return back()->with('success', 'PD Masuk berhasil disetujui. Santri sudah masuk ke Data Santri.');
     }
@@ -189,6 +217,7 @@ class StudentMutationInController extends Controller
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
+
         return back()->with('success', 'PD Masuk ditolak.');
     }
 
@@ -199,6 +228,7 @@ class StudentMutationInController extends Controller
             return back()->with('error', 'Data yang sudah diajukan tidak bisa dihapus.');
         }
         $mutation->delete();
+
         return redirect()->route('user.mutations-in.index', ['userId' => $userId])
             ->with('success', 'PD Masuk berhasil dihapus.');
     }
@@ -212,20 +242,22 @@ class StudentMutationInController extends Controller
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4');
         $dompdf->render();
-        return $dompdf->stream('Surat-Rekomendasi-' . ($mutation->student_name ?: 'Santri') . '.pdf', ['Attachment' => false]);
+
+        return $dompdf->stream('Surat-Rekomendasi-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
     }
 
     private function toHijri(string $date): string
     {
         try {
             $monthsID = [
-                'Muharram','Safar','Rabiul Awwal','Rabiul Akhir',
-                'Jumadil Awwal','Jumadil Akhir','Rajab','Syakban',
-                'Ramadan','Syawal','Dzulqa\'dah','Dzulhijjah',
+                'Muharram', 'Safar', 'Rabiul Awwal', 'Rabiul Akhir',
+                'Jumadil Awwal', 'Jumadil Akhir', 'Rajab', 'Syakban',
+                'Ramadan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah',
             ];
             \Pharaonic\Hijri\Hijri::getInstance();
             $h = \Pharaonic\Hijri\Hijri::parse($date);
-            return $h->day . ' ' . $monthsID[$h->month - 1] . ' ' . $h->year . ' H';
+
+            return $h->day.' '.$monthsID[$h->month - 1].' '.$h->year.' H';
         } catch (\Throwable $e) {
             return '';
         }
@@ -234,8 +266,11 @@ class StudentMutationInController extends Controller
     public function hijriConvert(Request $request)
     {
         $date = $request->get('date');
-        if (!$date) return response()->json(['error' => 'date required'], 422);
+        if (! $date) {
+            return response()->json(['error' => 'date required'], 422);
+        }
         $hijri = $this->toHijri($date);
+
         return response()->json(compact('hijri'));
     }
 }

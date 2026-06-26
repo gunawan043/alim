@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StudentAssignedToRombel;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
-use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudentPromotion;
 use App\Models\StudentPromotionDetail;
@@ -30,11 +30,11 @@ class StudentPromotionController extends Controller
             'executedBy',
         ])
             ->withCount(['details as total_students'])
-            ->withCount(['details as success_count' => fn($q) => $q->where('status', 'success')])
-            ->withCount(['details as failed_count'  => fn($q) => $q->where('status', 'failed')]);
+            ->withCount(['details as success_count' => fn ($q) => $q->where('status', 'success')])
+            ->withCount(['details as failed_count' => fn ($q) => $q->where('status', 'failed')]);
 
         if ($schoolId) {
-            $query->whereHas('fromStudyGroup', fn($q) => $q->where('school_id', $schoolId));
+            $query->whereHas('fromStudyGroup', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         if ($request->filled('academic_year')) {
@@ -72,12 +72,12 @@ class StudentPromotionController extends Controller
     public function getStudentsByStudyGroup(Request $request, string $userId, string $studyGroupId)
     {
         $studyGroup = StudyGroup::with(['gradeLevel', 'school'])->find($studyGroupId);
-        if (!$studyGroup) {
+        if (! $studyGroup) {
             return response()->json(['error' => 'Rombel tidak ditemukan'], 404);
         }
 
         $academicYearId = $request->get('academic_year_id');
-        if (!$academicYearId) {
+        if (! $academicYearId) {
             return response()->json(['error' => 'academic_year_id diperlukan'], 400);
         }
 
@@ -90,7 +90,7 @@ class StudentPromotionController extends Controller
 
         return response()->json([
             'study_group' => $studyGroup,
-            'students'    => $histories,
+            'students' => $histories,
         ]);
     }
 
@@ -102,25 +102,25 @@ class StudentPromotionController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $validated = $request->validate([
-            'from_academic_year_id'  => 'required|exists:academic_years,id',
-            'to_academic_year_id'   => 'required|exists:academic_years,id|different:from_academic_year_id',
-            'from_study_group_id'   => 'nullable|exists:study_groups,id',
-            'to_study_group_id'     => 'nullable|exists:study_groups,id',
-            'promotion_date'        => 'required|date',
-            'auto_enroll'           => 'boolean',
-            'include_inactive'      => 'boolean',
-            'skip_graduate'         => 'boolean',
-            'grade_shift'           => 'integer|min:-2|max:2',
-            'notes'                  => 'nullable|string',
-            'student_ids'           => 'required|array|min:1',
-            'student_ids.*'         => 'exists:students,id',
-            'student_actions'       => 'nullable|array',
-            'student_actions.*'     => 'in:promote,retain,graduate,mutate_out,skip',
+            'from_academic_year_id' => 'required|exists:academic_years,id',
+            'to_academic_year_id' => 'required|exists:academic_years,id|different:from_academic_year_id',
+            'from_study_group_id' => 'nullable|exists:study_groups,id',
+            'to_study_group_id' => 'nullable|exists:study_groups,id',
+            'promotion_date' => 'required|date',
+            'auto_enroll' => 'boolean',
+            'include_inactive' => 'boolean',
+            'skip_graduate' => 'boolean',
+            'grade_shift' => 'integer|min:-2|max:2',
+            'notes' => 'nullable|string',
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:students,id',
+            'student_actions' => 'nullable|array',
+            'student_actions.*' => 'in:promote,retain,graduate,mutate_out,skip',
         ]);
 
         // Cek rombel asal
         $fromAy = AcademicYear::find($validated['from_academic_year_id']);
-        $toAy   = AcademicYear::find($validated['to_academic_year_id']);
+        $toAy = AcademicYear::find($validated['to_academic_year_id']);
 
         $fromStudyGroup = isset($validated['from_study_group_id'])
             ? StudyGroup::with('gradeLevel')->find($validated['from_study_group_id'])
@@ -130,7 +130,7 @@ class StudentPromotionController extends Controller
             : null;
 
         // Validasi: dari rombel mana
-        if (!$fromStudyGroup) {
+        if (! $fromStudyGroup) {
             return back()->withInput()->with('error', 'Pilih rombel asal terlebih dahulu.');
         }
 
@@ -150,26 +150,26 @@ class StudentPromotionController extends Controller
         // Buat record promosi
         $promotion = StudentPromotion::create([
             'from_academic_year_id' => $validated['from_academic_year_id'],
-            'to_academic_year_id'   => $validated['to_academic_year_id'],
-            'from_study_group_id'  => $validated['from_study_group_id'],
-            'to_study_group_id'    => $validated['to_study_group_id'] ?? null,
-            'promotion_date'       => $validated['promotion_date'],
-            'status'               => 'draft',
-            'auto_enroll'          => $validated['auto_enroll'] ?? true,
-            'include_inactive'     => $validated['include_inactive'] ?? false,
-            'skip_graduate'        => $validated['skip_graduate'] ?? true,
-            'grade_shift'          => $validated['grade_shift'] ?? 1,
-            'notes'                => $validated['notes'] ?? null,
+            'to_academic_year_id' => $validated['to_academic_year_id'],
+            'from_study_group_id' => $validated['from_study_group_id'],
+            'to_study_group_id' => $validated['to_study_group_id'] ?? null,
+            'promotion_date' => $validated['promotion_date'],
+            'status' => 'draft',
+            'auto_enroll' => $validated['auto_enroll'] ?? true,
+            'include_inactive' => $validated['include_inactive'] ?? false,
+            'skip_graduate' => $validated['skip_graduate'] ?? true,
+            'grade_shift' => $validated['grade_shift'] ?? 1,
+            'notes' => $validated['notes'] ?? null,
         ]);
 
         // Buat detail per siswa
         $studentActions = $validated['student_actions'] ?? [];
         foreach ($validStudentIds as $studentId) {
             StudentPromotionDetail::create([
-                'promotion_id'             => $promotion->id,
-                'student_id'              => $studentId,
-                'action'                  => $studentActions[$studentId] ?? 'promote',
-                'status'                  => 'pending',
+                'promotion_id' => $promotion->id,
+                'student_id' => $studentId,
+                'action' => $studentActions[$studentId] ?? 'promote',
+                'status' => 'pending',
             ]);
         }
 
@@ -211,8 +211,8 @@ class StudentPromotionController extends Controller
             ->firstOrFail();
 
         $validated = $request->validate([
-            'action'   => 'required|in:promote,retain,graduate,mutate_out,skip',
-            'notes'    => 'nullable|string',
+            'action' => 'required|in:promote,retain,graduate,mutate_out,skip',
+            'notes' => 'nullable|string',
             'override_grade_shift' => 'nullable|integer|min:-2|max:2',
         ]);
 
@@ -248,7 +248,7 @@ class StudentPromotionController extends Controller
             'confirmed' => 'required|accepted',
         ]);
 
-        DB::transaction(function () use ($promotion, $userId) {
+        DB::transaction(function () use ($promotion) {
             $now = now();
             $promotionDate = $promotion->promotion_date;
 
@@ -258,6 +258,7 @@ class StudentPromotionController extends Controller
                 // Cek apakah harus di-skip
                 if ($detail->action === 'skip') {
                     $detail->update(['status' => 'success', 'notes' => 'Dilompati (skip)']);
+
                     continue;
                 }
 
@@ -266,42 +267,38 @@ class StudentPromotionController extends Controller
                     // Cek apakah siswa di tingkat akhir
                     $fromLevel = $promotion->fromStudyGroup?->gradeLevel?->level ?? 0;
                     $schoolType = $promotion->fromStudyGroup?->school?->school_type ?? 'smp';
-                    $finalLevels = match($schoolType) {
+                    $finalLevels = match ($schoolType) {
                         'smp' => [9],
-                        'sd'  => [6],
+                        'sd' => [6],
                         default => [6, 9, 12],
                     };
 
                     if (in_array($fromLevel, $finalLevels)) {
-                        $student->update([
-                            'status'          => 'graduate',
-                            'graduation_year' => $promotionDate->format('Y'),
-                            'graduation_date' => $promotionDate,
-                        ]);
-                        // Tutup histori lama
-                        StudentClassHistory::where('student_id', $student->id)
-                            ->where('academic_year_id', $promotion->from_academic_year_id)
-                            ->where('is_active', true)
-                            ->update([
-                                'is_active'  => false,
-                                'leave_date' => $promotionDate,
-                            ]);
+                        \App\Events\StudentGraduated::dispatch(
+                            student: $student,
+                            fromStudyGroup: $promotion->fromStudyGroup,
+                            fromAcademicYear: $promotion->fromAcademicYear,
+                            graduationDate: $promotionDate->toDateString(),
+                            graduationYear: $promotionDate->format('Y'),
+                            actorId: auth()->id(),
+                        );
                         $detail->update(['status' => 'success', 'notes' => 'Diluluskan (tingkat akhir)']);
+
                         continue;
                     }
                 }
 
                 // Mutasi keluar
                 if ($detail->action === 'mutate_out') {
-                    $student->update(['status' => 'transfer']);
-                    StudentClassHistory::where('student_id', $student->id)
-                        ->where('academic_year_id', $promotion->from_academic_year_id)
-                        ->where('is_active', true)
-                        ->update([
-                            'is_active'  => false,
-                            'leave_date' => $promotionDate,
-                        ]);
+                    \App\Events\StudentMutatedOut::dispatch(
+                        student: $student,
+                        mutation: $promotion,
+                        outType: \App\Events\StudentMutatedOut::TYPE_MUTATION,
+                        leaveDate: $promotionDate->toDateString(),
+                        actorId: auth()->id(),
+                    );
                     $detail->update(['status' => 'success', 'notes' => 'Mutasi keluar']);
+
                     continue;
                 }
 
@@ -312,26 +309,29 @@ class StudentPromotionController extends Controller
                         ->where('academic_year_id', $promotion->from_academic_year_id)
                         ->where('is_active', true)
                         ->update([
-                            'is_active'  => false,
+                            'is_active' => false,
                             'leave_date' => $promotionDate,
                         ]);
 
                     // Buat record baru di rombel yang SAMA di tahun ajaran baru
                     if ($promotion->auto_enroll && $promotion->to_academic_year_id) {
                         $nextHistory = StudentClassHistory::create([
-                            'student_id'       => $student->id,
-                            'study_group_id'   => $promotion->from_study_group_id,
+                            'student_id' => $student->id,
+                            'study_group_id' => $promotion->from_study_group_id,
                             'academic_year_id' => $promotion->to_academic_year_id,
-                            'is_active'        => true,
-                            'join_date'        => $promotionDate,
+                            'is_active' => true,
+                            'join_date' => $promotionDate,
                             'attendance_number' => StudentClassHistory::where('student_id', $student->id)
                                 ->where('study_group_id', $promotion->from_study_group_id)
                                 ->where('academic_year_id', $promotion->from_academic_year_id)
                                 ->value('attendance_number'),
                         ]);
+
+                        event(new StudentAssignedToRombel($nextHistory));
                     }
 
                     $detail->update(['status' => 'success', 'notes' => 'Tinggal kelas']);
+
                     continue;
                 }
 
@@ -342,7 +342,7 @@ class StudentPromotionController extends Controller
                         ->where('academic_year_id', $promotion->from_academic_year_id)
                         ->where('is_active', true)
                         ->update([
-                            'is_active'  => false,
+                            'is_active' => false,
                             'leave_date' => $promotionDate,
                         ]);
 
@@ -353,7 +353,7 @@ class StudentPromotionController extends Controller
                         // 2. Jika tidak → cari rombel dengan level +grade_shift di tahun ajaran baru
                         $targetStudyGroupId = $promotion->to_study_group_id;
 
-                        if (!$targetStudyGroupId) {
+                        if (! $targetStudyGroupId) {
                             $fromLevel = $promotion->fromStudyGroup?->gradeLevel?->level ?? 0;
                             $shift = $detail->override_grade_shift ?? $promotion->grade_shift;
                             $targetLevel = $fromLevel + $shift;
@@ -377,44 +377,63 @@ class StudentPromotionController extends Controller
                                 ->where('academic_year_id', $promotion->to_academic_year_id)
                                 ->exists();
 
-                            if (!$alreadyEnrolled) {
-                                StudentClassHistory::create([
-                                    'student_id'       => $student->id,
-                                    'study_group_id'   => $targetStudyGroupId,
+                            if (! $alreadyEnrolled) {
+                                $promotedHistory = StudentClassHistory::create([
+                                    'student_id' => $student->id,
+                                    'study_group_id' => $targetStudyGroupId,
                                     'academic_year_id' => $promotion->to_academic_year_id,
-                                    'is_active'        => true,
-                                    'join_date'        => $promotionDate,
+                                    'is_active' => true,
+                                    'join_date' => $promotionDate,
                                     'attendance_number' => StudentClassHistory::where('student_id', $student->id)
                                         ->where('study_group_id', $promotion->from_study_group_id)
                                         ->where('academic_year_id', $promotion->from_academic_year_id)
                                         ->value('attendance_number'),
                                 ]);
+
+                                event(new StudentAssignedToRombel($promotedHistory));
+
+                                $toStudyGroup = StudyGroup::find($targetStudyGroupId);
+                                $toAcademicYear = AcademicYear::find($promotion->to_academic_year_id);
+
+                                \App\Events\StudentPromoted::dispatch(
+                                    student: $student,
+                                    fromStudyGroup: $promotion->fromStudyGroup,
+                                    toStudyGroup: $toStudyGroup,
+                                    fromAcademicYear: $promotion->fromAcademicYear,
+                                    toAcademicYear: $toAcademicYear,
+                                    promotionDate: $promotionDate->toDateString(),
+                                    actorId: auth()->id(),
+                                    source: 'promotion',
+                                );
                             } else {
                                 $detail->update(['status' => 'failed', 'error_message' => 'Siswa sudah terdaftar di rombel tujuan tahun ajaran baru.']);
+
                                 continue;
                             }
                         } else {
                             $detail->update(['status' => 'failed', 'error_message' => 'Rombel tujuan tidak ditemukan di tahun ajaran baru.']);
+
                             continue;
                         }
                     }
 
                     $detail->update(['status' => 'success', 'notes' => 'Berhasil dipromosikan']);
+
                     continue;
                 }
             }
 
             // Update status promosi
             $promotion->update([
-                'status'       => 'completed',
-                'executed_by'  => auth()->id(),
-                'executed_at'  => $now,
+                'status' => 'completed',
+                'executed_by' => auth()->id(),
+                'executed_at' => $now,
             ]);
         });
 
         $promotion->refresh();
         $success = $promotion->details()->where('status', 'success')->count();
-        $failed  = $promotion->details()->where('status', 'failed')->count();
+        $failed = $promotion->details()->where('status', 'failed')->count();
 
         return redirect()
             ->route('user.student-promotions.show', ['userId' => $userId, 'id' => $promotion->id])
