@@ -2,24 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\GtkProfile;
-use App\Models\GtkAddress;
-use App\Models\GtkContact;
-use App\Models\GtkEmployment;
-use App\Models\GtkFamilyMember;
-use App\Models\School;
-use App\Models\WorkUnit;
-use App\Models\Province;
 use App\Models\City;
 use App\Models\District;
+use App\Models\GtkAddress;
+use App\Models\GtkFamilyMember;
+use App\Models\GtkProfile;
+use App\Models\Province;
+use App\Models\School;
+use App\Models\User;
 use App\Models\Village;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class GtkController extends Controller
 {
@@ -27,7 +24,7 @@ class GtkController extends Controller
     public function index(Request $request)
     {
         $gtkQuery = User::with(['gtkProfile', 'employment', 'contact', 'workUnits'])
-        ->whereHas('employment');
+            ->whereHas('employment');
 
         // Filter berdasarkan satuan kerja
         if ($request->has('satuan_kerja') && $request->satuan_kerja) {
@@ -87,17 +84,17 @@ class GtkController extends Controller
 
         // Statistik dari query yang sama
         $gtkIds = (clone $gtkQuery)->pluck('id');
-        $total    = $gtkIds->count();
-        $genderL  = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'L')->count();
-        $genderP  = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'P')->count();
-        $aktif    = User::whereIn('id', $gtkIds)->where('is_active', true)->count();
+        $total = $gtkIds->count();
+        $genderL = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'L')->count();
+        $genderP = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'P')->count();
+        $aktif = User::whereIn('id', $gtkIds)->where('is_active', true)->count();
         $nonaktif = $total - $aktif;
 
         $gtkList = $gtkQuery->orderBy('created_at', 'desc')->paginate(20);
 
         $statistics = [
-            'total'    => $total,
-            'aktif'    => $aktif,
+            'total' => $total,
+            'aktif' => $aktif,
             'nonaktif' => $nonaktif,
             'gender_l' => $genderL,
             'gender_p' => $genderP,
@@ -159,17 +156,17 @@ class GtkController extends Controller
 
         // Statistik dulu, baru paginate
         $gtkIds = (clone $gtkQuery)->pluck('id');
-        $total    = $gtkIds->count();
-        $genderL  = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'L')->count();
-        $genderP  = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'P')->count();
-        $aktif    = User::whereIn('id', $gtkIds)->where('is_active', true)->count();
+        $total = $gtkIds->count();
+        $genderL = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'L')->count();
+        $genderP = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'P')->count();
+        $aktif = User::whereIn('id', $gtkIds)->where('is_active', true)->count();
         $nonaktif = $total - $aktif;
 
         $gtkList = $gtkQuery->orderBy('created_at', 'desc')->paginate(20);
 
         $statistics = [
-            'total'    => $total,
-            'aktif'    => $aktif,
+            'total' => $total,
+            'aktif' => $aktif,
             'nonaktif' => $nonaktif,
             'gender_l' => $genderL,
             'gender_p' => $genderP,
@@ -263,7 +260,7 @@ class GtkController extends Controller
                 'success' => true,
                 'html' => $html,
                 'pagination' => $pagination,
-                'total' => $gtkList->total()
+                'total' => $gtkList->total(),
             ]);
         }
 
@@ -277,23 +274,23 @@ class GtkController extends Controller
     {
         $request->validate([
             'password' => 'required',
-            'gtk_id' => 'required|exists:users,id'
+            'gtk_id' => 'required|exists:users,id',
         ]);
-        
+
         // Verify current user's password
-        if (!Hash::check($request->password, Auth::user()->password)) {
+        if (! Hash::check($request->password, Auth::user()->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Password tidak valid'
+                'message' => 'Password tidak valid',
             ], 401);
         }
-        
+
         // Check if user has permission to view this GTK's identity data
         // You can add additional authorization logic here
-        
+
         return response()->json([
             'success' => true,
-            'message' => 'Verifikasi berhasil'
+            'message' => 'Verifikasi berhasil',
         ]);
     }
 
@@ -303,22 +300,22 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (!$user->hasRole('gtk')) {
+        if (! $user->hasRole('gtk')) {
             return response()->json([
                 'success' => false,
-                'message' => 'User bukan GTK'
+                'message' => 'User bukan GTK',
             ], 403);
         }
 
-        $user->is_active = !$user->is_active;
+        $user->is_active = ! $user->is_active;
         $user->save();
 
         $status = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
 
         return response()->json([
             'success' => true,
-            'message' => 'GTK berhasil ' . $status,
-            'is_active' => $user->is_active
+            'message' => 'GTK berhasil '.$status,
+            'is_active' => $user->is_active,
         ]);
     }
 
@@ -328,10 +325,10 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (!$user->hasRole('gtk')) {
+        if (! $user->hasRole('gtk')) {
             return response()->json([
                 'success' => false,
-                'message' => 'User bukan GTK'
+                'message' => 'User bukan GTK',
             ], 403);
         }
 
@@ -369,19 +366,22 @@ class GtkController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'GTK berhasil dihapus'
+                'message' => 'GTK berhasil dihapus',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Error deleting GTK: ' . $e->getMessage(), [
+            \Log::error('GtkController@destroy failed', [
                 'user_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus GTK: ' . $e->getMessage()
+                'message' => 'Gagal menghapus GTK. Silakan coba lagi.',
             ], 500);
         }
     }
@@ -391,14 +391,14 @@ class GtkController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array',
-            'ids.*' => 'exists:users,id'
+            'ids.*' => 'exists:users,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Data tidak valid',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -431,19 +431,22 @@ class GtkController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Berhasil menghapus {$deletedCount} data GTK"
+                'message' => "Berhasil menghapus {$deletedCount} data GTK",
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Error bulk deleting GTK: ' . $e->getMessage(), [
+            \Log::error('GtkController@bulkDelete failed', [
                 'ids' => $request->ids,
-                'trace' => $e->getTraceAsString()
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+                'message' => 'Gagal menghapus data. Silakan coba lagi.',
             ], 500);
         }
     }
@@ -457,11 +460,11 @@ class GtkController extends Controller
             'profile.familyMembers',
             'contact',
             'employment',
-            'workUnits'
+            'workUnits',
         ])->findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (!$user->hasRole('gtk')) {
+        if (! $user->hasRole('gtk')) {
             abort(404, 'User bukan GTK');
         }
 
@@ -479,11 +482,11 @@ class GtkController extends Controller
             'profile.familyMembers',
             'contact',
             'employment',
-            'workUnits'
+            'workUnits',
         ])->findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (!$user->hasRole('gtk')) {
+        if (! $user->hasRole('gtk')) {
             abort(404, 'User bukan GTK');
         }
 
@@ -503,10 +506,10 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (!$user->hasRole('gtk')) {
+        if (! $user->hasRole('gtk')) {
             return response()->json([
                 'success' => false,
-                'message' => 'User bukan GTK'
+                'message' => 'User bukan GTK',
             ], 403);
         }
 
@@ -516,7 +519,7 @@ class GtkController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -551,7 +554,7 @@ class GtkController extends Controller
             // Update Addresses
             $this->updateOrCreateAddress($user->profile->id, 'domisili', $validated['alamat_domisili']);
 
-            if (isset($validated['alamat_ktp']) && !empty($validated['alamat_ktp']['jalan'])) {
+            if (isset($validated['alamat_ktp']) && ! empty($validated['alamat_ktp']['jalan'])) {
                 $this->updateOrCreateAddress($user->profile->id, 'ktp', $validated['alamat_ktp']);
             } else {
                 // Hapus alamat KTP jika kosong
@@ -596,7 +599,7 @@ class GtkController extends Controller
 
                 if (isset($validated['anggota_keluarga']) && is_array($validated['anggota_keluarga'])) {
                     foreach ($validated['anggota_keluarga'] as $anggota) {
-                        if (!empty($anggota['nama'])) {
+                        if (! empty($anggota['nama'])) {
                             GtkFamilyMember::create([
                                 'gtk_profile_id' => $user->profile->id,
                                 'relationship' => $anggota['relationship'],
@@ -619,19 +622,22 @@ class GtkController extends Controller
                 'message' => 'Data GTK berhasil diperbarui',
                 'data' => [
                     'user_id' => $user->id,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Error updating GTK data: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+            \Log::error('GtkController@update failed', [
+                'user_id' => $id,
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui data: ' . $e->getMessage()
+                'message' => 'Gagal memperbarui data. Silakan coba lagi.',
             ], 500);
         }
     }
@@ -646,12 +652,12 @@ class GtkController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $cities
+                'data' => $cities,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data kota/kabupaten'
+                'message' => 'Gagal memuat data kota/kabupaten',
             ], 500);
         }
     }
@@ -665,12 +671,12 @@ class GtkController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $districts
+                'data' => $districts,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data kecamatan'
+                'message' => 'Gagal memuat data kecamatan',
             ], 500);
         }
     }
@@ -686,17 +692,18 @@ class GtkController extends Controller
             $villages = $villages->map(function ($village) {
                 $meta = json_decode($village->meta, true);
                 $village->postal_code = $meta['pos'] ?? null;
+
                 return $village;
             });
 
             return response()->json([
                 'success' => true,
-                'data' => $villages
+                'data' => $villages,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data desa'
+                'message' => 'Gagal memuat data desa',
             ], 500);
         }
     }
@@ -706,10 +713,10 @@ class GtkController extends Controller
         try {
             $village = Village::where('code', $villageCode)->first();
 
-            if (!$village) {
+            if (! $village) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Desa tidak ditemukan'
+                    'message' => 'Desa tidak ditemukan',
                 ], 404);
             }
 
@@ -722,13 +729,13 @@ class GtkController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'postal_code' => $postalCode
-                ]
+                    'postal_code' => $postalCode,
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat kode pos'
+                'message' => 'Gagal memuat kode pos',
             ], 500);
         }
     }
@@ -741,7 +748,7 @@ class GtkController extends Controller
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')->ignore($userId)
+                Rule::unique('users', 'email')->ignore($userId),
             ],
 
             // Profile Data
@@ -749,7 +756,7 @@ class GtkController extends Controller
                 'required',
                 'numeric',
                 'digits:16',
-                Rule::unique('gtk_profiles', 'nik')->ignore($userId, 'user_id')
+                Rule::unique('gtk_profiles', 'nik')->ignore($userId, 'user_id'),
             ],
             'no_kk' => 'nullable|numeric|digits:16',
             'tempat_lahir' => 'required|string|max:100',
@@ -790,7 +797,7 @@ class GtkController extends Controller
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('gtk_employments', 'nupy')->ignore($userId, 'user_id')
+                Rule::unique('gtk_employments', 'nupy')->ignore($userId, 'user_id'),
             ],
             'kepegawaian.jenis_gtk' => 'required|string|max:100',
             'kepegawaian.jabatan' => 'required|string|max:100',
@@ -818,7 +825,7 @@ class GtkController extends Controller
     {
         // Get postal code from village meta
         $postalCode = null;
-        if (!empty($data['desa'])) {
+        if (! empty($data['desa'])) {
             $village = Village::where('code', $data['desa'])->first();
             if ($village && $village->meta) {
                 $meta = json_decode($village->meta, true);
@@ -844,7 +851,7 @@ class GtkController extends Controller
     {
         // Get postal code from village meta
         $postalCode = null;
-        if (!empty($data['desa'])) {
+        if (! empty($data['desa'])) {
             $village = Village::where('code', $data['desa'])->first();
             if ($village && $village->meta) {
                 $meta = json_decode($village->meta, true);
@@ -855,7 +862,7 @@ class GtkController extends Controller
         return GtkAddress::updateOrCreate(
             [
                 'gtk_profile_id' => $profileId,
-                'type' => $type
+                'type' => $type,
             ],
             [
                 'jalan' => $data['jalan'],

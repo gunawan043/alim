@@ -13,6 +13,7 @@ class AuditLog extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    public $timestamps = false;
     
     protected static function boot()
     {
