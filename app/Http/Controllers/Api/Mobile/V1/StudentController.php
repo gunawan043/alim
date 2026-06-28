@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile\V1;
 
+use App\Exceptions\ServiceErrorCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\RegisterStudentRequest;
 use App\Http\Services\WaliSantriService;
@@ -228,28 +229,29 @@ class StudentController extends Controller
 
     private function handleServiceException(\Exception $e): JsonResponse
     {
-        $code = $e->getCode() ?: 500;
-        $errorData = $e->getPrevious()?->getResponse() ?? [
-            'code' => $e->getMessage() ?: 'SERVER_ERROR',
-            'message' => $e->getMessage(),
-        ];
+        $code = 500;
+        $errorCode = 'SERVER_ERROR';
+        $message = $e->getMessage();
+        $details = null;
 
-        $validCodes = [400, 401, 403, 404, 409, 422, 500];
-        if (!in_array($code, $validCodes)) $code = 500;
-
-        $errorMessages = [
-            'NIK_ALREADY_EXISTS' => 'NIK_ALREADY_EXISTS',
-            'KK_MISMATCH' => 'KK_MISMATCH',
-            'MAX_WALI_EXCEEDED' => 'MAX_WALI_EXCEEDED',
-            'DB_ERROR' => 'SERVER_ERROR',
-        ];
+        if ($e instanceof ServiceErrorCode) {
+            $code = $e->getStatus();
+            // Use the short message as the error code alias
+            $errorCode = $message;
+            $details = $e->getDetails();
+        } else {
+            $code = $e->getCode() ?: 500;
+            $validCodes = [400, 401, 403, 404, 409, 422, 500];
+            if (!in_array($code, $validCodes)) $code = 500;
+            $errorCode = $e->getMessage() ?: 'SERVER_ERROR';
+        }
 
         return response()->json([
             'success' => false,
             'error' => [
-                'code' => $errorMessages[$e->getMessage()] ?? $e->getMessage(),
-                'message' => $e->getPrevious()?->getMessage() ?? $e->getMessage(),
-                'details' => $e->getPrevious()?->getResponse() ?? null,
+                'code' => $errorCode,
+                'message' => $message,
+                'details' => $details,
             ],
         ], $code);
     }

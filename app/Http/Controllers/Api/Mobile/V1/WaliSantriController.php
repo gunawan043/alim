@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile\V1;
 
+use App\Exceptions\ServiceErrorCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\LinkWaliSantriRequest;
 use App\Http\Requests\Mobile\RequestWaliRoleRequest;
@@ -267,7 +268,20 @@ class WaliSantriController extends Controller
 
     private function serviceExceptionResponse(\Exception $e): JsonResponse
     {
-        $code = (int) $e->getCode() ?: 500;
+        $code = 500;
+        $errorCode = 'SERVER_ERROR';
+        $message = $e->getMessage();
+        $details = ['message' => $e->getMessage()];
+
+        if ($e instanceof ServiceErrorCode) {
+            $code = $e->getStatus();
+            $details = $e->getDetails();
+        } else {
+            $code = (int) $e->getCode() ?: 500;
+            $validCodes = [400, 401, 403, 404, 409, 422, 500];
+            if (!in_array($code, $validCodes)) $code = 500;
+        }
+
         $errorMessages = [
             'NIK_ALREADY_EXISTS' => 'NIK_ALREADY_EXISTS',
             'KK_MISMATCH' => 'KK_MISMATCH',
@@ -283,19 +297,11 @@ class WaliSantriController extends Controller
             'DB_ERROR' => 'SERVER_ERROR',
         ];
 
-        $extra = $e->getPrevious();
-        $details = $extra && method_exists($extra, 'getResponse')
-            ? $extra->getResponse()
-            : ['message' => $e->getMessage()];
-
-        $validCodes = [400, 401, 403, 404, 409, 422, 500];
-        if (!in_array($code, $validCodes)) $code = 500;
-
         return response()->json([
             'success' => false,
             'error' => [
-                'code' => $errorMessages[$e->getMessage()] ?? $e->getMessage(),
-                'message' => $e->getMessage(),
+                'code' => $errorMessages[$message] ?? $message,
+                'message' => $message,
                 'details' => $details,
             ],
         ], $code);

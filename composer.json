@@ -47,6 +47,7 @@
             "App\\Events\\": "app/Events/",
             "App\\Listeners\\": "app/Listeners/",
             "App\\Console\\Commands\\": "app/Console/Commands/",
+            "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [

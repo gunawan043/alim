@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -11,6 +12,12 @@ class TeacherAdminBook extends Model
     protected $table = 'teacher_admin_books';
     protected $keyType = 'string';
     public $incrementing = false;
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+    }
 
     protected $fillable = [
         'id',

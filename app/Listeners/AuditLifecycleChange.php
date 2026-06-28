@@ -13,15 +13,26 @@ class AuditLifecycleChange
     public function handle(object $event): void
     {
         $payload = [
-            'event' => class_basename($event),
+            'event' => $this->eventName($event),
             'student_id' => $event->student->id,
             'school_id' => $event->student->school_id,
             'payload' => $this->payload($event),
             'actor_id' => $event->actorId ?? null,
-            'occurred_at' => now()->toIso8601String(),
+            'occurred_at' => now()->toDateTimeString(),
         ];
 
-        \Illuminate\Support\Facades\DB::afterCommit(fn () => RecordLifecycleAuditJob::dispatch($payload));
+        RecordLifecycleAuditJob::dispatch($payload);
+    }
+
+    private function eventName(object $event): string
+    {
+        return match (true) {
+            $event instanceof StudentPromoted => 'student.promoted',
+            $event instanceof StudentGraduated => 'student.graduated',
+            $event instanceof StudentMutatedOut => 'student.mutated_out',
+            $event instanceof StudentMutatedIn => 'student.mutated_in',
+            default => strtolower(class_basename($event)),
+        };
     }
 
     private function payload(object $event): array

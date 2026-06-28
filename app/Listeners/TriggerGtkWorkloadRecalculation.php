@@ -16,6 +16,11 @@ class TriggerGtkWorkloadRecalculation implements ShouldQueue
         $schoolId = $event->schoolId
             ?? GtkEmployment::where('user_id', $event->gtkProfile->user_id)->value('school_id');
 
+        // Don't dispatch if we don't have a school_id
+        if (!$schoolId) {
+            return;
+        }
+
         RecalculateWorkloadJob::dispatch([
             'school_id' => $schoolId,
             'academic_year_id' => $event->academicYearId,

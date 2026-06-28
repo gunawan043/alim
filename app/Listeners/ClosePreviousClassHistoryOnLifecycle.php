@@ -26,7 +26,7 @@ class ClosePreviousClassHistoryOnLifecycle
         $academicYearId = match (true) {
             $event instanceof StudentPromoted => $event->fromAcademicYear->id,
             $event instanceof StudentGraduated => $event->fromAcademicYear->id,
-            $event instanceof StudentMutatedOut => $this->activeAcademicYearId($event->student),
+            $event instanceof StudentMutatedOut => $this->activeAcademicYearId($event->student->id),
             default => null,
         };
 
@@ -43,8 +43,12 @@ class ClosePreviousClassHistoryOnLifecycle
             ]);
     }
 
-    private function activeAcademicYearId(string $studentId): ?string
+    private function activeAcademicYearId(?string $studentId): ?string
     {
+        if ($studentId === null) {
+            return null;
+        }
+
         return StudentClassHistory::where('student_id', $studentId)
             ->where('is_active', true)
             ->value('academic_year_id');

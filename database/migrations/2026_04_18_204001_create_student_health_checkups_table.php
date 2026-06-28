@@ -54,7 +54,7 @@ return new class extends Migration {
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
             $table->foreign('exam_by')->references('id')->on('users')->nullOnDelete();
 
-            $table->unique(['student_id', 'academic_year_id', 'checkup_date']);
+            $table->unique(['student_id', 'academic_year_id', 'checkup_date'], 'student_ay_cuq_dt_uq');
             $table->index(['student_id', 'academic_year_id']);
             $table->index(['school_id', 'checkup_date']);
         });

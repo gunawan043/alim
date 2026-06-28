@@ -40,8 +40,6 @@ class ProvisionStudyGroupSubjectAcademicStructureJob implements ShouldQueue
 
     public string $changeType;
 
-    public string $queue = 'academic-provision';
-
     public int $tries = 3;
 
     public int $backoff = 30;
@@ -66,6 +64,7 @@ class ProvisionStudyGroupSubjectAcademicStructureJob implements ShouldQueue
         $this->academicYearId = $academicYearId;
         $this->gradeLevelId = $gradeLevelId;
         $this->changeType = $changeType;
+        $this->onQueue('academic-provision');
     }
 
     public function handle(): void

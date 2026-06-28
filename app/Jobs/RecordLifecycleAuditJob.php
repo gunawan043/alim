@@ -31,7 +31,7 @@ class RecordLifecycleAuditJob implements ShouldQueue
                 'school_id' => $this->payload['school_id'],
                 'actor_id' => $this->payload['actor_id'] ?? null,
                 'payload' => json_encode($this->payload['payload'] ?? []),
-                'occurred_at' => $this->payload['occurred_at'] ?? now()->toIso8601String(),
+                'occurred_at' => $this->payload['occurred_at'] ?? now()->toDateTimeString(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

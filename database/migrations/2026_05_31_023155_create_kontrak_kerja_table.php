@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('kontrak_kerja', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('gtk_uuid')->constrained('gtk_profiles', 'uuid')->cascadeOnDelete();
+            $table->foreignUuid('gtk_uuid')->constrained('gtk_profiles')->cascadeOnDelete();
             $table->foreignUuid('school_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('nomor_kontrak')->unique();
             $table->enum('jenis', ['pkwt', 'pkwt_perpanjangan', 'perjanjian_kerja_harian', 'magang', 'mitra']);

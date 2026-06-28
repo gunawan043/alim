@@ -52,7 +52,26 @@ Route::prefix('mobile/v1')->group(function () {
             Route::delete('{id}',   [App\Http\Controllers\Api\Mobile\V1\WaliSantriController::class, 'destroy']);
         });
 
-        // ── DASHBOARD ────────────────────────────────────────────────────────
+        // ── SANTRI DATA ──────────────────────────────────────────────────────
+        Route::prefix('santri/{id}')->group(function () {
+            Route::get('attendance',           [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'attendance']);
+            Route::get('attendance/history',   [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'attendanceHistory']);
+            Route::get('grades',               [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'grades']);
+            Route::get('violations',           [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'violations']);
+            Route::get('dormitory',            [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'dormitoryInfo']);
+            Route::get('health',               [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'health']);
+            Route::get('tahfidz',              [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'tahfidz']);
+            Route::get('classes',              [App\Http\Controllers\Api\Mobile\V1\SantriDataController::class, 'currentClasses']);
+        });
+
+        // ── NOTIFICATIONS ──────────────────────────────────────────────────
+        Route::get('notifications',           [App\Http\Controllers\Api\Mobile\V1\NotificationController::class, 'index']);
+        Route::put('notifications/{id}/read', [App\Http\Controllers\Api\Mobile\V1\NotificationController::class, 'markRead']);
+
+        // ── DORMITORY PERMIT ─────────────────────────────────────────────
+        Route::post('dormitory/permit',         [App\Http\Controllers\Api\Mobile\V1\DormitoryPermitController::class, 'store']);
+
+        // ── DASHBOARD ──────────────────────────────────────────────────────
         Route::prefix('dashboard')->group(function () {
             Route::get('/',                  [App\Http\Controllers\Api\Mobile\V1\DashboardController::class, 'index']);
             Route::get('attendance',         [App\Http\Controllers\Api\Mobile\V1\DashboardController::class, 'attendance']);

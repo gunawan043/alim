@@ -35,7 +35,9 @@ return new class extends Migration
                 $table->primary(['sidebar_menu_id', 'role_id']);
 
                 $table->foreign('sidebar_menu_id')->references('id')->on('sidebar_menus')->onDelete('cascade');
-                $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
+                if (Schema::hasTable('roles')) {
+                    $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
+                }
             });
         }
     }

@@ -39,7 +39,7 @@ return new class extends Migration {
             $table->foreign('measured_by')->references('id')->on('users')->nullOnDelete();
 
             // unik: satu record per siswa per tahun ajaran per tanggal
-            $table->unique(['student_id', 'academic_year_id', 'record_date']);
+            $table->unique(['student_id', 'academic_year_id', 'record_date'], 'sthlth_metr_stu_acad_rec_unq');
             $table->index(['student_id', 'academic_year_id']);
             $table->index(['school_id', 'academic_year_id']);
         });

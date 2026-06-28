@@ -2,6 +2,7 @@
 
 namespace App\Http\Services;
 
+use App\Exceptions\ServiceErrorCode;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\WaliSantri;
@@ -48,27 +49,21 @@ class WaliSantriService
                 }
 
                 // NIK ada tapi milik orang lain
-                throw new \Exception(
-                    'NIK_ALREADY_EXISTS',
+                throw new ServiceErrorCode(
+                    'NIK sudah terdaftar di sistem dan milik orang lain. '
+                        . 'Jika ini adalah anak Anda, silakan hubungi administrators sekolah.',
                     422,
-                    [
-                        'nik' => $data['nik'],
-                        'message' => 'NIK sudah terdaftar di sistemas dan milik orang lain. '
-                            . 'Jika ini adalah anak Anda, silakan hubungi administrators sekolah.',
-                    ]
+                    ['nik' => $data['nik']]
                 );
             }
 
             // ── STEP 2: Validasi KK (jika wali punya KK) ──────────────────────
             if ($wali->no_kk && isset($data['no_kk'])) {
                 if ($wali->no_kk !== $data['no_kk']) {
-                    throw new \Exception(
-                        'KK_MISMATCH',
+                    throw new ServiceErrorCode(
+                        'No KK tidak cocok dengan KK yang terdaftar di akun Anda.',
                         422,
-                        [
-                            'field' => 'no_kk',
-                            'message' => 'No KK tidak cocok dengan KK yang terdaftar di akun Anda.',
-                        ]
+                        ['field' => 'no_kk']
                     );
                 }
             }
@@ -125,14 +120,11 @@ class WaliSantriService
             $student = Student::where('nik', $data['nik_santri'])->first();
 
             if (!$student) {
-                throw new \Exception(
-                    'STUDENT_NOT_FOUND',
+                throw new ServiceErrorCode(
+                    'Santi dengan NIK tersebut tidak ditemukan. '
+                        . 'Pastikan NIK yang Anda masukkan benar.',
                     404,
-                    [
-                        'nik_santri' => $data['nik_santri'],
-                        'message' => 'Santi dengan NIK tersebut tidak ditemukan. '
-                            . 'Pastikan NIK yang Anda masukkan benar.',
-                    ]
+                    ['nik_santri' => $data['nik_santri']]
                 );
             }
 
@@ -143,8 +135,8 @@ class WaliSantriService
 
             if ($existingLink) {
                 if ($existingLink->status === WaliSantri::STATUS_PENDING) {
-                    throw new \Exception(
-                        'LINK_PENDING',
+                    throw new ServiceErrorCode(
+                        'Anda sudah memiliki permintaan tertunda untuk Santi ini.',
                         422,
                         [
                             'message' => 'Anda sudah memiliki permintaan tertunda untuk Santi ini.',
@@ -200,8 +192,9 @@ class WaliSantriService
                 ->first();
 
             if ($pending) {
-                throw new \Exception(
-                    'DUPLICATE_REQUEST',
+                throw new ServiceErrorCode(
+                    'Anda sudah memiliki permintaan aktif. '
+                        . 'Silakan tunggu konfirmasi dari wali utama.',
                     422,
                     [
                         'message' => 'Anda sudah memiliki permintaan aktif. '
@@ -213,8 +206,8 @@ class WaliSantriService
 
             // ── STEP 5: Cek MAX wali tercapai ─────────────────────────────────
             if ($existingWali->count() >= self::MAX_WALI_PER_STUDENT) {
-                throw new \Exception(
-                    'MAX_WALI_EXCEEDED',
+                throw new ServiceErrorCode(
+                    "Santi ini sudah memiliki maksimum " . self::MAX_WALI_PER_STUDENT . " wali.",
                     422,
                     [
                         'max_wali' => self::MAX_WALI_PER_STUDENT,
@@ -279,9 +272,11 @@ class WaliSantriService
                 ->first();
 
             if (!$regToken) {
-                throw new \Exception('TOKEN_INVALID', 404, [
-                    'message' => 'Token tidak valid atau sudah kedaluwarsa.',
-                ]);
+                throw new ServiceErrorCode(
+                    'Token tidak valid atau sudah kedaluwarsa.',
+                    404,
+                    ['message' => 'Token tidak valid atau sudah kedaluwarsa.']
+                );
             }
 
             // ── STEP 2: Cek apakah wali ini punya akses ke Santi tersebut ────────
@@ -299,9 +294,11 @@ class WaliSantriService
                     ->exists();
 
                 if ($anyLink) {
-                    throw new \Exception('UNAUTHORIZED', 403, [
-                        'message' => 'Anda tidak memiliki otoritas untuk menyetujui permintaan ini.',
-                    ]);
+                    throw new ServiceErrorCode(
+                        'Anda tidak memiliki otoritas untuk menyetujui permintaan ini.',
+                        403,
+                        ['message' => 'Anda tidak memiliki otoritas untuk menyetujui permintaan ini.']
+                    );
                 }
             }
 
@@ -316,9 +313,11 @@ class WaliSantriService
                     ->count();
 
                 if ($currentCount >= self::MAX_WALI_PER_STUDENT) {
-                    throw new \Exception('MAX_WALI_EXCEEDED', 422, [
-                        'message' => 'Santi ini sudah mencapai maksimum wali.',
-                    ]);
+                    throw new ServiceErrorCode(
+                        'Santi ini sudah mencapai maksimum wali.',
+                        422,
+                        ['message' => 'Santi ini sudah mencapai maksimum wali.']
+                    );
                 }
 
                 // Buat link
@@ -367,7 +366,7 @@ class WaliSantriService
         });
     }
 
-    // ── Remove Wali-Santri link ───────────────────────────────────────────────
+    // ── Remove Wali-Santri link ─────────────────────────────��─────────────────
 
     /**
      * Lepas hubungan wali-Santi.
@@ -380,9 +379,11 @@ class WaliSantriService
         $link = WaliSantri::with('student')->find($waliSantriId);
 
         if (!$link) {
-            throw new \Exception('LINK_NOT_FOUND', 404, [
-                'message' => 'Hubungan wali-Santi tidak ditemukan.',
-            ]);
+            throw new ServiceErrorCode(
+                'Hubungan wali-Santi tidak ditemukan.',
+                404,
+                ['message' => 'Hubungan wali-Santi tidak ditemukan.']
+            );
         }
 
         // Cek apakah ini link terakhir
@@ -391,17 +392,19 @@ class WaliSantriService
             ->count();
 
         if ($activeLinks <= 1 && !$isAdmin) {
-            throw new \Exception('CANNOT_REMOVE_LAST_WALI', 422, [
-                'message' => 'Tidak dapat melepas hubungan terakhir. '
+            throw new ServiceErrorCode(
+                'Tidak dapat melepas hubungan terakhir. '
                     . 'Hubungi administrators untuk bantuan.',
-            ]);
+                422,
+                ['message' => 'Tidak dapat melepas hubungan terakhir.']
+            );
         }
 
         $link->status = WaliSantri::STATUS_SUSPENDED;
         $link->save();
     }
 
-    // ── Get Dashboard ─────────────────────────────────────────────────────────
+    // ── Get Dashboard ────���────────────────────────────────────────────────────
 
     public function getDashboard(User $wali): array
     {

@@ -16,34 +16,32 @@ class SchoolFactory extends Factory
         $levels = ['sd', 'smp', 'sma', 'smk'];
         $statuses = ['negeri', 'swasta'];
         $akreditasi = ['A', 'B', 'C', null];
-        $opsHours = ['pagi', 'siang', 'full_day', null];
-        $provinces = ['32', '31', '36', '35', '33']; // Jawa Barat, DKI Jakarta, Banten, Jawa Timur, Jawa Tengah
-
-        $provinceCode = $this->faker->randomElement($provinces);
-        $cityMapping = [
-            '32' => ['3271', '3272', '3214'], // Bandung, Bekasi, Bogor
-            '31' => ['3171', '3172'],          // Jakarta Pusat, Jakarta Selatan
-            '36' => ['3671', '3672'],          // Tangerang, Serang
-            '35' => ['3571', '3572'],          // Surabaya, Sidoarjo
-            '33' => ['3371', '3372'],          // Semarang, Solo
-        ];
-
-        $cityCode = $this->faker->randomElement($cityMapping[$provinceCode] ?? ['3271']);
+        $opsHours = ['pagi', 'siang', 'full_day'];
         $level = $this->faker->randomElement($levels);
 
         return [
             'id' => (string) Str::uuid(),
-            'work_unit_id' => null,
+            'work_unit_id' => function () {
+                return WorkUnit::firstOrCreate(
+                    ['code' => 'YAYASAN-DEFAULT'],
+                    [
+                        'id' => (string) Str::uuid(),
+                        'name' => 'Yayasan Default',
+                        'type' => 'Unsur Pimpinan',
+                        'is_active' => true,
+                    ]
+                )->id;
+            },
             'school_code' => 'SKH-' . strtoupper($this->faker->lexify('???')),
             'npsn' => $this->faker->numerify('##########'),
             'nss' => $this->faker->numerify('############'),
             'name' => $this->generateSchoolName($level),
             'address' => $this->faker->streetAddress() . ', ' . $this->faker->city(),
-            'province_code' => $provinceCode,
-            'city_code' => $cityCode,
-            'district_code' => $cityCode . $this->faker->numerify('##'),
-            'village_code' => $cityCode . $this->faker->numerify('###'),
-            'postal_code' => $this->faker->postcode2(),
+            'province_code' => null,
+            'city_code' => null,
+            'district_code' => null,
+            'village_code' => null,
+            'postal_code' => $this->faker->postcode(),
             'phone' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),
             'website' => 'https://' . $this->faker->domainName(),

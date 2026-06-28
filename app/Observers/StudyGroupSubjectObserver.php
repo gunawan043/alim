@@ -9,8 +9,24 @@ use App\Models\StudyGroupSubject;
 
 class StudyGroupSubjectObserver
 {
+    protected static bool $disabled = false;
+
+    public static function disable(): void
+    {
+        static::$disabled = true;
+    }
+
+    public static function enable(): void
+    {
+        static::$disabled = false;
+    }
+
     public function created(StudyGroupSubject $row): void
     {
+        if (static::$disabled) {
+            return;
+        }
+
         $ctx = $this->resolveContext($row);
 
         StudyGroupSubjectChanged::dispatch(
@@ -37,6 +53,10 @@ class StudyGroupSubjectObserver
 
     public function updated(StudyGroupSubject $row): void
     {
+        if (static::$disabled) {
+            return;
+        }
+
         $ctx = $this->resolveContext($row);
 
         StudyGroupSubjectChanged::dispatch(
@@ -63,6 +83,10 @@ class StudyGroupSubjectObserver
 
     public function deleted(StudyGroupSubject $row): void
     {
+        if (static::$disabled) {
+            return;
+        }
+
         $ctx = $this->resolveContext($row);
 
         StudyGroupSubjectChanged::dispatch(
@@ -89,10 +113,6 @@ class StudyGroupSubjectObserver
 
     /**
      * Resolve school_id, academic_year_id, grade_level_id for the event payload.
-     *
-     * The model boot() in StudyGroupSubject already auto-fills school_id and
-     * academic_year_id from the study_group on create. But for deleted rows,
-     * relations may already be gone — we look them up explicitly here.
      */
     private function resolveContext(StudyGroupSubject $row): array
     {

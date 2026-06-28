@@ -10,7 +10,16 @@ class NotifyGuardiansOnLifecycle
 {
     public function handle(object $event): void
     {
-        $message = LifecycleMessage::forEvent($event);
+        if (!method_exists(LifecycleMessage::class, 'forEvent')) {
+            return;
+        }
+
+        try {
+            $message = LifecycleMessage::forEvent($event);
+        } catch (\Throwable) {
+            return;
+        }
+
         if ($message === null) {
             return;
         }

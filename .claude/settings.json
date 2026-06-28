@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -r 'putenv\\('\\\\''BCRYPT_ROUNDS=4'\\\\''\\); require '\\\\''vendor/autoload.php'\\\\''; $app = require '\\\\''bootstrap/app.php'\\\\''; $app->make\\('\\\\''Illuminate\\\\Contracts\\\\Console\\\\Kernel'\\\\''\\)->bootstrap\\(\\); $h = \\\\Illuminate\\\\Support\\\\Facades\\\\Hash::make\\('\\\\''test'\\\\''\\); echo $h . PHP_EOL; echo '\\\\''verify: '\\\\'' . \\(int\\) \\\\Illuminate\\\\Support\\\\Facades\\\\Hash::driver\\('\\\\''bcrypt'\\\\''\\)->verifyConfiguration\\($h\\) . PHP_EOL;')",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root common_admin_test -e \"SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS schools; SET FOREIGN_KEY_CHECKS = 1;\")",
+      "Bash(php -r \"new PDO\\('mysql:host=localhost', 'root', ''\\)->exec\\('DROP DATABASE IF EXISTS common_admin_test'\\);\")",
+      "Bash(php -r \"new PDO\\('mysql:host=localhost', 'root', ''\\)->exec\\('CREATE DATABASE common_admin_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'\\);\")",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root -e \"SHOW TABLES IN common_admin_test;\")",
+      "Bash(./vendor/bin/phpunit tests/Feature/WaliSantriApiTest.php --filter=test_attendance_returns_404)",
+      "Bash(grep -n '$table->uuid\\\\|->string\\('\\\\''uuid'\\\\''' /Users/gunawan_wawan43/Movies/PUSTIK/alim/database/migrations/2026_02_10_010531_create_users_table.php)"
+    ]
+  }
+}

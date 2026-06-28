@@ -136,8 +136,8 @@ class StudentStatusSyncListenerTest extends TestCase
 
         $event = new StudentMutatedOut(
             student: $data['student'],
+            mutation: null,
             outType: 'graduation',
-            reason: 'Lulus',
             leaveDate: '2026-06-15',
         );
 
@@ -153,8 +153,8 @@ class StudentStatusSyncListenerTest extends TestCase
 
         $event = new StudentMutatedOut(
             student: $data['student'],
+            mutation: null,
             outType: 'dropout',
-            reason: 'Pindah keluarga',
             leaveDate: '2026-06-15',
         );
 
@@ -170,8 +170,8 @@ class StudentStatusSyncListenerTest extends TestCase
 
         $event = new StudentMutatedOut(
             student: $data['student'],
+            mutation: null,
             outType: 'mutation',
-            reason: 'Mutasi ke sekolah lain',
             leaveDate: '2026-06-15',
         );
 

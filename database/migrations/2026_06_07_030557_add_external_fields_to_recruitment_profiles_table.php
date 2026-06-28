@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('recruitment_profiles', function (Blueprint $table) {
             $table->string('external_id')->nullable()->after('id'); // ID dari recruitment.abuhurairah.id
-            $table->text('foto_url_external')->nullable()->after('foto'); // URL foto dari external system
+            $table->text('foto_url_external')->nullable(); // URL foto dari external system
         });
     }
 

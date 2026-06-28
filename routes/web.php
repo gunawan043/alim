@@ -124,6 +124,11 @@ use App\Http\Controllers\Personalia\RaporGtkController;
 use App\Http\Controllers\Personalia\KalenderKegiatanController;
 use App\Http\Controllers\Personalia\AnalisisGtkController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\JadwalKbmController;
+use App\Http\Controllers\Evaluasi\KisiKisiController;
+use App\Http\Controllers\Evaluasi\PaketSoalController;
+use App\Http\Controllers\Evaluasi\BankSoalController;
+use App\Http\Controllers\Evaluasi\SoalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -1684,43 +1689,64 @@ Route::domain('wadir1.' . env('APP_DOMAIN', 'localhost'))
 |--------------------------------------------------------------------------
 */
 Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
-    ->middleware(['auth', 'role:Admin Tata Usaha,Wakil Kepala Sekolah,Admin Sarpras'])
+    ->middleware(['auth', 'role:Admin Tata Usaha,Wakil Kepala Sekolah,Admin Sarpras', 'school.context'])
     ->name('waka.')
     ->group(function () {
         Route::get('/', [WakaController::class, 'dashboard'])->name('dashboard');
 
-        Route::get('/gtk-guru',   fn() => view('waka.dashboard'))->name('gtk-guru');
-        Route::get('/gtk-tendik', fn() => view('waka.dashboard'))->name('gtk-tendik');
-
-        Route::get('/peserta-didik/data-kelas',     fn() => view('waka.dashboard'))->name('peserta-didik.data-kelas');
-        Route::get('/peserta-didik/rombel/{kelas}', fn($kelas) => view('waka.dashboard'))->name('peserta-didik.rombel');
-        Route::get('/peserta-didik/mutasi', fn() => view('waka.dashboard'))->name('peserta-didik.mutasi');
+        // ── GTK & PESERTA DIDIK ─────────────────────────────────
+        Route::get('/gtk-guru',        fn() => redirect()->route('user.gtk.indexguru', ['userId' => auth()->user()->id]))->name('gtk-guru');
+        Route::get('/gtk-tendik',      fn() => redirect()->route('user.gtk.indextendik', ['userId' => auth()->user()->id]))->name('gtk-tendik');
+        Route::get('/peserta-didik/data-kelas', fn() => redirect()->route('user.study-groups.index', ['userId' => auth()->user()->id]))->name('peserta-didik.data-kelas');
+        Route::get('/peserta-didik/rombel/{kelas}', function ($kelas) {
+            return redirect()->route('user.study-groups.index', ['userId' => auth()->user()->id])->with('rombel-filter', $kelas);
+        })->name('peserta-didik.rombel');
+        Route::get('/peserta-didik/mutasi', fn() => redirect()->route('user.mutations-in.index', ['userId' => auth()->user()->id]))->name('peserta-didik.mutasi');
         Route::get('/peserta-didik/masuk', fn() => redirect()->route('user.mutations-in.index', ['userId' => auth()->user()->id]))->name('peserta-didik.masuk');
         Route::get('/peserta-didik/keluar', fn() => redirect()->route('user.mutations-out.index', ['userId' => auth()->user()->id]))->name('peserta-didik.keluar');
-
         Route::get('/poin-pelanggaran', fn() => redirect()->route('user.violation-points.dashboard', ['userId' => auth()->user()->id]))->name('poin-pelanggaran');
-        Route::get('/kisi-kisi-soal',      fn() => view('waka.dashboard'))->name('kisi-kisi-soal');
-        Route::get('/soal-sumatif',        fn() => view('waka.dashboard'))->name('soal-sumatif');
-        Route::get('/nilai-sts/{kelas}',   fn($kelas) => view('waka.dashboard'))->name('nilai-sts');
-        Route::get('/nilai-sas/{kelas}',   fn($kelas) => view('waka.dashboard'))->name('nilai-sas');
-        Route::get('/absensi-gtk',         fn() => view('waka.dashboard'))->name('absensi-gtk');
-        Route::get('/absensi-pd/{kelas}',  fn($kelas) => view('waka.dashboard'))->name('absensi-pd');
-        Route::get('/prestasi-akademik',   fn() => view('waka.dashboard'))->name('prestasi-akademik');
-        Route::get('/hafalan-quran',       fn() => view('waka.dashboard'))->name('hafalan-quran');
-        Route::get('/hafalan-hadits',      fn() => view('waka.dashboard'))->name('hafalan-hadits');
-        Route::get('/ekstrakurikuler',     fn() => view('waka.dashboard'))->name('ekstrakurikuler');
-        Route::get('/supervisi',           fn() => view('waka.dashboard'))->name('supervisi');
-        Route::get('/sk-guru',             fn() => view('waka.dashboard'))->name('sk-guru');
-        Route::get('/jadwal-pelajaran',    fn() => view('waka.dashboard'))->name('jadwal-pelajaran');
-        Route::get('/jam-mengajar',        fn() => view('waka.dashboard'))->name('jam-mengajar');
-        Route::get('/rekap-pergantian-jam',fn() => view('waka.dashboard'))->name('rekap-pergantian-jam');
-        Route::get('/surat-keluar',        fn() => view('waka.dashboard'))->name('surat-keluar');
-        Route::get('/surat-masuk',         fn() => view('waka.dashboard'))->name('surat-masuk');
-        Route::get('/dokumen-iso',         fn() => view('waka.dashboard'))->name('dokumen-iso');
-        Route::get('/kaldik',              fn() => view('waka.dashboard'))->name('kaldik');
-        Route::get('/pekan-efektif',       fn() => view('waka.dashboard'))->name('pekan-efektif');
-        Route::get('/sarana-prasarana',    fn() => view('waka.dashboard'))->name('sarana-prasarana');
-        Route::get('/data-alumni', [AlumniController::class, 'index'])->name('data-alumni');
+        // ── KISI-KISI, SOAL, NILAI (partial — P1: full route registration) ──
+        Route::get('/kisi-kisi-soal', fn() => redirect()->route('user.kisi-kisi-soal.index', ['userId' => auth()->user()->id]))->name('kisi-kisi-soal');
+        Route::get('/soal-sumatif',   fn() => redirect()->route('user.paket-soal.index', ['userId' => auth()->user()->id]))->name('soal-sumatif');
+        // Nilai STS/SAS require studyGroupId (UUID) — redirect to StudyGroups list
+        Route::get('/nilai-sts/{kelas}', function ($kelas) {
+            return redirect()->route('user.study-groups.index', ['userId' => auth()->user()->id])->with('rombel-filter', $kelas);
+        })->name('nilai-sts');
+        Route::get('/nilai-sas/{kelas}', function ($kelas) {
+            return redirect()->route('user.study-groups.index', ['userId' => auth()->user()->id])->with('rombel-filter', $kelas);
+        })->name('nilai-sas');
+
+        // ── ABSENSI ──────────────────────────────────────────────
+        Route::get('/absensi-gtk',           fn() => redirect()->route('user.absensi-gtk.index', ['userId' => auth()->user()->id]))->name('absensi-gtk');
+        Route::get('/absensi-pd/{kelas}', function ($kelas) {
+            return redirect()->route('user.absensi.harian.recap', ['userId' => auth()->user()->id]);
+        })->name('absensi-pd');
+
+        // ── PRESTASI & HAFALAN ───────────────────────────────────
+        Route::get('/prestasi-akademik', fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id]))->name('prestasi-akademik');
+        Route::get('/hafalan-quran',     fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_quran'))->name('hafalan-quran');
+        Route::get('/hafalan-hadits',    fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_hadits'))->name('hafalan-hadits');
+
+        // ── EKSTRAKURIKULER / SUPERVISI / SURAT (P1: build modules) ──
+        Route::get('/ekstrakurikuler', fn() => view('waka.dashboard'))->name('ekstrakurikuler');
+        Route::get('/supervisi',       fn() => view('waka.dashboard'))->name('supervisi');
+        Route::get('/surat-keluar',    fn() => view('waka.dashboard'))->name('surat-keluar');
+        Route::get('/surat-masuk',     fn() => view('waka.dashboard'))->name('surat-masuk');
+
+        // ── ADMINISTRASI GTK ─────────────────────────────────────
+        Route::get('/sk-guru',              fn() => redirect()->route('user.teaching-assignments.index', ['userId' => auth()->user()->id]))->name('sk-guru');
+        Route::get('/jadwal-pelajaran',     fn() => redirect()->route('user.jadwal-kbm.index', ['userId' => auth()->user()->id]))->name('jadwal-pelajaran');
+        Route::get('/jam-mengajar',         fn() => redirect()->route('user.teaching-assignments.index', ['userId' => auth()->user()->id]))->name('jam-mengajar');
+        Route::get('/rekap-pergantian-jam', fn() => redirect()->route('user.kehadiran.pergantian-jam', ['userId' => auth()->user()->id]))->name('rekap-pergantian-jam');
+
+        // ── DOKUMEN / AGENDA / SARANA ────────────────────────────
+        Route::get('/dokumen-iso', fn() => redirect()->route('user.dokumen-iso.index', ['userId' => auth()->user()->id]))->name('dokumen-iso');
+        Route::get('/kaldik',      fn() => redirect()->route('user.kaldik.index', ['userId' => auth()->user()->id]))->name('kaldik');
+        Route::get('/pekan-efektif', fn() => view('waka.dashboard'))->name('pekan-efektif');
+        Route::get('/sarana-prasarana', fn() => redirect()->route('sarpras.dashboard', ['userId' => auth()->user()->id]))->name('sarana-prasarana');
+
+        // ── ALUMNI ───────────────────────────────────────────────
+        Route::get('/data-alumni', fn() => redirect()->route('user.alumni.index', ['userId' => auth()->user()->id]))->name('data-alumni');
     });
 
 /*
