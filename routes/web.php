@@ -871,6 +871,41 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::delete('/{id}',  [StudyGroupController::class, 'destroy'])->name('destroy');
             });
 
+            // ── JADWAL KBM (PELAJARAN) ─────────────────────────────
+            Route::prefix('jadwal-kbm')->name('jadwal-kbm.')->group(function () {
+                Route::get('/',                     [JadwalKbmController::class, 'index'])->name('index');
+                Route::get('/generate',             [JadwalKbmController::class, 'generateIndex'])->name('generate');
+                Route::post('/generate/{studyGroupId}', [JadwalKbmController::class, 'generate'])->name('generate.execute');
+                Route::get('/{studyGroupId}',       [JadwalKbmController::class, 'show'])->name('show');
+                Route::get('/{studyGroupId}/edit',  [JadwalKbmController::class, 'edit'])->name('edit');
+                Route::put('/{studyGroupId}',       [JadwalKbmController::class, 'update'])->name('update');
+                Route::get('/{studyGroupId}/cetak', [JadwalKbmController::class, 'cetak'])->name('cetak');
+                Route::get('/teacher/{teacherId}',  [JadwalKbmController::class, 'forTeacher'])->name('for-teacher');
+            });
+
+            // ── EVALUASI: KISI-KISI SOAL ────────────────────────────
+            Route::prefix('kisi-kisi-soal')->name('kisi-kisi-soal.')->group(function () {
+                Route::get('/',                      [KisiKisiController::class, 'index'])->name('index');
+                Route::get('/create',                [KisiKisiController::class, 'create'])->name('create');
+                Route::post('/',                     [KisiKisiController::class, 'store'])->name('store');
+                Route::get('/{kisiUuid}',            [KisiKisiController::class, 'show'])->name('show');
+                Route::get('/{kisiUuid}/edit',       [KisiKisiController::class, 'edit'])->name('edit');
+                Route::put('/{kisiUuid}',            [KisiKisiController::class, 'update'])->name('update');
+                Route::delete('/{kisiUuid}',         [KisiKisiController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── EVALUASI: PAKET SOAL (SUMATIF) ──────────────────────
+            Route::prefix('paket-soal')->name('paket-soal.')->group(function () {
+                Route::get('/',                      [PaketSoalController::class, 'index'])->name('index');
+                Route::get('/create/{kisiKisiId}',   [PaketSoalController::class, 'create'])->name('create');
+                Route::post('/{kisiKisiId}',         [PaketSoalController::class, 'store'])->name('store');
+                Route::get('/{paketUuid}',           [PaketSoalController::class, 'show'])->name('show');
+                Route::post('/{paketUuid}/publish',  [PaketSoalController::class, 'publish'])->name('publish');
+                Route::post('/{paketUuid}/unpublish',[PaketSoalController::class, 'unpublish'])->name('unpublish');
+                Route::post('/{paketUuid}/reroll',   [PaketSoalController::class, 'reroll'])->name('reroll');
+                Route::delete('/{paketUuid}',        [PaketSoalController::class, 'destroy'])->name('destroy');
+            });
+
             // ── STUDENT PROMOTIONS ────────────────────────────────
             Route::prefix('student-promotions')->name('student-promotions.')->group(function () {
                 Route::get('/',                        [StudentPromotionController::class, 'index'])->name('index');
@@ -1723,9 +1758,9 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
         })->name('absensi-pd');
 
         // ── PRESTASI & HAFALAN ───────────────────────────────────
-        Route::get('/prestasi-akademik', fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id]))->name('prestasi-akademik');
-        Route::get('/hafalan-quran',     fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_quran'))->name('hafalan-quran');
-        Route::get('/hafalan-hadits',    fn() => redirect()->route('user.student-achievements.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_hadits'))->name('hafalan-hadits');
+        Route::get('/prestasi-akademik', fn() => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id]))->name('prestasi-akademik');
+        Route::get('/hafalan-quran',     fn() => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_quran'))->name('hafalan-quran');
+        Route::get('/hafalan-hadits',    fn() => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_hadits'))->name('hafalan-hadits');
 
         // ── EKSTRAKURIKULER / SUPERVISI / SURAT (P1: build modules) ──
         Route::get('/ekstrakurikuler', fn() => view('waka.dashboard'))->name('ekstrakurikuler');
