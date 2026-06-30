@@ -40,6 +40,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ShareRoleId::class,
             \App\Http\Middleware\SchoolContextMiddleware::class,
+            \App\Http\Middleware\BindOrganizationContext::class,
             \App\Http\Middleware\CheckIpBlocked::class,
         ],
 
@@ -74,5 +75,7 @@ class Kernel extends HttpKernel
         'school.context' => \App\Http\Middleware\SchoolContextMiddleware::class,
         'ip.blocked' => \App\Http\Middleware\CheckIpBlocked::class,
         'employee.access' => \App\Http\Middleware\EnsureEmployeeAccess::class,
+        'organization.context' => \App\Http\Middleware\BindOrganizationContext::class,
+        'permission' => \App\Http\Middleware\RequirePermission::class,
     ];
 }

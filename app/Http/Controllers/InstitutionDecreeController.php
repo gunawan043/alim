@@ -11,6 +11,8 @@ use App\Models\TeachingAssignment;
 use App\Models\OtherTeacherTask;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InstitutionDecreeController extends Controller
 {
@@ -204,6 +206,155 @@ class InstitutionDecreeController extends Controller
                 'weekly_hours'     => $t['weekly_hours'] ?? 0,
                 'is_active'       => true,
             ]);
+        }
+    }
+
+    public function show(Request $request, string $userId, string $id)
+    {
+        try {
+            $decree = InstitutionDecree::with('academicYear', 'school', 'signer')->findOrFail($id);
+
+            if ($request->wantsJson()) {
+                return response()->json(['data' => $decree]);
+            }
+
+            return view('institution-decrees.show', compact('decree', 'userId'));
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree show failed', [
+                'decree_id' => $id,
+                'user_id'   => $userId,
+                'error'     => $e->getMessage(),
+            ]);
+            abort(500, 'Gagal memuat Surat Keputusan.');
+        }
+    }
+
+    public function print(Request $request, string $userId, string $id)
+    {
+        try {
+            $decree = InstitutionDecree::with('academicYear', 'school', 'signer')->findOrFail($id);
+
+            return view('institution-decrees.print', compact('decree', 'userId'));
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree print failed', [
+                'decree_id' => $id,
+                'user_id'   => $userId,
+                'error'     => $e->getMessage(),
+            ]);
+            abort(500, 'Gagal mencetak Surat Keputusan.');
+        }
+    }
+
+    public function edit(Request $request, string $userId, string $id)
+    {
+        try {
+            $decree = InstitutionDecree::with('academicYear', 'school', 'signer')->findOrFail($id);
+
+            $academicYears = AcademicYear::orderByDesc('name')->get();
+            $activeYear = AcademicYear::active()->first();
+            $signers = User::whereHas('roles', fn($q) => $q->whereIn('name', [
+                'Super Admin', 'Mudir', 'Kepala Sekolah', 'Wadir 1', 'Administrator'
+            ]))->orderBy('name')->get();
+            $schools = School::orderBy('name')->get();
+
+            $currentUser = auth()->user();
+            $isGlobal = $currentUser->hasRole('Super Admin')
+                || $currentUser->hasRole('Administrator')
+                || $currentUser->hasRole('Wadir 1')
+                || $currentUser->hasRole('Mudir');
+            $canSelectSchool = $isGlobal;
+
+            return view('institution-decrees.edit', compact(
+                'decree', 'userId', 'academicYears', 'activeYear',
+                'signers', 'schools', 'canSelectSchool'
+            ));
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree edit failed', [
+                'decree_id' => $id,
+                'user_id'   => $userId,
+                'error'     => $e->getMessage(),
+            ]);
+            abort(500, 'Gagal memuat form edit Surat Keputusan.');
+        }
+    }
+
+    public function update(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::findOrFail($id);
+
+        $data = $request->validate([
+            'decree_number'   => 'required|string|max:100|unique:institution_decrees,decree_number,' . $decree->id,
+            'decree_type'     => 'required|string|max:50',
+            'title'           => 'required|string|max:255',
+            'description'     => 'nullable|string',
+            'academic_year_id'=> 'required|exists:academic_years,id',
+            'issued_date'     => 'required|date',
+            'effective_date'  => 'required|date|after_or_equal:issued_date',
+            'end_date'        => 'nullable|date|after_or_equal:effective_date',
+            'signed_by'       => 'nullable|exists:users,id',
+            'signed_position' => 'nullable|string|max:100',
+            'status'          => 'required|in:draft,active,archived',
+        ]);
+
+        try {
+            DB::transaction(function () use ($decree, $data) {
+                $decree->update($data);
+            });
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Surat Keputusan berhasil diperbarui.',
+                    'data'    => $decree->fresh(),
+                ]);
+            }
+
+            return redirect()->route('user.institution-decrees.show', [
+                'userId' => $userId, 'id' => $decree->id,
+            ])->with('success', 'Surat Keputusan berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree update failed', [
+                'decree_id' => $id,
+                'user_id'   => $userId,
+                'error'     => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Gagal memperbarui Surat Keputusan.'], 500);
+            }
+
+            return back()->withInput()->with('error', 'Gagal memperbarui Surat Keputusan.');
+        }
+    }
+
+    public function destroy(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::findOrFail($id);
+
+        try {
+            DB::transaction(function () use ($decree) {
+                TeachingAssignment::where('decree_id', $decree->id)->delete();
+                $decree->delete();
+            });
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Surat Keputusan berhasil dihapus.']);
+            }
+
+            return redirect()->route('user.institution-decrees.index', [
+                'userId' => $userId,
+            ])->with('success', 'Surat Keputusan berhasil dihapus.');
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree destroy failed', [
+                'decree_id' => $id,
+                'user_id'   => $userId,
+                'error'     => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Gagal menghapus Surat Keputusan.'], 500);
+            }
+
+            return back()->with('error', 'Gagal menghapus Surat Keputusan.');
         }
     }
 }

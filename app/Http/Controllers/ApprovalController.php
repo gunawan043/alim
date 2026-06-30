@@ -78,6 +78,18 @@ class ApprovalController extends Controller
         return view('approvals.show', compact('approval'));
     }
 
+    public function track(string $approvalUuid)
+    {
+        $approval = ApprovalRequest::with([
+            'flow.steps',
+            'actions' => fn($q) => $q->orderBy('created_at'),
+            'actions.actionBy',
+            'requestable'
+        ])->where('uuid', $approvalUuid)->firstOrFail();
+
+        return view('approvals.track', compact('approval'));
+    }
+
     public function createApprovalFlow()
     {
         $flow = ApprovalFlow::create(['name' => 'Transfer GTK']);

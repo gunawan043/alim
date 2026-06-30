@@ -262,8 +262,8 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
     <div class="collapse menu-dropdown" id="sumatif">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Kisi-Kisi Soal</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Soal Sumatif</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.kisi-kisi-soal' ? ' active' : '' }}" href="{{ route('waka.kisi-kisi-soal') }}" style="font-size:0.85rem">Kisi-Kisi Soal</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.soal-sumatif' ? ' active' : '' }}" href="{{ route('waka.soal-sumatif') }}" style="font-size:0.85rem">Soal Sumatif</a></li>
         </ul>
     </div>
 </li>
@@ -284,7 +284,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
     <div class="collapse menu-dropdown{{ isActiveTU($currentRoute, 'user.absensi.') ? ' show' : '' }}" id="absensi">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Absensi GTK</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'user.absensi-gtk.') ? ' active' : '' }}" href="{{ route('user.absensi-gtk.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Absensi GTK</a></li>
             <li class="nav-item">
                 <a class="nav-link{{ isActiveTU($currentRoute, 'user.absensi.') ? ' active' : '' }}"
                    href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}"
@@ -320,7 +320,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </div>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link" href="#">
+    <a class="nav-link menu-link{{ isActiveTU($currentRoute, 'waka.ekstrakurikuler.') ? ' active' : '' }}" href="{{ route('waka.ekstrakurikuler.index') }}">
         <i class="ri-basketball-line"></i>
         <span>Ekstrakurikuler</span>
     </a>
@@ -346,9 +346,9 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
                    href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">SK Pembagian Tugas</a>
             </li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Jadwal Pelajaran</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Jam Mengajar</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Rekap Pergantian Jam</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'user.jadwal-kbm.') ? ' active' : '' }}" href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Jadwal Pelajaran</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'waka.jam-mengajar') ? ' active' : '' }}" href="{{ route('waka.jam-mengajar') }}" style="font-size:0.85rem">Jam Mengajar</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'waka.rekap-pergantian-jam') ? ' active' : '' }}" href="{{ route('waka.rekap-pergantian-jam') }}" style="font-size:0.85rem">Rekap Pergantian Jam</a></li>
         </ul>
     </div>
 </li>
@@ -360,8 +360,8 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
     <div class="collapse menu-dropdown" id="surat_menyurat">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Surat Keluar</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Surat Masuk</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'waka.surat-keluar.') ? ' active' : '' }}" href="{{ route('waka.surat-keluar.index') }}" style="font-size:0.85rem">Surat Keluar</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveTU($currentRoute, 'waka.surat-masuk.') ? ' active' : '' }}" href="{{ route('waka.surat-masuk.index') }}" style="font-size:0.85rem">Surat Masuk</a></li>
         </ul>
     </div>
 </li>

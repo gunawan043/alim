@@ -98,6 +98,72 @@ class GtkRequestController extends Controller
         return back()->with('success', 'Request GTK berhasil diajukan.');
     }
 
+    public function edit(string $requestUuid)
+    {
+        $gtkRequest = GtkRequest::with('items')->findOrFail($requestUuid);
+
+        if (request()->wantsJson()) {
+            return response()->json(['request' => $gtkRequest->load('items')]);
+        }
+
+        $workUnits = WorkUnit::orderBy('name')->get();
+        $academicYears = AcademicYear::active()->orderByDesc('start_date')->get();
+        $gtkProfiles = GtkProfile::with('user')->get();
+
+        return view('gtk-requests.edit', compact('gtkRequest', 'workUnits', 'academicYears', 'gtkProfiles'));
+    }
+
+    public function update(Request $request, string $requestUuid)
+    {
+        $type = $request->input('type');
+
+        $baseRules = [
+            'work_unit_id'  => 'required|exists:work_units,id',
+            'type'          => 'required|in:procurement,trial,status_increase',
+            'status'        => 'in:draft,submitted',
+        ];
+
+        if ($type === GtkRequest::TYPE_PROCUREMENT) {
+            $baseRules['academic_year_id'] = 'required|exists:academic_years,id';
+            $baseRules['notes'] = 'nullable|string';
+        }
+        if ($type === GtkRequest::TYPE_TRIAL) {
+            $baseRules['letter_number']    = 'nullable|string|max:100';
+            $baseRules['letter_subject']  = 'nullable|string|max:255';
+            $baseRules['letter_attachment'] = 'nullable|string|max:100';
+            $baseRules['established_city'] = 'nullable|string|max:100';
+            $baseRules['established_date'] = 'nullable|date';
+        }
+
+        $validated = $request->validate($baseRules);
+
+        $gtkRequest = GtkRequest::findOrFail($requestUuid);
+        $gtkRequest->update($validated);
+
+        $this->saveItems($gtkRequest, $type, $request);
+
+        if ($request->wantsJson()) {
+            return response()->json(['request' => $gtkRequest->load('items')]);
+        }
+
+        return redirect()->route('gtk-requests.show', $gtkRequest->id)
+            ->with('success', 'Request GTK berhasil diperbarui.');
+    }
+
+    public function destroy(string $requestUuid)
+    {
+        $gtkRequest = GtkRequest::findOrFail($requestUuid);
+        GtkRequestItem::where('gtk_request_id', $gtkRequest->id)->delete();
+        $gtkRequest->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Request GTK berhasil dihapus.']);
+        }
+
+        return redirect()->route('gtk-requests.index')
+            ->with('success', 'Request GTK berhasil dihapus.');
+    }
+
     // ── Item saving ─────────────────────────────────────────────────
 
     private function saveItems(GtkRequest $gtkRequest, string $type, Request $request): void

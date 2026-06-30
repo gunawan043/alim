@@ -11,6 +11,7 @@ use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class InterviewController extends Controller
@@ -232,8 +233,134 @@ class InterviewController extends Controller
     }
 
     /**
-     * Reschedule interview.
+     * Show the form for scheduling a new interview.
      */
+    public function create(Request $request, string $userId)
+    {
+        $applications = RecruitmentApplication::with([
+            'recruitmentProfile.user',
+            'recruitmentJob',
+        ])
+            ->where('status', 'lolos_administrasi')
+            ->orderBy('tanggal_melamar', 'desc')
+            ->get();
+
+        $stages = \App\Models\RecruitmentPipelineStage::orderBy('urutan')->get();
+
+        $interviewers = User::orderBy('name')->get(['id', 'name', 'email']);
+
+        return view('recruitment.interviews.create', compact(
+            'applications', 'stages', 'interviewers', 'userId'
+        ));
+    }
+
+    /**
+     * Show the form for editing the specified interview.
+     */
+    public function edit(Request $request, string $userId, RecruitmentApplicationStage $interview)
+    {
+        $interview->load([
+            'recruitmentApplication.recruitmentProfile.user',
+            'recruitmentApplication.recruitmentJob',
+            'recruitmentPipelineStage',
+            'penilai',
+        ]);
+
+        $stages = \App\Models\RecruitmentPipelineStage::orderBy('urutan')->get();
+
+        $interviewers = User::orderBy('name')->get(['id', 'name', 'email']);
+
+        return view('recruitment.interviews.edit', compact(
+            'interview', 'stages', 'interviewers', 'userId'
+        ));
+    }
+
+    /**
+     * Update the specified interview.
+     */
+    public function update(Request $request, string $userId, RecruitmentApplicationStage $interview)
+    {
+        $validated = $request->validate([
+            'recruitment_pipeline_stage_id' => 'required|exists:recruitment_pipeline_stages,id',
+            'jadwal_mulai'                  => 'required|date',
+            'jadwal_selesai'                => 'nullable|date|after:jadwal_mulai',
+            'lokasi'                        => 'nullable|string',
+            'penilai_id'                    => 'nullable|exists:users,id',
+            'tim_penilai'                   => 'nullable|array',
+            'tim_penilai.*'                 => 'exists:users,id',
+            'status'                        => 'nullable|string|max:50',
+            'catatan'                       => 'nullable|string',
+        ]);
+
+        try {
+            $interview->fill($validated);
+            $interview->save();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Jadwal interview berhasil diperbarui.',
+                    'data'    => $interview,
+                ]);
+            }
+
+            return redirect()
+                ->route('user.ats.interviews.show', ['userId' => $userId, 'interview' => $interview->id])
+                ->with('success', 'Jadwal interview berhasil diperbarui.');
+        } catch (\Exception $e) {
+            Log::error('InterviewController@update failed', [
+                'interview_id' => $interview->id,
+                'error'        => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui jadwal interview.',
+                ], 500);
+            }
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui jadwal interview: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove the specified interview.
+     */
+    public function destroy(Request $request, string $userId, RecruitmentApplicationStage $interview)
+    {
+        try {
+            $interview->delete();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Jadwal interview berhasil dihapus.',
+                ]);
+            }
+
+            return redirect()
+                ->route('user.ats.interviews.index', ['userId' => $userId])
+                ->with('success', 'Jadwal interview berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('InterviewController@destroy failed', [
+                'interview_id' => $interview->id,
+                'error'        => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus jadwal interview.',
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Gagal menghapus jadwal interview: ' . $e->getMessage());
+        }
+    }
     public function reschedule(Request $request, string $userId, RecruitmentApplicationStage $interview)
     {
         $validated = $request->validate([

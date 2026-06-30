@@ -4,8 +4,8 @@
 @section('content')
 @php $userId = request()->route('userId') ?? Auth::id(); @endphp
 @include('components.personalia-page-header', [
-    'title' => $peraturan->judul,
-    'description' => $peraturan->kategori->nama ?? 'Tanpa Kategori',
+    'title' => $dokumen->judul,
+    'description' => $dokumen->kategori->nama ?? 'Tanpa Kategori',
     'icon' => 'ri-file-shield-line',
     'iconColor' => '#06b6d4',
     'breadcrumbs' => [
@@ -20,7 +20,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0"><i class="ri-file-text-line me-1"></i>Informasi Dokumen</h5>
-                @switch($peraturan->status)
+                @switch($dokumen->status)
                     @case('aktif')    <span class="badge bg-success-subtle text-success">Aktif</span> @break
                     @case('nonaktif') <span class="badge bg-secondary">Nonaktif</span> @break
                     @case('draft')    <span class="badge bg-secondary-subtle text-secondary">Draft</span> @break
@@ -29,24 +29,24 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Nomor Dokumen</label><div class="fw-semibold">{{ $peraturan->nomor_dokumen ?? '-' }}</div></div>
-                    <div class="col-md-3"><label class="text-muted" style="font-size:.78rem">Versi</label><div class="fw-semibold">v{{ $peraturan->versi ?? '1.0' }}</div></div>
-                    <div class="col-md-3"><label class="text-muted" style="font-size:.78rem">Kategori</label><div class="fw-semibold">{{ $peraturan->kategori->nama ?? '-' }}</div></div>
-                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Berlaku Mulai</label><div>{{ $peraturan->tanggal_berlaku?->format('d M Y') ?? '-' }}</div></div>
-                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Berlaku Sampai</label><div>{{ $peraturan->tanggal_expired?->format('d M Y') ?? 'Tidak terbatas' }}</div></div>
+                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Nomor Dokumen</label><div class="fw-semibold">{{ $dokumen->nomor_dokumen ?? '-' }}</div></div>
+                    <div class="col-md-3"><label class="text-muted" style="font-size:.78rem">Versi</label><div class="fw-semibold">v{{ $dokumen->versi ?? '1.0' }}</div></div>
+                    <div class="col-md-3"><label class="text-muted" style="font-size:.78rem">Kategori</label><div class="fw-semibold">{{ $dokumen->kategori->nama ?? '-' }}</div></div>
+                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Berlaku Mulai</label><div>{{ $dokumen->tanggal_berlaku?->format('d M Y') ?? '-' }}</div></div>
+                    <div class="col-md-6"><label class="text-muted" style="font-size:.78rem">Berlaku Sampai</label><div>{{ $dokumen->tanggal_expired?->format('d M Y') ?? 'Tidak terbatas' }}</div></div>
                     <div class="col-12">
                         <label class="text-muted" style="font-size:.78rem">Deskripsi</label>
-                        <div class="p-2 bg-light rounded">{{ $peraturan->deskripsi ?? '—' }}</div>
+                        <div class="p-2 bg-light rounded">{{ $dokumen->deskripsi ?? '—' }}</div>
                     </div>
-                    @if($peraturan->catatan_perubahan)
+                    @if($dokumen->catatan_perubahan)
                     <div class="col-12">
                         <label class="text-muted" style="font-size:.78rem">Catatan Perubahan</label>
-                        <div class="p-2 bg-warning-subtle rounded">{{ $peraturan->catatan_perubahan }}</div>
+                        <div class="p-2 bg-warning-subtle rounded">{{ $dokumen->catatan_perubahan }}</div>
                     </div>
                     @endif
-                    @if($peraturan->dokumen_path)
+                    @if($dokumen->dokumen_path)
                     <div class="col-12">
-                        <a href="{{ asset('storage/' . $peraturan->dokumen_path) }}" target="_blank" class="btn btn-soft-primary btn-sm">
+                        <a href="{{ asset('storage/' . $dokumen->dokumen_path) }}" target="_blank" class="btn btn-soft-primary btn-sm">
                             <i class="ri-file-pdf-line me-1"></i> Buka Dokumen
                         </a>
                     </div>
@@ -55,8 +55,8 @@
             </div>
             <div class="card-footer d-flex gap-2">
                 <a href="{{ route('user.ats.peraturan.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i> Kembali</a>
-                <a href="{{ route('user.ats.peraturan.edit', [$userId, $peraturan->id]) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
-                <form action="{{ route('user.ats.peraturan.acknowledge', [$userId, $peraturan->id]) }}" method="POST" class="d-inline">
+                <a href="{{ route('user.ats.peraturan.edit', [$userId, $dokumen->id]) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
+                <form action="{{ route('user.ats.peraturan.acknowledge', [$userId, $dokumen->id]) }}" method="POST" class="d-inline">
                     @csrf
                     <button class="btn btn-success btn-sm"><i class="ri-check-double-line me-1"></i> Saya Sudah Membaca</button>
                 </form>

@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Traits\LogsDeletion;
 
 class GtkRequest extends Model
 {
     use HasFactory;
+    use LogsDeletion;
 
     protected $primaryKey = 'id';
     protected $keyType = 'string';

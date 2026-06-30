@@ -7,7 +7,7 @@
     <div class="row px-xl-1">
         <div class="col-xl-12">
             <ol class="d-flex flex-wrap list-inline list-inline-breadcrumb mb-1">
-                <li class="list-inline-item"><a href="{{ route('home', ['userId' => $userId ?? auth()->user()->id]) }}">Home</a></li>
+                <li class="list-inline-item"><a href="{{ route('root', ['userId' => $userId ?? auth()->user()->id]) }}">Home</a></li>
                 <li class="list-inline-item"><span>Jadwal KBM</span></li>
             </ol>
             <h5 class="app-page-title h3">Jadwal Kegiatan Belajar</h5>

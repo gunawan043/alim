@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class Todo extends Model
 {
     use SoftDeletes;
+    use LogsDeletion;
 
     protected $keyType = 'string';
     public $incrementing = false;

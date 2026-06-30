@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 
 class WaliRegistrationToken extends Pivot
 {
     use SoftDeletes;
+    use LogsDeletion;
 
     protected $table = 'wali_registration_tokens';
 

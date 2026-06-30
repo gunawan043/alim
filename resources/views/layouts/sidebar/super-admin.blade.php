@@ -550,8 +550,8 @@ $sa_pension_approaching = DB::table('users')
     </a>
     <div class="collapse menu-dropdown" id="sumatif">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Kisi-Kisi Soal</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Soal Sumatif</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'user.kisi-kisi-soal.') ? ' active' : '' }}" href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Kisi-Kisi Soal</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem"><span class="badge bg-secondary me-1">Soon</span>Soal Sumatif</a></li>
         </ul>
     </div>
 </li>
@@ -565,8 +565,8 @@ $sa_pension_approaching = DB::table('users')
     </a>
     <div class="collapse menu-dropdown" id="absensi">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Absensi GTK</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Absensi Santri</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'user.absensi-gtk.') ? ' active' : '' }}" href="{{ route('user.absensi-gtk.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Absensi GTK</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'user.absensi.harian.') ? ' active' : '' }}" href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Absensi Santri</a></li>
         </ul>
     </div>
 </li>
@@ -580,8 +580,8 @@ $sa_pension_approaching = DB::table('users')
     </a>
     <div class="collapse menu-dropdown" id="ekskul">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Daftar Ekskul</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Penugasan Ekskul</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'waka.ekstrakurikuler.') ? ' active' : '' }}" href="{{ route('waka.ekstrakurikuler.index') }}" style="font-size:0.85rem">Daftar Ekskul</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem"><span class="badge bg-secondary me-1">Soon</span>Penugasan Ekskul</a></li>
         </ul>
     </div>
 </li>
@@ -634,9 +634,9 @@ $sa_pension_approaching = DB::table('users')
     </a>
     <div class="collapse menu-dropdown" id="prestasi">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Prestasi Akademik</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Hafalan Qur'an</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Hafalan Hadits</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'user.student-achievement.') ? ' active' : '' }}" href="{{ route('user.student-achievement.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Prestasi Akademik</a></li>
+            <li class="nav-item"><a class="nav-link{{ request('type') === 'quran' ? ' active' : '' }}" href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'quran']) }}" style="font-size:0.85rem">Hafalan Qur'an</a></li>
+            <li class="nav-item"><a class="nav-link{{ request('type') === 'hadits' ? ' active' : '' }}" href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'hadits']) }}" style="font-size:0.85rem">Hafalan Hadits</a></li>
         </ul>
     </div>
 </li>
@@ -840,9 +840,9 @@ $sa_pension_approaching = DB::table('users')
                    href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">SK Pembagian Tugas</a>
             </li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Jadwal Pelajaran</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Jam Mengajar</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Rekap Pergantian Jam</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'user.jadwal-kbm.') ? ' active' : '' }}" href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Jadwal Pelajaran</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'waka.jam-mengajar') ? ' active' : '' }}" href="{{ route('waka.jam-mengajar') }}" style="font-size:0.85rem">Jam Mengajar</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'waka.rekap-pergantian-jam') ? ' active' : '' }}" href="{{ route('waka.rekap-pergantian-jam') }}" style="font-size:0.85rem">Rekap Pergantian Jam</a></li>
         </ul>
     </div>
 </li>
@@ -856,8 +856,8 @@ $sa_pension_approaching = DB::table('users')
     </a>
     <div class="collapse menu-dropdown" id="surat">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Surat Keluar</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" style="font-size:0.85rem">Surat Masuk</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'waka.surat-keluar.') ? ' active' : '' }}" href="{{ route('waka.surat-keluar.index') }}" style="font-size:0.85rem">Surat Keluar</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSA($currentRoute, 'waka.surat-masuk.') ? ' active' : '' }}" href="{{ route('waka.surat-masuk.index') }}" style="font-size:0.85rem">Surat Masuk</a></li>
         </ul>
     </div>
 </li>

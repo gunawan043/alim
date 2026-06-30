@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class DormitoryPost extends Model
 {
     use SoftDeletes;
+    use LogsDeletion;
 
     protected $keyType = 'string';
     public $incrementing = false;

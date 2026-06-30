@@ -97,6 +97,24 @@ class GtkAdditionalTaskController extends Controller
             ->with('success', 'Tugas tambahan berhasil disimpan.');
     }
 
+    public function show(string $userId, string $id)
+    {
+        $task = GtkAdditionalTask::with(['user', 'decree'])->findOrFail($id);
+
+        $schoolId = request()->attributes->get('schoolContextId');
+        $currentUser = auth()->user();
+        $isGlobal = $currentUser->hasRole('Super Admin')
+            || $currentUser->hasRole('Administrator')
+            || $currentUser->hasRole('Wadir 1')
+            || $currentUser->hasRole('Mudir');
+
+        if (!$isGlobal && $task->decree && $schoolId && $task->decree->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        return view('gtk-additional-tasks.show', compact('task', 'userId'));
+    }
+
     public function edit(string $userId, string $id)
     {
         $task = GtkAdditionalTask::findOrFail($id);

@@ -127,6 +127,18 @@ class KaldikController extends Controller
     }
 
     /**
+     * Show the form for creating a new Kaldik/Agenda.
+     */
+    public function create(Request $request, string $userId)
+    {
+        $isGlobal = $this->isGlobalUser($request);
+        $academicYears = AcademicYear::orderBy('name', 'desc')->get();
+        $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
+
+        return view('kaldik.create', compact('academicYears', 'workUnits', 'userId'));
+    }
+
+    /**
      * Store a newly created Kaldik/Agenda.
      *
      * - Super Admin / Administrator → boleh pilih kategori & satuan kerja

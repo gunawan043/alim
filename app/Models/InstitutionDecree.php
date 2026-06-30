@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use App\Models\Traits\LogsDeletion;
 
 class InstitutionDecree extends Model
 {
+    use LogsDeletion;
+
     protected $table = 'institution_decrees';
 
     protected $keyType = 'string';

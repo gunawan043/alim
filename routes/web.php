@@ -7,7 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\SecureAccessController;
 use App\Http\Controllers\GtkRecruitmentController;
-use App\Http\Controllers\GTKController;
+use App\Http\Controllers\GtkController;
 use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\StudentMoveController;
@@ -59,6 +59,7 @@ use App\Http\Controllers\OtherTeacherTaskController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\StudyGroupController;
+use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\Sarpras\SarprasBaseController;
 use App\Http\Controllers\Sarpras\SarprasDashboardController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
@@ -85,6 +86,12 @@ use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\OperatorDashboardController;
 use App\Http\Controllers\WakaController;
+use App\Http\Controllers\Waka\EkstrakurikulerController;
+use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
+use App\Http\Controllers\Waka\SupervisiController;
+use App\Http\Controllers\Waka\SuratMasukController;
+use App\Http\Controllers\Waka\SuratKeluarController;
+use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\StudentImmunizationController;
 use App\Http\Controllers\StudentHealthCheckupController;
 use App\Http\Controllers\StudentHealthPermitController;
@@ -332,7 +339,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/export-preview',               [GtkWizardController::class, 'exportPreview'])->name('export.preview');
                 Route::get('/export',                       [GtkWizardController::class, 'export'])->name('export');
                 Route::post('/verify-password',             [GtkWizardController::class, 'verifyPassword'])->name('verify-password');
-                Route::get('/satuan-kerja/{satuanKerja}',  [GTKController::class, 'indexByWorkUnit'])->name('by-work-unit');
+                Route::get('/satuan-kerja/{satuanKerja}',  [GtkController::class, 'indexByWorkUnit'])->name('by-work-unit');
 
                 // Education standalone (sebelum {uuid} wildcard)
                 Route::prefix('educations')->name('educations.')->group(function () {
@@ -381,6 +388,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/',                   [PensionController::class, 'index'])->name('index');
                 Route::get('/settings',          [PensionController::class, 'settings'])->name('settings');
                 Route::post('/settings',          [PensionController::class, 'updateSettings'])->name('settings.update');
+                Route::get('/{uuid}',           [PensionController::class, 'show'])->name('show');
                 Route::get('/{uuid}/edit',        [PensionController::class, 'edit'])->name('edit');
                 Route::post('/{uuid}',            [PensionController::class, 'update'])->name('update');
                 Route::post('/datatable',         [PensionController::class, 'datatable'])->name('datatable');
@@ -706,13 +714,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/kategori',      [PeraturanController::class, 'kategoriStore'])->name('kategori.store');
                 Route::put('/kategori/{id}', [PeraturanController::class, 'kategoriUpdate'])->name('kategori.update');
                 Route::delete('/kategori/{id}', [PeraturanController::class, 'kategoriDestroy'])->name('kategori.destroy');
-                Route::get('/pelanggaran',   [PeraturanController::class, 'pelanggaran'])->name('pelanggaran');
-                Route::post('/pelanggaran',   [PeraturanController::class, 'pelanggaranStore'])->name('pelanggaran.store');
-                Route::put('/pelanggaran/{id}', [PeraturanController::class, 'pelanggaranUpdate'])->name('pelanggaran.update');
-                Route::delete('/pelanggaran/{id}', [PeraturanController::class, 'pelanggaranDestroy'])->name('pelanggaran.destroy');
+                // Note: controller uses violation* method names (Pelanggaran = violation)
+                Route::get('/pelanggaran',    [PeraturanController::class, 'violation'])->name('pelanggaran');
+                Route::post('/pelanggaran',   [PeraturanController::class, 'violationStore'])->name('pelanggaran.store');
+                Route::get('/pelanggaran/{id}', [PeraturanController::class, 'violation'])->name('pelanggaran.show');
+                Route::put('/pelanggaran/{id}', [PeraturanController::class, 'violationUpdate'])->name('pelanggaran.update');
+                Route::delete('/pelanggaran/{id}', [PeraturanController::class, 'violationDestroy'])->name('pelanggaran.destroy');
+                // English alias routes
                 Route::get('/violation',     [PeraturanController::class, 'violation'])->name('violation');
                 Route::post('/violation',    [PeraturanController::class, 'violationStore'])->name('violation.store');
+                Route::put('/violation/{id}', [PeraturanController::class, 'violationUpdate'])->name('violation.update');
                 Route::delete('/violation/{id}', [PeraturanController::class, 'violationDestroy'])->name('violation.destroy');
+                // Acknowledge read log
                 Route::post('/{id}/acknowledge', [PeraturanController::class, 'acknowledge'])->name('acknowledge');
                 Route::post('/datatable',    [PeraturanController::class, 'datatable'])->name('datatable');
             });
@@ -853,6 +866,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── GTK ADDITIONAL TASKS ───────────────────────────────
             Route::prefix('gtk-additional-tasks')->name('gtk-additional-tasks.')->group(function () {
                 Route::get('/',          [\App\Http\Controllers\GtkAdditionalTaskController::class, 'index'])->name('index');
+                Route::get('/{id}',      [\App\Http\Controllers\GtkAdditionalTaskController::class, 'show'])->name('show');
                 Route::get('/create',    [\App\Http\Controllers\GtkAdditionalTaskController::class, 'create'])->name('create');
                 Route::post('/',         [\App\Http\Controllers\GtkAdditionalTaskController::class, 'store'])->name('store');
                 Route::get('/{id}/edit', [\App\Http\Controllers\GtkAdditionalTaskController::class, 'edit'])->name('edit');
@@ -869,6 +883,17 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}/edit',[StudyGroupController::class, 'edit'])->name('edit');
                 Route::put('/{id}',     [StudyGroupController::class, 'update'])->name('update');
                 Route::delete('/{id}',  [StudyGroupController::class, 'destroy'])->name('destroy');
+
+                // ── STUDY GROUP SUBJECTS ───────────────────────────────
+                Route::get('/{id}/subjects',          [StudyGroupSubjectController::class, 'indexView'])->name('subjects.index');
+                Route::get('/{id}/subjects/available',[StudyGroupSubjectController::class, 'available'])->name('subjects.available');
+                Route::get('/{id}/subjects/create',   [StudyGroupSubjectController::class, 'create'])->name('subjects.create');
+                Route::post('/{id}/subjects',         [StudyGroupSubjectController::class, 'store'])->name('subjects.store');
+                Route::post('/{id}/subjects/bulk',    [StudyGroupSubjectController::class, 'bulkStore'])->name('subjects.bulk-store');
+                Route::get('/{id}/subjects/{assignmentId}', [StudyGroupSubjectController::class, 'show'])->name('subjects.show');
+                Route::get('/{id}/subjects/{assignmentId}/edit', [StudyGroupSubjectController::class, 'edit'])->name('subjects.edit');
+                Route::put('/{id}/subjects/{assignmentId}', [StudyGroupSubjectController::class, 'update'])->name('subjects.update');
+                Route::delete('/{id}/subjects/{assignmentId}', [StudyGroupSubjectController::class, 'destroy'])->name('subjects.destroy');
             });
 
             // ── JADWAL KBM (PELAJARAN) ─────────────────────────────
@@ -894,6 +919,30 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::delete('/{kisiUuid}',         [KisiKisiController::class, 'destroy'])->name('destroy');
             });
 
+            // ── EVALUASI: BANK SOAL ──────────────────────────────────
+            Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
+                Route::get('/',                          [BankSoalController::class, 'index'])->name('index');
+                Route::get('/create',                    [BankSoalController::class, 'create'])->name('create');
+                Route::post('/',                         [BankSoalController::class, 'store'])->name('store');
+                Route::get('/{id}',                      [BankSoalController::class, 'show'])->name('show');
+                Route::get('/{id}/edit',                 [BankSoalController::class, 'edit'])->name('edit');
+                Route::put('/{id}',                      [BankSoalController::class, 'update'])->name('update');
+                Route::delete('/{id}',                   [BankSoalController::class, 'destroy'])->name('destroy');
+                Route::get('/{bankId}/soal',             [BankSoalController::class, 'soalList'])->name('soal-list');
+                Route::post('/{id}/clone',               [BankSoalController::class, 'clone'])->name('clone');
+            });
+
+            // ── EVALUASI: SOAL (nested under bank-soal) ──────────────
+            Route::prefix('bank-soal/{bankId}/soal')->name('soal.')->group(function () {
+                Route::get('/create',                    [SoalController::class, 'create'])->name('create');
+                Route::post('/',                         [SoalController::class, 'store'])->name('store');
+                Route::get('/{id}/edit',                 [SoalController::class, 'edit'])->name('edit');
+                Route::put('/{id}',                      [SoalController::class, 'update'])->name('update');
+                Route::delete('/{id}',                   [SoalController::class, 'destroy'])->name('destroy');
+                Route::post('/{id}/submit-review',       [SoalController::class, 'submitForReview'])->name('submit-review');
+                Route::post('/{id}/approve',             [SoalController::class, 'approve'])->name('approve');
+            });
+
             // ── EVALUASI: PAKET SOAL (SUMATIF) ──────────────────────
             Route::prefix('paket-soal')->name('paket-soal.')->group(function () {
                 Route::get('/',                      [PaketSoalController::class, 'index'])->name('index');
@@ -905,7 +954,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/reroll',   [PaketSoalController::class, 'reroll'])->name('reroll');
                 Route::delete('/{paketUuid}',        [PaketSoalController::class, 'destroy'])->name('destroy');
             });
-
             // ── STUDENT PROMOTIONS ────────────────────────────────
             Route::prefix('student-promotions')->name('student-promotions.')->group(function () {
                 Route::get('/',                        [StudentPromotionController::class, 'index'])->name('index');
@@ -1698,10 +1746,10 @@ Route::domain('wadir1.' . env('APP_DOMAIN', 'localhost'))
         Route::get('/', fn() => redirect()->route('wadir1.gtk.index'));
 
         Route::prefix('gtk')->name('gtk.')->group(function () {
-            Route::get('/', [GTKController::class, 'index'])->name('index');
-            Route::get('/filter', [GTKController::class, 'filter'])->name('filter');
-            Route::get('/{gtkUuid}', [GTKController::class, 'show'])->name('show');
-            Route::get('/by-work-unit/{workUnitUuid}', [GTKController::class, 'indexByWorkUnit'])->name('by-work-unit');
+            Route::get('/', [GtkController::class, 'index'])->name('index');
+            Route::get('/filter', [GtkController::class, 'filter'])->name('filter');
+            Route::get('/{gtkUuid}', [GtkController::class, 'show'])->name('show');
+            Route::get('/by-work-unit/{workUnitUuid}', [GtkController::class, 'indexByWorkUnit'])->name('by-work-unit');
         });
 
         Route::prefix('work-units')->name('work-units.')->group(function () {
@@ -1743,6 +1791,7 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
         // ── KISI-KISI, SOAL, NILAI (partial — P1: full route registration) ──
         Route::get('/kisi-kisi-soal', fn() => redirect()->route('user.kisi-kisi-soal.index', ['userId' => auth()->user()->id]))->name('kisi-kisi-soal');
         Route::get('/soal-sumatif',   fn() => redirect()->route('user.paket-soal.index', ['userId' => auth()->user()->id]))->name('soal-sumatif');
+        Route::get('/bank-soal',      fn() => redirect()->route('user.bank-soal.index', ['userId' => auth()->user()->id]))->name('bank-soal');
         // Nilai STS/SAS require studyGroupId (UUID) — redirect to StudyGroups list
         Route::get('/nilai-sts/{kelas}', function ($kelas) {
             return redirect()->route('user.study-groups.index', ['userId' => auth()->user()->id])->with('rombel-filter', $kelas);
@@ -1762,11 +1811,26 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
         Route::get('/hafalan-quran',     fn() => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_quran'))->name('hafalan-quran');
         Route::get('/hafalan-hadits',    fn() => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_hadits'))->name('hafalan-hadits');
 
-        // ── EKSTRAKURIKULER / SUPERVISI / SURAT (P1: build modules) ──
-        Route::get('/ekstrakurikuler', fn() => view('waka.dashboard'))->name('ekstrakurikuler');
-        Route::get('/supervisi',       fn() => view('waka.dashboard'))->name('supervisi');
-        Route::get('/surat-keluar',    fn() => view('waka.dashboard'))->name('surat-keluar');
-        Route::get('/surat-masuk',     fn() => view('waka.dashboard'))->name('surat-masuk');
+        // ── EKSTRAKURIKULER ──────────────────────────────────────
+        Route::resource('ekstrakurikuler', EkstrakurikulerController::class);
+        Route::post('ekstrakurikuler/{ekstrakurikuler}/anggota', [EkstrakurikulerAnggotaController::class, 'store'])
+            ->name('ekstrakurikuler.anggota.store');
+        Route::put('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'update'])
+            ->name('ekstrakurikuler.anggota.update');
+        Route::delete('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'destroy'])
+            ->name('ekstrakurikuler.anggota.destroy');
+
+        // ── SUPERVISI ───────────────────────────────────────────
+        Route::resource('supervisi', SupervisiController::class);
+
+        // ── SURAT MASUK ─────────────────────────────────────────
+        Route::resource('surat-masuk', SuratMasukController::class);
+
+        // ── SURAT KELUAR ────────────────────────────────────────
+        Route::resource('surat-keluar', SuratKeluarController::class);
+
+        // ── PEKAN EFEKTIF ───────────────────────────────────────
+        Route::resource('pekan-efektif', PekanEfektifController::class);
 
         // ── ADMINISTRASI GTK ─────────────────────────────────────
         Route::get('/sk-guru',              fn() => redirect()->route('user.teaching-assignments.index', ['userId' => auth()->user()->id]))->name('sk-guru');
@@ -1777,7 +1841,8 @@ Route::domain('waka.' . env('APP_DOMAIN', 'localhost'))
         // ── DOKUMEN / AGENDA / SARANA ────────────────────────────
         Route::get('/dokumen-iso', fn() => redirect()->route('user.dokumen-iso.index', ['userId' => auth()->user()->id]))->name('dokumen-iso');
         Route::get('/kaldik',      fn() => redirect()->route('user.kaldik.index', ['userId' => auth()->user()->id]))->name('kaldik');
-        Route::get('/pekan-efektif', fn() => view('waka.dashboard'))->name('pekan-efektif');
+        // Sidebar alias for `route('waka.pekan-efektif')`
+        Route::get('/pekan-efektif-redirect', fn() => redirect()->route('waka.pekan-efektif.index'))->name('pekan-efektif-alias');
         Route::get('/sarana-prasarana', fn() => redirect()->route('sarpras.dashboard', ['userId' => auth()->user()->id]))->name('sarana-prasarana');
 
         // ── ALUMNI ───────────────────────────────────────────────

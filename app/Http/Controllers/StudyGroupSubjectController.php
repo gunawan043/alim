@@ -18,6 +18,32 @@ use Throwable;
 class StudyGroupSubjectController extends Controller
 {
     /**
+     * GET /study-groups/{id}/subjects
+     * List subjects assigned to a rombel (Blade view).
+     */
+    public function indexView(Request $request, string $userId, string $studyGroupId)
+    {
+        $studyGroup = StudyGroup::findOrFail($studyGroupId);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId && $studyGroup->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $assignments = StudyGroupSubject::with(['subject:id,code,name,category,credit_hours', 'teacher:id,name'])
+            ->where('study_group_id', $studyGroupId)
+            ->orderBy('is_active', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('study-group-subjects.index', [
+            'studyGroup' => $studyGroup,
+            'assignments' => $assignments,
+            'userId' => $userId,
+        ]);
+    }
+
+    /**
      * GET /api/study-groups/{id}/subjects
      * List subjects assigned to a rombel (used by AJAX on study-groups.show).
      */
@@ -56,6 +82,21 @@ class StudyGroupSubjectController extends Controller
             'total' => $assignments->count(),
             'assignments' => $assignments,
         ]);
+    }
+
+    /**
+     * GET /study-groups/{id}/subjects/{assignmentId}
+     * Show a single subject assignment detail.
+     */
+    public function show(string $userId, string $studyGroupId, string $assignmentId)
+    {
+        $studyGroup = StudyGroup::findOrFail($studyGroupId);
+        $assignment = StudyGroupSubject::with(['subject:id,code,name,category,credit_hours', 'teacher:id,name'])
+            ->where('id', $assignmentId)
+            ->where('study_group_id', $studyGroupId)
+            ->firstOrFail();
+
+        return view('study-group-subjects.show', compact('assignment', 'studyGroup', 'userId'));
     }
 
     /**
@@ -234,6 +275,25 @@ class StudyGroupSubjectController extends Controller
         return redirect()
             ->route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroupId])
             ->with('success', "Assign selesai: {$created} baru, {$updated} diperbarui.");
+    }
+
+    /**
+     * GET /study-groups/{id}/subjects/{assignmentId}/edit
+     * Edit form for an existing assignment.
+     */
+    public function edit(string $userId, string $studyGroupId, string $assignmentId)
+    {
+        $studyGroup = StudyGroup::findOrFail($studyGroupId);
+        $assignment = StudyGroupSubject::where('id', $assignmentId)
+            ->where('study_group_id', $studyGroupId)
+            ->firstOrFail();
+
+        // Load teachers from the same school
+        $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $studyGroup->school_id))
+            ->orderBy('name')
+            ->get();
+
+        return view('study-group-subjects.edit', compact('assignment', 'studyGroup', 'teachers', 'userId'));
     }
 
     /**

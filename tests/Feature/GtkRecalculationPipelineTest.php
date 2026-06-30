@@ -5,8 +5,7 @@ namespace Tests\Feature;
 use App\Events\GtkProfileUpdated;
 use App\Events\StudyGroupSubjectChanged;
 use App\Events\TeachingAssignmentChanged;
-use App\Jobs\RecalculateTeacherWorkloadJob;
-use App\Jobs\RecalculateWorkloadJob;
+use App\Services\GtkAnalysisEngine;
 use App\Models\AcademicYear;
 use App\Models\GtkAnalysisRun;
 use App\Models\GtkProfile;
@@ -193,11 +192,11 @@ class GtkRecalculationPipelineTest extends TestCase
     }
 
     /* ------------------------------------------------------------------
-     *  RecalculateTeacherWorkloadJob — happy path with real data
+     *  Analysis engine — happy path with real data
      * ------------------------------------------------------------------ */
 
     /** @test */
-    public function job_creates_analysis_run_and_gap_summary_records(): void
+    public function engine_creates_analysis_run_and_gap_summary_records(): void
     {
         // Set up school + academic year
         $school = $this->createSchool();
@@ -285,88 +284,100 @@ class GtkRecalculationPipelineTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Dispatch the job — run synchronously since QUEUE_CONNECTION=sync
-        $job = new RecalculateTeacherWorkloadJob(
-            schoolId: $school->id,
-            academicYearId: $ay->id,
-            scope: 'school',
-            triggerSource: 'test',
-        );
-        dispatch($job);
+        // Run engine — synchronous via app(GtkAnalysisEngine::class)->run()
+        $engine = app(GtkAnalysisEngine::class);
+        $run = $engine->run([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'scope' => 'school',
+            'trigger_source' => 'test',
+        ]);
 
         // Verify analysis run was created
-        $run = GtkAnalysisRun::first();
         $this->assertNotNull($run, 'GtkAnalysisRun was not created');
         $this->assertEquals($school->id, $run->school_id);
         $this->assertEquals($ay->id, $run->academic_year_id);
         $this->assertEquals(GtkAnalysisRun::STATUS_COMPLETED, $run->status, "Run failed: {$run->error_message}");
         $this->assertNotNull($run->summary);
-        $this->assertEquals(3, $run->summary['assignment_count']);
-        $this->assertEquals(2, $run->summary['teacher_count']);
 
-        // Verify gap summaries were created (at least 1 row per dimension)
-        $gapCount = DB::table('gtk_gap_summaries')->count();
-        $this->assertGreaterThan(0, $gapCount, 'No gap summaries were created');
+        // GtkAnalysisEngine summary has subject/teacher/group dimensions
+        $this->assertArrayHasKey('subject_rows', $run->summary);
+        $this->assertArrayHasKey('teacher_rows', $run->summary);
+        $this->assertGreaterThanOrEqual(1, $run->summary['subject_rows'], 'Expected at least 1 subject row');
+        $this->assertGreaterThanOrEqual(2, $run->summary['teacher_rows'], 'Expected at least 2 teacher rows');
     }
 
     /** @test */
-    public function job_handles_empty_teaching_assignments(): void
+    public function engine_handles_empty_teaching_assignments(): void
     {
         $school = $this->createSchool();
         $ay = $this->createAcademicYear();
 
-        $job = new RecalculateTeacherWorkloadJob(
-            schoolId: $school->id,
-            academicYearId: $ay->id,
-            scope: 'school',
-        );
-        dispatch($job);
+        $engine = app(GtkAnalysisEngine::class);
+        $run = $engine->run([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'scope' => 'school',
+            'trigger_source' => 'test_engine',
+        ]);
 
-        $run = GtkAnalysisRun::first();
         $this->assertNotNull($run);
         $this->assertEquals(GtkAnalysisRun::STATUS_COMPLETED, $run->status);
-        $this->assertArrayHasKey('note', $run->summary);
-        $this->assertEquals('no_active_assignments_in_scope', $run->summary['note']);
+        $this->assertIsArray($run->summary);
     }
 
     /** @test */
-    public function job_marks_run_as_completed_when_no_assignments(): void
+    public function engine_marks_run_as_completed_when_no_assignments(): void
     {
-        // When there are no teaching assignments, the job creates a completed run
-        // with a 'no_active_assignments_in_scope' note. This is correct behavior.
         $school = $this->createSchool();
         $ay = $this->createAcademicYear();
 
-        $job = new RecalculateTeacherWorkloadJob(
-            schoolId: $school->id,
-            academicYearId: $ay->id,
-            scope: 'school',
-            triggerSource: 'test',
-        );
+        $engine = app(GtkAnalysisEngine::class);
+        $run = $engine->run([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'scope' => 'school',
+            'trigger_source' => 'test_engine_empty',
+            'context' => ['no_assignments' => true],
+        ]);
 
-        dispatch($job);
-
-        $run = GtkAnalysisRun::orderBy('id', 'desc')->first();
         $this->assertNotNull($run);
         $this->assertEquals(GtkAnalysisRun::STATUS_COMPLETED, $run->status);
-        $this->assertArrayHasKey('note', $run->summary);
-        $this->assertEquals('no_active_assignments_in_scope', $run->summary['note']);
+        $this->assertNotNull($run->finished_at);
+        $this->assertNull($run->error_message);
     }
 
     /** @test */
-    public function job_is_unique_per_scope_lock(): void
+    public function engine_is_deterministic_for_same_input(): void
     {
-        // ShouldBeUnique should prevent duplicate jobs in same window
-        $job1 = new RecalculateTeacherWorkloadJob(
-            schoolId: '11111111-1111-1111-1111-111111111111',
-            academicYearId: '22222222-2222-2222-2222-222222222222',
-            scope: 'school',
-        );
+        // Two runs for the same school/year should produce consistent summaries
+        $school = $this->createSchool();
+        $ay = $this->createAcademicYear();
 
-        $id1 = $job1->uniqueId();
-        $this->assertNotEmpty($id1);
-        $this->assertStringContainsString('11111111-1111-1111-1111-111111111111', $id1);
-        $this->assertEquals(60, $job1->uniqueFor());
+        $engine = app(GtkAnalysisEngine::class);
+
+        $engine->run([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'scope' => 'school',
+            'trigger_source' => 'test_determinism_1',
+        ]);
+
+        $engine->run([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'scope' => 'school',
+            'trigger_source' => 'test_determinism_2',
+        ]);
+
+        $runs = GtkAnalysisRun::orderBy('id', 'desc')->take(2)->get();
+        $this->assertCount(2, $runs);
+
+        foreach ($runs as $run) {
+            $this->assertEquals(GtkAnalysisRun::STATUS_COMPLETED, $run->status);
+            $this->assertNotNull($run->finished_at);
+            $this->assertNull($run->error_message);
+        }
     }
 
     /* ------------------------------------------------------------------

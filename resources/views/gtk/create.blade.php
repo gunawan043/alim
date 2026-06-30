@@ -1043,7 +1043,7 @@ async function loadCities(provinceCode, targetId) {
         });
         if (!res.ok) throw new Error(res.status);
         const json = await res.json();
-        const list = json.data ?? json ?? [];
+        const list = Array.isArray(json?.data) ? json.data : [];
         let html   = '<option value="">Pilih Kabupaten/Kota</option>';
         list.forEach(function(c) { html += '<option value="' + c.code + '">' + c.name + '</option>'; });
         target.innerHTML = html;
@@ -1068,7 +1068,7 @@ async function loadDistricts(cityCode, targetId) {
         });
         if (!res.ok) throw new Error(res.status);
         const json = await res.json();
-        const list = json.data ?? json ?? [];
+        const list = Array.isArray(json?.data) ? json.data : [];
         let html   = '<option value="">Pilih Kecamatan</option>';
         list.forEach(function(d) { html += '<option value="' + d.code + '">' + d.name + '</option>'; });
         target.innerHTML = html;
@@ -1094,7 +1094,7 @@ async function loadVillages(districtCode, targetId, kodeposId) {
         });
         if (!res.ok) throw new Error(res.status);
         const json = await res.json();
-        const list = json.data ?? json ?? [];
+        const list = Array.isArray(json?.data) ? json.data : [];
         let html   = '<option value="">Pilih Desa</option>';
         list.forEach(function(v) {
             const pos = v.postal_code ?? '';
@@ -1112,7 +1112,7 @@ async function loadVillages(districtCode, targetId, kodeposId) {
 async function copyAddressToKTP() {
     const isSame = document.getElementById('sameAddress')?.checked;
     if (!isSame) {
-        document.getElementById('provinsi_ktp').value = '';
+        const elProvKtp = document.getElementById('provinsi_ktp'); if (elProvKtp) elProvKtp.value = '';
         resetSelect('kabupaten_ktp', 'Pilih Kabupaten/Kota');
         resetSelect('kecamatan_ktp', 'Pilih Kecamatan');
         resetSelect('desa_ktp', 'Pilih Desa');
@@ -1122,18 +1122,22 @@ async function copyAddressToKTP() {
         return;
     }
     const provDom = document.getElementById('provinsi_domisili');
-    document.getElementById('provinsi_ktp').value = provDom.value;
-    if (!provDom.value) return;
+    const elProvKtp = document.getElementById('provinsi_ktp'); if (elProvKtp) elProvKtp.value = provDom?.value ?? '';
+    if (!provDom?.value) return;
 
     await loadCities(provDom.value, 'kabupaten_ktp');
-    document.getElementById('kabupaten_ktp').value = document.getElementById('kabupaten_domisili').value;
+    const kabDom = document.getElementById('kabupaten_domisili');
+    const kabKtp = document.getElementById('kabupaten_ktp'); if (kabKtp && kabDom) kabKtp.value = kabDom.value;
 
-    await loadDistricts(document.getElementById('kabupaten_domisili').value, 'kecamatan_ktp');
-    document.getElementById('kecamatan_ktp').value = document.getElementById('kecamatan_domisili').value;
+    await loadDistricts((kabDom?.value) || '', 'kecamatan_ktp');
+    const kecDom = document.getElementById('kecamatan_domisili');
+    const kecKtp = document.getElementById('kecamatan_ktp'); if (kecKtp && kecDom) kecKtp.value = kecDom.value;
 
-    await loadVillages(document.getElementById('kecamatan_domisili').value, 'desa_ktp', 'kode_pos_ktp');
-    document.getElementById('desa_ktp').value = document.getElementById('desa_domisili').value;
-    applyPostalCode(document.getElementById('desa_ktp'), 'kode_pos_ktp');
+    await loadVillages((kecDom?.value) || '', 'desa_ktp', 'kode_pos_ktp');
+    const desaDom = document.getElementById('desa_domisili');
+    const desaKtp = document.getElementById('desa_ktp'); if (desaKtp && desaDom) desaKtp.value = desaDom.value;
+
+    const elDesaKtp = document.getElementById('desa_ktp'); if (elDesaKtp) applyPostalCode(elDesaKtp, 'kode_pos_ktp');
 
     ['jalan','rt_rw','dusun'].forEach(function(f) {
         const src = document.getElementById(f + '_domisili');
@@ -1141,7 +1145,7 @@ async function copyAddressToKTP() {
         if (src && tgt) tgt.value = src.value;
     });
     const kpKtp = document.getElementById('kode_pos_ktp');
-    if (!kpKtp.value) kpKtp.value = document.getElementById('kode_pos_domisili')?.value ?? '';
+    if (kpKtp && !kpKtp.value) kpKtp.value = (document.getElementById('kode_pos_domisili')?.value) ?? '';
     updateProgress();
 }
 

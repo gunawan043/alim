@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentPipeline extends Model
 {
-    use HasFactory, SoftDeletes, HasUuids;
+    use HasFactory, SoftDeletes,, LogsDeletion HasUuids;
 
     protected $table = 'recruitment_pipelines';
     protected $keyType = 'string';

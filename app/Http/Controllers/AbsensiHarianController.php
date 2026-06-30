@@ -699,4 +699,41 @@ class AbsensiHarianController extends Controller
             'academicYears',
         ));
     }
+
+    public function exportStudent(Request $request, string $studentUuid)
+    {
+        // $studentUuid is actually the student's UUID primary key (not a separate 'uuid' column)
+        $student = Student::with('currentClassHistory.gradeLevel')->findOrFail($studentUuid);
+
+        $records = AdminPresensiHarian::where('student_id', $student->id)
+            ->orderBy('attendance_date', 'desc')
+            ->get();
+
+        $header = "LAPORAN ABSENSI HARIAN";
+        $filename = "absensi_{$student->nisn}_{$student->name}.xls";
+
+        header("Content-Type: application/vnd.ms-excel");
+        header("Content-Disposition: attachment; filename=\"$filename\"");
+        header("Pragma: no-cache");
+        header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+
+        ob_start();
+        echo "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\"></head><body>";
+        echo "<h2>$header</h2>";
+        echo "<p>Nama: {$student->name} | NISN: {$student->nisn}</p>";
+        if ($student->currentClassHistory) {
+            echo "<p>Rombel: " . $student->currentClassHistory->studyGroup->full_name . "</p>";
+        }
+        echo "<table border='1'>";
+        echo "<tr><th>Tanggal</th><th>Status</th><th>Catatan</th></tr>";
+        foreach ($records as $r) {
+            echo "<tr>";
+            echo "<td>" . $r->attendance_date->format('d/m/Y') . "</td>";
+            echo "<td>" . $r->status . "</td>";
+            echo "<td>" . ($r->notes ?? '-') . "</td>";
+            echo "</tr>";
+        }
+        echo "</table></body></html>";
+        exit;
+    }
 }

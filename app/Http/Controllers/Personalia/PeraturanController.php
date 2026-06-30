@@ -95,27 +95,18 @@ class PeraturanController extends Controller
 
     public function show(Request $request, string $userId, string $id)
     {
-        $peraturan = Peraturan::with(['kategori', 'pembuat'])->findOrFail($id);
+        $dokumen = Peraturan::with(['kategori', 'pembuat', 'readLogs.user'])
+            ->findOrFail($id);
 
-        // increment downloaded_count
-        $dokumen->increment('downloaded_count');
+        $readLogs = $dokumen->readLogs()->orderBy('read_at', 'desc')->limit(10)->get();
+        $totalBaca = $readLogs->count();
 
-        $gtkId = $request->get('gtk_id');
-        $violations = null;
-        if ($gtkId) {
-            $violations = PeraturanViolation::with('gtk')
-                ->where('gtk_id', $gtkId)
-                ->orderBy('tanggal', 'desc')
-                ->limit(10)
-                ->get();
-        }
-
-        return view('personalia.peraturan.show', compact('userId', 'dokumen', 'violations'));
+        return view('personalia.peraturan.show', compact('userId', 'dokumen', 'readLogs', 'totalBaca'));
     }
 
     public function edit(Request $request, string $userId, string $id)
     {
-        $peraturan = Peraturan::with('kategori')->findOrFail($id);
+        $dokumen = Peraturan::with('kategori')->findOrFail($id);
         $kategoris = PeraturanKategori::where('is_active', true)->orderBy('urutan')->get();
 
         return view('personalia.peraturan.edit', compact('userId', 'dokumen', 'kategoris'));
@@ -123,7 +114,7 @@ class PeraturanController extends Controller
 
     public function update(Request $request, string $userId, string $id)
     {
-        $peraturan = Peraturan::findOrFail($id);
+        $dokumen = Peraturan::findOrFail($id);
 
         $validated = $request->validate([
             'kategori_id'     => 'nullable|uuid|exists:peraturan_kategoris,id',
@@ -174,7 +165,7 @@ class PeraturanController extends Controller
 
     public function destroy(Request $request, string $userId, string $id)
     {
-        $peraturan = Peraturan::findOrFail($id);
+        $dokumen = Peraturan::findOrFail($id);
 
         DB::beginTransaction();
         try {
@@ -442,5 +433,24 @@ class PeraturanController extends Controller
             })
             ->rawColumns(['judul', 'status_badge'])
             ->make(true);
+    }
+
+    public function acknowledge(Request $request, string $userId, string $id)
+    {
+        $dokumen = Peraturan::findOrFail($id);
+
+        $exists = $dokumen->readLogs()
+            ->where('user_id', $userId)
+            ->exists();
+
+        if (! $exists) {
+            $dokumen->readLogs()->create([
+                'user_id'    => $userId,
+                'read_at'    => now(),
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Anda telah membaca dan menyetujui peraturan ini.');
     }
 }

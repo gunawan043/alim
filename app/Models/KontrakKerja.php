@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\LogsDeletion;
 
 class KontrakKerja extends Model
 {
     use HasUuids;
+    use LogsDeletion;
+
     protected $table = 'kontrak_kerja';
 
     protected $fillable = [

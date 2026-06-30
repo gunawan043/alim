@@ -11,6 +11,8 @@ use App\Services\RecruitmentDocumentService;
 use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class CandidateController extends Controller
 {
@@ -321,6 +323,155 @@ class CandidateController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal menambah kandidat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show the form for editing the specified candidate.
+     */
+    public function edit(Request $request, string $userId, RecruitmentProfile $candidate)
+    {
+        $candidate->load(['user', 'educations', 'workExperiences', 'skills']);
+
+        return view('recruitment.candidates.edit', compact('candidate', 'userId'));
+    }
+
+    /**
+     * Update the specified candidate in storage.
+     */
+    public function update(Request $request, string $userId, RecruitmentProfile $candidate)
+    {
+        $validated = $request->validate([
+            'nik' => 'nullable|string|unique:recruitment_profiles,nik,' . $candidate->id,
+            'no_kk' => 'nullable|string',
+            'tempat_lahir' => 'nullable|string|max:255',
+            'tanggal_lahir' => 'nullable|date',
+            'nama_ibu_kandung' => 'nullable|string|max:255',
+            'golongan_darah' => 'nullable|string|max:5',
+            'jenis_kelamin' => 'nullable|in:L,P',
+            'agama' => 'nullable|string|max:50',
+            'status_perkawinan' => 'nullable|string|max:50',
+            'no_hp' => 'nullable|string|max:30',
+            'no_whatsapp' => 'nullable|string|max:30',
+            'kontak_darurat' => 'nullable|string|max:30',
+            'hubungan_kontak_darurat' => 'nullable|string|max:50',
+            'alamat_lengkap' => 'nullable|string',
+            'rt_rw' => 'nullable|string|max:20',
+            'kelurahan_desa' => 'nullable|string|max:100',
+            'kecamatan' => 'nullable|string|max:100',
+            'kota_kabupaten' => 'nullable|string|max:100',
+            'provinsi' => 'nullable|string|max:100',
+            'kode_pos' => 'nullable|string|max:10',
+            'status' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            $candidate->fill($validated);
+            $candidate->save();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Data kandidat berhasil diperbarui.',
+                    'data' => $candidate->fresh(),
+                ]);
+            }
+
+            return redirect()
+                ->route('user.ats.candidates.show', ['userId' => $userId, 'candidate' => $candidate->id])
+                ->with('success', 'Data kandidat berhasil diperbarui.');
+        } catch (\Exception $e) {
+            Log::error('CandidateController@update failed', [
+                'candidate_id' => $candidate->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui data kandidat.',
+                ], 500);
+            }
+
+            return back()->withInput()->with('error', 'Gagal memperbarui data kandidat.');
+        }
+    }
+
+    /**
+     * Remove the specified candidate from storage.
+     */
+    public function destroy(Request $request, string $userId, RecruitmentProfile $candidate)
+    {
+        try {
+            $candidateId = $candidate->id;
+            $candidate->delete();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Kandidat berhasil dihapus.',
+                ]);
+            }
+
+            return redirect()
+                ->route('user.ats.candidates.index', ['userId' => $userId])
+                ->with('success', 'Kandidat berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('CandidateController@destroy failed', [
+                'candidate_id' => $candidate->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus kandidat.',
+                ], 500);
+            }
+
+            return back()->with('error', 'Gagal menghapus kandidat.');
+        }
+    }
+
+    /**
+     * Sync photo for a candidate (file upload).
+     */
+    public function syncPhoto(Request $request, string $userId, RecruitmentProfile $candidate)
+    {
+        $request->validate([
+            'foto' => 'required|image|mimes:jpeg,jpg,png|max:2048',
+        ]);
+
+        try {
+            $candidateId = $candidate->id;
+            $extension = $request->file('foto')->getClientOriginalExtension();
+            $filename = $candidateId . '_' . time() . '.' . $extension;
+            $path = $request->file('foto')->storeAs(
+                'recruitment/candidates/' . $candidateId,
+                $filename,
+                'public'
+            );
+
+            $candidate->foto_url_external = Storage::url($path);
+            $candidate->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto kandidat berhasil diperbarui.',
+                'data' => [
+                    'foto_url' => $candidate->foto_url_external,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('CandidateController@syncPhoto failed', [
+                'candidate_id' => $candidate->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengunggah foto kandidat.',
+            ], 500);
         }
     }
 

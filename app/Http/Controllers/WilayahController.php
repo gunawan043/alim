@@ -31,7 +31,7 @@ class WilayahController extends Controller
     {
         $cities = City::where('province_code', $provinceCode)
             ->orderBy('name')
-            ->get();
+            ->get(['code', 'name', 'province_code']);
             
         return response()->json([
             'success' => true,

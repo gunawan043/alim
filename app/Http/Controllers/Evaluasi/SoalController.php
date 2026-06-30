@@ -18,7 +18,7 @@ class SoalController extends Controller
      */
     public function index(Request $request, string $userId, string $bankId)
     {
-        $bank = BankSoal::with(['soal' => function ($q) use ($request) {
+        $bank = BankSoal::withCount('soal')->with(['soal' => function ($q) use ($request) {
             if ($status = $request->get('status')) {
                 $q->where('status', $status);
             }
@@ -26,7 +26,7 @@ class SoalController extends Controller
         }])->findOrFail($bankId);
 
         return view('evalusi.bank-soal.partials.soal-list', [
-            'bank' => $bank,
+            'bank'   => $bank,
             'userId' => $userId,
         ]);
     }

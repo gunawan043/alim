@@ -114,6 +114,14 @@ class PensionController extends Controller
             ->with('success', 'Pengaturan pensiun berhasil diperbarui.');
     }
 
+    public function show(string $userId, string $uuid)
+    {
+        $gtk = User::with(['gtkProfile', 'gtkEmployment', 'pension'])->where('id', $uuid)->firstOrFail();
+        $settings = PensionSetting::allSettings();
+
+        return view('pension.show', compact('userId', 'gtk', 'settings'));
+    }
+
     public function edit(string $userId, string $uuid)
     {
         $gtk = User::with(['gtkProfile', 'gtkEmployment', 'pension'])->where('id', $uuid)->firstOrFail();

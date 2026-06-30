@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class Kaldik extends Model
 {
     use SoftDeletes;
+    use LogsDeletion;
 
     protected $table = 'kaldik';
     protected $primaryKey = 'id';

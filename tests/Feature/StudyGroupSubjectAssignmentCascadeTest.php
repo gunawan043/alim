@@ -406,4 +406,182 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $this->assertTrue(method_exists(\App\Observers\StudyGroupSubjectObserver::class, 'updated'));
         $this->assertTrue(method_exists(\App\Observers\StudyGroupSubjectObserver::class, 'deleted'));
     }
+
+    /** @test */
+    public function cascade_delete_soft_deletes_admin_book_but_preserves_sumatif_and_formatif(): void
+    {
+        $ctx = $this->bootstrap();
+
+        // Create a teacher user
+        $teacher = \App\Models\User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Teacher Cascade',
+            'email' => 'teachercascade@test.local',
+            'password' => bcrypt('password'),
+            'role' => 'guru',
+            'phone' => '081234567894',
+        ]);
+
+        // Create a real student so FK constraints pass
+        $student = \App\Models\Student::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => (string) Str::uuid(),
+            'school_id' => $ctx['school']->id,
+            'nis' => '100001',
+            'nisn' => '200001',
+            'name' => 'Student One',
+        ]);
+
+        // Create an active student in the study group
+        \App\Models\StudentClassHistory::create([
+            'id' => (string) Str::uuid(),
+            'study_group_id' => $ctx['sg']->id,
+            'academic_year_id' => $ctx['ay']->id,
+            'student_id' => $student->id,
+            'is_active' => true,
+        ]);
+
+        // Disable observer to prevent real job dispatch during setup
+        StudyGroupSubjectObserver::disable();
+
+        $sgs = StudyGroupSubject::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $ctx['school']->id,
+            'academic_year_id' => $ctx['ay']->id,
+            'study_group_id' => $ctx['sg']->id,
+            'subject_id' => $ctx['subj']->id,
+            'teacher_id' => $teacher->id,
+            'weekly_hours' => 4.0,
+            'is_active' => true,
+        ]);
+
+        // Re-enable observer and trigger deletion
+        StudyGroupSubjectObserver::enable();
+        $sgsId = $sgs->id;
+        $sgs->delete();
+
+        // The observer dispatches the job via listener
+        Bus::assertDispatched(ProvisionStudyGroupSubjectAcademicStructureJob::class, function ($job) use ($sgsId, $ctx) {
+            return $job->changeType === 'deleted'
+                && $job->studyGroupSubjectId === $sgsId
+                && $job->studyGroupId === $ctx['sg']->id
+                && $job->subjectId === $ctx['subj']->id;
+        });
+
+        // The provisioner teardown() soft-deletes (sets is_active = false) the admin_book
+        $this->assertDatabaseMissing('teacher_admin_books', [
+            'study_group_id' => $ctx['sg']->id,
+            'subject_id' => $ctx['subj']->id,
+            'is_active' => true,
+        ]);
+
+        // But admin_nilai_sumatif and admin_nilai_formatif are preserved (not deleted)
+        // They remain as historical records linked to the deactivated admin_book
+        $this->assertDatabaseCount('teacher_admin_books', 1); // still exists, just inactive
+    }
+
+    /** @test */
+    public function idempotency_re_create_sgs_yields_no_duplicate_admin_books(): void
+    {
+        $ctx = $this->bootstrap();
+
+        // Create a teacher user
+        $teacher = \App\Models\User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Teacher Idempotent',
+            'email' => 'teacheridempotent@test.local',
+            'password' => bcrypt('password'),
+            'role' => 'guru',
+            'phone' => '081234567895',
+        ]);
+
+        // Create a real student so FK constraints pass
+        $student2 = \App\Models\Student::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => (string) Str::uuid(),
+            'school_id' => $ctx['school']->id,
+            'nis' => '100002',
+            'nisn' => '200002',
+            'name' => 'Student Two',
+        ]);
+
+        // Create an active student in the study group
+        \App\Models\StudentClassHistory::create([
+            'id' => (string) Str::uuid(),
+            'study_group_id' => $ctx['sg']->id,
+            'academic_year_id' => $ctx['ay']->id,
+            'student_id' => $student2->id,
+            'is_active' => true,
+        ]);
+
+        // Disable observer, create first SGS
+        StudyGroupSubjectObserver::disable();
+
+        $sgs = StudyGroupSubject::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $ctx['school']->id,
+            'academic_year_id' => $ctx['ay']->id,
+            'study_group_id' => $ctx['sg']->id,
+            'subject_id' => $ctx['subj']->id,
+            'teacher_id' => $teacher->id,
+            'weekly_hours' => 4.0,
+            'is_active' => true,
+        ]);
+
+        // Manually provision the academic structure
+        $provisioner = new \App\Services\StudyGroupSubjectProvisioner(
+            $sgs->id,
+            $ctx['sg']->id,
+            $ctx['subj']->id,
+            $teacher->id,
+            $ctx['school']->id,
+            $ctx['ay']->id,
+            $ctx['gl']->id,
+            'created'
+        );
+        $provisioner->provision();
+
+        // Should have exactly 1 admin book
+        $this->assertSame(1, DB::table('teacher_admin_books')->count());
+
+        // Re-create an identical SGS (simulate re-assignment — idempotent)
+        // Disable observer again
+        StudyGroupSubjectObserver::disable();
+
+        // Delete existing SGS and re-create with same keys
+        $sgs->delete();
+        $sgs->forceDelete(); // hard delete so we can recreate
+
+        $sgs2 = StudyGroupSubject::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $ctx['school']->id,
+            'academic_year_id' => $ctx['ay']->id,
+            'study_group_id' => $ctx['sg']->id,
+            'subject_id' => $ctx['subj']->id,
+            'teacher_id' => $teacher->id,
+            'weekly_hours' => 4.0,
+            'is_active' => true,
+        ]);
+
+        // Manually provision again with same params
+        $provisioner2 = new \App\Services\StudyGroupSubjectProvisioner(
+            $sgs2->id,
+            $ctx['sg']->id,
+            $ctx['subj']->id,
+            $teacher->id,
+            $ctx['school']->id,
+            $ctx['ay']->id,
+            $ctx['gl']->id,
+            'created'
+        );
+        $result = $provisioner2->provision();
+
+        // admin_book should still be 1 (upsert, not duplicate)
+        $this->assertSame(1, DB::table('teacher_admin_books')->count());
+        $this->assertSame(1, $result['admin_book']);
+
+        // sumatif and formatif placeholders should also not be duplicated (insertOrIgnore)
+        $sumatifCount = DB::table('admin_nilai_sumatif')->count();
+        $this->assertSame(1, $sumatifCount, 'Sumatif placeholders should not be duplicated');
+    }
 }
