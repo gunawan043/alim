@@ -71,7 +71,7 @@
                         </div> --}}
                         <input type="hidden" name="head_name" id="f-head-name" value="{{ old('head_name', $defaultHeadName) }}">
                         <input type="hidden" name="head_title" id="f-head-title" value="{{ old('head_title', $defaultHeadTitle) }}">
-                        <input type="hidden" name="head_nip" id="f-head-nip" value="{{ old('head_nip', $defaultHeadNupy) }}">
+                        <input type="hidden" name="head_nupy" id="f-head-nupy" value="{{ old('head_nupy', $defaultHeadNupy) }}">
 
                         {{-- Data Santri --}}
                         <h6 class="text-muted mb-2" style="font-size:10px;text-transform:uppercase">Data Santri</h6>
@@ -353,7 +353,7 @@
         sqs('lp-gender', genderMap[qs('f-gender').value] || '-');
         sqs('lp-religion', qs('f-religion').value || 'Islam');
         sqs('lp-sig-name', qs('f-head-name').value || {{ Js::from($defaultHeadName) }});
-        sqs('lp-sig-nip', qs('f-head-nip').value || {{ Js::from($defaultHeadNupy) }});
+        sqs('lp-sig-nip', qs('f-head-nupy').value || {{ Js::from($defaultHeadNupy) }});
         sqs('lp-sig-hijri', qs('f-tanggal-hijri').value || {{ Js::from($defaultDateHijri) }});
 
         // empty-field class
@@ -374,7 +374,7 @@
      'f-gender','f-religion','f-prev-school','f-prev-class',
      'f-father-name','f-father-job','f-mother-name','f-mother-job',
      'f-parent-addr','f-parent-phone',
-     'f-accepted-class','f-semester','f-ay','f-head-name','f-head-nip'].forEach(function(id) {
+     'f-accepted-class','f-semester','f-ay','f-head-name','f-head-nupy'].forEach(function(id) {
         var el = qs(id);
         if (el) { el.addEventListener('input', syncPreview); el.addEventListener('change', syncPreview); }
     });

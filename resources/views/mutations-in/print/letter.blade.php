@@ -119,7 +119,7 @@
                 <div class="signature-city">{{ $mutation->established_city ?: 'Mataram' }}, {{ $mutation->established_date ? $mutation->established_date->format('d F Y') : now()->format('d F Y') }}</div>
                 <div class="signature-title">{{ $mutation->head_title ?: 'Kepala Sekolah' }}</div>
                 <div class="signature-name">{{ $mutation->head_name ?: '-' }}</div>
-                <div class="signature-nip">NIP. {{ $mutation->head_nip ?: '-' }}</div>
+                <div class="signature-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</div>
             </td>
         </tr>
     </table>

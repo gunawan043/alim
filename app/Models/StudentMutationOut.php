@@ -23,7 +23,7 @@ class StudentMutationOut extends Model
         'student_id', 'school_id', 'status', 'out_type',
         'graduation_year', 'graduation_certificate_number', 'graduation_school_name',
         'institution_name', 'institution_address', 'institution_phone', 'institution_email',
-        'head_name', 'head_title', 'head_nip',
+        'head_name', 'head_title', 'head_nupy',
         'letter_number',
         'established_city', 'established_date', 'hijri_date',
         'student_nisn', 'student_nis', 'student_name', 'student_gender',

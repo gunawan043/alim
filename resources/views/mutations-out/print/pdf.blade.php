@@ -332,7 +332,7 @@
                             <td colspan="2" class="sig-name" style="padding-top: 70px">{{ $mutation->head_name ?: '-' }}</td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="sig-nip">NUPY. {{ $mutation->head_nip ?: '-' }}</td>
+                            <td colspan="2" class="sig-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</td>
                         </tr>
                     </table>
                 </td>

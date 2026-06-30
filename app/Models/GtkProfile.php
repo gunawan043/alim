@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class GtkProfile extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsDeletion;
 
     protected $primaryKey = 'id';
     protected $keyType = 'string';
@@ -130,6 +131,12 @@ class GtkProfile extends Model
         return $this->hasMany(GtkFamilyMember::class);
     }
 
+    public function latestEmployment()
+    {
+        return $this->hasOne(GtkEmployment::class, 'user_id')
+            ->latestOfMany();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | ENCRYPTED FIELDS
@@ -201,6 +208,11 @@ class GtkProfile extends Model
     public function getAgeAttribute(): ?int
     {
         return $this->tanggal_lahir?->age;
+    }
+
+    public function getLatestNupyAttribute(): ?string
+    {
+        return $this->latestEmployment?->nupy;
     }
 
     /*

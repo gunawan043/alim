@@ -22,7 +22,7 @@ class StudentMutationIn extends Model
         'id',
         'student_id', 'school_id', 'status',
         'institution_name', 'institution_address', 'institution_phone', 'institution_email',
-        'head_name', 'head_title', 'head_nip',
+        'head_name', 'head_title', 'head_nupy',
         'letter_number', 'recommendation_year',
         'established_city', 'established_date', 'hijri_date',
         'student_nisn', 'student_nis', 'student_name', 'student_gender',

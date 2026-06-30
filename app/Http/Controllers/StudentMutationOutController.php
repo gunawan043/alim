@@ -160,7 +160,7 @@ class StudentMutationOutController extends Controller
             'institution_email' => 'nullable|email|max:100',
             'head_name' => 'nullable|string|max:100',
             'head_title' => 'nullable|string|max:100',
-            'head_nip' => 'nullable|string|max:30',
+            'head_nupy' => 'nullable|string|max:50',
             'established_city' => 'nullable|string|max:100',
             'established_date' => 'nullable|date',
             'hijri_date' => 'nullable|string|max:100',
@@ -298,5 +298,22 @@ class StudentMutationOutController extends Controller
         $hijri = $this->toHijri($date);
 
         return response()->json(compact('hijri'));
+    }
+
+    public function findStudent(Request $request)
+    {
+        $keyword = $request->get('q', '');
+        $query = Student::query();
+        if ($keyword) {
+            $query->where(function($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                  ->orWhere('nisn', 'like', "%{$keyword}%")
+                  ->orWhere('uuid', 'like', "%{$keyword}%");
+            });
+        }
+        $query->orderBy('name')->take(15);
+        $students = $query->get(['id', 'uuid', 'name', 'nisn', 'status']);
+
+        return response()->json($students);
     }
 }

@@ -258,7 +258,7 @@
                     </table>
                     <div class="sig-title">{{ $mutation->head_title ?: 'Kepala Sekolah' }}</div>
                     <div class="sig-name" style="padding-top: 40px">{{ $mutation->head_name ?: '-' }}</div>
-                    <div class="sig-nip">NUPY. {{ $mutation->head_nip ?: '-' }}</div>
+                    <div class="sig-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</div>
                 </td>
             </tr>
         </table>

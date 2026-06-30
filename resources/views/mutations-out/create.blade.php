@@ -240,7 +240,7 @@
                     </div>
                     <input type="hidden" name="head_name" id="f-head-name" value="{{ old('head_name', $defaultHeadName) }}">
                     <input type="hidden" name="head_title" id="f-head-title" value="{{ old('head_title', $defaultHeadTitle) }}">
-                    <input type="hidden" name="head_nip" id="f-head-nip" value="{{ old('head_nip', $defaultHeadNupy) }}">
+                    <input type="hidden" name="head_nupy" id="f-head-nupy" value="{{ old('head_nupy', $defaultHeadNupy) }}">
 
                     {{-- Hidden fields for student data submission --}}
                     <input type="hidden" name="student_id" id="student-id-hidden" value="{{ $student?->id ?? '' }}">
@@ -409,7 +409,7 @@
         // Kepala Sekolah
         var headName = qs('f-head-name').value || {{ Js::from($defaultHeadName ?: '-') }};
         sqs('lp-sig-name').textContent = headName;
-        sqs('lp-sig-nip').textContent = qs('f-head-nip').value || {{ Js::from($defaultHeadNupy ?: '-') }};
+        sqs('lp-sig-nip').textContent = qs('f-head-nupy').value || {{ Js::from($defaultHeadNupy ?: '-') }};
         sqs('lp-sig-title').textContent = qs('f-head-title').value || 'Kepala Sekolah';
         sqs('lp-sig-hijri').textContent = qs('f-tanggal-hijri').value || {{ Js::from($defaultDateHijri) }};
 
@@ -587,7 +587,7 @@
 
     // ── Live sync ──────────────────────────────────────────────
     ['f-nosurat','f-kota','f-tanggal','f-tanggal-hijri','f-destination','f-dest-addr','f-reason',
-     'f-head-name','f-head-title','f-head-nip','f-parent-name','f-parent-job','f-parent-addr',
+     'f-head-name','f-head-title','f-head-nupy','f-parent-name','f-parent-job','f-parent-addr',
      'f-parent-phone'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) {
