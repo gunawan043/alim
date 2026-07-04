@@ -31,6 +31,7 @@ class ApprovalAction extends Model
         'approval_request_id',
         'step_order',
         'role_name',
+        'step_permission',
         'approved_by',
         'action',
         'action_at',

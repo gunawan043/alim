@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Services\ApprovalService;
+use App\Authorization\Services\ApprovalRoleResolver;
+use App\Models\ApprovalAction;
 use App\Models\ApprovalFlow;
 use App\Models\ApprovalFlowStep;
 use App\Models\ApprovalRequest;
-use App\Models\ApprovalAction;
 use App\Models\GtkTransferRequest;
+use App\Services\ApprovalService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +22,7 @@ class ApprovalController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('requestedBy', fn($q) => $q->where('name', 'like', "%{$search}%"));
+            $query->whereHas('requestedBy', fn ($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
         if ($request->filled('status')) {
@@ -33,6 +34,7 @@ class ApprovalController extends Controller
         }
 
         $requests = $query->paginate(15)->withQueryString();
+
         return view('approvals.index', compact('requests'));
     }
 
@@ -45,14 +47,15 @@ class ApprovalController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('requestedBy', fn($q) => $q->where('name', 'like', "%{$search}%"));
+            $query->whereHas('requestedBy', fn ($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
         $requests = $query->paginate(15)->withQueryString();
+
         return view('approvals.my-pending', compact('requests'));
     }
 
-    public function history(Request $request, string $userId = null)
+    public function history(Request $request, ?string $userId = null)
     {
         $user = auth()->user();
         $query = ApprovalRequest::with(['requestedBy', 'actions'])
@@ -61,7 +64,7 @@ class ApprovalController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('requestedBy', fn($q) => $q->where('name', 'like', "%{$search}%"));
+            $query->whereHas('requestedBy', fn ($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
         if ($request->filled('status')) {
@@ -69,12 +72,14 @@ class ApprovalController extends Controller
         }
 
         $requests = $query->paginate(15)->withQueryString();
+
         return view('approvals.history', compact('requests'));
     }
 
     public function show(string $approvalUuid)
     {
         $approval = ApprovalRequest::with(['requestedBy', 'actions'])->findOrFail($approvalUuid);
+
         return view('approvals.show', compact('approval'));
     }
 
@@ -82,9 +87,9 @@ class ApprovalController extends Controller
     {
         $approval = ApprovalRequest::with([
             'flow.steps',
-            'actions' => fn($q) => $q->orderBy('created_at'),
+            'actions' => fn ($q) => $q->orderBy('created_at'),
             'actions.actionBy',
-            'requestable'
+            'requestable',
         ])->where('uuid', $approvalUuid)->firstOrFail();
 
         return view('approvals.track', compact('approval'));
@@ -95,16 +100,17 @@ class ApprovalController extends Controller
         $flow = ApprovalFlow::create(['name' => 'Transfer GTK']);
 
         $steps = [
-            ['order' => 1, 'role' => 'Kepala Sekolah', 'level' => 6],
-            ['order' => 2, 'role' => 'Wadir 1', 'level' => 3],
-            ['order' => 3, 'role' => 'Mudir', 'level' => 2],
+            ['order' => 1, 'role_identifier' => 'Kepala Sekolah', 'level' => 6],
+            ['order' => 2, 'role_identifier' => 'Wadir 1', 'level' => 3],
+            ['order' => 3, 'role_identifier' => 'Mudir', 'level' => 2],
         ];
 
         foreach ($steps as $step) {
             ApprovalFlowStep::create([
                 'approval_flow_id' => $flow->id,
                 'step_order' => $step['order'],
-                'role_name' => $step['role'],
+                'role_name' => $step['role_identifier'],
+                'step_permission' => ApprovalRoleResolver::resolvePermission($step['role_identifier'])[0] ?? null,
                 'min_role_level' => $step['level'],
             ]);
         }
@@ -118,8 +124,7 @@ class ApprovalController extends Controller
             'requested_by' => Auth::id(),
         ]);
 
-        $steps = ApprovalFlowStep::whereHas('flow', fn($q) =>
-            $q->where('name', 'Transfer GTK')
+        $steps = ApprovalFlowStep::whereHas('flow', fn ($q) => $q->where('name', 'Transfer GTK')
         )->orderBy('step_order')->get();
 
         foreach ($steps as $step) {
@@ -127,6 +132,7 @@ class ApprovalController extends Controller
                 'approval_request_id' => $approval->id,
                 'step_order' => $step->step_order,
                 'role_name' => $step->role_name,
+                'step_permission' => $step->step_permission,
             ]);
         }
 
@@ -138,7 +144,7 @@ class ApprovalController extends Controller
         $user = auth()->user();
 
         abort_if(
-            !$user->hasRole($action->role_name),
+            ! $this->canApproveStep($action),
             403,
             'Tidak berhak approve tahap ini'
         );
@@ -167,6 +173,18 @@ class ApprovalController extends Controller
         }
 
         return response()->json(['message' => 'Approval berhasil']);
+    }
+
+    private function canApproveStep(ApprovalAction $action): bool
+    {
+        $permission = $action->step_permission
+            ?? (ApprovalRoleResolver::resolvePermission($action->role_name)[0] ?? null);
+
+        if ($permission === null) {
+            return false;
+        }
+
+        return canPermission($permission);
     }
 
     private function executeTransfer(ApprovalAction $action)
@@ -219,5 +237,4 @@ class ApprovalController extends Controller
             'message' => 'Approval ditolak',
         ]);
     }
-
 }

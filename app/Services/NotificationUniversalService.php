@@ -93,20 +93,40 @@ class NotificationUniversalService
     }
 
     /**
-     * Send notification to users by role
+     * Send notification to users by role (snapshot-aware via PositionRoleMap).
+     *
+     * Looks up the role name in ApprovalRoleResolver / RoleToPermissionMapper
+     * and resolves the snapshot permission. Falls back to direct Spatie role
+     * query only if no permission mapping exists (legacy callers).
      */
     public function sendToRole($roleName, array $data)
     {
-        $userIds = User::role($roleName)->pluck('id')->toArray();
+        $permissions = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
+        $userIds = [];
+        foreach ($permissions as $permission) {
+            $userIds = array_merge(
+                $userIds,
+                usersHavingPermission($permission)
+            );
+        }
+        $userIds = array_values(array_unique($userIds));
+        if (empty($userIds)) {
+            // FALLBACK: direct role lookup (legacy — deprecated, kept for fail-safe only)
+            $userIds = \App\Models\User::role($roleName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+        }
         return $this->sendToMany($userIds, $data);
     }
 
     /**
-     * Send notification to users by permission
+     * Send notification to users by permission (snapshot-aware).
      */
     public function sendToPermission($permissionName, array $data)
     {
-        $userIds = User::permission($permissionName)->pluck('id')->toArray();
+        $userIds = usersHavingPermission($permissionName);
+        if (empty($userIds)) {
+            // Fallback to spatie permission table (legacy)
+            $userIds = User::permission($permissionName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+        }
         return $this->sendToMany($userIds, $data);
     }
 

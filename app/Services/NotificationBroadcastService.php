@@ -71,9 +71,12 @@ class NotificationBroadcastService
     {
         $saved = $this->notificationService->sendToRole($roleName, $data);
 
-        $userIds = \App\Models\User::role($roleName)->pluck('id')->map(fn($id) => (string) $id)->toArray();
-        foreach ($userIds as $userId) {
-            $this->broadcast($userId, $data);
+        $userIds = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
+        foreach ($userIds as $perm) {
+            $resolved = usersHavingPermission($perm);
+            foreach ($resolved as $userId) {
+                $this->broadcast((string) $userId, $data);
+            }
         }
 
         return $saved;

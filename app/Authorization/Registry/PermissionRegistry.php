@@ -47,6 +47,45 @@ final class PermissionRegistry
         'audit.export'       => 'Audit: export',
         'reports.read'       => 'Reports: read',
         'reports.export'     => 'Reports: export',
+
+        // Teacher role groups (used by controller list views)
+        'general_teacher.readable' => 'General teacher: readable',
+        'student_teacher.readable' => 'Student teacher: readable',
+        'general_tutor.readable'   => 'General tutor: readable',
+
+        // Admin role groups (used by Kaldik, login notification)
+        'admin.tu.assessable' => 'Admin TU: assessable',
+        'general_admin.administrable' => 'General admin: administrable',
+
+        // Recruitment (used by ApplicationController)
+        'personalia.recruitable' => 'Personalia: recruitable/interviewer',
+
+        // Technician assignment (used by Sarpras/TechnicianAssignmentService)
+        'sarpras.technician.assignable' => 'Sarpras technician: assignable',
+
+        // Sarpras notification targets (used by Sarpras listeners)
+        'sarpras.administrator.accessible' => 'Sarpras admin team: accessible',
+        'sarpras.manager.approvable' => 'Sarpras manager: approvable',
+        'sarpras.auditor.auditable' => 'Sarpras auditor: auditable',
+
+        // Human Resources notification (used by HRDNotificationService)
+        'hr.notification.recipient' => 'HR notification recipient',
+
+        // Decree signers (used by InstitutionDecreeController)
+        'decree.signer.certifiable' => 'Decree: certifiable signer',
+
+        // GTK transfer approval chain (used by ApprovalController)
+        'gtk.transfer.approve.kepalasekolah' => 'GTK transfer: approver Kepala Sekolah',
+        'gtk.transfer.approve.wadir1' => 'GTK transfer: approver Wadir 1',
+        'gtk.transfer.approve.wadir2' => 'GTK transfer: approver Wadir 2',
+        'gtk.transfer.approve.mudir' => 'GTK transfer: approver Mudir',
+        'gtk.transfer.approve.yayasan' => 'GTK transfer: approver Yayasan',
+
+        // Wali Santri / parent communication (used by DormitoryService notifications)
+        'wali_santri.communicable' => 'Wali Santri: reachable for notifications',
+
+        // Exclusion filter (users to exclude from teacher lists)
+        'general_staff.ineligible' => 'General staff: ineligible for teaching assignments',
     ];
 
     /**
