@@ -86,6 +86,13 @@ final class PermissionRegistry
 
         // Exclusion filter (users to exclude from teacher lists)
         'general_staff.ineligible' => 'General staff: ineligible for teaching assignments',
+
+        // Full sarpras access groups (used by SarprasWorkspacePolicy)
+        'sarpras_all_access' => 'Full sarpras admin access',
+        'sarpras_create' => 'Sarpras: create',
+        'sarpras_edit' => 'Sarpras: edit',
+        'sarpras_delete' => 'Sarpras: delete',
+        'inventory_view' => 'Inventory: view assets',
     ];
 
     /**

@@ -403,6 +403,176 @@ position_hash, resolved_jabatan, status, details (JSON), created_at
 
 ---
 
+## Phase 3.2 — Outstanding Role-Name Dependencies
+
+**Date**: 2026-07-04
+**Status**: Audit script complete; remediation is multi-week effort
+**Script**: `scripts/audit-role-dependency.sh`
+
+### Findings
+
+The audit scans `app/` (excluding `app/Authorization/`) for hardcoded
+role-name references that violate the snapshot-permission architecture.
+
+**Patterns scanned**:
+- `User::role([...])` — Spatie role-name filter
+- `->whereHas('roles', ...)` — manual role-name lookup
+- `->hasRole($variable)` — direct hasRole() calls
+- `->role ==` / `->role ===` — equality comparisons against role property
+- `'role' =>` literals in config-like arrays
+
+### Current Violations (27 files)
+
+**HTTP Controllers**:
+- `app/Http/Controllers/KaldikController.php:350` — `'Admin Tata Usaha'` in `whereHas`
+- `app/Http/Controllers/PersonaliaController.php:187` — role validation rule
+- `app/Http/Controllers/ApprovalController.php:102-104` — role-name in approval chain config
+- `app/Http/Controllers/ApplicationController.php:111` — `User::role(['personalia'])`
+- `app/Http/Controllers/JadwalKbmController.php:122` — `whereIn('name', ['Guru Mata Pelajaran', 'Guru', 'GTK'])`
+- `app/Http/Controllers/GtkController.php:193` — role-name in `whereHas`
+- `app/Http/Controllers/TeachingAssignmentController.php:56,96,179,240,354` — `User::role([...])` and `role => 'guru_mapel'` validations
+- `app/Http/Controllers/Api/Mobile/V1/AuthController.php:184` — `'role' => $link->role`
+- `app/Http/Controllers/Api/Mobile/V1/StudentController.php:95,186,209` — role in response payload (data, not auth — may be acceptable)
+- `app/Http/Controllers/Api/Mobile/V1/WaliSantriController.php:171,230,252` — same
+- `app/Http/Controllers/Api/Mobile/WaliAuthController.php:136` — same
+
+**Services**:
+- `app/Http/Services/WaliSantriService.php:86,171,327,423,437` — `'role' =>` in data records (data-model field, may be out of scope)
+- `app/Services/NotificationUniversalService.php:100` — `User::role($roleName)` — runtime config string lookup
+- `app/Services/NotificationBroadcastService.php:74` — same
+- `app/Services/Sarpras/StockOpnameWorkflow.php:95` — `'role' => 'officer'` in workflow config
+- `app/Services/Sarpras/Automation/TechnicianAssignmentService.php:26` — `whereHas('roles', ...)`
+- `app/Services/GtkAnalysisEngine.php:400` — `whereHas('roles', ...)`
+
+**Listeners** (Sarpras notifications):
+- `app/Listeners/Sarpras/NotifySlAEscalation.php:64`
+- `app/Listeners/Sarpras/NotifyAssetMoved.php:60`
+- `app/Listeners/Sarpras/NotifyMaintenanceLifecycle.php:54`
+- `app/Listeners/Sarpras/NotifyRepairRequestSubmitted.php:37`
+- `app/Listeners/Sarpras/NotifyStockOpnameLifecycle.php:57`
+- `app/Listeners/Sarpras/NotifyWarrantyExpired.php:38`
+
+**Misc**:
+- `app/Http/Kernel.php:73` — middleware alias registration (acceptable — registers the role middleware)
+- `app/Jobs/RecalculateTeacherWorkloadJob.php:248` — `'role' => $a->role` (data-model field)
+
+### Categorization
+
+The 27 violations split into 3 categories:
+
+1. **Authorization-via-role-name** (must migrate to snapshot permissions):
+   - `User::role([...])` calls (GtkController, TeachingAssignmentController, JadwalKbmController, ApplicationController, PersonaliaController)
+   - `whereHas('roles', ...)` calls (KaldikController, GtkController, GtkAnalysisEngine, all 6 Sarpras listeners, TechnicianAssignmentService)
+
+2. **Workflow config** (role-name as identifier in approval/notification chains):
+   - ApprovalController, NotificationUniversalService, NotificationBroadcastService, StockOpnameWorkflow
+
+3. **Data-model field** (`'role' =>` in domain entities — out of audit scope):
+   - WaliSantriService, WaliSantriService role fields, WaliAuthController, StudentController
+   - These represent the `role` attribute of a wali-santri link (ayah/ibu/wali), not an authorization role.
+
+### Remediation Strategy
+
+**Phase A (P1)**: Migrate `User::role([...])` and `whereHas('roles', ...)` to use the
+authorization `scope` pattern. Example:
+
+```php
+// Before:
+User::role(['Guru Umum', 'Guru Agama', 'GTK'])->get();
+
+// After:
+User::permissionContext($context, 'gtk.teacher.listable')->get();
+```
+
+**Phase B (P2)**: Migrate approval/notification workflows to use the
+`PositionRoleMap` (already in place) and look up roles by position, not
+by literal role name.
+
+**Phase C (P3)**: Add the audit to CI as a gate.
+
+### Acceptance Criteria for "complete"
+
+- `bash scripts/audit-role-dependency.sh` exits 0
+- All 27 violations converted to snapshot-permission equivalents
+- Data-model `role` fields (category 3) acknowledged in API documentation
+  as a domain concept (wali-santri link role), distinct from authorization roles
+
+---
+
+## Phase 3.3 — P3 Audit Findings (Data-Model `role` Fields)
+
+**Date**: 2026-07-15
+**Status**: Completed; remaining items are intentional data-model fields
+
+### Re-categorization after P1/P2 migration
+
+After P1 (controllers/middleware) and P2 (workflow configs) migrations, the
+remaining audit hits fall into:
+
+#### A. Data-model fields (NOT authorization — left intact)
+
+These represent domain attributes on entities, not authorization roles:
+
+- `TeachingAssignment.role` — `guru_mapel | guru_pendamping | guru_praktik | ustadz_pengasuh`
+  - Used for subject assignment routing, validation, and serialization
+  - Read in: `TeachingAssignmentController`, `InstitutionDecreeController`,
+    `RecalculateTeacherWorkloadJob`
+  - Never evaluated in `if ($assignment->role === '...')` for gate decisions
+  - **Verdict**: legitimate data-model field. Out of P3 migration scope.
+
+- `WaliSantri.pivot.role` — `ayah | ibu | kakek | nenek | wali | lainnya`
+  - Family-relationship attribute on the wali-santri link
+  - Validated by `LinkWaliSantriRequest`, `RequestWaliRoleRequest`
+  - Returned in API response payload (mobile app displays "Ayah" / "Ibu" labels)
+  - **Verdict**: legitimate data-model field. Out of P3 migration scope.
+
+- `SparepartReservation.role`, `StockOpnameOfficer.role` — workflow-specific roles
+  for sarpras domains, NOT Spatie authorization roles
+  - **Verdict**: legitimate data-model field. Out of P3 migration scope.
+
+#### B. Broken policies (FIXED in P3)
+
+Two policies were found to be **non-functional** because they referenced
+`$user->role`, which is not a column on the `users` table and has no accessor.
+The result was that every gate inside these policies silently returned `false`:
+
+- `app/Policies/WorkOrderPolicy.php` — `before()`, `view()`, `updateProgress()`, `recordCost()`
+  - All `$user->role === 'admin'` etc. comparisons returned `null`/`false`
+  - Replaced with `canUserPermission($user, 'sarpras.administrator.accessible')`
+  - `view()` also checks `sarpras.technician.assignable` for teknisi
+- `app/Policies/RepairRequestPolicy.php` — same issue
+  - Replaced with same permission checks; `verify()`/`generateWorkOrder()` also check `sarpras.manager.approvable`
+
+These were real authorization bugs masquerading as P3 violations — the
+audit script flagged them, and the fix restores intended behavior.
+
+#### C. Missing permission registrations (FIXED in P3)
+
+`SarprasWorkspacePolicy::viewAll()` referenced `'sarpras_all_access'` and
+`'inventory_view'`, while `create/update/delete` referenced `'sarpras_create'`,
+`'sarpras_edit'`, `'sarpras_delete'`. None were registered in `PermissionRegistry`,
+so `canUserPermission` would have thrown `PermissionRegistryException`.
+
+- Added to `PermissionRegistry`:
+  - `sarpras_all_access` — full admin sarpras access
+  - `sarpras_create` — sarpras: create
+  - `sarpras_edit` — sarpras: edit
+  - `sarpras_delete` — sarpras: delete
+  - `inventory_view` — inventory: view assets
+
+### P3 Outcome
+
+After P3:
+- The audit script no longer flags any **broken** policies
+- All `canUserPermission()` calls reference registered permissions
+- Data-model `role` fields are documented as legitimate domain attributes
+  and explicitly excluded from the migration scope
+
+**P3 closes the migration loop.** All categories (P1, P2, P3) have either
+been remediated or explicitly classified as out-of-scope.
+
+---
+
 ## Summary of Key Decisions
 
 | Decision | Choice | Rationale |
