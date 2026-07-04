@@ -2,31 +2,31 @@
 
 namespace App\Http\Controllers\Sarpras;
 
-use App\Models\AssetLocationHistory;
+use App\Http\Requests\Sarpras\AssetMovementStoreRequest;
 use App\Models\Asset;
+use App\Models\AssetLocationHistory;
 use App\Models\AssetRoom;
-use App\Models\School;
+use App\Services\Sarpras\AssetEventLogger;
 use Illuminate\Http\Request;
 
 class SarprasMovementController extends SarprasBaseController
 {
-    public function __construct()
+    public function __construct(protected AssetEventLogger $eventLogger)
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
-
 
     public function index(Request $request)
     {
         $query = AssetLocationHistory::with(['asset', 'fromRoom', 'toRoom', 'mover']);
 
-        if (!$this->canViewAll($request)) {
-            $query->whereHas('asset', fn($q) => $this->scopeToSchool($request, $q));
+        if (! $this->canViewAll($request)) {
+            $query->whereHas('asset', fn ($q) => $this->scopeToSchool($request, $q));
         }
 
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->whereHas('asset', fn($q) => $q->where('asset_name', 'like', "%{$s}%"));
+            $query->whereHas('asset', fn ($q) => $q->where('asset_name', 'like', "%{$s}%"));
         }
         if ($request->filled('asset_id')) {
             $query->where('asset_id', $request->asset_id);
@@ -42,24 +42,19 @@ class SarprasMovementController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $assets = Asset::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('status', 'tersedia')
             ->orderBy('asset_name')->get();
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
 
         return view('sarpras.perpindahan.create', compact('assets', 'rooms'));
     }
 
-    public function store(Request $request)
+    public function store(AssetMovementStoreRequest $request)
     {
-        $validated = $request->validate([
-            'asset_id'     => 'required|exists:assets,id',
-            'to_room_id'   => 'required|exists:asset_rooms,id',
-            'moved_date'   => 'required|date',
-            'reason'       => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $asset = Asset::findOrFail($validated['asset_id']);
 
@@ -70,6 +65,15 @@ class SarprasMovementController extends SarprasBaseController
 
         // Update lokasi aset
         $asset->update(['room_id' => $validated['to_room_id']]);
+
+        try {
+            $fromRoom = AssetRoom::find($validated['from_room_id']);
+            $toRoom = AssetRoom::find($validated['to_room_id']);
+            $this->eventLogger->logMoved($asset, $fromRoom?->room_name, $toRoom?->room_name, auth()->id());
+        } catch (\Throwable $e) {
+            report($e);
+        }
+        $this->bumpDashboardCache();
 
         return redirect()->route('sarpras.perpindahan.index')
             ->with('success', 'Riwayat perpindahan berhasil dicatat.');

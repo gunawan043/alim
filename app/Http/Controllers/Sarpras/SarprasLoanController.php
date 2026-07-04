@@ -2,25 +2,26 @@
 
 namespace App\Http\Controllers\Sarpras;
 
-use App\Models\AssetLoan;
+use App\Http\Requests\Sarpras\LoanStoreRequest;
 use App\Models\Asset;
+use App\Models\AssetLoan;
 use App\Models\School;
-use Illuminate\Http\Request;
+use App\Services\Sarpras\AssetEventLogger;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class SarprasLoanController extends SarprasBaseController
 {
-    public function __construct()
+    public function __construct(public AssetEventLogger $eventLogger)
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
-
 
     public function index(Request $request)
     {
         $query = AssetLoan::with(['asset', 'borrower', 'approver']);
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
@@ -29,7 +30,7 @@ class SarprasLoanController extends SarprasBaseController
         }
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->whereHas('asset', fn($q) => $q->where('asset_name', 'like', "%{$s}%"));
+            $query->whereHas('asset', fn ($q) => $q->where('asset_name', 'like', "%{$s}%"));
         }
 
         $loans = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
@@ -44,22 +45,15 @@ class SarprasLoanController extends SarprasBaseController
         $assets = Asset::where('is_active', true)
             ->where('is_bookable', true)
             ->where('status', 'tersedia')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('asset_name')->get();
 
         return view('sarpras.peminjaman.create', compact('assets'));
     }
 
-    public function store(Request $request)
+    public function store(LoanStoreRequest $request)
     {
-        $validated = $request->validate([
-            'asset_id'              => 'required|exists:assets,id',
-            'purpose'               => 'required|string',
-            'loan_date'             => 'required|date',
-            'loan_time'             => 'nullable',
-            'expected_return_date'  => 'required|date|after_or_equal:loan_date',
-            'notes'                 => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $asset = Asset::findOrFail($validated['asset_id']);
 
@@ -70,6 +64,8 @@ class SarprasLoanController extends SarprasBaseController
         $validated['status'] = 'pending';
 
         AssetLoan::create($validated);
+
+        $this->bumpDashboardCache();
 
         return redirect()->route('sarpras.peminjaman.index')
             ->with('success', 'Permintaan peminjaman berhasil diajukan.');
@@ -97,6 +93,7 @@ class SarprasLoanController extends SarprasBaseController
             'approved_by' => auth()->id(),
             'approved_at' => now(),
         ]);
+        $this->bumpDashboardCache();
 
         return back()->with('success', 'Peminjaman berhasil disetujui.');
     }
@@ -115,6 +112,7 @@ class SarprasLoanController extends SarprasBaseController
             'approved_by' => auth()->id(),
             'approved_at' => now(),
         ]);
+        $this->bumpDashboardCache();
 
         return back()->with('success', 'Peminjaman ditolak.');
     }
@@ -130,6 +128,13 @@ class SarprasLoanController extends SarprasBaseController
 
         $loan->update(['status' => 'dipinjam']);
         $loan->asset->update(['status' => 'dipinjam']);
+        $this->bumpDashboardCache();
+
+        try {
+            $this->eventLogger->logLoanCreated($loan->asset, $loan->borrower->name ?? 'unknown', auth()->id());
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return back()->with('success', 'Aset berhasil diserahkan ke peminjam.');
     }
@@ -143,24 +148,28 @@ class SarprasLoanController extends SarprasBaseController
             return back()->with('error', 'Aset belum dipinjam.');
         }
 
-        $validated = $request->validate([
-            'condition_on_return' => 'required|in:' . implode(',', AssetLoan::CONDITION_OPTIONS),
-            'damage_notes'       => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $loan->update([
-            'status'               => 'dikembalikan',
-            'actual_return_date'   => Carbon::today(),
-            'actual_return_time'   => Carbon::now()->format('H:i:s'),
-            'returned_to'          => auth()->id(),
-            'condition_on_return'  => $validated['condition_on_return'],
-            'damage_notes'         => $validated['damage_notes'],
+            'status' => 'dikembalikan',
+            'actual_return_date' => Carbon::today(),
+            'actual_return_time' => Carbon::now()->format('H:i:s'),
+            'returned_to' => auth()->id(),
+            'condition_on_return' => $validated['condition_on_return'],
+            'damage_notes' => $validated['damage_notes'],
         ]);
 
         $loan->asset->update([
-            'status'    => 'tersedia',
+            'status' => 'tersedia',
             'condition' => $validated['condition_on_return'],
         ]);
+        $this->bumpDashboardCache();
+
+        try {
+            $this->eventLogger->logLoanReturned($loan->asset, $loan->borrower->name ?? 'unknown', auth()->id());
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return redirect()->route('sarpras.peminjaman.index')
             ->with('success', 'Aset berhasil dikembalikan.');
@@ -176,6 +185,7 @@ class SarprasLoanController extends SarprasBaseController
         }
 
         $loan->delete();
+        $this->bumpDashboardCache();
 
         return redirect()->route('sarpras.peminjaman.index')
             ->with('success', 'Data peminjaman berhasil dihapus.');

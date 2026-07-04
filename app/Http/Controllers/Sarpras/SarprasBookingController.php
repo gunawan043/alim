@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Sarpras;
 
-use App\Models\RoomBooking;
+use App\Http\Requests\Sarpras\BookingRejectRequest;
+use App\Http\Requests\Sarpras\BookingStoreRequest;
 use App\Models\AssetRoom;
+use App\Models\RoomBooking;
 use App\Models\School;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class SarprasBookingController extends SarprasBaseController
 {
@@ -15,13 +16,12 @@ class SarprasBookingController extends SarprasBaseController
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
 
-
     public function index(Request $request)
     {
-        $query = RoomBooking::with(['room', 'user', 'approver']);
+        $query = RoomBooking::with(['room.building', 'room.school', 'user', 'approver']);
 
-        if (!$this->canViewAll($request)) {
-            $query->whereHas('room', fn($q) => $this->scopeToSchool($request, $q));
+        if (! $this->canViewAll($request)) {
+            $query->whereHas('room', fn ($q) => $this->scopeToSchool($request, $q));
         }
 
         if ($request->filled('status')) {
@@ -49,25 +49,15 @@ class SarprasBookingController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
             ->where('is_bookable', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
 
         return view('sarpras.booking.create', compact('rooms'));
     }
 
-    public function store(Request $request)
+    public function store(BookingStoreRequest $request)
     {
-        $validated = $request->validate([
-            'room_id'              => 'required|exists:asset_rooms,id',
-            'event_name'           => 'nullable|string|max:191',
-            'purpose'              => 'required|string',
-            'booking_date'         => 'required|date|after_or_equal:today',
-            'start_time'           => 'required',
-            'end_time'             => 'required|after:start_time',
-            'setup_time'           => 'nullable',
-            'participants_count'   => 'nullable|integer|min:1',
-            'notes'                => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $room = AssetRoom::findOrFail($validated['room_id']);
 
@@ -96,6 +86,7 @@ class SarprasBookingController extends SarprasBaseController
         }
 
         RoomBooking::create($validated);
+        $this->bumpDashboardCache();
 
         return redirect()->route('sarpras.booking.index')
             ->with('success', 'Request booking ruangan berhasil diajukan.');
@@ -119,29 +110,29 @@ class SarprasBookingController extends SarprasBaseController
         }
 
         $booking->update([
-            'status'      => 'approved',
+            'status' => 'approved',
             'approved_by' => auth()->id(),
             'approved_at' => now(),
         ]);
+        $this->bumpDashboardCache();
 
         return back()->with('success', 'Booking ruangan berhasil disetujui.');
     }
 
-    public function reject(Request $request, string $id)
+    public function reject(BookingRejectRequest $request, string $id)
     {
         $booking = RoomBooking::findOrFail($id);
         $this->authorizeBookingAccess($booking, $request);
 
-        $validated = $request->validate([
-            'rejection_reason' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         $booking->update([
-            'status'            => 'rejected',
-            'approved_by'       => auth()->id(),
-            'approved_at'        => now(),
-            'rejection_reason'   => $validated['rejection_reason'],
+            'status' => 'rejected',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
         ]);
+        $this->bumpDashboardCache();
 
         return back()->with('success', 'Booking ruangan ditolak.');
     }
@@ -155,6 +146,7 @@ class SarprasBookingController extends SarprasBaseController
         }
 
         $booking->update(['status' => 'cancelled']);
+        $this->bumpDashboardCache();
 
         return redirect()->route('sarpras.booking.index')
             ->with('success', 'Booking berhasil dibatalkan.');
@@ -169,16 +161,15 @@ class SarprasBookingController extends SarprasBaseController
             return back()->with('error', 'Booking belum disetujui.');
         }
 
-        $validated = $request->validate([
-            'condition_after' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $booking->update([
-            'status'          => 'completed',
+            'status' => 'completed',
             'actual_start_time' => $request->actual_start_time,
-            'actual_end_time'  => $request->actual_end_time,
-            'condition_after'  => $validated['condition_after'] ?? null,
+            'actual_end_time' => $request->actual_end_time,
+            'condition_after' => $validated['condition_after'] ?? null,
         ]);
+        $this->bumpDashboardCache();
 
         return back()->with('success', 'Booking ditandai selesai.');
     }
