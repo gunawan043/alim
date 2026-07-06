@@ -27,7 +27,7 @@ final class RoleToPermissionMapper
      * The 'permissions' array contains ONE permission that represents the group.
      * Filtering by that permission gives the same user set as filtering by the role list.
      */
-    private const ROLE_GROUP_MAPPINGS = [
+    private static array $ROLE_GROUP_MAPPINGS = [
         'general_teacher' => [
             'permissions' => ['general_teacher.readable'],
             'roles' => [
@@ -155,6 +155,29 @@ final class RoleToPermissionMapper
                 'Yayasan',
             ],
         ],
+
+        // ─── Dormitory (Asrama) master-data access ───────────────────
+        'dormitory_master_full' => [
+            'permissions' => [
+                'dormitory-master-all-access',
+            ],
+            'roles' => [
+                'Super Admin',
+                'Administrator',
+                'Mudir',
+                'Wadir 2',
+            ],
+        ],
+
+        'dormitory_master_admin' => [
+            'permissions' => [
+                'dormitory-master-admin-access',
+            ],
+            'roles' => [
+                'Super Admin',
+                'Administrator',
+            ],
+        ],
     ];
 
     /**
@@ -187,7 +210,7 @@ final class RoleToPermissionMapper
     public static function getGroupNamesForRole(string $roleName): array
     {
         $groups = [];
-        foreach (self::ROLE_GROUP_MAPPINGS as $group) {
+        foreach (self::$ROLE_GROUP_MAPPINGS as $group) {
             if (in_array($roleName, $group['roles'], true)) {
                 $groups[] = $group['roles'][0] !== null ? $roleName : '';
                 // Actually return the group name, not a placeholder
@@ -197,7 +220,7 @@ final class RoleToPermissionMapper
 
         // More efficient approach
         $groups = [];
-        foreach (self::ROLE_GROUP_MAPPINGS as $groupName => $mapping) {
+        foreach (self::$ROLE_GROUP_MAPPINGS as $groupName => $mapping) {
             if (in_array($roleName, $mapping['roles'], true)) {
                 $groups[] = $groupName;
             }
@@ -211,7 +234,7 @@ final class RoleToPermissionMapper
      */
     public static function hasGroup(string $groupName): bool
     {
-        return array_key_exists($groupName, self::ROLE_GROUP_MAPPINGS);
+        return array_key_exists($groupName, self::$ROLE_GROUP_MAPPINGS);
     }
 
     /**
@@ -221,7 +244,7 @@ final class RoleToPermissionMapper
      */
     public static function allGroupNames(): array
     {
-        return array_keys(self::ROLE_GROUP_MAPPINGS);
+        return array_keys(self::$ROLE_GROUP_MAPPINGS);
     }
 
     /**
@@ -232,21 +255,6 @@ final class RoleToPermissionMapper
     public static function mapping(string $groupName): ?array
     {
         return self::findMapping($groupName);
-    }
-
-    /**
-     * Register a new role-to-permission mapping.
-     * Use this dynamically to avoid adding more mappings.
-     *
-     * @param array<int, string> $permissions
-     * @param array<int, string> $roles
-     */
-    public static function addMapping(string $groupName, array $permissions, array $roles): void
-    {
-        self::ROLE_GROUP_MAPPINGS[$groupName] = [
-            'permissions' => $permissions,
-            'roles'       => $roles,
-        ];
     }
 
     /**

@@ -60,6 +60,28 @@ final class DormitoryPermissionProvider implements PermissionProvider
             );
         }
 
+        // Master data access: Administrator or higher
+        if ($roleLevel !== null && (int) $roleLevel <= 4) {
+            $origins[] = new PermissionOrigin(
+                provider: 'dormitory',
+                permission: 'dormitory-master-all-access',
+                reason: 'wadir_or_higher_master_access',
+                scope: ScopeKey::forUser($user),
+                source: PermissionSource::ASSIGNMENT,
+            );
+        }
+
+        // Master data write: Administrator or higher (level 6 or below)
+        if ($roleLevel !== null && (int) $roleLevel <= 6) {
+            $origins[] = new PermissionOrigin(
+                provider: 'dormitory',
+                permission: 'dormitory-master-admin-access',
+                reason: 'administrator_or_higher_master_write',
+                scope: ScopeKey::forUser($user),
+                source: PermissionSource::ASSIGNMENT,
+            );
+        }
+
         return $origins;
     }
 }

@@ -63,6 +63,14 @@ final class AdministrationPermissionProvider implements PermissionProvider
                 scope: ScopeKey::forUser($user),
                 source: PermissionSource::ASSIGNMENT,
             );
+
+            $origins[] = new PermissionOrigin(
+                provider: 'administration',
+                permission: 'super-admin-only',
+                reason: 'super_admin_full_access',
+                scope: ScopeKey::forUser($user),
+                source: PermissionSource::ASSIGNMENT,
+            );
         }
 
         // Anyone can view approval requests

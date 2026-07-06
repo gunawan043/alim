@@ -43,6 +43,8 @@ final class PermissionRegistry
         'dormitory.read'     => 'Dormitory: read',
         'dormitory.write'    => 'Dormitory: create/update',
         'dormitory.broadcast'=> 'Dormitory: send broadcast',
+        'dormitory-master-all-access' => 'Dormitory master data: full read access (Wadir+)',
+        'dormitory-master-admin-access' => 'Dormitory master data: create/update/delete (Administrator+)',
         'audit.read'         => 'Audit: read',
         'audit.export'       => 'Audit: export',
         'reports.read'       => 'Reports: read',
@@ -93,6 +95,9 @@ final class PermissionRegistry
         'sarpras_edit' => 'Sarpras: edit',
         'sarpras_delete' => 'Sarpras: delete',
         'inventory_view' => 'Inventory: view assets',
+
+        // Super Admin system-level gate
+        'super-admin-only' => 'Super Admin only (system-level gate)',
     ];
 
     /**
