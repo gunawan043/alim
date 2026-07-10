@@ -8,11 +8,5 @@ abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
 
-    /**
-     * Override dropAllTables to use our reliable command
-     */
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-    }
+    public static bool $safeDbMigrated = false;
 }
