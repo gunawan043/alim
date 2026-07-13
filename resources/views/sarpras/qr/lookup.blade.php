@@ -52,6 +52,9 @@
                             <a id="result-link" href="#" class="btn btn-primary btn-sm">
                                 <i class="ri-eye-line me-1"></i> Lihat Detail Aset
                             </a>
+                            <a id="result-passport-link" href="#" class="btn btn-info btn-sm">
+                                <i class="ri-passport-line me-1"></i> Asset Passport
+                            </a>
                             <a href="{{ route('sarpras.qr.scanner') }}" class="btn btn-outline-secondary btn-sm">
                                 <i class="ri-scan-line me-1"></i> Scan QR
                             </a>
@@ -79,7 +82,10 @@
                             <td>{{ $a->room?->room_name ?? '-' }}</td>
                             <td>{{ ucfirst(str_replace('_',' ', $a->condition)) }}</td>
                             <td>
-                                <button class="btn btn-sm btn-link p-0" onclick="lookupByCode('{{ $a->id }}')">
+                                <a href="/sarpras/assets/{{ $a->id }}/passport" class="btn btn-sm btn-link p-0" title="Passport">
+                                    <i class="ri-passport-line text-info"></i>
+                                </a>
+                                <button class="btn btn-sm btn-link p-0" onclick="lookupByCode('{{ $a->id }}')" title="Lookup">
                                     <i class="ri-external-link-line"></i>
                                 </button>
                             </td>
@@ -126,6 +132,7 @@ function performLookup(code) {
                 document.getElementById('result-status').innerHTML = '<span class="badge bg-success-subtle text-success">' + (a.status || '-').replace('_',' ') + '</span>';
 
                 document.getElementById('result-link').href = '/sarpras/aset/' + a.id;
+                document.getElementById('result-passport-link').href = '/sarpras/assets/' + a.id + '/passport';
                 document.getElementById('lookup-result').classList.remove('d-none');
             } else {
                 document.getElementById('error-text').textContent = data.error || 'Aset tidak ditemukan.';

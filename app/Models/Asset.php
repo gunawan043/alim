@@ -2,28 +2,42 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Asset extends Model
 {
-    use HasFactory, SoftDeletes, LogsDeletion;
+    use HasFactory, LogsDeletion, SoftDeletes;
 
     protected $table = 'assets';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::created(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::updated(function ($model) {
+            Cache::forget('sarpras_dashboard_version');
+            $model->versionBump();
+        });
+    }
+
+    protected function versionBump(): void
+    {
+        Cache::rememberForever('sarpras_dashboard_version', fn () => (int) Cache::get('sarpras_dashboard_version', 0) + 1);
     }
 
     protected $fillable = [
+        'sync_token',
         'work_unit_id',
         'school_id',
         'asset_category_id',
@@ -56,6 +70,11 @@ class Asset extends Model
         'notes',
         'is_active',
         'created_by',
+        'warranty_start_date',
+        'warranty_end_date',
+        'warranty_provider',
+        'warranty_terms',
+        'warranty_documents',
     ];
 
     protected $casts = [
@@ -69,6 +88,9 @@ class Asset extends Model
         'qr_generated_at' => 'datetime',
         'is_bookable' => 'boolean',
         'is_active' => 'boolean',
+        'warranty_start_date' => 'date',
+        'warranty_end_date' => 'date',
+        'warranty_documents' => 'array',
     ];
 
     const CONDITION_OPTIONS = ['baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat', 'hilang', 'dihapus'];
@@ -109,6 +131,54 @@ class Asset extends Model
     public function lastAuditBy()
     {
         return $this->belongsTo(User::class, 'last_audit_by');
+    }
+
+    // ASSET LIFECYCLE RELATIONSHIPS
+    public function eventLogs()
+    {
+        return $this->hasMany(AssetEventLog::class, 'asset_id');
+    }
+
+    public function repairRequests()
+    {
+        return $this->hasMany(RepairRequest::class, 'asset_id');
+    }
+
+    public function workOrders()
+    {
+        return $this->hasMany(WorkOrder::class, 'asset_id');
+    }
+
+    public function maintenanceHistories()
+    {
+        return $this->hasMany(MaintenanceHistory::class, 'asset_id');
+    }
+
+    public function repairCostHistories()
+    {
+        return $this->hasMany(RepairCostHistory::class, 'asset_id');
+    }
+
+    public function qrScanHistories()
+    {
+        return $this->hasMany(QrScanHistory::class, 'asset_id');
+    }
+
+    public function movements()
+    {
+        return $this->hasMany(AssetMovement::class, 'asset_id');
+    }
+
+    public function healthMetric()
+    {
+        return $this->hasOne(AssetHealthMetric::class, 'asset_id');
+    }
+
+    public function activeMovement()
+    {
+        return $this->hasOne(AssetMovement::class, 'asset_id')
+            ->whereIn('status', ['requested', 'approved', 'in_transit', 'received'])
+            ->latestOfMany();
     }
 
     // SCOPES

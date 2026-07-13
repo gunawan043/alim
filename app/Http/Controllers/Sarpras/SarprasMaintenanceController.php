@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers\Sarpras;
 
-use App\Models\AssetMaintenanceSchedule;
-use App\Models\AssetMaintenanceLog;
+use App\Http\Requests\Sarpras\MaintenanceLogStoreRequest;
+use App\Http\Requests\Sarpras\MaintenanceScheduleStoreRequest;
+use App\Http\Requests\Sarpras\MaintenanceScheduleUpdateRequest;
 use App\Models\Asset;
 use App\Models\AssetBuilding;
+use App\Models\AssetMaintenanceLog;
+use App\Models\AssetMaintenanceSchedule;
 use App\Models\AssetRoom;
 use App\Models\School;
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Services\Sarpras\AssetEventLogger;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class SarprasMaintenanceController extends SarprasBaseController
 {
-    public function __construct()
+    public function __construct(protected AssetEventLogger $eventLogger)
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
-
 
     // ========================================================================
     // JADWAL PEMELIHARAAN
@@ -28,7 +32,7 @@ class SarprasMaintenanceController extends SarprasBaseController
     {
         $query = AssetMaintenanceSchedule::with(['asset', 'building', 'room', 'responsibleUser']);
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
@@ -54,48 +58,35 @@ class SarprasMaintenanceController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
 
         $assets = Asset::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('asset_name')->get();
 
         $buildings = AssetBuilding::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('building_name')->get();
 
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
 
-        $users = User::whereHas('roles')->orderBy('name')->get();
+        $users = User::query()->whereHas('roles')->orderBy('name')->get();
 
         return view('sarpras.pemeliharaan.schedule.create', compact('assets', 'buildings', 'rooms', 'users'));
     }
 
-    public function scheduleStore(Request $request)
+    public function scheduleStore(MaintenanceScheduleStoreRequest $request)
     {
-        $validated = $request->validate([
-            'target_type'            => 'required|in:asset,building,room',
-            'asset_id'              => 'required_if:target_type,asset|nullable|exists:assets,id',
-            'building_id'           => 'required_if:target_type,building|nullable|exists:asset_buildings,id',
-            'room_id'               => 'required_if:target_type,room|nullable|exists:asset_rooms,id',
-            'maintenance_type'      => 'required|string|max:100',
-            'frequency'             => 'required|in:' . implode(',', AssetMaintenanceSchedule::FREQUENCY_OPTIONS),
-            'next_maintenance_date' => 'required|date',
-            'responsible_user_id'    => 'nullable|exists:users,id',
-            'vendor_name'           => 'nullable|string|max:191',
-            'estimated_cost'        => 'nullable|numeric|min:0',
-            'reminder_days_before'  => 'nullable|integer|min:1|max:90',
-            'notes'                 => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        if (!empty($validated['asset_id'])) {
+        if (! empty($validated['asset_id'])) {
             $asset = Asset::find($validated['asset_id']);
             $validated['work_unit_id'] = $asset->work_unit_id;
             $validated['school_id'] = $asset->school_id;
-        } elseif (!empty($validated['building_id'])) {
+        } elseif (! empty($validated['building_id'])) {
             $building = AssetBuilding::find($validated['building_id']);
             $validated['work_unit_id'] = $building->work_unit_id;
             $validated['school_id'] = $building->school_id;
-        } elseif (!empty($validated['room_id'])) {
+        } elseif (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
@@ -107,7 +98,22 @@ class SarprasMaintenanceController extends SarprasBaseController
 
         unset($validated['target_type']);
 
-        AssetMaintenanceSchedule::create($validated);
+        $schedule = AssetMaintenanceSchedule::create($validated);
+
+        try {
+            $targetAsset = ! empty($validated['asset_id']) ? Asset::find($validated['asset_id']) : null;
+            if ($targetAsset) {
+                $this->eventLogger->log($targetAsset, 'maintenance_scheduled', [
+                    'schedule_id' => $schedule->id,
+                    'frequency' => $schedule->frequency,
+                    'next_maintenance_date' => $schedule->next_maintenance_date?->toDateString(),
+                    'responsible_user_id' => $schedule->responsible_user_id,
+                    'created_by' => auth()->id(),
+                ], auth()->id());
+            }
+        } catch (\Throwable $e) {
+            Log::error('AssetEventLogger::maintenance_scheduled failed for schedule '.$schedule->id.': '.$e->getMessage());
+        }
 
         return redirect()->route('sarpras.pemeliharaan.schedule.index')
             ->with('success', 'Jadwal pemeliharaan berhasil ditambahkan.');
@@ -130,38 +136,28 @@ class SarprasMaintenanceController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
 
         $assets = Asset::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('asset_name')->get();
 
         $buildings = AssetBuilding::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('building_name')->get();
 
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
 
-        $users = User::whereHas('roles')->orderBy('name')->get();
+        $users = User::query()->whereHas('roles')->orderBy('name')->get();
 
         return view('sarpras.pemeliharaan.schedule.edit', compact('schedule', 'assets', 'buildings', 'rooms', 'users'));
     }
 
-    public function scheduleUpdate(Request $request, string $id)
+    public function scheduleUpdate(MaintenanceScheduleUpdateRequest $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
         $this->authorizeMaintenanceAccess($schedule, $request);
 
-        $validated = $request->validate([
-            'maintenance_type'       => 'required|string|max:100',
-            'frequency'             => 'required|in:' . implode(',', AssetMaintenanceSchedule::FREQUENCY_OPTIONS),
-            'next_maintenance_date' => 'required|date',
-            'responsible_user_id'   => 'nullable|exists:users,id',
-            'vendor_name'          => 'nullable|string|max:191',
-            'estimated_cost'       => 'nullable|numeric|min:0',
-            'reminder_days_before' => 'nullable|integer|min:1|max:90',
-            'is_active'            => 'boolean',
-            'notes'                => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $validated['is_active'] = $request->boolean('is_active', true);
 
@@ -190,7 +186,7 @@ class SarprasMaintenanceController extends SarprasBaseController
     {
         $query = AssetMaintenanceLog::with(['asset', 'building', 'room', 'performer']);
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
@@ -210,57 +206,40 @@ class SarprasMaintenanceController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
 
         $schedules = AssetMaintenanceSchedule::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->with(['asset', 'building', 'room'])
             ->orderBy('next_maintenance_date')->get();
 
         $assets = Asset::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('asset_name')->get();
 
         $buildings = AssetBuilding::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('building_name')->get();
 
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
 
-        $users = User::whereHas('roles')->orderBy('name')->get();
+        $users = User::query()->whereHas('roles')->orderBy('name')->get();
 
         return view('sarpras.pemeliharaan.log.create', compact('schedules', 'assets', 'buildings', 'rooms', 'users'));
     }
 
-    public function logStore(Request $request)
+    public function logStore(MaintenanceLogStoreRequest $request)
     {
-        $validated = $request->validate([
-            'schedule_id'         => 'nullable|exists:asset_maintenance_schedules,id',
-            'target_type'         => 'required|in:asset,building,room',
-            'asset_id'            => 'required_if:target_type,asset|nullable|exists:assets,id',
-            'building_id'         => 'required_if:target_type,building|nullable|exists:asset_buildings,id',
-            'room_id'             => 'required_if:target_type,room|nullable|exists:asset_rooms,id',
-            'maintenance_type'    => 'required|string|max:100',
-            'maintenance_date'    => 'required|date',
-            'performed_by'        => 'nullable|exists:users,id',
-            'vendor_name'         => 'nullable|string|max:191',
-            'actual_cost'         => 'nullable|numeric|min:0',
-            'condition_before'     => 'nullable|in:' . implode(',', AssetMaintenanceLog::CONDITION_OPTIONS),
-            'condition_after'     => 'nullable|in:' . implode(',', AssetMaintenanceLog::CONDITION_OPTIONS),
-            'work_description'    => 'nullable|string',
-            'parts_replaced'      => 'nullable|string',
-            'next_action_needed' => 'nullable|string',
-            'notes'               => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        if (!empty($validated['asset_id'])) {
+        if (! empty($validated['asset_id'])) {
             $asset = Asset::find($validated['asset_id']);
             $validated['work_unit_id'] = $asset->work_unit_id;
             $validated['school_id'] = $asset->school_id;
-        } elseif (!empty($validated['building_id'])) {
+        } elseif (! empty($validated['building_id'])) {
             $building = AssetBuilding::find($validated['building_id']);
             $validated['work_unit_id'] = $building->work_unit_id;
             $validated['school_id'] = $building->school_id;
-        } elseif (!empty($validated['room_id'])) {
+        } elseif (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
@@ -269,9 +248,9 @@ class SarprasMaintenanceController extends SarprasBaseController
         $validated['created_by'] = auth()->id();
         unset($validated['target_type']);
 
-        AssetMaintenanceLog::create($validated);
+        $log = AssetMaintenanceLog::create($validated);
 
-        if (!empty($validated['schedule_id'])) {
+        if (! empty($validated['schedule_id'])) {
             $schedule = AssetMaintenanceSchedule::find($validated['schedule_id']);
             if ($schedule) {
                 $nextDate = $this->calculateNextMaintenanceDate($validated['maintenance_date'], $schedule->frequency);
@@ -282,8 +261,26 @@ class SarprasMaintenanceController extends SarprasBaseController
             }
         }
 
-        if (!empty($validated['asset_id']) && !empty($validated['condition_after'])) {
+        if (! empty($validated['asset_id']) && ! empty($validated['condition_after'])) {
             Asset::find($validated['asset_id'])->update(['condition' => $validated['condition_after']]);
+        }
+
+        // Dispatch maintenance_completed event
+        try {
+            $targetAsset = ! empty($validated['asset_id']) ? Asset::find($validated['asset_id']) : null;
+            if ($targetAsset) {
+                $this->eventLogger->log($targetAsset, 'maintenance_completed', [
+                    'log_id' => $log->id,
+                    'condition_before' => $validated['condition_before'] ?? null,
+                    'condition_after' => $validated['condition_after'] ?? null,
+                    'performed_by' => $validated['performed_by'] ?? auth()->id(),
+                    'cost' => $validated['cost'] ?? null,
+                    'maintenance_date' => $validated['maintenance_date'] ?? now()->toDateString(),
+                    'maintenance_type' => $validated['maintenance_type'] ?? null,
+                ], auth()->id());
+            }
+        } catch (\Throwable $e) {
+            Log::error('AssetEventLogger::maintenance_completed failed for log '.$log->id.': '.$e->getMessage());
         }
 
         return redirect()->route('sarpras.pemeliharaan.log.index')
@@ -302,14 +299,14 @@ class SarprasMaintenanceController extends SarprasBaseController
     {
         $date = Carbon::parse($lastDate);
 
-        return match($frequency) {
-            'harian'        => $date->addDay(),
-            'mingguan'      => $date->addWeek(),
-            'bulanan'       => $date->addMonth(),
-            'triwulan'      => $date->addMonths(3),
-            'semester'      => $date->addMonths(6),
-            'tahunan'       => $date->addYear(),
-            default         => $date->addMonth(),
+        return match ($frequency) {
+            'harian' => $date->addDay(),
+            'mingguan' => $date->addWeek(),
+            'bulanan' => $date->addMonth(),
+            'triwulan' => $date->addMonths(3),
+            'semester' => $date->addMonths(6),
+            'tahunan' => $date->addYear(),
+            default => $date->addMonth(),
         };
     }
 }

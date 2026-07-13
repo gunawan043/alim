@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AssetRoom;
+use App\Exports\AssetTemplateExport;
+use App\Imports\AssetImport;
 use App\Models\Asset;
 use App\Models\AssetBuilding;
 use App\Models\AssetCategory;
-use App\Models\School;
+use App\Models\AssetRoom;
 use App\Models\GtkWorkUnit;
-use App\Imports\AssetImport;
+use App\Models\School;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\AssetTemplateExport;
 
 class SarprasController extends Controller
 {
@@ -28,12 +27,18 @@ class SarprasController extends Controller
     private function canViewAll(Request $request): bool
     {
         $user = auth()->user();
-        if (!$user) return false;
-        if ($user->can('sarpras_all_access')) return true;
-        if ($user->can('inventory_view')) return true; // fallback
+        if (! $user) {
+            return false;
+        }
+        if (canPermission('sarpras_all_access')) {
+            return true;
+        }
+        if (canPermission('inventory_view')) {
+            return true;
+        } // fallback
 
         $hasRumahTangga = GtkWorkUnit::where('user_id', $user->id)
-            ->whereHas('workUnit', fn($q) => $q->where('code', 'PAH-ADM-003'))
+            ->whereHas('workUnit', fn ($q) => $q->where('code', 'PAH-ADM-003'))
             ->exists();
 
         return $hasRumahTangga;
@@ -45,12 +50,15 @@ class SarprasController extends Controller
         if ($schoolId) {
             $query->where('school_id', $schoolId);
         }
+
         return $query;
     }
 
     private function authorizeRoomAccess(AssetRoom $room, Request $request): void
     {
-        if ($this->canViewAll($request)) return;
+        if ($this->canViewAll($request)) {
+            return;
+        }
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId && $room->school_id !== $schoolId) {
             abort(403, 'Anda tidak memiliki akses ke ruang ini.');
@@ -67,13 +75,13 @@ class SarprasController extends Controller
 
         $query = AssetBuilding::with('school');
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->where(fn($q) => $q->where('building_name', 'like', "%{$s}%")->orWhere('building_code', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('building_name', 'like', "%{$s}%")->orWhere('building_code', 'like', "%{$s}%"));
         }
         if ($request->filled('building_type')) {
             $query->where('building_type', $request->building_type);
@@ -106,16 +114,16 @@ class SarprasController extends Controller
         abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
 
         $validated = $request->validate([
-            'school_id'             => 'required|exists:schools,id',
-            'building_name'         => 'required|string|max:191',
-            'building_code'        => 'nullable|string|max:30|unique:asset_buildings,building_code',
-            'building_type'        => 'required|in:' . implode(',', AssetBuilding::BUILDING_TYPE_OPTIONS),
-            'total_floors'         => 'nullable|integer|min:1|max:20',
-            'building_area'        => 'nullable|numeric|min:0',
-            'build_year'           => 'nullable|integer|min:1900|max:2100',
-            'structure_condition'  => 'required|in:' . implode(',', AssetBuilding::CONDITION_OPTIONS),
-            'ownership_status'     => 'nullable|in:' . implode(',', AssetBuilding::OWNERSHIP_OPTIONS),
-            'is_active'            => 'boolean',
+            'school_id' => 'required|exists:schools,id',
+            'building_name' => 'required|string|max:191',
+            'building_code' => 'nullable|string|max:30|unique:asset_buildings,building_code',
+            'building_type' => 'required|in:'.implode(',', AssetBuilding::BUILDING_TYPE_OPTIONS),
+            'total_floors' => 'nullable|integer|min:1|max:20',
+            'building_area' => 'nullable|numeric|min:0',
+            'build_year' => 'nullable|integer|min:1900|max:2100',
+            'structure_condition' => 'required|in:'.implode(',', AssetBuilding::CONDITION_OPTIONS),
+            'ownership_status' => 'nullable|in:'.implode(',', AssetBuilding::OWNERSHIP_OPTIONS),
+            'is_active' => 'boolean',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -163,16 +171,16 @@ class SarprasController extends Controller
         $this->authorizeBuildingAccess($gedung, $request);
 
         $validated = $request->validate([
-            'school_id'             => 'required|exists:schools,id',
-            'building_name'         => 'required|string|max:191',
-            'building_code'        => ['nullable', 'string', 'max:30', Rule::unique('asset_buildings', 'building_code')->ignore($gedung->id)],
-            'building_type'        => 'required|in:' . implode(',', AssetBuilding::BUILDING_TYPE_OPTIONS),
-            'total_floors'         => 'nullable|integer|min:1|max:20',
-            'building_area'        => 'nullable|numeric|min:0',
-            'build_year'           => 'nullable|integer|min:1900|max:2100',
-            'structure_condition'  => 'required|in:' . implode(',', AssetBuilding::CONDITION_OPTIONS),
-            'ownership_status'     => 'nullable|in:' . implode(',', AssetBuilding::OWNERSHIP_OPTIONS),
-            'is_active'            => 'boolean',
+            'school_id' => 'required|exists:schools,id',
+            'building_name' => 'required|string|max:191',
+            'building_code' => ['nullable', 'string', 'max:30', Rule::unique('asset_buildings', 'building_code')->ignore($gedung->id)],
+            'building_type' => 'required|in:'.implode(',', AssetBuilding::BUILDING_TYPE_OPTIONS),
+            'total_floors' => 'nullable|integer|min:1|max:20',
+            'building_area' => 'nullable|numeric|min:0',
+            'build_year' => 'nullable|integer|min:1900|max:2100',
+            'structure_condition' => 'required|in:'.implode(',', AssetBuilding::CONDITION_OPTIONS),
+            'ownership_status' => 'nullable|in:'.implode(',', AssetBuilding::OWNERSHIP_OPTIONS),
+            'is_active' => 'boolean',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -204,7 +212,9 @@ class SarprasController extends Controller
 
     private function authorizeBuildingAccess(AssetBuilding $building, Request $request): void
     {
-        if ($this->canViewAll($request)) return;
+        if ($this->canViewAll($request)) {
+            return;
+        }
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId && $building->school_id !== $schoolId) {
             abort(403, 'Anda tidak memiliki akses ke gedung ini.');
@@ -221,13 +231,13 @@ class SarprasController extends Controller
 
         $query = AssetRoom::with(['school', 'building']);
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->where(fn($q) => $q->where('room_name', 'like', "%{$s}%")->orWhere('room_code', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('room_name', 'like', "%{$s}%")->orWhere('room_code', 'like', "%{$s}%"));
         }
         if ($request->filled('room_type')) {
             $query->where('room_type', $request->room_type);
@@ -252,7 +262,7 @@ class SarprasController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $schools = $schoolId ? School::where('id', $schoolId)->get() : School::orderBy('name')->get();
         $gedungs = AssetBuilding::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('building_name')->get();
 
         return view('sarpras.ruang.create', compact('schools', 'gedungs', 'userId', 'schoolId'));
@@ -263,20 +273,20 @@ class SarprasController extends Controller
         abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
 
         $validated = $request->validate([
-            'school_id'                   => 'required|exists:schools,id',
-            'building_id'                 => 'nullable|exists:asset_buildings,id',
-            'room_name'                   => 'required|string|max:191',
-            'room_code'                   => 'nullable|string|max:30|unique:asset_rooms,room_code',
-            'room_type'                   => 'required|in:' . implode(',', AssetRoom::ROOM_TYPE_OPTIONS),
-            'floor'                       => 'nullable|integer|min:0|max:20',
-            'room_area'                   => 'nullable|numeric|min:0',
-            'capacity'                    => 'nullable|integer|min:0',
-            'condition'                   => 'required|in:' . implode(',', AssetRoom::CONDITION_OPTIONS),
-            'facilities'                  => 'nullable|string',
-            'is_bookable'                => 'boolean',
-            'booking_requires_approval'   => 'boolean',
-            'is_active'                  => 'boolean',
-            'notes'                      => 'nullable|string',
+            'school_id' => 'required|exists:schools,id',
+            'building_id' => 'nullable|exists:asset_buildings,id',
+            'room_name' => 'required|string|max:191',
+            'room_code' => 'nullable|string|max:30|unique:asset_rooms,room_code',
+            'room_type' => 'required|in:'.implode(',', AssetRoom::ROOM_TYPE_OPTIONS),
+            'floor' => 'nullable|integer|min:0|max:20',
+            'room_area' => 'nullable|numeric|min:0',
+            'capacity' => 'nullable|integer|min:0',
+            'condition' => 'required|in:'.implode(',', AssetRoom::CONDITION_OPTIONS),
+            'facilities' => 'nullable|string',
+            'is_bookable' => 'boolean',
+            'booking_requires_approval' => 'boolean',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ]);
 
         $validated['is_bookable'] = $request->boolean('is_bookable', false);
@@ -314,7 +324,7 @@ class SarprasController extends Controller
         $schoolId = request()->attributes->get('schoolContextId');
         $schools = $schoolId ? School::where('id', $schoolId)->get() : School::orderBy('name')->get();
         $gedungs = AssetBuilding::where('is_active', true)
-            ->when($ruang->school_id, fn($q) => $q->where('school_id', $ruang->school_id))
+            ->when($ruang->school_id, fn ($q) => $q->where('school_id', $ruang->school_id))
             ->orderBy('building_name')->get();
 
         return view('sarpras.ruang.edit', compact('ruang', 'schools', 'gedungs', 'userId'));
@@ -328,20 +338,20 @@ class SarprasController extends Controller
         $this->authorizeRoomAccess($ruang, $request);
 
         $validated = $request->validate([
-            'school_id'                   => 'required|exists:schools,id',
-            'building_id'                 => 'nullable|exists:asset_buildings,id',
-            'room_name'                   => 'required|string|max:191',
-            'room_code'                   => ['nullable', 'string', 'max:30', Rule::unique('asset_rooms', 'room_code')->ignore($ruang->id)],
-            'room_type'                   => 'required|in:' . implode(',', AssetRoom::ROOM_TYPE_OPTIONS),
-            'floor'                       => 'nullable|integer|min:0|max:20',
-            'room_area'                   => 'nullable|numeric|min:0',
-            'capacity'                    => 'nullable|integer|min:0',
-            'condition'                   => 'required|in:' . implode(',', AssetRoom::CONDITION_OPTIONS),
-            'facilities'                  => 'nullable|string',
-            'is_bookable'                => 'boolean',
-            'booking_requires_approval'   => 'boolean',
-            'is_active'                  => 'boolean',
-            'notes'                      => 'nullable|string',
+            'school_id' => 'required|exists:schools,id',
+            'building_id' => 'nullable|exists:asset_buildings,id',
+            'room_name' => 'required|string|max:191',
+            'room_code' => ['nullable', 'string', 'max:30', Rule::unique('asset_rooms', 'room_code')->ignore($ruang->id)],
+            'room_type' => 'required|in:'.implode(',', AssetRoom::ROOM_TYPE_OPTIONS),
+            'floor' => 'nullable|integer|min:0|max:20',
+            'room_area' => 'nullable|numeric|min:0',
+            'capacity' => 'nullable|integer|min:0',
+            'condition' => 'required|in:'.implode(',', AssetRoom::CONDITION_OPTIONS),
+            'facilities' => 'nullable|string',
+            'is_bookable' => 'boolean',
+            'booking_requires_approval' => 'boolean',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ]);
 
         $validated['is_bookable'] = $request->boolean('is_bookable', false);
@@ -383,13 +393,13 @@ class SarprasController extends Controller
 
         $query = Asset::with(['room', 'room.school', 'category']);
 
-        if (!$this->canViewAll($request)) {
+        if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->where(fn($q) => $q->where('asset_name', 'like', "%{$s}%")->orWhere('asset_code', 'like', "%{$s}%")->orWhere('brand', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('asset_name', 'like', "%{$s}%")->orWhere('asset_code', 'like', "%{$s}%")->orWhere('brand', 'like', "%{$s}%"));
         }
         if ($request->filled('condition')) {
             $query->where('condition', $request->condition);
@@ -414,7 +424,7 @@ class SarprasController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
@@ -426,24 +436,24 @@ class SarprasController extends Controller
         abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
 
         $validated = $request->validate([
-            'room_id'               => 'nullable|exists:asset_rooms,id',
-            'asset_category_id'    => 'required|exists:asset_categories,id',
-            'asset_name'           => 'required|string|max:191',
-            'asset_code'           => 'nullable|string|max:50|unique:assets,asset_code',
-            'brand'                => 'nullable|string|max:100',
-            'model'                => 'nullable|string|max:100',
-            'serial_number'        => 'nullable|string|max:100',
-            'color'                => 'nullable|string|max:50',
-            'specification'        => 'nullable|string',
-            'acquisition_date'      => 'nullable|date',
-            'acquisition_price'    => 'nullable|numeric|min:0',
-            'acquisition_source'    => 'nullable|in:' . implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
-            'funding_source'       => 'nullable|string|max:100',
-            'condition'           => 'required|in:' . implode(',', Asset::CONDITION_OPTIONS),
-            'status'               => 'nullable|in:' . implode(',', Asset::STATUS_OPTIONS),
-            'is_bookable'         => 'boolean',
-            'is_active'           => 'boolean',
-            'notes'               => 'nullable|string',
+            'room_id' => 'nullable|exists:asset_rooms,id',
+            'asset_category_id' => 'required|exists:asset_categories,id',
+            'asset_name' => 'required|string|max:191',
+            'asset_code' => 'nullable|string|max:50|unique:assets,asset_code',
+            'brand' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'serial_number' => 'nullable|string|max:100',
+            'color' => 'nullable|string|max:50',
+            'specification' => 'nullable|string',
+            'acquisition_date' => 'nullable|date',
+            'acquisition_price' => 'nullable|numeric|min:0',
+            'acquisition_source' => 'nullable|in:'.implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
+            'funding_source' => 'nullable|string|max:100',
+            'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
+            'status' => 'nullable|in:'.implode(',', Asset::STATUS_OPTIONS),
+            'is_bookable' => 'boolean',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ]);
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
@@ -452,7 +462,7 @@ class SarprasController extends Controller
         $validated['created_by'] = auth()->id();
 
         // work_unit_id & school_id dari room jika ada
-        if (!empty($validated['room_id'])) {
+        if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
@@ -484,7 +494,7 @@ class SarprasController extends Controller
 
         $schoolId = request()->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
-            ->when($aset->school_id, fn($q) => $q->where('school_id', $aset->school_id))
+            ->when($aset->school_id, fn ($q) => $q->where('school_id', $aset->school_id))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
@@ -499,31 +509,31 @@ class SarprasController extends Controller
         $this->authorizeAsetAccess($aset, $request);
 
         $validated = $request->validate([
-            'room_id'               => 'nullable|exists:asset_rooms,id',
-            'asset_category_id'    => 'required|exists:asset_categories,id',
-            'asset_name'           => 'required|string|max:191',
-            'asset_code'           => ['nullable', 'string', 'max:50', Rule::unique('assets', 'asset_code')->ignore($aset->id)],
-            'brand'                => 'nullable|string|max:100',
-            'model'                => 'nullable|string|max:100',
-            'serial_number'        => 'nullable|string|max:100',
-            'color'                => 'nullable|string|max:50',
-            'specification'        => 'nullable|string',
-            'acquisition_date'      => 'nullable|date',
-            'acquisition_price'    => 'nullable|numeric|min:0',
-            'acquisition_source'    => 'nullable|in:' . implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
-            'funding_source'       => 'nullable|string|max:100',
-            'condition'           => 'required|in:' . implode(',', Asset::CONDITION_OPTIONS),
-            'status'               => 'nullable|in:' . implode(',', Asset::STATUS_OPTIONS),
-            'is_bookable'         => 'boolean',
-            'is_active'           => 'boolean',
-            'notes'               => 'nullable|string',
+            'room_id' => 'nullable|exists:asset_rooms,id',
+            'asset_category_id' => 'required|exists:asset_categories,id',
+            'asset_name' => 'required|string|max:191',
+            'asset_code' => ['nullable', 'string', 'max:50', Rule::unique('assets', 'asset_code')->ignore($aset->id)],
+            'brand' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'serial_number' => 'nullable|string|max:100',
+            'color' => 'nullable|string|max:50',
+            'specification' => 'nullable|string',
+            'acquisition_date' => 'nullable|date',
+            'acquisition_price' => 'nullable|numeric|min:0',
+            'acquisition_source' => 'nullable|in:'.implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
+            'funding_source' => 'nullable|string|max:100',
+            'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
+            'status' => 'nullable|in:'.implode(',', Asset::STATUS_OPTIONS),
+            'is_bookable' => 'boolean',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ]);
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['status'] = $validated['status'] ?? 'tersedia';
 
-        if (!empty($validated['room_id'])) {
+        if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
@@ -558,7 +568,7 @@ class SarprasController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
@@ -581,8 +591,8 @@ class SarprasController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
         ], [
             'file.required' => 'File Excel wajib diupload.',
-            'file.mimes'    => 'File harus berekstensi .xlsx, .xls, atau .csv.',
-            'file.max'      => 'Ukuran file maksimal 5MB.',
+            'file.mimes' => 'File harus berekstensi .xlsx, .xls, atau .csv.',
+            'file.max' => 'Ukuran file maksimal 5MB.',
         ]);
 
         $schoolId = $request->attributes->get('schoolContextId');
@@ -605,7 +615,7 @@ class SarprasController extends Controller
             if ($createdCount > 0) {
                 return redirect()
                     ->route('sarpras.aset.index', ['userId' => $userId])
-                    ->with('success', "Berhasil mengimport {$createdCount} aset. " . count($errors) . " baris dilewati karena error.")
+                    ->with('success', "Berhasil mengimport {$createdCount} aset. ".count($errors).' baris dilewati karena error.')
                     ->with('import_errors', $errors);
             }
 
@@ -619,18 +629,20 @@ class SarprasController extends Controller
             $failures = $e->failures();
             $errMsgs = [];
             foreach ($failures as $failure) {
-                $errMsgs[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+                $errMsgs[] = "Baris {$failure->row()}: ".implode(', ', $failure->errors());
             }
+
             return redirect()
                 ->route('sarpras.aset.import', ['userId' => $userId])
                 ->with('error', 'Validasi gagal. Perbaiki data Excel Anda.')
                 ->with('import_errors', $errMsgs);
 
         } catch (\Throwable $e) {
-            Log::error('AssetImport error: ' . $e->getMessage());
+            Log::error('AssetImport error: '.$e->getMessage());
+
             return redirect()
                 ->route('sarpras.aset.import', ['userId' => $userId])
-                ->with('error', 'Gagal memproses file: ' . $e->getMessage());
+                ->with('error', 'Gagal memproses file: '.$e->getMessage());
         }
     }
 
@@ -646,7 +658,7 @@ class SarprasController extends Controller
 
         $exporter = new AssetTemplateExport($roomName);
         $filename = $roomName
-            ? 'template_import_' . \Illuminate\Support\Str::slug($roomName, '_') . '.xlsx'
+            ? 'template_import_'.\Illuminate\Support\Str::slug($roomName, '_').'.xlsx'
             : 'template_import_aset.xlsx';
 
         return $exporter->download($filename);
@@ -659,14 +671,14 @@ class SarprasController extends Controller
         abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
 
         $validated = $request->validate([
-            'name'  => 'required|string|max:191|unique:asset_categories,name',
-            'code'  => 'nullable|string|max:30|unique:asset_categories,code',
+            'name' => 'required|string|max:191|unique:asset_categories,name',
+            'code' => 'nullable|string|max:30|unique:asset_categories,code',
             'asset_type' => 'required|in:tidak_bergerak,bergerak,habis_pakai',
             'depreciation_years' => 'nullable|integer|min:0|max:100',
         ], [
             'name.required' => 'Nama kategori wajib diisi.',
-            'name.unique'   => 'Nama kategori sudah ada.',
-            'code.unique'  => 'Kode kategori sudah ada.',
+            'name.unique' => 'Nama kategori sudah ada.',
+            'code.unique' => 'Kode kategori sudah ada.',
         ]);
 
         $validated['is_active'] = true;
@@ -676,7 +688,7 @@ class SarprasController extends Controller
             'success' => true,
             'message' => 'Kategori berhasil ditambahkan.',
             'category' => [
-                'id'   => $category->id,
+                'id' => $category->id,
                 'name' => $category->name,
                 'code' => $category->code,
             ],
@@ -685,7 +697,9 @@ class SarprasController extends Controller
 
     private function authorizeAsetAccess(Asset $aset, Request $request): void
     {
-        if ($this->canViewAll($request)) return;
+        if ($this->canViewAll($request)) {
+            return;
+        }
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId && $aset->school_id !== $schoolId) {
             abort(403, 'Anda tidak memiliki akses ke aset ini.');
