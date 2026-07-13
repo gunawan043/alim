@@ -2,16 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Dormitory;
-use App\Models\DormitoryRoom;
-use App\Models\DormitoryResident;
-use App\Models\Student;
+use App\Http\Requests\Dormitory\CheckoutResidentRequest;
+use App\Http\Requests\Dormitory\StoreResidentRequest;
 use App\Models\AcademicYear;
-use App\Models\StudentMahrom;
+use App\Models\Dormitory;
+use App\Models\DormitoryResident;
+use App\Services\StudentLookupService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DormitoryResidentController extends Controller
 {
+    private StudentLookupService $lookup;
+
+    public function __construct(StudentLookupService $lookup)
+    {
+        $this->lookup = $lookup;
+    }
+
     /**
      * GET /{userId}/asrama/{asramaUuid}/penghuni
      */
@@ -34,8 +42,8 @@ class DormitoryResidentController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
-                ->whereHas('student', fn($st) => $st
+            $query->where(fn ($sq) => $sq
+                ->whereHas('student', fn ($st) => $st
                     ->where('name', 'like', "%{$q}%")
                     ->orWhere('nisn', 'like', "%{$q}%")
                 )
@@ -43,11 +51,11 @@ class DormitoryResidentController extends Controller
         }
 
         $residents = $query->orderByDesc('is_active')->orderBy('bed_number')->paginate(20)->withQueryString();
-        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
+        $rooms = \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
         $stats = [
-            'total'       => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->count(),
-            'active'      => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
+            'total' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->count(),
+            'active' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
             'checked_out' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', false)->count(),
         ];
 
@@ -63,9 +71,9 @@ class DormitoryResidentController extends Controller
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
-        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)
+        $rooms = \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)
             ->where('is_active', true)
-            ->withCount(['residents as current_occupancy' => fn($q) => $q->where('is_active', true)])
+            ->withCount(['residents as current_occupancy' => fn ($q) => $q->where('is_active', true)])
             ->orderBy('code')->get();
 
         return view('dormitory.residents.create', compact('dormitory', 'rooms', 'userId', 'activeYear'));
@@ -74,20 +82,14 @@ class DormitoryResidentController extends Controller
     /**
      * POST /{userId}/asrama/{asramaUuid}/penghuni
      */
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreResidentRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-        $data = $request->validate([
-            'student_id'      => 'required|exists:students,id',
-            'room_id'         => 'required|exists:dormitory_rooms,id',
-            'bed_number'      => 'nullable|integer|min:1',
-            'check_in_date'   => 'required|date',
-            'notes'           => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
-        // Cek apakah student sudah resident aktif di tahun ajaran ini
+        // Final duplicate guard (service validated, but re-check in transaction)
         $existing = DormitoryResident::where('student_id', $data['student_id'])
             ->where('academic_year_id', $activeYear->id)
             ->where('is_active', true)
@@ -95,27 +97,33 @@ class DormitoryResidentController extends Controller
 
         if ($existing) {
             return back()->withInput()->withErrors([
-                'student_id' => 'Santri ini sudah tercatat sebagai penghuni aktif di asrama lain pada tahun ajaran ini.'
+                'student_id' => 'Santri ini sudah tercatat sebagai penghuni aktif di asrama lain pada tahun ajaran ini.',
             ]);
         }
 
-        // Cek kapasitas kamar
-        $room = DormitoryRoom::find($data['room_id']);
-        $currentOccupancy = DormitoryResident::where('room_id', $data['room_id'])
-            ->where('is_active', true)
-            ->count();
+        $room = \App\Models\DormitoryRoom::find($data['room_id']);
 
-        if ($currentOccupancy >= $room->capacity) {
-            return back()->withInput()->withErrors([
-                'room_id' => 'Kamar ini sudah penuh (kapasitas: ' . $room->capacity . ' orang).'
-            ]);
+        if ($room) {
+            $currentOccupancy = DormitoryResident::where('room_id', $data['room_id'])
+                ->where('is_active', true)
+                ->count();
+
+            if ($currentOccupancy >= $room->capacity) {
+                return back()->withInput()->withErrors([
+                    'room_id' => 'Kamar ini sudah penuh (kapasitas: '.$room->capacity.' orang).',
+                ]);
+            }
         }
 
-        $data['dormitory_id'] = $asramaUuid;
-        $data['academic_year_id'] = $activeYear->id;
-        $data['is_active'] = true;
+        DB::transaction(function () use ($data, $asramaUuid, $activeYear) {
+            $data['dormitory_id'] = $asramaUuid;
+            $data['academic_year_id'] = $activeYear->id;
+            $data['is_active'] = true;
 
-        DormitoryResident::create($data);
+            DormitoryResident::create($data);
+        });
+
+        $this->lookup->invalidateCache($data['student_id']);
 
         return redirect()->route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Penghuni berhasil ditambahkan.');
@@ -123,66 +131,95 @@ class DormitoryResidentController extends Controller
 
     /**
      * GET /{userId}/asrama/{asramaUuid}/penghuni/{residentUuid}
+     * Shows resident details with read-only Academic profile panel.
      */
     public function show(Request $request, string $userId, string $asramaUuid, string $residentUuid)
     {
-        $resident = DormitoryResident::with(['student.mahroms', 'room.wing', 'dormitory'])
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+
+        $resident = DormitoryResident::with([
+            'student.mahroms',
+            'room.wing',
+            'dormitory',
+            'academicYear',
+        ])
             ->where('dormitory_id', $asramaUuid)
             ->findOrFail($residentUuid);
 
+        // Get full read-only Academic profile
+        $academicProfile = $this->lookup->getProfile($resident->student_id);
+
+        // Get all other active assignments for this student
+        $otherAssignments = $this->lookup->getAllActiveAssignments($resident->student_id)
+            ->where('id', '!=', $resident->id)
+            ->values();
+
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        return view('dormitory.residents.show', compact('resident', 'dormitory', 'userId', 'activeYear'));
+        return view('dormitory.residents.show', compact(
+            'resident', 'dormitory', 'userId', 'activeYear',
+            'academicProfile', 'otherAssignments'
+        ));
     }
 
     /**
      * POST check-out penghuni
      */
-    public function checkout(Request $request, string $userId, string $asramaUuid, string $residentUuid)
+    public function checkout(CheckoutResidentRequest $request, string $userId, string $asramaUuid, string $residentUuid)
     {
         $resident = DormitoryResident::where('dormitory_id', $asramaUuid)->findOrFail($residentUuid);
 
-        $data = $request->validate([
-            'check_out_date'  => 'required|date',
-            'check_out_reason' => 'required|in:lulus,pindah_kamar,keluar,sakit,lainnya',
-            'notes'           => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $resident->update([
-            'is_active'       => false,
-            'check_out_date'  => $data['check_out_date'],
-            'check_out_reason'=> $data['check_out_reason'],
-            'notes'           => $data['notes'] ?? $resident->notes,
+            'is_active' => false,
+            'check_out_date' => $data['check_out_date'],
+            'check_out_reason' => $data['check_out_reason'],
+            'notes' => $data['notes'] ?? $resident->notes,
         ]);
+
+        $this->lookup->invalidateCache($resident->student_id);
 
         return back()->with('success', 'Penghuni berhasil di-check out.');
     }
 
     /**
      * AJAX: cari student untuk dihuni
+     * Enhanced with service-based filtering and dormitory assignment info.
      */
     public function findStudent(Request $request)
     {
         $q = $request->get('q', '');
-        if (strlen($q) < 2) return response()->json([]);
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
 
-        $students = Student::where('status', 'active')
-            ->where(fn($sq) => $sq
-                ->where('name', 'like', "%{$q}%")
-                ->orWhere('nisn', 'like', "%{$q}%")
-                ->orWhere('nik', 'like', "%{$q}%")
-            )
-            ->limit(20)
-            ->get(['id', 'name', 'nisn', 'gender', 'birth_place', 'birth_date']);
+        $dormitoryId = $request->get('dormitory_id');
+        $academicYear = AcademicYear::where('is_active', true)->first();
 
-        return response()->json(['results' => $students->map(fn($s) => [
-            'id'          => $s->id,
-            'name'        => $s->name,
-            'nisn'        => $s->nisn,
-            'gender'      => $s->gender,
-            'gender_text' => $s->gender_text,
-            'birth_place' => $s->birth_place,
-            'birth_date'  => $s->birth_date?->format('d/m/Y'),
-        ])]);
+        $students = $this->lookup->search(
+            query: $q,
+            dormitoryId: $dormitoryId,
+            academicYearId: $academicYear?->id,
+            limit: 20
+        );
+
+        return response()->json([
+            'results' => $students->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'nisn' => $s->nisn,
+                    'nis' => $s->nis,
+                    'gender' => $s->gender,
+                    'gender_text' => $s->gender_text,
+                    'birth_place' => $s->birth_place,
+                    'birth_date' => $s->birth_date,
+                    'is_assigned' => $s->is_assigned,
+                    'assigned_dormitory' => $s->assigned_dormitory,
+                    'assigned_room' => $s->assigned_room,
+                ];
+            }),
+        ]);
     }
 }

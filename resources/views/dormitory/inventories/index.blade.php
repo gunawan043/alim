@@ -12,19 +12,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -115,7 +115,7 @@
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.inventories.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Item
                             </a>
                         </div>
@@ -252,7 +252,7 @@
                                             <h6 class="text-muted mb-1">Belum Ada Data Inventaris</h6>
                                             <p class="text-muted mb-3">Tidak ada item inventaris yang terdaftar.</p>
                                             <a href="{{ route('user.asrama.inventories.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-success btn-sm">
+                                               class="btn btn-primary btn-sm">
                                                 <i class="ri-add-line me-1"></i> Tambah Item Baru
                                             </a>
                                         </td>
@@ -263,8 +263,9 @@
                     </div>
 
                     @if($inventories->hasPages())
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $inventories->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $inventories->firstItem() ?? 0 }} - {{ $inventories->lastItem() ?? 0 }} dari {{ $inventories->total() }} data</div>
+                            <div>{{ $inventories->withQueryString()->links() }}</div>
                         </div>
                     @endif
                 </div>

@@ -13,13 +13,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -245,7 +245,7 @@
                                         <tr>
                                             <td colspan="11" class="text-center text-muted py-5">
                                                 <i class="ri-file-chart-line fs-1 d-block mb-2"></i>
-                                                Tidak ada data absensi untuk periode ini.
+                                                Belum ada data absensi untuk periode ini.
                                             </td>
                                         </tr>
                                     @endforelse
@@ -304,11 +304,11 @@
                             </div>
                             <h5 class="text-muted mb-2">Belum Ada Data Rekap</h5>
                             <p class="text-muted mb-4">
-                                Tidak ada catatan absensi untuk
+                                Tidak ada catatan absensi untuk periode ini.
                                 {{ \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->locale('id')->monthName }} {{ $selectedYear }}.
                             </p>
                             <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line me-1"></i> Catat Absensi
                             </a>
                         </div>
@@ -368,7 +368,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">Tidak ada data.</td>
+                                        <td colspan="7" class="text-center text-muted">Belum ada data absensi.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

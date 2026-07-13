@@ -16,12 +16,12 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -84,7 +84,7 @@
                             <p class="text-muted mb-0">Pengelolaan gedung asrama.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-success">
+                            <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Gedung
                             </a>
                         </div>
@@ -177,8 +177,9 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="mt-3">
-                        {{ $wings->withQueryString()->links() }}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">Menampilkan {{ $wings->firstItem() ?? 0 }} - {{ $wings->lastItem() ?? 0 }} dari {{ $wings->total() }} data</div>
+                        <div>{{ $wings->withQueryString()->links() }}</div>
                     </div>
                 </div>
             </div>

@@ -35,8 +35,6 @@ class ProvisionStudentAcademicDataJob implements ShouldQueue
 
     public string $classHistoryId;
 
-    public string $queue = 'academic-provision';
-
     public int $tries = 3;
 
     public int $backoff = 30;

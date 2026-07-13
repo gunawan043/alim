@@ -23,13 +23,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-1"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-1"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -59,7 +59,7 @@
                                             <li>{{ $error }}</li>
                                         @endforeach
                                     </ul>
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
                                 </div>
                             @endif
 
@@ -221,7 +221,7 @@
                                     <tr>
                                         <td colspan="8" class="text-center text-muted py-4">
                                             <i class="ri-notification-3-line fs-1 d-block mb-2"></i>
-                                            Belum ada broadcast. Gunakan formulir di atas untuk mengirim pesan.
+                                            Belum ada pesan broadcast. Gunakan formulir di atas untuk mengirim pesan.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -230,8 +230,9 @@
                     </div>
 
                     @if(isset($broadcasts) && $broadcasts->hasPages())
-                        <div class="d-flex justify-content-center mt-3">
-                            {{ $broadcasts->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $broadcasts->firstItem() ?? 0 }} - {{ $broadcasts->lastItem() ?? 0 }} dari {{ $broadcasts->total() }} data</div>
+                            <div>{{ $broadcasts->withQueryString()->links() }}</div>
                         </div>
                     @endif
                 </div>

@@ -14,7 +14,7 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -98,7 +98,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Penghuni Kamar</h5>
-                    <button type="button" class="btn btn-success btn-sm" onclick="openBulkModal()">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openBulkModal()">
                         <i class="ri-add-line me-1"></i> Tarik Penghuni
                     </button>
                 </div>
@@ -219,7 +219,7 @@
             <div class="modal-footer">
                 <span id="selectedInfoText" class="me-auto text-muted small"></span>
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-success" id="confirmBulkAddBtn" disabled onclick="submitBulkAdd()">
+                <button type="button" class="btn btn-primary" id="confirmBulkAddBtn" disabled onclick="submitBulkAdd()">
                     <i class="ri-add-line me-1"></i> Masukkan ke Kamar
                 </button>
             </div>

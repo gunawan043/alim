@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Dormitory\StoreRoomMoveRequest;
+use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryRoomMove;
-use App\Models\DormitoryResident;
-use App\Models\AcademicYear;
-use App\Models\DormitoryActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DormitoryRoomMoveController extends Controller
 {
@@ -30,8 +31,8 @@ class DormitoryRoomMoveController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
-                ->whereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+            $query->where(fn ($sq) => $sq
+                ->whereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
@@ -42,17 +43,17 @@ class DormitoryRoomMoveController extends Controller
         $roomMoves = $query->orderByDesc('move_date')->paginate(20)->withQueryString();
 
         $stats = [
-            'pending'   => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'pending')->count(),
-            'approved'  => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'approved')->count(),
-            'rejected'  => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'rejected')->count(),
+            'pending' => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'pending')->count(),
+            'approved' => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'approved')->count(),
+            'rejected' => DormitoryRoomMove::where('dormitory_id', $asramaUuid)->where('approval_status', 'rejected')->count(),
         ];
 
         return view('dormitory.room-moves.index', [
             'dormitory' => $dormitory,
             'roomMoves' => $roomMoves,
-            'userId'    => $userId,
-            'stats'     => $stats,
-            'activeYear'=> $activeYear,
+            'userId' => $userId,
+            'stats' => $stats,
+            'activeYear' => $activeYear,
         ]);
     }
 
@@ -82,20 +83,12 @@ class DormitoryRoomMoveController extends Controller
     /**
      * POST /{userId}/asrama/{asramaUuid}/mutasi-kamar
      */
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreRoomMoveRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-        $data = $request->validate([
-            'student_id'       => 'required|exists:students,id',
-            'from_room_id'    => 'required|exists:dormitory_rooms,id',
-            'to_room_id'      => 'required|exists:dormitory_rooms,id|different:from_room_id',
-            'move_date'       => 'required|date',
-            'reason'          => 'nullable|string',
-            'move_type'      => 'nullable|in:reguler,disciplinary,medical,upgrade,other',
-            'notes'          => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         // Cek apakah student adalah resident aktif
         $resident = DormitoryResident::where('student_id', $data['student_id'])
@@ -104,31 +97,33 @@ class DormitoryRoomMoveController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$resident) {
+        if (! $resident) {
             return back()->withInput()->withErrors(['student_id' => 'Santri ini bukan penghuni aktif asrama.']);
         }
 
-        // Cek kamar tujuan masih ada kapasitas
         $toRoom = DormitoryRoom::find($data['to_room_id']);
-        $currentOccupancy = DormitoryResident::where('room_id', $data['to_room_id'])
-            ->where('academic_year_id', $activeYear->id)
-            ->where('is_active', true)
-            ->count();
 
-        if ($currentOccupancy >= $toRoom->capacity) {
-            return back()->withInput()->withErrors(['to_room_id' => 'Kamar tujuan sudah penuh (kapasitas: ' . $toRoom->capacity . ').']);
-        }
+        // Cek kapasitas dan buat record dalam transaction
+        $roomMove = DB::transaction(function () use ($data, $asramaUuid, $activeYear, $toRoom) {
+            $currentOccupancy = DormitoryResident::where('room_id', $data['to_room_id'])
+                ->where('academic_year_id', $activeYear->id)
+                ->where('is_active', true)
+                ->count();
 
-        // Jadikan pending terlebih dahulu (auto-approve jika dari kepala asrama)
-        $data['dormitory_id'] = $asramaUuid;
-        $data['academic_year_id'] = $activeYear->id;
-        $data['approval_status'] = 'pending';
-        $data['move_type'] = $data['move_type'] ?? 'reguler';
+            if ($currentOccupancy >= $toRoom->capacity) {
+                throw new \InvalidArgumentException('Kamar tujuan sudah penuh (kapasitas: '.$toRoom->capacity.').');
+            }
 
-        $roomMove = DormitoryRoomMove::create($data);
+            $data['dormitory_id'] = $asramaUuid;
+            $data['academic_year_id'] = $activeYear->id;
+            $data['approval_status'] = 'pending';
+            $data['move_type'] = $data['move_type'] ?? 'reguler';
+
+            return DormitoryRoomMove::create($data);
+        });
 
         return redirect()->route('user.asrama.room-moves.show', [
-            'userId' => $userId, 'asramaUuid' => $asramaUuid, 'moveUuid' => $roomMove->id
+            'userId' => $userId, 'asramaUuid' => $asramaUuid, 'moveUuid' => $roomMove->id,
         ])->with('success', 'Permintaan mutasi kamar berhasil diajukan.');
     }
 
@@ -153,17 +148,18 @@ class DormitoryRoomMoveController extends Controller
         $move = DormitoryRoomMove::where('dormitory_id', $asramaUuid)->findOrFail($moveUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-        $move->update([
-            'approval_status' => 'approved',
-            'approved_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($move, $activeYear) {
+            $move->update([
+                'approval_status' => 'approved',
+                'approved_by' => auth()->id(),
+            ]);
 
-        // Update resident ke kamar baru
-        DormitoryResident::where('student_id', $move->student_id)
-            ->where('dormitory_id', $asramaUuid)
-            ->where('academic_year_id', $activeYear->id)
-            ->where('is_active', true)
-            ->update(['room_id' => $move->to_room_id]);
+            DormitoryResident::where('student_id', $move->student_id)
+                ->where('dormitory_id', $move->dormitory_id)
+                ->where('academic_year_id', $activeYear->id)
+                ->where('is_active', true)
+                ->update(['room_id' => $move->to_room_id]);
+        });
 
         return back()->with('success', 'Mutasi kamar disetujui dan kamar minimalis telah diperbarui.');
     }

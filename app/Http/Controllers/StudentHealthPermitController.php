@@ -8,8 +8,12 @@ use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\StudyGroup;
 use App\Models\User;
+use App\Events\Boarding\HealthDischarged;
+use App\Events\Boarding\HealthPermitApproved;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 class StudentHealthPermitController extends Controller
 {
@@ -200,6 +204,24 @@ class StudentHealthPermitController extends Controller
             'approved_at' => now(),
             'approval_note' => $validated['approval_note'] ?? null,
         ]);
+
+        // Fire the integration event so attendance sync, timeline, and
+        // broadcasting listeners all fire correctly.
+        $student = Student::find($permit->student_id);
+        if ($student) {
+            DB::afterCommit(function () use ($permit, $student, $validated) {
+                Event::dispatch(new HealthPermitApproved(
+                    permit: $permit,
+                    student: $student,
+                    note: $validated['approval_note'] ?? null,
+                ));
+            });
+
+            // TODO: Handle "discharge" from hospitalization — currently there
+            // is no UI action for it. When the student returns from health
+            // leave, a HealthDischarged event should be dispatched (via a
+            // controller method, webhook, or scheduled job).
+        }
 
         return redirect()
             ->route('user.uks.health-permits.show', ['userId' => $userId, 'uuid' => $uuid])

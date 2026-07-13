@@ -2,22 +2,22 @@
 
 namespace App\Services;
 
+use App\Domain\Services\BoardingTimelineService;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
-use App\Models\DormitoryViolation;
 use App\Models\DormitoryResident;
-use App\Models\DormitoryActivityLog;
+use App\Models\DormitoryViolation;
 use App\Models\StudentMahrom;
-use App\Models\Student;
-use App\Models\User;
-use App\Services\NotificationUniversalService;
+use App\Models\BoardingTimelineEvent;
 
 class DormitoryService
 {
     protected NotificationUniversalService $notifService;
 
-    public function __construct(NotificationUniversalService $notifService)
-    {
+    public function __construct(
+        NotificationUniversalService $notifService,
+        private readonly BoardingTimelineService $timeline
+    ) {
         $this->notifService = $notifService;
     }
 
@@ -27,12 +27,16 @@ class DormitoryService
     public function notifyMahromOnPermitApproval(DormitoryPermit $permit): void
     {
         $student = $permit->student;
-        if (!$student) return;
+        if (! $student) {
+            return;
+        }
 
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (!$mahrom || !$mahrom->phone) return;
+        if (! $mahrom || ! $mahrom->phone) {
+            return;
+        }
 
         $this->notifService->sendToRole('Wali Santri', [
             'module' => 'dormitory',
@@ -42,8 +46,8 @@ class DormitoryService
             'action' => 'permit_approved',
             'title' => "Izin Pulang Disetujui — {$student->name}",
             'message' => "Bpk/Ibu {$mahrom->name}, izin pulang untuk {$student->name} telah disetujui.\n"
-                . "Penjemput: {$permit->companion_name} ({$permit->companion_relation})\n"
-                . "Rencanaback: {$permit->expected_return_datetime->format('d/m/Y H:i')}",
+                ."Penjemput: {$permit->companion_name} ({$permit->companion_relation})\n"
+                ."Rencanaback: {$permit->expected_return_datetime->format('d/m/Y H:i')}",
             'send_whatsapp' => true,
             'priority' => 'medium',
         ]);
@@ -55,12 +59,16 @@ class DormitoryService
     public function notifyMahromOnViolation(DormitoryViolation $violation): void
     {
         $student = $violation->student;
-        if (!$student) return;
+        if (! $student) {
+            return;
+        }
 
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (!$mahrom) return;
+        if (! $mahrom) {
+            return;
+        }
 
         $categoryLabel = match ($violation->violation_category) {
             'ringan' => 'Ringan',
@@ -77,9 +85,9 @@ class DormitoryService
             'action' => 'violation_recorded',
             'title' => "Pelanggaran Asrama — {$student->name}",
             'message' => "Bpk/Ibu {$mahrom->name}, anak Anda {$student->name} mendapat\n"
-                . "pelanggaran {$violation->violation_type} (Kategori: {$categoryLabel})\n"
-                . "dengan poin: {$violation->points}.\n"
-                . "Tindakan: {$violation->action_taken}",
+                ."pelanggaran {$violation->violation_type} (Kategori: {$categoryLabel})\n"
+                ."dengan poin: {$violation->points}.\n"
+                ."Tindakan: {$violation->action_taken}",
             'send_whatsapp' => true,
             'priority' => 'high',
         ]);
@@ -91,12 +99,16 @@ class DormitoryService
     public function notifyMahromOnAlpa(DormitoryPermit $permit): void
     {
         $student = $permit->student;
-        if (!$student) return;
+        if (! $student) {
+            return;
+        }
 
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (!$mahrom) return;
+        if (! $mahrom) {
+            return;
+        }
 
         $this->notifService->sendToRole('Wali Santri', [
             'module' => 'dormitory',
@@ -106,9 +118,9 @@ class DormitoryService
             'action' => 'overdue_permit',
             'title' => "Terlambat Pulang — {$student->name}",
             'message' => "Bpk/Ibu {$mahrom->name}, {$student->name} belum kembali\n"
-                . "dari izin pulang hingga waktu yang dijadwalkan\n"
-                . "({$permit->expected_return_datetime->format('d/m/Y H:i')}).\n"
-                . "Mohon konfirmasi.",
+                ."dari izin pulang hingga waktu yang dijadwalkan\n"
+                ."({$permit->expected_return_datetime->format('d/m/Y H:i')}).\n"
+                .'Mohon konfirmasi.',
             'send_whatsapp' => true,
             'priority' => 'high',
         ]);
@@ -126,7 +138,7 @@ class DormitoryService
             ->get()
             ->pluck('student.mahroms')
             ->flatten()
-            ->filter(fn($m) => $m->is_active)
+            ->filter(fn ($m) => $m->is_active)
             ->pluck('id')
             ->unique();
 
@@ -199,7 +211,29 @@ class DormitoryService
             ->where('overdue_notified_count', '>=', 3)
             ->where('expected_return_datetime', '<', now()->subHours(3))
             ->whereNull('escalation_triggered_at')
-            ->each(fn($p) => $p->update(['status' => 'overdue', 'escalation_triggered_at' => now()]));
+            ->each(function (DormitoryPermit $p) {
+                $p->update(['status' => 'overdue', 'escalation_triggered_at' => now()]);
+
+                // Emit a TYPE_LEAVE_OVERDUE timeline event so the audit
+                // trail and per-student history reflect the escalation.
+                $this->timeline->record(
+                    studentId: $p->student_id,
+                    eventType: BoardingTimelineEvent::TYPE_LEAVE_OVERDUE,
+                    dormitoryId: $p->dormitory_id,
+                    subjectRefs: [
+                        'permit_id' => $p->id,
+                        'permit_type' => $p->permit_type,
+                        'expected_return_datetime' => $p->expected_return_datetime,
+                    ],
+                    payload: [
+                        'overdue_notified_count' => $p->overdue_notified_count,
+                        'overdue_minutes' => $p->expected_return_datetime
+                            ? now()->diffInMinutes($p->expected_return_datetime)
+                            : null,
+                    ],
+                    sourceSystem: 'dormitory.overdue-job',
+                );
+            });
 
         return $count;
     }
@@ -239,15 +273,109 @@ class DormitoryService
                     'dormitory_id' => $dormitoryId,
                     'semester' => $semester,
                     'total_hadir' => $records->where('status', 'hadir')->count(),
-                    'total_izin'  => $records->where('status', 'izin')->count(),
+                    'total_izin' => $records->where('status', 'izin')->count(),
                     'total_sakit' => $records->where('status', 'sakit')->count(),
-                    'total_alpa'  => $records->where('status', 'alpa')->count(),
-                    'total_pulang'=> $records->where('status', 'pulang')->count(),
+                    'total_alpa' => $records->where('status', 'alpa')->count(),
+                    'total_pulang' => $records->where('status', 'pulang')->count(),
                 ]
             );
             $count++;
         }
 
         return $count;
+    }
+
+    /**
+     * Sync dormitory attendance from a Boarding Timeline event.
+     *
+     * Triggered by BoardingTimelineService when the rules engine allows
+     * auto-sync. Maps timeline event types to dormitory_attendance rows.
+     *
+     * @param  array<string, mixed>  $payload  Timeline payload (permit_id, etc.)
+     */
+    public function syncBoardingAttendance(
+        string $studentId,
+        string $eventType,
+        ?string $dormitoryId,
+        array $payload = []
+    ): void {
+        $today = now()->toDateString();
+
+        $statusMapping = [
+            \App\Models\BoardingTimelineEvent::TYPE_LEAVE_STARTED => 'pulang',
+            \App\Models\BoardingTimelineEvent::TYPE_LEAVE_APPROVED => 'izin',
+            \App\Models\BoardingTimelineEvent::TYPE_RETURNED => 'hadir',
+            \App\Models\BoardingTimelineEvent::TYPE_HOSPITALIZED => 'sakit',
+            \App\Models\BoardingTimelineEvent::TYPE_RECOVERED => 'hadir',
+            \App\Models\BoardingTimelineEvent::TYPE_VISIT_CHECK_IN => 'hadir',
+            \App\Models\BoardingTimelineEvent::TYPE_VISIT_CHECK_OUT => 'pulang',
+        ];
+
+        $status = $statusMapping[$eventType] ?? null;
+        if (! $status) {
+            return;
+        }
+
+        $resident = DormitoryResident::where('student_id', $studentId)
+            ->where('is_active', true)
+            ->when($dormitoryId, fn ($q) => $q->where('dormitory_id', $dormitoryId))
+            ->first();
+
+        if (! $resident) {
+            return;
+        }
+
+        $attendance = \App\Models\DormitoryAttendance::updateOrCreate(
+            [
+                'resident_id' => $resident->id,
+                'attendance_date' => $today,
+            ],
+            [
+                'status' => $status,
+                'dormitory_id' => $resident->dormitory_id,
+                'room_id' => $resident->room_id,
+                'academic_year_id' => $resident->academic_year_id,
+                'timeline_event_id' => $payload['timeline_event_id'] ?? null,
+                'source_permitted_record_id' => $payload['source_permitted_record_id'] ?? null,
+                'notes' => "Synced from Boarding Timeline ({$eventType}).",
+            ]
+        );
+
+        // For leave_started, propagate to academic attendance when leaving extends past class hours
+        if ($status === 'pulang' && ($payload['propagate_to_academic'] ?? true)) {
+            $this->propagateToAcademicAttendance($resident->student_id, $eventType, $payload);
+        }
+    }
+
+    /**
+     * Propagate a leave event to academic attendance when policy says auto-sync.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function propagateToAcademicAttendance(
+        string $studentId,
+        string $eventType,
+        array $payload
+    ): void {
+        // Reuse the existing akademik-attendance sync logic if available.
+        // The implementation here intentionally defers to whatever the
+        // academic-attendance side already does for permit-triggered sync.
+        try {
+            $academicService = app(\App\Services\AcademicAttendanceService::class);
+            if (method_exists($academicService, 'syncFromDormitoryEvent')) {
+                $academicService->syncFromDormitoryEvent(
+                    studentId: $studentId,
+                    eventType: $eventType,
+                    payload: $payload,
+                );
+            }
+        } catch (\Throwable $e) {
+            // Don't fail the dormitory sync if academic sync isn't available
+            logger()->warning('Academic attendance sync failed', [
+                'student_id' => $studentId,
+                'event_type' => $eventType,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

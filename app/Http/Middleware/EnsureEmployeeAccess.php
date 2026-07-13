@@ -11,10 +11,6 @@ class EnsureEmployeeAccess
 {
     /**
      * Redirect rules based on user role/authentication state.
-     *
-     * @param  Request  $request
-     * @param  Closure  $next
-     * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -28,7 +24,7 @@ class EnsureEmployeeAccess
         // ============================================================
         // RULE 1: Unauthenticated users → let auth middleware handle
         // ============================================================
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 
@@ -51,6 +47,7 @@ class EnsureEmployeeAccess
             if ($request->wantsJson()) {
                 return response()->json(['message' => 'Akses ditolak. Website ini hanya untuk pegawai.'], 403);
             }
+
             return response()->view('errors.wali-santri-blocked', [], 403);
         }
 
@@ -58,8 +55,8 @@ class EnsureEmployeeAccess
         // RULE 4: Unknown role → redirect to validator page
         // Detection: user has NO active Spatie role
         // ============================================================
-        if (!$this->hasValidEmployeeRole($user)) {
-            if (!$request->is('access-denied') && !$request->is('auth/validator')) {
+        if (! $this->hasValidEmployeeRole($user)) {
+            if (! $request->is('access-denied') && ! $request->is('auth/validator')) {
                 return redirect()->route('auth.validator')->with('warning', 'Akun Anda tidak memiliki role yang dikenali di sistem ini.');
             }
         }
@@ -75,12 +72,13 @@ class EnsureEmployeeAccess
     {
         // Applicant = has RecruitmentProfile but NO Spatie role at all
         // OR has a role that matches "applicant" keyword
-        if (!$user->relationLoaded('recruitmentProfile') && !$user->recruitmentProfile) {
+        if (! $user->relationLoaded('recruitmentProfile') && ! $user->recruitmentProfile) {
             // Eager load check skipped, do direct query if needed
             try {
                 if ($user->recruitmentProfile) {
                     // Has recruitment profile
                     $roles = $user->getRoleNames();
+
                     // If no roles, they're an applicant
                     return $roles->isEmpty();
                 }
@@ -100,7 +98,8 @@ class EnsureEmployeeAccess
 
         // Fallback: check if role name contains "applicant"
         $roleNames = $user->getRoleNames();
-        return $roleNames->contains(fn($name) => stripos($name, 'applicant') !== false);
+
+        return $roleNames->contains(fn ($name) => stripos($name, 'applicant') !== false);
     }
 
     private function isWaliSantri($user): bool
@@ -122,7 +121,7 @@ class EnsureEmployeeAccess
         }
 
         // Method 3: Has "Wali Santri" Spatie role
-        return $user->hasRole('Wali Santri');
+        return canPermission('wali-santri');
     }
 
     private function hasValidEmployeeRole($user): bool
@@ -135,7 +134,7 @@ class EnsureEmployeeAccess
         }
 
         // Exclude "Wali Santri" from valid employee roles
-        return !$roles->contains(fn($name) => $name === 'Wali Santri');
+        return ! $roles->contains(fn ($name) => $name === 'Wali Santri');
     }
 
     private function isPublicRoute(Request $request): bool
@@ -186,7 +185,7 @@ class EnsureEmployeeAccess
         // Server-side redirect (more secure than client-side)
         // Use 302 for temporary redirect, 301 for permanent
         if (config('app.env') === 'production') {
-            return response('<script>window.location.href="' . e($url) . '?msg=' . urlencode($message) . '";</script><meta http-equiv="refresh" content="0;url=' . e($url) . '">', 200)
+            return response('<script>window.location.href="'.e($url).'?msg='.urlencode($message).'";</script><meta http-equiv="refresh" content="0;url='.e($url).'">', 200)
                 ->header('X-Robots-Tag', 'noindex, nofollow');
         }
 

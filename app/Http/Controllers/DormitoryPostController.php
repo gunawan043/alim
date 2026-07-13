@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Dormitory\StorePostRequest;
+use App\Models\AcademicYear;
 use App\Models\Dormitory;
-use App\Models\DormitoryPost;
-use App\Models\DormitoryPostResponse;
-use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryActivityLog;
 use App\Models\DormitoryActivityTemplate;
-use App\Models\DormitoryResident;
-use App\Models\AcademicYear;
+use App\Models\DormitoryEmergencyBroadcast;
+use App\Models\DormitoryPost;
 use App\Services\DormitoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DormitoryPostController extends Controller
 {
@@ -21,6 +21,7 @@ class DormitoryPostController extends Controller
     {
         $this->service = $service;
     }
+
     public function index(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
@@ -35,7 +36,7 @@ class DormitoryPostController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('title', 'like', "%{$q}%")
                 ->orWhere('content', 'like', "%{$q}%")
             );
@@ -53,23 +54,14 @@ class DormitoryPostController extends Controller
         return view('dormitory.posts.create', compact('dormitory', 'userId'));
     }
 
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StorePostRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $data = $request->validate([
-            'title'         => 'required|string|max:255',
-            'content'       => 'required|string',
-            'category'      => 'required|in:pengumuman,undangan,laporan,darurat',
-            'visibility'    => 'required|in:wali,pengurus,umum',
-            'needs_response' => 'boolean',
-            'is_pinned'     => 'boolean',
-            'attachment'    => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:2048',
-        ]);
+        $data = $request->validated();
 
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('dormitory/posts', 'public');
-            $data['attachment_path'] = $path;
+            $data['attachment_path'] = $request->file('attachment')->store('dormitory/posts', 'public');
         }
 
         $data['dormitory_id'] = $asramaUuid;
@@ -77,7 +69,9 @@ class DormitoryPostController extends Controller
         $data['needs_response'] = $request->boolean('needs_response');
         $data['is_pinned'] = $request->boolean('is_pinned');
 
-        DormitoryPost::create($data);
+        DB::transaction(function () use ($data) {
+            DormitoryPost::create($data);
+        });
 
         return redirect()->route('user.asrama.posts.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Informasi berhasil diposting.');
@@ -106,18 +100,17 @@ class DormitoryPostController extends Controller
         $post = DormitoryPost::where('dormitory_id', $asramaUuid)->findOrFail($postUuid);
 
         $data = $request->validate([
-            'title'         => 'required|string|max:255',
-            'content'       => 'required|string',
-            'category'      => 'required|in:pengumuman,undangan,laporan,darurat',
-            'visibility'    => 'required|in:wali,pengurus,umum',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'category' => 'required|in:pengumuman,undangan,laporan,darurat',
+            'visibility' => 'required|in:wali,pengurus,umum',
             'needs_response' => 'boolean',
-            'is_pinned'     => 'boolean',
-            'attachment'    => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:2048',
+            'is_pinned' => 'boolean',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:2048',
         ]);
 
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('dormitory/posts', 'public');
-            $data['attachment_path'] = $path;
+            $data['attachment_path'] = $request->file('attachment')->store('dormitory/posts', 'public');
         }
 
         $data['needs_response'] = $request->boolean('needs_response');
@@ -150,9 +143,9 @@ class DormitoryPostController extends Controller
     public function templateStore(Request $request, string $userId, string $asramaUuid)
     {
         $data = $request->validate([
-            'session'        => 'required|in:subuh,pagi,siang,sore,isya,malam',
+            'session' => 'required|in:subuh,pagi,siang,sore,isya,malam',
             'activity_items' => 'required|array|min:1',
-            'notes'          => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $data['dormitory_id'] = $asramaUuid;
@@ -172,7 +165,7 @@ class DormitoryPostController extends Controller
             ->first();
 
         if ($template) {
-            $template->update(['is_active' => !$template->is_active]);
+            $template->update(['is_active' => ! $template->is_active]);
         }
 
         return back();
@@ -216,12 +209,12 @@ class DormitoryPostController extends Controller
     public function broadcastStore(Request $request, string $userId, string $asramaUuid)
     {
         $data = $request->validate([
-            'title'        => 'required|string|max:255',
-            'content'      => 'required|string',
-            'severity'     => 'required|in:info,warning,urgent,emergency',
-            'broadcast_via'=> 'required|in:whatsapp,inapp,all',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'severity' => 'required|in:info,warning,urgent,emergency',
+            'broadcast_via' => 'required|in:whatsapp,inapp,all',
             'ack_required' => 'boolean',
-            'expires_at'   => 'nullable|date',
+            'expires_at' => 'nullable|date',
         ]);
 
         $data['dormitory_id'] = $asramaUuid;

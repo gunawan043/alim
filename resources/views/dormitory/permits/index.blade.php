@@ -11,13 +11,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -87,7 +87,7 @@
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Ajukan Izin
                             </a>
                         </div>
@@ -253,7 +253,7 @@
                                             Belum ada data perizinan.
                                             <br>
                                             <a href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-sm btn-success mt-2">
+                                               class="btn btn-sm btn-primary mt-2">
                                                 <i class="ri-add-line me-1"></i> Ajukan Izin Baru
                                             </a>
                                         </td>
@@ -263,8 +263,9 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        {{ $permits->withQueryString()->links() }}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">Menampilkan {{ $permits->firstItem() ?? 0 }} - {{ $permits->lastItem() ?? 0 }} dari {{ $permits->total() }} data</div>
+                        <div>{{ $permits->withQueryString()->links() }}</div>
                     </div>
                 </div>
             </div>

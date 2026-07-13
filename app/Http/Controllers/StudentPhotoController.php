@@ -77,7 +77,7 @@ class StudentPhotoController extends Controller
             abort(401, 'Unauthorized');
         }
 
-        if ($user->hasRole('super_admin')) {
+        if (canPermission('super-admin-only')) {
             return $student;
         }
 

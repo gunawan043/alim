@@ -12,19 +12,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -120,7 +120,7 @@
                                     <i class="ri-calendar-check-line align-bottom me-1"></i> Absensi
                                 </a>
                                 <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                   class="btn btn-success">
+                                   class="btn btn-primary">
                                     <i class="ri-add-line align-bottom me-1"></i> Check-in Santri
                                 </a>
                             </div>
@@ -259,7 +259,7 @@
                                                           class="d-inline">
                                                         @csrf
                                                         <button type="button"
-                                                                class="btn btn-sm btn-outline-warning checkout-btn"
+                                                                class="btn btn-sm btn-outline-primary checkout-btn"
                                                                 title="Check-out">
                                                             <i class="ri-logout-box-r-line"></i>
                                                         </button>
@@ -275,9 +275,9 @@
                                                 <i class="ri-user-search-line fs-1 d-block text-muted"></i>
                                             </div>
                                             <h6 class="text-muted mb-1">Belum Ada Penghuni</h6>
-                                            <p class="text-muted mb-3">Tidak ada data penghuni yang sesuai filter Anda.</p>
+                                            <p class="text-muted mb-3">Belum ada data penghuni yang sesuai filter Anda.</p>
                                             <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-success btn-sm">
+                                               class="btn btn-primary btn-sm">
                                                 <i class="ri-add-line me-1"></i> Check-in Santri Baru
                                             </a>
                                         </td>
@@ -289,8 +289,9 @@
 
                     {{-- Pagination --}}
                     @if($residents->hasPages())
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $residents->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $residents->firstItem() ?? 0 }} - {{ $residents->lastItem() ?? 0 }} dari {{ $residents->total() }} data</div>
+                            <div>{{ $residents->withQueryString()->links() }}</div>
                         </div>
                     @endif
                 </div>

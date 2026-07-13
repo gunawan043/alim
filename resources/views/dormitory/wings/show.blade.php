@@ -11,7 +11,7 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -74,7 +74,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Kamar di Gedung Ini</h5>
-                    <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?wing_id={{ $wing->id }}" class="btn btn-success btn-sm">
+                    <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?wing_id={{ $wing->id }}" class="btn btn-primary btn-sm">
                         <i class="ri-add-line me-1"></i> Tambah Kamar
                     </a>
                 </div>

@@ -26,19 +26,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -247,7 +247,7 @@
 
                 {{-- Submit --}}
                 <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-success flex-grow-1">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
                         <i class="ri-send-plane-line me-1"></i> Ajukan Izin
                     </button>
                     <a href="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
@@ -410,6 +410,18 @@
                 if (student) selectStudent(student);
             })
             .catch(function() {});
+    }
+
+    // ── Default departure to "now" (rounded up to next 15 min) ──
+    const departureInput = document.getElementById('departure_datetime');
+    if (departureInput && !departureInput.value) {
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const remainder = minutes % 15;
+        const rounded = new Date(now.getTime() + (15 - remainder) * 60000);
+        const pad = (n) => String(n).padStart(2, '0');
+        departureInput.value = rounded.getFullYear() + '-' + pad(rounded.getMonth() + 1) + '-' + pad(rounded.getDate())
+            + 'T' + pad(rounded.getHours()) + ':' + pad(rounded.getMinutes());
     }
 
 })();

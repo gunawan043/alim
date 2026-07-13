@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Dormitory\StoreInventoryRequest;
 use App\Models\Dormitory;
-use App\Models\DormitoryRoom;
 use App\Models\DormitoryInventory;
+use App\Models\DormitoryRoom;
 use Illuminate\Http\Request;
 
 class DormitoryInventoryController extends Controller
@@ -26,7 +27,7 @@ class DormitoryInventoryController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('item_name', 'like', "%{$q}%")
                 ->orWhere('item_code', 'like', "%{$q}%")
             );
@@ -36,18 +37,18 @@ class DormitoryInventoryController extends Controller
         $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
         $stats = [
-            'total'      => DormitoryInventory::where('dormitory_id', $asramaUuid)->count(),
-            'baik'       => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'baik')->count(),
-            'rusak'      => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'rusak')->count(),
-            'perbaikan'  => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'perbaikan')->count(),
+            'total' => DormitoryInventory::where('dormitory_id', $asramaUuid)->count(),
+            'baik' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'baik')->count(),
+            'rusak' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'rusak')->count(),
+            'perbaikan' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'perbaikan')->count(),
         ];
 
         return view('dormitory.inventories.index', [
-            'dormitory'  => $dormitory,
-            'inventories'=> $inventories,
-            'rooms'      => $rooms,
-            'userId'     => $userId,
-            'stats'      => $stats,
+            'dormitory' => $dormitory,
+            'inventories' => $inventories,
+            'rooms' => $rooms,
+            'userId' => $userId,
+            'stats' => $stats,
         ]);
     }
 
@@ -58,28 +59,20 @@ class DormitoryInventoryController extends Controller
 
         $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)
             ->where('is_active', true)
-            ->withCount(['residents' => fn($q) => $activeYear
+            ->withCount(['residents' => fn ($q) => $activeYear
                 ? $q->where('academic_year_id', $activeYear->id)->where('is_active', true)
-                : fn($q) => $q->whereRaw('1=0')
+                : fn ($q) => $q->whereRaw('1=0'),
             ])
             ->orderBy('code')->get();
 
         return view('dormitory.inventories.create', compact('dormitory', 'rooms', 'userId'));
     }
 
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreInventoryRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $data = $request->validate([
-            'room_id'         => 'required|exists:dormitory_rooms,id',
-            'item_name'       => 'required|string|max:191',
-            'item_code'       => 'nullable|string|max:100',
-            'quantity'        => 'required|integer|min:1',
-            'condition'      => 'required|in:baik,rusak,perbaikan,hibahan',
-            'last_checked_at' => 'nullable|date',
-            'notes'          => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $data['dormitory_id'] = $asramaUuid;
         $data['checked_by'] = auth()->id();
@@ -100,19 +93,11 @@ class DormitoryInventoryController extends Controller
         return view('dormitory.inventories.edit', compact('dormitory', 'item', 'rooms', 'userId'));
     }
 
-    public function update(Request $request, string $userId, string $asramaUuid, string $itemUuid)
+    public function update(StoreInventoryRequest $request, string $userId, string $asramaUuid, string $itemUuid)
     {
         $item = DormitoryInventory::where('dormitory_id', $asramaUuid)->findOrFail($itemUuid);
 
-        $data = $request->validate([
-            'room_id'         => 'required|exists:dormitory_rooms,id',
-            'item_name'       => 'required|string|max:191',
-            'item_code'       => 'nullable|string|max:100',
-            'quantity'        => 'required|integer|min:0',
-            'condition'      => 'required|in:baik,rusak,perbaikan,hibahan',
-            'last_checked_at' => 'nullable|date',
-            'notes'          => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $data['checked_by'] = auth()->id();
         $item->update($data);

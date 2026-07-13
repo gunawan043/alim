@@ -12,20 +12,20 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="ri-check-line me-2" aria-hidden="true"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="ri-error-warning-line me-2" aria-hidden="true"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="ri-error-warning-line me-2" aria-hidden="true"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -63,20 +63,24 @@
                             <input type="hidden" name="student_id" id="selectedStudentId" value="{{ old('student_id') }}">
 
                             <div class="position-relative">
+                                <label for="studentSearch" class="visually-hidden">Cari Santri</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border">
-                                        <i class="ri-search-line text-muted"></i>
+                                        <i class="ri-search-line text-muted" aria-hidden="true"></i>
                                     </span>
                                     <input type="text"
                                            id="studentSearch"
+                                           name="student_search"
                                            class="form-control"
                                            placeholder="Ketik nama atau NISN untuk mencari..."
                                            value="{{ old('student_search') }}"
-                                           autocomplete="off">
-                                    <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" style="display:none;">
+                                           autocomplete="off"
+                                           aria-describedby="studentSearchHelp">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" style="display:none;" aria-label="Hapus pencarian siswa">
                                         <i class="ri-close-line"></i>
                                     </button>
                                 </div>
+                                <small id="studentSearchHelp" class="form-text text-muted">Ketik minimal 2 karakter untuk memulai pencarian.</small>
 
                                 {{-- Dropdown results --}}
                                 <div id="searchResults" class="list-group position-absolute w-100 mt-1 shadow-lg rounded-3 overflow-auto" style="max-height: 260px; z-index: 1050; display: none;"></div>
@@ -240,7 +244,7 @@
                             <button type="reset" class="btn btn-outline-secondary">
                                 <i class="ri-reset-right-line align-middle me-1"></i> Reset
                             </button>
-                            <button type="submit" class="btn btn-success" id="submitBtn">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
                                 <i class="ri-user-add-line align-middle me-1"></i> Check-in Santri
                             </button>
                         </div>

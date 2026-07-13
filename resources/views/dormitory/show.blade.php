@@ -16,7 +16,7 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -227,7 +227,7 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="ri-team-line me-1"></i> Penghuni Aktif ({{ $dormitory->residents()->where('is_active', true)->count() }} orang)</h5>
-                        <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-success">
+                        <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-primary">
                             <i class="ri-add-line"></i> Check-in
                         </a>
                     </div>
@@ -330,7 +330,7 @@
         {{-- TAB: PERIZINAN --}}
         <div class="tab-pane" id="izin">
             <div class="d-flex justify-content-end mb-3">
-                <a href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-success">
+                <a href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-primary">
                     <i class="ri-add-line"></i> Ajukan Izin
                 </a>
             </div>
@@ -456,7 +456,7 @@
                 <a href="{{ route('user.asrama.broadcasts.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-dark">
                     <i class="ri-broadcast-line"></i> Broadcast Darurat
                 </a>
-                <a href="{{ route('user.asrama.posts.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-success">
+                <a href="{{ route('user.asrama.posts.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-primary">
                     <i class="ri-add-line"></i> Posting Informasi
                 </a>
             </div>

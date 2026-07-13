@@ -11,13 +11,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -87,7 +87,7 @@
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Catat Kegiatan
                             </a>
                         </div>
@@ -231,7 +231,7 @@
                                             Belum ada data log kegiatan pada sesi ini.
                                             <br>
                                             <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-sm btn-success mt-2">
+                                               class="btn btn-sm btn-primary mt-2">
                                                 <i class="ri-add-line me-1"></i> Catat Kegiatan Baru
                                             </a>
                                         </td>
@@ -241,8 +241,9 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        {{ $logs->withQueryString()->links() }}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">Menampilkan {{ $logs->firstItem() ?? 0 }} - {{ $logs->lastItem() ?? 0 }} dari {{ $logs->total() }} data</div>
+                        <div>{{ $logs->withQueryString()->links() }}</div>
                     </div>
                 </div>
             </div>

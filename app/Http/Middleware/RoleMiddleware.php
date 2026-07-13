@@ -12,17 +12,26 @@ class RoleMiddleware
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(403, 'Unauthorized.');
         }
 
         // Super Admin can access everything
-        if ($user->hasRole('Super Admin')) {
+        if (canPermission('super-admin-only')) {
             return $next($request);
         }
 
         // Check if user has any of the required roles
         foreach ($roles as $role) {
+            // 1. Snapshot path — the role-name was promoted to a permission string
+            if (canPermission($role)) {
+                return $next($request);
+            }
+
+            // 2. Identity fallback — the role-name is a Spatie role (not yet a
+            //    registered permission). Still safe because the snapshot still
+            //    gates every controller/method, and this middleware only
+            //    allows coarse identity-role access.
             if ($user->hasRole($role)) {
                 return $next($request);
             }

@@ -17,7 +17,7 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -95,8 +95,8 @@
                             <p class="text-muted mb-0">Pengelolaan asrama pondok pesantren.</p>
                         </div>
                         <div class="col-sm-auto">
-                            @if(auth()->user()->hasRole(['Super Admin', 'Administrator']))
-                            <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            @if(auth()->user()->role()->hasPermission('dormitory-master-create'))
+                            <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Asrama
                             </a>
                             @endif
@@ -187,13 +187,14 @@
                                             <a href="{{ route('user.dormitory-master.show', ['userId' => $userId, 'asramaUuid' => $d->id]) }}" class="btn btn-sm btn-soft-primary flex-grow-1">
                                                 <i class="ri-eye-line me-1"></i> Detail
                                             </a>
-                                            @if(auth()->user()->hasRole(['Super Admin', 'Administrator']))
-                                            <a href="{{ route('user.dormitory-master.edit', ['userId' => $userId, 'asramaUuid' => $d->id]) }}" class="btn btn-sm btn-soft-secondary">
+                                            @if(auth()->user()->role()->hasPermission('dormitory-master-update'))
+                                            <a href="{{ route('user.dormitory-master.edit', ['userId' => $userId, 'asramaUuid' => $d->id]) }}" class="btn btn-sm btn-soft-secondary" aria-label="Edit" title="Edit">
                                                 <i class="ri-pencil-line"></i>
                                             </a>
                                             <button class="btn btn-sm btn-soft-danger delete-asrama"
                                                 data-id="{{ $d->id }}"
-                                                data-name="{{ $d->name }}">
+                                                data-name="{{ $d->name }}"
+                                                aria-label="Hapus" title="Hapus">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
                                             @endif
@@ -209,8 +210,8 @@
                                     </div>
                                     <h5 class="text-muted">Belum ada data asrama</h5>
                                     <p class="text-muted">Tambah asrama pertama Anda.</p>
-                                    @if(auth()->user()->hasRole(['Super Admin', 'Administrator']))
-                                    <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-success">
+                                    @if(auth()->user()->role()->hasPermission('dormitory-master-create'))
+                                    <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                         <i class="ri-add-line me-1"></i>Tambah Asrama
                                     </a>
                                     @endif

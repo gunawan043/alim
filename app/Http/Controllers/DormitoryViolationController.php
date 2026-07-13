@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Dormitory;
-use App\Models\DormitoryViolation;
-use App\Models\DormitoryResident;
+use App\Http\Requests\Dormitory\StoreViolationRequest;
 use App\Models\AcademicYear;
+use App\Models\Dormitory;
+use App\Models\DormitoryResident;
+use App\Models\DormitoryViolation;
 use App\Services\DormitoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DormitoryViolationController extends Controller
 {
@@ -29,9 +31,9 @@ class DormitoryViolationController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('violation_type', 'like', "%{$q}%")
-                ->orWhereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
@@ -50,10 +52,10 @@ class DormitoryViolationController extends Controller
         $violations = $query->orderByDesc('violation_date')->paginate(20)->withQueryString();
 
         $stats = [
-            'total'  => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->count(),
+            'total' => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->count(),
             'ringan' => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('violation_category', 'ringan')->count(),
             'sedang' => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('violation_category', 'sedang')->count(),
-            'berat'  => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('violation_category', 'berat')->count(),
+            'berat' => DormitoryViolation::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('violation_category', 'berat')->count(),
         ];
 
         return view('dormitory.violations.index', compact(
@@ -76,32 +78,22 @@ class DormitoryViolationController extends Controller
         return view('dormitory.violations.create', compact('dormitory', 'residents', 'userId', 'activeYear'));
     }
 
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreViolationRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-        $data = $request->validate([
-            'student_id'          => 'required|exists:students,id',
-            'room_id'             => 'required|exists:dormitory_rooms,id',
-            'violation_date'      => 'required|date',
-            'violation_category'  => 'required|in:ringan,sedang,berat',
-            'violation_type'      => 'required|string|max:100',
-            'description'          => 'nullable|string',
-            'points'              => 'nullable|integer|min:0',
-            'action_taken'        => 'nullable|string',
-            'follow_up'           => 'nullable|string',
-            'witness_id'          => 'nullable|exists:users,id',
-            'notes'               => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $data['dormitory_id'] = $asramaUuid;
         $data['academic_year_id'] = $activeYear->id;
         $data['recorded_by'] = auth()->id();
 
-        $violation = DormitoryViolation::create($data);
+        $violation = DB::transaction(function () use ($data) {
+            return DormitoryViolation::create($data);
+        });
 
-        // Kirim notifikasi ke wali
+        // Kirim notifikasi ke wali (outside transaction — side effect)
         $this->service->notifyMahromOnViolation($violation);
 
         return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])

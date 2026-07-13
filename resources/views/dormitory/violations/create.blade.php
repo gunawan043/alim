@@ -26,19 +26,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -64,7 +64,7 @@
                             </label>
                             <div class="student-search-wrapper" id="studentSearchWrapper">
                                 <input type="text" id="student_search" class="form-control"
-                                       placeholder="Ketik nama lengkap sanksi untuk mencari..."
+                                       placeholder="Ketik nama lengkap untuk mencari..."
                                        autocomplete="off" value="{{ old('student_search') }}">
                                 <div id="studentSearchResults" class="student-search-results d-none"></div>
                             </div>
@@ -118,7 +118,7 @@
                             </label>
                             <input type="text" name="violation_type" id="violation_type"
                                    class="form-control @error('violation_type') is-invalid @enderror"
-                                   placeholder="Contoh: Terlambat架, Tidak mengikuti apel pagi, Membawa barang terlarang"
+                                   placeholder="Contoh: Terlambat, Tidak mengikuti apel pagi, Membawa barang terlarang"
                                    value="{{ old('violation_type') }}" required>
                             @error('violation_type')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -158,7 +158,7 @@
                             <label class="form-label fw-semibold">Tindakan yang Diberikan</label>
                             <textarea name="action_taken" id="action_taken"
                                       class="form-control @error('action_taken') is-invalid @enderror"
-                                      rows="2" placeholder="Contoh: Teguran lisan, Pencatatan di buku违反, Surat peringatan">{{ old('action_taken') }}</textarea>
+                                      rows="2" placeholder="Contoh: Teguran lisan, Pencatatan di buku pelanggaran, Surat peringatan">{{ old('action_taken') }}</textarea>
                             @error('action_taken')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -319,22 +319,45 @@
             return;
         }
         searchTimeout = setTimeout(function() {
+            // Show loading state
+            resultsBox.innerHTML = '<div class="list-group-item text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div> <span class="ms-2 text-muted small">Mencari santri...</span></div>';
+            resultsBox.classList.remove('d-none');
+            searchInput.setAttribute('aria-busy', 'true');
+
             const url = '/api/dormitory/' + dormitoryId + '/residents/find-student?q=' + encodeURIComponent(q);
             fetch(url)
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
+                    searchInput.removeAttribute('aria-busy');
                     renderStudentResults(data.data || data);
                 })
                 .catch(function() {
+                    searchInput.removeAttribute('aria-busy');
                     resultsBox.innerHTML = '<div class="list-group-item text-muted py-2">Gagal mencari.</div>';
                     resultsBox.classList.remove('d-none');
                 });
         }, 350);
     });
 
+    // Close on outside click
     document.addEventListener('click', function(e) {
         if (!document.getElementById('studentSearchWrapper').contains(e.target)) {
             resultsBox.classList.add('d-none');
+        }
+    });
+
+    // Keyboard navigation for student search dropdown
+    searchInput.addEventListener('keydown', function(e) {
+        const firstLi = resultsBox.querySelector('.list-group-item:not(.text-center)');
+        if (!firstLi) return;
+
+        if (e.key === 'Enter' && !resultsBox.classList.contains('d-none')) {
+            e.preventDefault();
+            firstLi.click();
+        }
+        if (e.key === 'Escape') {
+            resultsBox.classList.add('d-none');
+            searchInput.blur();
         }
     });
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -9,7 +10,7 @@ class RoleEnforced
     {
         $secure = $request->get('secure_access');
 
-        if (!auth()->user()->hasRole($secure->role_name)) {
+        if (! canPermission($secure->role_name)) {
             abort(403);
         }
 

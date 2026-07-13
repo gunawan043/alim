@@ -12,13 +12,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -61,7 +61,7 @@
                         <div class="col-md-6">
                             <div class="bg-light rounded p-3 h-100">
                                 <div class="text-muted small mb-1">Poin</div>
-                                <span class="badge bg-danger">{{ $violation->points }} poin</span>
+                                <span class="badge bg-danger-subtle text-danger">{{ $violation->points }} poin</span>
                             </div>
                         </div>
                         {{-- Violation Type --}}
@@ -176,7 +176,7 @@
                             @endif
                         </div>
                     @else
-                        <div class="text-muted">Data sanksi tidak tersedia.</div>
+                        <div class="text-muted">Data pelanggaran tidak tersedia.</div>
                     @endif
                 </div>
             </div>

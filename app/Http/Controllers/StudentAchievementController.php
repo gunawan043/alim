@@ -115,7 +115,8 @@ class StudentAchievementController extends Controller
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        $coaches = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Kepala Sekolah', 'Wakil Kepala Sekolah'])
+        $coachIds = usersHavingPermission('student_teacher.readable');
+        $coaches = User::whereIn('id', $coachIds)
             ->orderBy('name')->get(['id', 'name']);
 
         $typeLabel = match ($achievementType) {
@@ -226,7 +227,8 @@ class StudentAchievementController extends Controller
             ->findOrFail($id);
 
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
-        $coaches = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Kepala Sekolah', 'Wakil Kepala Sekolah'])
+        $coachIds = usersHavingPermission('student_teacher.readable');
+        $coaches = User::whereIn('id', $coachIds)
             ->orderBy('name')->get(['id', 'name']);
 
         return view('student-achievement.edit', compact(

@@ -16,12 +16,12 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -99,7 +99,7 @@
                             <p class="text-muted mb-0">Pengelolaan kamar asrama.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-success">
+                            <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Kamar
                             </a>
                         </div>
@@ -151,7 +151,7 @@
                                 @php $activeCount = $r->residents->filter(fn($res) => $res->is_active)->count(); @endphp
                                 <tr>
                                     <td class="text-center">{{ $loop->iteration + ($rooms->currentPage() - 1) * $rooms->perPage() }}</td>
-                                    <td><span class="badge bg-dark">{{ $r->code }}</span></td>
+                                    <td><span class="badge bg-dark rounded-pill">{{ $r->code }}</span></td>
                                     <td>
                                         <a href="{{ route('user.asrama.rooms.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomUuid' => $r->id]) }}" class="text-decoration-none fw-semibold">
                                             {{ $r->name ?? $r->code }}
@@ -161,25 +161,25 @@
                                     <td class="text-center">{{ $r->floor ?? '—' }}</td>
                                     <td class="text-center">
                                         @if($r->room_type)
-                                            <span class="badge bg-{{ $r->room_type === 'musyrif' ? 'warning' : 'info' }}-subtle">
+                                            <span class="badge bg-{{ $r->room_type === 'musyrif' ? 'warning' : 'info' }}-subtle rounded-pill">
                                                 {{ ucfirst($r->room_type) }}
                                             </span>
                                         @else — @endif
                                     </td>
                                     <td class="text-center">{{ number_format($r->capacity) }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-{{ $activeCount >= $r->capacity ? 'danger' : 'success' }}">
+                                        <span class="badge bg-{{ $activeCount >= $r->capacity ? 'danger' : 'success' }} rounded-pill">
                                             {{ $activeCount }}/{{ $r->capacity }}
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-{{ $r->is_active ? 'success' : 'secondary' }}">
+                                        <span class="badge bg-{{ $r->is_active ? 'success' : 'secondary' }} rounded-pill">
                                             {{ $r->is_active ? 'Aktif' : 'Nonaktif' }}
                                         </span>
                                     </td>
                                     <td class="text-center">
                                         <div class="dropdown">
-                                            <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown">
+                                            <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-label="Opsi lainnya" title="Opsi lainnya">
                                                 <i class="ri-more-line"></i>
                                             </button>
                                             <ul class="dropdown-menu">
@@ -213,8 +213,9 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="mt-3">
-                        {{ $rooms->withQueryString()->links() }}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">Menampilkan {{ $rooms->firstItem() ?? 0 }} - {{ $rooms->lastItem() ?? 0 }} dari {{ $rooms->total() }} data</div>
+                        <div>{{ $rooms->withQueryString()->links() }}</div>
                     </div>
                 </div>
             </div>

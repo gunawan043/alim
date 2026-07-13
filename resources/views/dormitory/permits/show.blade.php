@@ -12,13 +12,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -267,7 +267,7 @@
                             <label class="form-label small fw-semibold">Catatan Persetujuan (opsional)</label>
                             <textarea name="note" class="form-control" rows="2" placeholder="Catatan jika ada..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 mb-2"
+                        <button type="submit" class="btn btn-primary w-100 mb-2"
                                 onclick="return confirm('Setujui izin ini?')">
                             <i class="ri-check-line me-1"></i> Setujui Izin
                         </button>

@@ -85,7 +85,7 @@
                         </div>
                     </div>
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> Simpan</button>
+                        <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i> Simpan</button>
                         <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Dormitory\StoreWingRequest;
 use App\Models\Dormitory;
 use App\Models\DormitoryWing;
 use App\Models\User;
@@ -17,7 +18,7 @@ class DormitoryWingController extends Controller
             ->where('dormitory_id', $asramaUuid);
 
         if ($request->filled('search')) {
-            $query->where(fn($q) => $q
+            $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$request->search}%")
                 ->orWhere('code', 'like', "%{$request->search}%")
             );
@@ -36,36 +37,28 @@ class DormitoryWingController extends Controller
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
         $supervisors = User::whereHas('employment')
-            ->whereHas('employment', fn($q) => $q->where('school_id', $dormitory->school_id))
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $dormitory->school_id))
             ->orderBy('name')->get();
 
         return view('dormitory.wings.create', compact('dormitory', 'supervisors', 'userId'));
     }
 
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreWingRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $data = $request->validate([
-            'code'          => 'required|string|max:20',
-            'name'          => 'required|string|max:100',
-            'floor'         => 'nullable|integer|min:0',
-            'capacity'      => 'nullable|integer|min:0',
-            'supervisor_id' => 'nullable|exists:users,id',
-            'is_active'     => 'boolean',
-            'notes'         => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $data['dormitory_id'] = $asramaUuid;
         $data['is_active'] = $request->boolean('is_active', true);
         $data['gender'] = $dormitory->gender;
 
-        DormitoryWing::create($data);
+        $wing = DormitoryWing::create($data);
 
         return redirect()->route('user.asrama.wings.show', [
             'userId' => $userId,
             'asramaUuid' => $asramaUuid,
-            'wingUuid' => DormitoryWing::latest()->first()->id,
+            'wingUuid' => $wing->id,
         ])->with('success', 'Gedung berhasil disimpan.');
     }
 
@@ -78,9 +71,9 @@ class DormitoryWingController extends Controller
         $dormitory = $wing->dormitory;
 
         $stats = [
-            'total_rooms'    => $wing->rooms()->count(),
-            'total_residents'=> $wing->rooms->flatMap->residents->filter(fn($r) => $r->is_active)->count(),
-            'capacity'       => $wing->capacity,
+            'total_rooms' => $wing->rooms()->count(),
+            'total_residents' => $wing->rooms->flatMap->residents->filter(fn ($r) => $r->is_active)->count(),
+            'capacity' => $wing->capacity,
         ];
 
         return view('dormitory.wings.show', compact('wing', 'dormitory', 'userId', 'stats'));
@@ -92,25 +85,17 @@ class DormitoryWingController extends Controller
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
         $supervisors = User::whereHas('employment')
-            ->whereHas('employment', fn($q) => $q->where('school_id', $dormitory->school_id))
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $dormitory->school_id))
             ->orderBy('name')->get();
 
         return view('dormitory.wings.edit', compact('wing', 'dormitory', 'supervisors', 'userId'));
     }
 
-    public function update(Request $request, string $userId, string $asramaUuid, string $wingUuid)
+    public function update(StoreWingRequest $request, string $userId, string $asramaUuid, string $wingUuid)
     {
         $wing = DormitoryWing::where('dormitory_id', $asramaUuid)->findOrFail($wingUuid);
 
-        $data = $request->validate([
-            'code'          => 'required|string|max:20',
-            'name'          => 'required|string|max:100',
-            'floor'         => 'nullable|integer|min:0',
-            'capacity'      => 'nullable|integer|min:0',
-            'supervisor_id' => 'nullable|exists:users,id',
-            'is_active'     => 'boolean',
-            'notes'         => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $data['is_active'] = $request->boolean('is_active', true);
         $wing->update($data);

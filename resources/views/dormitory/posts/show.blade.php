@@ -12,13 +12,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -175,7 +175,7 @@
                     @else
                         <div class="text-center text-muted py-4">
                             <i class="ri-question-answer-line fs-1 d-block mb-2 text-muted"></i>
-                            Belum ada respons dari wali sanksi.
+                            Belum ada respons dari wali.
                         </div>
                     @endif
                 </div>

@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dormitory;
-use App\Models\WorkUnit;
 use App\Models\School;
 use App\Models\User;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class DormitoryMasterController extends Controller
 {
@@ -17,7 +16,7 @@ class DormitoryMasterController extends Controller
         $user = auth()->user();
         abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
         abort_unless(
-            $user->hasRole(['Super Admin', 'Administrator']) || $user->can('view_global_school_data'),
+            canPermission('dormitory-master-all-access') || canPermission('view_global_school_data'),
             403,
             'Hanya Super Admin dan Administrator yang dapat mengakses halaman ini.'
         );
@@ -28,7 +27,7 @@ class DormitoryMasterController extends Controller
         $user = auth()->user();
         abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
         abort_unless(
-            $user->hasRole(['Super Admin', 'Administrator']),
+            canPermission('dormitory-master-admin-access'),
             403,
             'Hanya Super Admin dan Administrator yang dapat mengelola data asrama.'
         );
@@ -39,10 +38,10 @@ class DormitoryMasterController extends Controller
         $this->validateAccess($userId);
 
         $query = Dormitory::with(['workUnit', 'school', 'head'])
-            ->withCount(['residents as total_residents' => fn($q) => $q->where('is_active', true)]);
+            ->withCount(['residents as total_residents' => fn ($q) => $q->where('is_active', true)]);
 
         if ($request->filled('search')) {
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('name', 'like', "%{$request->search}%")
                 ->orWhere('code', 'like', "%{$request->search}%")
             );
@@ -63,10 +62,10 @@ class DormitoryMasterController extends Controller
             ->orderBy('name')->get();
 
         $stats = [
-            'total'  => Dormitory::count(),
+            'total' => Dormitory::count(),
             'active' => Dormitory::where('is_active', true)->count(),
-            'putra'  => Dormitory::where('gender', 'putra')->where('is_active', true)->count(),
-            'putri'  => Dormitory::where('gender', 'putri')->where('is_active', true)->count(),
+            'putra' => Dormitory::where('gender', 'putra')->where('is_active', true)->count(),
+            'putri' => Dormitory::where('gender', 'putri')->where('is_active', true)->count(),
         ];
 
         return view('dormitory.master.index', compact('dormitories', 'workUnits', 'stats', 'userId'));
@@ -82,8 +81,8 @@ class DormitoryMasterController extends Controller
 
         $schools = School::orderBy('name')->get();
         $heads = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
+            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')->get();
 
         return view('dormitory.master.create', compact('workUnits', 'schools', 'heads', 'userId'));
@@ -95,24 +94,25 @@ class DormitoryMasterController extends Controller
 
         $data = $request->validate([
             'work_unit_id' => 'nullable|exists:work_units,id',
-            'school_id'    => 'nullable|exists:schools,id',
-            'code'         => 'nullable|string|max:20|unique:dormitories,code',
-            'gender'       => 'required|in:putra,putri',
-            'address'      => 'nullable|string',
-            'phone'        => 'nullable|string|max:20',
-            'capacity'     => 'nullable|integer|min:1',
-            'head_id'      => 'nullable|exists:users,id',
-            'is_active'    => 'boolean',
-            'notes'        => 'nullable|string',
+            'school_id' => 'nullable|exists:schools,id',
+            'code' => 'required|string|max:20|unique:dormitories,code',
+            'gender' => 'required|in:putra,putri,campuran',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
+            'capacity' => 'required|integer|min:1',
+            'head_id' => 'nullable|exists:users,id',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
+            'name' => 'nullable|string|max:191',
+            'logo_path' => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
 
-        // Auto-fill name & code dari WorkUnit
-        if (!empty($data['work_unit_id'])) {
+        // Auto-fill name dari WorkUnit if not provided
+        if (empty($data['name']) && ! empty($data['work_unit_id'])) {
             $wu = WorkUnit::find($data['work_unit_id']);
             if ($wu) {
-                // Ganti "Pengasuhan" → "Asrama" di nama
                 $data['name'] = str_replace('Pengasuhan', 'Asrama', $wu->name);
             }
         }
@@ -134,7 +134,7 @@ class DormitoryMasterController extends Controller
         $this->validateAccess($userId);
 
         $dormitory = Dormitory::with(['workUnit', 'school', 'head', 'wings', 'rooms'])
-            ->withCount(['residents as total_residents' => fn($q) => $q->where('is_active', true)])
+            ->withCount(['residents as total_residents' => fn ($q) => $q->where('is_active', true)])
             ->findOrFail($asramaUuid);
 
         $stats = [
@@ -159,8 +159,8 @@ class DormitoryMasterController extends Controller
             ->orderBy('name')->get();
         $schools = School::orderBy('name')->get();
         $heads = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
+            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')->get();
 
         return view('dormitory.master.edit', compact('dormitory', 'workUnits', 'schools', 'heads', 'userId'));
@@ -174,15 +174,17 @@ class DormitoryMasterController extends Controller
 
         $data = $request->validate([
             'work_unit_id' => 'nullable|exists:work_units,id',
-            'school_id'    => 'nullable|exists:schools,id',
-            'code'         => 'required|string|max:20|unique:dormitories,code,' . $asramaUuid,
-            'gender'       => 'required|in:putra,putri',
-            'address'      => 'nullable|string',
-            'phone'        => 'nullable|string|max:20',
-            'capacity'     => 'nullable|integer|min:1',
-            'head_id'      => 'nullable|exists:users,id',
-            'is_active'    => 'boolean',
-            'notes'        => 'nullable|string',
+            'school_id' => 'nullable|exists:schools,id',
+            'code' => 'required|string|max:20|unique:dormitories,code,'.$asramaUuid,
+            'gender' => 'required|in:putra,putri,campuran',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
+            'capacity' => 'nullable|integer|min:1',
+            'head_id' => 'nullable|exists:users,id',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
+            'logo_path' => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+            'remove_logo' => 'boolean',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);

@@ -17,19 +17,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan. Silakan coba lagi.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -222,6 +222,173 @@
                                                         <label class="form-label detail-label">No. HP</label>
                                                         <div class="detail-value">{{ $resident->student->mobile_phone ?: '-' }}</div>
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- ============================================================
+                                         PROFIL AKADEMIK (READ-ONLY)
+                                         Source of Truth: Academic Module (Student model)
+                                    ============================================================ --}}
+                                    <div class="col-xxl-6">
+                                        <div class="card mb-4 border-info">
+                                            <div class="card-header bg-info-subtle">
+                                                <h5 class="card-title mb-0">
+                                                    <i class="ri-school-line text-info me-2"></i>Profil Akademik
+                                                    <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">READ-ONLY</span>
+                                                </h5>
+                                                <small class="text-muted">Data dari modul Akademik — tidak dapat diubah di sini</small>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    @if(isset($academicProfile) && $academicProfile)
+                                                        {{-- Status Akademik --}}
+                                                        <div class="col-12">
+                                                            <label class="form-label detail-label">Status Akademik</label>
+                                                            <div class="detail-value">
+                                                                @php
+                                                                    $statusColor = match($academicProfile->status ?? '') {
+                                                                        'active' => 'success',
+                                                                        'graduate' => 'info',
+                                                                        'transfer_out', 'dropped', 'inactive' => 'warning',
+                                                                        default => 'secondary'
+                                                                    };
+                                                                @endphp
+                                                                <span class="badge bg-{{ $statusColor }}-subtle text-{{ $statusColor }}">
+                                                                    {{ $academicProfile->status_text ?? ucfirst($academicProfile->status ?? '-') }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        @if($academicProfile->school ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Sekolah</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->school }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->current_class ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Kelas Saat Ini</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->current_class }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->current_section ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Rombongan Belajar</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->current_section }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->entry_date ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Tahun Masuk</label>
+                                                            <div class="detail-value text-muted">{{ \Carbon\Carbon::parse($academicProfile->entry_date)->format('Y') }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->graduation_year ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Tahun Lulus</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->graduation_year }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->nik ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">NIK</label>
+                                                            <div class="detail-value"><code class="text-muted">{{ $academicProfile->nik }}</code></div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->email ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">Email</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->email }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->mobile_phone ?? $academicProfile->phone ?? null)
+                                                        <div class="col-md-6">
+                                                            <label class="form-label detail-label">No. Handphone</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->mobile_phone ?? $academicProfile->phone }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->full_address ?? null)
+                                                        <div class="col-12">
+                                                            <label class="form-label detail-label">Alamat</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->full_address }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if($academicProfile->special_needs ?? null)
+                                                        <div class="col-12">
+                                                            <label class="form-label detail-label">Kebutuhan Khusus</label>
+                                                            <div class="detail-value text-muted">{{ $academicProfile->special_needs }}</div>
+                                                        </div>
+                                                        @endif
+
+                                                        {{-- Divider --}}
+                                                        <div class="col-12"><hr class="text-muted"></div>
+                                                        <div class="col-12">
+                                                            <label class="form-label detail-label fw-bold">Informasi Orang Tua & Wali</label>
+                                                        </div>
+
+                                                        @if(($academicProfile->father['name'] ?? null) || ($academicProfile->father['occupation'] ?? null))
+                                                        <div class="col-md-4">
+                                                            <div class="p-2 rounded bg-primary-subtle">
+                                                                <div class="text-primary small fw-bold">Ayah</div>
+                                                                @if($academicProfile->father['name'])<div class="fw-semibold">{{ $academicProfile->father['name'] }}</div>@endif
+                                                                @if($academicProfile->father['occupation'])<div class="text-muted small">{{ $academicProfile->father['occupation'] }}</div>@endif
+                                                                @if($academicProfile->father['education'])<div class="text-muted small">Pendidikan: {{ $academicProfile->father['education'] }}</div>@endif
+                                                                @if($academicProfile->father['birth_year'])<div class="text-muted small">Tahun Lahir: {{ $academicProfile->father['birth_year'] }}</div>@endif
+                                                            </div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if(($academicProfile->mother['name'] ?? null) || ($academicProfile->mother['occupation'] ?? null))
+                                                        <div class="col-md-4">
+                                                            <div class="p-2 rounded bg-danger-subtle">
+                                                                <div class="text-danger small fw-bold">Ibu</div>
+                                                                @if($academicProfile->mother['name'])<div class="fw-semibold">{{ $academicProfile->mother['name'] }}</div>@endif
+                                                                @if($academicProfile->mother['occupation'])<div class="text-muted small">{{ $academicProfile->mother['occupation'] }}</div>@endif
+                                                                @if($academicProfile->mother['education'])<div class="text-muted small">Pendidikan: {{ $academicProfile->mother['education'] }}</div>@endif
+                                                                @if($academicProfile->mother['birth_year'])<div class="text-muted small">Tahun Lahir: {{ $academicProfile->mother['birth_year'] }}</div>@endif
+                                                            </div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if(($academicProfile->guardian['name'] ?? null) || ($academicProfile->guardian['occupation'] ?? null))
+                                                        <div class="col-md-4">
+                                                            <div class="p-2 rounded bg-secondary-subtle">
+                                                                <div class="text-muted small fw-bold">Wali</div>
+                                                                @if($academicProfile->guardian['name'])<div class="fw-semibold">{{ $academicProfile->guardian['name'] }}</div>@endif
+                                                                @if($academicProfile->guardian['occupation'])<div class="text-muted small">{{ $academicProfile->guardian['occupation'] }}</div>@endif
+                                                                @if($academicProfile->guardian['education'])<div class="text-muted small">Pendidikan: {{ $academicProfile->guardian['education'] }}</div>@endif
+                                                                @if($academicProfile->guardian['birth_year'])<div class="text-muted small">Tahun Lahir: {{ $academicProfile->guardian['birth_year'] }}</div>@endif
+                                                            </div>
+                                                        </div>
+                                                        @endif
+
+                                                        @if(
+                                                            !($academicProfile->father['name'] ?? null) &&
+                                                            !($academicProfile->mother['name'] ?? null) &&
+                                                            !($academicProfile->guardian['name'] ?? null)
+                                                        )
+                                                        <div class="col-12">
+                                                            <div class="text-muted small fst-italic">Informasi orang tua/wali belum diisi di modul akademik.</div>
+                                                        </div>
+                                                        @endif
+
+                                                    @else
+                                                        <div class="col-12 text-center py-3">
+                                                            <i class="ri-error-warning-line text-muted fs-2"></i>
+                                                            <p class="text-muted small mb-0">Profil akademik tidak tersedia.</p>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>

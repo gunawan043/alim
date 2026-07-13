@@ -12,19 +12,19 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan. Silakan coba lagi.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -120,7 +120,7 @@
                                     <i class="ri-bar-chart-line align-bottom me-1"></i> Rekap Bulanan
                                 </a>
                                 <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?date={{ $selectedDate ?? now()->toDateString() }}&session={{ $selectedSession ?? 'pagi' }}"
-                                   class="btn btn-success">
+                                   class="btn btn-primary">
                                     <i class="ri-add-line align-bottom me-1"></i> Catat Absensi
                                 </a>
                             </div>
@@ -269,13 +269,13 @@
                                             <h6 class="text-muted mb-1">Belum Ada Data Absensi</h6>
                                             <p class="text-muted mb-3">
                                                 @if($selectedDate)
-                                                    Tidak ada data absensi untuk {{ \Carbon\Carbon::parse($selectedDate)->format('d M Y') }}.
+                                                    <p class="text-muted mb-1">Tidak ada data absensi untuk <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d M Y') }}</strong>.</p>
                                                 @else
                                                     Belum ada data absensi yang tercatat.
                                                 @endif
                                             </p>
                                             <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?date={{ $selectedDate ?? now()->toDateString() }}"
-                                               class="btn btn-success btn-sm">
+                                               class="btn btn-primary btn-sm">
                                                 <i class="ri-add-line me-1"></i> Catat Absensi
                                             </a>
                                         </td>
@@ -286,8 +286,11 @@
                     </div>
 
                     @if($attendanceRecords->hasPages())
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $attendanceRecords->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $attendanceRecords->firstItem() ?? 0 }} - {{ $attendanceRecords->lastItem() ?? 0 }} dari {{ $attendanceRecords->total() }} data</div>
+                            <div class="d-flex justify-content-center">
+                                {{ $attendanceRecords->withQueryString()->links() }}
+                            </div>
                         </div>
                     @endif
                 </div>

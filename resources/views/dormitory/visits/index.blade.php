@@ -12,13 +12,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-1"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-1"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -109,7 +109,7 @@
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Ajukan Kunjungan
                             </a>
                         </div>
@@ -253,6 +253,11 @@
                                         <td colspan="9" class="text-center text-muted py-4">
                                             <i class="ri-user-follow-line fs-1 d-block mb-2"></i>
                                             Belum ada data kunjungan.
+                                            <br>
+                                            <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
+                                               class="btn btn-sm btn-primary mt-2">
+                                                <i class="ri-add-line"></i> Ajukan Kunjungan Baru
+                                            </a>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -261,8 +266,9 @@
                     </div>
 
                     @if(isset($visits) && $visits->hasPages())
-                        <div class="d-flex justify-content-center mt-3">
-                            {{ $visits->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $visits->firstItem() ?? 0 }} - {{ $visits->lastItem() ?? 0 }} dari {{ $visits->total() }} data</div>
+                            <div>{{ $visits->withQueryString()->links() }}</div>
                         </div>
                     @endif
                 </div>

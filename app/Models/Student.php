@@ -208,4 +208,20 @@ class Student extends Model
     {
         return $this->hasMany(StudentAchievement::class);
     }
+
+    /**
+     * Unified timeline events across all modules (boarding, academic, clinic, etc).
+     */
+    public function timelineEvents(): HasMany
+    {
+        return $this->hasMany(BoardingTimelineEvent::class)->orderByDesc('event_at');
+    }
+
+    /**
+     * Convenience accessor for the unified timeline service.
+     */
+    public function unifiedTimeline(): \App\Services\UnifiedStudentTimelineService
+    {
+        return new \App\Services\UnifiedStudentTimelineService($this);
+    }
 }

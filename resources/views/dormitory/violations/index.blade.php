@@ -11,13 +11,13 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -104,7 +104,7 @@
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.violations.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-success">
+                               class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Catat Pelanggaran
                             </a>
                         </div>
@@ -116,7 +116,7 @@
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
                             <input type="text" name="search" class="form-control"
-                                   placeholder="Nama sanksi / jenis..."
+                                   placeholder="Nama pelanggaran / jenis..."
                                    value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
@@ -128,10 +128,12 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                            <label class="form-label small text-muted mb-1">Dari</label>
+                            <input type="date" name="start_date" id="filter_start_date" class="form-control" value="{{ request('start_date') }}">
                         </div>
                         <div class="col-md-2">
-                            <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                            <label class="form-label small text-muted mb-1">Sampai</label>
+                            <input type="date" name="end_date" id="filter_end_date" class="form-control" value="{{ request('end_date') }}">
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line"></i> Filter</button>
@@ -234,7 +236,7 @@
                                             Belum ada data pelanggaran.
                                             <br>
                                             <a href="{{ route('user.asrama.violations.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-sm btn-success mt-2">
+                                               class="btn btn-sm btn-primary mt-2">
                                                 <i class="ri-add-line me-1"></i> Catat Pelanggaran Baru
                                             </a>
                                         </td>
@@ -244,11 +246,50 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        {{ $violations->withQueryString()->links() }}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">Menampilkan {{ $violations->firstItem() ?? 0 }} - {{ $violations->lastItem() ?? 0 }} dari {{ $violations->total() }} data</div>
+                        <div>{{ $violations->withQueryString()->links() }}</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('form[method="GET"]');
+    const startInput = document.getElementById('filter_start_date');
+    const endInput = document.getElementById('filter_end_date');
+
+    if (!form || !startInput || !endInput) return;
+
+    // Auto-update end_date min when start_date changes
+    startInput.addEventListener('change', function () {
+        if (this.value) {
+            endInput.min = this.value;
+            if (endInput.value && endInput.value < this.value) {
+                endInput.value = '';
+                Toastify({ text: 'Tanggal akhir diubah agar tidak lebih kecil dari tanggal mulai.', duration: 3000, gravity: 'top', position: 'right', backgroundColor: '#ffc107', stopOnFocus: true }).showToast();
+            }
+        } else {
+            endInput.removeAttribute('min');
+        }
+    });
+
+    // Validate on submit
+    form.addEventListener('submit', function (e) {
+        if (startInput.value && endInput.value && endInput.value < startInput.value) {
+            e.preventDefault();
+            Swal.fire({ icon: 'warning', title: 'Tanggal tidak valid', text: 'Tanggal akhir tidak boleh lebih kecil dari tanggal mulai.', confirmButtonColor: '#405189' });
+        }
+    });
+
+    // Initialize min on load
+    if (startInput.value) {
+        endInput.min = startInput.value;
+    }
+});
+</script>
+@endpush

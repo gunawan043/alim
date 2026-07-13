@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Dormitory\StoreRoomRequest;
 use App\Models\Dormitory;
-use App\Models\DormitoryWing;
 use App\Models\DormitoryRoom;
+use App\Models\DormitoryWing;
 use Illuminate\Http\Request;
 
 class DormitoryRoomController extends Controller
@@ -20,7 +21,7 @@ class DormitoryRoomController extends Controller
             $query->where('wing_id', $request->wing_id);
         }
         if ($request->filled('search')) {
-            $query->where(fn($q) => $q
+            $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$request->search}%")
                 ->orWhere('code', 'like', "%{$request->search}%")
             );
@@ -49,31 +50,22 @@ class DormitoryRoomController extends Controller
         return view('dormitory.rooms.create', compact('dormitory', 'wings', 'userId'));
     }
 
-    public function store(Request $request, string $userId, string $asramaUuid)
+    public function store(StoreRoomRequest $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $data = $request->validate([
-            'wing_id'       => 'nullable|exists:dormitory_wings,id',
-            'code'          => 'required|string|max:20|unique:dormitory_rooms,code',
-            'name'          => 'nullable|string|max:100',
-            'floor'         => 'nullable|integer|min:0',
-            'capacity'      => 'nullable|integer|min:1',
-            'room_type'     => 'nullable|in:reguler,khusus,isolasi,musyrif',
-            'facility_notes'=> 'nullable|string',
-            'is_active'     => 'boolean',
-        ]);
+        $data = $request->validated();
 
         $data['dormitory_id'] = $asramaUuid;
         $data['is_active'] = $request->boolean('is_active', true);
         $data['gender'] = $dormitory->gender;
 
-        DormitoryRoom::create($data);
+        $room = DormitoryRoom::create($data);
 
         return redirect()->route('user.asrama.rooms.show', [
             'userId' => $userId,
             'asramaUuid' => $asramaUuid,
-            'roomUuid' => DormitoryRoom::latest()->first()->id,
+            'roomUuid' => $room->id,
         ])->with('success', 'Kamar berhasil disimpan.');
     }
 
@@ -82,16 +74,16 @@ class DormitoryRoomController extends Controller
         $room = DormitoryRoom::with([
             'dormitory',
             'wing',
-            'residents' => fn($q) => $q->where('is_active', true)->with('student'),
+            'residents' => fn ($q) => $q->where('is_active', true)->with('student'),
         ])->where('dormitory_id', $asramaUuid)
-          ->findOrFail($roomUuid);
+            ->findOrFail($roomUuid);
 
         $dormitory = $room->dormitory;
         $activeResidents = $room->residents;
 
         $stats = [
             'total_residents' => $activeResidents->count(),
-            'capacity'        => $room->capacity,
+            'capacity' => $room->capacity,
             'occupancy_rate' => $room->capacity > 0
                 ? round($activeResidents->count() / $room->capacity * 100, 1)
                 : 0,
@@ -117,14 +109,14 @@ class DormitoryRoomController extends Controller
         $room = DormitoryRoom::where('dormitory_id', $asramaUuid)->findOrFail($roomUuid);
 
         $data = $request->validate([
-            'wing_id'       => 'nullable|exists:dormitory_wings,id',
-            'code'          => 'required|string|max:20|unique:dormitory_rooms,code,' . $roomUuid,
-            'name'          => 'nullable|string|max:100',
-            'floor'         => 'nullable|integer|min:0',
-            'capacity'      => 'nullable|integer|min:1',
-            'room_type'     => 'nullable|in:reguler,khusus,isolasi,musyrif',
-            'facility_notes'=> 'nullable|string',
-            'is_active'     => 'boolean',
+            'wing_id' => 'nullable|exists:dormitory_wings,id',
+            'code' => 'required|string|max:20|unique:dormitory_rooms,code,'.$roomUuid,
+            'name' => 'nullable|string|max:100',
+            'floor' => 'nullable|integer|min:0',
+            'capacity' => 'nullable|integer|min:1',
+            'room_type' => 'nullable|in:reguler,khusus,isolasi,musyrif',
+            'facility_notes' => 'nullable|string',
+            'is_active' => 'boolean',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);

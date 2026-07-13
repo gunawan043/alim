@@ -15,12 +15,12 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -98,7 +98,7 @@
                             <p class="text-muted mb-0">Pengelolaan asrama pondok pesantren.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.asrama.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            <a href="{{ route('user.asrama.create', ['userId' => $userId]) }}" class="btn btn-primary" aria-label="Tambah asrama baru">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Asrama
                             </a>
                         </div>
@@ -180,7 +180,7 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="dropdown">
-                                            <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown">
+                                            <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-label="Aksi lain untuk {{ $d->name }}">
                                                 <i class="ri-more-line"></i>
                                             </button>
                                             <ul class="dropdown-menu">
@@ -216,7 +216,10 @@
                     </div>
 
                     <div class="mt-3">
-                        {{ $dormitories->withQueryString()->links() }}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">Menampilkan {{ $dormitories->firstItem() ?? 0 }} - {{ $dormitories->lastItem() ?? 0 }} dari {{ $dormitories->total() }} data</div>
+                            <div>{{ $dormitories->withQueryString()->links() }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
