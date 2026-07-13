@@ -20,6 +20,6 @@ trait LogsDeletion
             ->logOnly(['*'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName) => "Model {$this->getClassName()} {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Model " . static::class . " {$eventName}");
     }
 }
