@@ -10,6 +10,7 @@ final readonly class OrganizationContext
         public string $schoolId,
         public string $academicYearId,
         public string $roleDimension,
+        public string $tenant = 'local',
     ) {}
 
     public function toScopeKey(): ScopeKey
@@ -18,6 +19,7 @@ final readonly class OrganizationContext
             $this->schoolId,
             $this->academicYearId,
             $this->roleDimension,
+            $this->tenant,
         );
     }
 }
