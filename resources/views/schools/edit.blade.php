@@ -56,7 +56,7 @@
             </li>
         </ul>
         @php
-            $value = auth()->user()->hasRole(['Super Admin', 'Administrator']) ? '' : 'disabled';
+            $value = auth()->user()->role()->hasPermission('school-update') ? '' : 'disabled';
         @endphp
 
         <div class="tab-content" id="schoolTabContent">

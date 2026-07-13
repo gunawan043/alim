@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\GtkTransferRequest;
+use App\Models\User;
 
 class GtkTransferPolicy
 {
@@ -12,7 +12,7 @@ class GtkTransferPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view transfer requests');
+        return canUserPermission($user, 'view transfer requests');
     }
 
     /**
@@ -20,7 +20,7 @@ class GtkTransferPolicy
      */
     public function view(User $user, GtkTransferRequest $transfer): bool
     {
-        return $user->hasPermissionTo('view transfer requests') || 
+        return canUserPermission($user, 'view transfer requests') ||
                $user->id === $transfer->requested_by;
     }
 
@@ -29,7 +29,7 @@ class GtkTransferPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create transfer requests');
+        return canUserPermission($user, 'create transfer requests');
     }
 
     /**
@@ -37,7 +37,7 @@ class GtkTransferPolicy
      */
     public function update(User $user, GtkTransferRequest $transfer): bool
     {
-        return $user->hasPermissionTo('update transfer requests') || 
+        return canUserPermission($user, 'update transfer requests') ||
                ($user->id === $transfer->requested_by && $transfer->status === 'pending');
     }
 
@@ -46,7 +46,7 @@ class GtkTransferPolicy
      */
     public function delete(User $user, GtkTransferRequest $transfer): bool
     {
-        return $user->hasPermissionTo('delete transfer requests') ||
+        return canUserPermission($user, 'delete transfer requests') ||
                ($user->id === $transfer->requested_by && $transfer->status === 'pending');
     }
 
@@ -55,7 +55,7 @@ class GtkTransferPolicy
      */
     public function approve(User $user, GtkTransferRequest $transfer): bool
     {
-        return $user->hasPermissionTo('approve transfer requests');
+        return canUserPermission($user, 'approve transfer requests');
     }
 
     /**
@@ -63,6 +63,6 @@ class GtkTransferPolicy
      */
     public function reject(User $user, GtkTransferRequest $transfer): bool
     {
-        return $user->hasPermissionTo('reject transfer requests');
+        return canUserPermission($user, 'reject transfer requests');
     }
 }

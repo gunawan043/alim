@@ -8,32 +8,22 @@ use App\Models\GtkProfile;
 class GtkProfilePolicy
 {
     /**
-     * Helper: ambil level role terendah (semakin kecil = semakin tinggi)
-     */
-    protected function roleLevel(User $user): int
-    {
-        return (int) $user->roles()->min('level');
-    }
-
-    /**
      * VIEW DATA GTK
      */
     public function view(User $user, GtkProfile $profile): bool
     {
-        $level = $this->roleLevel($user);
-
-        // Super Admin, Mudir, Wadir, Personalia
-        if ($level <= 5) {
+        // Personalia / Wadir / Mudir / Super Admin
+        if (canPermission('gtk-view-all')) {
             return true;
         }
 
         // Kepala sekolah & wakil → lihat TANPA sensitif
-        if ($level <= 7) {
+        if (canPermission('gtk-view-school')) {
             return true;
         }
 
         // Guru → hanya data sendiri
-        return $user->id === $profile->user_id;
+        return canPermission('gtk-view-self') && $user->id === $profile->user_id;
     }
 
     /**
@@ -41,15 +31,13 @@ class GtkProfilePolicy
      */
     public function update(User $user, GtkProfile $profile): bool
     {
-        $level = $this->roleLevel($user);
-
         // Personalia ke atas
-        if ($level <= 5) {
+        if (canPermission('gtk-edit-all')) {
             return true;
         }
 
         // User hanya boleh update data dirinya
-        return $user->id === $profile->user_id;
+        return canPermission('gtk-edit-self') && $user->id === $profile->user_id;
     }
 
     /**
@@ -57,10 +45,7 @@ class GtkProfilePolicy
      */
     public function viewSensitive(User $user): bool
     {
-        $level = $this->roleLevel($user);
-
-        // HANYA role tertentu
-        return $level <= 5;
+        return canPermission('gtk-view-sensitive');
     }
 
     /**
@@ -68,6 +53,6 @@ class GtkProfilePolicy
      */
     public function delete(User $user, GtkProfile $profile): bool
     {
-        return $this->roleLevel($user) <= 2; // Super Admin & Mudir
+        return canPermission('super-admin-only');
     }
 }

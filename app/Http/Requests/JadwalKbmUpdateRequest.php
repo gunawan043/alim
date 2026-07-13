@@ -75,8 +75,8 @@ class JadwalKbmUpdateRequest extends FormRequest
             return false;
         }
 
-        return $user->can('jadwal_kbm_update')
-            || $user->can('jadwal_kbm_manage')
-            || $user->hasRole(['Super Admin', 'Mudir', 'Wadir 1', 'Waka', 'Wakil Kepala Sekolah', 'Admin Tata Usaha']);
+        return canPermission('jadwal_kbm_update')
+            || canPermission('jadwal_kbm_manage')
+            || canPermission('jadwal-kbm-update-form-request');
     }
 }

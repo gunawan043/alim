@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DokumenIso;
 use App\Models\Divisi;
+use App\Models\DokumenIso;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class DokumenIsoController extends Controller
@@ -14,7 +13,7 @@ class DokumenIsoController extends Controller
     {
         $query = DokumenIso::with('divisi')
             ->leftJoin('divisis', 'dokumen_iso.divisi_id', '=', 'divisis.id')
-            ->orderByRaw("COALESCE(divisis.sort_order, 999) ASC")
+            ->orderByRaw('COALESCE(divisis.sort_order, 999) ASC')
             ->orderBy('dokumen_iso.sort_order', 'asc')
             ->select('dokumen_iso.*');
 
@@ -38,7 +37,7 @@ class DokumenIsoController extends Controller
         }
 
         $dokumenList = $query->paginate(20)->withQueryString();
-        $isSuperAdmin = Auth::user()->hasRole('Super Admin');
+        $isSuperAdmin = canPermission('super-admin-only');
         $divisiList = Divisi::orderBy('sort_order')->get();
         $totalDokumen = DokumenIso::count();
         $latestRevisi = DokumenIso::orderBy('updated_at', 'desc')->value('revisi_ke') ?? '0';
@@ -52,17 +51,17 @@ class DokumenIsoController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nama_dokumen'       => 'required|string|max:255',
+            'nama_dokumen' => 'required|string|max:255',
             'prosedur_konsultan' => 'nullable|string|max:255',
-            'pasal'              => 'nullable|string|max:100',
-            'kode_dokumen'      => 'nullable|string|max:50',
-            'tanggal_berlaku'   => 'nullable|date',
-            'revisi_ke'         => 'nullable|string|max:20',
-            'keterangan'        => 'nullable|string',
-            'kategori'          => 'nullable|in:PROSEDUR,FORMULIR',
-            'link_dokumen'      => 'nullable|url|max:500',
-            'divisi_id'         => 'nullable|exists:divisis,id',
-            'is_active'         => 'nullable|in:0,1',
+            'pasal' => 'nullable|string|max:100',
+            'kode_dokumen' => 'nullable|string|max:50',
+            'tanggal_berlaku' => 'nullable|date',
+            'revisi_ke' => 'nullable|string|max:20',
+            'keterangan' => 'nullable|string',
+            'kategori' => 'nullable|in:PROSEDUR,FORMULIR',
+            'link_dokumen' => 'nullable|url|max:500',
+            'divisi_id' => 'nullable|exists:divisis,id',
+            'is_active' => 'nullable|in:0,1',
         ]);
 
         $data['id'] = Str::uuid();
@@ -77,17 +76,17 @@ class DokumenIsoController extends Controller
         $dokumen = DokumenIso::findOrFail($id);
 
         $data = $request->validate([
-            'nama_dokumen'       => 'required|string|max:255',
+            'nama_dokumen' => 'required|string|max:255',
             'prosedur_konsultan' => 'nullable|string|max:255',
-            'pasal'              => 'nullable|string|max:100',
-            'kode_dokumen'      => 'nullable|string|max:50',
-            'tanggal_berlaku'   => 'nullable|date',
-            'revisi_ke'         => 'nullable|string|max:20',
-            'keterangan'        => 'nullable|string',
-            'kategori'          => 'nullable|in:PROSEDUR,FORMULIR',
-            'link_dokumen'      => 'nullable|url|max:500',
-            'divisi_id'         => 'nullable|exists:divisis,id',
-            'is_active'         => 'nullable|in:0,1',
+            'pasal' => 'nullable|string|max:100',
+            'kode_dokumen' => 'nullable|string|max:50',
+            'tanggal_berlaku' => 'nullable|date',
+            'revisi_ke' => 'nullable|string|max:20',
+            'keterangan' => 'nullable|string',
+            'kategori' => 'nullable|in:PROSEDUR,FORMULIR',
+            'link_dokumen' => 'nullable|url|max:500',
+            'divisi_id' => 'nullable|exists:divisis,id',
+            'is_active' => 'nullable|in:0,1',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
@@ -106,16 +105,16 @@ class DokumenIsoController extends Controller
     public function subscriptions(string $userId)
     {
         $user = \App\Models\User::with('divisiSubscriptions')->findOrFail($userId);
-        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isSuperAdmin = canPermission('super-admin-only');
 
         $allDivisis = \App\Models\Divisi::orderBy('sort_order')->get();
         $subscribedIds = $user->divisiSubscriptions->pluck('id')->toArray();
 
         $divisiList = $allDivisis->map(function ($d) use ($subscribedIds) {
             return [
-                'id'       => $d->id,
-                'nama'     => $d->nama,
-                'kode'     => $d->kode,
+                'id' => $d->id,
+                'nama' => $d->nama,
+                'kode' => $d->kode,
                 'subscribed' => in_array($d->id, $subscribedIds),
             ];
         });

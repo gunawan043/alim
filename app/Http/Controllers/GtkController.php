@@ -106,7 +106,8 @@ class GtkController extends Controller
     // Index untuk GTK berdasarkan satuan kerja tertentu
     public function indexByWorkUnit(Request $request, $satuanKerja)
     {
-        // Cari satuan kerja — findOrFail akan lempar 404 jika tidak ditemukan
+        // findOrFail bubbles up to Handler::renderable() which catches
+        // ModelNotFoundException and returns safe JSON for AJAX requests.
         $satuanKerja = WorkUnit::findOrFail($satuanKerja);
 
         $gtkQuery = User::with(['gtkProfile', 'employment', 'contact', 'workUnits'])
@@ -300,7 +301,7 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (! $user->hasRole('gtk')) {
+        if (! canPermission('gtk-role')) {
             return response()->json([
                 'success' => false,
                 'message' => 'User bukan GTK',
@@ -325,7 +326,7 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (! $user->hasRole('gtk')) {
+        if (! canPermission('gtk-role')) {
             return response()->json([
                 'success' => false,
                 'message' => 'User bukan GTK',
@@ -409,7 +410,7 @@ class GtkController extends Controller
             foreach ($request->ids as $id) {
                 $user = User::find($id);
 
-                if ($user && $user->hasRole('gtk')) {
+                if ($user && $user->role()->hasPermission('gtk-role')) {
                     // Hapus semua data terkait
                     if ($user->profile) {
                         $user->profile->addresses()->delete();
@@ -464,7 +465,7 @@ class GtkController extends Controller
         ])->findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (! $user->hasRole('gtk')) {
+        if (! canPermission('gtk-role')) {
             abort(404, 'User bukan GTK');
         }
 
@@ -486,7 +487,7 @@ class GtkController extends Controller
         ])->findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (! $user->hasRole('gtk')) {
+        if (! canPermission('gtk-role')) {
             abort(404, 'User bukan GTK');
         }
 
@@ -506,7 +507,7 @@ class GtkController extends Controller
         $user = User::findOrFail($id);
 
         // Pastikan user adalah GTK
-        if (! $user->hasRole('gtk')) {
+        if (! canPermission('gtk-role')) {
             return response()->json([
                 'success' => false,
                 'message' => 'User bukan GTK',

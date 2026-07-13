@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\School;
-use App\Models\WorkUnit;
-use App\Models\Province;
-use App\Models\User;
 use App\Models\GtkWorkUnit;
+use App\Models\Province;
+use App\Models\School;
+use App\Models\User;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class SchoolController extends Controller
 {
@@ -25,11 +24,11 @@ class SchoolController extends Controller
         abort_unless($authUser && $authUser->id === $userId, 403, 'Akses ditolak.');
 
         $school = School::with('workUnit')->find($schoolId);
-        if (!$school) {
+        if (! $school) {
             abort(404, 'Sekolah tidak ditemukan.');
         }
 
-        if ($authUser->can('view_global_school_data')) {
+        if (canPermission('view_global_school_data')) {
             return $school;
         }
 
@@ -38,7 +37,7 @@ class SchoolController extends Controller
             ->toArray();
 
         abort_if(
-            !in_array($school->work_unit_id, $userWorkUnitIds),
+            ! in_array($school->work_unit_id, $userWorkUnitIds),
             403,
             'Anda tidak memiliki akses ke sekolah ini.'
         );
@@ -52,16 +51,16 @@ class SchoolController extends Controller
         abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
 
         abort_unless(
-            $user->hasRole(['Super Admin', 'Administrator']) || $user->can('view_global_school_data'),
+            canPermission('school-all-access') || canPermission('view_global_school_data'),
             403,
             'Hanya Super Admin dan Administrator yang dapat mengakses halaman sekolah.'
         );
 
         $query = School::with(['workUnit', 'principalUser'])->orderBy('name');
 
-        if ($user->hasRole(['Super Admin', 'Administrator'])) {
+        if (canPermission('school-all-access')) {
             // Super Admin & Administrator: lihat semua sekolah
-        } elseif (!$user->can('view_global_school_data')) {
+        } elseif (! canPermission('view_global_school_data')) {
             $userWorkUnitIds = GtkWorkUnit::where('user_id', $user->id)
                 ->pluck('work_unit_id')
                 ->toArray();
@@ -70,7 +69,7 @@ class SchoolController extends Controller
 
         if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('npsn', 'like', "%{$request->search}%");
+                ->orWhere('npsn', 'like', "%{$request->search}%");
         }
         if ($request->filled('level')) {
             $query->where('school_level', $request->level);
@@ -83,6 +82,7 @@ class SchoolController extends Controller
         }
 
         $schools = $query->paginate(12)->withQueryString();
+
         return view('schools.index', compact('schools', 'userId'));
     }
 
@@ -91,7 +91,7 @@ class SchoolController extends Controller
         $user = auth()->user();
         abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
         abort_unless(
-            $user->hasRole(['Super Admin', 'Administrator']),
+            canPermission('school-create'),
             403,
             'Hanya Super Admin dan Administrator yang dapat membuat sekolah baru.'
         );
@@ -99,8 +99,8 @@ class SchoolController extends Controller
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
         $principals = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
+            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')
             ->get();
 
@@ -112,56 +112,56 @@ class SchoolController extends Controller
         $user = auth()->user();
         abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
         abort_unless(
-            $user->hasRole(['Super Admin', 'Administrator']),
+            canPermission('school-create'),
             403,
             'Hanya Super Admin dan Administrator yang dapat membuat sekolah baru.'
         );
 
         $data = $request->validate([
-            'work_unit_id'    => 'nullable|exists:work_units,id',
-            'school_code'      => 'nullable|string|max:20',
-            'npsn'            => 'nullable|string|max:20',
-            'nss'             => 'nullable|string|max:30',
-            'name'            => 'nullable|string|max:255',
-            'address'         => 'nullable|string',
-            'province_code'   => 'nullable|string|max:2',
-            'city_code'       => 'nullable|string|max:4',
-            'district_code'  => 'nullable|string|max:7',
-            'village_code'   => 'nullable|string|max:10',
-            'postal_code'     => 'nullable|string|max:10',
-            'phone'           => 'nullable|string|max:20',
-            'email'           => 'nullable|email|max:100',
-            'website'         => 'nullable|string|max:100',
-            'school_level'   => 'required|in:sd,smp,sma,smk',
-            'school_status'   => 'required|in:negeri,swasta',
-            'accreditation'   => 'nullable|string|max:10',
+            'work_unit_id' => 'nullable|exists:work_units,id',
+            'school_code' => 'nullable|string|max:20',
+            'npsn' => 'nullable|string|max:20',
+            'nss' => 'nullable|string|max:30',
+            'name' => 'nullable|string|max:255',
+            'address' => 'nullable|string',
+            'province_code' => 'nullable|string|max:2',
+            'city_code' => 'nullable|string|max:4',
+            'district_code' => 'nullable|string|max:7',
+            'village_code' => 'nullable|string|max:10',
+            'postal_code' => 'nullable|string|max:10',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
+            'website' => 'nullable|string|max:100',
+            'school_level' => 'required|in:sd,smp,sma,smk',
+            'school_status' => 'required|in:negeri,swasta',
+            'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
-            'principal_name'   => 'nullable|string|max:255',
-            'principal_nip'    => 'nullable|string|max:30',
-            'principal_nupy'   => 'nullable|string|max:50',
+            'principal_name' => 'nullable|string|max:255',
+            'principal_nip' => 'nullable|string|max:30',
+            'principal_nupy' => 'nullable|string|max:50',
             'principal_user_id' => 'nullable|exists:users,id',
             'operational_hours' => 'nullable|in:pagi,siang,full_day',
             'established_date' => 'nullable|date',
             'established_decree' => 'nullable|string|max:100',
-            'land_area'       => 'nullable|numeric|min:0',
-            'building_area'   => 'nullable|numeric|min:0',
-            'is_active'       => 'boolean',
-            'kop_nama'        => 'nullable|string|max:255',
-            'kop_alamat'      => 'nullable|string',
-            'kop_telp'        => 'nullable|string|max:50',
-            'kop_email'       => 'nullable|email|max:100',
-            'kop_website'     => 'nullable|string|max:100',
-            'kop_npsn'        => 'nullable|string|max:20',
-            'kopsis_active'   => 'boolean',
-            'bank_name'       => 'nullable|string|max:100',
-            'bank_cabang'     => 'nullable|string|max:100',
-            'bank_rekening'  => 'nullable|string|max:50',
-            'bank_an'         => 'nullable|string|max:100',
-            'npwp'            => 'nullable|string|max:30',
+            'land_area' => 'nullable|numeric|min:0',
+            'building_area' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'kop_nama' => 'nullable|string|max:255',
+            'kop_alamat' => 'nullable|string',
+            'kop_telp' => 'nullable|string|max:50',
+            'kop_email' => 'nullable|email|max:100',
+            'kop_website' => 'nullable|string|max:100',
+            'kop_npsn' => 'nullable|string|max:20',
+            'kopsis_active' => 'boolean',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_cabang' => 'nullable|string|max:100',
+            'bank_rekening' => 'nullable|string|max:50',
+            'bank_an' => 'nullable|string|max:100',
+            'npwp' => 'nullable|string|max:30',
         ]);
 
         // Auto-fill name from WorkUnit if work_unit_id is selected
-        if (!empty($data['work_unit_id'])) {
+        if (! empty($data['work_unit_id'])) {
             $wu = WorkUnit::find($data['work_unit_id']);
             if ($wu) {
                 $data['name'] = $wu->name;
@@ -169,7 +169,7 @@ class SchoolController extends Controller
         }
 
         // Auto-fill principal_name from user if principal_user_id is set
-        if (!empty($data['principal_user_id'])) {
+        if (! empty($data['principal_user_id'])) {
             $user = User::find($data['principal_user_id']);
             if ($user) {
                 $data['principal_name'] = $user->name;
@@ -193,13 +193,14 @@ class SchoolController extends Controller
     public function show(string $userId, string $schoolId)
     {
         $school = $this->validateSchoolAccess($userId, $schoolId);
+
         return view('schools.show', compact('school', 'userId'));
     }
 
     public function edit(string $userId, string $schoolId)
     {
         abort_unless(
-            auth()->user()->hasRole(['Super Admin', 'Administrator', 'Admin Tata Usaha']),
+            canPermission('school-update'),
             403,
             'Hanya Super Admin dan Administrator yang dapat mengedit sekolah.'
         );
@@ -208,17 +209,18 @@ class SchoolController extends Controller
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
         $principals = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
+            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')
             ->get();
+
         return view('schools.edit', compact('school', 'workUnits', 'provinces', 'principals', 'userId'));
     }
 
     public function update(Request $request, string $userId, string $schoolId)
     {
         abort_unless(
-            auth()->user()->hasRole(['Super Admin', 'Administrator', 'Admin Tata Usaha']),
+            canPermission('school-update'),
             403,
             'Hanya Super Admin dan Administrator yang dapat mengedit sekolah.'
         );
@@ -226,46 +228,46 @@ class SchoolController extends Controller
         $school = $this->validateSchoolAccess($userId, $schoolId);
 
         $data = $request->validate([
-            'work_unit_id'    => 'nullable|exists:work_units,id',
-            'school_code'      => 'nullable|string|max:20',
-            'npsn'            => 'nullable|string|max:20',
-            'nss'             => 'nullable|string|max:30',
-            'name'            => 'required|string|max:255',
-            'address'         => 'nullable|string',
-            'province_code'   => 'nullable|string|max:2',
-            'city_code'       => 'nullable|string|max:4',
-            'district_code'  => 'nullable|string|max:7',
-            'village_code'   => 'nullable|string|max:10',
-            'postal_code'     => 'nullable|string|max:10',
-            'phone'           => 'nullable|string|max:20',
-            'email'           => 'nullable|email|max:100',
-            'website'         => 'nullable|string|max:100',
-            'school_level'    => 'required|in:sd,smp,sma,smk',
-            'school_status'   => 'required|in:negeri,swasta',
-            'accreditation'   => 'nullable|string|max:10',
+            'work_unit_id' => 'nullable|exists:work_units,id',
+            'school_code' => 'nullable|string|max:20',
+            'npsn' => 'nullable|string|max:20',
+            'nss' => 'nullable|string|max:30',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'province_code' => 'nullable|string|max:2',
+            'city_code' => 'nullable|string|max:4',
+            'district_code' => 'nullable|string|max:7',
+            'village_code' => 'nullable|string|max:10',
+            'postal_code' => 'nullable|string|max:10',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
+            'website' => 'nullable|string|max:100',
+            'school_level' => 'required|in:sd,smp,sma,smk',
+            'school_status' => 'required|in:negeri,swasta',
+            'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
-            'principal_name'   => 'nullable|string|max:255',
-            'principal_nip'    => 'nullable|string|max:30',
-            'principal_nupy'   => 'nullable|string|max:50',
+            'principal_name' => 'nullable|string|max:255',
+            'principal_nip' => 'nullable|string|max:30',
+            'principal_nupy' => 'nullable|string|max:50',
             'principal_user_id' => 'nullable|exists:users,id',
             'operational_hours' => 'nullable|in:pagi,siang,full_day',
             'established_date' => 'nullable|date',
             'established_decree' => 'nullable|string|max:100',
-            'land_area'       => 'nullable|numeric|min:0',
-            'building_area'   => 'nullable|numeric|min:0',
-            'is_active'       => 'boolean',
-            'kop_nama'        => 'nullable|string|max:255',
-            'kop_alamat'      => 'nullable|string',
-            'kop_telp'        => 'nullable|string|max:50',
-            'kop_email'       => 'nullable|email|max:100',
-            'kop_website'     => 'nullable|string|max:100',
-            'kop_npsn'        => 'nullable|string|max:20',
-            'kopsis_active'   => 'boolean',
-            'bank_name'       => 'nullable|string|max:100',
-            'bank_cabang'     => 'nullable|string|max:100',
-            'bank_rekening'  => 'nullable|string|max:50',
-            'bank_an'         => 'nullable|string|max:100',
-            'npwp'            => 'nullable|string|max:30',
+            'land_area' => 'nullable|numeric|min:0',
+            'building_area' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'kop_nama' => 'nullable|string|max:255',
+            'kop_alamat' => 'nullable|string',
+            'kop_telp' => 'nullable|string|max:50',
+            'kop_email' => 'nullable|email|max:100',
+            'kop_website' => 'nullable|string|max:100',
+            'kop_npsn' => 'nullable|string|max:20',
+            'kopsis_active' => 'boolean',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_cabang' => 'nullable|string|max:100',
+            'bank_rekening' => 'nullable|string|max:50',
+            'bank_an' => 'nullable|string|max:100',
+            'npwp' => 'nullable|string|max:30',
         ]);
 
         foreach (['logo_path', 'kop_path', 'ttd_ksp_path', 'stamp_path'] as $field) {
@@ -294,7 +296,7 @@ class SchoolController extends Controller
     public function destroy(Request $request, string $userId, string $schoolId)
     {
         abort_unless(
-            auth()->user()->hasRole(['Super Admin', 'Administrator']),
+            canPermission('school-delete'),
             403,
             'Hanya Super Admin dan Administrator yang dapat menghapus sekolah.'
         );

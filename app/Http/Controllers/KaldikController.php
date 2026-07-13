@@ -30,7 +30,7 @@ class KaldikController extends Controller
     private function isGlobalUser(Request $request): bool
     {
         return $request->attributes->get('isGlobalView', false)
-            || $request->user()->hasRole(['Super Admin', 'Administrator']);
+            || ($request->user() ? canPermission('kaldik-global') : false);
     }
 
     /**
@@ -111,7 +111,7 @@ class KaldikController extends Controller
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
 
         // Label role untuk JS
-        $isAdminTU = !$isGlobal && $user->hasRole('Admin Tata Usaha');
+        $isAdminTU = !$isGlobal && canPermission('kaldik-admin-tu');
 
         return view('kaldik.index', compact(
             'kaldikEvents',
@@ -148,7 +148,7 @@ class KaldikController extends Controller
     {
         $user = $request->user();
         $isGlobal = $this->isGlobalUser($request);
-        $isAdminTU = !$isGlobal && $user->hasRole('Admin Tata Usaha');
+        $isAdminTU = !$isGlobal && canPermission('kaldik-admin-tu');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -209,7 +209,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh edit agenda miliknya sendiri
-        if (!$isGlobal && $user->hasRole('Admin Tata Usaha')) {
+        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa mengedit agenda kegiatan.');
             }
@@ -236,7 +236,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh update agenda miliknya sendiri
-        if (!$isGlobal && $user->hasRole('Admin Tata Usaha')) {
+        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa mengedit agenda kegiatan.');
             }
@@ -281,7 +281,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh hapus agenda miliknya sendiri
-        if (!$isGlobal && $user->hasRole('Admin Tata Usaha')) {
+        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa menghapus agenda kegiatan.');
             }
@@ -347,16 +347,14 @@ class KaldikController extends Controller
         if ($isAgenda && $kaldik->work_unit_id) {
             // Agenda satuan kerja → kirim ke Admin TU di satuan kerja itu
             $adminTUIds = \App\Models\GtkWorkUnit::where('work_unit_id', $kaldik->work_unit_id)
-                ->whereHas('user', fn($q) => $q->whereHas('roles', fn($r) => $r->where('name', 'Admin Tata Usaha')))
+                ->whereHas('user', fn($q) => $q->whereIn('id', usersHavingPermission('admin.tu.assessable')))
                 ->pluck('user_id')
                 ->toArray();
             $targetUserIds = array_merge($targetUserIds, $adminTUIds);
         }
 
         // Selalu kirim ke Super Admin & Administrator
-        $adminIds = \App\Models\User::whereHas('roles', fn($q) =>
-            $q->whereIn('name', ['Super Admin', 'Administrator'])
-        )->pluck('id')->toArray();
+        $adminIds = usersHavingPermission('general_admin.administrable');
         $targetUserIds = array_unique(array_merge($targetUserIds, $adminIds));
 
         // Hapus creator dari list agar tidak notifikasi ke dirinya sendiri

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Divisi;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class DivisiController extends Controller
@@ -23,7 +22,7 @@ class DivisiController extends Controller
         }
 
         $divisiList = $query->withCount('dokumenIso')->paginate(20)->withQueryString();
-        $isSuperAdmin = Auth::user()->hasRole('Super Admin');
+        $isSuperAdmin = canPermission('super-admin-only');
 
         return view('divisi.index', compact('divisiList', 'isSuperAdmin'));
     }
@@ -31,10 +30,10 @@ class DivisiController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nama'       => 'required|string|max:150',
-            'kode'       => 'required|string|max:30|unique:divisis,kode',
-            'deskripsi'  => 'nullable|string',
-            'is_active'  => 'nullable|in:0,1',
+            'nama' => 'required|string|max:150',
+            'kode' => 'required|string|max:30|unique:divisis,kode',
+            'deskripsi' => 'nullable|string',
+            'is_active' => 'nullable|in:0,1',
         ]);
 
         $data['id'] = Str::uuid();
@@ -49,10 +48,10 @@ class DivisiController extends Controller
         $divisi = Divisi::findOrFail($id);
 
         $data = $request->validate([
-            'nama'       => 'required|string|max:150',
-            'kode'       => 'required|string|max:30|unique:divisis,kode,' . $id,
-            'deskripsi'  => 'nullable|string',
-            'is_active'  => 'nullable|in:0,1',
+            'nama' => 'required|string|max:150',
+            'kode' => 'required|string|max:30|unique:divisis,kode,'.$id,
+            'deskripsi' => 'nullable|string',
+            'is_active' => 'nullable|in:0,1',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);

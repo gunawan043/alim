@@ -118,8 +118,9 @@ class JadwalKbmController extends Controller
             ->orderBy('slot_index')
             ->get();
 
+        $teacherIds = usersHavingPermission('general_tutor.readable');
         $teachers = User::where('school_id', $schoolId)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['Guru Mata Pelajaran', 'Guru', 'GTK']))
+            ->whereIn('id', $teacherIds)
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -261,9 +262,9 @@ class JadwalKbmController extends Controller
     {
         $user = $request->user();
         abort_unless($user && (
-            $user->can('jadwal_kbm_view')
-            || $user->can('jadwal_kbm_manage')
-            || $user->hasRole(['Super Admin', 'Mudir', 'Wadir 1', 'Wadir 2', 'Waka', 'Wakil Kepala Sekolah', 'Kepala Sekolah', 'Admin Tata Usaha', 'Tata Usaha', 'GTK'])
+            canPermission('jadwal_kbm_view')
+            || canPermission('jadwal_kbm_manage')
+            || canPermission('jadwal-kbm-all-access')
         ), 403, 'Anda tidak memiliki akses ke jadwal pelajaran.');
     }
 
@@ -271,9 +272,9 @@ class JadwalKbmController extends Controller
     {
         $user = $request->user();
         abort_unless($user && (
-            $user->can('jadwal_kbm_generate')
-            || $user->can('jadwal_kbm_manage')
-            || $user->hasRole(['Super Admin', 'Mudir', 'Wadir 1', 'Waka', 'Wakil Kepala Sekolah', 'Admin Tata Usaha'])
+            canPermission('jadwal_kbm_generate')
+            || canPermission('jadwal_kbm_manage')
+            || canPermission('jadwal-kbm-generate-all-access')
         ), 403, 'Anda tidak memiliki akses untuk generate jadwal.');
     }
 
@@ -281,9 +282,9 @@ class JadwalKbmController extends Controller
     {
         $user = $request->user();
         abort_unless($user && (
-            $user->can('jadwal_kbm_update')
-            || $user->can('jadwal_kbm_manage')
-            || $user->hasRole(['Super Admin', 'Mudir', 'Wadir 1', 'Waka', 'Wakil Kepala Sekolah', 'Admin Tata Usaha'])
+            canPermission('jadwal_kbm_update')
+            || canPermission('jadwal_kbm_manage')
+            || canPermission('jadwal-kbm-update-all-access')
         ), 403, 'Anda tidak memiliki akses untuk mengubah jadwal.');
     }
 }

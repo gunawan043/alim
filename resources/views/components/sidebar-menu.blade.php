@@ -246,7 +246,7 @@ function renderMenuItem($item, $userId, $isSuperAdmin, $activeSidebarMenu, $rout
 
 </ul>
 
-@if(Auth::check() && Auth::user()->hasRole('Super Admin'))
+@if(Auth::check() && Auth::user()->role()->hasPermission('sa-sidebar-menus-all-access'))
     <li class="nav-item mt-3">
         <a class="nav-link menu-link text-warning"
            href="{{ Route::has('user.sa.sidebar-menus.index') ? route('user.sa.sidebar-menus.index', ['userId' => $sidebarUserId]) : '#' }}">

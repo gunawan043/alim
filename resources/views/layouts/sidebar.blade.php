@@ -68,19 +68,19 @@
                     $user = auth()->user();
                 @endphp
 
-                @if($user->hasRole('Super Admin'))
+                @if($user->role()->hasPermission('menu-super-admin-sidebar'))
                     @include('layouts.sidebar.super-admin')
-                @elseif($user->hasRole('GTK'))
+                @elseif($user->role()->hasPermission('menu-gtk-sidebar'))
                     @include('layouts.sidebar.gtk')
-                @elseif($user->hasRole('Admin Tata Usaha'))
+                @elseif($user->role()->hasPermission('menu-admin-tu-sidebar'))
                     @include('layouts.sidebar.admin-tu')
-                @elseif($user->hasRole('Admin Sarpras') || $user->hasRole('Sarpras'))
+                @elseif($user->role()->hasPermission('menu-admin-sarpras-sidebar') || $user->role()->hasPermission('menu-sarpras-sidebar'))
                     @include('layouts.sidebar.gtk-sarpras')
-                @elseif($user->hasRole('Personalia'))
+                @elseif($user->role()->hasPermission('menu-personalia-sidebar'))
                     @include('layouts.sidebar.personalia')
-                @elseif($user->hasRole('Wakil Kepala Sekolah'))
+                @elseif($user->role()->hasPermission('menu-wakil-kepala-sekolah-sidebar'))
                     @include('layouts.sidebar.waka')
-                @elseif($user->hasRole('Asrama') || $user->hasRole('Admin Asrama'))
+                @elseif($user->role()->hasPermission('menu-asrama-sidebar') || $user->role()->hasPermission('menu-admin-asrama-sidebar'))
                     @include('layouts.sidebar.asrama')
                 @else
                     <li class="nav-item"><span class="nav-link text-muted px-3">Tidak ada menu untuk role ini</span></li>

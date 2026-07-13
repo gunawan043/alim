@@ -223,6 +223,13 @@ function saMenuActive($patterns = []) {
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{{ isActiveSA($currentRoute, 'user.boarding-policies.') ? ' active' : '' }}"
+                   href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-file-shield-2-line me-1"></i> Kebijakan Asrama
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ isActiveSA($currentRoute, 'user.asrama.inventories.') ? ' active' : '' }}"
                    href="{{ $hasAsramaContext ? route('user.asrama.inventories.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaFallback }}"
                    style="font-size:0.85rem">

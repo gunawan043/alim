@@ -108,7 +108,8 @@ class ApplicationController extends Controller
             'stages.penilai'
         ]);
 
-        $interviewers = User::role(['personalia'])->get();
+        $interviewerIds = usersHavingPermission('personalia.recruitable');
+        $interviewers = User::whereIn('id', $interviewerIds)->get();
 
         return view('recruitment.applications.show', compact('application', 'interviewers', 'userId'));
     }

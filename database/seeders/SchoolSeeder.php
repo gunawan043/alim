@@ -76,7 +76,6 @@ class SchoolSeeder extends Seeder
                 [
                     'name' => $name,
                     'type' => 'Unit Akademik',
-                    'induk' => 'Pondok Abu Hurairah Mataram',
                     'parent_id' => $pondok->id,
                     'is_active' => true,
                 ]
@@ -103,7 +102,6 @@ class SchoolSeeder extends Seeder
                 [
                     'name' => $name,
                     'type' => 'Unit Penunjang Akademik',
-                    'induk' => 'Pondok Abu Hurairah Mataram',
                     'parent_id' => $pondok->id,
                     'is_active' => true,
                 ]
@@ -125,7 +123,6 @@ class SchoolSeeder extends Seeder
                 [
                     'name' => $name,
                     'type' => 'Unit Administrasi',
-                    'induk' => 'Pondok Abu Hurairah Mataram',
                     'parent_id' => $pondok->id,
                     'is_active' => true,
                 ]
@@ -147,7 +144,6 @@ class SchoolSeeder extends Seeder
                 [
                     'name' => $name,
                     'type' => 'Unit Pelayanan',
-                    'induk' => 'Pondok Abu Hurairah Mataram',
                     'parent_id' => $pondok->id,
                     'is_active' => true,
                 ]

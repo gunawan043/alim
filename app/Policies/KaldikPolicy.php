@@ -2,9 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Kaldik;
-use Illuminate\Auth\Access\Response;
+use App\Models\User;
 
 class KaldikPolicy
 {
@@ -30,22 +29,23 @@ class KaldikPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['Super Admin', 'Administrator', 'Admin Tata Usaha']);
+        return canPermission('kaldik-create');
     }
 
     public function update(User $user, Kaldik $kaldik): bool
     {
-        if ($user->hasRole(['Super Admin', 'Administrator'])) {
+        if (canPermission('kaldik-update-all')) {
             return true;
         }
 
         // Admin Tata Usaha → hanya bisa edit/hapus agenda miliknya sendiri
-        if ($user->hasRole('Admin Tata Usaha')) {
+        if (canPermission('kaldik-update-self')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 return false;
             }
 
             $userWorkUnitId = $this->getUserWorkUnitId($user);
+
             return $kaldik->work_unit_id === $userWorkUnitId;
         }
 

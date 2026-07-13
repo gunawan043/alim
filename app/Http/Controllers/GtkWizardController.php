@@ -995,13 +995,7 @@ class GtkWizardController extends Controller
     private function getStatistics(): array
     {
         // Determine scope: global view vs per-school
-        $isGlobalView = Auth::user()->hasRole([
-            'Personalia',
-            'Super Admin',
-            'Administrator',
-            'Wadir 1',
-            'Mudir',
-        ]) || Auth::user()->hasPermissionTo('view_global_school_data');
+        $isGlobalView = canPermission('gtk-wizard-global-view') || canPermission('view_global_school_data');
 
         $baseQuery = function () use ($isGlobalView) {
             $query = User::whereHas('employment');

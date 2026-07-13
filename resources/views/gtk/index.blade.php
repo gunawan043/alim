@@ -471,7 +471,7 @@
                                     </div>
                                 </div>
 
-                                @if (Auth::user()->hasRole(['Personalia', 'Super Admin', 'Administrator']))
+                                @if (Auth::user()->role()->hasPermission('gtk-create'))
                                     <a href="{{ route('user.gtk.import', ['userId' => $userId]) }}" class="btn btn-success">
                                         <i class="bx bx-add-to-queue ri-upload-2-line align-bottom me-1"></i> Import
                                     </a>
@@ -783,7 +783,7 @@
                                                             <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
                                                         </button>
                                                     </li>
-                                                    @if (Auth::user()->hasRole(['Personalia', 'Super Admin', 'Administrator']))
+                                                    @if (Auth::user()->role()->hasPermission('gtk-update'))
                                                         <li>
                                                             <button class="dropdown-item toggle-status" data-id="{{ $gtk->id }}" data-status="{{ $gtk->is_active }}">
                                                                 <i class="ri-toggle-{{ $gtk->is_active ? 'fill' : 'line' }} text-warning me-2"></i>
@@ -808,7 +808,7 @@
                                                 colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                                             <h5 class="mt-2">Belum ada data GTK</h5>
                                             <p class="text-muted mb-0">Tambahkan GTK untuk memulai</p>
-                                            @if (Auth::user()->hasRole(['Personalia', 'Super Admin', 'Administrator']))
+                                            @if (Auth::user()->role()->hasPermission('gtk-create'))
                                                 <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-primary mt-3">
                                                     <i class="ri-add-line me-1"></i> Tambah GTK
                                                 </a>

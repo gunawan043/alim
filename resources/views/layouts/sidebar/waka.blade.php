@@ -44,8 +44,8 @@ function isActiveWaka($routeName, $pattern) {
 $userSarprasAccess = \App\Models\GtkWorkUnit::where('user_id', $currentUser->id)
     ->whereHas('workUnit', fn($q) => $q->where('code', 'PAH-ADM-003'))
     ->exists()
-    || $currentUser->can('sarpras_all_access')
-    || $currentUser->can('inventory_view');
+    || $currentUser->role()->hasPermission('sarpras_all_access')
+    || $currentUser->role()->hasPermission('inventory_view');
 
 $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 @endphp

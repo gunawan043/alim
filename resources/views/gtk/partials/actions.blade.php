@@ -9,7 +9,10 @@
                 <i class="ri-eye-fill text-info me-2"></i> Lihat Detail
             </a>
         </li>
-        @if (Auth::user()->hasRole(['Personalia', 'Super Admin', 'Administrator']))
+        @if ($userId != Auth::id() && Auth::user()->cannot('view-gtk', $gtk->id) || $userId == Auth::id() && Auth::user()->cannot('view-self', $gtk->id))
+            @php abort(403, 'Unauthorized access.'); @endphp
+        @endif
+        @if (Auth::user()->role()->hasPermission('gtk-update') || Auth::user()->role()->hasPermission('gtk-delete'))
             <li>
                 <a class="dropdown-item" href="{{ route('user.gtk.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}">
                     <i class="ri-pencil-fill text-primary me-2"></i> Edit

@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AbsensiRecapExport;
+use App\Exports\AbsensiSemesterFullExport;
+use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\Student;
-use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
-use App\Models\AcademicYear;
-use App\Exports\AbsensiRecapExport;
-use App\Exports\AbsensiDetailExport;
-use App\Exports\AbsensiSemesterFullExport;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AbsensiHarianController extends Controller
@@ -37,6 +35,7 @@ class AbsensiHarianController extends Controller
     {
         $user = Auth::user();
         $studyGroup = StudyGroup::find($studyGroupId);
+
         return $studyGroup && $studyGroup->homeroom_teacher_id === $user->id;
     }
 
@@ -46,7 +45,8 @@ class AbsensiHarianController extends Controller
     protected function isAdminOrWaka(): bool
     {
         $user = Auth::user();
-        return $user && ($user->hasRole('Admin Tata Usaha') || $user->hasRole('Tata Usaha') || $user->hasRole('Wadir 1') || $user->hasRole('Wadir 2') || $user->hasRole('Wakil Kepala Sekolah') || $user->hasRole('Kepala Sekolah') || $user->hasRole('Kepala Sekolah Pondok'));
+
+        return $user && (canPermission('absensi-admin-tu') || canPermission('absensi-tata-usaha') || canPermission('absensi-wadir-1') || canPermission('absensi-wadir-2') || canPermission('absensi-wakil-kepala-sekolah') || canPermission('absensi-kepala-sekolah') || canPermission('absensi-kepala-sekolah-pondok'));
     }
 
     // ── INDEX — Dashboard Absensi Harian ────────────────────────
@@ -67,18 +67,18 @@ class AbsensiHarianController extends Controller
 
         // Admin TU / Waka: semua rombel semua sekolah. Wali Kelas: rombelnya sendiri.
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Tata Usaha') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok')
+            canPermission('absensi-admin-tu') ||
+            canPermission('absensi-tata-usaha') ||
+            canPermission('absensi-wakil-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah-pondok')
         );
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(!$isPrivileged, fn($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -93,6 +93,7 @@ class AbsensiHarianController extends Controller
 
             if ($totalSiswa === 0) {
                 $rombelStats[$sg->id] = null;
+
                 continue;
             }
 
@@ -137,7 +138,7 @@ class AbsensiHarianController extends Controller
         $schoolId = $this->getSchoolId($request);
         $activeYear = $this->getActiveAcademicYear();
 
-        if (!$activeYear) {
+        if (! $activeYear) {
             return redirect()
                 ->route('user.absensi.harian.index', ['userId' => $userId])
                 ->with('error', 'Tidak ada tahun ajaran yang aktif.');
@@ -155,28 +156,28 @@ class AbsensiHarianController extends Controller
 
         // Admin TU / Waka: semua rombel semua sekolah. Wali Kelas: rombelnya sendiri.
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Tata Usaha') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok')
+            canPermission('absensi-admin-tu') ||
+            canPermission('absensi-tata-usaha') ||
+            canPermission('absensi-wakil-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah-pondok')
         );
 
         // Query StudyGroup langsung — bypass global scope
         $studyGroupQuery = \App\Models\StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->orderBy('name');
 
-        if (!$isPrivileged) {
+        if (! $isPrivileged) {
             $studyGroupQuery->where('homeroom_teacher_id', $user->id);
         }
 
         $studyGroups = $studyGroupQuery->get();
 
         // Validasi rombel yang dipilih
-        if ($selectedStudyGroupId && !$studyGroups->contains('id', $selectedStudyGroupId)) {
+        if ($selectedStudyGroupId && ! $studyGroups->contains('id', $selectedStudyGroupId)) {
             $selectedStudyGroupId = null;
         }
 
@@ -218,24 +219,24 @@ class AbsensiHarianController extends Controller
         $schoolId = $this->getSchoolId($request);
         $activeYear = $this->getActiveAcademicYear();
 
-        if (!$activeYear) {
+        if (! $activeYear) {
             return redirect()
                 ->route('user.absensi.harian.index', ['userId' => $userId])
                 ->with('error', 'Tidak ada tahun ajaran aktif. Silakan aktifkan tahun ajaran terlebih dahulu.');
         }
 
         $validated = $request->validate([
-            'study_group_id'   => 'required|exists:study_groups,id',
-            'attendance_date'  => 'required|date',
-            'semester'         => 'required|in:ganjil,genap',
-            'records'          => 'required|array|min:1',
+            'study_group_id' => 'required|exists:study_groups,id',
+            'attendance_date' => 'required|date',
+            'semester' => 'required|in:ganjil,genap',
+            'records' => 'required|array|min:1',
             'records.*.student_id' => 'required|exists:students,id',
-            'records.*.status'  => 'required|in:hadir,terlambat,izin,sakit,alpa',
-            'records.*.notes'  => 'nullable|string|max:255',
+            'records.*.status' => 'required|in:hadir,terlambat,izin,sakit,alpa',
+            'records.*.notes' => 'nullable|string|max:255',
         ]);
 
         // Otorisasi: hanya Admin TU / Waka / Wali Kelas rombel tsb
-        if (!$this->isAdminOrWaka() && !$this->isWaliKelasOf($request, $validated['study_group_id'])) {
+        if (! $this->isAdminOrWaka() && ! $this->isWaliKelasOf($request, $validated['study_group_id'])) {
             abort(403, 'Anda bukan wali kelas rombel ini.');
         }
 
@@ -243,19 +244,19 @@ class AbsensiHarianController extends Controller
         $date = Carbon::parse($validated['attendance_date']);
         $records = $validated['records'];
 
-        DB::transaction(function () use ($records, $validated, $date, $activeYear, $schoolId) {
+        DB::transaction(function () use ($records, $validated, $date, $activeYear) {
             foreach ($records as $record) {
                 AdminPresensiHarian::updateOrCreate(
                     [
-                        'study_group_id'   => $validated['study_group_id'],
+                        'study_group_id' => $validated['study_group_id'],
                         'academic_year_id' => $activeYear->id,
-                        'semester'         => $validated['semester'],
-                        'attendance_date'  => $date->toDateString(),
-                        'student_id'       => $record['student_id'],
+                        'semester' => $validated['semester'],
+                        'attendance_date' => $date->toDateString(),
+                        'student_id' => $record['student_id'],
                     ],
                     [
-                        'status'  => $record['status'],
-                        'notes'   => $record['notes'] ?? null,
+                        'status' => $record['status'],
+                        'notes' => $record['notes'] ?? null,
                     ]
                 );
             }
@@ -263,11 +264,11 @@ class AbsensiHarianController extends Controller
 
         return redirect()
             ->route('user.absensi.harian.create', [
-                'userId'         => $userId,
+                'userId' => $userId,
                 'study_group_id' => $validated['study_group_id'],
-                'date'           => $date->toDateString(),
-                'semester'       => $validated['semester'],
-                'mode'           => $inputMode,
+                'date' => $date->toDateString(),
+                'semester' => $validated['semester'],
+                'mode' => $inputMode,
             ])
             ->with('success', 'Absensi berhasil disimpan.');
     }
@@ -282,31 +283,31 @@ class AbsensiHarianController extends Controller
 
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
         $selectedMonth = $request->filled('month') ? (int) $request->month : (int) now()->month;
-        $selectedYear  = $request->filled('year')  ? (int) $request->year  : (int) now()->year;
+        $selectedYear = $request->filled('year') ? (int) $request->year : (int) now()->year;
         $selectedSemester = $request->filled('semester')
             ? $request->semester
             : $activeYear?->semester ?? 'ganjil';
 
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Tata Usaha') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok')
+            canPermission('absensi-admin-tu') ||
+            canPermission('absensi-tata-usaha') ||
+            canPermission('absensi-wakil-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah-pondok')
         );
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(!$isPrivileged, fn($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
 
         $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
-        $endDate   = $startDate->copy()->endOfMonth();
+        $endDate = $startDate->copy()->endOfMonth();
         $daysInMonth = $startDate->daysInMonth;
 
         $studentRows = collect();
@@ -337,7 +338,7 @@ class AbsensiHarianController extends Controller
             }
         }
 
-        $months = collect(range(1, 12))->map(fn($m) => [
+        $months = collect(range(1, 12))->map(fn ($m) => [
             'value' => $m,
             'label' => Carbon::create(2024, $m, 1)->locale('id')->monthName,
         ]);
@@ -345,9 +346,9 @@ class AbsensiHarianController extends Controller
         // ── Export Excel
         if ($request->filled('export')) {
             $studyGroup = $studyGroups->firstWhere('id', $selectedStudyGroupId);
-            $rombelName    = $studyGroup ? $studyGroup->full_name : 'Semua Rombel';
-            $homeroomName  = $studyGroup?->homeroomTeacher?->name ?? '';
-            $schoolName   = $studyGroup?->school?->name ?? '';
+            $rombelName = $studyGroup ? $studyGroup->full_name : 'Semua Rombel';
+            $homeroomName = $studyGroup?->homeroomTeacher?->name ?? '';
+            $schoolName = $studyGroup?->school?->name ?? '';
 
             $months = $selectedSemester === 'ganjil'
                 ? [7, 8, 9, 10, 11, 12]
@@ -357,7 +358,7 @@ class AbsensiHarianController extends Controller
             $groupedData = [];
             foreach ($months as $month) {
                 $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
-                $monthEnd   = $monthStart->copy()->endOfMonth();
+                $monthEnd = $monthStart->copy()->endOfMonth();
                 $monthRecords = AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
                     ->where('academic_year_id', $activeYear->id)
                     ->where('semester', $selectedSemester)
@@ -379,7 +380,7 @@ class AbsensiHarianController extends Controller
                     $activeYear?->name ?? '',
                     $year,
                 ),
-                "rekap-absensi-semester-{$rombelName}-" . ucfirst($selectedSemester) . ".xlsx"
+                "rekap-absensi-semester-{$rombelName}-".ucfirst($selectedSemester).'.xlsx'
             );
         }
 
@@ -403,22 +404,28 @@ class AbsensiHarianController extends Controller
                 $student->gender,
             ]);
 
-            $totalS = 0; $totalI = 0; $totalA = 0;
+            $totalS = 0;
+            $totalI = 0;
+            $totalA = 0;
 
             for ($d = 1; $d <= $daysInMonth; $d++) {
                 $dateStr = $startDate->copy()->day($d)->toDateString();
                 $record = $dateMap[$student->id][$dateStr] ?? null;
                 $symbol = match ($record?->status) {
-                    'hadir'     => 'H',
+                    'hadir' => 'H',
                     'terlambat' => 'T',
-                    'izin'      => 'I',
-                    'sakit'     => 'S',
-                    'alpa'      => 'A',
-                    default     => '·',
+                    'izin' => 'I',
+                    'sakit' => 'S',
+                    'alpa' => 'A',
+                    default => '·',
                 };
-                if ($record?->status === 'sakit') $totalS++;
-                elseif ($record?->status === 'izin') $totalI++;
-                elseif ($record?->status === 'alpa') $totalA++;
+                if ($record?->status === 'sakit') {
+                    $totalS++;
+                } elseif ($record?->status === 'izin') {
+                    $totalI++;
+                } elseif ($record?->status === 'alpa') {
+                    $totalA++;
+                }
                 $row->push($symbol);
             }
 
@@ -428,6 +435,7 @@ class AbsensiHarianController extends Controller
 
             $rows->push($row);
         }
+
         return $rows;
     }
 
@@ -441,26 +449,26 @@ class AbsensiHarianController extends Controller
 
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
         $selectedMonth = $request->filled('month') ? (int) $request->month : (int) now()->month;
-        $selectedYear  = $request->filled('year')  ? (int) $request->year  : (int) now()->year;
+        $selectedYear = $request->filled('year') ? (int) $request->year : (int) now()->year;
         $selectedSemester = $request->filled('semester')
             ? $request->semester
             : $activeYear?->semester ?? 'ganjil';
 
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Tata Usaha') ||
-            $user->hasRole('Wadir 1') ||
-            $user->hasRole('Wadir 2') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok')
+            canPermission('absensi-admin-tu') ||
+            canPermission('absensi-tata-usaha') ||
+            canPermission('absensi-wadir-1') ||
+            canPermission('absensi-wadir-2') ||
+            canPermission('absensi-wakil-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah-pondok')
         );
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(!$isPrivileged, fn($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -470,7 +478,7 @@ class AbsensiHarianController extends Controller
         $rekapData = collect();
         if ($selectedStudyGroupId && $activeYear) {
             $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
-            $endDate   = $startDate->copy()->endOfMonth();
+            $endDate = $startDate->copy()->endOfMonth();
 
             $histories = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
@@ -489,14 +497,14 @@ class AbsensiHarianController extends Controller
                     ->get();
 
                 $rekapData->push([
-                    'nis'         => $student->nis,
-                    'name'        => $student->name,
-                    'gender'      => $student->gender,
-                    'hadir'       => $records->where('status', 'hadir')->count(),
-                    'terlambat'   => $records->where('status', 'terlambat')->count(),
-                    'izin'        => $records->where('status', 'izin')->count(),
-                    'sakit'       => $records->where('status', 'sakit')->count(),
-                    'alpa'        => $records->where('status', 'alpa')->count(),
+                    'nis' => $student->nis,
+                    'name' => $student->name,
+                    'gender' => $student->gender,
+                    'hadir' => $records->where('status', 'hadir')->count(),
+                    'terlambat' => $records->where('status', 'terlambat')->count(),
+                    'izin' => $records->where('status', 'izin')->count(),
+                    'sakit' => $records->where('status', 'sakit')->count(),
+                    'alpa' => $records->where('status', 'alpa')->count(),
                 ]);
             }
         }
@@ -504,9 +512,9 @@ class AbsensiHarianController extends Controller
         // ── Export Excel jika diminta
         if ($request->filled('export')) {
             $studyGroup = $studyGroups->firstWhere('id', $selectedStudyGroupId);
-            $monthName  = Carbon::create($selectedYear, $selectedMonth, 1)->locale('id')->monthName;
+            $monthName = Carbon::create($selectedYear, $selectedMonth, 1)->locale('id')->monthName;
             $rombelName = $studyGroup ? $studyGroup->full_name : 'Semua Rombel';
-            $monthYear  = "{$monthName} {$selectedYear}";
+            $monthYear = "{$monthName} {$selectedYear}";
 
             return Excel::download(
                 new AbsensiRecapExport($rekapData, $rombelName, $monthYear, ucfirst($selectedSemester)),
@@ -514,7 +522,7 @@ class AbsensiHarianController extends Controller
             );
         }
 
-        $months = collect(range(1, 12))->map(fn($m) => [
+        $months = collect(range(1, 12))->map(fn ($m) => [
             'value' => $m,
             'label' => Carbon::create(2024, $m, 1)->locale('id')->monthName,
         ]);
@@ -543,20 +551,20 @@ class AbsensiHarianController extends Controller
             : $activeYear?->semester ?? 'ganjil';
 
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Tata Usaha') ||
-            $user->hasRole('Wadir 1') ||
-            $user->hasRole('Wadir 2') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok')
+            canPermission('absensi-admin-tu') ||
+            canPermission('absensi-tata-usaha') ||
+            canPermission('absensi-wadir-1') ||
+            canPermission('absensi-wadir-2') ||
+            canPermission('absensi-wakil-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah') ||
+            canPermission('absensi-kepala-sekolah-pondok')
         );
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(!$isPrivileged, fn($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -595,21 +603,21 @@ class AbsensiHarianController extends Controller
 
                 foreach ($months as $month) {
                     $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
-                    $monthEnd   = $monthStart->copy()->endOfMonth();
+                    $monthEnd = $monthStart->copy()->endOfMonth();
                     $groupedData[$month][$sid] = $allRecords
-                        ->filter(fn($r) => $r->student_id === $sid && $r->attendance_date->between($monthStart, $monthEnd))
-                        ->keyBy(fn($r) => $r->attendance_date->toDateString());
+                        ->filter(fn ($r) => $r->student_id === $sid && $r->attendance_date->between($monthStart, $monthEnd))
+                        ->keyBy(fn ($r) => $r->attendance_date->toDateString());
                 }
 
                 $rekapData->push([
-                    'nis'         => $student->nis,
-                    'name'        => $student->name,
-                    'gender'      => $student->gender,
-                    'hadir'       => $allRecords->where('student_id', $sid)->where('status', 'hadir')->count(),
-                    'terlambat'   => $allRecords->where('student_id', $sid)->where('status', 'terlambat')->count(),
-                    'izin'        => $allRecords->where('student_id', $sid)->where('status', 'izin')->count(),
-                    'sakit'       => $allRecords->where('student_id', $sid)->where('status', 'sakit')->count(),
-                    'alpa'        => $allRecords->where('student_id', $sid)->where('status', 'alpa')->count(),
+                    'nis' => $student->nis,
+                    'name' => $student->name,
+                    'gender' => $student->gender,
+                    'hadir' => $allRecords->where('student_id', $sid)->where('status', 'hadir')->count(),
+                    'terlambat' => $allRecords->where('student_id', $sid)->where('status', 'terlambat')->count(),
+                    'izin' => $allRecords->where('student_id', $sid)->where('status', 'izin')->count(),
+                    'sakit' => $allRecords->where('student_id', $sid)->where('status', 'sakit')->count(),
+                    'alpa' => $allRecords->where('student_id', $sid)->where('status', 'alpa')->count(),
                 ]);
             }
         }
@@ -634,7 +642,7 @@ class AbsensiHarianController extends Controller
                     $academicYearName,
                     $year,
                 ),
-                "rekap-absensi-semester-{$rombelName}-" . ucfirst($selectedSemester) . ".xlsx"
+                "rekap-absensi-semester-{$rombelName}-".ucfirst($selectedSemester).'.xlsx'
             );
         }
 
@@ -652,7 +660,7 @@ class AbsensiHarianController extends Controller
         $schoolId = $this->getSchoolId($request);
         $activeYear = $this->getActiveAcademicYear();
 
-        $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $student = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studentUuid);
 
         $selectedAyId = $request->filled('academic_year_id')
@@ -709,31 +717,31 @@ class AbsensiHarianController extends Controller
             ->orderBy('attendance_date', 'desc')
             ->get();
 
-        $header = "LAPORAN ABSENSI HARIAN";
+        $header = 'LAPORAN ABSENSI HARIAN';
         $filename = "absensi_{$student->nisn}_{$student->name}.xls";
 
-        header("Content-Type: application/vnd.ms-excel");
+        header('Content-Type: application/vnd.ms-excel');
         header("Content-Disposition: attachment; filename=\"$filename\"");
-        header("Pragma: no-cache");
-        header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+        header('Pragma: no-cache');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 
         ob_start();
-        echo "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\"></head><body>";
+        echo '<html><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"></head><body>';
         echo "<h2>$header</h2>";
         echo "<p>Nama: {$student->name} | NISN: {$student->nisn}</p>";
         if ($student->currentClassHistory) {
-            echo "<p>Rombel: " . $student->currentClassHistory->studyGroup->full_name . "</p>";
+            echo '<p>Rombel: '.$student->currentClassHistory->studyGroup->full_name.'</p>';
         }
         echo "<table border='1'>";
-        echo "<tr><th>Tanggal</th><th>Status</th><th>Catatan</th></tr>";
+        echo '<tr><th>Tanggal</th><th>Status</th><th>Catatan</th></tr>';
         foreach ($records as $r) {
-            echo "<tr>";
-            echo "<td>" . $r->attendance_date->format('d/m/Y') . "</td>";
-            echo "<td>" . $r->status . "</td>";
-            echo "<td>" . ($r->notes ?? '-') . "</td>";
-            echo "</tr>";
+            echo '<tr>';
+            echo '<td>'.$r->attendance_date->format('d/m/Y').'</td>';
+            echo '<td>'.$r->status.'</td>';
+            echo '<td>'.($r->notes ?? '-').'</td>';
+            echo '</tr>';
         }
-        echo "</table></body></html>";
+        echo '</table></body></html>';
         exit;
     }
 }

@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\SidebarAccess;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Arr;
 
 class SidebarMenuService
 {
     protected array $config;
+
     protected array $accessOverrides;
 
     public function __construct()
@@ -43,6 +43,7 @@ class SidebarMenuService
         // DB override
         if (isset($this->accessOverrides[$menuKey])) {
             $roles = $this->accessOverrides[$menuKey];
+
             // null/empty = all roles can access
             return empty($roles) ? null : $roles;
         }
@@ -62,12 +63,16 @@ class SidebarMenuService
     public function canAccess(string $menuKey): bool
     {
         $user = Auth::user();
-        if (!$user) return false;
+        if (! $user) {
+            return false;
+        }
 
         $allowed = $this->getAllowedRoles($menuKey);
 
         // No restriction
-        if ($allowed === null) return true;
+        if ($allowed === null) {
+            return true;
+        }
 
         return $user->hasAnyRole($allowed);
     }
@@ -78,11 +83,16 @@ class SidebarMenuService
     public function hasAccessibleChild(string $parentKey): bool
     {
         $parent = $this->config[$parentKey] ?? null;
-        if (!$parent || empty($parent['children'])) return false;
+        if (! $parent || empty($parent['children'])) {
+            return false;
+        }
 
         foreach ($parent['children'] as $childKey => $child) {
-            if ($this->canAccess($childKey)) return true;
+            if ($this->canAccess($childKey)) {
+                return true;
+            }
         }
+
         return false;
     }
 
@@ -99,9 +109,9 @@ class SidebarMenuService
         $result = [];
         foreach ($items as $key => $node) {
             // Check if has children
-            if (!empty($node['children'])) {
+            if (! empty($node['children'])) {
                 $filteredChildren = $this->filterAccessible($node['children']);
-                if (!empty($filteredChildren)) {
+                if (! empty($filteredChildren)) {
                     $result[$key] = $node;
                     $result[$key]['children'] = $filteredChildren;
                 }
@@ -111,6 +121,7 @@ class SidebarMenuService
                 }
             }
         }
+
         return $result;
     }
 
@@ -128,11 +139,12 @@ class SidebarMenuService
         $parts = explode('.', $key);
         $node = $this->config[$parts[0]] ?? null;
         for ($i = 1; $i < count($parts); $i++) {
-            if (!$node || !isset($node['children'][$parts[$i]])) {
+            if (! $node || ! isset($node['children'][$parts[$i]])) {
                 return null;
             }
             $node = $node['children'][$parts[$i]];
         }
+
         return $node;
     }
 
@@ -141,7 +153,9 @@ class SidebarMenuService
      */
     public function buildUrl(array $node, ?string $userId = null): string
     {
-        if (empty($node['route'])) return '#';
+        if (empty($node['route'])) {
+            return '#';
+        }
 
         $params = [];
         foreach (($node['params'] ?? []) as $k => $v) {
@@ -155,7 +169,7 @@ class SidebarMenuService
         }
 
         try {
-            return route($node['route'], $params) . ($node['query'] ?? '');
+            return route($node['route'], $params).($node['query'] ?? '');
         } catch (\Exception $e) {
             return '#';
         }
@@ -164,11 +178,13 @@ class SidebarMenuService
     protected function getFirstBookId()
     {
         $user = Auth::user();
-        if (!$user || !$user->hasRole('GTK')) return 'none';
+        if (! $user || ! canPermission('sidebar-gtk')) {
+            return 'none';
+        }
 
         $schoolId = $this->getUserSchoolId($user);
         $firstBook = \App\Models\TeacherAdminBook::withoutGlobalScope('school_context')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('teacher_id', $user->id)
             ->where('is_active', true)
             ->first();
@@ -187,6 +203,7 @@ class SidebarMenuService
         if ($primaryUnit && $primaryUnit->work_unit_id) {
             $school = \App\Models\School::where('work_unit_id', $primaryUnit->work_unit_id)
                 ->active()->first();
+
             return $school?->id;
         }
 
@@ -201,12 +218,13 @@ class SidebarMenuService
         $keys = [];
         foreach ($this->config as $key => $node) {
             $keys[] = $key;
-            if (!empty($node['children'])) {
+            if (! empty($node['children'])) {
                 foreach (array_keys($node['children']) as $childKey) {
                     $keys[] = $childKey;
                 }
             }
         }
+
         return $keys;
     }
 

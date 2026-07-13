@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\DokumenIso;
+use App\Models\BoardingPolicy;
 use App\Models\GradeLevel;
 use App\Models\Student;
 use App\Models\StudyGroup;
@@ -10,6 +11,7 @@ use App\Models\StudyGroupSubject;
 use App\Observers\DokumenIsoObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
+use App\Observers\BoardingPolicyObserver;
 use App\View\Composers\SidebarComposer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -38,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\Sarpras\RepairRequestWorkflow::class);
         $this->app->singleton(\App\Services\Sarpras\MaintenanceWorkflow::class);
         $this->app->singleton(\App\Services\Sarpras\StockOpnameWorkflow::class);
+        $this->app->singleton(\App\Services\Sarpras\MovementWorkflow::class);
+        $this->app->singleton(\App\Services\Sarpras\ChecklistEngine::class);
+        $this->app->singleton(\App\Services\Sarpras\PhotoDocumentationService::class);
+        $this->app->singleton(\App\Services\Sarpras\TechnicianWorkspaceService::class);
+        $this->app->singleton(\App\Services\Sarpras\AuditorWorkspaceService::class);
+        $this->app->singleton(\App\Services\Sarpras\DivisionPortalService::class);
+        $this->app->singleton(\App\Services\Sarpras\OfflineSyncService::class);
+        $this->app->singleton(\App\Services\Sarpras\WorkOrderExecutionService::class);
         $this->app->singleton(\App\Services\SarprasCacheInvalidator::class);
 
         // Boarding operations
@@ -45,8 +55,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\Boarding\LeaveWorkflowService::class);
         $this->app->singleton(\App\Services\Boarding\VisitWorkflowService::class);
         $this->app->singleton(\App\Services\Boarding\HealthWorkflowService::class);
-        $this->app->singleton(\App\Services\Boarding\BoardingDashboardService::class);
-        $this->app->singleton(\App\Services\Boarding\StudentCommandCenterService::class);
         $this->app->singleton(\App\Services\Boarding\BoardingApprovalService::class);
 
         // Bind BoardingRulesEngine as a singleton so DI can resolve it.
@@ -129,6 +137,8 @@ class AppServiceProvider extends ServiceProvider
         StudyGroup::observe(StudyGroupObserver::class);
         DokumenIso::observe(DokumenIsoObserver::class);
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
+
+        BoardingPolicy::observe(BoardingPolicyObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
         $engine = \App\Domain\Services\BoardingRulesEngine::getInstance();

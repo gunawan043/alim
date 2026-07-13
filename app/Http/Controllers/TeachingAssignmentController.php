@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TeachingAssignment;
-use App\Models\TeacherAdminBook;
-use App\Models\SubjectKktp;
+use App\Models\AcademicYear;
 use App\Models\InstitutionDecree;
 use App\Models\School;
-use App\Models\Subject;
 use App\Models\StudyGroup;
+use App\Models\Subject;
+use App\Models\SubjectKktp;
+use App\Models\TeacherAdminBook;
+use App\Models\TeachingAssignment;
 use App\Models\User;
-use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 
 class TeachingAssignmentController extends Controller
@@ -45,7 +45,7 @@ class TeachingAssignmentController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->filled('search')) {
-            $query->whereHas('teacher', fn($q) => $q->where('name', 'like', "%{$request->search}%"));
+            $query->whereHas('teacher', fn ($q) => $q->where('name', 'like', "%{$request->search}%"));
         }
 
         $assignments = $query->orderBy('teacher_id')->orderBy('subject_id')->paginate(20)->withQueryString();
@@ -53,8 +53,8 @@ class TeachingAssignmentController extends Controller
         $schools = School::orderBy('name')->get();
         $subjects = Subject::orderBy('name')->get();
         $studyGroups = StudyGroup::orderBy('name')->get();
-        $teachers = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
-            ->orderBy('name')->get();
+        $teacherIds = usersHavingPermission('general_teacher.readable');
+        $teachers = User::whereIn('id', $teacherIds)->orderBy('name')->get();
 
         return view('teaching-assignments.index', compact(
             'assignments', 'academicYears', 'schools', 'subjects', 'studyGroups', 'teachers', 'userId'
@@ -69,12 +69,14 @@ class TeachingAssignmentController extends Controller
         $subjects = Subject::orderBy('name')->get();
         $studyGroups = StudyGroup::orderBy('name')->get();
         $decrees = InstitutionDecree::where('status', 'active')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
-        $teachers = User::whereHas('roles', fn($q) => $q->whereNotIn('name', [
-            'Super Admin', 'Mudir', 'Wadir 1', 'Wadir 2', 'Administrator', 'Keuangan', 'Asrama'
-        ]))->orderBy('name')->get();
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->orderBy('name')
+            ->get();
 
         $schoolContext = $schoolId ? School::find($schoolId) : null;
 
@@ -88,17 +90,17 @@ class TeachingAssignmentController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $rules = [
-            'decree_id'       => 'nullable|exists:institution_decrees,id',
-            'academic_year_id'=> 'required|exists:academic_years,id',
-            'study_group_id'  => 'required|exists:study_groups,id',
-            'subject_id'      => 'required|exists:subjects,id',
-            'teacher_id'      => 'required|exists:users,id',
-            'role'            => 'required|in:guru_mapel,guru_pendamping,guru_praktik,ustadz_pengasuh',
-            'is_coordinator'  => 'boolean',
-            'weekly_hours'    => 'required|integer|min:0|max:40',
-            'status'          => 'required|in:active,inactive',
+            'decree_id' => 'nullable|exists:institution_decrees,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'study_group_id' => 'required|exists:study_groups,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'teacher_id' => 'required|exists:users,id',
+            'role' => 'required|in:guru_mapel,guru_pendamping,guru_praktik,ustadz_pengasuh',
+            'is_coordinator' => 'boolean',
+            'weekly_hours' => 'required|integer|min:0|max:40',
+            'status' => 'required|in:active,inactive',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -127,7 +129,7 @@ class TeachingAssignmentController extends Controller
     {
         $assignment = TeachingAssignment::with([
             'teacher', 'subject', 'studyGroup', 'school',
-            'decree', 'academicYear'
+            'decree', 'academicYear',
         ])->findOrFail($id);
 
         $schoolId = request()->attributes->get('schoolContextId');
@@ -152,11 +154,13 @@ class TeachingAssignmentController extends Controller
         $subjects = Subject::orderBy('name')->get();
         $studyGroups = StudyGroup::orderBy('name')->get();
         $decrees = InstitutionDecree::orderByDesc('issued_date')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->get();
-        $teachers = User::whereHas('roles', fn($q) => $q->whereNotIn('name', [
-            'Super Admin', 'Mudir', 'Wadir 1', 'Wadir 2', 'Administrator', 'Keuangan', 'Asrama'
-        ]))->orderBy('name')->get();
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->orderBy('name')
+            ->get();
 
         return view('teaching-assignments.edit', compact('assignment', 'schools', 'academicYears', 'subjects', 'studyGroups', 'decrees', 'teachers', 'userId', 'schoolId'));
     }
@@ -171,17 +175,17 @@ class TeachingAssignmentController extends Controller
         }
 
         $rules = [
-            'decree_id'       => 'nullable|exists:institution_decrees,id',
-            'academic_year_id'=> 'required|exists:academic_years,id',
-            'study_group_id'  => 'required|exists:study_groups,id',
-            'subject_id'      => 'required|exists:subjects,id',
-            'teacher_id'      => 'required|exists:users,id',
-            'role'            => 'required|in:guru_mapel,guru_pendamping,guru_praktik,ustadz_pengasuh',
-            'is_coordinator'  => 'boolean',
-            'weekly_hours'    => 'required|integer|min:0|max:40',
-            'status'          => 'required|in:active,inactive',
+            'decree_id' => 'nullable|exists:institution_decrees,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'study_group_id' => 'required|exists:study_groups,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'teacher_id' => 'required|exists:users,id',
+            'role' => 'required|in:guru_mapel,guru_pendamping,guru_praktik,ustadz_pengasuh',
+            'is_coordinator' => 'boolean',
+            'weekly_hours' => 'required|integer|min:0|max:40',
+            'status' => 'required|in:active,inactive',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -230,18 +234,16 @@ class TeachingAssignmentController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         $currentUser = auth()->user();
-        $isGlobal = $currentUser->hasRole('Super Admin')
-            || $currentUser->hasRole('Administrator')
-            || $currentUser->hasRole('Wadir 1')
-            || $currentUser->hasRole('Mudir');
+        $isGlobal = canPermission('teaching-assignment-all-access');
 
-        if (!$isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
+        if (! $isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
 
         // Teachers — hanya guru yang terassign di sekolah decree ini
-        $teacherQuery = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
-            ->whereHas('employments', fn($q) => $q->where('school_id', $decree->school_id));
+        $teacherIds = usersHavingPermission('general_teacher.readable');
+        $teacherQuery = User::whereIn('id', $teacherIds)
+            ->whereHas('employments', fn ($q) => $q->where('school_id', $decree->school_id));
 
         // Global user bisa lihat semua guru di sekolah decree
         $teachers = $teacherQuery->orderBy('name')->get();
@@ -257,17 +259,17 @@ class TeachingAssignmentController extends Controller
                 ->where('academic_year_id', $decree->academic_year_id)
                 ->where('is_active', true)
                 ->get()
-                ->sortBy(fn($sg) => [$sg->gradeLevel->level ?? 0, $sg->name])
+                ->sortBy(fn ($sg) => [$sg->gradeLevel->level ?? 0, $sg->name])
                 ->values();
         }
 
         // Existing assignments keyed by teacher_subject_group
         $existing = $decree->teachingAssignments
-            ->keyBy(fn($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}");
+            ->keyBy(fn ($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}");
 
         // Other teacher tasks (tugas tambahan)
         $otherTasks = OtherTeacherTask::where('academic_year_id', $decree->academic_year_id)
-            ->when($decree->school_id, fn($q) => $q->where('school_id', $decree->school_id))
+            ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
             ->get()
             ->toArray();
 
@@ -285,12 +287,9 @@ class TeachingAssignmentController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         $currentUser = auth()->user();
-        $isGlobal = $currentUser->hasRole('Super Admin')
-            || $currentUser->hasRole('Administrator')
-            || $currentUser->hasRole('Wadir 1')
-            || $currentUser->hasRole('Mudir');
+        $isGlobal = canPermission('teaching-assignment-all-access');
 
-        if (!$isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
+        if (! $isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -309,7 +308,7 @@ class TeachingAssignmentController extends Controller
                     $key = "{$teacherId}|{$subjectId}|{$studyGroupId}";
                     $h = is_numeric($hours) ? (int) $hours : null;
 
-                    if ($existing = $decree->teachingAssignments->keyBy(fn($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}")->get($key)) {
+                    if ($existing = $decree->teachingAssignments->keyBy(fn ($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}")->get($key)) {
                         // Update or delete
                         if ($h && $h > 0) {
                             $existing->update(['weekly_hours' => $h, 'status' => 'active']);
@@ -331,17 +330,17 @@ class TeachingAssignmentController extends Controller
 
                             $created = TeacherAdminBook::updateOrCreate(
                                 [
-                                    'teacher_id'       => $teacherId,
-                                    'subject_id'       => $subjectId,
-                                    'study_group_id'    => $studyGroupId,
-                                    'academic_year_id'  => $decree->academic_year_id,
-                                    'semester'          => $semester,
+                                    'teacher_id' => $teacherId,
+                                    'subject_id' => $subjectId,
+                                    'study_group_id' => $studyGroupId,
+                                    'academic_year_id' => $decree->academic_year_id,
+                                    'semester' => $semester,
                                 ],
                                 [
-                                    'school_id'        => $decree->school_id ?? $schoolId,
-                                    'teaching_id'      => $existing->id,
-                                    'kktp_id'          => $kktp?->id,
-                                    'is_active'        => true,
+                                    'school_id' => $decree->school_id ?? $schoolId,
+                                    'teaching_id' => $existing->id,
+                                    'kktp_id' => $kktp?->id,
+                                    'is_active' => true,
                                 ]
                             );
                         } else {
@@ -350,15 +349,15 @@ class TeachingAssignmentController extends Controller
                     } elseif ($h && $h > 0) {
                         // Create new teaching assignment
                         $ta = TeachingAssignment::create([
-                            'decree_id'      => $decreeId,
-                            'teacher_id'     => $teacherId,
-                            'subject_id'     => $subjectId,
+                            'decree_id' => $decreeId,
+                            'teacher_id' => $teacherId,
+                            'subject_id' => $subjectId,
                             'study_group_id' => $studyGroupId,
-                            'school_id'      => $decree->school_id ?? $schoolId,
+                            'school_id' => $decree->school_id ?? $schoolId,
                             'academic_year_id' => $decree->academic_year_id,
-                            'weekly_hours'    => $h,
-                            'role'           => 'guru_mapel',
-                            'status'         => 'active',
+                            'weekly_hours' => $h,
+                            'role' => 'guru_mapel',
+                            'status' => 'active',
                         ]);
 
                         // Auto-create TeacherAdminBook untuk setiap rombel
@@ -383,17 +382,17 @@ class TeachingAssignmentController extends Controller
                             ->where('semester', $semester)
                             ->exists();
 
-                        if (!$alreadyHasBook) {
+                        if (! $alreadyHasBook) {
                             TeacherAdminBook::create([
-                                'teacher_id'       => $teacherId,
-                                'subject_id'       => $subjectId,
-                                'study_group_id'   => $studyGroupId,
-                                'school_id'        => $decree->school_id ?? $schoolId,
+                                'teacher_id' => $teacherId,
+                                'subject_id' => $subjectId,
+                                'study_group_id' => $studyGroupId,
+                                'school_id' => $decree->school_id ?? $schoolId,
                                 'academic_year_id' => $decree->academic_year_id,
-                                'semester'         => $semester,
-                                'teaching_id'      => $ta->id,
-                                'kktp_id'          => $kktp?->id,
-                                'is_active'        => true,
+                                'semester' => $semester,
+                                'teaching_id' => $ta->id,
+                                'kktp_id' => $kktp?->id,
+                                'is_active' => true,
                             ]);
                             $totalBookCreated++;
                         }

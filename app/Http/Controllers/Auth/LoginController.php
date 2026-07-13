@@ -166,7 +166,8 @@ class LoginController extends Controller
                 $ip
             ));
 
-            $superAdmins = User::role('Super Admin')->pluck('email');
+            $superAdminIds = usersHavingPermission('general_admin.administrable');
+            $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email');
             Mail::to($superAdmins)->send(new AccountLockedMail(
                 $user->name,
                 $user->email,
@@ -214,7 +215,8 @@ class LoginController extends Controller
 
         // Jika IP diblokir (attemp 9 via email salah)
         if ($record->isLockedByIp()) {
-            $superAdmins = User::role('Super Admin')->pluck('email');
+            $superAdminIds = usersHavingPermission('general_admin.administrable');
+            $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email');
             Mail::to($superAdmins)->queue(new IpBlockedMail(
                 $ip,
                 $record->locked_until->diffForHumans(),

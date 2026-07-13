@@ -102,6 +102,16 @@ function isActiveAsr($routeName, $pattern) {
                     <i class="ri-error-warning-line me-1"></i> Pelanggaran
                 </a>
             </li>
+
+            {{-- Approval Center --}}
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAsr($currentRoute, 'user.asrama.approval-center') ? ' active' : '' }}"
+                   href="{{ $hasAsramaContext ? route('user.asrama.approval-center', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaIndexFallback }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-inbox-line me-1"></i> Approval Center
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a class="nav-link{{ isActiveAsr($currentRoute, 'user.asrama.visits.') ? ' active' : '' }}"
                    href="{{ $hasAsramaContext ? route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaIndexFallback }}"
@@ -135,6 +145,34 @@ function isActiveAsr($routeName, $pattern) {
                    href="{{ $hasAsramaContext ? route('user.asrama.inventories.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaIndexFallback }}"
                    style="font-size:0.85rem">
                     <i class="ri-archive-line me-1"></i> Inventaris
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAsr($currentRoute, 'user.boarding-policies.') ? ' active' : '' }}"
+                   href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-file-shield-2-line me-1"></i> Kebijakan Asrama
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAsr($currentRoute, 'user.calendar.return.') ? ' active' : '' }}"
+                   href="{{ route('user.calendar.return.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-calendar-event-line me-1"></i> Kalender Kepulangan
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAsr($currentRoute, 'user.calendar.visit.') ? ' active' : '' }}"
+                   href="{{ route('user.calendar.visit.index', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-footprint-line me-1"></i> Kalender Kunjungan
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAsr($currentRoute, 'user.dashboard.pengasuh') ? ' active' : '' }}"
+                   href="{{ route('user.dashboard.pengasuh', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-dashboard-3-line me-1"></i> Dashboard Pengasuh
                 </a>
             </li>
         </ul>

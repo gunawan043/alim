@@ -2,25 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\LegerExport;
 use App\Models\AcademicYear;
-use Dompdf\Dompdf;
-use Dompdf\Options;
-use Illuminate\Support\Facades\Storage;
-use App\Models\GradeLevel;
-use App\Models\NilaiSumatif;
-use App\Models\Student;
 use App\Models\AdminPresensiHarian;
+use App\Models\NilaiSumatif;
+use App\Models\School;
+use App\Models\Student;
 use App\Models\StudentClassHistory;
-use App\Models\SubjectKktp;
 use App\Models\StudyGroup;
-use App\Models\Subject;
+use App\Models\SubjectKktp;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
-use App\Models\School;
-use App\Exports\LegerExport;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-
 
 class NilaiKelasController extends Controller
 {
@@ -37,15 +34,15 @@ class NilaiKelasController extends Controller
         $user = User::find($userId);
 
         $isPrivileged = $user && (
-            $user->hasRole('Admin Tata Usaha') ||
-            $user->hasRole('Wakil Kepala Sekolah') ||
-            $user->hasRole('Kepala Sekolah Pondok') ||
-            $user->hasRole('Kepala Sekolah')
+            canPermission('nilaikelas-admin-tu') ||
+            canPermission('nilaikelas-wakil-kepala-sekolah') ||
+            canPermission('nilaikelas-kepala-sekolah-pondok') ||
+            canPermission('nilaikelas-kepala-sekolah')
         );
 
         // Study group
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
         // Tahun ajaran aktif
@@ -59,23 +56,23 @@ class NilaiKelasController extends Controller
 
         // Semua mapel di kelas ini (dari TeacherAdminBook) + sorting: Agama → Arab → Hadits → Umum
         $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSemester)
             ->where('is_active', true)
             ->get()
             ->groupBy('subject_id')
-            ->map(fn($books, $subjectId) => $books->first())
+            ->map(fn ($books, $subjectId) => $books->first())
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
+            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
         // Admin book yang aktif (mapel pertama jadi default tab)
         $firstBook = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSemester)
@@ -95,7 +92,7 @@ class NilaiKelasController extends Controller
         // AdminBook yang sedang aktif di tab
         $activeBook = $selectedBookId
             ? TeacherAdminBook::with('subject')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->find($selectedBookId)
             : $firstBook;
 
@@ -121,9 +118,9 @@ class NilaiKelasController extends Controller
                     ->where('is_active', true)
                     ->pluck('id')
             )
-            ->whereIn('student_id', $studentIds)
-            ->where('semester', $selectedSemester)
-            ->get();
+                ->whereIn('student_id', $studentIds)
+                ->where('semester', $selectedSemester)
+                ->get();
 
             foreach ($nilaiRows as $n) {
                 $nilaiMap[$n->student_id][$n->admin_book_id] = $n;
@@ -131,15 +128,15 @@ class NilaiKelasController extends Controller
         }
 
         // Admin books map (subject_id → book)
-        $bookMap = $subjectMap->mapWithKeys(fn($s) => [
+        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('subject_id', $s->id)
                 ->where('study_group_id', $studyGroupId)
                 ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSemester)
                 ->where('is_active', true)
-                ->first()
+                ->first(),
         ]);
 
         // PRESENSI: hitung S / I / A per siswa di semester ini
@@ -164,10 +161,13 @@ class NilaiKelasController extends Controller
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
-            $total = 0; $count = 0;
+            $total = 0;
+            $count = 0;
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
-                if (!$book) continue;
+                if (! $book) {
+                    continue;
+                }
                 $n = $nilaiMap[$sid][$book->id] ?? null;
                 if ($n && $n->sts !== null) {
                     $total += $n->sts;
@@ -179,7 +179,7 @@ class NilaiKelasController extends Controller
 
         // Hitung peringkat berdasarkan rata-rata (nilai tertinggi = rank 1)
         $rankMap = [];
-        $sorted = collect($legerAggMap)->filter(fn($v) => $v !== null)->sortDesc();
+        $sorted = collect($legerAggMap)->filter(fn ($v) => $v !== null)->sortDesc();
         $rank = 1;
         foreach ($sorted as $sid => $val) {
             $rankMap[$sid] = $rank++;
@@ -203,29 +203,29 @@ class NilaiKelasController extends Controller
         // ── TAB MAPEL: simpan per mapel (S1–S6 + STS) ──
         if ($request->tab === 'mapel' && $request->filled('admin_book_id')) {
             $bookId = is_numeric($request->admin_book_id) ? (int) $request->admin_book_id : $request->admin_book_id;
-            $adminBook = TeacherAdminBook::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($bookId);
+            $adminBook = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($bookId);
 
             $nilaiData = $request->input('nilai', []);
             $savedRows = [];
             foreach ($nilaiData as $studentId => $data) {
-                $rs  = NilaiSumatif::calcRs($data);
+                $rs = NilaiSumatif::calcRs($data);
                 $rsa = NilaiSumatif::calcRsa($data['sts'] ?? null, null);
 
                 $nilai = NilaiSumatif::updateOrCreate(
                     [
                         'admin_book_id' => $bookId,
-                        'student_id'    => $studentId,
-                        'semester'      => $adminBook->semester,
+                        'student_id' => $studentId,
+                        'semester' => $adminBook->semester,
                     ],
                     [
                         'academic_year_id' => $adminBook->academic_year_id,
-                        's1'  => $data['s1'] ?? null,
-                        's2'  => $data['s2'] ?? null,
-                        's3'  => $data['s3'] ?? null,
-                        's4'  => $data['s4'] ?? null,
-                        's5'  => $data['s5'] ?? null,
-                        's6'  => $data['s6'] ?? null,
-                        'rs'  => $rs,
+                        's1' => $data['s1'] ?? null,
+                        's2' => $data['s2'] ?? null,
+                        's3' => $data['s3'] ?? null,
+                        's4' => $data['s4'] ?? null,
+                        's5' => $data['s5'] ?? null,
+                        's6' => $data['s6'] ?? null,
+                        'rs' => $rs,
                         'sts' => $data['sts'] ?? null,
                         'rsa' => $rsa,
                         'nr_murni' => NilaiSumatif::calcNrMurni($rs, $rsa),
@@ -233,9 +233,9 @@ class NilaiKelasController extends Controller
                 );
                 $savedRows[] = [
                     'student_id' => $studentId,
-                    'book_id'   => $bookId,
-                    'rs'         => $nilai->rs,
-                    'sts'        => $nilai->sts,
+                    'book_id' => $bookId,
+                    'rs' => $nilai->rs,
+                    'sts' => $nilai->sts,
                 ];
             }
 
@@ -244,24 +244,25 @@ class NilaiKelasController extends Controller
             }
 
             $backUrl = route('user.schools.nilai-kelas.sts', [
-                'userId'       => $userId,
+                'userId' => $userId,
                 'studyGroupId' => $studyGroupId,
                 'academic_year_id' => $adminBook->academic_year_id,
-                'semester'     => $adminBook->semester,
-                'tab'          => 'mapel',
+                'semester' => $adminBook->semester,
+                'tab' => 'mapel',
                 'admin_book_id' => $bookId,
             ]);
+
             return redirect($backUrl)->with('success', 'Nilai STS berhasil disimpan.');
         }
 
         // ── TAB LEGER: simpan STS langsung ke semua mapel ──
         if ($request->tab === 'leger' && $request->filled('leger_sts')) {
-            $selectedAyId  = $request->academic_year_id;
-            $selectedSem   = $request->semester ?? 'ganjil';
+            $selectedAyId = $request->academic_year_id;
+            $selectedSem = $request->semester ?? 'ganjil';
 
             // Ambil semua admin books di kelas ini
             $allBooks = TeacherAdminBook::with('subject', 'studyGroup.gradeLevel', 'kktp')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('study_group_id', $studyGroupId)
                 ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSem)
@@ -273,7 +274,9 @@ class NilaiKelasController extends Controller
             if ($request->filled('leger_kkm')) {
                 foreach ($request->leger_kkm as $bookId => $kkmVal) {
                     $book = $allBooks->get($bookId);
-                    if (!$book || $kkmVal === null) continue;
+                    if (! $book || $kkmVal === null) {
+                        continue;
+                    }
 
                     $existing = SubjectKktp::where('subject_id', $book->subject_id)
                         ->where('school_id', $schoolId)
@@ -287,13 +290,13 @@ class NilaiKelasController extends Controller
                         $kktpId = $existing->id;
                     } else {
                         $kktp = SubjectKktp::create([
-                            'subject_id'       => $book->subject_id,
-                            'school_id'       => $schoolId,
-                            'grade_level_id'  => $book->studyGroup->gradeLevel->id ?? null,
+                            'subject_id' => $book->subject_id,
+                            'school_id' => $schoolId,
+                            'grade_level_id' => $book->studyGroup->gradeLevel->id ?? null,
                             'academic_year_id' => $selectedAyId,
-                            'semester'        => $selectedSem,
-                            'kkm_score'       => $kkmVal,
-                            'created_by'      => $userId,
+                            'semester' => $selectedSem,
+                            'kkm_score' => $kkmVal,
+                            'created_by' => $userId,
                         ]);
                         $kktpId = $kktp->id;
                     }
@@ -307,13 +310,15 @@ class NilaiKelasController extends Controller
             foreach ($request->leger_sts as $studentId => $books) {
                 foreach ($books as $bookId => $fields) {
                     $book = $allBooks->get((string) $bookId);
-                    if (!$book) continue;
+                    if (! $book) {
+                        continue;
+                    }
 
                     $nilai = NilaiSumatif::updateOrCreate(
                         [
                             'admin_book_id' => (string) $bookId,
-                            'student_id'    => $studentId,
-                            'semester'      => $selectedSem,
+                            'student_id' => $studentId,
+                            'semester' => $selectedSem,
                         ],
                         [
                             'academic_year_id' => $selectedAyId,
@@ -322,8 +327,8 @@ class NilaiKelasController extends Controller
                     );
                     $savedRows[] = [
                         'student_id' => $studentId,
-                        'book_id'    => $bookId,
-                        'sts'        => $nilai->sts,
+                        'book_id' => $bookId,
+                        'sts' => $nilai->sts,
                     ];
                 }
             }
@@ -331,19 +336,20 @@ class NilaiKelasController extends Controller
             // ── AJAX: auto-save ──
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'success'    => true,
+                    'success' => true,
                     'saved_rows' => $savedRows,
-                    'message'    => 'Leger disimpan.',
+                    'message' => 'Leger disimpan.',
                 ]);
             }
 
             $backUrl = route('user.schools.nilai-kelas.sts', [
-                'userId'       => $userId,
+                'userId' => $userId,
                 'studyGroupId' => $studyGroupId,
                 'academic_year_id' => $selectedAyId,
-                'semester'     => $selectedSem,
-                'tab'          => 'leger',
+                'semester' => $selectedSem,
+                'tab' => 'leger',
             ]);
+
             return redirect($backUrl)->with('success', 'Leger berhasil disimpan.');
         }
 
@@ -359,7 +365,7 @@ class NilaiKelasController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
         $selectedAyId = $request->filled('academic_year_id')
@@ -372,29 +378,29 @@ class NilaiKelasController extends Controller
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
 
         $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSem)
             ->where('is_active', true)
             ->get()
             ->groupBy('subject_id')
-            ->map(fn($books, $subjectId) => $books->first())
+            ->map(fn ($books, $subjectId) => $books->first())
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
+            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
-        $bookMap = $subjectMap->mapWithKeys(fn($s) => [
+        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('subject_id', $s->id)
                 ->where('study_group_id', $studyGroupId)
                 ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSem)
                 ->where('is_active', true)
-                ->first()
+                ->first(),
         ]);
 
         $students = StudentClassHistory::with('student')
@@ -438,22 +444,28 @@ class NilaiKelasController extends Controller
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
-            $total = 0; $count = 0;
+            $total = 0;
+            $count = 0;
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
-                if (!$book) continue;
+                if (! $book) {
+                    continue;
+                }
                 $n = $nilaiMap[$sid][$book->id] ?? null;
                 if ($n && $n->sts !== null) {
-                    $total += $n->sts; $count++;
+                    $total += $n->sts;
+                    $count++;
                 }
             }
             $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
         }
 
         $rankMap = [];
-        $sorted = collect($legerAggMap)->filter(fn($v) => $v !== null)->sortDesc();
+        $sorted = collect($legerAggMap)->filter(fn ($v) => $v !== null)->sortDesc();
         $rank = 1;
-        foreach ($sorted as $sid => $val) { $rankMap[$sid] = $rank++; }
+        foreach ($sorted as $sid => $val) {
+            $rankMap[$sid] = $rank++;
+        }
 
         return view('nilai-kelas.leger-cetak', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
@@ -470,7 +482,7 @@ class NilaiKelasController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
         $selectedAyId = $request->filled('academic_year_id')
@@ -482,28 +494,28 @@ class NilaiKelasController extends Controller
         $selectedAy = AcademicYear::orderByDesc('name')->firstWhere('id', $selectedAyId);
 
         $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSem)
             ->where('is_active', true)
             ->get()
             ->groupBy('subject_id')
-            ->map(fn($books, $subjectId) => $books->first())
+            ->map(fn ($books, $subjectId) => $books->first())
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
+            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
-        $bookMap = $subjectMap->mapWithKeys(fn($s) => [
+        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('subject_id', $s->id)
                 ->where('study_group_id', $studyGroupId)
                 ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSem)
-                ->where('is_active', true)->first()
+                ->where('is_active', true)->first(),
         ]);
 
         $students = StudentClassHistory::with('student')
@@ -545,25 +557,33 @@ class NilaiKelasController extends Controller
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
-            $total = 0; $count = 0;
+            $total = 0;
+            $count = 0;
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
-                if (!$book) continue;
+                if (! $book) {
+                    continue;
+                }
                 $n = $nilaiMap[$sid][$book->id] ?? null;
-                if ($n && $n->sts !== null) { $total += $n->sts; $count++; }
+                if ($n && $n->sts !== null) {
+                    $total += $n->sts;
+                    $count++;
+                }
             }
             $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
         }
 
         $rankMap = [];
-        $sorted = collect($legerAggMap)->filter(fn($v) => $v !== null)->sortDesc();
+        $sorted = collect($legerAggMap)->filter(fn ($v) => $v !== null)->sortDesc();
         $rank = 1;
-        foreach ($sorted as $sid => $val) { $rankMap[$sid] = $rank++; }
+        foreach ($sorted as $sid => $val) {
+            $rankMap[$sid] = $rank++;
+        }
 
         $ayName = str_replace(['/', ' '], '-', $selectedAy?->name ?? '');
-        $filename = 'Leger-STS-' . str_replace(' ', '-', $studyGroup->name)
-            . '-' . strtoupper($selectedSem)
-            . '-' . $ayName . '.xlsx';
+        $filename = 'Leger-STS-'.str_replace(' ', '-', $studyGroup->name)
+            .'-'.strtoupper($selectedSem)
+            .'-'.$ayName.'.xlsx';
 
         return Excel::download(new LegerExport(compact(
             'studyGroup', 'selectedAy', 'selectedSem', 'subjectMap', 'bookMap',
@@ -579,7 +599,7 @@ class NilaiKelasController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
         $selectedAyId = $request->filled('academic_year_id')
@@ -615,7 +635,7 @@ class NilaiKelasController extends Controller
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
@@ -625,28 +645,28 @@ class NilaiKelasController extends Controller
 
         // Semua mapel di kelas ini
         $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSem)
             ->where('is_active', true)
             ->get()
             ->groupBy('subject_id')
-            ->map(fn($books, $subjectId) => $books->first())
+            ->map(fn ($books, $subjectId) => $books->first())
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
+            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
-        $bookMap = $subjectMap->mapWithKeys(fn($s) => [
+        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('subject_id', $s->id)
                 ->where('study_group_id', $studyGroupId)
                 ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSem)
-                ->where('is_active', true)->first()
+                ->where('is_active', true)->first(),
         ]);
 
         // Nilai STS student
@@ -699,50 +719,58 @@ class NilaiKelasController extends Controller
             }
 
             $mapelRows[] = [
-                'no'        => $idx + 1,
-                'mapel'     => $subject->name,
-                'kkm'       => $kkm,
-                'nilai'     => $sts !== null ? number_format($sts, 1) : '',
-                'keterangan'=> $keterangan,
+                'no' => $idx + 1,
+                'mapel' => $subject->name,
+                'kkm' => $kkm,
+                'nilai' => $sts !== null ? number_format($sts, 1) : '',
+                'keterangan' => $keterangan,
             ];
         }
 
         $rata = $jumlahMapel > 0 ? round($jumlahNilai / $jumlahMapel, 1) : null;
 
-        if ($rata === null) $predikat = '—';
-        elseif ($rata >= 95) $predikat = "Mumtaz Murtafi'";
-        elseif ($rata >= 90) $predikat = 'Mumtaz';
-        elseif ($rata >= 85) $predikat = 'Jayyid Jiddan';
-        elseif ($rata >= 80) $predikat = 'Jayyid';
-        elseif ($rata >= 75) $predikat = 'Maqbul';
-        else $predikat = 'Roosib';
+        if ($rata === null) {
+            $predikat = '—';
+        } elseif ($rata >= 95) {
+            $predikat = "Mumtaz Murtafi'";
+        } elseif ($rata >= 90) {
+            $predikat = 'Mumtaz';
+        } elseif ($rata >= 85) {
+            $predikat = 'Jayyid Jiddan';
+        } elseif ($rata >= 80) {
+            $predikat = 'Jayyid';
+        } elseif ($rata >= 75) {
+            $predikat = 'Maqbul';
+        } else {
+            $predikat = 'Roosib';
+        }
 
         // Susun $santri array — format sesuai template
         $santri[$studentId] = [
-            'Nama'        => $student->name,
-            'NIS'         => $student->nis ?? '-',
-            'NISN'        => $student->nisn ?? '-',
-            'Kelas'       => $studyGroup->name,
-            'Semester'    => ucfirst($selectedSem),
+            'Nama' => $student->name,
+            'NIS' => $student->nis ?? '-',
+            'NISN' => $student->nisn ?? '-',
+            'Kelas' => $studyGroup->name,
+            'Semester' => ucfirst($selectedSem),
             'TahunAjaran' => $selectedAy?->name ?? '-',
-            'Mapel'       => $mapelRows,
-            'Jumlah'      => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
-            'Rata'        => $rata !== null ? number_format($rata, 1) : '-',
-            'Predikat'    => $predikat,
-            'Sakit'       => $sCount,
-            'Izin'        => $iCount,
-            'Alpa'        => $aCount,
+            'Mapel' => $mapelRows,
+            'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
+            'Rata' => $rata !== null ? number_format($rata, 1) : '-',
+            'Predikat' => $predikat,
+            'Sakit' => $sCount,
+            'Izin' => $iCount,
+            'Alpa' => $aCount,
         ];
 
         // Baca kop surat dari storage (school->kop_path)
         $kopBase64 = null;
         $school = $studyGroup->school;
         if ($school && $school->kop_path) {
-            $kopAbsolute = storage_path('app/public/' . $school->kop_path);
+            $kopAbsolute = storage_path('app/public/'.$school->kop_path);
             if (file_exists($kopAbsolute)) {
                 $ext = pathinfo($kopAbsolute, PATHINFO_EXTENSION) ?: 'png';
                 $mime = $ext === 'jpg' || $ext === 'jpeg' ? 'image/jpeg' : 'image/png';
-                $kopBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($kopAbsolute));
+                $kopBase64 = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($kopAbsolute));
             }
         }
 
@@ -750,7 +778,7 @@ class NilaiKelasController extends Controller
             'santri', 'studyGroup', 'kopBase64',
         ))->render();
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
         $dompdf = new Dompdf($options);
@@ -758,14 +786,14 @@ class NilaiKelasController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'Rapor-' . str_replace(' ', '-', $student->name)
-            . '-' . str_replace(' ', '-', $studyGroup->name)
-            . '-' . strtoupper($selectedSem)
-            . '-' . str_replace(['/', ' '], '-', $selectedAy?->name ?? '') . '.pdf';
+        $filename = 'Rapor-'.str_replace(' ', '-', $student->name)
+            .'-'.str_replace(' ', '-', $studyGroup->name)
+            .'-'.strtoupper($selectedSem)
+            .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
     }
 
@@ -778,13 +806,18 @@ class NilaiKelasController extends Controller
 
         // Agensi: mapel agama
         $isAgama = preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits)/i', $nameLower);
-        $isArab  = preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower);
+        $isArab = preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower);
         $isHadits = preg_match('/(hadits|hadist)/i', $nameLower);
 
-        if ($isAgama) $group = 1;
-        elseif ($isArab) $group = 2;
-        elseif ($isHadits) $group = 3;
-        else $group = 4;
+        if ($isAgama) {
+            $group = 1;
+        } elseif ($isArab) {
+            $group = 2;
+        } elseif ($isHadits) {
+            $group = 3;
+        } else {
+            $group = 4;
+        }
 
         return [$group, $nameLower];
     }

@@ -27,7 +27,7 @@ class SchoolGroupService
      * Map school_level → sidebar label
      */
     private const LEVEL_LABELS = [
-        'sd'  => 'SD IT',
+        'sd' => 'SD IT',
         'smp' => 'SMP IT',
         'sma' => 'SMA IT / MA',
         'smk' => 'SMA IT / MA',
@@ -50,8 +50,7 @@ class SchoolGroupService
      * Build the full school-grouped structure.
      * Only includes schools that belong to the given work units.
      *
-     * @param Collection|array $schools  Active schools to group
-     * @return array
+     * @param  Collection|array  $schools  Active schools to group
      */
     public function build($schools = null): array
     {
@@ -65,7 +64,7 @@ class SchoolGroupService
             $gender = $school->school_gender ?? 'putra';
             $label = self::LEVEL_LABELS[$level] ?? strtoupper($level);
 
-            if (!isset($groups[$label])) {
+            if (! isset($groups[$label])) {
                 $groups[$label] = [
                     'putra' => [],
                     'putri' => [],
@@ -73,21 +72,21 @@ class SchoolGroupService
             }
 
             $groups[$label][$gender][] = [
-                'id'             => $school->id,
-                'name'           => $school->name,
-                'npsn'           => $school->npsn,
-                'address'        => $school->address,
-                'city_name'      => $school->city?->name,
-                'status'         => $school->school_status,
-                'logo_url'       => $school->logo_url,
+                'id' => $school->id,
+                'name' => $school->name,
+                'npsn' => $school->npsn,
+                'address' => $school->address,
+                'city_name' => $school->city?->name,
+                'status' => $school->school_status,
+                'logo_url' => $school->logo_url,
                 'principal_name' => $school->principalUser?->name ?? $school->principal_name,
-                'level'          => $level,
-                'gender'         => $gender,
-                'gender_label'   => self::GENDER_LABELS[$gender],
-                'gender_icon'    => self::GENDER_ICONS[$gender],
-                'school_level'   => $school->school_level,
-                'work_unit_id'   => $school->work_unit_id,
-                'route'          => $this->buildSchoolRoute($school),
+                'level' => $level,
+                'gender' => $gender,
+                'gender_label' => self::GENDER_LABELS[$gender],
+                'gender_icon' => self::GENDER_ICONS[$gender],
+                'school_level' => $school->school_level,
+                'work_unit_id' => $school->work_unit_id,
+                'route' => $this->buildSchoolRoute($school),
             ];
         }
 
@@ -97,63 +96,62 @@ class SchoolGroupService
     /**
      * Build child menu items for a specific school group (e.g. "SD IT > Putra").
      *
-     * @param string $schoolId     UUID of the school
-     * @param string $workUnitId    UUID of the school's Work Unit (for scoped route)
-     * @param string $label         Group label (e.g. "SD IT")
-     * @param string $gender         'putra' | 'putri'
-     * @return array
+     * @param  string  $schoolId  UUID of the school
+     * @param  string  $workUnitId  UUID of the school's Work Unit (for scoped route)
+     * @param  string  $label  Group label (e.g. "SD IT")
+     * @param  string  $gender  'putra' | 'putri'
      */
     public function buildChildren(string $schoolId, string $workUnitId, string $label, string $gender): array
     {
         return [
             [
-                'name'               => 'Info Sekolah',
-                'route'              => 'role.schools.satuan-kerja.show',
-                'params'             => ['roleId' => '__roleId__', 'workUnitId' => $workUnitId, 'schoolId' => $schoolId],
-                'icon'               => 'ri-government-line',
-                'permission'         => 'school_view',
+                'name' => 'Info Sekolah',
+                'route' => 'role.schools.satuan-kerja.show',
+                'params' => ['roleId' => '__roleId__', 'workUnitId' => $workUnitId, 'schoolId' => $schoolId],
+                'icon' => 'ri-government-line',
+                'permission' => 'school_view',
             ],
             [
-                'name'               => 'GTK',
-                'route'              => 'role.gtk.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-user-settings-line',
-                'permission'         => 'gtk_view',
+                'name' => 'GTK',
+                'route' => 'role.gtk.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-user-settings-line',
+                'permission' => 'gtk_view',
             ],
             [
-                'name'               => 'Tingkat Kelas',
-                'route'              => 'role.grade-levels.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-stack-line',
-                'permission'         => 'grade_level_view',
+                'name' => 'Tingkat Kelas',
+                'route' => 'role.grade-levels.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-stack-line',
+                'permission' => 'grade_level_view',
             ],
             [
-                'name'               => 'Rombongan Belajar',
-                'route'              => 'role.study-groups.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-group-line',
-                'permission'         => 'study_group_view',
+                'name' => 'Rombongan Belajar',
+                'route' => 'role.study-groups.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-group-line',
+                'permission' => 'study_group_view',
             ],
             [
-                'name'               => 'Data Santri',
-                'route'              => 'role.students.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-user-heart-line',
-                'permission'         => 'student_view',
+                'name' => 'Data Santri',
+                'route' => 'role.students.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-user-heart-line',
+                'permission' => 'student_view',
             ],
             [
-                'name'               => 'Mutasi Keluar',
-                'route'              => 'role.mutations-out.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-logout-box-line',
-                'permission'         => 'student_mutation_view',
+                'name' => 'Mutasi Keluar',
+                'route' => 'role.mutations-out.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-logout-box-line',
+                'permission' => 'student_mutation_view',
             ],
             [
-                'name'               => 'Mutasi Masuk',
-                'route'              => 'role.mutations-in.index',
-                'params'             => ['roleId' => '__roleId__', 'school_id' => $schoolId],
-                'icon'               => 'ri-login-box-line',
-                'permission'         => 'student_mutation_view',
+                'name' => 'Mutasi Masuk',
+                'route' => 'role.mutations-in.index',
+                'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
+                'icon' => 'ri-login-box-line',
+                'permission' => 'student_mutation_view',
             ],
         ];
     }
@@ -172,11 +170,11 @@ class SchoolGroupService
     public static function levelIcon(string $label): string
     {
         return match ($label) {
-            'SD IT'       => 'ri-football-line',
-            'SMP IT'      => 'ri-book-open-line',
+            'SD IT' => 'ri-football-line',
+            'SMP IT' => 'ri-book-open-line',
             'SMA IT / MA' => 'ri-bachelor-line',
-            'PPS'         => 'ri-government-line',
-            default       => 'ri-government-line',
+            'PPS' => 'ri-government-line',
+            default => 'ri-government-line',
         };
     }
 
@@ -204,7 +202,9 @@ class SchoolGroupService
         $workUnitId = $user->primaryWorkUnit?->work_unit_id;
         if ($workUnitId) {
             $school = School::where('work_unit_id', $workUnitId)->active()->first();
-            if ($school) return $school;
+            if ($school) {
+                return $school;
+            }
         }
 
         return null;
@@ -215,6 +215,6 @@ class SchoolGroupService
      */
     public static function userCanGlobalView(\App\Models\User $user): bool
     {
-        return $user->hasPermissionTo('view_global_school_data');
+        return canUserPermission($user, 'view_global_school_data');
     }
 }

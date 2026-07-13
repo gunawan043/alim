@@ -31,15 +31,16 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 
 // Presence channel: semua approver bisa lihat siapa yang online
 Broadcast::channel('approvals', function ($user) {
-    return $user->hasRole(['Admin', 'Super Admin', 'Kepala Sekolah']);
+    return $user->role()->hasPermission('approvals-channel') || $user->role()->hasPermission('super-admin-only') || $user->role()->hasPermission('kepala-sekolah');
 });
 
 // Work unit channel: channel per satuan kerja
 Broadcast::channel('workunit.{workUnitId}', function ($user, $workUnitId) {
     // User bisa subscribe kalau punya akses ke satuan kerja tsb
     // Bisa dicek via relasi user -> work_units
-    if ($user->hasRole(['Admin', 'Super Admin'])) {
+    if ($user->role()->hasPermission('approvals-channel') || $user->role()->hasPermission('super-admin-only')) {
         return true;
     }
+
     return $user->workUnits()->where('work_units.id', $workUnitId)->exists();
 });

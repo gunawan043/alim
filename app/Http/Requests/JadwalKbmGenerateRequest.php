@@ -63,8 +63,8 @@ class JadwalKbmGenerateRequest extends FormRequest
             return false;
         }
 
-        return $user->can('jadwal_kbm_generate')
-            || $user->can('jadwal_kbm_manage')
-            || $user->hasRole(['Super Admin', 'Mudir', 'Wadir 1', 'Waka', 'Wakil Kepala Sekolah', 'Admin Tata Usaha']);
+        return canPermission('jadwal_kbm_generate')
+            || canPermission('jadwal_kbm_manage')
+            || canPermission('jadwal-kbm-generate-form-request');
     }
 }

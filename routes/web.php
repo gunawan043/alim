@@ -19,6 +19,7 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GTKEducationController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\WilayahController;
+use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserSecurityController;
 use App\Http\Controllers\RecruitmentPipelineController;
@@ -71,8 +72,17 @@ use App\Http\Controllers\Sarpras\SarprasBookingController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
+use App\Http\Controllers\Sarpras\AssetPassportController;
+use App\Http\Controllers\Sarpras\DivisionPortalController;
+use App\Http\Controllers\Sarpras\SarprasAuditorWorkspaceController as SarprasAuditorController;
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
+use App\Http\Controllers\Sarpras\SarprasAssetMovementController;
+use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
+use App\Http\Controllers\Sarpras\SarprasAuditorWorkspaceController;
+use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
+use App\Http\Controllers\Sarpras\SarprasDisposalController;
+use App\Http\Controllers\Sarpras\SarprasMobileSyncController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudentController;
@@ -110,10 +120,12 @@ use App\Http\Controllers\DormitoryPermitController;
 use App\Http\Controllers\DormitoryViolationController;
 use App\Http\Controllers\DormitoryPostController;
 use App\Http\Controllers\DormitoryVisitLogController;
+use App\Http\Controllers\BoardingApprovalCenterController;
 use App\Http\Controllers\DormitoryWingController;
 use App\Http\Controllers\DormitoryRoomController;
 use App\Http\Controllers\DormitoryRoomApiController;
 use App\Http\Controllers\DormitoryMasterController;
+use App\Http\Controllers\BoardingPolicyController;
 use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentPromotionController;
 use App\Http\Controllers\Personalia\AbsensiGtkController;
@@ -195,6 +207,18 @@ Route::post('/logout',[LoginController::class, 'logout'])->name('logout');
 Route::get('/access-denied', fn() => view('errors.wali-santri-blocked'))->name('access-denied');
 Route::get('/auth/validator', [AccessValidatorController::class, 'show'])->middleware('auth')->name('auth.validator');
 Route::post('/auth/validator/verify', [AccessValidatorController::class, 'verify'])->middleware('auth')->name('auth.validator.verify');
+
+// ── Guardian Portal (Wali Santri Self-Service) ──────────────────────
+Route::prefix('portal')->name('portal.')->group(function () {
+    Route::get('/{token}',                                  [GuardianPortalController::class, 'dashboard'])->name('dashboard');
+    Route::get('/{token}/timeline',                         [GuardianPortalController::class, 'timeline'])->name('timeline');
+    Route::get('/{token}/notifications',                   [GuardianPortalController::class, 'notifications'])->name('notifications');
+    Route::post('/{token}/notifications/{id}/read',        [GuardianPortalController::class, 'markRead'])->name('notifications.read');
+    Route::post('/{token}/notifications/read-all',         [GuardianPortalController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/{token}/leave',                          [GuardianPortalController::class, 'submitLeave'])->name('leave');
+    Route::post('/{token}/visit',                          [GuardianPortalController::class, 'submitVisit'])->name('visit');
+    Route::post('/{token}/health',                         [GuardianPortalController::class, 'submitHealth'])->name('health');
+});
 
 Route::middleware('guest')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
@@ -1105,6 +1129,52 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ═══════════════════════════════════════════════════════════════
+            //  BOARDING POLICY MANAGEMENT
+            // ═══════════════════════════════════════════════════════════════
+            Route::prefix('boarding-policies')->name('boarding-policies.')->group(function () {
+                Route::get('/',                        [BoardingPolicyController::class, 'index'])->name('index');
+                Route::get('/create',                  [BoardingPolicyController::class, 'create'])->name('create');
+                Route::post('/',                       [BoardingPolicyController::class, 'store'])->name('store');
+                Route::get('/{id}',                    [BoardingPolicyController::class, 'show'])->name('show');
+                Route::get('/{id}/edit',               [BoardingPolicyController::class, 'edit'])->name('edit');
+                Route::put('/{id}',                    [BoardingPolicyController::class, 'update'])->name('update');
+                Route::patch('/{id}/quota',            [BoardingPolicyController::class, 'updateQuota'])->name('updateQuota');
+                Route::delete('/{id}',                 [BoardingPolicyController::class, 'destroy'])->name('destroy');
+            });
+
+            // Calendar: Return (Kalender Kepulangan)
+            Route::prefix('calendar/return')->name('calendar.return.')->group(function () {
+                Route::get('/',        [\App\Http\Controllers\DormitoryReturnCalendarController::class, 'index'])->name('index');
+                Route::get('/{id}',    [\App\Http\Controllers\DormitoryReturnCalendarController::class, 'show'])->name('show');
+                Route::patch('/{id}/returned', [\App\Http\Controllers\DormitoryReturnCalendarController::class, 'markReturned'])->name('mark-returned');
+            });
+
+            // Calendar: Visit (Kalender Kunjungan)
+            Route::prefix('calendar/visit')->name('calendar.visit.')->group(function () {
+                Route::get('/',        [\App\Http\Controllers\DormitoryVisitCalendarController::class, 'index'])->name('index');
+                Route::get('/{id}',    [\App\Http\Controllers\DormitoryVisitCalendarController::class, 'show'])->name('show');
+                Route::patch('/{id}/check-in',  [\App\Http\Controllers\DormitoryVisitCalendarController::class, 'checkIn'])->name('check-in');
+                Route::patch('/{id}/check-out', [\App\Http\Controllers\DormitoryVisitCalendarController::class, 'checkOut'])->name('check-out');
+            });
+
+            // Student Timeline per Santri
+            Route::get('/students/{studentId}/timeline', [\App\Http\Controllers\StudentTimelineController::class, 'show'])->name('students.timeline');
+            Route::get('/students/{studentId}/room-history', [\App\Http\Controllers\StudentRoomHistoryController::class, 'show'])->name('students.room-history');
+            Route::get('/students/{studentId}/violations', [\App\Http\Controllers\StudentViolationController::class, 'index'])->name('students.violations');
+            Route::get('/students/{studentId}/health', [\App\Http\Controllers\StudentHealthController::class, 'show'])->name('students.health');
+
+            // Pengasuh Dashboard
+            Route::get('/dashboard/pengasuh', [\App\Http\Controllers\PengasuhDashboardController::class, 'index'])->name('dashboard.pengasuh');
+
+            // Academic Integration
+            Route::get('/academic', [\App\Http\Controllers\AcademicIntegrationController::class, 'index'])->name('academic.index');
+            Route::post('/academic/sync', [\App\Http\Controllers\AcademicIntegrationController::class, 'sync'])->name('academic.sync');
+
+            // Wali Santri Portal
+            Route::get('/wali/dashboard', [\App\Http\Controllers\WaliSantriPortalController::class, 'index'])->name('wali.dashboard');
+            Route::post('/wali/request-permit', [\App\Http\Controllers\WaliSantriPortalController::class, 'requestPermit'])->name('wali.request-permit');
+
+            // ═══════════════════════════════════════════════════════════════
             //  ASRAMA / DORMITORY
             // ═══════════════════════════════════════════════════════════════
             Route::prefix('asrama')->name('asrama.')->group(function () {
@@ -1222,6 +1292,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/reject',  [DormitoryVisitLogController::class, 'reject'])->name('visits.reject');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-in',  [DormitoryVisitLogController::class, 'checkIn'])->name('visits.check-in');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-out', [DormitoryVisitLogController::class, 'checkOut'])->name('visits.check-out');
+
+                // ── APPROVAL CENTER (Inbox terpadu) ───────────────────────
+                Route::get('/{asramaUuid}/approval-center',                   [BoardingApprovalCenterController::class, 'index'])->name('approval-center');
+                Route::post('/{asramaUuid}/approval-center/approve',          [BoardingApprovalCenterController::class, 'approve'])->name('approval-center.approve');
+                Route::post('/{asramaUuid}/approval-center/reject',           [BoardingApprovalCenterController::class, 'reject'])->name('approval-center.reject');
             });
 
             // ═══════════════════════════════════════════════════════════════
@@ -1565,6 +1640,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
 
 
+use App\Http\Controllers\Sarpras\SarprasVendorController;
+use App\Http\Controllers\Sarpras\SarprasSparepartController;
+use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
+
 /*
 |--------------------------------------------------------------------------
 | SARANA PRASARANA (MANDIRI)
@@ -1722,6 +1801,25 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     Route::get('/qr/bulk-audit',         [SarprasQRController::class, 'bulkAudit'])->name('qr.bulk-audit');
     Route::post('/qr/bulk-audit',        [SarprasQRController::class, 'bulkAuditSubmit'])->name('qr.bulk-audit.submit');
 
+    // Asset Passport — full lifecycle view
+    Route::get('/assets/{uuid}/passport',     [AssetPassportController::class, 'show'])->name('assets.passport');
+    Route::get('/assets/{uuid}/passport.json',[AssetPassportController::class, 'json'])->name('assets.passport.json');
+    Route::get('/scan/{code}',                [AssetPassportController::class, 'scan'])->name('assets.scan');
+
+    // Division portal
+    Route::get('/division',                 [DivisionPortalController::class, 'index'])->name('division.index');
+    Route::get('/division/assets',          [DivisionPortalController::class, 'assets'])->name('division.assets');
+    Route::get('/division/assets/{assetId}',[DivisionPortalController::class, 'showAsset'])->name('division.asset.show');
+
+    // Auditor portal
+    Route::get('/auditor',                  [SarprasAuditorController::class, 'dashboard'])->name('auditor.dashboard');
+    Route::post('/auditor/session/start',   [SarprasAuditorController::class, 'startSession'])->name('auditor.session.start');
+    Route::get('/auditor/session/{id}',     [SarprasAuditorController::class, 'showSession'])->name('auditor.session.show');
+    Route::post('/auditor/session/{id}/close',[SarprasAuditorController::class, 'closeSession'])->name('auditor.session.close');
+    Route::post('/auditor/session/{sid}/asset/{aid}/found', [SarprasAuditorController::class, 'markFound'])->name('auditor.found');
+    Route::post('/auditor/session/{sid}/asset/{aid}/missing', [SarprasAuditorController::class, 'markMissing'])->name('auditor.missing');
+    Route::get('/auditor/session/{sid}/progress', [SarprasAuditorController::class, 'progress'])->name('auditor.progress');
+
     // Laporan
     Route::get('/laporan',                              [SarprasReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/inventaris-per-ruang',        [SarprasReportController::class, 'inventarisPerRuang'])->name('laporan.inventaris-per-ruang');
@@ -1732,6 +1830,81 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     Route::get('/laporan/pemeliharaan',                [SarprasReportController::class, 'pemeliharaan'])->name('laporan.pemeliharaan');
     Route::get('/laporan/nilai-aset',                  [SarprasReportController::class, 'nilaiAset'])->name('laporan.nilai-aset');
     Route::get('/laporan/export',                       [SarprasReportController::class, 'exportExcel'])->name('laporan.export');
+
+    // ── VENDOR MANAGEMENT ─────────────────────────────────────
+    Route::get('/vendor',                          [SarprasVendorController::class, 'index'])->name('vendor.index');
+    Route::get('/vendor/create',                   [SarprasVendorController::class, 'create'])->name('vendor.create');
+    Route::post('/vendor',                         [SarprasVendorController::class, 'store'])->name('vendor.store');
+    Route::get('/vendor/rank',                     [SarprasVendorController::class, 'rank'])->name('vendor.rank');
+    Route::get('/vendor/{id}',                     [SarprasVendorController::class, 'show'])->name('vendor.show');
+    Route::get('/vendor/{id}/edit',                [SarprasVendorController::class, 'edit'])->name('vendor.edit');
+    Route::put('/vendor/{id}',                     [SarprasVendorController::class, 'update'])->name('vendor.update');
+    Route::delete('/vendor/{id}',                  [SarprasVendorController::class, 'destroy'])->name('vendor.destroy');
+
+    // ── SPAREPART MANAGEMENT ──────────────────────────────────
+    Route::get('/sparepart',                       [SarprasSparepartController::class, 'index'])->name('sparepart.index');
+    Route::get('/sparepart/create',                [SarprasSparepartController::class, 'create'])->name('sparepart.create');
+    Route::post('/sparepart',                      [SarprasSparepartController::class, 'store'])->name('sparepart.store');
+    Route::get('/sparepart/low-stock',             [SarprasSparepartController::class, 'lowStock'])->name('sparepart.low-stock');
+    Route::get('/sparepart/dead-stock',            [SarprasSparepartController::class, 'deadStock'])->name('sparepart.dead-stock');
+    Route::get('/sparepart/{id}',                  [SarprasSparepartController::class, 'show'])->name('sparepart.show');
+    Route::get('/sparepart/{id}/edit',             [SarprasSparepartController::class, 'edit'])->name('sparepart.edit');
+    Route::put('/sparepart/{id}',                  [SarprasSparepartController::class, 'update'])->name('sparepart.update');
+    Route::post('/sparepart/{id}/receive',         [SarprasSparepartController::class, 'receive'])->name('sparepart.receive');
+    Route::post('/sparepart/{id}/adjust',          [SarprasSparepartController::class, 'adjust'])->name('sparepart.adjust');
+
+    // ── PURCHASE ORDER MANAGEMENT ─────────────────────────────
+    Route::get('/po',                              [SarprasPurchaseOrderController::class, 'index'])->name('po.index');
+    Route::get('/po/create',                       [SarprasPurchaseOrderController::class, 'create'])->name('po.create');
+    Route::post('/po',                             [SarprasPurchaseOrderController::class, 'store'])->name('po.store');
+    Route::get('/po/{id}',                         [SarprasPurchaseOrderController::class, 'show'])->name('po.show');
+    Route::post('/po/{id}/approve',                [SarprasPurchaseOrderController::class, 'approve'])->name('po.approve');
+    Route::post('/po/{id}/cancel',                 [SarprasPurchaseOrderController::class, 'cancel'])->name('po.cancel');
+    Route::post('/po/{id}/receive',                [SarprasPurchaseOrderController::class, 'receive'])->name('po.receive');
+
+    // ── MULTI-STAGE ASSET MOVEMENTS ──────────────────────────
+    Route::get('/movements',                         [SarprasAssetMovementController::class, 'index'])->name('movements.index');
+    Route::post('/movements',                        [SarprasAssetMovementController::class, 'store'])->name('movements.store');
+    Route::get('/movements/{id}',                    [SarprasAssetMovementController::class, 'show'])->name('movements.show');
+    Route::post('/movements/{id}/approve',           [SarprasAssetMovementController::class, 'approve'])->name('movements.approve');
+    Route::post('/movements/{id}/reject',            [SarprasAssetMovementController::class, 'reject'])->name('movements.reject');
+    Route::post('/movements/{id}/start-transit',     [SarprasAssetMovementController::class, 'startTransit'])->name('movements.start_transit');
+    Route::post('/movements/{id}/received',          [SarprasAssetMovementController::class, 'confirmReceived'])->name('movements.received');
+    Route::post('/movements/{id}/verify',            [SarprasAssetMovementController::class, 'verify'])->name('movements.verify');
+    Route::post('/movements/{id}/complete',          [SarprasAssetMovementController::class, 'complete'])->name('movements.complete');
+    Route::get('/movements/{id}/snapshot',           [SarprasAssetMovementController::class, 'snapshot'])->name('movements.snapshot');
+
+    // ── TECHNICIAN WORKSPACE ──���──────────────────────────────
+    Route::get('/teknisi',                           [SarprasTechnicianWorkspaceController::class, 'dashboard'])->name('teknisi.dashboard');
+    Route::get('/teknisi/{id}',                      [SarprasTechnicianWorkspaceController::class, 'show'])->name('teknisi.show');
+    Route::post('/teknisi/{id}/start',               [SarprasTechnicianWorkspaceController::class, 'start'])->name('teknisi.start');
+    Route::post('/teknisi/{id}/pause',               [SarprasTechnicianWorkspaceController::class, 'pause'])->name('teknisi.pause');
+    Route::post('/teknisi/{id}/resume',              [SarprasTechnicianWorkspaceController::class, 'resume'])->name('teknisi.resume');
+    Route::post('/teknisi/{id}/complete',            [SarprasTechnicianWorkspaceController::class, 'complete'])->name('teknisi.complete');
+    Route::post('/teknisi/{id}/note',                [SarprasTechnicianWorkspaceController::class, 'logNote'])->name('teknisi.note');
+    Route::get('/teknisi/{id}/snapshot',             [SarprasTechnicianWorkspaceController::class, 'snapshot'])->name('teknisi.snapshot');
+
+    // ── AUDITOR WORKSPACE ────────────────────────────────────
+    Route::get('/auditor',                           [SarprasAuditorWorkspaceController::class, 'dashboard'])->name('auditor.dashboard');
+    Route::post('/auditor/session',                  [SarprasAuditorWorkspaceController::class, 'startSession'])->name('auditor.session');
+    Route::post('/auditor/session/{sessionId}/asset/{assetId}/found',  [SarprasAuditorWorkspaceController::class, 'markFound'])->name('auditor.found');
+    Route::post('/auditor/session/{sessionId}/asset/{assetId}/missing', [SarprasAuditorWorkspaceController::class, 'markMissing'])->name('auditor.missing');
+    Route::post('/auditor/session/{sessionId}/asset/{assetId}/condition', [SarprasAuditorWorkspaceController::class, 'updateCondition'])->name('auditor.condition');
+    Route::post('/auditor/session/{sessionId}/close',  [SarprasAuditorWorkspaceController::class, 'closeSession'])->name('auditor.close');
+    Route::get('/auditor/session/{sessionId}/progress', [SarprasAuditorWorkspaceController::class, 'progress'])->name('auditor.progress');
+
+    // ── DIVISION PORTAL ──────────────────────────────────────
+    Route::get('/divisi',                            [SarprasDivisionPortalController::class, 'dashboard'])->name('divisi.dashboard');
+    Route::get('/divisi/assets',                     [SarprasDivisionPortalController::class, 'assets'])->name('divisi.assets');
+    Route::post('/divisi/report-issue',              [SarprasDivisionPortalController::class, 'reportIssue'])->name('divisi.report_issue');
+    Route::post('/divisi/request-maintenance',       [SarprasDivisionPortalController::class, 'requestMaintenance'])->name('divisi.request_maintenance');
+    Route::get('/divisi/history',                    [SarprasDivisionPortalController::class, 'history'])->name('divisi.history');
+
+    // ── ASSET DISPOSAL ─────────────────────────────────────
+    Route::get('/disposal/pending',  [SarprasDisposalController::class, 'pending'])->name('disposal.pending');
+    Route::post('/disposal/{asset}/approve', [SarprasDisposalController::class, 'approve'])->name('disposal.approve');
+    Route::post('/disposal/{asset}/reject',  [SarprasDisposalController::class, 'reject'])->name('disposal.reject');
+    Route::post('/disposal/{asset}/sale',    [SarprasDisposalController::class, 'recordSale'])->name('disposal.sale');
 });
 
 /*

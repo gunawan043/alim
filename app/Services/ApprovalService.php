@@ -3,14 +3,13 @@
 namespace App\Services;
 
 use App\Models\ApprovalAction;
-use App\Models\ApprovalRequest;
-use App\Models\ApprovalFlowStep;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-
 use App\Models\ApprovalFlow;
+use App\Models\ApprovalFlowStep;
+use App\Models\ApprovalRequest;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalService
 {
@@ -33,7 +32,7 @@ class ApprovalService
             'requested_by' => Auth::id(),
         ]);
     }
-    
+
     public function approve(
         ApprovalRequest $approvalRequest,
         User $user,
@@ -45,13 +44,13 @@ class ApprovalService
 
         $currentStep = $approvalRequest->currentStep;
 
-        if (!$currentStep) {
+        if (! $currentStep) {
             abort(403, 'Step approval tidak valid');
         }
 
         // 🔐 ROLE CHECK
         if (
-            !$user->hasRole($currentStep->role_name) ||
+            ! canPermission($currentStep->role_name) ||
             $user->role_level > $currentStep->min_role_level
         ) {
             abort(403, 'Anda tidak berwenang melakukan approval ini');
@@ -110,12 +109,12 @@ class ApprovalService
 
         $currentStep = $approvalRequest->currentStep;
 
-        if (!$currentStep) {
+        if (! $currentStep) {
             abort(403, 'Step approval tidak valid');
         }
 
         if (
-            !$user->hasRole($currentStep->role_name) ||
+            ! canPermission($currentStep->role_name) ||
             $user->role_level > $currentStep->min_role_level
         ) {
             abort(403, 'Anda tidak berwenang menolak approval ini');

@@ -29,10 +29,7 @@ class CreateVillagesTable extends Migration
             $table->text('meta')->nullable();
             $table->timestamps();
 
-            $table->foreign('district_code')
-                ->references('code')
-                ->on(config('laravolt.indonesia.table_prefix').'districts')
-                ->onUpdate('cascade')->onDelete('restrict');
+            $table->index('district_code');
         });
     }
 

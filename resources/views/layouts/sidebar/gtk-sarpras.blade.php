@@ -206,6 +206,41 @@ function isActiveURT($routeName, $pattern) {
     </div>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveURT($currentRoute, 'sarpras.disposal.') ? ' active' : '' }}"
+       href="#disposal" data-bs-toggle="collapse" role="button"
+       aria-expanded="{{ isActiveURT($currentRoute, 'sarpras.disposal.') ? 'true' : 'false' }}"
+       aria-controls="disposal">
+        <i class="ri-delete-bin-line"></i>
+        <span>Penghapusan Aset</span>
+    </a>
+    <div class="collapse menu-dropdown{{ isActiveURT($currentRoute, 'sarpras.disposal.') ? ' show' : '' }}" id="disposal">
+        <ul class="nav nav-sm flex-column">
+            <li class="nav-item">
+                <a class="nav-link{{ $currentRoute === 'sarpras.disposal.pending' ? ' active' : '' }}"
+                   href="{{ route('sarpras.disposal.pending') }}"
+                   style="font-size:0.85rem">Pending Disposisi</a>
+            </li>
+        </ul>
+    </div>
+</li>
+
+<li class="menu-title"><span>Division Portal</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveURT($currentRoute, 'sarpras.division.') ? ' active' : '' }}"
+       href="{{ route('sarpras.division.index') }}">
+        <i class="ri-government-line"></i>
+        <span>Portal Division Saya</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $currentRoute === 'sarpras.division.assets' ? ' active' : '' }}"
+       href="{{ route('sarpras.division.assets') }}">
+        <i class="ri-list-check-2"></i>
+        <span>Aset Division</span>
+    </a>
+</li>
+
 <li class="menu-title"><span>Pengadaan</span></li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveURT($currentRoute, 'sarpras.pengadaan.') ? ' active' : '' }}"
@@ -261,6 +296,11 @@ function isActiveURT($routeName, $pattern) {
                 <a class="nav-link{{ $currentRoute === 'sarpras.qr.bulk-audit' ? ' active' : '' }}"
                    href="{{ route('sarpras.qr.bulk-audit') }}"
                    style="font-size:0.85rem">Audit Massal</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ $currentRoute === 'sarpras.auditor.dashboard' ? ' active' : '' }}"
+                   href="{{ route('sarpras.auditor.dashboard') }}"
+                   style="font-size:0.85rem">Portal Auditor</a>
             </li>
         </ul>
     </div>

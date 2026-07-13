@@ -19,7 +19,6 @@ class SchoolSwitchController extends Controller
     /**
      * Switch the active school context for Super Admin.
      *
-     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function switch(Request $request)
@@ -27,7 +26,7 @@ class SchoolSwitchController extends Controller
         $user = auth()->user();
 
         // Only Super Admin (or user with view_global_school_data permission)
-        if (!$user || !$user->can('view_global_school_data')) {
+        if (! $user || ! canPermission('view_global_school_data')) {
             abort(403);
         }
 
@@ -40,7 +39,7 @@ class SchoolSwitchController extends Controller
         } else {
             // Validate school exists
             $school = School::where('id', $schoolId)->active()->first();
-            if (!$school) {
+            if (! $school) {
                 return back()->with('error', 'Sekolah tidak ditemukan.');
             }
             $request->session()->put('sa_school_id', $school->id);
@@ -50,6 +49,7 @@ class SchoolSwitchController extends Controller
 
         // Redirect back to previous page, or root
         $redirectTo = $request->input('redirect_to', route('root'));
+
         return redirect($redirectTo);
     }
 
@@ -74,7 +74,7 @@ class SchoolSwitchController extends Controller
                         'smk' => 'SMA IT / MA',
                         default => strtoupper($level),
                     },
-                    'schools' => $group->map(fn($s) => [
+                    'schools' => $group->map(fn ($s) => [
                         'id' => $s->id,
                         'name' => $s->name,
                         'gender' => $s->school_gender,

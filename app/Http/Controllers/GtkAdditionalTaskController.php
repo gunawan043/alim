@@ -6,7 +6,6 @@ use App\Models\GtkAdditionalTask;
 use App\Models\InstitutionDecree;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class GtkAdditionalTaskController extends Controller
 {
@@ -16,10 +15,7 @@ class GtkAdditionalTaskController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         $currentUser = auth()->user();
-        $isGlobal = $currentUser->hasRole('Super Admin')
-            || $currentUser->hasRole('Administrator')
-            || $currentUser->hasRole('Wadir 1')
-            || $currentUser->hasRole('Mudir');
+        $isGlobal = canPermission('gtk-additional-task-all-access');
 
         // Filter by teacher if specified
         if ($request->filled('teacher_id')) {
@@ -34,12 +30,13 @@ class GtkAdditionalTaskController extends Controller
         $tasks = $query->orderBy('user_id')->orderBy('nama_tugas')->paginate(20)->withQueryString();
 
         // Teachers filter by school context (gtk_employments)
-        $teachers = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
-            ->when($schoolId, fn($q) => $q->whereHas('employments', fn($eq) => $eq->where('school_id', $schoolId)))
+        $teacherIds = usersHavingPermission('general_teacher.readable');
+        $teachers = User::whereIn('id', $teacherIds)
+            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
         return view('gtk-additional-tasks.index', compact('tasks', 'teachers', 'decrees', 'userId'));
@@ -50,12 +47,13 @@ class GtkAdditionalTaskController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         // Teachers filtered by school from gtk_employments
-        $teachers = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
-            ->when($schoolId, fn($q) => $q->whereHas('employments', fn($eq) => $eq->where('school_id', $schoolId)))
+        $teacherIds = usersHavingPermission('general_teacher.readable');
+        $teachers = User::whereIn('id', $teacherIds)
+            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
         // Default task names
@@ -82,13 +80,13 @@ class GtkAdditionalTaskController extends Controller
     public function store(Request $request, string $userId)
     {
         $data = $request->validate([
-            'user_id'       => 'required|exists:users,id',
-            'decree_id'     => 'nullable|exists:institution_decrees,id',
-            'nama_tugas'    => 'required|string|max:150',
-            'hours_per_week'=> 'nullable|integer|min:0|max:40',
-            'nomor_sk'      => 'nullable|string|max:100',
-            'tmt'           => 'nullable|date',
-            'tst'           => 'nullable|date|after_or_equal:tmt',
+            'user_id' => 'required|exists:users,id',
+            'decree_id' => 'nullable|exists:institution_decrees,id',
+            'nama_tugas' => 'required|string|max:150',
+            'hours_per_week' => 'nullable|integer|min:0|max:40',
+            'nomor_sk' => 'nullable|string|max:100',
+            'tmt' => 'nullable|date',
+            'tst' => 'nullable|date|after_or_equal:tmt',
         ]);
 
         GtkAdditionalTask::create($data);
@@ -103,12 +101,9 @@ class GtkAdditionalTaskController extends Controller
 
         $schoolId = request()->attributes->get('schoolContextId');
         $currentUser = auth()->user();
-        $isGlobal = $currentUser->hasRole('Super Admin')
-            || $currentUser->hasRole('Administrator')
-            || $currentUser->hasRole('Wadir 1')
-            || $currentUser->hasRole('Mudir');
+        $isGlobal = canPermission('gtk-additional-task-all-access');
 
-        if (!$isGlobal && $task->decree && $schoolId && $task->decree->school_id !== $schoolId) {
+        if (! $isGlobal && $task->decree && $schoolId && $task->decree->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -121,21 +116,19 @@ class GtkAdditionalTaskController extends Controller
 
         $schoolId = request()->attributes->get('schoolContextId');
         $currentUser = auth()->user();
-        $isGlobal = $currentUser->hasRole('Super Admin')
-            || $currentUser->hasRole('Administrator')
-            || $currentUser->hasRole('Wadir 1')
-            || $currentUser->hasRole('Mudir');
+        $isGlobal = canPermission('gtk-additional-task-all-access');
 
-        if (!$isGlobal && $task->decree && $schoolId && $task->decree->school_id !== $schoolId) {
+        if (! $isGlobal && $task->decree && $schoolId && $task->decree->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
 
-        $teachers = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
-            ->when($schoolId, fn($q) => $q->whereHas('employments', fn($eq) => $eq->where('school_id', $schoolId)))
+        $teacherIds = usersHavingPermission('general_teacher.readable');
+        $teachers = User::whereIn('id', $teacherIds)
+            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
         return view('gtk-additional-tasks.edit', compact('task', 'teachers', 'decrees', 'userId'));
@@ -146,13 +139,13 @@ class GtkAdditionalTaskController extends Controller
         $task = GtkAdditionalTask::findOrFail($id);
 
         $data = $request->validate([
-            'user_id'       => 'required|exists:users,id',
-            'decree_id'     => 'nullable|exists:institution_decrees,id',
-            'nama_tugas'    => 'required|string|max:150',
-            'hours_per_week'=> 'nullable|integer|min:0|max:40',
-            'nomor_sk'      => 'nullable|string|max:100',
-            'tmt'           => 'nullable|date',
-            'tst'           => 'nullable|date|after_or_equal:tmt',
+            'user_id' => 'required|exists:users,id',
+            'decree_id' => 'nullable|exists:institution_decrees,id',
+            'nama_tugas' => 'required|string|max:150',
+            'hours_per_week' => 'nullable|integer|min:0|max:40',
+            'nomor_sk' => 'nullable|string|max:100',
+            'tmt' => 'nullable|date',
+            'tst' => 'nullable|date|after_or_equal:tmt',
         ]);
 
         $task->update($data);

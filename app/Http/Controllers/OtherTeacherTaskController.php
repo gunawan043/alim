@@ -33,9 +33,11 @@ class OtherTeacherTaskController extends Controller
         $tasks = $query->orderBy('teacher_id')->paginate(20)->withQueryString();
         $schools = School::orderBy('name')->get();
         $academicYears = AcademicYear::orderByDesc('name')->get();
-        $teachers = User::whereHas('roles', fn($q) => $q->whereNotIn('name', [
-            'Super Admin', 'Mudir', 'Wadir 1', 'Wadir 2', 'Administrator', 'Keuangan', 'Asrama'
-        ]))->orderBy('name')->get();
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->orderBy('name')
+            ->get();
 
         return view('other-teacher-tasks.index', compact(
             'tasks', 'schools', 'academicYears', 'teachers', 'userId'

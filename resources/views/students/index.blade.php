@@ -3,13 +3,7 @@
     Data Santri
 @endsection
 @php
-    $canViewAllSchools =
-        auth()->check() &&
-        (auth()->user()->hasRole('Super Admin') ||
-            auth()->user()->hasRole('Administrator') ||
-            auth()->user()->hasRole('Wadir 1') ||
-            auth()->user()->hasRole('Wadir 2') ||
-            auth()->user()->hasRole('Mudir'));
+    $canViewAllSchools = auth()->check() && auth()->user()->role()->hasPermission('student-all-access');
 @endphp
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />

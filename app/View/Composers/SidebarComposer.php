@@ -2,28 +2,28 @@
 
 namespace App\View\Composers;
 
-use App\Models\SidebarMenu;
-use App\Models\School;
 use App\Models\Dormitory;
-use App\Models\StudyGroup;
 use App\Models\GtkEmployment;
-use Illuminate\View\View;
+use App\Models\School;
+use App\Models\SidebarMenu;
+use App\Models\StudyGroup;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Request;
+use Illuminate\View\View;
 
 class SidebarComposer
 {
     public function compose(View $view): void
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             $view->with('sidebarMenu', collect());
+
             return;
         }
 
         $user = Auth::user();
         $roleIds = $user->roles->pluck('id')->toArray();
-        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isSuperAdmin = canPermission('super-admin-only');
 
         if ($isSuperAdmin) {
             $dbMenus = SidebarMenu::topLevel()
@@ -63,7 +63,7 @@ class SidebarComposer
         }
 
         $allMenus->each(function ($menu) use ($isSuperAdmin) {
-            $menu->html_id = 'menu_' . preg_replace('/[^a-z0-9_]/', '_', strtolower($menu->name ?? $menu->id));
+            $menu->html_id = 'menu_'.preg_replace('/[^a-z0-9_]/', '_', strtolower($menu->name ?? $menu->id));
 
             if ($isSuperAdmin) {
                 $menu->route_with_role = $menu->route;
@@ -107,10 +107,10 @@ class SidebarComposer
 
         // First admin book for GTK quick-link
         $firstBookId = null;
-        if (!$isSuperAdmin && $user->hasRole('GTK')) {
+        if (! $isSuperAdmin && canPermission('sidebar-gtk')) {
             $schoolId = $this->getUserSchoolId($user);
             $firstBook = \App\Models\TeacherAdminBook::withoutGlobalScope('school_context')
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('teacher_id', $user->id)
                 ->where('is_active', true)
                 ->first();
@@ -169,21 +169,21 @@ class SidebarComposer
         }
 
         $view->with('sidebarMenu', $allMenus)
-             ->with('isSidebarSuperAdmin', $isSuperAdmin)
-             ->with('sidebarStudyGroups', $studyGroups)
-             ->with('firstBookId', $firstBookId)
-             ->with('saSchoolId', $saSchoolId)
-             ->with('saSchoolName', $saSchoolName)
-             ->with('saSchoolScoped', $saSchoolScoped)
-             ->with('schools', $schoolsForSwitcher)
-             ->with('asramaContext', $asramaContext)
-             ->with('currentAsramaModule', $currentAsramaModule);
+            ->with('isSidebarSuperAdmin', $isSuperAdmin)
+            ->with('sidebarStudyGroups', $studyGroups)
+            ->with('firstBookId', $firstBookId)
+            ->with('saSchoolId', $saSchoolId)
+            ->with('saSchoolName', $saSchoolName)
+            ->with('saSchoolScoped', $saSchoolScoped)
+            ->with('schools', $schoolsForSwitcher)
+            ->with('asramaContext', $asramaContext)
+            ->with('currentAsramaModule', $currentAsramaModule);
     }
 
     private function getStudyGroupsForUser($user): \Illuminate\Support\Collection
     {
         $schoolId = $this->getUserSchoolId($user);
-        if (!$schoolId) {
+        if (! $schoolId) {
             return collect();
         }
 
@@ -192,7 +192,7 @@ class SidebarComposer
         return StudyGroup::withoutGlobalScope('school_context')
             ->where('school_id', $schoolId)
             ->where('is_active', true)
-            ->whereHas('academicYear', fn($q) => $q->where('semester', $activeSemester))
+            ->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester))
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->orderBy('name')
             ->get();
@@ -205,7 +205,9 @@ class SidebarComposer
     {
         // Find "Satuan Pendidikan" menu item
         $idx = $menus->search(fn ($m) => Str::slug($m->name ?? '') === 'satuan-pendidikan');
-        if ($idx === false) return $menus;
+        if ($idx === false) {
+            return $menus;
+        }
 
         // Get schools to show
         if ($isSuperAdmin) {
@@ -213,11 +215,15 @@ class SidebarComposer
         } else {
             // Regular user: only their school
             $schoolId = $this->getUserSchoolId($user);
-            if (!$schoolId) return $menus;
+            if (! $schoolId) {
+                return $menus;
+            }
             $schools = School::where('id', $schoolId)->with('workUnit')->get();
         }
 
-        if ($schools->isEmpty()) return $menus;
+        if ($schools->isEmpty()) {
+            return $menus;
+        }
 
         // Build school children
         $schoolChildren = $schools->map(function ($school) {
@@ -226,13 +232,14 @@ class SidebarComposer
                 'icon' => 'ri-government-line',
                 'route' => 'user.schools.satuan-kerja.show',
             ]);
-            $child->id = 'school-' . Str::slug($school->id);
-            $child->html_id = 'school_' . Str::slug($school->id);
+            $child->id = 'school-'.Str::slug($school->id);
+            $child->html_id = 'school_'.Str::slug($school->id);
             $child->route_with_role = 'user.schools.satuan-kerja.show';
             $child->route_params = [
                 'workUnitId' => $school->work_unit_id,
                 'schoolId' => $school->id,
             ];
+
             return $child;
         });
 
@@ -258,7 +265,9 @@ class SidebarComposer
         if ($primaryUnit && $primaryUnit->work_unit_id) {
             $school = School::where('work_unit_id', $primaryUnit->work_unit_id)
                 ->active()->first();
-            if ($school) return $school->id;
+            if ($school) {
+                return $school->id;
+            }
         }
 
         return null;
@@ -289,7 +298,7 @@ class SidebarComposer
             $this->makeSection('Master Data', 'bx bx-slider', [
                 ['name' => 'Jenis GTK',              'route' => 'user.master-data.jenis-gtk.index',   'icon' => 'ri-stack-line'],
                 ['name' => 'Jabatan',               'route' => 'user.master-data.jabatan.index',     'icon' => 'ri-briefcase-line'],
-                ['name' => 'Satuan Kerja',           'route' => 'user.master-data.satuan-kerja.index','icon' => 'ri-government-line'],
+                ['name' => 'Satuan Kerja',           'route' => 'user.master-data.satuan-kerja.index', 'icon' => 'ri-government-line'],
             ]),
             $this->makeSection('Recruitment', 'ri-team-line', [
                 ['name' => 'Lowongan',               'route' => 'user.ats.jobs.index',            'icon' => 'ri-briefcase-2-line'],
@@ -304,13 +313,13 @@ class SidebarComposer
                 ['name' => 'Mutasi & Rotasi',       'route' => 'user.jenjang-karir.mutasi.index',     'icon' => 'ri-arrow-left-right-line'],
                 ['name' => 'Promosi & Demosi',       'route' => 'user.jenjang-karir.promosi.index',   'icon' => 'ri-trending-up-line'],
                 ['name' => 'Talent Pool',            'route' => 'user.jenjang-karir.talent.index',     'icon' => 'ri-user-follow-line'],
-                ['name' => 'Succession Plan',        'route' => 'user.jenjang-karir.succession.index','icon' => 'ri-team-line'],
+                ['name' => 'Succession Plan',        'route' => 'user.jenjang-karir.succession.index', 'icon' => 'ri-team-line'],
             ]),
             $this->makeSection('GTK Requests & Approvals', 'ri-git-pull-request-line', [
                 ['name' => 'Daftar Request GTK',     'route' => 'user.gtk-requests.index',        'icon' => 'ri-list-ordered'],
                 ['name' => 'Pengadaan GTK',          'route' => 'user.gtk-requests.create',       'query' => '?type=procurement',    'icon' => 'ri-file-add-line'],
-                ['name' => 'Pengangkatan Percobaan','route' => 'user.gtk-requests.create',       'query' => '?type=trial',         'icon' => 'ri-user-add-line'],
-                ['name' => 'Kenaikan Status GTK',   'route' => 'user.gtk-requests.create',       'query' => '?type=status_increase','icon' => 'ri-arrow-up-line'],
+                ['name' => 'Pengangkatan Percobaan', 'route' => 'user.gtk-requests.create',       'query' => '?type=trial',         'icon' => 'ri-user-add-line'],
+                ['name' => 'Kenaikan Status GTK',   'route' => 'user.gtk-requests.create',       'query' => '?type=status_increase', 'icon' => 'ri-arrow-up-line'],
                 ['name' => 'Approval',              'route' => 'user.approvals.index',           'icon' => 'ri-checkbox-multiple-line'],
             ]),
             $this->makeSection('Satuan Pendidikan', 'ri-school-line', [
@@ -328,19 +337,21 @@ class SidebarComposer
     private function makeSection(string $name, string $icon, array $children): SidebarMenu
     {
         $section = new SidebarMenu(['name' => $name, 'icon' => $icon, 'is_group_header' => false]);
-        $section->id = 'section-' . Str::slug($name);
-        $section->html_id = 'menu_' . Str::slug($name);
+        $section->id = 'section-'.Str::slug($name);
+        $section->html_id = 'menu_'.Str::slug($name);
         $section->children = collect($children)->map(fn ($c) => $this->makeChild($c['name'], $c['route'], $c['icon'], $c['query'] ?? null));
+
         return $section;
     }
 
     private function makeChild(string $name, string $route, string $icon, ?string $query = null): SidebarMenu
     {
         $child = new SidebarMenu(['name' => $name, 'route' => $route, 'icon' => $icon]);
-        $child->id = 'child-' . Str::slug($name);
-        $child->html_id = 'sub_' . Str::slug($name);
+        $child->id = 'child-'.Str::slug($name);
+        $child->html_id = 'sub_'.Str::slug($name);
         $child->route_with_role = $route;
         $child->route_query = $query;
+
         return $child;
     }
 }

@@ -26,7 +26,7 @@
 
     @php
         $currentUser = auth()->user();
-        $canViewAllSchools = $currentUser && ($currentUser->hasRole('Super Admin') || $currentUser->hasRole('Administrator') || $currentUser->hasRole('Wadir 1') || $currentUser->hasRole('Mudir'));
+        $canViewAllSchools = $currentUser && $currentUser->role()->hasPermission('institution-decree-all-access');
     @endphp
 
     <div class="row">

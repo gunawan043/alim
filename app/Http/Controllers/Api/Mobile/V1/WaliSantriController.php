@@ -6,7 +6,6 @@ use App\Exceptions\ServiceErrorCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\LinkWaliSantriRequest;
 use App\Http\Requests\Mobile\RequestWaliRoleRequest;
-use App\Http\Requests\Mobile\ApproveRejectWaliRequest;
 use App\Http\Services\WaliSantriService;
 use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
@@ -34,7 +33,7 @@ class WaliSantriController extends Controller
 
         // Konversi student_id → nik_santri
         $student = \App\Models\Student::find($data['student_id']);
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'success' => false,
                 'error' => ['code' => 'STUDENT_NOT_FOUND', 'message' => 'Santri tidak ditemukan.'],
@@ -43,12 +42,13 @@ class WaliSantriController extends Controller
         $data['nik_santri'] = $student->nik;
 
         // Jika ada approval_token → langsung proses approve
-        if (!empty($data['approval_token'])) {
+        if (! empty($data['approval_token'])) {
             return $this->processApprovalToken($data['approval_token'], $user, $student->id);
         }
 
         try {
             $result = $this->waliService->requestLinkToStudent($data, $user);
+
             return $this->formatLinkResult($result, 201);
 
         } catch (\Exception $e) {
@@ -106,7 +106,7 @@ class WaliSantriController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $requests = $tokens->map(fn($token) => [
+        $requests = $tokens->map(fn ($token) => [
             'id' => $token->id,
             'token' => $token->token,
             'student' => [
@@ -200,7 +200,7 @@ class WaliSantriController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $user = auth()->user();
-        $isAdmin = $user->hasRole('super_admin') || $user->hasRole('admin');
+        $isAdmin = canPermission('super-admin-only') || canPermission('admin-role');
 
         try {
             $this->waliService->removeLink($id, $user, $isAdmin);
@@ -279,7 +279,9 @@ class WaliSantriController extends Controller
         } else {
             $code = (int) $e->getCode() ?: 500;
             $validCodes = [400, 401, 403, 404, 409, 422, 500];
-            if (!in_array($code, $validCodes)) $code = 500;
+            if (! in_array($code, $validCodes)) {
+                $code = 500;
+            }
         }
 
         $errorMessages = [

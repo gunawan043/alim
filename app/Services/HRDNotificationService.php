@@ -29,7 +29,7 @@ class HRDNotificationService
 
     public static function personaliaAdmins()
     {
-        return User::whereHas('roles', fn($q) => $q->whereIn('name', ['Personalia', 'Super Admin', 'Admin Tata Usaha']))->get();
+        return User::whereIn('id', usersHavingPermission('hr.notification.recipient'))->get();
     }
 
     public function notifyCutiRequest(CutiRequest $cuti): void

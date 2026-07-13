@@ -395,12 +395,10 @@ class GtkAnalysisEngine
 
     protected function countActiveGuru(?string $schoolId): int
     {
+        $teacherIds = usersHavingPermission('general_teacher.readable');
         $query = User::query()
             ->where('is_active', true)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', [
-                'Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz',
-                'GTK', 'Coordinator Guru',
-            ]));
+            ->whereIn('id', $teacherIds);
 
         if ($schoolId) {
             $query->whereHas('employments', fn ($q) => $q->where('school_id', $schoolId));
