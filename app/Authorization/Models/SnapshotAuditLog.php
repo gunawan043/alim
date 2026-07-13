@@ -19,9 +19,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class SnapshotAuditLog extends Model
 {
-    protected $table = 'authorization.snapshot_audit_log';
+    protected $table = 'snapshot_audit_log';
 
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $casts = [
         'created_at' => 'datetime',

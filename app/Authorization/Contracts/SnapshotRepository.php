@@ -6,10 +6,11 @@ namespace App\Authorization\Contracts;
 
 use App\Authorization\DTO\PermissionBag;
 use App\Authorization\Enums\SnapshotStatus;
+use App\Authorization\ValueObjects\OrganizationContext;
 
 interface SnapshotRepository
 {
-    public function save(PermissionBag $bag, int|string $userId): void;
+    public function save(PermissionBag $bag, int|string $userId, ?OrganizationContext $context = null): void;
 
     public function findByScopeKey(string $scopeKey, int|string $userId): ?PermissionBag;
 

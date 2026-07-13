@@ -43,6 +43,25 @@ if (! function_exists('cannotPermission')) {
     }
 }
 
+if (! function_exists('canUserPermission')) {
+    /**
+     * Check whether a specific user has a snapshot-derived permission.
+     */
+    function canUserPermission(User $user, string $permission): bool
+    {
+        if (! app()->bound(OrganizationContext::class)) {
+            return false;
+        }
+
+        $context = app(OrganizationContext::class);
+        if (! $context instanceof OrganizationContext) {
+            return false;
+        }
+
+        return app(AuthorizationManager::class)->allows($user, $permission, $context);
+    }
+}
+
 if (! function_exists('permissionSnapshot')) {
     function permissionSnapshot(): ?PermissionBag
     {
@@ -63,5 +82,60 @@ if (! function_exists('permissionSnapshot')) {
         $user = auth()->user();
 
         return app(AuthorizationManager::class)->getSnapshot($user, $context);
+    }
+}
+
+if (! function_exists('authorizationContextFor')) {
+    /**
+     * Build an OrganizationContext for filtering/lookup operations where
+     * a request context is not available.
+     */
+    function authorizationContextFor(
+        string $schoolId = 'unknown',
+        string $academicYearId = 'global',
+        string $roleDimension = 'default',
+    ): OrganizationContext {
+        return new OrganizationContext(
+            schoolId: $schoolId,
+            academicYearId: $academicYearId,
+            roleDimension: $roleDimension,
+        );
+    }
+}
+
+if (! function_exists('usersHavingPermission')) {
+    /**
+     * Return user IDs whose snapshot contains the given permission.
+     * Use this instead of User::role([...]) — never trust role names.
+     *
+     * @return array<int, string>
+     */
+    function usersHavingPermission(string $permission, ?OrganizationContext $context = null): array
+    {
+        if ($context === null) {
+            $context = app()->bound(OrganizationContext::class)
+                ? app(OrganizationContext::class)
+                : authorizationContextFor();
+        }
+        return app(\App\Authorization\Services\UserFilterService::class)
+            ->userIdsWithPermission($permission, $context);
+    }
+}
+
+if (! function_exists('usersMissingPermission')) {
+    /**
+     * Return user IDs whose snapshot does NOT contain the given permission.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
+    function usersMissingPermission(string $permission, ?OrganizationContext $context = null): \Illuminate\Database\Eloquent\Collection
+    {
+        if ($context === null) {
+            $context = app()->bound(OrganizationContext::class)
+                ? app(OrganizationContext::class)
+                : authorizationContextFor();
+        }
+        return app(\App\Authorization\Services\UserFilterService::class)
+            ->usersWithoutPermission($permission, $context);
     }
 }

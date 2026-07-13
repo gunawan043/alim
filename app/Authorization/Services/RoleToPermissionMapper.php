@@ -210,16 +210,6 @@ final class RoleToPermissionMapper
     public static function getGroupNamesForRole(string $roleName): array
     {
         $groups = [];
-        foreach (self::$ROLE_GROUP_MAPPINGS as $group) {
-            if (in_array($roleName, $group['roles'], true)) {
-                $groups[] = $group['roles'][0] !== null ? $roleName : '';
-                // Actually return the group name, not a placeholder
-                // We need to return the group NAME, which we get from the key
-            }
-        }
-
-        // More efficient approach
-        $groups = [];
         foreach (self::$ROLE_GROUP_MAPPINGS as $groupName => $mapping) {
             if (in_array($roleName, $mapping['roles'], true)) {
                 $groups[] = $groupName;
@@ -264,6 +254,6 @@ final class RoleToPermissionMapper
      */
     private static function findMapping(string $groupName): ?array
     {
-        return self::ROLE_GROUP_MAPPINGS[$groupName] ?? null;
+        return self::$ROLE_GROUP_MAPPINGS[$groupName] ?? null;
     }
 }

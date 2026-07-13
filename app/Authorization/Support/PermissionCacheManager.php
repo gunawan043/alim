@@ -8,21 +8,39 @@ use App\Authorization\Contracts\PermissionCacheManager as PermissionCacheManager
 use App\Authorization\DTO\PermissionBag;
 use Illuminate\Cache\CacheManager;
 
-final readonly class PermissionCacheManager implements PermissionCacheManagerInterface
+final class PermissionCacheManager implements PermissionCacheManagerInterface
 {
+    private bool $effectiveUseTags;
+
     public function __construct(
-        private CacheManager $cache,
-        private int $ttl,
-        private string $prefix,
-        private bool $useTags,
-    ) {}
+        private readonly CacheManager $cache,
+        private readonly int $ttl,
+        private readonly string $prefix,
+        bool $useTags,
+    ) {
+        $this->effectiveUseTags = $this->resolveUseTags($useTags);
+    }
+
+    private function resolveUseTags(bool $configured): bool
+    {
+        if (! $configured) {
+            return false;
+        }
+
+        try {
+            $store = $this->cache->store();
+            return $store instanceof \Illuminate\Cache\TaggableStore;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 
     public function remember(string $userId, string $scopeKey, callable $resolver): PermissionBag
     {
         $key = $this->keyFor($userId, $scopeKey);
         $tags = $this->tagsFor($userId);
 
-        if ($this->useTags) {
+        if ($this->effectiveUseTags) {
             $cached = $this->cache->tags($tags)->get($key);
         } else {
             $cached = $this->cache->get($key);
@@ -43,7 +61,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
         $key = $this->keyFor($userId, $scopeKey);
         $tags = $this->tagsFor($userId);
 
-        if ($this->useTags) {
+        if ($this->effectiveUseTags) {
             $cached = $this->cache->tags($tags)->get($key);
         } else {
             $cached = $this->cache->get($key);
@@ -59,7 +77,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
 
         $data = $bag->toArray();
 
-        if ($this->useTags) {
+        if ($this->effectiveUseTags) {
             $this->cache->tags($tags)->put($key, $data, $this->ttl);
         } else {
             $this->cache->put($key, $data, $this->ttl);
@@ -71,7 +89,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
         $key = $this->keyFor($userId, $scopeKey);
         $tags = $this->tagsFor($userId);
 
-        if ($this->useTags) {
+        if ($this->effectiveUseTags) {
             $this->cache->tags($tags)->forget($key);
         } else {
             $this->cache->forget($key);
@@ -80,7 +98,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
 
     public function forgetUser(int|string $userId): void
     {
-        if (! $this->useTags) {
+        if (! $this->effectiveUseTags) {
             return;
         }
 
@@ -90,7 +108,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
     public function forgetScope(string $scopeKey): void
     {
         // Scoped flush requires iterating tags; only feasible with tags.
-        if (! $this->useTags) {
+        if (! $this->effectiveUseTags) {
             return;
         }
 
@@ -160,7 +178,7 @@ final readonly class PermissionCacheManager implements PermissionCacheManagerInt
 
     public function isTaggable(): bool
     {
-        return $this->useTags;
+        return $this->effectiveUseTags;
     }
 
     private function keyFor(string $userId, string $scopeKey): string

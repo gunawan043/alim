@@ -20,9 +20,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class RevokedPermission extends Model
 {
-    protected $table = 'authorization.revoked_permissions';
+    protected $table = 'revoked_permissions';
 
-    public $timestamps = true;
+    public $timestamps = false;
+
+    protected $fillable = [
+        'user_id',
+        'permission',
+        'scope_key',
+        'reason',
+        'granted_by',
+        'valid_from',
+        'valid_until',
+    ];
 
     protected $casts = [
         'valid_from' => 'datetime',

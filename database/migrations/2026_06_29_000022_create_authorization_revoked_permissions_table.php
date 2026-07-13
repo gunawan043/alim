@@ -8,16 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('authorization.revoked_permissions', function (Blueprint $table) {
+        Schema::create('revoked_permissions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('permission', 255);
             $table->string('scope_key', 255);
             $table->text('reason');
             $table->foreignUuid('granted_by')->constrained('users')->cascadeOnDelete();
-            $table->timestampTz('valid_from');
-            $table->timestampTz('valid_until')->nullable();
-            $table->timestampTz('created_at')->useCurrent();
+            $table->timestamp('valid_from');
+            $table->timestamp('valid_until')->nullable();
+            $table->timestamp('created_at')->useCurrent();
 
             $table->index(['user_id', 'scope_key'], 'idx_revocations_user_scope');
             $table->index('permission', 'idx_revocations_permission');
@@ -28,6 +28,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('authorization.revoked_permissions');
+        Schema::dropIfExists('revoked_permissions');
     }
 };

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('authorization.snapshot_audit_log', function (Blueprint $table) {
+        Schema::create('snapshot_audit_log', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('scope_key', 255);
@@ -16,7 +16,7 @@ return new class extends Migration
             $table->char('fingerprint', 64);
             $table->string('status', 32);
             $table->text('error')->nullable();
-            $table->timestampTz('created_at')->useCurrent();
+            $table->timestamp('created_at')->useCurrent();
 
             $table->index(['user_id', 'scope_key'], 'idx_audit_user_scope');
             $table->index('event', 'idx_audit_event');
@@ -28,6 +28,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('authorization.snapshot_audit_log');
+        Schema::dropIfExists('snapshot_audit_log');
     }
 };

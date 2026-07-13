@@ -8,7 +8,6 @@ use App\Authorization\Contracts\PermissionBuilder;
 use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\Repositories\EloquentSnapshotRepository;
-use App\Authorization\Services\SnapshotRebuildService;
 use App\Authorization\Support\EffectivePermissionBuilder;
 use App\Authorization\Support\PermissionConflictResolver;
 use App\Authorization\Support\PermissionMergeResolver;
@@ -30,7 +29,9 @@ class AuthorizationServiceProvider extends ServiceProvider
         $this->app->singleton(SnapshotFingerprintFactory::class);
 
         $this->app->bind(SnapshotVersionResolver::class, function ($app) {
-            $connection = $app['db']->connection('pgsql');
+            $defaultConnection = config('database.default');
+            $connection = $app['db']->connection($defaultConnection);
+
             return new SnapshotVersionResolver(
                 connection: $connection,
                 lockTimeoutSeconds: 5,
@@ -39,6 +40,7 @@ class AuthorizationServiceProvider extends ServiceProvider
 
         $this->app->bind(PermissionBuilder::class, function ($app) {
             $providers = $app->tagged('permission_provider');
+
             return new EffectivePermissionBuilder(
                 providers: $providers,
                 mergeResolver: $app->make(PermissionMergeResolver::class),
@@ -52,6 +54,9 @@ class AuthorizationServiceProvider extends ServiceProvider
 
         $this->app->bind(SnapshotRepository::class, EloquentSnapshotRepository::class);
 
+        $this->app->singleton(\App\Authorization\Services\UserFilterService::class);
+    }
+
     public function boot(): void
     {
         $this->discoverProviderTags();
@@ -60,7 +65,7 @@ class AuthorizationServiceProvider extends ServiceProvider
 
     private function loadHelpers(): void
     {
-        $helpersPath = __DIR__ . '/../helpers.php';
+        $helpersPath = __DIR__.'/../helpers.php';
         if (is_file($helpersPath)) {
             require_once $helpersPath;
         }
@@ -80,7 +85,7 @@ class AuthorizationServiceProvider extends ServiceProvider
                 continue;
             }
 
-            $class = 'App\\Authorization\\Providers\\' . rtrim($file, '.php');
+            $class = 'App\\Authorization\\Providers\\'.rtrim($file, '.php');
 
             if (! class_exists($class)) {
                 continue;

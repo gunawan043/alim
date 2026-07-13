@@ -15,9 +15,11 @@ final readonly class AuthorizationGateRegistrar
         private AuthorizationManager $manager,
     ) {}
 
-    public function register(Gate $gate): void
+    public function register(mixed $gate): void
     {
-        $gate::before(function ($user, string $ability) {
+        $gate = app(\Illuminate\Contracts\Auth\Access\Gate::class);
+
+        $gate->before(function ($user, string $ability) {
             return $this->resolveViaSnapshot($user, $ability);
         });
     }

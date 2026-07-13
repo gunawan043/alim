@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Tests\Integration\Authorization;
 
 use App\Authorization\Contracts\PermissionCacheManager;
-use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\Contracts\SnapshotResolver as SnapshotResolverContract;
 use App\Authorization\DTO\PermissionBag;
-use App\Authorization\DTO\PermissionOrigin;
 use App\Authorization\DTO\SnapshotMetadata;
 use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\Events\SnapshotCreated;
@@ -17,7 +15,6 @@ use App\Authorization\Events\SnapshotExpired;
 use App\Authorization\Events\SnapshotLoaded;
 use App\Authorization\Exceptions\AuthorizationException;
 use App\Authorization\Jobs\BuildSnapshotJob;
-use App\Authorization\Models\PermissionSnapshot;
 use App\Authorization\Models\RevokedPermission;
 use App\Authorization\Services\AuthorizationManager;
 use App\Authorization\Services\SnapshotRebuildService;
@@ -26,6 +23,7 @@ use App\Authorization\ValueObjects\OrganizationContext;
 use App\Models\User;
 use Carbon\Carbon;
 use DateTimeImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -42,6 +40,8 @@ use Tests\TestCase;
  */
 final class RuntimeVerificationDeepTest extends TestCase
 {
+    use RefreshDatabase;
+
     // ═══════════════════════════════════════════════════
     // T10 — Full middleware gate integration
     // ═══════════════════════════════════════════════════
@@ -68,6 +68,7 @@ final class RuntimeVerificationDeepTest extends TestCase
             $middleware->handle($request, fn () => response('ok'), 'completely.fake.permission.zzz');
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
+
             return;
         }
 
@@ -124,6 +125,7 @@ final class RuntimeVerificationDeepTest extends TestCase
             $middleware->handle($request, fn () => response('ok'), 'presensi.read', 'completely.fake.perm.zzz');
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
+
             return;
         }
 
@@ -141,7 +143,7 @@ final class RuntimeVerificationDeepTest extends TestCase
             resource_path('views'),
         ]);
 
-        $compiler = new \App\Authorization\Support\AuthorizationBladeCompiler();
+        $compiler = new \App\Authorization\Support\AuthorizationBladeCompiler;
         $compiler->register($blade);
 
         $compiled = $blade->compileString('@permission()empty@endpermission');
@@ -156,7 +158,7 @@ final class RuntimeVerificationDeepTest extends TestCase
             resource_path('views'),
         ]);
 
-        $compiler = new \App\Authorization\Support\AuthorizationBladeCompiler();
+        $compiler = new \App\Authorization\Support\AuthorizationBladeCompiler;
         $compiler->register($blade);
 
         // Test single
@@ -237,7 +239,8 @@ final class RuntimeVerificationDeepTest extends TestCase
     public function test_failed_rebuild_creates_audit_log(): void
     {
         // Swap to failing builder
-        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('Provider offline');
@@ -257,15 +260,27 @@ final class RuntimeVerificationDeepTest extends TestCase
             $rebuilder->rebuild($user, $context, 'audit-trigger');
         } finally {
             // Restore the real builder regardless of exception
+            // Restore: re-bind using the container's tagged resolution
             $this->app->bind(\App\Authorization\Contracts\PermissionBuilder::class, function ($app) {
-                return $app->make(\App\Authorization\Support\EffectivePermissionBuilder::class);
+                $providers = $app->tagged('permission_provider');
+
+                return new \App\Authorization\Support\EffectivePermissionBuilder(
+                    providers: $providers,
+                    mergeResolver: $app->make(\App\Authorization\Support\PermissionMergeResolver::class),
+                    revocationResolver: $app->make(\App\Authorization\Support\RevocationResolver::class),
+                    conflictResolver: $app->make(\App\Authorization\Support\PermissionConflictResolver::class),
+                    fingerprintFactory: $app->make(\App\Authorization\Support\SnapshotFingerprintFactory::class),
+                    versionResolver: $app->make(\App\Authorization\Support\SnapshotVersionResolver::class),
+                    defaultProvider: 'default',
+                );
             });
         }
     }
 
     public function test_resolve_failover_does_not_throw(): void
     {
-        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('always fails');
@@ -354,7 +369,7 @@ final class RuntimeVerificationDeepTest extends TestCase
         $expiredBag = new PermissionBag(
             permissions: $bag->getPermissions(),
             revoked: $bag->getRevoked(),
-            fingerprint: $bag->getFingerprint() . '-expired-event',
+            fingerprint: $bag->getFingerprint().'-expired-event',
             expiresAt: null,
             metadata: $expiredMeta,
         );
@@ -429,7 +444,8 @@ final class RuntimeVerificationDeepTest extends TestCase
         $resolver = app(SnapshotResolver::class);
 
         // Swap to fail-fast builder
-        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $failingBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('forced');

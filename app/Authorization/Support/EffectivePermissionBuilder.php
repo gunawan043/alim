@@ -8,17 +8,8 @@ use App\Authorization\Contracts\PermissionBuilder;
 use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\DTO\PermissionBag;
 use App\Authorization\DTO\PermissionOrigin;
-use App\Authorization\DTO\SnapshotFingerprint;
 use App\Authorization\DTO\SnapshotMetadata;
-use App\Authorization\Enums\PermissionSource;
 use App\Authorization\Enums\SnapshotStatus;
-use App\Authorization\Models\PermissionSnapshot;
-use App\Authorization\Support\PermissionConflictResolver;
-use App\Authorization\Support\PermissionMergeResolver;
-use App\Authorization\Support\PermissionTreeNormalizer;
-use App\Authorization\Support\RevocationResolver;
-use App\Authorization\Support\SnapshotFingerprintFactory;
-use App\Authorization\Support\SnapshotVersionResolver;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
 use DateTimeImmutable;
@@ -45,40 +36,62 @@ final readonly class EffectivePermissionBuilder implements PermissionBuilder
 
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
-        return $this->versionResolver->run(
-            $scopeKey,
-            $user->{$user->getKeyName()} ?? $user->id,
-            function () use ($user, $context, $scopeKey, $now): PermissionBag {
-                $allOrigins = $this->collectOrigins($user, $scopeKey);
-                $merged = $this->mergeResolver->resolve($allOrigins);
-                $deduplicated = PermissionConflictResolver::resolve($merged);
-                $finalOrigins = RevocationResolver::resolve($deduplicated);
-                $normalised = PermissionTreeNormalizer::normalize($finalOrigins);
+        // Make the build-time context available to ScopeKey::forUser() (called
+        // by permission providers) so the scope key hashes match.
+        $previousContext = app()->bound(OrganizationContext::class)
+            ? app(OrganizationContext::class)
+            : null;
+        app()->instance(OrganizationContext::class, $context);
 
-                $fingerprint = $this->fingerprintFactory->fromOrigins($normalised, $now);
-                $version = $this->versionResolver->nextVersion($scopeKey, $user->{$user->getKeyName()} ?? $user->id);
+        try {
+            return $this->versionResolver->run(
+                $scopeKey,
+                $user->{$user->getKeyName()} ?? $user->id,
+                function () use ($user, $scopeKey, $now): PermissionBag {
+                    $allOrigins = $this->collectOrigins($user, $scopeKey);
+                    $merged = $this->mergeResolver->resolve($allOrigins);
+                    $deduplicated = PermissionConflictResolver::resolve($merged);
+                    $finalOrigins = RevocationResolver::resolve($deduplicated);
+                    $normalised = PermissionTreeNormalizer::normalize($finalOrigins);
 
-                $metadata = new SnapshotMetadata(
-                    createdAt: $now,
-                    scopeKey: $scopeKey,
-                    version: $version,
-                    status: SnapshotStatus::ACTIVE,
-                );
+                    $fingerprint = $this->fingerprintFactory->fromOrigins($normalised, $now);
+                    $version = $this->versionResolver->nextVersion($scopeKey, $user->{$user->getKeyName()} ?? $user->id);
 
-                return new PermissionBag(
-                    permissions: [],
-                    revoked: [],
-                    fingerprint: $fingerprint->hash,
-                    expiresAt: null,
-                    metadata: $metadata,
-                    origins: $normalised,
-                );
+                    $metadata = new SnapshotMetadata(
+                        createdAt: $now,
+                        scopeKey: $scopeKey,
+                        version: $version,
+                        status: SnapshotStatus::ACTIVE,
+                    );
+
+                    // Extract permission names from normalized origins so that
+                    // AuthorizationManager::allows() can check $bag->getPermissions()[$perm].
+                    $grantedPermissions = array_unique(array_map(
+                        static fn (PermissionOrigin $o) => $o->permission,
+                        $normalised,
+                    ));
+
+                    return new PermissionBag(
+                        permissions: $grantedPermissions,
+                        revoked: [],
+                        fingerprint: $fingerprint->hash,
+                        expiresAt: null,
+                        metadata: $metadata,
+                        origins: $normalised,
+                    );
+                }
+            );
+        } finally {
+            if ($previousContext === null) {
+                app()->forgetInstance(OrganizationContext::class);
+            } else {
+                app()->instance(OrganizationContext::class, $previousContext);
             }
-        );
+        }
     }
 
     /**
-     * @param \Illuminate\Database\Eloquent\Model|\App\Models\User $user
+     * @param  \Illuminate\Database\Eloquent\Model|\App\Models\User  $user
      * @return array<int, PermissionOrigin>
      */
     private function collectOrigins(\Illuminate\Database\Eloquent\Model $user, ScopeKey $scopeKey): array
@@ -87,8 +100,7 @@ final readonly class EffectivePermissionBuilder implements PermissionBuilder
 
         // Sort providers alphabetically by class name for deterministic fingerprinting.
         $sortedProviders = iterator_to_array($this->providers);
-        usort($sortedProviders, fn (PermissionProvider $a, PermissionProvider $b): int =>
-            strnatcmp(get_class($a), get_class($b))
+        usort($sortedProviders, fn (PermissionProvider $a, PermissionProvider $b): int => strnatcmp(get_class($a), get_class($b))
         );
 
         foreach ($sortedProviders as $provider) {

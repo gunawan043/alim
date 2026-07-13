@@ -21,13 +21,13 @@ final readonly class ScopeKey
         $schoolId = $schoolId ?? ($appContext->schoolId ?? 'unknown');
         $academicYearId = $academicYearId ?? ($appContext->academicYearId ?? 'global');
         $roleDimension = $appContext->roleDimension ?? 'default';
-        $tenant = $appContext->tenant ?? 'local';
+        $tenant = $appContext->tenant ?? 'public';
 
         return self::fromComponents(
             schoolId: $schoolId,
             academicYearId: $academicYearId,
             roleDimension: $roleDimension,
-            tenant: $tenant,
+            tenantId: $tenant,
         );
     }
 

@@ -26,7 +26,7 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../../../config/authorization.php',
+            __DIR__.'/../../../config/authorization.php',
             'authorization',
         );
 
@@ -49,6 +49,7 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
                 builder: $app->make(\App\Authorization\Contracts\PermissionBuilder::class),
                 repository: $app->make(SnapshotRepository::class),
                 events: $app->make(Dispatcher::class),
+                cache: $app->make(\App\Authorization\Contracts\PermissionCacheManager::class),
             );
         });
 
@@ -82,14 +83,10 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(\App\Authorization\Support\PermissionRebuildObserver::class, function ($app) {
-            return new \App\Authorization\Support\PermissionRebuildObserver();
+            return new \App\Authorization\Support\PermissionRebuildObserver;
         });
 
-        $this->app->singleton(\App\Authorization\Support\AuthorizationBladeCompiler::class, function ($app) {
-            return new \App\Authorization\Support\AuthorizationBladeCompiler(
-                manager: $app->make(AuthorizationManager::class),
-            );
-        });
+        $this->app->singleton(\App\Authorization\Support\AuthorizationBladeCompiler::class);
     }
 
     public function boot(): void
@@ -156,8 +153,9 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
      */
     private function registerBladeDirectives(): void
     {
+        $bladeCompiler = app(\Illuminate\View\Compilers\BladeCompiler::class);
         $compiler = $this->app->make(\App\Authorization\Support\AuthorizationBladeCompiler::class);
-        $compiler->register();
+        $compiler->register($bladeCompiler);
     }
 
     /**

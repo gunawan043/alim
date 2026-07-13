@@ -26,8 +26,8 @@ final class SnapshotResolver implements SnapshotResolverContract
         private readonly SnapshotRepository $repository,
         private readonly SnapshotRebuildService $rebuildService,
         private readonly Dispatcher $events,
-        private readonly bool $emitEvents,
-        private readonly int $snapshotTtl,
+        private readonly bool $emitEvents = true,
+        private readonly int $snapshotTtl = 3600,
     ) {}
 
     public function resolve(Model $subject, OrganizationContext $context): ?PermissionBag

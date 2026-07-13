@@ -27,7 +27,7 @@ final class AuthorizationManager
             return $this->denyAndDispatch($user, $permission, $context, 'no-snapshot');
         }
 
-        if (isset($bag->getPermissions()[$permission])) {
+        if (in_array($permission, $bag->getPermissions(), true)) {
             return $this->succeedAndDispatch($user, $permission, $context);
         }
 

@@ -22,9 +22,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class PermissionSnapshot extends Model
 {
-    protected $table = 'authorization.permission_snapshots';
+    protected $table = 'permission_snapshots';
 
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $casts = [
         'permissions' => 'array',

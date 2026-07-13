@@ -106,15 +106,11 @@ final readonly class PermissionMergeResolver
     private function cloneWithPermission(PermissionOrigin $origin, string $permission): PermissionOrigin
     {
         return new PermissionOrigin(
-            source: $origin->source,
-            permission: $permission,
-            description: '',
             provider: $origin->provider,
+            permission: $permission,
+            reason: $origin->reason,
             scope: $origin->scope,
-            level: $origin->level,
-            timestamp: $origin->timestamp,
-            attributes: $origin->attributes,
-            metadata: $origin->metadata,
+            source: $origin->source,
         );
     }
 

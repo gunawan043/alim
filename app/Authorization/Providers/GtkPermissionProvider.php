@@ -95,17 +95,17 @@ final class GtkPermissionProvider implements PermissionProvider
             );
         }
 
-        // Additional task delegation → gtk.assign (temporary)
-        foreach ($user->additionalTasks()->where('end_date', '>=', now())->get() as $task) {
-            if ((bool) $task->is_admin) {
-                $origins[] = new PermissionOrigin(
-                    provider: 'gtk',
-                    permission: 'gtk.assign',
-                    reason: sprintf('additional_task_%s', $task->title),
-                    scope: ScopeKey::forUser($user),
-                    source: PermissionSource::DELEGATION,
-                );
-            }
+        // Additional task delegation → gtk.assign (temporary, while task is active)
+        foreach ($user->additionalTasks()->where(function ($q) {
+            $q->whereNull('tst')->orWhere('tst', '>=', now());
+        })->get() as $task) {
+            $origins[] = new PermissionOrigin(
+                provider: 'gtk',
+                permission: 'gtk.assign',
+                reason: sprintf('additional_task_%s', $task->nama_tugas),
+                scope: ScopeKey::forUser($user),
+                source: PermissionSource::DELEGATION,
+            );
         }
 
         // Transfer request permissions

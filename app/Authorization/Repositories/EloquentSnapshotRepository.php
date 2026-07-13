@@ -9,6 +9,7 @@ use App\Authorization\DTO\PermissionBag;
 use App\Authorization\DTO\SnapshotMetadata;
 use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\Models\PermissionSnapshot;
+use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -16,11 +17,11 @@ use Illuminate\Support\Carbon;
 
 final class EloquentSnapshotRepository implements SnapshotRepository
 {
-    public function save(PermissionBag $bag, int|string $userId): void
+    public function save(PermissionBag $bag, int|string $userId, ?OrganizationContext $context = null): void
     {
         $scopeKey = $bag->getMetadata()->scopeKey->__toString();
+        $schoolId = $context?->schoolId;
 
-        // Archive existing current snapshot
         PermissionSnapshot::query()
             ->where('user_id', $userId)
             ->where('scope_key', $scopeKey)
@@ -29,10 +30,6 @@ final class EloquentSnapshotRepository implements SnapshotRepository
                 'is_current' => false,
                 'archived_at' => Carbon::now(),
             ]);
-
-        // Resolve school_id from bound OrganizationContext
-        $organizationContext = app(\App\Authorization\ValueObjects\OrganizationContext::class);
-        $schoolId = $organizationContext->schoolId ?? null;
 
         $snapshot = new PermissionSnapshot();
         $snapshot->user_id = $userId;

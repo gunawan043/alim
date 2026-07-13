@@ -24,6 +24,7 @@ final class SnapshotRebuildService
         private readonly PermissionBuilder $builder,
         private readonly SnapshotRepository $repository,
         private readonly Dispatcher $events,
+        private readonly ?\App\Authorization\Contracts\PermissionCacheManager $cache = null,
     ) {}
 
     public function rebuild(User $user, OrganizationContext $context, string $trigger = 'manual'): PermissionBag
@@ -37,21 +38,28 @@ final class SnapshotRebuildService
             $existing = $this->repository->findByScopeKey($scopeKey, $userId);
 
             if ($existing !== null && $existing->getFingerprint() === $bag->getFingerprint()) {
+                if ($this->cache !== null) {
+                    $this->cache->put($existing, $userId, $scopeKey);
+                }
                 return $existing;
             }
 
-            $this->repository->save($bag, $userId);
-
-            $this->events->dispatch(new SnapshotCreated(
-                bag: $bag,
-                userId: $userId,
-                trigger: $trigger,
-            ));
+            $this->repository->save($bag, $userId, $context);
 
             $this->events->dispatch(new PermissionCacheInvalidated(
                 userId: $userId,
                 scopeKey: $scopeKey,
                 reason: $trigger,
+            ));
+
+            if ($this->cache !== null) {
+                $this->cache->put($bag, $userId, $scopeKey);
+            }
+
+            $this->events->dispatch(new SnapshotCreated(
+                bag: $bag,
+                userId: $userId,
+                trigger: $trigger,
             ));
 
             return $bag;

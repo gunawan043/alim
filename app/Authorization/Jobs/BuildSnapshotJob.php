@@ -10,11 +10,10 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\ShouldBeUnique;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-final class BuildSnapshotJob implements ShouldQueue, ShouldBeUnique
+final class BuildSnapshotJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -36,9 +35,6 @@ final class BuildSnapshotJob implements ShouldQueue, ShouldBeUnique
      */
     public int $timeout = 120;
 
-    /**
-     * @param int|string $userId
-     */
     public function __construct(
         public readonly int|string $userId,
     ) {}
@@ -55,6 +51,7 @@ final class BuildSnapshotJob implements ShouldQueue, ShouldBeUnique
         if ($user === null) {
             // Subject no longer exists — prune cache.
             $this->pruneCache();
+
             return;
         }
 
@@ -95,7 +92,7 @@ final class BuildSnapshotJob implements ShouldQueue, ShouldBeUnique
     {
         \Log::error('BuildSnapshotJob failed permanently', [
             'user_id' => $this->userId,
-            'error'   => $exception->getMessage(),
+            'error' => $exception->getMessage(),
         ]);
     }
 

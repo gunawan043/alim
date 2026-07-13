@@ -8,11 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('CREATE SCHEMA IF NOT EXISTS authorization');
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'pgsql') {
+            DB::statement('CREATE SCHEMA IF NOT EXISTS authorization');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('DROP SCHEMA IF EXISTS authorization');
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'pgsql') {
+            DB::statement('DROP SCHEMA IF EXISTS authorization');
+        }
     }
 };

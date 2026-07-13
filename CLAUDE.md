@@ -52,6 +52,20 @@ Custom middleware in `app/Http/Middleware/`:
 - `RoleMiddleware`, `RoleLevelMiddleware`, `EnsureRoleAccess`, `MinRoleLevel` — Spatie Permission extensions
 - `CheckIpBlocked`, `Localization`, `VerifySecureToken`
 
+### Authorization Module (v1 — FREEZEN)
+- Located in `app/Authorization/`. Snapshot-based permission system layered on top of Spatie Laravel Permission. **No architecture rework without explicit request.**
+- Entry points: `app/Authorization/Services/AuthorizationManager.php` (central gate, `allows($user, $permission, $context)`), `app/Authorization/Repositories/EloquentSnapshotRepository.php`, `app/Authorization/Models/PermissionSnapshot.php`.
+- Resolver chain: `SnapshotResolver` → `EffectivePermissionBuilder` → `PermissionMergeResolver` → `PermissionCacheManager` (per-org/per-period cache).
+- Providers: `GtkPermissionProvider`, `StudentPermissionProvider`, registered through `AuthorizationGateRegistrar` (gates) + `AuthorizationServiceProvider` (binding).
+- Helpers in `app/Authorization/helpers.php` — **use these in code, not `hasPermissionTo()`**:
+  - `canPermission(string $permission): bool` — current auth user
+  - `cannotPermission(string $permission): bool` — inverse
+  - `canUserPermission(User $user, string $permission): bool`
+  - `getUserPermissionBag(): PermissionBag` — full bag for UI menus
+- Bound via `Authorization\ValueObjects\OrganizationContext` (DI in request lifecycle). Fails closed when context missing or user unauthenticated.
+- Jobs: `BuildSnapshotJob`, rebuild via `SnapshotRebuildService`. Audit trail: `SnapshotAuditLog`, `RevokedPermission`.
+- Deferred issues: AUTH-101..106 — all LOW priority, none security risks.
+
 ### Views
 - Layouts in `resources/views/layouts/`.
 - Feature view directories named in Indonesian/Bahasa (e.g. `akademik/`, `dormitory/`, `gtk/`, `sarpras/`, `personalia/`, `evalusi/`).
@@ -128,7 +142,9 @@ php artisan queue:restart           # Graceful worker restart (after deploy)
 
 ```
 app/
+├── Authorization/       # Snapshot-based permission system (v1 FREEZEN — see Auth section above)
 ├── Console/Commands/    # Custom artisan commands
+├── Domain/              # Domain logic (RulesEngine, Timeline, Types) — framework-agnostic
 ├── Events/              # Domain events (student/GTK lifecycle)
 ├── Http/Controllers/    # Controllers (namespaced: Akademik/, Sarpras/, SuperAdmin/, Personalia/, Api/, MasterData/)
 ├── Http/Middleware/     # Custom middleware stack
@@ -136,8 +152,9 @@ app/
 ├── Listeners/           # Event listeners (cascade chain)
 ├── Models/              # Eloquent models (all use UUIDs)
 ├── Observers/           # Model observers
-��── Policies/            # Authorization policies
-├── Services/            # Business logic services
+├── Policies/            # Legacy Spatie authorization policies
+├── Services/            # Business logic services (~26 services, namespaced subdirs)
+├── Support/             # Cross-cutting helpers (ApiResponse, LifecycleMessage)
 ├── Traits/              # Shared traits (HasUuid, Encryptable)
 └── View/Composers/      # View composers (sidebar)
 

@@ -64,7 +64,7 @@ final class StudentPermissionProvider implements PermissionProvider
         }
 
         // Teaching assignment → write access per subject per class
-        foreach ($user->hasMany(\App\Models\TeachingAssignment::class, 'user_id')->get() as $ta) {
+        foreach ($user->hasMany(\App\Models\TeachingAssignment::class, 'teacher_id')->get() as $ta) {
             if ($ta->status === 'active') {
                 $origins[] = new PermissionOrigin(
                     provider: 'students',
