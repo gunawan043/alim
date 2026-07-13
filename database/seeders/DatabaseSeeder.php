@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             SidebarMenuSeeder::class,
             JenisGtkSeeder::class,
+            WilayahSeeder::class,         // provinces/cities/districts/villages FK target
             SchoolSeeder::class,
             AcademicYearSeeder::class,
             GradeLevelSeeder::class,

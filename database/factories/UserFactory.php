@@ -15,12 +15,29 @@ class UserFactory extends Factory
     public function definition()
     {
         return [
+            'id' => (string) Str::uuid(),
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => 'password',
             'remember_token' => Str::random(10),
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function ($user) {
+            // Attach a default role if the user has none.
+            // Use App\Models\Role (not \Spatie\Permission\Models\Role) so
+            // the UUID-backed id column type is preserved.
+            if (method_exists($user, 'roles') && $user->roles()->count() === 0) {
+                $role = \App\Models\Role::firstOrCreate(
+                    ['name' => 'Staff'],
+                    ['guard_name' => 'web']
+                );
+                $user->assignRole($role);
+            }
+        });
     }
 
     /**

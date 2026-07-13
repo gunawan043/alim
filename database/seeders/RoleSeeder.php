@@ -47,6 +47,7 @@ class RoleSeeder extends Seeder
                 ]);
             } else {
                 Role::create([
+                    'id'          => (string) Str::uuid(),
                     'name'        => $role['name'],
                     'guard_name' => 'web',
                     'level'       => $role['level'],

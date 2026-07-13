@@ -13,7 +13,10 @@ class WilayahSeeder extends Seeder
      */
     public function run()
     {
-        $this->call(WilayahSeeder::class);
+        $this->seedProvinces();
+        $this->seedRegencies();
+        $this->seedDistricts();
+        $this->seedVillages();
     }
 
     
@@ -63,9 +66,9 @@ class WilayahSeeder extends Seeder
         ];
         
         foreach ($provinces as $province) {
-            DB::table('provinces')->updateOrInsert(
-                ['id' => $province['id']],
-                ['name' => $province['name'], 'created_at' => now(), 'updated_at' => now()]
+            DB::table('indonesia_provinces')->updateOrInsert(
+                ['code' => $province['id']],
+                ['id' => $province['id'], 'name' => $province['name'], 'created_at' => now(), 'updated_at' => now()]
             );
         }
     }
@@ -89,10 +92,11 @@ class WilayahSeeder extends Seeder
         ];
         
         foreach ($ntbRegencies as $regency) {
-            DB::table('regencies')->updateOrInsert(
-                ['id' => $regency['id']],
+            DB::table('indonesia_cities')->updateOrInsert(
+                ['code' => $regency['id']],
                 [
-                    'province_id' => $regency['province_id'],
+                    'id' => $regency['id'],
+                    'province_code' => $regency['province_id'],
                     'name' => $regency['name'],
                     'created_at' => now(),
                     'updated_at' => now()
@@ -106,9 +110,9 @@ class WilayahSeeder extends Seeder
     private function seedDistricts()
     {
         $this->command->info('Seeding districts...');
-        
+
         // Contoh data untuk beberapa kabupaten di NTB
-        $lombokBaratDistricts = [
+        $districts = [
             ['id' => '520101', 'regency_id' => '5201', 'name' => 'GERUNG'],
             ['id' => '520102', 'regency_id' => '5201', 'name' => 'KEDIRI'],
             ['id' => '520103', 'regency_id' => '5201', 'name' => 'NARMADA'],
@@ -119,13 +123,16 @@ class WilayahSeeder extends Seeder
             ['id' => '520113', 'regency_id' => '5201', 'name' => 'LEMBAR'],
             ['id' => '520114', 'regency_id' => '5201', 'name' => 'BATU LAYAR'],
             ['id' => '520115', 'regency_id' => '5201', 'name' => 'KURIPAN'],
+            // Kota Mataram — untuk SchoolSeeder
+            ['id' => '527102', 'regency_id' => '5271', 'name' => 'MATARAM'],
         ];
-        
-        foreach ($lombokBaratDistricts as $district) {
-            DB::table('districts')->updateOrInsert(
-                ['id' => $district['id']],
+
+        foreach ($districts as $district) {
+            DB::table('indonesia_districts')->updateOrInsert(
+                ['code' => $district['id']],
                 [
-                    'regency_id' => $district['regency_id'],
+                    'id' => $district['id'],
+                    'city_code' => $district['regency_id'],
                     'name' => $district['name'],
                     'created_at' => now(),
                     'updated_at' => now()
@@ -156,11 +163,28 @@ class WilayahSeeder extends Seeder
             ['id' => '5201012014', 'district_id' => '520101', 'name' => 'MENDIRAN'],
         ];
         
-        foreach ($gerungVillages as $village) {
-            DB::table('villages')->updateOrInsert(
-                ['id' => $village['id']],
+        $mataramVillages = [
+            ['id' => '5271021012', 'district_id' => '527102', 'name' => 'PUNIA'],
+        ];
+        foreach ($mataramVillages as $village) {
+            DB::table('indonesia_villages')->updateOrInsert(
+                ['code' => $village['id']],
                 [
-                    'district_id' => $village['district_id'],
+                    'id' => $village['id'],
+                    'district_code' => $village['district_id'],
+                    'name' => $village['name'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
+        }
+
+        foreach ($gerungVillages as $village) {
+            DB::table('indonesia_villages')->updateOrInsert(
+                ['code' => $village['id']],
+                [
+                    'id' => $village['id'],
+                    'district_code' => $village['district_id'],
                     'name' => $village['name'],
                     'created_at' => now(),
                     'updated_at' => now()
