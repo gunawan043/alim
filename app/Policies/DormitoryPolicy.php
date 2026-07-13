@@ -7,17 +7,12 @@ use App\Models\Dormitory;
 
 class DormitoryPolicy
 {
-    protected function roleLevel(User $user): int
-    {
-        return (int) $user->roles()->min('level');
-    }
-
     /**
      * Melihat daftar asrama
      */
     public function viewAny(User $user): bool
     {
-        return $this->roleLevel($user) <= 7;
+        return canPermission('asrama-view');
     }
 
     /**
@@ -25,15 +20,15 @@ class DormitoryPolicy
      */
     public function view(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 7;
+        return canPermission('asrama-view');
     }
 
     /**
-     * Membuat asrama baru (hanya Super Admin / Mudir)
+     * Membuat asrama baru (hanya Super Admin / Wadir 1)
      */
     public function create(User $user): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 
     /**
@@ -41,7 +36,7 @@ class DormitoryPolicy
      */
     public function update(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 
     /**
@@ -49,7 +44,7 @@ class DormitoryPolicy
      */
     public function delete(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 2;
+        return canPermission('super-admin-only');
     }
 
     /**
@@ -57,7 +52,7 @@ class DormitoryPolicy
      */
     public function manageResidents(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -65,7 +60,7 @@ class DormitoryPolicy
      */
     public function checkInOut(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -73,7 +68,7 @@ class DormitoryPolicy
      */
     public function recordAttendance(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -81,7 +76,7 @@ class DormitoryPolicy
      */
     public function verifyAttendance(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 
     /**
@@ -89,7 +84,7 @@ class DormitoryPolicy
      */
     public function approvePermit(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 
     /**
@@ -97,7 +92,7 @@ class DormitoryPolicy
      */
     public function createPermit(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 7;
+        return canPermission('asrama-view');
     }
 
     /**
@@ -105,7 +100,7 @@ class DormitoryPolicy
      */
     public function recordViolation(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -113,7 +108,7 @@ class DormitoryPolicy
      */
     public function notifyParent(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -121,7 +116,7 @@ class DormitoryPolicy
      */
     public function postInformation(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -129,15 +124,15 @@ class DormitoryPolicy
      */
     public function manageTemplates(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
-     * Broadcast darurat (hanya kepala asrama ke atas)
+     * Broadcast darurat (hanya Wadir 1 / Kepala Asrama ke atas)
      */
     public function broadcastEmergency(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 
     /**
@@ -145,7 +140,7 @@ class DormitoryPolicy
      */
     public function manageVisits(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -153,7 +148,7 @@ class DormitoryPolicy
      */
     public function checkInOutVisit(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 6;
+        return canPermission('asrama-manage');
     }
 
     /**
@@ -161,6 +156,6 @@ class DormitoryPolicy
      */
     public function manageRooms(User $user, Dormitory $dormitory): bool
     {
-        return $this->roleLevel($user) <= 5;
+        return canPermission('asrama-create');
     }
 }
