@@ -4,12 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class DormitoryInventory extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'dormitory_inventories';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -34,6 +39,8 @@ class DormitoryInventory extends Model
         'quantity' => 'integer',
         'last_checked_at' => 'datetime',
     ];
+
+    protected $dates = ['last_checked_at', 'deleted_at'];
 
     public function room(): BelongsTo
     {
