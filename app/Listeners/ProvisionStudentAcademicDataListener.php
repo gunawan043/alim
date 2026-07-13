@@ -9,19 +9,17 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 /**
  * Listener untuk event StudentAssignedToRombel.
  *
- * TIDAK berisi logic provisioning — tugasnya hanya mendelegasikan ke
- * ProvisionStudentAcademicDataJob yang berjalan di queue terpisah.
+ * Listener ini queued (ShouldQueue) sehingga request controller tidak
+ * menunggu provisioning selesai. Listener sangat tipis — hanya delegasi
+ * ke ProvisionStudentAcademicDataJob yang berjalan di queue khusus
+ * 'academic-provision'.
  *
- * Listener ini synchronous (implements ShouldQueue bukan dari base class),
- * sehingga trigger event dari controller tetap ringan: controller cukup
- * event() / dispatch() dan request selesai.
+ * Queue di-set via listener::$queue dan job::dispatch(...)->onQueue(...)
+ * karena Queueable trait sudah memiliki property $queue — mendeklarasikan
+ * ulang property $queue di Job akan menyebabkan konflik komposisi di PHP 8.
  */
 class ProvisionStudentAcademicDataListener implements ShouldQueue
 {
-    /**
-     * Listener di-queue agar dispatch dari controller benar-benar non-blocking.
-     * Job berat tetap jalan di queue khusus 'academic-provision'.
-     */
     public string $queue = 'academic-provision';
 
     public function handle(StudentAssignedToRombel $event): void
@@ -33,6 +31,6 @@ class ProvisionStudentAcademicDataListener implements ShouldQueue
             $event->joinDate,
             $event->semester,
             $event->classHistoryId,
-        );
+        )->onQueue('academic-provision');
     }
 }
