@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Sarpras;
 
-use App\Events\Sarpras\RepairRequestSubmitted;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sarpras\ReviewDamageReportRequest;
 use App\Http\Requests\Sarpras\SubmitDamageReportRequest;
@@ -10,16 +9,17 @@ use App\Models\Asset;
 use App\Models\RepairRequest;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\RepairRequestWorkflow;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class RepairRequestController extends Controller
 {
     public function __construct(
         protected readonly RepairRequestWorkflow $workflow,
         protected readonly AssetEventLogger $logger,
+        protected readonly SarprasCacheInvalidator $cacheInvalidator,
     ) {}
 
     /**
@@ -52,17 +52,9 @@ class RepairRequestController extends Controller
                     'photo_path' => $photoPath,
                 ],
             );
-
-            $this->logger->logAssetEvent(
-                asset: $asset,
-                eventType: 'repair_request_submitted',
-                eventDetail: "Damage report submitted: {$repair->request_number}",
-                actor: $request->user(),
-                metadata: ['repair_request_id' => $repair->id, 'severity' => $request->severity],
-            );
-
-            event(new RepairRequestSubmitted($repair, $asset, $request->user()));
         });
+
+        $this->cacheInvalidator->invalidateAll();
 
         return response()->json([
             'success' => true,
@@ -168,12 +160,7 @@ class RepairRequestController extends Controller
             notes: $request->review_notes,
         );
 
-        $this->logger->logAssetEvent(
-            asset: $repair->asset,
-            eventType: 'repair_reviewed',
-            eventDetail: "Repair {$repair->request_number} " . ($approved ? 'verified' : 'rejected'),
-            actor: $request->user(),
-        );
+        $this->cacheInvalidator->invalidateAll();
 
         return response()->json([
             'success' => true,

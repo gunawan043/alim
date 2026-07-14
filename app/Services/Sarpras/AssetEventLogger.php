@@ -4,6 +4,7 @@ namespace App\Services\Sarpras;
 
 use App\Events\AssetLifecycleEvent;
 use App\Models\Asset;
+use App\Models\QrScanHistory;
 use Illuminate\Support\Facades\DB;
 
 class AssetEventLogger
@@ -44,6 +45,43 @@ class AssetEventLogger
             'condition' => $asset->condition,
             'audit_date' => $asset->last_audit_date?->toDateString(),
         ], $actorId);
+    }
+
+    public function logAssetEvent(
+        Asset $asset,
+        string $eventType,
+        string $eventDetail = '',
+        ?object $actor = null,
+        array $metadata = [],
+    ): void {
+        $this->log($asset, $eventType, array_filter(array_merge([
+            'detail' => $eventDetail,
+            'actor_name' => $actor?->name ?? null,
+            'actor_id' => $actor instanceof \App\Models\User ? $actor->id : null,
+        ], $metadata)));
+    }
+
+    public function logScan(
+        Asset $asset,
+        ?object $user,
+        array $payload = [],
+    ): \App\Models\QrScanHistory {
+        return QrScanHistory::create([
+            'asset_id' => $asset->id,
+            'scanned_by' => $user instanceof \App\Models\User ? $user->id : null,
+            'scan_type' => $payload['scan_type'] ?? 'lookup',
+            'lookup_value' => $payload['lookup_value'] ?? $asset->asset_code,
+            'source' => $payload['source'] ?? 'web_scanner',
+            'ip_address' => $payload['ip_address'] ?? null,
+            'user_agent' => $payload['user_agent'] ?? null,
+            'latitude' => $payload['latitude'] ?? null,
+            'longitude' => $payload['longitude'] ?? null,
+            'condition' => $payload['condition'] ?? null,
+            'purpose' => $payload['purpose'] ?? null,
+            'notes' => $payload['notes'] ?? null,
+            'session_id' => $payload['session_id'] ?? null,
+            'scanned_at' => now(),
+        ]);
     }
 
     public function logQrGenerated(Asset $asset, ?int $actorId = null): void

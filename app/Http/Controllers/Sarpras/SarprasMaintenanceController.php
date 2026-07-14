@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Sarpras\AssetEventLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SarprasMaintenanceController extends SarprasBaseController
@@ -98,9 +99,9 @@ class SarprasMaintenanceController extends SarprasBaseController
 
         unset($validated['target_type']);
 
-        $schedule = AssetMaintenanceSchedule::create($validated);
+        $schedule = DB::transaction(function () use ($validated) {
+            $schedule = AssetMaintenanceSchedule::create($validated);
 
-        try {
             $targetAsset = ! empty($validated['asset_id']) ? Asset::find($validated['asset_id']) : null;
             if ($targetAsset) {
                 $this->eventLogger->log($targetAsset, 'maintenance_scheduled', [
@@ -111,9 +112,9 @@ class SarprasMaintenanceController extends SarprasBaseController
                     'created_by' => auth()->id(),
                 ], auth()->id());
             }
-        } catch (\Throwable $e) {
-            Log::error('AssetEventLogger::maintenance_scheduled failed for schedule '.$schedule->id.': '.$e->getMessage());
-        }
+
+            return $schedule;
+        });
 
         return redirect()->route('sarpras.pemeliharaan.schedule.index')
             ->with('success', 'Jadwal pemeliharaan berhasil ditambahkan.');
@@ -248,25 +249,25 @@ class SarprasMaintenanceController extends SarprasBaseController
         $validated['created_by'] = auth()->id();
         unset($validated['target_type']);
 
-        $log = AssetMaintenanceLog::create($validated);
+        $log = DB::transaction(function () use ($validated) {
+            $log = AssetMaintenanceLog::create($validated);
 
-        if (! empty($validated['schedule_id'])) {
-            $schedule = AssetMaintenanceSchedule::find($validated['schedule_id']);
-            if ($schedule) {
-                $nextDate = $this->calculateNextMaintenanceDate($validated['maintenance_date'], $schedule->frequency);
-                $schedule->update([
-                    'last_maintenance_date' => $validated['maintenance_date'],
-                    'next_maintenance_date' => $nextDate,
-                ]);
+            if (! empty($validated['schedule_id'])) {
+                $schedule = AssetMaintenanceSchedule::find($validated['schedule_id']);
+                if ($schedule) {
+                    $nextDate = $this->calculateNextMaintenanceDate($validated['maintenance_date'], $schedule->frequency);
+                    $schedule->update([
+                        'last_maintenance_date' => $validated['maintenance_date'],
+                        'next_maintenance_date' => $nextDate,
+                    ]);
+                }
             }
-        }
 
-        if (! empty($validated['asset_id']) && ! empty($validated['condition_after'])) {
-            Asset::find($validated['asset_id'])->update(['condition' => $validated['condition_after']]);
-        }
+            if (! empty($validated['asset_id']) && ! empty($validated['condition_after'])) {
+                Asset::find($validated['asset_id'])->update(['condition' => $validated['condition_after']]);
+            }
 
-        // Dispatch maintenance_completed event
-        try {
+            // Dispatch maintenance_completed event inside the transaction.
             $targetAsset = ! empty($validated['asset_id']) ? Asset::find($validated['asset_id']) : null;
             if ($targetAsset) {
                 $this->eventLogger->log($targetAsset, 'maintenance_completed', [
@@ -279,9 +280,9 @@ class SarprasMaintenanceController extends SarprasBaseController
                     'maintenance_type' => $validated['maintenance_type'] ?? null,
                 ], auth()->id());
             }
-        } catch (\Throwable $e) {
-            Log::error('AssetEventLogger::maintenance_completed failed for log '.$log->id.': '.$e->getMessage());
-        }
+
+            return $log;
+        });
 
         return redirect()->route('sarpras.pemeliharaan.log.index')
             ->with('success', 'Riwayat perawatan berhasil ditambahkan.');

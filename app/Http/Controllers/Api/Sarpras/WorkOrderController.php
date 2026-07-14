@@ -16,6 +16,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderProgress;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\RepairRequestWorkflow;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ class WorkOrderController extends Controller
     public function __construct(
         protected readonly RepairRequestWorkflow $workflow,
         protected readonly AssetEventLogger $logger,
+        protected readonly SarprasCacheInvalidator $cacheInvalidator,
     ) {}
 
     /**
@@ -93,7 +95,7 @@ class WorkOrderController extends Controller
             assignee: $assignee,
         );
 
-        // Log
+        // Log asset event
         $this->logger->logAssetEvent(
             asset: $asset,
             eventType: 'work_order_generated',
@@ -101,7 +103,10 @@ class WorkOrderController extends Controller
             actor: $request->user(),
         );
 
+        // Dispatch WorkOrderAssigned event (workflow doesn't dispatch it for generateWorkOrder).
         event(new WorkOrderAssigned($wo, $assignee, $request->user()));
+
+        $this->cacheInvalidator->invalidateWorkOrder($wo);
 
         return response()->json([
             'success' => true,
@@ -213,6 +218,8 @@ class WorkOrderController extends Controller
             event(new WorkOrderProgressAdded($wo, $progress, $request->user()));
         });
 
+        $this->cacheInvalidator->invalidateWorkOrder($wo->fresh());
+
         return response()->json([
             'success' => true,
             'data' => $wo->fresh()->load('progressSteps'),
@@ -230,32 +237,36 @@ class WorkOrderController extends Controller
 
         $wo = WorkOrder::with('asset')->findOrFail($id);
 
-        $cost = RepairCostHistory::create([
-            'work_order_id' => $wo->id,
-            'asset_id' => $wo->asset_id,
-            'cost_category' => $request->cost_category,
-            'description' => $request->description,
-            'amount' => $request->amount,
-            'incurred_date' => $request->incurred_date,
-            'document_number' => $request->document_number,
-            'vendor_name' => $request->vendor_name,
-            'recorded_by' => $request->user()->id,
-        ]);
+        $cost = DB::transaction(function () use ($wo, $request) {
+            $cost = RepairCostHistory::create([
+                'work_order_id' => $wo->id,
+                'asset_id' => $wo->asset_id,
+                'cost_category' => $request->cost_category,
+                'description' => $request->description,
+                'amount' => $request->amount,
+                'incurred_date' => $request->incurred_date,
+                'document_number' => $request->document_number,
+                'vendor_name' => $request->vendor_name,
+                'recorded_by' => $request->user()->id,
+            ]);
 
-        // Recalculate WO total
-        $wo->total_cost = (float) $wo->costHistories()->sum('amount');
-        $wo->save();
+            $wo->total_cost = (float) $wo->costHistories()->sum('amount');
+            $wo->save();
 
-        // Log
-        $this->logger->logAssetEvent(
-            asset: $wo->asset,
-            eventType: 'cost_recorded',
-            eventDetail: "Cost recorded: Rp{$request->amount} ({$request->cost_category}) for WO {$wo->order_number}",
-            actor: $request->user(),
-            metadata: ['cost_id' => $cost->id],
-        );
+            $this->logger->logAssetEvent(
+                asset: $wo->refresh(),
+                eventType: 'cost_recorded',
+                eventDetail: "Cost recorded: Rp{$request->amount} ({$request->cost_category}) for WO {$wo->order_number}",
+                actor: $request->user(),
+                metadata: ['cost_id' => $cost->id],
+            );
 
-        event(new \App\Events\Sarpras\RepairCostRecorded($wo, $cost));
+            event(new \App\Events\Sarpras\RepairCostRecorded($wo, $cost));
+
+            return $cost;
+        });
+
+        $this->cacheInvalidator->invalidateWorkOrder($wo->fresh());
 
         return response()->json([
             'success' => true,
@@ -281,29 +292,34 @@ class WorkOrderController extends Controller
 
         $wo = WorkOrder::findOrFail($id);
 
-        $usage = SparePartUsage::create([
-            'work_order_id' => $wo->id,
-            'spare_part_id' => $validated['spare_part_id'],
-            'quantity' => $validated['quantity'],
-            'unit_price' => $validated['unit_price'] ?? 0,
-            'total_price' => $validated['quantity'] * ($validated['unit_price'] ?? 0),
-            'notes' => $validated['notes'] ?? null,
-            'used_by' => $request->user()->id,
-            'used_at' => now(),
-        ]);
-
-        // Auto-create cost entry
-        if ($validated['unit_price'] ?? 0) {
-            RepairCostHistory::create([
+        $usage = DB::transaction(function () use ($wo, $validated, $request) {
+            $usage = SparePartUsage::create([
                 'work_order_id' => $wo->id,
-                'asset_id' => $wo->asset_id,
-                'cost_category' => 'sparepart',
-                'description' => "Spare part: ".($usage->sparePart?->name ?? '-')." ({$validated['quantity']} unit)",
-                'amount' => $usage->total_price,
-                'incurred_date' => now(),
-                'recorded_by' => $request->user()->id,
+                'spare_part_id' => $validated['spare_part_id'],
+                'quantity' => $validated['quantity'],
+                'unit_price' => $validated['unit_price'] ?? 0,
+                'total_price' => $validated['quantity'] * ($validated['unit_price'] ?? 0),
+                'notes' => $validated['notes'] ?? null,
+                'used_by' => $request->user()->id,
+                'used_at' => now(),
             ]);
-        }
+
+            if ($validated['unit_price'] ?? 0) {
+                RepairCostHistory::create([
+                    'work_order_id' => $wo->id,
+                    'asset_id' => $wo->asset_id,
+                    'cost_category' => 'sparepart',
+                    'description' => 'Spare part: '.($usage->sparePart?->name ?? '-')." ({$validated['quantity']} unit)",
+                    'amount' => $usage->total_price,
+                    'incurred_date' => now(),
+                    'recorded_by' => $request->user()->id,
+                ]);
+            }
+
+            return $usage;
+        });
+
+        $this->cacheInvalidator->invalidateWorkOrder($wo);
 
         return response()->json([
             'success' => true,
@@ -361,6 +377,8 @@ class WorkOrderController extends Controller
                 }
             }
         });
+
+        $this->cacheInvalidator->invalidateWorkOrder($wo->fresh());
 
         return response()->json([
             'success' => true,
@@ -430,6 +448,7 @@ class WorkOrderController extends Controller
                 $paths[] = $file->store('work-orders/progress', 'public');
             }
         }
+
         return $paths;
     }
 

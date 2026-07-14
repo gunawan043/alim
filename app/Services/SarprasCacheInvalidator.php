@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Asset;
+use App\Models\WorkOrder;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -22,5 +24,33 @@ class SarprasCacheInvalidator
         } else {
             Cache::forever('sarpras_dashboard_version', 2);
         }
+    }
+
+    /**
+     * Invalidate every dashboard cache. Alias for callers that previously relied on this.
+     */
+    public function invalidate(?string $key = null): void
+    {
+        $this->invalidateAll();
+    }
+
+    public function invalidateWorkOrder(WorkOrder $order): void
+    {
+        $this->invalidateAll();
+    }
+
+    public function invalidateAudit(mixed $session = null): void
+    {
+        $this->invalidateAll();
+    }
+
+    public function invalidateMovement(mixed $movement = null): void
+    {
+        $this->invalidateAll();
+    }
+
+    public function invalidateAsset(Asset $asset): void
+    {
+        $this->invalidateAll();
     }
 }

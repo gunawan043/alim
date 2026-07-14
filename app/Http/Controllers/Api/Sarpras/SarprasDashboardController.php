@@ -5,14 +5,13 @@ namespace App\Http\Controllers\Api\Sarpras;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Building;
-use App\Models\QrScanHistory;
 use App\Models\RepairCostHistory;
 use App\Models\RepairRequest;
 use App\Models\SparePart;
 use App\Models\StockOpnameSession;
-use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkUnit;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +19,10 @@ use Illuminate\Support\Facades\DB;
 
 class SarprasDashboardController extends Controller
 {
+    public function __construct(
+        protected SarprasCacheInvalidator $cacheInvalidator,
+    ) {}
+
     /**
      * Enterprise Asset Operations Dashboard.
      */
@@ -31,10 +34,11 @@ class SarprasDashboardController extends Controller
 
         $user = $request->user();
         $period = $request->query('period', '30d');
-        $cacheKey = "sarpras:dashboard:overview:{$user->id}:{$period}";
+        $version = (int) (Cache::get('sarpras_dashboard_version') ?? 1);
+        $cacheKey = "sarpras:dashboard:overview:v{$version}:{$user->id}:{$period}";
 
         return response()->json(
-            Cache::remember($cacheKey, 60, function () use ($user, $period) {
+            Cache::remember($cacheKey, 60, function () use ($period) {
                 [$fromDate, $toDate] = $this->periodRange($period);
 
                 return [
@@ -164,9 +168,12 @@ class SarprasDashboardController extends Controller
 
     protected function sparePartOverview(): array
     {
-        if (!class_exists(SparePart::class)) return ['available' => 0];
+        if (! class_exists(SparePart::class)) {
+            return ['available' => 0];
+        }
 
         $base = SparePart::query();
+
         return [
             'total' => $base->clone()->count(),
             'low_stock' => $base->clone()->whereRaw('stock <= min_stock')->count(),
@@ -204,7 +211,10 @@ class SarprasDashboardController extends Controller
 
     protected function workUnitBreakdown(): array
     {
-        if (!class_exists(WorkUnit::class)) return [];
+        if (! class_exists(WorkUnit::class)) {
+            return [];
+        }
+
         return WorkUnit::withCount('assets')
             ->orderByDesc('assets_count')->take(10)
             ->get(['id', 'name', 'unit_code'])
@@ -216,7 +226,10 @@ class SarprasDashboardController extends Controller
 
     protected function buildingBreakdown(): array
     {
-        if (!class_exists(Building::class)) return [];
+        if (! class_exists(Building::class)) {
+            return [];
+        }
+
         return Building::withCount('assets')
             ->orderByDesc('assets_count')->take(10)
             ->get(['id', 'building_name'])
