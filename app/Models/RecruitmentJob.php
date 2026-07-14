@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class RecruitmentJob extends Model
 {
-    use HasFactory, SoftDeletes,, LogsDeletion HasUuids;
+    use HasFactory, SoftDeletes, LogsDeletion, HasUuids;
 
     protected $keyType = 'string';
     public $incrementing = false;
