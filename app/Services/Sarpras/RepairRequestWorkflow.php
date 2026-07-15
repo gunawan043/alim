@@ -3,7 +3,6 @@
 namespace App\Services\Sarpras;
 
 use App\Events\Sarpras\RepairApproved;
-use App\Events\Sarpras\RepairCostRecorded;
 use App\Events\Sarpras\RepairRejected;
 use App\Events\Sarpras\RepairRequestSubmitted;
 use App\Events\Sarpras\WarrantyClaimOpportunity;
@@ -232,7 +231,7 @@ class RepairRequestWorkflow
 
     public function acceptWorkOrder(WorkOrder $order, User $technician): WorkOrder
     {
-        return DB::transaction(function () use ($order, $technician) {
+        return DB::transaction(function () use ($order) {
             $this->stateMachine->assert(
                 StateMachineRegistry::WORK_ORDER,
                 $order->status,
@@ -270,7 +269,7 @@ class RepairRequestWorkflow
 
     public function markWaitingSparepart(WorkOrder $order, User $technician): WorkOrder
     {
-        return DB::transaction(function () use ($order, $technician) {
+        return DB::transaction(function () use ($order) {
             $this->stateMachine->assert(
                 StateMachineRegistry::WORK_ORDER,
                 $order->status,
@@ -329,10 +328,6 @@ class RepairRequestWorkflow
 
             WorkOrderCompleted::dispatch($order, $technician, $completionNotes);
 
-            if ($totalCost > 0) {
-                RepairCostRecorded::dispatch($order, $technician, $totalCost, $completionNotes);
-            }
-
             return $order->fresh();
         });
     }
@@ -386,7 +381,7 @@ class RepairRequestWorkflow
     /**
      * Helper: validate and persist a repair-request status transition.
      */
-    protected function moveRepairRequest(
+    public function moveRepairRequest(
         RepairRequest $request,
         string $targetStatus,
         ?int $actorId,
@@ -409,7 +404,7 @@ class RepairRequestWorkflow
     /**
      * Helper: validate and persist an asset.status transition.
      */
-    protected function moveAssetStatus(
+    public function moveAssetStatus(
         Asset $asset,
         string $targetStatus,
         ?int $actorId,

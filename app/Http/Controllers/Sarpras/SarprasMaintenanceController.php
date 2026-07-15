@@ -13,6 +13,7 @@ use App\Models\AssetRoom;
 use App\Models\School;
 use App\Models\User;
 use App\Services\Sarpras\AssetEventLogger;
+use App\Services\SarprasCacheInvalidator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +21,10 @@ use Illuminate\Support\Facades\Log;
 
 class SarprasMaintenanceController extends SarprasBaseController
 {
-    public function __construct(protected AssetEventLogger $eventLogger)
-    {
+    public function __construct(
+        protected AssetEventLogger $eventLogger,
+        protected SarprasCacheInvalidator $cacheInvalidator,
+    ) {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
 
@@ -116,6 +119,9 @@ class SarprasMaintenanceController extends SarprasBaseController
             return $schedule;
         });
 
+        $this->cacheInvalidator->invalidateMaintenance();
+        $this->cacheInvalidator->invalidateAll();
+
         return redirect()->route('sarpras.pemeliharaan.schedule.index')
             ->with('success', 'Jadwal pemeliharaan berhasil ditambahkan.');
     }
@@ -164,6 +170,9 @@ class SarprasMaintenanceController extends SarprasBaseController
 
         $schedule->update($validated);
 
+        $this->cacheInvalidator->invalidateMaintenance();
+        $this->cacheInvalidator->invalidateAll();
+
         return redirect()->route('sarpras.pemeliharaan.schedule.show', $schedule->id)
             ->with('success', 'Jadwal pemeliharaan berhasil diperbarui.');
     }
@@ -174,6 +183,9 @@ class SarprasMaintenanceController extends SarprasBaseController
         $this->authorizeMaintenanceAccess($schedule, $request);
 
         $schedule->delete();
+
+        $this->cacheInvalidator->invalidateMaintenance();
+        $this->cacheInvalidator->invalidateAll();
 
         return redirect()->route('sarpras.pemeliharaan.schedule.index')
             ->with('success', 'Jadwal pemeliharaan berhasil dihapus.');
@@ -264,7 +276,16 @@ class SarprasMaintenanceController extends SarprasBaseController
             }
 
             if (! empty($validated['asset_id']) && ! empty($validated['condition_after'])) {
-                Asset::find($validated['asset_id'])->update(['condition' => $validated['condition_after']]);
+                $asset = Asset::find($validated['asset_id']);
+                $currentCondition = $asset->condition;
+                if ($currentCondition !== $validated['condition_after']) {
+                    \App\Services\Sarpras\StateMachineRegistry::assertValidTransition(
+                        \App\Services\Sarpras\StateMachineRegistry::ASSET_CONDITION,
+                        (string) $currentCondition,
+                        (string) $validated['condition_after'],
+                    );
+                }
+                $asset->update(['condition' => $validated['condition_after']]);
             }
 
             // Dispatch maintenance_completed event inside the transaction.
@@ -283,6 +304,9 @@ class SarprasMaintenanceController extends SarprasBaseController
 
             return $log;
         });
+
+        $this->cacheInvalidator->invalidateMaintenance();
+        $this->cacheInvalidator->invalidateAll();
 
         return redirect()->route('sarpras.pemeliharaan.log.index')
             ->with('success', 'Riwayat perawatan berhasil ditambahkan.');

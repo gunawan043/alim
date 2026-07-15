@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Sarpras;
 
 use App\Events\Sarpras\WorkOrderAssigned;
+use App\Events\Sarpras\WorkOrderCompleted;
 use App\Events\Sarpras\WorkOrderProgressAdded;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sarpras\CreateWorkOrderFromRepairRequest;
@@ -369,11 +370,28 @@ class WorkOrderController extends Controller
                 'recorded_at' => now(),
             ]);
 
-            // If completing, close the RepairRequest
-            if ($validated['to'] === 'completed' && $wo->repair_request_id) {
-                $repair = \App\Models\RepairRequest::find($wo->repair_request_id);
-                if ($repair && in_array($repair->status, ['assigned', 'in_progress'])) {
-                    $this->workflow->completeRepair($repair, $request->user(), $wo->completion_notes ?? '', 'baik', (float) $wo->total_cost);
+            // If completing, close the RepairRequest and dispatch completion event
+            if ($validated['to'] === 'completed') {
+                if ($wo->repair_request) {
+                    $repair = $wo->repair_request;
+                    if (in_array($repair->status, ['assigned', 'in_progress'])) {
+                        $this->workflow->moveRepairRequest($repair, 'completed', $request->user()->id, [
+                            'order_number' => $wo->order_number,
+                            'completion_notes' => $wo->completion_notes,
+                            'result_description' => $wo->completion_notes,
+                            'completed_at' => now(),
+                        ]);
+
+                        $this->eventLogger->logRepairCompleted(
+                            $wo->asset,
+                            $wo->order_number,
+                            'baik',
+                            (float) ($wo->total_cost ?? 0),
+                            $request->user()->id
+                        );
+
+                        WorkOrderCompleted::dispatch($wo, $request->user(), $wo->completion_notes);
+                    }
                 }
             }
         });
