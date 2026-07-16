@@ -11,6 +11,7 @@ use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class WaliSantriController extends Controller
 {
@@ -19,6 +20,178 @@ class WaliSantriController extends Controller
     public function __construct(WaliSantriService $waliService)
     {
         $this->waliService = $waliService;
+    }
+
+    // ── POST /api/mobile/v1/wali-santri/start-registration ──────────────────
+    // Unified dispatcher for the three wali-santri onboarding intents:
+    //   • link_santri      → wali yang sudah punya Santi → klaim Santi lain
+    //   • register_new     → daftarkan Santi baru + auto-link
+    //   • add_second_wali  → minta jadi wali kedua/ketiga untuk Santi yg ada
+    //
+    // Why a unified endpoint: mobile UX is a single funnel that branches by
+    // intent, so consolidating dispatch keeps validation + response shape
+    // consistent across the three flows.
+
+    public function startRegistration(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'intent' => ['required', 'string', Rule::in(['link_santri', 'register_new', 'add_second_wali'])],
+            'nik_santri' => 'nullable|string|size:16|regex:/^\d{16}$/',
+            'student_id' => 'nullable|string|max:36',
+            'role' => 'sometimes|string|max:32',
+            'name' => 'nullable|string|max:255',
+            'gender' => 'nullable|in:L,P,laki-laki,perempuan',
+            'birth_place' => 'nullable|string|max:255',
+            'birth_date' => 'nullable|date',
+            'no_kk' => 'nullable|string|max:20',
+            'approval_token' => 'nullable|string',
+        ]);
+
+        $user = auth()->user();
+
+        return match ($validated['intent']) {
+            'link_santri' => $this->dispatchLinkSantri($validated, $user),
+            'register_new' => $this->dispatchRegisterNew($validated, $user),
+            'add_second_wali' => $this->dispatchAddSecondWali($validated, $user),
+        };
+    }
+
+    private function dispatchLinkSantri(array $data, $user): JsonResponse
+    {
+        $data = $this->resolveStudentIdToNik($data, 'student_id', 'nik_santri');
+
+        if (! empty($data['approval_token'])) {
+            return $this->processApprovalToken($data['approval_token'], $user, $data['student_id'] ?? null);
+        }
+
+        // Bind student-tenant ke schoolContextId untuk first-time wali.
+        $this->bindStudentSchoolToRequest($data);
+
+        try {
+            $result = $this->waliService->requestLinkToStudent($data, $user);
+
+            $statusCode = ($result['already_linked'] ?? false) ? 200 : (
+                ($result['needs_approval'] ?? false) ? 202 : 201
+            );
+
+            return $this->formatLinkResult($result, $statusCode);
+        } catch (\Exception $e) {
+            return $this->serviceExceptionResponse($e);
+        }
+    }
+
+    private function dispatchRegisterNew(array $data, $user): JsonResponse
+    {
+        foreach (['name', 'gender', 'birth_place', 'birth_date'] as $required) {
+            if (empty($data[$required])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'VALIDATION_ERROR',
+                        'message' => "Field {$required} wajib diisi untuk intent register_new.",
+                    ],
+                ], 422);
+            }
+        }
+
+        if (empty($data['nik_santri'])) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'VALIDATION_ERROR',
+                    'message' => 'Field nik_santri wajib diisi untuk intent register_new.',
+                ],
+            ], 422);
+        }
+
+        // Bind schoolContextId via NIK for register_new (no student_id).
+        $this->bindStudentSchoolToRequest($data);
+
+        try {
+            $result = $this->waliService->registerStudentAndLink($data, $user);
+
+            return $this->formatLinkResult($result, 201);
+        } catch (\Exception $e) {
+            return $this->serviceExceptionResponse($e);
+        }
+    }
+
+    private function dispatchAddSecondWali(array $data, $user): JsonResponse
+    {
+        $data = $this->resolveStudentIdToNik($data, 'student_id', 'nik_santri');
+
+        if (! empty($data['approval_token'])) {
+            return $this->processApprovalToken($data['approval_token'], $user, $data['student_id'] ?? null);
+        }
+
+        $this->bindStudentSchoolToRequest($data);
+
+        try {
+            $result = $this->waliService->requestLinkToStudent($data, $user);
+
+            $statusCode = ($result['already_linked'] ?? false) ? 200 : (
+                ($result['needs_approval'] ?? false) ? 202 : 201
+            );
+
+            return $this->formatLinkResult($result, $statusCode);
+        } catch (\Exception $e) {
+            return $this->serviceExceptionResponse($e);
+        }
+    }
+
+    /**
+     * Helper: jika client mengirim student_id (bukan nik_santri), lookup NIK-nya.
+     * Mutates and returns $data with nik_santri populated when student_id is present.
+     */
+    private function resolveStudentIdToNik(array $data, string $idKey, string $nikKey): array
+    {
+        if (! empty($data[$nikKey]) || empty($data[$idKey])) {
+            return $data;
+        }
+
+        $student = \App\Models\Student::find($data[$idKey]);
+        if ($student) {
+            $data[$nikKey] = $student->nik;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Bind student's school to schoolContextId request attribute so that
+     * first-time wali (no wali_santri rows) always have a valid tenant
+     * context when calling service methods.
+     */
+    private function bindStudentSchoolToRequest(array $data): void
+    {
+        $request = request();
+        if ($request === null) {
+            return;
+        }
+
+        $existing = $request->attributes->get('schoolContextId');
+        if ($existing !== null) {
+            return;
+        }
+
+        // Prefer student_id lookup
+        $studentId = $data['student_id'] ?? null;
+        if ($studentId !== null) {
+            $student = \App\Models\Student::find($studentId);
+            if ($student?->school_id !== null) {
+                $request->attributes->set('schoolContextId', $student->school_id);
+                return;
+            }
+        }
+
+        // Fallback: resolve by NIK
+        $nik = $data['nik_santri'] ?? null;
+        if ($nik !== null) {
+            $student = \App\Models\Student::where('nik', $nik)->first();
+            if ($student?->school_id !== null) {
+                $request->attributes->set('schoolContextId', $student->school_id);
+            }
+        }
     }
 
     // ── POST /api/mobile/v1/wali-santri/link ────────────────────────────────
@@ -40,6 +213,12 @@ class WaliSantriController extends Controller
             ], 404);
         }
         $data['nik_santri'] = $student->nik;
+
+        // Bind student-tenant ke schoolContextId untuk first-time wali
+        // yang belum memiliki wali_santri row (schoolContextId masih null).
+        if ($request->attributes->get('schoolContextId') === null && $student->school_id !== null) {
+            $request->attributes->set('schoolContextId', $student->school_id);
+        }
 
         // Jika ada approval_token → langsung proses approve
         if (! empty($data['approval_token'])) {
@@ -63,6 +242,9 @@ class WaliSantriController extends Controller
     {
         $user = auth()->user();
         $data = $request->validated();
+
+        // Bind schoolContextId from student NIK for first-time wali.
+        $this->bindStudentSchoolToRequest($data);
 
         try {
             $result = $this->waliService->requestLinkToStudent($data, $user);
