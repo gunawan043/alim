@@ -3,22 +3,148 @@
 namespace App\Http\Services;
 
 use App\Exceptions\ServiceErrorCode;
-use App\Models\User;
-use App\Models\Student;
-use App\Models\WaliSantri;
-use App\Models\WaliRegistrationToken;
 use App\Mail\WaliAccessRequestMail;
 use App\Mail\WaliRequestApprovedMail;
 use App\Mail\WaliRequestRejectedMail;
-use App\Mail\NewStudentRegisteredMail;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
+use App\Models\WaliRegistrationToken;
+use App\Models\WaliSantri;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class WaliSantriService
 {
     private const TOKEN_EXPIRY_HOURS = 24;
+
     private const MAX_WALI_PER_STUDENT = 5;
+
+    /**
+     * Resolve the active school context for the current request.
+     *
+     * Resolves from the request attribute set by WaliSchoolContextMiddleware
+     * (schoolContextId — canonical) or the OrganizationContext binding
+     * for admin/web paths.
+     *
+     * Sentinel strings ('global', 'unknown', '') are treated as "no tenant"
+     * and produce null — they must never propagate as valid school IDs.
+     *
+     * When $required is true and no tenant is available, throws
+     * ServiceErrorCode(TENANT_CONTEXT_REQUIRED).  When $required is false,
+     * returns null gracefully (e.g. dashboard read path).
+     */
+    private function currentSchoolId(bool $required = true): ?string
+    {
+        $request = request();
+        if ($request === null) {
+            $fromFallback = $this->resolveSchoolIdFromFallback();
+        } else {
+            // Canonical attribute (WaliSchoolContextMiddleware)
+            $fromAttribute = $request->attributes->get('schoolContextId');
+            if (is_string($fromAttribute) && $fromAttribute !== '' && ! $this->isSentinel($fromAttribute)) {
+                return $fromAttribute;
+            }
+
+            // Fall back to OrganizationContext binding (web admin paths).
+            $fromFallback = $this->resolveSchoolIdFromFallback();
+        }
+
+        $schoolId = $fromFallback !== null && ! $this->isSentinel($fromFallback)
+            ? $fromFallback
+            : null;
+
+        if ($required && $schoolId === null) {
+            throw new ServiceErrorCode(
+                'Tidak dapat memproses permintaan: konteks sekolah tidak tersedia.',
+                403,
+                ['code' => 'TENANT_CONTEXT_REQUIRED']
+            );
+        }
+
+        return $schoolId;
+    }
+
+    /**
+     * Sentinel values that must never be treated as valid school IDs.
+     * They appear when callers forget to bind a real tenant context.
+     */
+    private function isSentinel(string $value): bool
+    {
+        return $value === 'global'
+            || $value === 'unknown'
+            || $value === 'all'
+            || $value === '*';
+    }
+
+    /**
+     * Derive schoolId from the OrganizationContext binding when no
+     * middleware attribute is available.
+     * Filters sentinel values ('global', 'unknown', etc.) — returns null for them.
+     */
+    private function resolveSchoolIdFromFallback(): ?string
+    {
+        if (app()->bound(\App\Authorization\ValueObjects\OrganizationContext::class)) {
+            $ctx = app(\App\Authorization\ValueObjects\OrganizationContext::class);
+            if ($ctx instanceof \App\Authorization\ValueObjects\OrganizationContext) {
+                $sid = $ctx->schoolId;
+                if (is_string($sid) && $sid !== '' && ! $this->isSentinel($sid)) {
+                    return $sid;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Throw ServiceErrorCode when the student belongs to a different school
+     * than the active request context. The error is intentionally generic
+     * (STUDENT_NOT_FOUND) so existence of cross-tenant students is not leaked.
+     */
+    private function assertSameTenant(Student $student): void
+    {
+        $schoolId = $this->currentSchoolId(true);
+        if ($student->school_id === null || $student->school_id !== $schoolId) {
+            throw new ServiceErrorCode(
+                'Santi tidak ditemukan.',
+                404,
+                ['code' => 'STUDENT_NOT_FOUND']
+            );
+        }
+    }
+
+    /**
+     * Throw when a wali_santri row belongs to a different tenant.
+     */
+    private function assertLinkSameTenant(WaliSantri $link): void
+    {
+        $schoolId = $this->currentSchoolId(true);
+        if ($link->school_id === null || $link->school_id !== $schoolId) {
+            // Cross-tenant: return 404, never 403, to avoid confirming existence.
+            throw new ServiceErrorCode(
+                'Hubungan wali-Santi tidak ditemukan.',
+                404,
+                ['code' => 'LINK_NOT_FOUND']
+            );
+        }
+    }
+
+    /**
+     * Throw when a registration token belongs to a different tenant.
+     */
+    private function assertTokenSameTenant(WaliRegistrationToken $token): void
+    {
+        $schoolId = $this->currentSchoolId(true);
+        if ($token->school_id === null || $token->school_id !== $schoolId) {
+            // Generic 404 — never confirm token existence cross-tenant.
+            throw new ServiceErrorCode(
+                'Token tidak valid atau sudah kedaluwarsa.',
+                404,
+                ['code' => 'TOKEN_INVALID']
+            );
+        }
+    }
 
     // ── Register Student + Link to Wali ─────────────────────────────────────
 
@@ -30,17 +156,43 @@ class WaliSantriService
      */
     public function registerStudentAndLink(array $data, User $wali): array
     {
-        return DB::transaction(function () use ($data, $wali) {
-            // ── STEP 1: Cek NIK sudah terdaftar? ─────────────────────────────
+        // Tenant assertion: must run BEFORE any DB::transaction so we never
+        // start a write transaction without a verified school context.
+        $schoolId = $this->currentSchoolId(true);
+
+        return DB::transaction(function () use ($data, $wali, $schoolId) {
+            // ── STEP 1: Cek NIK sudah terdaftar? ────��────────────────────────
             $existingStudent = Student::where('nik', $data['nik'])->first();
 
             if ($existingStudent) {
+                // Tenant guard: never reveal cross-tenant existence.
+                if ($existingStudent->school_id !== $schoolId) {
+                    throw new ServiceErrorCode(
+                        'NIK sudah terdaftar di sistem dan milik orang lain. '
+                            .'Jika ini adalah anak Anda, silakan hubungi administrators sekolah.',
+                        422,
+                        ['nik' => $data['nik']]
+                    );
+                }
+
                 // NIK sudah ada → cek apakah sudah terhubung ke wali ini
+                // Tenant guard for the linkage itself.
+                // Note: school_id not needed here because $existingStudent was
+                // already asserted to match $schoolId at line 156.
                 $existingLink = WaliSantri::where('user_id', $wali->id)
                     ->where('student_id', $existingStudent->id)
                     ->first();
 
                 if ($existingLink) {
+                    // Tenant guard for the linkage itself.
+                    if ($existingLink->school_id !== $schoolId) {
+                        throw new ServiceErrorCode(
+                            'Hubungan wali-Santi tidak ditemukan.',
+                            404,
+                            ['code' => 'LINK_NOT_FOUND']
+                        );
+                    }
+
                     return [
                         'student' => $existingStudent,
                         'wali_santri' => $existingLink,
@@ -48,10 +200,10 @@ class WaliSantriService
                     ];
                 }
 
-                // NIK ada tapi milik orang lain
+                // NIK ada tapi milik orang lain (in-tenant)
                 throw new ServiceErrorCode(
                     'NIK sudah terdaftar di sistem dan milik orang lain. '
-                        . 'Jika ini adalah anak Anda, silakan hubungi administrators sekolah.',
+                        .'Jika ini adalah anak Anda, silakan hubungi administrators sekolah.',
                     422,
                     ['nik' => $data['nik']]
                 );
@@ -68,7 +220,7 @@ class WaliSantriService
                 }
             }
 
-            // ── STEP 3: Buat Student baru ──────────────────────────────────────
+            // ── STEP 3: Buat Student baru (tenant-scoped) ─────────────────────
             $student = Student::create([
                 'nik' => $data['nik'],
                 'name' => $data['name'],
@@ -76,13 +228,15 @@ class WaliSantriService
                 'birth_place' => $data['birth_place'] ?? null,
                 'birth_date' => $data['birth_date'],
                 'no_kk' => $data['no_kk'] ?? $wali->no_kk,
+                'school_id' => $schoolId,
                 'status' => 'active',
             ]);
 
-            // ── STEP 4: Buat link wali_santri (status = active, is_primary = true) ──
+            // ── STEP 4: Buat link wali_santri (tenant-scoped) ────────────────
             $waliSantri = WaliSantri::create([
                 'user_id' => $wali->id,
                 'student_id' => $student->id,
+                'school_id' => $schoolId,
                 'role' => $data['role'] ?? 'wali',
                 'is_primary' => true,
                 'status' => WaliSantri::STATUS_ACTIVE,
@@ -115,22 +269,30 @@ class WaliSantriService
      */
     public function requestLinkToStudent(array $data, User $wali): array
     {
-        return DB::transaction(function () use ($data, $wali) {
+        $schoolId = $this->currentSchoolId(true);
+
+        return DB::transaction(function () use ($data, $wali, $schoolId) {
             // ── STEP 1: Cek Santi ada ───────────────────────────────────────────
             $student = Student::where('nik', $data['nik_santri'])->first();
 
-            if (!$student) {
+            if (! $student) {
                 throw new ServiceErrorCode(
                     'Santi dengan NIK tersebut tidak ditemukan. '
-                        . 'Pastikan NIK yang Anda masukkan benar.',
+                        .'Pastikan NIK yang Anda masukkan benar.',
                     404,
                     ['nik_santri' => $data['nik_santri']]
                 );
             }
 
+            // Tenant guard: refuse cross-tenant student references. We return
+            // the same NOT_FOUND error regardless of whether the NIK exists in
+            // another school, to prevent cross-tenant existence leakage.
+            $this->assertSameTenant($student);
+
             // ── STEP 2: Cek apakah sudah terhubung ──────────────────────────────
             $existingLink = WaliSantri::where('user_id', $wali->id)
                 ->where('student_id', $student->id)
+                ->where('school_id', $schoolId)
                 ->first();
 
             if ($existingLink) {
@@ -154,9 +316,10 @@ class WaliSantriService
                 ];
             }
 
-            // ── STEP 3: Cek Santi sudah punya wali? ──────────────────────────────
+            // ── STEP 3: Cek Santi sudah punya wali? (tenant-scoped) ────────────
             $existingWali = WaliSantri::with('user')
                 ->where('student_id', $student->id)
+                ->where('school_id', $schoolId)
                 ->active()
                 ->get();
 
@@ -164,10 +327,11 @@ class WaliSantriService
 
             // Santi belum punya wali sama sekali → langsung link
             if ($existingWali->isEmpty()) {
-                // ── Langsung buat link aktif ───────────────────────────────────
+                // ── Langsung buat link aktif (tenant-scoped) ─────────────────────
                 $waliSantri = WaliSantri::create([
                     'user_id' => $wali->id,
                     'student_id' => $student->id,
+                    'school_id' => $schoolId,
                     'role' => $role,
                     'is_primary' => true,
                     'status' => WaliSantri::STATUS_ACTIVE,
@@ -184,9 +348,10 @@ class WaliSantriService
             }
 
             // Santi sudah punya wali → proses otorisasi
-            // ── STEP 4: Cek tidak ada pending request ─────────────────────────
+            // ── STEP 4: Cek tidak ada pending request (tenant-scoped) ────────────
             $pending = WaliRegistrationToken::where('user_id', $wali->id)
                 ->where('nik_santri', $data['nik_santri'])
+                ->where('school_id', $schoolId)
                 ->whereNull('used_at')
                 ->where('expires_at', '>', now())
                 ->first();
@@ -194,11 +359,11 @@ class WaliSantriService
             if ($pending) {
                 throw new ServiceErrorCode(
                     'Anda sudah memiliki permintaan aktif. '
-                        . 'Silakan tunggu konfirmasi dari wali utama.',
+                        .'Silakan tunggu konfirmasi dari wali utama.',
                     422,
                     [
                         'message' => 'Anda sudah memiliki permintaan aktif. '
-                            . 'Silakan tunggu konfirmasi dari wali utama.',
+                            .'Silakan tunggu konfirmasi dari wali utama.',
                         'expires_at' => $pending->expires_at->toIso8601String(),
                     ]
                 );
@@ -207,22 +372,23 @@ class WaliSantriService
             // ── STEP 5: Cek MAX wali tercapai ─────────────────────────────────
             if ($existingWali->count() >= self::MAX_WALI_PER_STUDENT) {
                 throw new ServiceErrorCode(
-                    "Santi ini sudah memiliki maksimum " . self::MAX_WALI_PER_STUDENT . " wali.",
+                    'Santi ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
                     422,
                     [
                         'max_wali' => self::MAX_WALI_PER_STUDENT,
                         'current_count' => $existingWali->count(),
-                        'message' => "Santi ini sudah memiliki maksimum " . self::MAX_WALI_PER_STUDENT . " wali.",
+                        'message' => 'Santi ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
                     ]
                 );
             }
 
-            // ── STEP 6: Generate token otorisasi ────────────────────────────────
+            // ── STEP 6: Generate token otorisasi (tenant-scoped) ────────────────────
             $token = bin2hex(random_bytes(32));
 
             $regToken = WaliRegistrationToken::create([
                 'token' => $token,
                 'user_id' => $wali->id,
+                'school_id' => $schoolId,
                 'nik_santri' => $data['nik_santri'],
                 'no_kk' => $data['no_kk'] ?? null,
                 'intent' => 'add_wali',
@@ -249,7 +415,7 @@ class WaliSantriService
                 'registration_token' => $regToken,
                 'needs_approval' => true,
                 'message' => 'Permintaan telah dikirim ke wali utama. '
-                    . 'Anda akan notified ketika permintaan disetujui.',
+                    .'Anda akan notified ketika permintaan disetujui.',
                 'approval_token' => $token,
             ];
         });
@@ -271,7 +437,7 @@ class WaliSantriService
                 ->where('expires_at', '>', now())
                 ->first();
 
-            if (!$regToken) {
+            if (! $regToken) {
                 throw new ServiceErrorCode(
                     'Token tidak valid atau sudah kedaluwarsa.',
                     404,
@@ -279,17 +445,25 @@ class WaliSantriService
                 );
             }
 
+            // Tenant guard: the token must belong to the active school context.
+            // This is the most critical assertion in the approval flow — a
+            // token issued in school A must never be redeemable from school B,
+            // regardless of which wali's email receives the approval link.
+            $this->assertTokenSameTenant($regToken);
+
             // ── STEP 2: Cek apakah wali ini punya akses ke Santi tersebut ────────
             $primaryLink = WaliSantri::where('user_id', $wali->id)
                 ->where('student_id', $regToken->student_id)
+                ->where('school_id', $regToken->school_id)
                 ->active()
                 ->first();
 
             // Jika belum ada link, cek apakah wali ini adalah primary atau punya seniority
             // Untuk approve, perlu jadi primary atau role 'ayah'/'ibu'
-            if (!$primaryLink) {
+            if (! $primaryLink) {
                 // Cek apakah ada wali lain yang punya akses — jika tidak, allow (karena dia yang pertama klaim)
                 $anyLink = WaliSantri::where('student_id', $regToken->student_id)
+                    ->where('school_id', $regToken->school_id)
                     ->active()
                     ->exists();
 
@@ -306,9 +480,21 @@ class WaliSantriService
             $student = Student::find($regToken->student_id);
             $requester = User::find($regToken->user_id);
 
+            // Defense in depth: the student resolved from the token must be in
+            // the same tenant as the token itself.
+            $tokenSchoolId = $regToken->school_id;
+            if ($student === null || $student->school_id !== $tokenSchoolId) {
+                throw new ServiceErrorCode(
+                    'Santi tidak ditemukan.',
+                    404,
+                    ['code' => 'STUDENT_NOT_FOUND']
+                );
+            }
+
             if ($action === 'approve') {
                 // Cek MAX Wali
                 $currentCount = WaliSantri::where('student_id', $regToken->student_id)
+                    ->where('school_id', $tokenSchoolId)
                     ->active()
                     ->count();
 
@@ -320,10 +506,11 @@ class WaliSantriService
                     );
                 }
 
-                // Buat link
+                // Buat link (tenant-scoped: inherit from token)
                 $waliSantri = WaliSantri::create([
                     'user_id' => $regToken->user_id,
                     'student_id' => $regToken->student_id,
+                    'school_id' => $tokenSchoolId,
                     'role' => 'wali',
                     'is_primary' => false,
                     'status' => WaliSantri::STATUS_ACTIVE,
@@ -378,42 +565,119 @@ class WaliSantriService
     {
         $link = WaliSantri::with('student')->find($waliSantriId);
 
-        if (!$link) {
+        if (! $link) {
             throw new ServiceErrorCode(
                 'Hubungan wali-Santi tidak ditemukan.',
                 404,
-                ['message' => 'Hubungan wali-Santi tidak ditemukan.']
+                ['code' => 'LINK_NOT_FOUND']
             );
         }
 
-        // Cek apakah ini link terakhir
-        $activeLinks = WaliSantri::where('student_id', $link->student_id)
-            ->active()
-            ->count();
-
-        if ($activeLinks <= 1 && !$isAdmin) {
+        // Tenant guard: admin / acting-user cross-tenant remove must be blocked.
+        // When isAdmin=true, we still require the admin's context to match the
+        // link's tenant — never allow admin to wipe records from another tenant.
+        $schoolId = $this->currentSchoolId(true);
+        if ($link->school_id !== $schoolId) {
+            // Cross-tenant: hide existence.
             throw new ServiceErrorCode(
-                'Tidak dapat melepas hubungan terakhir. '
-                    . 'Hubungi administrators untuk bantuan.',
-                422,
-                ['message' => 'Tidak dapat melepas hubungan terakhir.']
+                'Hubungan wali-Santi tidak ditemukan.',
+                404,
+                ['code' => 'LINK_NOT_FOUND']
             );
         }
 
-        $link->status = WaliSantri::STATUS_SUSPENDED;
-        $link->save();
+        $requesterRemove = false;
+        $isAllowedByParent = false;
+
+        if ($actingUser !== null) {
+            if ($link->user_id === $actingUser->id) {
+                $requesterRemove = true;
+            } else {
+                $parentLink = WaliSantri::where('user_id', $actingUser->id)
+                    ->where('student_id', $link->student_id)
+                    ->where('school_id', $schoolId)
+                    ->where('is_primary', true)
+                    ->where('status', WaliSantri::STATUS_ACTIVE)
+                    ->exists();
+                $isAllowedByParent = $parentLink;
+            }
+        }
+
+        if ($actingUser !== null && ! $isAdmin && ! $requesterRemove && ! $isAllowedByParent) {
+            throw new ServiceErrorCode(
+                'Anda tidak memiliki izin untuk menghapus hubungan ini.',
+                403,
+                ['code' => 'FORBIDDEN']
+            );
+        }
+
+        if ($link->is_primary && $link->status === WaliSantri::STATUS_ACTIVE) {
+            $otherActive = WaliSantri::where('student_id', $link->student_id)
+                ->where('school_id', $schoolId)
+                ->where('id', '!=', $link->id)
+                ->where('status', WaliSantri::STATUS_ACTIVE)
+                ->exists();
+
+            if ($otherActive) {
+                throw new ServiceErrorCode(
+                    'Tidak dapat menghapus wali utama. '
+                        .'Pindahkan status wali utama ke wali lain terlebih dahulu.',
+                    422,
+                    ['code' => 'CANNOT_REMOVE_PRIMARY_HAS_OTHERS']
+                );
+            }
+        }
+
+        DB::transaction(function () use ($link) {
+            $link->status = WaliSantri::STATUS_REVOKED;
+            $link->verified_by = $link->verified_by;
+            $link->save();
+
+            $activeCount = WaliSantri::where('student_id', $link->student_id)
+                ->where('school_id', $link->school_id)
+                ->where('status', WaliSantri::STATUS_ACTIVE)
+                ->count();
+
+            if ($activeCount > 0) {
+                return;
+            }
+
+            $student = $link->student;
+            if ($student && $student->status === 'active') {
+                // We deliberately do not delete or deactivate the student
+                // record — owned identity persists across admin resets.
+            }
+        });
     }
 
     // ── Get Dashboard ────���────────────────────────────────────────────────────
 
     public function getDashboard(User $wali): array
     {
+        // Gracefully degrade when no tenant context is available (e.g.
+        // multi-school wali didn't pick a context). The API always has the
+        // middleware applied so this is a defensive path only.
+        $schoolId = $this->currentSchoolId(false);
+        if ($schoolId === null) {
+            return [
+                'wali' => [
+                    'id' => $wali->id,
+                    'name' => $wali->name,
+                    'email' => $wali->email,
+                    'no_hp' => $wali->no_hp,
+                ],
+                'students' => [],
+                'total_students' => 0,
+            ];
+        }
+
         $links = WaliSantri::with(['student', 'student.school'])
             ->where('user_id', $wali->id)
+            ->where('school_id', $schoolId)
             ->active()
             ->get();
 
-        $students = $links->map(fn($link) => [
+        $students = $links->map(fn ($link) => [
             'id' => $link->student->id,
             'nik' => $link->student->nik,
             'name' => $link->student->name,
@@ -428,10 +692,10 @@ class WaliSantriService
             ] : null,
             'other_walis' => WaliSantri::with('user:id,name,email,no_hp')
                 ->where('student_id', $link->student->id)
-                ->active()
+                ->where('school_id', $schoolId)
                 ->where('user_id', '!=', $wali->id)
                 ->get()
-                ->map(fn($wl) => [
+                ->map(fn ($wl) => [
                     'user_id' => $wl->user_id,
                     'name' => $wl->user->name,
                     'role' => $wl->role,
@@ -451,19 +715,21 @@ class WaliSantriService
         ];
     }
 
-    // ── Validate NIK Format ───────────────────────────────────────────────────
-
     public static function validateNikFormat(string $nik): bool
     {
-        if (strlen($nik) !== 16 || !ctype_digit($nik)) {
+        if (strlen($nik) !== 16 || ! ctype_digit($nik)) {
             return false;
         }
 
         $dayCode = (int) substr($nik, 6, 2);
         $monthCode = (int) substr($nik, 8, 2);
 
-        if ($monthCode < 1 || $monthCode > 12) return false;
-        if ($dayCode < 1 || $dayCode > 31) return false;
+        if ($monthCode < 1 || $monthCode > 12) {
+            return false;
+        }
+        if ($dayCode < 1 || $dayCode > 31) {
+            return false;
+        }
 
         return true;
     }

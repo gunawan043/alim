@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class WaliSantri extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     /** @var string */
     protected $primaryKey = 'id';
@@ -32,14 +32,21 @@ class WaliSantri extends Model
     protected $table = 'wali_santri';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_SUSPENDED = 'suspended';
 
     public const ROLE_AYAH = 'ayah';
+
     public const ROLE_IBU = 'ibu';
+
     public const ROLE_KAKEK = 'kakek';
+
     public const ROLE_NENEK = 'nenek';
+
     public const ROLE_WALI = 'wali';
+
     public const ROLE_LAINNYA = 'lainnya';
 
     public const VALID_ROLES = [
@@ -56,6 +63,7 @@ class WaliSantri extends Model
     protected $fillable = [
         'user_id',
         'student_id',
+        'school_id',
         'role',
         'is_primary',
         'access_token',
@@ -81,6 +89,11 @@ class WaliSantri extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class, 'student_id');
+    }
+
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class, 'school_id');
     }
 
     public function verifiedBy(): BelongsTo
@@ -121,21 +134,23 @@ class WaliSantri extends Model
     {
         $this->access_token = bin2hex(random_bytes(32));
         $this->access_expires_at = now()->addHours(24);
+
         return $this->access_token;
     }
 
     public function consumeAccessToken(string $token): bool
     {
-        if (!$this->isAccessTokenValid() || $this->access_token !== $token) {
+        if (! $this->isAccessTokenValid() || $this->access_token !== $token) {
             return false;
         }
         $this->access_token = null;
         $this->access_expires_at = null;
+
         return true;
     }
 
     public static function maskNoKk(string $noKk): string
     {
-        return substr($noKk, 0, 4) . '••••••••' . substr($noKk, -4);
+        return substr($noKk, 0, 4).'••••••••'.substr($noKk, -4);
     }
 }
