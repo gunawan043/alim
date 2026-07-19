@@ -25,3 +25,6 @@ true,
 Homestead.yaml
 Homestead.json
 /.vagrant
+.env.testing
+SECURITY_AUDIT_*.md
+phpbrew
