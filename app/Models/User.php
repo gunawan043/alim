@@ -3,22 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -206,10 +206,12 @@ class User extends Authenticatable
             $domain = $parts[1];
 
             if (strlen($username) > 2) {
-                $maskedUsername = substr($username, 0, 2) . str_repeat('*', strlen($username) - 2);
-                return $maskedUsername . '@' . $domain;
+                $maskedUsername = substr($username, 0, 2).str_repeat('*', strlen($username) - 2);
+
+                return $maskedUsername.'@'.$domain;
             }
         }
+
         return $email;
     }
 
@@ -293,7 +295,6 @@ class User extends Authenticatable
         });
     }
 
-
     public function gtkEmployment()
     {
         return $this->employment(); // Alias ke employment
@@ -314,13 +315,13 @@ class User extends Authenticatable
         return $this->hasMany(GtkEducation::class, 'user_id');
     }
 
-
     public function getMaskedNikAttribute()
     {
         $nik = $this->nik;
         if ($nik && strlen($nik) >= 16) {
-            return substr($nik, 0, 6) . '••••••••' . substr($nik, -2);
+            return substr($nik, 0, 6).'••••••••'.substr($nik, -2);
         }
+
         return str_repeat('•', 16);
     }
 
@@ -328,8 +329,9 @@ class User extends Authenticatable
     {
         $no_kk = $this->no_kk;
         if ($no_kk && strlen($no_kk) >= 16) {
-            return substr($no_kk, 0, 4) . '••••••••' . substr($no_kk, -4);
+            return substr($no_kk, 0, 4).'••••••••'.substr($no_kk, -4);
         }
+
         return str_repeat('•', 16);
     }
 
@@ -353,8 +355,8 @@ class User extends Authenticatable
             'user_id',
             'student_id'
         )->withPivot(['role', 'is_primary', 'status', 'created_at'])
-         ->wherePivot('status', 'active')
-         ->withTimestamps();
+            ->wherePivot('status', 'active')
+            ->withTimestamps();
     }
 
     public function verifiedWaliLinks()
@@ -395,5 +397,36 @@ class User extends Authenticatable
     public function processedApplications()
     {
         return $this->hasMany(RecruitmentApplication::class, 'processed_by');
+    }
+
+    // ── AUTH CONTRACT (Sprint 1, ADR-018) ────────────────────────────────────
+    //
+    // Callers MUST go through effectiveRoles() rather than calling
+    // Spatie's ->roles / ->getRoleNames directly. This keeps the role
+    // abstraction centralised and lets us swap the source-of-truth later
+    // (e.g. merge legacy DB roles with Spatie-cached roles) without
+    // scattering that knowledge across controllers.
+
+    /**
+     * @return list<string> Sorted, unique role identifiers.
+     */
+    public function effectiveRoles(): array
+    {
+        try {
+            $roles = $this->getRoleNames();
+        } catch (\Throwable) {
+            $roles = collect();
+        }
+
+        $names = $roles
+            ->map(static fn ($name) => strtolower(trim((string) $name)))
+            ->filter(static fn ($name) => $name !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        sort($names);
+
+        return $names;
     }
 }

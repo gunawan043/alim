@@ -62,4 +62,127 @@ return [
         'encrypt_cookies' => App\Http\Middleware\EncryptCookies::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Token Expiration (config-driven)
+    |--------------------------------------------------------------------------
+    |
+    | Centralised, configurable TTLs for personal access tokens. NO domain
+    | (controller / migration / seeder) is permitted to hardcode TTL values.
+    |
+    | Values may be int (minutes) or null (no expiration).
+    |
+    */
+
+    'token_expiration' => [
+        'mobile_default' => env('SANCTUM_MOBILE_TOKEN_EXPIRATION_MINUTES', 60 * 24 * 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Token Name Format (structured, server-generated)
+    |--------------------------------------------------------------------------
+    |
+    | Authoritative column layout used by App\Support\TokenName. The server
+    | builds the token name from request metadata — clients NEVER supply it.
+    |
+    |   <surface>:<client-kind>:<channel>:<platform>:<device-fingerprint>
+    |
+    | Example: "mobile:user:password:android:fp_a1b2c3d4"
+    |
+    */
+
+    'token_name_format' => [
+        'parts' => ['surface', 'client_kind', 'channel', 'platform', 'device_fingerprint'],
+        'regex' => '/^[a-z0-9_-]{1,32}(:[a-z0-9_-]{1,32}){4}$/',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Domain-Based Abilities (ADR-018)
+    |--------------------------------------------------------------------------
+    |
+    | Reusable, application-agnostic abilities. Designed to support future
+    | clients without redesign — abilities are tied to DOMAINS, not to
+    | application names. App\Support\AbilityRegistry reads this map and
+    | resolves a User's abilities via User::effectiveRoles().
+    |
+    | Wildcards supported: "*" grants all abilities; "<domain>.*" grants all
+    | abilities within that domain (e.g. "attendance.*").
+    |
+    */
+
+    'abilities' => [
+
+        // ── Catalogue of valid ability strings ──────────────────────────────
+        'catalog' => [
+            'attendance.read',
+            'attendance.write',
+            'grades.read',
+            'grades.write',
+            'permit.create',
+            'permit.read',
+            'permit.approve',
+            'health.read',
+            'health.write',
+            'notification.read',
+            'notification.write',
+            'dashboard.read',
+            'profile.read',
+            'profile.write',
+        ],
+
+        // ── Role -> abilities mapping ────────────────────────────────────────
+        'roles' => [
+
+            'wali' => [
+                'attendance.read',
+                'grades.read',
+                'permit.create',
+                'permit.read',
+                'health.read',
+                'notification.read',
+                'notification.write',
+                'dashboard.read',
+                'profile.read',
+                'profile.write',
+            ],
+
+            'musyrif' => [
+                'attendance.read',
+                'attendance.write',
+                'grades.read',
+                'permit.read',
+                'permit.approve',
+                'health.read',
+                'notification.read',
+                'notification.write',
+                'dashboard.read',
+                'profile.read',
+                'profile.write',
+            ],
+
+            'guru' => [
+                'attendance.read',
+                'attendance.write',
+                'grades.read',
+                'grades.write',
+                'permit.read',
+                'health.read',
+                'notification.read',
+                'notification.write',
+                'dashboard.read',
+                'profile.read',
+                'profile.write',
+            ],
+
+            'admin' => ['*'],
+
+            'super-admin' => ['*'],
+        ],
+
+        // ── Default abilities for users with no recognised role ────────────
+        'default' => ['profile.read', 'profile.write'],
+    ],
+
 ];
