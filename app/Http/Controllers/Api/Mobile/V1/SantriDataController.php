@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
@@ -616,8 +618,17 @@ class SantriDataController extends Controller
 
     private function waliHasAccessTo(string $userId, string $studentId): bool
     {
+        // Tenant-scoped access check: the wali must have an active link to
+        // the student in the active school context.
+        $request = request();
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId === null) {
+            return false;
+        }
+
         return WaliSantri::where('user_id', $userId)
             ->where('student_id', $studentId)
+            ->where('school_id', $schoolId)
             ->active()
             ->exists();
     }

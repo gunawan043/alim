@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\WaliSantriService;
-use App\Models\WaliSantri;
 use App\Models\StudentAttendance;
+use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +24,7 @@ class DashboardController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
         $data = $this->waliService->getDashboard($user);
 
         return response()->json([
@@ -35,10 +37,11 @@ class DashboardController extends Controller
 
     public function attendance(Request $request): JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
         $date = $request->query('date', now()->format('Y-m-d'));
 
         $studentIds = WaliSantri::where('user_id', $user->id)
+            ->where('school_id', $request->attributes->get('schoolContextId'))
             ->active()
             ->pluck('student_id');
 
@@ -53,7 +56,7 @@ class DashboardController extends Controller
             ->whereIn('student_id', $studentIds)
             ->where('attendance_date', $date)
             ->get()
-            ->map(fn($att) => [
+            ->map(fn ($att) => [
                 'id' => $att->id,
                 'student' => [
                     'id' => $att->student->id,

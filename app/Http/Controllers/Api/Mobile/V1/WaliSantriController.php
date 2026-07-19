@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Exceptions\ServiceErrorCode;
@@ -7,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\LinkWaliSantriRequest;
 use App\Http\Requests\Mobile\RequestWaliRoleRequest;
 use App\Http\Services\WaliSantriService;
+use App\Models\Student;
 use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
@@ -149,7 +152,7 @@ class WaliSantriController extends Controller
             return $data;
         }
 
-        $student = \App\Models\Student::find($data[$idKey]);
+        $student = Student::where('id', $data[$idKey])->first();
         if ($student) {
             $data[$nikKey] = $student->nik;
         }
@@ -177,7 +180,7 @@ class WaliSantriController extends Controller
         // Prefer student_id lookup
         $studentId = $data['student_id'] ?? null;
         if ($studentId !== null) {
-            $student = \App\Models\Student::find($studentId);
+            $student = Student::find($studentId);
             if ($student?->school_id !== null) {
                 $request->attributes->set('schoolContextId', $student->school_id);
                 return;
@@ -187,7 +190,7 @@ class WaliSantriController extends Controller
         // Fallback: resolve by NIK
         $nik = $data['nik_santri'] ?? null;
         if ($nik !== null) {
-            $student = \App\Models\Student::where('nik', $nik)->first();
+            $student = Student::where('nik', $nik)->first();
             if ($student?->school_id !== null) {
                 $request->attributes->set('schoolContextId', $student->school_id);
             }
@@ -205,11 +208,20 @@ class WaliSantriController extends Controller
         ]);
 
         // Konversi student_id → nik_santri
-        $student = \App\Models\Student::find($data['student_id']);
+        $student = Student::find($data['student_id']);
         if (! $student) {
             return response()->json([
                 'success' => false,
                 'error' => ['code' => 'STUDENT_NOT_FOUND', 'message' => 'Santri tidak ditemukan.'],
+            ], 404);
+        }
+
+        // Tenant scope: student harus berada di school context yang sama (jika sudah ada)
+        $currentSchoolContext = $request->attributes->get('schoolContextId');
+        if ($currentSchoolContext && $student->school_id && $student->school_id !== $currentSchoolContext) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'CROSS_TENANT_ACCESS', 'message' => 'Santri tidak ditemukan.'],
             ], 404);
         }
         $data['nik_santri'] = $student->nik;

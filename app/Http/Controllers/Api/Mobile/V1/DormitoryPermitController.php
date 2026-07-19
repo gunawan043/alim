@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\CreateDormitoryPermitRequest;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
+use App\Models\Student;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +22,7 @@ class DormitoryPermitController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
-        // Verify wali links to this student
+        // Verify wali links to this student (tenant-scoped)
         $link = WaliSantri::where('user_id', $user->id)
             ->where('student_id', $data['student_id'])
             ->active()
@@ -33,6 +36,23 @@ class DormitoryPermitController extends Controller
                     'message' => 'Santri tidak ditemukan atau Anda tidak memiliki akses.',
                 ],
             ], 404);
+        }
+
+        // Tenant scope: validate student belongs to school context
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId) {
+            $student = Student::where('id', $data['student_id'])
+                ->where('school_id', $schoolId)
+                ->first();
+            if (!$student) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'STUDENT_NOT_FOUND',
+                        'message' => 'Santri tidak ditemukan.',
+                    ],
+                ], 404);
+            }
         }
 
         // Look up current dormitory/room assignment for the student
@@ -84,9 +104,15 @@ class DormitoryPermitController extends Controller
             ]);
         }
 
-        $permits = DormitoryPermit::with(['student:id,name,nisn'])
-            ->whereIn('student_id', $studentIds)
-            ->orderByDesc('created_at')
+        $schoolId = $request->attributes->get('schoolContextId');
+        $query = DormitoryPermit::with(['student:id,name,nisn'])
+            ->whereIn('student_id', $studentIds);
+
+        if ($schoolId) {
+            $query->whereHas('student', fn ($q) => $q->where('school_id', $schoolId));
+        }
+
+        $permits = $query->orderByDesc('created_at')
             ->limit(100)
             ->get()
             ->map(fn ($p) => $this->formatPermit($p, true));

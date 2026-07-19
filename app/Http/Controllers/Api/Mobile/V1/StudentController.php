@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Exceptions\ServiceErrorCode;
@@ -31,7 +33,7 @@ class StudentController extends Controller
             ->active()
             ->get();
 
-        $students = $links->map(fn($link) => $this->formatStudent($link));
+        $students = $links->map(fn ($link) => $this->formatStudent($link));
 
         return response()->json([
             'success' => true,
@@ -54,7 +56,7 @@ class StudentController extends Controller
             ->active()
             ->first();
 
-        if (!$link) {
+        if (! $link) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -115,7 +117,7 @@ class StudentController extends Controller
 
         $nik = $request->nik;
 
-        if (!$this->waliService::validateNikFormat($nik)) {
+        if (! $this->waliService::validateNikFormat($nik)) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -125,9 +127,13 @@ class StudentController extends Controller
             ], 422);
         }
 
-        $student = Student::where('nik', $nik)->first();
+        // Tenant scope: never reveal cross-tenant student existence via NIK
+        $currentSchoolId = $request->attributes->get('schoolContextId');
+        $student = Student::where('nik', $nik)
+            ->where('school_id', $request->attributes->get('schoolContextId'))
+            ->first();
 
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -156,16 +162,15 @@ class StudentController extends Controller
             ]);
         }
 
-        // NIK ada, milik orang lain
+        // NIK ada, milik wali lain (sama tenant) — jangan bocorkan identitas lintas tenant
         return response()->json([
             'success' => true,
             'data' => [
                 'nik' => $nik,
                 'status' => 'registered_by_other',
                 'student_name' => $student->name,
-                'message' => 'NIK ini sudah terdaftar di sistemas dan milik orang lain.',
+                'message' => 'NIK ini sudah terdaftar dan sudah terhubung dengan wali lain.',
                 'suggestion' => 'Gunakan menu "Minta Jadi Wali" untuk mengajukan hubungan.',
-                'masked_kk' => $student->no_kk ? substr($student->no_kk, 0, 4) . '••••' : null,
             ],
         ]);
     }
@@ -203,7 +208,7 @@ class StudentController extends Controller
                 ->active()
                 ->where('user_id', '!=', auth()->id())
                 ->get()
-                ->map(fn($wl) => [
+                ->map(fn ($wl) => [
                     'user_id' => $wl->user_id,
                     'name' => $wl->user->name,
                     'role' => $wl->role,
@@ -242,7 +247,9 @@ class StudentController extends Controller
         } else {
             $code = $e->getCode() ?: 500;
             $validCodes = [400, 401, 403, 404, 409, 422, 500];
-            if (!in_array($code, $validCodes)) $code = 500;
+            if (! in_array($code, $validCodes)) {
+                $code = 500;
+            }
             $errorCode = $e->getMessage() ?: 'SERVER_ERROR';
         }
 

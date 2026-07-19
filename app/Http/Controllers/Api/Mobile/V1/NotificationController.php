@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
@@ -101,6 +103,27 @@ class NotificationController extends Controller
                 'is_read' => $notification->is_read,
                 'read_at' => $notification->read_at?->toIso8601String(),
             ],
+        ]);
+    }
+
+    // ── PATCH /api/mobile/v1/notifications/mark-all-read ────────────────
+
+    public function markAllRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $affected = NotificationUniversal::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->whereRaw('expires_at IS NULL OR expires_at > NOW()')
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Semua notifikasi ditandai telah dibaca.',
+            'data' => ['marked_count' => $affected],
         ]);
     }
 }
