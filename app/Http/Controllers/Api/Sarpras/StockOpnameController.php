@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Api\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
-use App\Models\QrScanHistory;
 use App\Models\StockOpnameItem;
 use App\Models\StockOpnameSession;
-use App\Models\User;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\StockOpnameWorkflow;
 use Illuminate\Http\JsonResponse;
@@ -165,6 +163,14 @@ class StockOpnameController extends Controller
             ->where('id', $itemId)
             ->firstOrFail();
 
+        // Prevent double-scan: item already observed in this session
+        if ($item->observed_status !== null && $item->observed_status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Item ini sudah pernah dicatat pengamatannya pada sesi ini.',
+            ], 422);
+        }
+
         $photoPath = null;
         if ($request->hasFile('photo')) {
             $photoPath = $request->file('photo')->store('opname-evidence', 'public');
@@ -211,6 +217,13 @@ class StockOpnameController extends Controller
 
         $session = StockOpnameSession::findOrFail($id);
 
+        if ($session->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Hanya sesi dengan status in_progress yang dapat ditutup.',
+            ], 422);
+        }
+
         $session->update([
             'status' => 'closed',
             'closed_at' => now(),
@@ -245,6 +258,14 @@ class StockOpnameController extends Controller
         $item = StockOpnameItem::where('session_id', $sessionId)
             ->where('asset_id', $asset->id)
             ->firstOrFail();
+
+        // Prevent duplicate QR scan in the same session
+        if ($item->observed_status !== null && $item->observed_status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Aset ini sudah pernah di-scan pada sesi ini.',
+            ], 422);
+        }
 
         $item->update([
             'observed_status' => 'found',

@@ -227,7 +227,7 @@ CEK NIK SAAT REGISTRASI SANTRI:
 POST /api/mobile/v1/auth/register          Registrasi wali (email/password)
 POST /api/mobile/v1/auth/login             Login wali
 POST /api/mobile/v1/auth/google           Login/Registrasi Google OAuth
-POST /api/mobile/v1/auth/logout            Logout (invalidate JWT)
+POST /api/mobile/v1/auth/logout            Logout (revoke current Sanctum PAT)
 GET  /api/mobile/v1/auth/me                Get current user profile
 PUT  /api/mobile/v1/auth/me                Update profile (no_kk, nik_wali, no_hp)
 POST /api/mobile/v1/auth/password/email   Kirim reset password link
@@ -266,7 +266,7 @@ GET /api/mobile/v1/dashboard/attendance     Absensi semua Santi tanggal tertentu
 **Request:**
 ```http
 POST /api/mobile/v1/santri
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer 550e8400-e29b-41d4-a716-446655449999|a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
 Content-Type: application/json
 
 {
@@ -338,7 +338,7 @@ Content-Type: application/json
 **Request:**
 ```http
 POST /api/mobile/v1/wali-santri/request
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer 550e8400-e29b-41d4-a716-446655449999|a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
 Content-Type: application/json
 
 {
@@ -426,14 +426,21 @@ Content-Type: application/json
 
 ---
 
-## 6. IMPLEMENTASI NODE.JS + EXPRESS + PRISMA (Reference)
+## 6. HISTORICAL REFERENCE — Node.js + Express + Prisma (NOT IMPLEMENTED)
 
-> Folder: `alim-mobile-api/` — terpisah dari project Laravel utama.
-> Ini adalah implementasi reference. Di deploy sebagai service terpisah atau bisa
-> di-convert jadi Laravel API (rekomendasi akhir).
+> **Status (Sprint 3, 2026-07-15):** This section is **deprecated** and kept only for
+> historical context. The mobile API is implemented as part of the main Laravel
+> application using **Sanctum Personal Access Tokens**, not as a separate
+> Node.js service. Do not use any code or architecture in this section when
+> extending the mobile API — see §7 for the current Laravel + Sanctum
+> implementation guide.
 >
-> **Rekomendasi akhir:** Tambahkan ke Laravel yang sudah ada (bukan service terpisah).
-> Lihat Bagian 7 untuk panduan integrasi Laravel.
+> The JWT-specific snippets below (auth middleware, JWT generation,
+> `process.env.JWT_SECRET`) describe a design that was never deployed and does
+> not reflect the live system. The wali-santri domain logic (NIK validation,
+> wali-link request flow) is conceptually similar and useful as a reference,
+> but the **authentication layer must be read from §7 and from
+> `sanctum-token-architecture.md`**.
 
 ### Struktur Direktori
 
@@ -444,7 +451,7 @@ alim-mobile-api/
 ├── src/
 │   ├── index.js               # Entry point
 │   ├── middleware/
-│   │   ├── auth.middleware.js # JWT auth middleware
+│   │   ├── auth.middleware.js # JWT auth middleware (HISTORICAL — see §7)
 │   │   └── error.middleware.js
 │   ├── controllers/
 │   │   ├── auth.controller.js
@@ -561,6 +568,8 @@ model StudentAttendance {
 }
 
 model SecureAccessToken {
+  // ⚠ HISTORICAL — never deployed. The live system uses Laravel Sanctum's
+  // `personal_access_tokens` table (see §7 and `sanctum-token-architecture.md`).
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   token      String   @unique
@@ -584,7 +593,7 @@ model Notification {
 }
 ```
 
-### 6.2 Middleware: JWT Auth
+### 6.2 Middleware: JWT Auth (HISTORICAL, NOT IN USE)
 
 ```javascript
 // src/middleware/auth.middleware.js
@@ -1013,9 +1022,12 @@ class WaliSantriService {
     }
 
     return await prisma.$transaction(async (tx) => {
+      // ⚠ HISTORICAL — `tx.secureAccessToken` model is not in the live schema.
+      // The live Laravel equivalent is `$user->tokens()->where('name', $name)->delete()`,
+      // which performs a row-level DELETE on `personal_access_tokens`.
       await tx.secureAccessToken.update({
         where: { id: accessToken.id },
-        data: { expiresAt: new Date() }, // invalidate token
+        data: { expiresAt: new Date() }, // invalidate token (historical)
       });
 
       if (action === 'approve') {
@@ -1150,10 +1162,14 @@ module.exports = new WaliSantriService();
 
 ```javascript
 // src/services/auth.service.js
+//
+// ⚠ HISTORICAL — JWT issuance (jwt.sign with process.env.JWT_SECRET) was never
+// deployed. The live system uses Laravel Sanctum's $user->createToken($name, $abilities, $expiresAt)
+// — see §7 (live Laravel reference) and `sanctum-token-architecture.md`.
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+// const jwt = require('jsonwebtoken'); // removed — was never deployed
 
 const prisma = new PrismaClient();
 
@@ -1260,17 +1276,15 @@ class AuthService {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
+  // ⚠ HISTORICAL — never deployed. See Laravel reference in §7 for the live
+  // Sanctum PAT issuance pattern.
   generateJwt(user) {
-    return jwt.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        name: user.name,
-        type: 'mobile_api',
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
-    );
+    // return jwt.sign(   // removed
+    //   { sub: user.id, email: user.email, name: user.name, type: 'mobile_api' },
+    //   process.env.JWT_SECRET,
+    //   { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
+    // );
+    throw new Error('generateJwt() is deprecated. Use Sanctum PATs instead.');
   }
 
   formatUser(user) {
@@ -1324,6 +1338,9 @@ class AuthController {
           user: result.user,
           access_token: result.token,
           token_type: 'Bearer',
+          // NOTE: The live Laravel controller emits expires_in as an integer
+          // (seconds, computed from `now()->addMinutes(config('sanctum.expiration_mobile_minutes'))`).
+          // The string form below is not what the live API returns.
           expires_in: '2592000', // 30 days in seconds
         },
       });
@@ -1393,8 +1410,11 @@ class AuthController {
 
   // POST /api/mobile/v1/auth/logout
   async logout(req, res) {
-    // Client-side: hapus token dari storage.
-    // Server-side: JWT tidak di-blacklist (stateless).
+    // ⚠ HISTORICAL — this Node.js sketch is not deployed. The live Laravel
+    // AuthController::logout calls `$user->currentAccessToken()->delete()` which
+    // hard-deletes the row in `personal_access_tokens`. Clients also clear the
+    // PAT from secure storage. JWT has no "blacklist" concept because the live
+    // system is not JWT-based.
     return res.status(200).json({
       success: true,
       message: 'Logout berhasil.',
@@ -1931,8 +1951,10 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'google']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-// Protected routes (with JWT middleware)
-Route::middleware('auth:api')->group(function () {
+// Protected routes (auth via Sanctum Personal Access Token — see §7.5 and
+// docs/sanctum-token-architecture.md for the canonical token name format
+// and audit-trail columns).
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::put('/auth/me', [AuthController::class, 'updateProfile']);
 
@@ -1950,48 +1972,115 @@ Route::middleware('auth:api')->group(function () {
 });
 ```
 
-### 7.5 Middleware Auth (Laravel)
+### 7.5 Auth (Laravel + Sanctum PAT)
+
+The mobile API uses **Laravel Sanctum Personal Access Tokens** — there is no
+custom auth middleware to write. Sanctum's `auth:sanctum` route attribute
+performs the lookup against the `personal_access_tokens` table automatically.
+Issuance is done by the controllers themselves:
 
 ```php
-// app/Http/Middleware/AuthenticateApi.php
+// app/Http/Controllers/Api/Mobile/V1/AuthController.php (excerpt)
 
-namespace App\Http\Middleware;
+namespace App\Http\Controllers\Api\Mobile\V1;
 
-use Closure;
+use App\Http\Controllers\Controller;
+use App\Support\TokenName;
+use App\Support\TokenExpiration;
+use App\Support\AbilityRegistry;
 use Illuminate\Http\Request;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
-class AuthenticateApi
+class AuthController extends Controller
 {
-    public function handle(Request $request, Closure $next)
+    public function register(Request $request)
     {
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
+        $data = $request->validate([
+            'name'     => ['required', 'string', 'max:120'],
+            'email'    => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'no_kk'    => ['nullable', 'string', 'regex:/^\d{16}$/'],
+            'nik_wali' => ['nullable', 'string', 'regex:/^\d{16}$/'],
+            'no_hp'    => ['nullable', 'string', 'max:20'],
+        ]);
 
-            if (!$user || !$user->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'UNAUTHORIZED',
-                        'message' => 'Token tidak valid atau akun tidak aktif.',
-                    ],
-                ], 401);
-            }
-        } catch (JWTException $e) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'code' => 'TOKEN_INVALID',
-                    'message' => 'Token autentikasi diperlukan.',
-                ],
-            ], 401);
+        if (\App\Models\User::where('email', $data['email'])->exists()) {
+            throw ValidationException::withMessages(['email' => 'Email sudah terdaftar.']);
         }
 
-        return $next($request);
+        $user = DB::transaction(fn () => \App\Models\User::create([
+            'name'      => $data['name'],
+            'email'     => $data['email'],
+            'password'  => Hash::make($data['password']),
+            'no_kk'     => $data['no_kk'] ?? null,
+            'nik_wali'  => $data['nik_wali'] ?? null,
+            'no_hp'     => $data['no_hp'] ?? null,
+            'is_wali'   => true,
+            'is_active' => true,
+        ]));
+
+        // Issue a Sanctum PAT — name is the canonical 5-segment form
+        // `mobile:{actor}:{channel}:{platform}:{fingerprint}`. See
+        // sanctum-token-architecture.md §2 and §3.
+        $tokenName = TokenName::mobile(
+            actor: 'wali',
+            channel: 'password',
+            platform: 'android',  // or detect from `X-Client-Platform` header
+            fingerprint: $request->header('X-Client-Fingerprint', 'fp_unknown')
+        );
+
+        $pat = $user->createToken(
+            $tokenName,
+            AbilityRegistry::forRoles(['wali']),
+            TokenExpiration::mobileDefaultExpiresAt()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Registrasi berhasil. Selamat datang!',
+            'data'    => [
+                'user'         => $user->only(['id', 'name', 'email', 'no_kk', 'no_hp']),
+                'access_token' => $pat->plainTextToken,
+                'token_type'   => 'Bearer',
+                'expires_in'   => TokenExpiration::mobileDefaultSeconds(),
+                'expires_at'   => TokenExpiration::mobileDefaultExpiresAt()?->toIso8601String(),
+                'abilities'    => $pat->accessToken->abilities,
+            ],
+        ], 201);
+    }
+
+    public function logout(Request $request)
+    {
+        // Hard-delete the current PAT row in `personal_access_tokens`.
+        // Equivalent to `Bearer` token revocation at the server — no
+        // blacklist, no Redis, no JWT.
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logout berhasil.',
+        ]);
     }
 }
 ```
+
+Key points:
+
+- **No JWT, no JWT secret, no JWT library.** The `Authorization: Bearer`
+  header carries a Sanctum PAT shaped like `id|secret` (e.g.
+  `550e8400…|a1b2c3d4…`). Sanctum computes `hash('sha256', $secret)` once
+  on token creation and stores the hash; subsequent requests look up by
+  `id` and compare the hashed secret.
+- **Token names are canonical** — `mobile:{actor}:{channel}:{platform}:{fingerprint}`
+  — produced by `App\Support\TokenName::mobile()`. Do not invent ad-hoc
+  names; the `personal_access_tokens.name` column is the audit trail.
+- **Devices are revocable** server-side via `DELETE /api/mobile/v1/sessions/{id}`
+  which calls `$user->tokens()->where('id', $id)->delete()`. See
+  `sanctum-token-architecture.md` §4.
+- **Locks are inherited** from the legacy `users` migration — see §7 of
+  that file (the `failed_login_attempts` / `locked_until` columns).
 
 ### 7.6 Error Handler Global
 
@@ -2051,8 +2140,10 @@ public function render($request, Throwable $e)
 │                         │                                    │
 │                         ▼                                    │
 │                   ┌────────────────┐                        │
-│                   │ Store JWT      │                        │
-│                   │ → SharedPrefs   │                        │
+│                   │ Store Sanctum  │                        │
+│                   │ PAT (NOT JWT)  │                        │
+│                   │ → Keychain/    │                        │
+│                   │   Keystore     │                        │
 │                   └───────┬────────┘                        │
 │                           │                                 │
 │                           ▼                                 │
@@ -2116,9 +2207,9 @@ class ApiClient {
 | Code | HTTP | Keterangan |
 |------|------|------------|
 | `VALIDATION_ERROR` | 422 | Input tidak valid |
-| `UNAUTHORIZED` | 401 | Token tidak valid |
-| `TOKEN_EXPIRED` | 401 | Token kadaluarsa |
-| `ACCOUNT_DISABLED` | 403 | Akun tidak aktif |
+| `UNAUTHORIZED` | 401 | PAT tidak valid (Sanctum `ModelNotFoundException` on token lookup) |
+| `TOKEN_EXPIRED` | 401 | PAT kadaluarsa (`expires_at < now()`); live detection in `TokenExpiration` helper |
+| `ACCOUNT_DISABLED` | 403 | Akun tidak aktif (`users.is_active = false`) |
 | `EMAIL_ALREADY_EXISTS` | 409 | Email sudah terdaftar |
 | `NIK_ALREADY_EXISTS` | 409 | NIK sudah didaftarkan orang lain |
 | `INVALID_NIK_FORMAT` | 422 | Format NIK tidak valid |
@@ -2130,3 +2221,10 @@ class ApiClient {
 | `TOKEN_INVALID` | 404 | Token otorisasi invalid |
 | `TOKEN_EXPIRED` | 410 | Token otorisasi kadaluarsa |
 | `CANNOT_REMOVE_LAST_WALI` | 409 | Tidak bisa hapus wali terakhir |
+
+> Note on PAT vs JWT error names: `TOKEN_INVALID` and `TOKEN_EXPIRED` are
+> preserved from the JWT-era spec to keep client error-handling code stable.
+> Under the hood, a missing PAT, malformed PAT, or unknown PAT id produces the
+> same `TOKEN_INVALID`/`UNAUTHORIZED` response — Sanctum does not
+> differentiate between "missing" and "wrong" by design (good security
+> posture).

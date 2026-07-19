@@ -3,13 +3,12 @@
 namespace App\Services\Sarpras;
 
 use App\Models\Asset;
-use App\Models\AssetEventLog;
 use App\Models\AssetMovement;
 use App\Models\MovementApproval;
 use App\Models\User;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\SarprasCacheInvalidator;
 
 /**
  * MovementWorkflow coordinates the multi-stage asset transfer:
@@ -19,12 +18,19 @@ use App\Services\SarprasCacheInvalidator;
 class MovementWorkflow
 {
     public const STAGE_DRAFT = 'draft';
+
     public const STAGE_REQUESTED = 'requested';
+
     public const STAGE_APPROVED = 'approved';
+
     public const STAGE_REJECTED = 'rejected';
+
     public const STAGE_IN_TRANSIT = 'in_transit';
+
     public const STAGE_RECEIVED = 'received';
+
     public const STAGE_VERIFIED = 'verified';
+
     public const STAGE_COMPLETED = 'completed';
 
     public function __construct(
@@ -116,6 +122,10 @@ class MovementWorkflow
     public function startTransit(AssetMovement $movement, User $carrier, array $payload = []): AssetMovement
     {
         return DB::transaction(function () use ($movement, $carrier, $payload) {
+            if ($movement->status !== self::STAGE_APPROVED) {
+                throw new \DomainException("Movement must be 'approved' to start transit, got: {$movement->status}");
+            }
+
             $movement->update([
                 'status' => self::STAGE_IN_TRANSIT,
                 'carrier_id' => $carrier->id,
@@ -139,6 +149,10 @@ class MovementWorkflow
     public function confirmReceived(AssetMovement $movement, User $receiver, array $payload = []): AssetMovement
     {
         return DB::transaction(function () use ($movement, $receiver, $payload) {
+            if ($movement->status !== self::STAGE_IN_TRANSIT) {
+                throw new \DomainException("Movement must be 'in_transit' to confirm receipt, got: {$movement->status}");
+            }
+
             $movement->update([
                 'status' => self::STAGE_RECEIVED,
                 'receiver_id' => $receiver->id,
@@ -187,12 +201,19 @@ class MovementWorkflow
                 'completed_at' => now(),
             ]);
 
-            // Move asset to destination
+            // Move asset to destination — must succeed before logging
             if ($movement->to_room_id) {
                 $movement->asset->update([
                     'room_id' => $movement->to_room_id,
                     'condition' => $movement->condition_after ?? $movement->asset->condition,
                 ]);
+                $this->eventLogger->logAssetStatusChanged(
+                    $movement->asset,
+                    (string) $movement->from_room_id,
+                    (string) $movement->to_room_id,
+                    'movement completed',
+                    $completer->id
+                );
             }
 
             $this->eventLogger->logMovementCompleted($movement, $completer->id);

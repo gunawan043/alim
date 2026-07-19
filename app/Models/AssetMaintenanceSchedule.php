@@ -11,14 +11,17 @@ class AssetMaintenanceSchedule extends Model
     use HasFactory;
 
     protected $table = 'asset_maintenance_schedules';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -36,6 +39,7 @@ class AssetMaintenanceSchedule extends Model
         'estimated_cost',
         'reminder_days_before',
         'is_active',
+        'status',
         'notes',
         'created_by',
     ];

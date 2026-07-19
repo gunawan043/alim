@@ -193,6 +193,33 @@ class SarprasProcurementController extends SarprasBaseController
         return back()->with('success', 'Request pengadaan ditolak.');
     }
 
+    public function markOrdered(Request $request, string $id)
+    {
+        $procurement = ProcurementRequest::findOrFail($id);
+        $this->authorizeProcurementAccess($procurement, $request);
+
+        if ($procurement->status !== 'approved') {
+            return back()->with('error', 'Pengadaan harus dalam status disetujui untuk dibuat PO.');
+        }
+
+        $validated = $request->validate([
+            'purchase_order_number' => 'required|string|max:100',
+            'purchase_order_date' => 'nullable|date',
+            'vendor_name' => 'required|string|max:191',
+        ]);
+
+        $procurement->update([
+            'status' => 'ordered',
+            'purchase_order_number' => $validated['purchase_order_number'],
+            'purchase_order_date' => $validated['purchase_order_date'] ?? null,
+            'vendor_name' => $validated['vendor_name'],
+            'procurement_method' => 'po',
+        ]);
+        $this->bumpDashboardCache();
+
+        return back()->with('success', 'PO berhasil dibuat.');
+    }
+
     public function receive(ProcurementReceiveRequest $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
@@ -257,10 +284,11 @@ class SarprasProcurementController extends SarprasBaseController
             $qty = $itemData['quantity'] ?? $item->actual_quantity_received ?? $item->quantity;
 
             for ($i = 0; $i < $qty; $i++) {
-                $assetCode = 'AST-'.date('Ym').'-'.strtoupper(Str::random(6));
+                $seq = $i + 1;
+                $assetCode = 'AST-'.date('Ym').'-'.strtoupper(Str::random(4)).'-'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
                 $asset = Asset::create([
-                    'asset_name' => $itemData['asset_name'].($qty > 1 ? ' ('.($i + 1).')' : ''),
+                    'asset_name' => $itemData['asset_name'].($qty > 1 ? ' ('.$seq.')' : ''),
                     'asset_code' => $assetCode,
                     'asset_category_id' => $item->asset_category_id,
                     'room_id' => $roomId,

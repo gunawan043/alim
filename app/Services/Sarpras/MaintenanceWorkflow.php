@@ -19,15 +19,17 @@ class MaintenanceWorkflow
 {
     public function __construct(
         protected AssetEventLogger $eventLogger,
-        protected StateMachine $stateMachine
+        protected StateMachine $stateMachine,
+        protected ?AssetHealthService $assetHealthService = null
     ) {
         $this->stateMachine->define(
             StateMachineRegistry::ASSET_STATUS,
             StateMachineRegistry::ASSET_STATUS_TRANSITIONS
         );
+        $this->stateMachine->define(self::MAINTENANCE_STATE, self::MAINTENANCE_TRANSITIONS);
     }
 
-    public const MAINTENANCE_STATE = 'maintenance_state';
+    public const MAINTENANCE_STATE = 'maintenance_workflow';
 
     public const MAINTENANCE_TRANSITIONS = [
         'scheduled' => ['assigned', 'cancelled'],
@@ -92,9 +94,17 @@ class MaintenanceWorkflow
      */
     public function assignTechnician(AssetMaintenanceSchedule $schedule, User $technician, User $assigner): AssetMaintenanceSchedule
     {
-        return DB::transaction(function () use ($schedule, $technician, $assigner) {
+        return DB::transaction(function () use ($schedule, $technician) {
+            // Validate that the schedule status is "scheduled" before assigning
+            $this->stateMachine->assert(
+                self::MAINTENANCE_STATE,
+                $schedule->status ?? 'scheduled',
+                'assigned'
+            );
+
             $schedule->update([
                 'responsible_user_id' => $technician->id,
+                'status' => 'assigned',
             ]);
 
             return $schedule;
@@ -160,6 +170,7 @@ class MaintenanceWorkflow
             $schedule->update([
                 'last_maintenance_date' => Carbon::today(),
                 'next_maintenance_date' => $next,
+                'status' => 'completed',
             ]);
 
             // Update asset condition (drives the listener)
@@ -170,6 +181,11 @@ class MaintenanceWorkflow
                 $actualCost,
                 $technician->id
             );
+
+            // Recompute asset health score if service available
+            if ($this->assetHealthService) {
+                $this->assetHealthService->recompute($asset);
+            }
 
             // If asset was under_maintenance only for the maintenance, restore it.
             if ($asset->status === 'under_maintenance') {

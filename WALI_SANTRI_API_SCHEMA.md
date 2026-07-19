@@ -28,6 +28,164 @@ Semua endpoint membutuhkan auth header: `Authorization: Bearer {sanctum_token}`
 
 ---
 
+## 1A. Auth & Session Management
+
+Token issuance, revocation, and per-device session listing.
+
+### 1A.1 Register Wali Santri
+
+**Endpoint**: `POST /auth/register`
+
+| Field | Tipe | Wajib | Keterangan |
+|-------|------|-------|------------|
+| name | string | ya | Nama lengkap |
+| email | string | ya | Email unik |
+| password | string | ya | Min 8 char |
+| password_confirmation | string | ya | Sama dengan password |
+| no_kk | string(20) | ya | Nomor KK |
+| nik_wali | string(30) | ya | NIK wali |
+| no_hp | string(20) | ya | No HP |
+| hubungan | enum | ya | `ayah`/`ibu`/`kakek`/`nenek`/`wali`/`lainnya` |
+
+Response 201:
+
+```json
+{
+  "success": true,
+  "message": "Registrasi berhasil.",
+  "data": {
+    "user": { "id": "...", "name": "...", "email": "...", "is_wali": true },
+    "access_token": "<plaintext>",
+    "token_type": "Bearer",
+    "expires_in": 2592000,
+    "expires_at": "2026-08-14T10:00:00+00:00",
+    "abilities": ["attendance.read", "grades.read", "tahfidz.read", "permits.write", ...]
+  }
+}
+```
+
+### 1A.2 Login Email/Password
+
+**Endpoint**: `POST /auth/login`
+
+| Field | Tipe | Wajib |
+|-------|------|-------|
+| email | string | ya |
+| password | string | ya |
+
+Response 200: same envelope as register (no `user` omitted, `is_new_user` not present).
+Response 422: validation error on invalid credentials OR on locked account.
+Response 429: throttle on repeated failed attempts (10 attempts ⇒ 15 min lock).
+
+### 1A.3 Login Google OAuth
+
+**Endpoint**: `POST /auth/google`
+
+| Field | Tipe | Wajib |
+|-------|------|-------|
+| google_id | string | ya |
+| email | string | ya |
+| name | string | ya |
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {...},
+    "access_token": "<plaintext>",
+    "token_type": "Bearer",
+    "expires_in": 2592000,
+    "expires_at": "2026-08-14T10:00:00+00:00",
+    "abilities": [...],
+    "is_new_user": false
+  }
+}
+```
+
+### 1A.4 Logout (current device only)
+
+**Endpoint**: `POST /auth/logout`
+
+Auth: required.
+
+Response 200: `{ "success": true, "message": "Logout berhasil." }`
+
+### 1A.5 Logout All Devices
+
+**Endpoint**: `POST /auth/logout-all`
+
+Auth: required. Revokes every PAT for the authenticated user.
+
+Response 200: `{ "success": true, "message": "Semua sesi berhasil dihapus.", "data": { "revoked": 3 } }`
+
+### 1A.6 List Active Sessions
+
+**Endpoint**: `GET /auth/sessions`
+
+Auth: required.
+
+The `platform` field is **derived at read time** from segment 3 of the
+canonical `personal_access_tokens.name` (e.g. `mobile:wali:password:android:fp12345`
+→ `platform = "android"`). It is not a dedicated column. See
+`docs/sanctum-token-architecture.md` §2.3 for the parsing helper.
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "data": {
+    "sessions": [
+      {
+        "id": "abc-123",
+        "device_label": "HP Pak Kades",
+        "platform": "android",
+        "ip_last": "10.0.0.5",
+        "abilities": ["attendance.read", ...],
+        "current_device": true,
+        "created_at": "2026-07-15T10:00:00+00:00",
+        "last_used_at": "2026-07-15T11:23:00+00:00",
+        "expires_at": "2026-08-14T10:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+### 1A.7 Update Current Session Label
+
+**Endpoint**: `PATCH /auth/sessions/current`
+
+Auth: required.
+
+Request body:
+
+| Field | Tipe | Wajib |
+|-------|------|-------|
+| device_label | string(80) | ya |
+
+Response 200: `{ "success": true, "data": { "session": { ... session object ... } } }`
+
+### 1A.8 Revoke All Other Sessions
+
+**Endpoint**: `DELETE /auth/sessions/others`
+
+Auth: required. Revokes every PAT **except the current one** (matches "Sign out other devices" UX).
+
+Response 200: `{ "success": true, "data": { "revoked": 2 } }`
+
+### 1A.9 Token error responses
+
+| HTTP | Code | When |
+|------|------|------|
+| 401 | `UNAUTHENTICATED` | Missing / invalid / expired Bearer token |
+| 403 | `INSUFFICIENT_ABILITY` | Token lacks the required ability (Sprint 3+) |
+| 422 | `VALIDATION_ERROR` | Validation failed (login lockout also surfaces here) |
+
+---
+
 ## 2. Data Santri (students)
 
 **Endpoint**: `GET /santri/{id}`
