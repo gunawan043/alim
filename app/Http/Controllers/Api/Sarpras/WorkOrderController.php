@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Sarpras;
 
-use App\Events\Sarpras\WorkOrderAssigned;
 use App\Events\Sarpras\WorkOrderCompleted;
 use App\Events\Sarpras\WorkOrderProgressAdded;
 use App\Http\Controllers\Controller;
@@ -85,33 +84,36 @@ class WorkOrderController extends Controller
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
-        $asset = Asset::findOrFail($request->asset_id);
+        $repair = \App\Models\RepairRequest::findOrFail($request->input('repair_request_id'));
         $assignee = User::findOrFail($request->assignee_id);
 
         $wo = $this->workflow->generateWorkOrder(
-            repair: \App\Models\RepairRequest::findOrFail($request->input('repair_request_id')),
-            actor: $request->user(),
-            scope: $request->scope_of_work,
+            request: $repair,
+            creator: $request->user(),
+            scopeOfWork: $request->scope_of_work,
             scheduledDate: $request->scheduled_date,
-            assignee: $assignee,
+        );
+
+        // Assign the technician — generateWorkOrder leaves WO in `created` state.
+        $this->workflow->assignTechnician(
+            order: $wo,
+            assigner: $request->user(),
+            technician: $assignee,
         );
 
         // Log asset event
         $this->logger->logAssetEvent(
-            asset: $asset,
-            eventType: 'work_order_generated',
-            eventDetail: "WO generated: {$wo->order_number} for {$asset->asset_code}",
+            asset: $wo->asset,
+            eventType: 'work_order_assigned',
+            eventDetail: "WO assigned: {$wo->order_number} to {$assignee->name} for {$wo->asset->asset_code}",
             actor: $request->user(),
         );
 
-        // Dispatch WorkOrderAssigned event (workflow doesn't dispatch it for generateWorkOrder).
-        event(new WorkOrderAssigned($wo, $assignee, $request->user()));
-
-        $this->cacheInvalidator->invalidateWorkOrder($wo);
+        $this->cacheInvalidator->invalidateWorkOrder($wo->fresh());
 
         return response()->json([
             'success' => true,
-            'data' => $wo->load(['asset', 'assignee', 'repairRequest']),
+            'data' => $wo->fresh()->load(['asset', 'assignee', 'repairRequest']),
         ], 201);
     }
 
