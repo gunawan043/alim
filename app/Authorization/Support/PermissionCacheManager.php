@@ -29,6 +29,7 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
 
         try {
             $store = $this->cache->store();
+
             return $store instanceof \Illuminate\Cache\TaggableStore;
         } catch (\Throwable) {
             return false;
@@ -132,12 +133,13 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
                 foreach ($contexts as $context) {
                     $resolver = function () use ($user, $context): PermissionBag {
                         $builder = app(\App\Authorization\Contracts\PermissionBuilder::class);
+
                         return $builder->build($user, $context);
                     };
 
                     $scopeKey = (string) $context->toScopeKey();
                     $this->remember((string) $user->getKey(), $scopeKey, $resolver);
-                    ++$count;
+                    $count++;
                 }
             } catch (\Throwable) {
                 // Warm is best-effort.
@@ -165,9 +167,9 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
                 $year = $membership->workUnit?->year;
                 if ($org && $year) {
                     $contexts[] = new \App\Authorization\ValueObjects\OrganizationContext(
-                        school: (string) $org->id,
-                        academicYear: $year->tahun_ajaran,
-                        role: $membership->role ?? 'teacher',
+                        schoolId: (string) $org->id,
+                        academicYearId: (string) $year->tahun_ajaran,
+                        roleDimension: (string) ($membership->role ?? 'teacher'),
                     );
                 }
             }

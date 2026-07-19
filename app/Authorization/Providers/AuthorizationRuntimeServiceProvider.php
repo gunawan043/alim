@@ -139,10 +139,16 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
     private function bindRequestContext(): void
     {
         $this->app->singleton(\App\Authorization\ValueObjects\OrganizationContext::class, function () {
-            // Return a no-op default; middleware overrides it.
+            // Null schoolId signals "no tenant context resolved yet".
+            // BindOrganizationContext middleware (or equivalent) must call
+            // app()->instance(OrganizationContext::class, ...) with a real
+            // context before any tenant-aware handler executes.
+            // We deliberately do NOT use sentinel strings ('unknown', 'global')
+            // here — null propagates through hasValidSchool() / currentSchoolId()
+            // and produces a correct fail-closed response.
             return new \App\Authorization\ValueObjects\OrganizationContext(
-                schoolId: (string) config('authorization.default_school_id', 'unknown'),
-                academicYearId: (string) config('authorization.default_academic_year_id', 'global'),
+                schoolId: null,
+                academicYearId: (string) config('authorization.default_academic_year_id', 'unknown'),
                 roleDimension: 'default',
             );
         });

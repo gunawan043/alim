@@ -66,6 +66,12 @@ final class BuildSnapshotJob implements ShouldQueue
                 continue;
             }
 
+            // Skip historical sentinel rows (e.g. 'global', 'unknown') written
+            // before sentinel elimination. They have no real tenant to rebuild for.
+            if (! $this->isValidSchoolId((string) $row->scope_school_id)) {
+                continue;
+            }
+
             try {
                 $schoolId = (string) $row->scope_school_id;
                 $academicYearId = $this->resolveAcademicYear($user, $schoolId);
@@ -113,5 +119,19 @@ final class BuildSnapshotJob implements ShouldQueue
         }
 
         return (string) config('authorization.default_academic_year_id', 'global');
+    }
+
+    /**
+     * A valid school ID must be a non-empty string that is not a known sentinel.
+     * Sentinel values were historically used as placeholders for "no tenant"
+     * and must never be treated as legitimate school IDs.
+     */
+    private function isValidSchoolId(string $schoolId): bool
+    {
+        if ($schoolId === '') {
+            return false;
+        }
+
+        return ! in_array($schoolId, ['global', 'unknown', 'all', '*'], true);
     }
 }

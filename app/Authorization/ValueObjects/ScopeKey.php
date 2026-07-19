@@ -18,10 +18,14 @@ final readonly class ScopeKey
     {
         $appContext = app()->make(\App\Authorization\ValueObjects\OrganizationContext::class);
 
-        $schoolId = $schoolId ?? ($appContext->schoolId ?? 'unknown');
+        // Fall through to null when no school context is available.
+        // null is deliberately kept as-is here; fromComponents() will
+        // substitute '_no_school_' as the hash input so that a no-tenant
+        // scope key never collides with a real school scope key.
+        $schoolId       = $schoolId       ?? $appContext->schoolId;
         $academicYearId = $academicYearId ?? ($appContext->academicYearId ?? 'global');
-        $roleDimension = $appContext->roleDimension ?? 'default';
-        $tenant = $appContext->tenant ?? 'public';
+        $roleDimension  = $appContext->roleDimension ?? 'default';
+        $tenant         = $appContext->tenant         ?? 'public';
 
         return self::fromComponents(
             schoolId: $schoolId,
@@ -32,13 +36,16 @@ final readonly class ScopeKey
     }
 
     public static function fromComponents(
-        string $schoolId,
-        string $academicYearId,
-        string $roleDimension,
+        ?string $schoolId,
+        string  $academicYearId,
+        string  $roleDimension,
         ?string $tenantId = null,
     ): self {
+        // When schoolId is null we use a reserved token that can never be a
+        // valid UUID.  The hash still uniquely identifies the no-school scope
+        // but can never accidentally match any real-tenant cache entry.
         $canonical = implode('|', [
-            $schoolId,
+            $schoolId ?? '_no_school_',
             $academicYearId,
             $roleDimension,
             $tenantId ?? 'public',

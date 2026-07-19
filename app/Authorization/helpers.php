@@ -89,11 +89,17 @@ if (! function_exists('authorizationContextFor')) {
     /**
      * Build an OrganizationContext for filtering/lookup operations where
      * a request context is not available.
+     *
+     * This helper is ONLY for CLI commands, queue workers, and offline admin
+     * scripts — never for HTTP middleware or tenant-aware service calls.
+     * In HTTP contexts, read the OrganizationContext that
+     * BindOrganizationContext binds via app(OrganizationContext::class) and
+     * check hasValidSchool() before using schoolId.
      */
     function authorizationContextFor(
-        string $schoolId = 'unknown',
-        string $academicYearId = 'global',
-        string $roleDimension = 'default',
+        ?string $schoolId = null,
+        string  $academicYearId = 'global',
+        string  $roleDimension = 'default',
     ): OrganizationContext {
         return new OrganizationContext(
             schoolId: $schoolId,
