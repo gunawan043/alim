@@ -1,14 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
+use App\Authorization\Services\AuthorizationManager;
+use App\Authorization\ValueObjects\OrganizationContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, ...$roles): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
@@ -16,27 +21,53 @@ class RoleMiddleware
             abort(403, 'Unauthorized.');
         }
 
-        // Super Admin can access everything
-        if (canPermission('super-admin-only')) {
-            return $next($request);
+        if (! app()->bound(OrganizationContext::class)) {
+            $this->logSnapshotMissing($request, $user, null, $roles);
+
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
-        // Check if user has any of the required roles
-        foreach ($roles as $role) {
-            // 1. Snapshot path — the role-name was promoted to a permission string
-            if (canPermission($role)) {
-                return $next($request);
-            }
+        $context = app(OrganizationContext::class);
+        if (! $context instanceof OrganizationContext) {
+            $this->logSnapshotMissing($request, $user, null, $roles);
 
-            // 2. Identity fallback — the role-name is a Spatie role (not yet a
-            //    registered permission). Still safe because the snapshot still
-            //    gates every controller/method, and this middleware only
-            //    allows coarse identity-role access.
-            if ($user->hasRole($role)) {
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        }
+
+        $scopeKey = (string) $context->toScopeKey();
+        $bag = app(AuthorizationManager::class)->getSnapshot($user, $context);
+
+        if ($bag === null) {
+            $this->logSnapshotMissing($request, $user, $scopeKey, $roles);
+
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        }
+
+        foreach ($roles as $role) {
+            if (in_array($role, $bag->getPermissions(), true)) {
                 return $next($request);
             }
         }
 
         abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     */
+    private function logSnapshotMissing(
+        Request $request,
+        mixed $user,
+        ?string $scopeKey,
+        array $roles,
+    ): void {
+        Log::warning('authorization_snapshot_missing', [
+            'user_id' => $user?->getAuthIdentifier(),
+            'scope_key' => $scopeKey,
+            'route' => $request->path(),
+            'method' => $request->method(),
+            'permission' => $roles,
+            'ip' => $request->ip(),
+        ]);
     }
 }

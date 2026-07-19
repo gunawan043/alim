@@ -5,9 +5,11 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\SecureAccessToken;
 use App\Models\User;
+use App\Support\AbilityRegistry;
+use App\Support\TokenExpiration;
+use App\Support\TokenName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class TokenSesiController extends Controller
 {
@@ -32,7 +34,7 @@ class TokenSesiController extends Controller
                 ->paginate(20, ['*'], 'page');
 
             return view('super-admin.tokens.index', [
-                'tab'   => $tab,
+                'tab' => $tab,
                 'tokens' => $tokens,
                 'secureTokens' => null,
                 'users' => null,
@@ -48,7 +50,7 @@ class TokenSesiController extends Controller
                 ->paginate(20, ['*'], 'page');
 
             return view('super-admin.tokens.index', [
-                'tab'   => $tab,
+                'tab' => $tab,
                 'tokens' => null,
                 'secureTokens' => $secureTokens,
                 'users' => null,
@@ -57,7 +59,7 @@ class TokenSesiController extends Controller
         }
 
         return view('super-admin.tokens.index', [
-            'tab'   => $tab,
+            'tab' => $tab,
             'tokens' => null,
             'secureTokens' => null,
             'users' => null,
@@ -68,23 +70,34 @@ class TokenSesiController extends Controller
     public function createToken(Request $request)
     {
         $validated = $request->validate([
-            'user_id'   => 'required|uuid|exists:users,id',
+            'user_id' => 'required|uuid|exists:users,id',
             'expires_at' => 'nullable|date|after:now',
-            'note'      => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:255',
         ]);
 
         $tokenable = User::findOrFail($validated['user_id']);
 
-        $token = $tokenable->createToken('universal-access', now()->addDays(7));
+        $expiresAt = $validated['expires_at'] ?? TokenExpiration::mobileDefaultExpiresAt();
+
+        $tokenName = TokenName::admin(
+            clientKind: 'super-admin',
+            channel: TokenName::CHANNEL_PASSWORD,
+            platform: TokenName::platformFromRequest($request),
+            deviceFp: 'fp_admin_'.substr(hash('sha256', (string) $request->ip()), 0, 12),
+        );
+
+        $abilities = AbilityRegistry::forRoles($tokenable->effectiveRoles());
+
+        $new = $tokenable->createToken($tokenName, $abilities, $expiresAt);
 
         SecureAccessToken::create([
-            'user_id'    => $validated['user_id'],
-            'token'      => hash('sha256', $token->plainTextToken),
-            'name'      => $validated['note'] ?? 'Access Token',
-            'expires_at' => $validated['expires_at'] ?? now()->addDays(7),
+            'user_id' => $validated['user_id'],
+            'token' => hash('sha256', $new->plainTextToken),
+            'name' => $validated['note'] ?? 'Access Token',
+            'expires_at' => $expiresAt,
         ]);
 
-        return back()->with('token', $token->plainTextToken)
+        return back()->with('token', $new->plainTextToken)
             ->with('success', 'Token berhasil dibuat.');
     }
 
@@ -92,7 +105,7 @@ class TokenSesiController extends Controller
     {
         $token = DB::table('personal_access_tokens')->where('id', $id)->first();
 
-        if (!$token) {
+        if (! $token) {
             return back()->with('error', 'Token tidak ditemukan.');
         }
 

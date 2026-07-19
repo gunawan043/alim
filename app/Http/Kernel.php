@@ -48,7 +48,6 @@ class Kernel extends HttpKernel
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\BindOrganizationContext::class,
         ],
     ];
 
@@ -74,6 +73,7 @@ class Kernel extends HttpKernel
         'role.level' => \App\Http\Middleware\RoleLevelMiddleware::class,
         'role.access' => \App\Http\Middleware\EnsureRoleAccess::class,
         'school.context' => \App\Http\Middleware\SchoolContextMiddleware::class,
+        'wali.school.context' => \App\Http\Middleware\WaliSchoolContextMiddleware::class,
         'ip.blocked' => \App\Http\Middleware\CheckIpBlocked::class,
         'employee.access' => \App\Http\Middleware\EnsureEmployeeAccess::class,
         'organization.context' => \App\Http\Middleware\BindOrganizationContext::class,

@@ -10,12 +10,25 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * BindOrganizationContext
  *
- * Resolves school, academic year, department, work unit, position, and tenant
- * from the authenticated user and binds OrganizationContext into the container.
+ * Resolves school, academic year, role dimension, and tenant from the request
+ * (never from scalar columns on User) and binds OrganizationContext into the
+ * container.
  *
- * This must run after auth middleware (Authenticate) so $request->user() is guaranteed.
- * It is typically placed after or alongside SchoolContextMiddleware since that
- * middleware already computes school context.
+ * Resolution sources (in order):
+ *   - schoolId:        request attribute `schoolContextId` → config default → null
+ *   - academicYearId:  request attribute `schoolContextAcademicYearId` → session
+ *                      → config default
+ *   - roleDimension:   user->effectiveRoles() (Spatie via User contract)
+ *   - tenant:          config `tenant.default`
+ *
+ * schoolId is intentionally nullable: when no real school ID can be derived
+ * from the request the field is left as null.  Sentinel strings such as
+ * 'global' or 'unknown' are never written.  Tenant-aware consumers
+ * (WaliSantriService, policies) must call hasValidSchool() / currentSchoolId()
+ * and enforce their own guard logic.
+ *
+ * This middleware intentionally never reads $user->school_id, $user->academic_year_id,
+ * or $user->role — those columns/fields do not exist on the User model.
  */
 final class BindOrganizationContext
 {
@@ -23,23 +36,28 @@ final class BindOrganizationContext
     {
         $user = $request->user();
 
-        if ($user === null) {
-            return $next($request);
-        }
-
         // --- Resolve school ID ---
+        // Authority is the request attribute set by SchoolContextMiddleware /
+        // WaliSchoolContextMiddleware. We never read $user->school_id.
         $schoolId = $request->attributes->get('schoolContextId')
-            ?? $user->school_id
-            ?? config('authorization.default_school_id', 'unknown');
+            ?? config('authorization.default_school_id');
 
         // --- Resolve academic year ---
-        // First check session (user may have explicitly selected one)
-        $academicYearId = $request->session()->get('selected_academic_year_id')
-            ?? $user->academic_year_id
-            ?? config('authorization.default_academic_year_id', 'global');
+        // Prefer the request attribute, then session selection, then config default.
+        // We never read $user->academic_year_id — User does not own this dimension.
+        $academicYearId = $request->attributes->get('schoolContextAcademicYearId')
+            ?? $request->session()->get('selected_academic_year_id')
+            ?? config('authorization.default_academic_year_id');
 
         // --- Resolve role dimension ---
-        $roleDimension = $user->role ?? 'default';
+        // Derive from Spatie roles via User::effectiveRoles(). Never read $user->role.
+        $roleDimension = 'default';
+        if ($user !== null) {
+            $roles = $user->effectiveRoles();
+            if (! empty($roles)) {
+                $roleDimension = implode(',', $roles);
+            }
+        }
 
         // --- Resolve tenant ---
         // In a multi-tenant deployment, this would come from a subdomain/domain resolver.
@@ -47,8 +65,12 @@ final class BindOrganizationContext
         $tenant = config('tenant.default', 'local');
 
         $context = new OrganizationContext(
-            schoolId: (string) $schoolId,
-            academicYearId: (string) $academicYearId,
+            // Emit null rather than a sentinel string when no real school ID is
+            // available.  Tenant-aware consumers guard against null explicitly
+            // (WaliSantriService throws TENANT_CONTEXT_REQUIRED; policies return
+            // false because null !== uuid).
+            schoolId: $schoolId !== null ? (string) $schoolId : null,
+            academicYearId: (string) ($academicYearId ?? 'global'),
             roleDimension: (string) $roleDimension,
             tenant: (string) $tenant,
         );
