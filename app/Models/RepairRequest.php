@@ -43,6 +43,8 @@ class RepairRequest extends Model
         'result_description',
         'labor_cost',
         'rejected_reason',
+        'recommended_action',
+        'feedback_for_reporter',
     ];
 
     protected $casts = [
@@ -52,6 +54,35 @@ class RepairRequest extends Model
         'completed_at' => 'datetime',
         'closed_at' => 'datetime',
         'labor_cost' => 'decimal:2',
+    ];
+
+    public const STATUS_VERIFICATION_PENDING = 'verification_pending';
+    public const STATUS_VERIFICATION_IN_PROGRESS = 'verification_in_progress';
+    public const STATUS_ADDITIONAL_INFO = 'additional_info';
+    public const STATUS_APPROVAL_PENDING = 'approval_pending';
+    public const STATUS_EXECUTION_PENDING = 'execution_pending';
+    public const STATUS_STARTED = 'started';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_STOPPED = 'stopped';
+    public const STATUS_VERIFICATION_REJECTED = 'verification_rejected';
+    public const STATUS_APPROVAL_REJECTED = 'approval_rejected';
+    public const STATUS_CLOSED = 'closed';
+
+    public const RECOMMENDATION_APPROVED = 'approved';
+    public const RECOMMENDATION_REJECTED = 'rejected';
+
+    public const ALLOWED_STATUSES = [
+        self::STATUS_VERIFICATION_PENDING,
+        self::STATUS_VERIFICATION_IN_PROGRESS,
+        self::STATUS_ADDITIONAL_INFO,
+        self::STATUS_APPROVAL_PENDING,
+        self::STATUS_EXECUTION_PENDING,
+        self::STATUS_STARTED,
+        self::STATUS_COMPLETED,
+        self::STATUS_STOPPED,
+        self::STATUS_VERIFICATION_REJECTED,
+        self::STATUS_APPROVAL_REJECTED,
+        self::STATUS_CLOSED,
     ];
 
     public function asset()
