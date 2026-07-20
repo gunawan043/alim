@@ -7,12 +7,16 @@ use App\Models\Asset;
 use App\Models\AssetLoan;
 use App\Models\School;
 use App\Services\Sarpras\AssetEventLogger;
+use App\Services\Sarpras\AssetStatusTransitionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SarprasLoanController extends SarprasBaseController
 {
-    public function __construct(public AssetEventLogger $eventLogger)
+    public function __construct(
+        public AssetEventLogger $eventLogger,
+        public AssetStatusTransitionService $transition,
+    )
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
@@ -127,7 +131,7 @@ class SarprasLoanController extends SarprasBaseController
         }
 
         $loan->update(['status' => 'dipinjam']);
-        $loan->asset->update(['status' => 'dipinjam']);
+        $this->transition->transition($loan->asset, 'borrowed', auth()->id(), 'Handed over for loan');
         $this->bumpDashboardCache();
 
         try {
@@ -160,9 +164,9 @@ class SarprasLoanController extends SarprasBaseController
         ]);
 
         $loan->asset->update([
-            'status' => 'tersedia',
             'condition' => $validated['condition_on_return'],
         ]);
+        $this->transition->transition($loan->asset, 'active', auth()->id(), 'Loan returned');
         $this->bumpDashboardCache();
 
         try {

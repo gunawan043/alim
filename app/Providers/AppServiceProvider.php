@@ -49,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\Sarpras\OfflineSyncService::class);
         $this->app->singleton(\App\Services\Sarpras\WorkOrderExecutionService::class);
         $this->app->singleton(\App\Services\SarprasCacheInvalidator::class);
+        $this->app->singleton(\App\Services\Sarpras\AssetStatusTransitionService::class);
 
         // Boarding operations
         $this->app->singleton(\App\Services\Boarding\StudentStatusService::class);

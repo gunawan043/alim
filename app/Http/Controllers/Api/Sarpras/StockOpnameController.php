@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\StockOpnameItem;
 use App\Models\StockOpnameSession;
-use App\Services\Sarpras\AssetEventLogger;
-use App\Services\Sarpras\StockOpnameWorkflow;
+use App\Services\Sarpras\AssetStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +15,7 @@ use Illuminate\Support\Str;
 class StockOpnameController extends Controller
 {
     public function __construct(
-        protected readonly StockOpnameWorkflow $workflow,
+        protected readonly AssetStatusTransitionService $transition,
         protected readonly AssetEventLogger $logger,
     ) {}
 
@@ -187,17 +186,16 @@ class StockOpnameController extends Controller
                 'officer_id' => $request->user()->id,
             ]);
 
-            // If marked missing/damaged, update asset condition
+            // If marked missing/damaged, update asset condition/status via state machine
             $asset = $item->asset;
             if ($validated['observed_condition']) {
                 $asset->condition = $validated['observed_condition'];
             }
             if ($validated['observed_status'] === 'missing') {
-                $asset->status = 'lost';
+                $this->transition->transition($asset, 'lost', $request->user()->id, 'Stock opname: asset reported missing');
             } elseif ($validated['observed_status'] === 'damaged') {
-                $asset->status = 'damaged';
+                $this->transition->transition($asset, 'damaged', $request->user()->id, 'Stock opname: asset confirmed damaged');
             }
-            $asset->save();
         });
 
         return response()->json([

@@ -12,6 +12,7 @@ use App\Models\AssetCategory;
 use App\Models\AssetPhoto;
 use App\Models\AssetRoom;
 use App\Services\Sarpras\AssetEventLogger;
+use App\Services\Sarpras\AssetStatusTransitionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class SarprasAsetController extends SarprasBaseController
 {
-    public function __construct(public AssetEventLogger $eventLogger)
+    public function __construct(
+        public AssetEventLogger $eventLogger,
+        public AssetStatusTransitionService $transition,
+    )
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
@@ -73,7 +77,7 @@ class SarprasAsetController extends SarprasBaseController
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['status'] = $validated['status'] ?? 'tersedia';
+        $validated['status'] = $aset->status; // preserve existing status, must go through workflow
         $validated['created_by'] = auth()->id();
         $validated['current_value'] = $validated['acquisition_price'] ?? null;
 
@@ -159,7 +163,7 @@ class SarprasAsetController extends SarprasBaseController
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['status'] = $validated['status'] ?? 'tersedia';
+        $validated['status'] = $aset->status; // preserve existing status, must go through workflow
         $validated['current_value'] = $validated['acquisition_price'] ?? null;
 
         if (! empty($validated['room_id'])) {
@@ -173,6 +177,11 @@ class SarprasAsetController extends SarprasBaseController
         $lokasiSebelum = $aset->room_id;
 
         $aset->update($validated);
+
+        // Enforce state machine on status changes — prevent direct status mutations
+        if (($validated['status'] ?? null) !== null) {
+            $this->transition->transition($aset, $validated['status'], auth()->id(), 'Admin status change');
+        }
 
         // Asset lifecycle event — capture status / condition / location changes
         try {

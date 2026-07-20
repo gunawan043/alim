@@ -450,7 +450,7 @@ class SarprasController extends Controller
             'acquisition_source' => 'nullable|in:'.implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
             'funding_source' => 'nullable|string|max:100',
             'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
-            'status' => 'nullable|in:'.implode(',', Asset::STATUS_OPTIONS),
+            'status' => 'nullable|in:active,borrowed,under_maintenance,under_repair,damaged,disposed,lost',
             'is_bookable' => 'boolean',
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
@@ -523,7 +523,7 @@ class SarprasController extends Controller
             'acquisition_source' => 'nullable|in:'.implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
             'funding_source' => 'nullable|string|max:100',
             'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
-            'status' => 'nullable|in:'.implode(',', Asset::STATUS_OPTIONS),
+            'status' => 'nullable|in:active,borrowed,under_maintenance,under_repair,damaged,disposed,lost',
             'is_bookable' => 'boolean',
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
@@ -531,7 +531,7 @@ class SarprasController extends Controller
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['status'] = $validated['status'] ?? 'tersedia';
+        $validated['status'] = $aset->status; // preserve existing status, must go through workflow
 
         if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);

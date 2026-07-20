@@ -99,7 +99,7 @@ class Asset extends Model
 
     const CONDITION_OPTIONS = ['baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat', 'hilang', 'dihapus'];
 
-    const STATUS_OPTIONS = ['tersedia', 'dipinjam', 'dalam_perbaikan', 'dihapus'];
+    const STATUS_OPTIONS = ['active', 'borrowed', 'under_maintenance', 'under_repair', 'damaged', 'disposed', 'lost', 'tersedia', 'dipinjam', 'dalam_perbaikan', 'dihapus'];
 
     const ACQUISITION_SOURCE_OPTIONS = [
         'pembelian', 'hibah', 'sumbangan',
