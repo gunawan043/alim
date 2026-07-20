@@ -88,6 +88,17 @@ Route::prefix('mobile/v1')->group(function () {
         Route::get('dormitory-permits', [App\Http\Controllers\Api\Mobile\V1\DormitoryPermitController::class, 'index']);
         Route::post('dormitory/permit', [App\Http\Controllers\Api\Mobile\V1\DormitoryPermitController::class, 'store']);
 
+        // ── DORMITORY VISIT (Sprint 4) ─────────────────────────────────────
+        Route::get('dormitory/visits', [App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController::class, 'index']);
+        Route::post('dormitory/visit', [App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController::class, 'store']);
+        Route::get('dormitory/visits/{id}', [App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController::class, 'show']);
+        Route::patch('dormitory/visits/{id}/check-in', [App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController::class, 'checkIn']);
+        Route::patch('dormitory/visits/{id}/check-out', [App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController::class, 'checkOut']);
+
+        // ── DORMITORY RETURN (Sprint 4) ────────────────────────────────────
+        Route::get('dormitory/returns', [App\Http\Controllers\Api\Mobile\V1\DormitoryReturnController::class, 'index']);
+        Route::post('dormitory/return', [App\Http\Controllers\Api\Mobile\V1\DormitoryReturnController::class, 'store']);
+
         // ── DASHBOARD ──────────────────────────────────────────────────────
         Route::prefix('dashboard')->group(function () {
             Route::get('/', [App\Http\Controllers\Api\Mobile\V1\DashboardController::class, 'index']);

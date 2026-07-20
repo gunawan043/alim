@@ -27,6 +27,10 @@ class DashboardController extends Controller
         $user = $request->user();
         $data = $this->waliService->getDashboard($user);
 
+        // ── Add Dormitory Stats (Sprint 4 - Gap: dashboard stats) ──
+        $dormitoryStats = $this->getDormitoryStats($user);
+        $data['dormitory'] = $dormitoryStats;
+
         return response()->json([
             'success' => true,
             'data' => $data,
@@ -80,5 +84,87 @@ class DashboardController extends Controller
                 'total_absent' => $attendances->where('status', 'alpa')->count(),
             ],
         ]);
+    }
+
+    /**
+     * Gather dormitory-related summary stats for the dashboard.
+     */
+    private function getDormitoryStats(object $user): array
+    {
+        $studentIds = WaliSantri::where('user_id', $user->id)
+            ->active()
+            ->pluck('student_id')
+            ->toArray();
+
+        if (empty($studentIds)) {
+            return [
+                'dormitory_active' => false,
+                'pending_permits' => 0,
+                'pending_returns' => 0,
+                'pending_visits' => 0,
+                'recent_violations' => [],
+                'recent_rewards' => [],
+            ];
+        }
+
+        // Pending permits (leave + dormitory permit)
+        $pendingPermits = 0;
+
+        // Use DormitoryPermit if available
+        $dpCount = \DB::table('dormitory_permits')
+            ->whereIn('student_id', $studentIds)
+            ->where('status', 'pending')
+            ->count();
+        $pendingPermits += $dpCount;
+
+        // Pending returns (DormitoryReturnLog)
+        $pendingReturns = \DB::table('dormitory_return_logs')
+            ->whereIn('student_id', $studentIds)
+            ->where('status', 'registered')
+            ->count();
+
+        // Pending visits (DormitoryVisitLog)
+        $pendingVisits = \DB::table('dormitory_visit_logs')
+            ->whereIn('student_id', $studentIds)
+            ->where('status', 'pending')
+            ->count();
+
+        // Recent violations (last 3)
+        $recentViolations = \DB::table('dormitory_violations')
+            ->select('violation_type', 'points', 'violation_date', 'action_taken', 'student_id')
+            ->whereIn('student_id', $studentIds)
+            ->orderBy('violation_date', 'desc')
+            ->limit(3)
+            ->get()
+            ->map(fn ($v) => [
+                'type' => $v->violation_type ?? '-',
+                'points' => $v->points ?? 0,
+                'date' => $v->violation_date ? \Carbon\Carbon::parse($v->violation_date)->format('d M Y') : '-',
+                'action' => $v->action_taken ?? '-',
+            ])
+            ->toArray();
+
+        // Recent rewards (last 3)
+        $recentRewards = \DB::table('dormitory_rewards')
+            ->select('title', 'category', 'awarded_date', 'student_id')
+            ->whereIn('student_id', $studentIds)
+            ->orderBy('awarded_date', 'desc')
+            ->limit(3)
+            ->get()
+            ->map(fn ($r) => [
+                'title' => $r->title ?? '-',
+                'category' => $r->category ?? '-',
+                'date' => $r->awarded_date ? \Carbon\Carbon::parse($r->awarded_date)->format('d M Y') : '-',
+            ])
+            ->toArray();
+
+        return [
+            'dormitory_active' => true,
+            'pending_permits' => $pendingPermits,
+            'pending_returns' => $pendingReturns,
+            'pending_visits' => $pendingVisits,
+            'recent_violations' => $recentViolations,
+            'recent_rewards' => $recentRewards,
+        ];
     }
 }
