@@ -96,6 +96,8 @@ use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
 use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
+use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
+use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
@@ -129,6 +131,7 @@ use App\Http\Controllers\SuperAdmin\PermissionController;
 use App\Http\Controllers\SuperAdmin\RoleController;
 use App\Http\Controllers\SuperAdmin\SchoolSwitchController;
 use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController;
+use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
@@ -253,6 +256,22 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
     Route::post('/school-switch', [SchoolSwitchController::class, 'switch'])
         ->middleware(['auth'])
         ->name('school-switch');
+
+    /*
+    |--------------------------------------------------------------------------
+    | IMPERSONATE (Super Admin support / debugging)
+    |--------------------------------------------------------------------------
+    | POST /impersonate/{targetUser}  — login as target user (non Super Admin).
+    | POST /impersonate/stop          — logout & redirect to /login (re-login).
+    | Permission gate enforced inside the controller (impersonate_role).
+    */
+    Route::post('/impersonate/{targetUser}', [ImpersonateController::class, 'start'])
+        ->middleware(['auth'])
+        ->where('targetUser', '[0-9a-fA-F-]{36}')
+        ->name('impersonate.start');
+    Route::post('/impersonate/stop', [ImpersonateController::class, 'stop'])
+        ->middleware(['auth'])
+        ->name('impersonate.stop');
 
     /*
     |--------------------------------------------------------------------------
@@ -1903,6 +1922,7 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     Route::post('/teknisi/{id}/complete', [SarprasTechnicianWorkspaceController::class, 'complete'])->name('teknisi.complete');
     Route::post('/teknisi/{id}/note', [SarprasTechnicianWorkspaceController::class, 'logNote'])->name('teknisi.note');
     Route::get('/teknisi/{id}/snapshot', [SarprasTechnicianWorkspaceController::class, 'snapshot'])->name('teknisi.snapshot');
+    Route::post('/teknisi/{id}/claim', [SarprasTechnicianWorkspaceController::class, 'claim'])->name('teknisi.claim');
 
     // ── AUDITOR WORKSPACE ────────────────────────────────────
     Route::get('/auditor', [SarprasAuditorWorkspaceController::class, 'dashboard'])->name('auditor.dashboard');
@@ -1916,9 +1936,21 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     // ── DIVISION PORTAL ──────────────────────────────────────
     Route::get('/divisi', [SarprasDivisionPortalController::class, 'dashboard'])->name('divisi.dashboard');
     Route::get('/divisi/assets', [SarprasDivisionPortalController::class, 'assets'])->name('divisi.assets');
+    Route::get('/divisi/asset/{assetId}', [SarprasDivisionPortalController::class, 'showAsset'])->name('divisi.asset_show');
+    Route::get('/divisi/asset/{assetId}/lapor', [SarprasDivisionPortalController::class, 'showReportForm'])->name('divisi.report_form');
     Route::post('/divisi/report-issue', [SarprasDivisionPortalController::class, 'reportIssue'])->name('divisi.report_issue');
     Route::post('/divisi/request-maintenance', [SarprasDivisionPortalController::class, 'requestMaintenance'])->name('divisi.request_maintenance');
     Route::get('/divisi/history', [SarprasDivisionPortalController::class, 'history'])->name('divisi.history');
+
+    // ── PIC APPROVAL ──────────────────────────────────────
+    Route::get('/pic', [SarprasPicApprovalController::class, 'index'])->name('pic.index');
+    Route::get('/pic/{id}', [SarprasPicApprovalController::class, 'show'])->name('pic.show');
+    Route::post('/pic/{id}/verify', [SarprasPicApprovalController::class, 'verify'])->name('pic.verify');
+
+    // ── KEPALA SARPRAS APPROVAL ─────────────────────────────
+    Route::get('/kepala', [SarprasKepalaApprovalController::class, 'index'])->name('kepala.index');
+    Route::get('/kepala/{id}', [SarprasKepalaApprovalController::class, 'show'])->name('kepala.show');
+    Route::post('/kepala/{id}/approve', [SarprasKepalaApprovalController::class, 'approve'])->name('kepala.approve');
 
     // ── ASSET DISPOSAL ─────────────────────────────────────
     Route::get('/disposal/pending', [SarprasDisposalController::class, 'pending'])->name('disposal.pending');

@@ -8,6 +8,58 @@
     @slot('title') Dashboard @endslot
 @endcomponent
 
+{{-- Available (Claimable) Orders --}}
+@if(($available ?? collect())->count())
+<div class="card mb-3 border-info">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="ri-inbox-unarchive-line me-1 text-info"></i>
+            Work Order Belum Di-claim
+            <span class="badge bg-info ms-2">{{ $available->count() }}</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Aset</th>
+                        <th>Tipe</th>
+                        <th>Laporan</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($available as $wo)
+                        <tr>
+                            <td><code>{{ $wo->wo_number ?? $wo->order_number }}</code></td>
+                            <td>{{ $wo->asset?->asset_name ?? '-' }}</td>
+                            <td><span class="badge bg-secondary">{{ ucfirst($wo->type) }}</span></td>
+                            <td>
+                                @if($wo->repair_request_id)
+                                    <a href="{{ route('sarpras.pic.index') }}" class="small">Dilihat</a>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <form action="{{ route('sarpras.teknisi.claim', $wo->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-sm btn-info">
+                                        <i class="ri-hand-heart-line me-1"></i>Claim
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Quick Scan --}}
 <div class="card mb-3">
     <div class="card-body text-center">

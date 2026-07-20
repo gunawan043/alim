@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Models\WorkOrder;
+use App\Services\Sarpras\SarprasNotificationService;
 use App\Services\Sarpras\WorkOrderExecutionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +16,10 @@ use Illuminate\Support\Facades\Auth;
  */
 class SarprasTechnicianWorkspaceController extends SarprasBaseController
 {
-    public function __construct(protected WorkOrderExecutionService $execution) {}
+    public function __construct(
+        protected WorkOrderExecutionService $execution,
+        protected SarprasNotificationService $notifier,
+    ) {}
 
     public function dashboard(Request $request)
     {
@@ -25,7 +30,14 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
             ->latest()
             ->paginate(15);
 
-        return view('sarpras.technician.dashboard', compact('orders'));
+        $available = WorkOrder::whereNull('assigned_to')
+            ->with(['asset.room'])
+            ->where('status', 'created')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return view('sarpras.technician.dashboard', compact('orders', 'available'));
     }
 
     public function show(Request $request, string $orderId)
@@ -41,6 +53,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->start($order, Auth::user(), $request->all());
+
         return response()->json(['success' => true, 'order' => $updated]);
     }
 
@@ -89,9 +102,37 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     public function snapshot(Request $request, string $orderId): JsonResponse
     {
         $order = WorkOrder::with(['asset', 'progressNotes', 'pauseEvents'])->findOrFail($orderId);
+
         return response()->json([
             'success' => true,
             'snapshot' => $this->execution->syncSnapshot($order),
         ]);
+    }
+
+    public function claim(Request $request, string $orderId): RedirectResponse
+    {
+        $order = WorkOrder::findOrFail($orderId);
+
+        // Only unassigned or unclaimed work orders can be claimed
+        if ($order->assigned_to && $order->assigned_to !== Auth::id()) {
+            return redirect()
+                ->route('sarpras.teknisi.show', $order->id)
+                ->withErrors(['claim' => 'Work Order sudah di-claim teknisi lain.']);
+        }
+
+        $order->update([
+            'assigned_to' => Auth::id(),
+            'status' => 'assigned',
+        ]);
+
+        try {
+            $this->notifier->dispatchWorkOrderCreated($order);
+        } catch (\Throwable $e) {
+            logger()->warning('sarpras.teknisi.claim.notification_failed', ['error' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('sarpras.teknisi.show', $order->id)
+            ->with('success', "Work Order {$order->wo_number} berhasil di-claim.");
     }
 }
