@@ -55,8 +55,8 @@ class AuthController extends Controller
         [$token, $payload] = $this->issueMobileToken(
             user: $user,
             channel: TokenName::CHANNEL_PASSWORD,
-            platform: $request,
-            deviceFp: 'fp_register_'.substr(Str::uuid(), 0, 8),
+            request: $request,
+            deviceFp: 'fp_register_'.substr((string) Str::uuid(), 0, 8),
         );
 
         return response()->json([
@@ -110,7 +110,7 @@ class AuthController extends Controller
         [$token, $payload] = $this->issueMobileToken(
             user: $user,
             channel: TokenName::CHANNEL_PASSWORD,
-            platform: $request,
+            request: $request,
             deviceFp: $this->fingerprintFromRequest($request),
         );
 
@@ -166,7 +166,7 @@ class AuthController extends Controller
         [$token, $payload] = $this->issueMobileToken(
             user: $user,
             channel: TokenName::CHANNEL_GOOGLE,
-            platform: $request,
+            request: $request,
             deviceFp: $this->fingerprintFromRequest($request),
         );
 
