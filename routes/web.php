@@ -39,13 +39,13 @@ use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\GradeLevelController;
-use App\Http\Controllers\GtkController;
 use App\Http\Controllers\GTKEducationController;
 use App\Http\Controllers\GtkRecruitmentController;
 use App\Http\Controllers\GtkRequestController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\JadwalKbmController;
@@ -78,6 +78,7 @@ use App\Http\Controllers\RecruitmentPipelineController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SanitationInspectionController;
 use App\Http\Controllers\Sarpras\AssetPassportController;
+use App\Http\Controllers\Sarpras\AssetPassportPdfController;
 use App\Http\Controllers\Sarpras\DivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasAsetController;
 use App\Http\Controllers\Sarpras\SarprasAssetMovementController;
@@ -87,17 +88,20 @@ use App\Http\Controllers\Sarpras\SarprasDashboardController;
 use App\Http\Controllers\Sarpras\SarprasDisposalController;
 use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
+use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
+use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
+use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
+use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
+use App\Http\Controllers\Sarpras\SarprasRepairVsReplaceController;
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
 use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
-use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
-use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
@@ -131,7 +135,6 @@ use App\Http\Controllers\SuperAdmin\PermissionController;
 use App\Http\Controllers\SuperAdmin\RoleController;
 use App\Http\Controllers\SuperAdmin\SchoolSwitchController;
 use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController;
-use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
@@ -257,6 +260,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
         ->middleware(['auth'])
         ->name('school-switch');
 
+    Route::get('/api/schools', [SchoolSwitchController::class, 'apiSchools'])->middleware(['auth'])->name('api.schools');
+    Route::get('/api/dormitories', [SchoolSwitchController::class, 'apiDormitories'])->middleware(['auth'])->name('api.dormitories');
+    Route::get('/api/wings-by-dormitory', [SchoolSwitchController::class, 'apiWings'])->middleware(['auth'])->name('api.wings-by-dormitory');
+    Route::get('/api/rooms-by-wing', [SchoolSwitchController::class, 'apiRooms'])->middleware(['auth'])->name('api.rooms-by-wing');
+    Route::get('/api/academic-years', [SchoolSwitchController::class, 'apiAcademicYears'])->middleware(['auth'])->name('api.academic-years');
+
     /*
     |--------------------------------------------------------------------------
     | IMPERSONATE (Super Admin support / debugging)
@@ -375,7 +384,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/export-preview', [GtkWizardController::class, 'exportPreview'])->name('export.preview');
                 Route::get('/export', [GtkWizardController::class, 'export'])->name('export');
                 Route::post('/verify-password', [GtkWizardController::class, 'verifyPassword'])->name('verify-password');
-                Route::get('/satuan-kerja/{satuanKerja}', [GtkController::class, 'indexByWorkUnit'])->name('by-work-unit');
+                Route::get('/satuan-kerja/{satuanKerja}', [GtkWizardController::class, 'indexByWorkUnit'])->name('by-work-unit');
 
                 // Education standalone (sebelum {uuid} wildcard)
                 Route::prefix('educations')->name('educations.')->group(function () {
@@ -1198,6 +1207,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
                 Route::get('/', [DormitoryController::class, 'index'])->name('index');
+                Route::get('/profil-saya', [DormitoryController::class, 'myProfile'])->name('my-profile');
                 Route::get('/create', [DormitoryController::class, 'create'])->name('create');
                 Route::post('/', [DormitoryController::class, 'store'])->name('store');
                 Route::get('/{asramaUuid}', [DormitoryController::class, 'show'])->name('show');
@@ -1263,6 +1273,26 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/{permitUuid}/approve', [DormitoryPermitController::class, 'approve'])->name('permits.approve');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/reject', [DormitoryPermitController::class, 'reject'])->name('permits.reject');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/return', [DormitoryPermitController::class, 'returnRecord'])->name('permits.return');
+
+                // ── WIZARD IZIN KEPULANGAN (4 steps) ─────────────
+                Route::prefix('{asramaUuid}/izin-kepulangan')->name('permit-wizard.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\DormitoryWizardController::class, 'step1'])->name('step1');
+                    Route::get('/step2', [\App\Http\Controllers\DormitoryWizardController::class, 'step2'])->name('step2');
+                    Route::get('/step3', [\App\Http\Controllers\DormitoryWizardController::class, 'step3'])->name('step3');
+                    Route::get('/konfirmasi', [\App\Http\Controllers\DormitoryWizardController::class, 'confirm'])->name('confirm');
+                    Route::post('/save-step', [\App\Http\Controllers\DormitoryWizardController::class, 'saveStep'])->name('save-step');
+                    Route::post('/submit', [\App\Http\Controllers\DormitoryWizardController::class, 'submitWizard'])->name('submit');
+                });
+
+                // ── KEDATANGAN SANTRI (halaman rekap & modal catat masuk) ─────────
+                Route::get('/{asramaUuid}/kepulangan', [\App\Http\Controllers\DormitoryReturnController::class, 'index'])->name('dormitory-returns.index');
+                Route::post('/{asramaUuid}/kepulangan/{permitUuid}/record', [\App\Http\Controllers\DormitoryReturnController::class, 'record'])->name('dormitory-returns.record');
+
+                // ── RIWAYAT KEPULANGAN PER SANTRI ────────────────
+                Route::get('/{asramaUuid}/riwayat/{studentUuid}', [\App\Http\Controllers\DormitoryReturnController::class, 'history'])->name('dormitory-returns.history');
+
+                // ── STATISTIK KEPULANGAN (dashboard mini) ─────────
+                Route::get('/{asramaUuid}/statistik-kepulangan', [\App\Http\Controllers\DormitoryReturnController::class, 'statistics'])->name('dormitory-returns.statistics');
 
                 // ── PELANGGARAN ─────────────────────────────────────
                 Route::get('/{asramaUuid}/pelanggaran', [DormitoryViolationController::class, 'index'])->name('violations.index');
@@ -1852,6 +1882,8 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     // Asset Passport — full lifecycle view
     Route::get('/assets/{uuid}/passport', [AssetPassportController::class, 'show'])->name('assets.passport');
     Route::get('/assets/{uuid}/passport.json', [AssetPassportController::class, 'json'])->name('assets.passport.json');
+    Route::get('/assets/{uuid}/passport/v2', [AssetPassportController::class, 'showV2'])->name('assets.passport.v2');
+    Route::get('/assets/{uuid}/passport/v2.json', [AssetPassportController::class, 'jsonV2'])->name('assets.passport.v2.json');
     Route::get('/scan/{code}', [AssetPassportController::class, 'scan'])->name('assets.scan');
 
     // Division portal
@@ -1957,6 +1989,26 @@ Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarp
     Route::post('/disposal/{asset}/approve', [SarprasDisposalController::class, 'approve'])->name('disposal.approve');
     Route::post('/disposal/{asset}/reject', [SarprasDisposalController::class, 'reject'])->name('disposal.reject');
     Route::post('/disposal/{asset}/sale', [SarprasDisposalController::class, 'recordSale'])->name('disposal.sale');
+
+    // ── REPAIR VS REPLACE ENGINE ───────────────────────────
+    Route::get('/repair-vs-replace', [SarprasRepairVsReplaceController::class, 'index'])->name('rvr.index');
+    Route::get('/repair-vs-replace/{asset}', [SarprasRepairVsReplaceController::class, 'show'])->name('rvr.show');
+    Route::post('/repair-vs-replace/{asset}/evaluate', [SarprasRepairVsReplaceController::class, 'evaluate'])->name('rvr.evaluate');
+    Route::post('/repair-vs-replace/bulk', [SarprasRepairVsReplaceController::class, 'evaluateSchool'])->name('rvr.bulk');
+
+    // ── PREDICTIVE MAINTENANCE ─────────────────────────────
+    Route::get('/predictive-maintenance', [SarprasPredictiveMaintenanceController::class, 'index'])->name('predictive.index');
+    Route::get('/predictive-maintenance/{asset}', [SarprasPredictiveMaintenanceController::class, 'show'])->name('predictive.show');
+    Route::get('/api/predictive/high-risk', [SarprasPredictiveMaintenanceController::class, 'highRisk'])->name('predictive.high_risk');
+
+    // ── PDF EXPORT ─────────────────────────────────────────
+    Route::get('/assets/{uuid}/passport.pdf', [AssetPassportPdfController::class, 'download'])->name('assets.passport.pdf');
+    Route::get('/assets/{uuid}/passport/v2.pdf', [AssetPassportPdfController::class, 'download'])->name('assets.passport.v2.pdf');
+    Route::get('/assets/{uuid}/passport/stream', [AssetPassportPdfController::class, 'stream'])->name('assets.passport.stream');
+
+    // ── INTELLIGENCE DASHBOARD ─────────────────────────────
+    Route::get('/intelligence-dashboard', [SarprasIntelligenceDashboardController::class, 'index'])->name('dashboard.intelligence');
+    Route::get('/api/intelligence-dashboard.json', [SarprasIntelligenceDashboardController::class, 'json'])->name('dashboard.intelligence.json');
 });
 
 /*
@@ -1971,10 +2023,10 @@ Route::domain('wadir1.'.env('APP_DOMAIN', 'localhost'))
         Route::get('/', fn () => redirect()->route('wadir1.gtk.index'));
 
         Route::prefix('gtk')->name('gtk.')->group(function () {
-            Route::get('/', [GtkController::class, 'index'])->name('index');
-            Route::get('/filter', [GtkController::class, 'filter'])->name('filter');
-            Route::get('/{gtkUuid}', [GtkController::class, 'show'])->name('show');
-            Route::get('/by-work-unit/{workUnitUuid}', [GtkController::class, 'indexByWorkUnit'])->name('by-work-unit');
+            Route::get('/', [GtkWizardController::class, 'index'])->name('index');
+            Route::get('/filter', [GtkWizardController::class, 'filter'])->name('filter');
+            Route::get('/{uuid}', [GtkWizardController::class, 'show'])->name('show');
+            Route::get('/by-work-unit/{workUnitUuid}', [GtkWizardController::class, 'indexByWorkUnit'])->name('by-work-unit');
         });
 
         Route::prefix('work-units')->name('work-units.')->group(function () {
@@ -2110,6 +2162,29 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::get('/performance', [\App\Http\Controllers\Vendor\VendorPortalController::class, 'performance'])->name('performance');
     });
 });
+
+// ── SYSTEM ADMIN + SUPER ADMIN ─────────────────────────────────────────
+Route::middleware(['auth', \App\Http\Middleware\EnsureSuperAdminOrSystemAdmin::class])
+    ->prefix('system')
+    ->name('system.')
+    ->group(function () {
+        // System Admin dashboards (non-ViewAs endpoints)
+        Route::get('/', [\App\Http\Controllers\System\SystemDashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('/features', [\App\Http\Controllers\System\SystemDashboardController::class, 'features'])->name('features');
+        Route::get('/monitoring', [\App\Http\Controllers\System\SystemDashboardController::class, 'monitoring'])->name('monitoring');
+        Route::get('/maintenance', [\App\Http\Controllers\System\SystemDashboardController::class, 'maintenance'])->name('maintenance');
+        Route::get('/config', [\App\Http\Controllers\System\SystemDashboardController::class, 'config'])->name('config');
+        Route::get('/devtools', [\App\Http\Controllers\System\SystemDashboardController::class, 'devtools'])->name('devtools');
+
+        // View As (both System Admin and Super Admin can use)
+        Route::post('/view-as/role', [\App\Http\Controllers\System\ViewAsController::class, 'setRole'])->name('view-as.role');
+        Route::post('/view-as/login-as', [\App\Http\Controllers\System\ViewAsController::class, 'loginAs'])->name('view-as.login-as');
+        Route::post('/view-as/restore', [\App\Http\Controllers\System\ViewAsController::class, 'restore'])->name('view-as.restore');
+        Route::get('/view-as/users', [\App\Http\Controllers\System\ViewAsController::class, 'listUsers'])->name('view-as.users');
+        Route::post('/view-as/context', [\App\Http\Controllers\System\ViewAsController::class, 'setContext'])->name('view-as.context');
+        Route::post('/view-as/reset', [\App\Http\Controllers\System\ViewAsController::class, 'reset'])->name('view-as.reset');
+        Route::get('/view-as/state', [\App\Http\Controllers\System\ViewAsController::class, 'state'])->name('view-as.state');
+    });
 
 Route::fallback([HomeController::class, 'index']);
 
