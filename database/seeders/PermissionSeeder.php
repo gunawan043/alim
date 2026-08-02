@@ -116,6 +116,156 @@ class PermissionSeeder extends Seeder
             'pelatihan_edit',
             'pelatihan_report',
 
+            // Asrama / Boarding — Modul Dormitory
+            // Sidebar visibility untuk 7 role asrama
+            'menu-asrama-sidebar',
+            'menu-head-asrama-sidebar',
+            'menu-admin-asrama-sidebar',
+            'menu-pendidikan-asrama-sidebar',
+            'menu-kesehatan-asrama-sidebar',
+            'menu-wali-asrama-sidebar',
+
+            // UKS Work Unit
+            'menu-uks-sidebar',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit', 'uks_patient_delete',
+
+            // Sidebar menu global (dipakai layouts/sidebar.blade.php)
+            'menu-super-admin-sidebar',
+            'menu-gtk-sidebar',
+            'menu-admin-tu-sidebar',
+            'menu-admin-sarpras-sidebar',
+            'menu-sarpras-sidebar',
+            'menu-personalia-sidebar',
+            'menu-wakil-kepala-sekolah-sidebar',
+            'sa-sidebar-menus-all-access',
+
+            // Workspace menu permissions (dynamic — granted by assignment, not role)
+            'menu-wali-kelas-sidebar',
+            'menu-coordinator-rumpun-sidebar',
+            'menu-waka-kurikulum-sidebar',
+
+            // Workspace domain permissions (dynamic — granted by assignment, not role)
+            'workspace.wali-kelas',
+            'workspace.coordinator-rumpun',
+            'workspace.waka-kurikulum',
+            'workspace.structural',
+
+            // Master data dormitory
+            'dormitory_view',
+            'dormitory_create',
+            'dormitory_edit',
+
+            // Wing (Gedung)
+            'wing_view',
+            'wing_create',
+            'wing_edit',
+            'wing_delete',
+
+            // Room (Kamar)
+            'room_view',
+            'room_create',
+            'room_edit',
+            'room_delete',
+
+            // Resident (Penghuni)
+            'resident_view',
+            'resident_create',
+            'resident_edit',
+            'resident_delete',
+
+            // Absensi Asrama
+            'attendance_view',
+            'attendance_create',
+            'attendance_edit',
+            'attendance_approve',
+
+            // Perizinan
+            'permit_view',
+            'permit_create',
+            'permit_approve',
+
+            // Jenis Izin (Permit Types — master data CRUD)
+            'permit_type_view',
+            'permit_type_create',
+            'permit_type_edit',
+            'permit_type_delete',
+            'permit_type_toggle_active',
+
+            // Pelanggaran
+            'violation_view',
+            'violation_create',
+            'violation_edit',
+            'violation_approve',
+
+            // Penghargaan
+            'reward_view',
+            'reward_create',
+
+            // Kunjungan
+            'visit_view',
+            'visit_create',
+            'visit_approve',
+
+            // Mutasi Kamar
+            'room_move_view',
+            'room_move_create',
+            'room_move_approve',
+
+            // Inventaris Asrama (berbeda dari inventory umum)
+            'dormitory_inventory_view',
+            'dormitory_inventory_create',
+            'dormitory_inventory_edit',
+            'dormitory_inventory_delete',
+
+            // Kegiatan Harian
+            'activity_view',
+            'activity_create',
+            'activity_edit',
+
+            // Template Kegiatan
+            'template_view',
+            'template_create',
+            'template_edit',
+
+            // Post Informasi & Broadcast
+            'post_view',
+            'post_create',
+            'post_edit',
+            'broadcast_view',
+            'broadcast_create',
+            'broadcast_send',
+
+            // Laporan Asrama
+            'report_view',
+            'report_export',
+            'report_generate',
+
+            // Approval Center
+            'approval_center_view',
+            'approval_center_approve',
+
+            // Kebijakan Asrama
+            'boarding_policy_view',
+            'boarding_policy_create',
+            'boarding_policy_edit',
+
+            // Kalender
+            'calendar_return_view',
+            'calendar_return_create',
+            'calendar_visit_view',
+            'calendar_visit_create',
+
+            // Santri (terkait role asrama)
+            'student_view',
+            'student_export',
+            'mahrom_view',
+
+            // Dashboard Pengasuh
+            'pengasuh_dashboard_view',
+
+            // Export Asrama
+            'asrama_export',
+
             // Inventory/Asset
             'inventory_view',
             'inventory_create',
@@ -231,21 +381,46 @@ class PermissionSeeder extends Seeder
             'student_mutation_approve',
             'student_mutation_export',
             'student_mutation_import',
+
+            // Kebab-case aliases (dipakai di views/controllers — konsisten dengan modul sidebar)
+            // GTK
+            'gtk-role',
+            'gtk-create',
+            'gtk-update',
+            'gtk-delete',
+
+            // School
+            'school-create',
+            'school-update',
+
+            // Dormitory master (kebab-case)
+            'dormitory-master-create',
+            'dormitory-master-update',
+            'dormitory-master-delete',
+
+            // All-access module
+            'institution-decree-all-access',
+            'teaching-assignment-all-access',
+            'subject-all-access',
+            'student-all-access',
+
+            // Impersonate (Super Admin only) — login sbg user lain untuk testing
+            'impersonate_role',
         ];
 
         $now = now();
-        
+
         foreach ($permissions as $permission) {
             $group = $this->getPermissionGroup($permission);
             $description = $this->getPermissionDescription($permission);
-            
+
             // Gunakan DB query langsung untuk menghindari masalah Eloquent
             $exists = DB::table('permissions')
                 ->where('name', $permission)
                 ->where('guard_name', 'web')
                 ->exists();
-            
-            if (!$exists) {
+
+            if (! $exists) {
                 DB::table('permissions')->insert([
                     'id' => Str::uuid()->toString(),
                     'name' => $permission,
@@ -268,38 +443,158 @@ class PermissionSeeder extends Seeder
             }
         }
 
-        $this->command->info('✅ Permissions seeded successfully! Total: ' . count($permissions));
+        $this->command->info('✅ Permissions seeded successfully! Total: '.count($permissions));
     }
 
     private function getPermissionGroup(string $permission): string
     {
-        if (str_starts_with($permission, 'dashboard_')) return 'Dashboard';
-        if (str_starts_with($permission, 'user_')) return 'User Management';
-        if (str_starts_with($permission, 'role_')) return 'Role Management';
-        if (str_starts_with($permission, 'permission_')) return 'Permission Management';
-        if (str_starts_with($permission, 'gtk_')) return 'GTK Management';
-        if (str_starts_with($permission, 'work_unit_')) return 'Work Unit';
-        if (str_starts_with($permission, 'satpen_')) return 'Satuan Pendidikan';
-        if (str_starts_with($permission, 'wilayah_')) return 'Wilayah';
-        if (str_starts_with($permission, 'kepegawaian_')) return 'Kepegawaian';
-        if (str_starts_with($permission, 'absensi_')) return 'Absensi';
-        if (str_starts_with($permission, 'penggajian_')) return 'Penggajian';
-        if (str_starts_with($permission, 'cuti_')) return 'Cuti';
-        if (str_starts_with($permission, 'penilaian_')) return 'Penilaian';
-        if (str_starts_with($permission, 'pelatihan_')) return 'Pelatihan';
-        if (str_starts_with($permission, 'inventory_')) return 'Inventory';
-        if (str_starts_with($permission, 'sarpras_')) return 'Sarana Prasarana';
-        if (str_starts_with($permission, 'laporan_')) return 'Laporan';
-        if (str_starts_with($permission, 'settings_')) return 'Settings';
-        if (str_starts_with($permission, 'backup_')) return 'Backup';
-        if (str_starts_with($permission, 'log_')) return 'Logs';
-        if (str_starts_with($permission, 'notification_')) return 'Notifications';
-        if (str_starts_with($permission, 'profile_')) return 'Profile';
-        if (str_starts_with($permission, 'student_')) return 'Santri';
-        if (str_starts_with($permission, 'school_')) return 'Akademik';
-        if (str_starts_with($permission, 'grade_level_')) return 'Akademik';
-        if (str_starts_with($permission, 'study_group_')) return 'Akademik';
-        if ($permission === 'view_global_school_data') return 'Akademik';
+        if (str_starts_with($permission, 'menu-')) {
+            return 'Sidebar';
+        }
+        if (str_starts_with($permission, 'dashboard_')) {
+            return 'Dashboard';
+        }
+        if (str_starts_with($permission, 'user_')) {
+            return 'User Management';
+        }
+        if (str_starts_with($permission, 'role_')) {
+            return 'Role Management';
+        }
+        if (str_starts_with($permission, 'permission_')) {
+            return 'Permission Management';
+        }
+        if (str_starts_with($permission, 'gtk_')) {
+            return 'GTK Management';
+        }
+        if (str_starts_with($permission, 'work_unit_')) {
+            return 'Work Unit';
+        }
+        if (str_starts_with($permission, 'satpen_')) {
+            return 'Satuan Pendidikan';
+        }
+        if (str_starts_with($permission, 'wilayah_')) {
+            return 'Wilayah';
+        }
+        if (str_starts_with($permission, 'kepegawaian_')) {
+            return 'Kepegawaian';
+        }
+        if (str_starts_with($permission, 'absensi_')) {
+            return 'Absensi';
+        }
+        if (str_starts_with($permission, 'penggajian_')) {
+            return 'Penggajian';
+        }
+        if (str_starts_with($permission, 'cuti_')) {
+            return 'Cuti';
+        }
+        if (str_starts_with($permission, 'penilaian_')) {
+            return 'Penilaian';
+        }
+        if (str_starts_with($permission, 'pelatihan_')) {
+            return 'Pelatihan';
+        }
+        if (str_starts_with($permission, 'inventory_')) {
+            return 'Inventory';
+        }
+        if (str_starts_with($permission, 'sarpras_')) {
+            return 'Sarana Prasarana';
+        }
+        if (str_starts_with($permission, 'laporan_')) {
+            return 'Laporan';
+        }
+        if (str_starts_with($permission, 'settings_')) {
+            return 'Settings';
+        }
+        if (str_starts_with($permission, 'backup_')) {
+            return 'Backup';
+        }
+        if (str_starts_with($permission, 'log_')) {
+            return 'Logs';
+        }
+        if (str_starts_with($permission, 'notification_')) {
+            return 'Notifications';
+        }
+        if (str_starts_with($permission, 'profile_')) {
+            return 'Profile';
+        }
+        if (str_starts_with($permission, 'student_')) {
+            return 'Santri';
+        }
+        if (str_starts_with($permission, 'mahrom_')) {
+            return 'Santri';
+        }
+
+        // Asrama / Boarding module
+        if (str_starts_with($permission, 'dormitory_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'wing_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'room_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'resident_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'attendance_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'permit_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'violation_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'reward_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'visit_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'activity_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'template_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'post_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'broadcast_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'report_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'approval_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'boarding_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'calendar_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'pengasuh_')) {
+            return 'Asrama';
+        }
+        if (str_starts_with($permission, 'asrama_')) {
+            return 'Asrama';
+        }
+
+        if (str_starts_with($permission, 'school_')) {
+            return 'Akademik';
+        }
+        if (str_starts_with($permission, 'grade_level_')) {
+            return 'Akademik';
+        }
+        if (str_starts_with($permission, 'study_group_')) {
+            return 'Akademik';
+        }
+        if ($permission === 'view_global_school_data') {
+            return 'Akademik';
+        }
 
         return 'General';
     }
@@ -400,6 +695,7 @@ class PermissionSeeder extends Seeder
             'notification_view' => 'Can view notifications',
             'notification_send' => 'Can send notifications',
             'notification_settings' => 'Can edit notification settings',
+            'impersonate_role' => 'Can impersonate other users (testing)',
             'profile_view' => 'Can view profile',
             'profile_edit' => 'Can edit profile',
             'password_change' => 'Can change password',

@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -31,13 +30,13 @@ return new class extends Migration
         if ($driver === 'mysql') {
             \DB::statement(
                 'CREATE UNIQUE INDEX uniq_snapshots_user_scope_current '
-                . 'ON `permission_snapshots` (user_id, scope_key, is_current)'
+                .'ON `permission_snapshots` (user_id, scope_key, is_current)'
             );
         } else {
             \DB::statement(
                 'CREATE UNIQUE INDEX uniq_snapshots_user_scope_current '
-                . 'ON permission_snapshots (user_id, scope_key) '
-                . 'WHERE is_current = true'
+                .'ON permission_snapshots (user_id, scope_key) '
+                .'WHERE is_current = true'
             );
         }
     }
