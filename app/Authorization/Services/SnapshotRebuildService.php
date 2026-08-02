@@ -41,6 +41,7 @@ final class SnapshotRebuildService
                 if ($this->cache !== null) {
                     $this->cache->put($existing, $userId, $scopeKey);
                 }
+
                 return $existing;
             }
 
@@ -77,7 +78,7 @@ final class SnapshotRebuildService
     {
         $countBefore = PermissionSnapshot::query()
             ->where('is_current', true)
-            ->when($status !== null, function ($q) use ($status) {
+            ->when($status !== null, function ($q) {
                 return $q; // note: snapshot.status is in DTO, not model column
             })
             ->count();
@@ -100,13 +101,13 @@ final class SnapshotRebuildService
     ): void {
         try {
             \App\Authorization\Models\SnapshotAuditLog::query()->create([
-                'user_id'      => $userId,
-                'scope_key'    => $scopeKey,
-                'event'        => $trigger,
-                'fingerprint'  => str_pad('', 64, '0'),
-                'status'       => 'failed',
-                'error'        => $e->getMessage(),
-                'created_at'   => now(),
+                'user_id' => $userId,
+                'scope_key' => $scopeKey,
+                'event' => $trigger,
+                'fingerprint' => str_pad('', 64, '0'),
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+                'created_at' => now(),
             ]);
         } catch (Throwable) {
             // Swallow — primary failure already thrown.

@@ -46,8 +46,8 @@ final class AcademicPermissionProvider implements PermissionProvider
         }
 
         // Teachers and higher can write/publish exam and schedule
-        if ($roleLevel !== null && (int) $roleLevel <= 16) {
-            // Coordinator Tahfidz and above (lower level number = higher)
+        if ($roleLevel !== null && (int) $roleLevel <= 13) {
+            // Guru Tahfidz and above (lower level number = higher)
             $origins[] = new PermissionOrigin(
                 provider: 'academic',
                 permission: 'exam.write',
@@ -110,7 +110,7 @@ final class AcademicPermissionProvider implements PermissionProvider
             $origins[] = new PermissionOrigin(
                 provider: 'academic',
                 permission: 'extracurricular.write',
-                reason: 'guru_umum_or_higher',
+                reason: 'guru_or_higher',
                 scope: ScopeKey::forUser($user),
                 source: PermissionSource::ASSIGNMENT,
             );

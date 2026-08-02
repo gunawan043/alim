@@ -82,7 +82,9 @@ final class PermissionRebuildObserver
      */
     private function extractUserIdFromForeignKey(Model $model): array
     {
-        $foreignKeys = ['user_id'];
+        // Order matters: check user_id first (most common), then teacher_id
+        // (used by HomeroomAssignment and CoordinatorAssignment).
+        $foreignKeys = ['user_id', 'teacher_id'];
 
         foreach ($foreignKeys as $field) {
             if ($model->getAttribute($field) !== null) {

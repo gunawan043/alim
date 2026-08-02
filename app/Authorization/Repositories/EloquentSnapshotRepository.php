@@ -31,7 +31,7 @@ final class EloquentSnapshotRepository implements SnapshotRepository
                 'archived_at' => Carbon::now(),
             ]);
 
-        $snapshot = new PermissionSnapshot();
+        $snapshot = new PermissionSnapshot;
         $snapshot->user_id = $userId;
         $snapshot->scope_key = $scopeKey;
         $snapshot->scope_school_id = $schoolId;

@@ -12,7 +12,7 @@ final class PermissionConflictResolver
      * Final duplicate-elimination pass.
      * Preserves deterministic ordering: (permission asc, scope asc, provider asc).
      *
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, PermissionOrigin>  $origins
      * @return array<int, PermissionOrigin>
      */
     public static function resolve(array $origins): array
@@ -27,7 +27,7 @@ final class PermissionConflictResolver
                 $origin->source->value,
             ]);
 
-            if (!isset($unique[$key])) {
+            if (! isset($unique[$key])) {
                 $unique[$key] = $origin;
             }
         }
@@ -45,6 +45,7 @@ final class PermissionConflictResolver
                 if ($cmp !== 0) {
                     return $cmp;
                 }
+
                 return strcmp($a->provider, $b->provider);
             }
         );

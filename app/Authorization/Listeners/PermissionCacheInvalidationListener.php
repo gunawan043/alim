@@ -31,16 +31,16 @@ final class PermissionCacheInvalidationListener
             }
 
             $this->log->info('authorization.cache.invalidated', [
-                'user_id'    => $userId,
-                'scope_key'  => $event->scopeKey,
-                'reason'     => $event->reason,
+                'user_id' => $userId,
+                'scope_key' => $event->scopeKey,
+                'reason' => $event->reason,
             ]);
         } catch (\Throwable $e) {
             $this->log->error('authorization.cache.invalidation_failed', [
-                'user_id'  => $userId,
-                'scope'    => $event->scopeKey,
-                'reason'   => $event->reason,
-                'error'    => $e->getMessage(),
+                'user_id' => $userId,
+                'scope' => $event->scopeKey,
+                'reason' => $event->reason,
+                'error' => $e->getMessage(),
             ]);
         }
     }

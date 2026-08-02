@@ -13,10 +13,31 @@ if (! function_exists('canPermission')) {
      *
      * Returns false if no user is authenticated or no OrganizationContext
      * is bound to the request container. Fail-closed by design.
+     *
+     * Special case: `super-admin-only` is true for system admins only — does
+     * NOT require the now-removed 'Super Admin' role.
      */
     function canPermission(string $permission): bool
     {
         if (! auth()->check()) {
+            return false;
+        }
+
+        /** @var User $user */
+        $user = auth()->user();
+
+        // Global super-admin gate: system admins have access to every
+        // permission unless they are currently in View-As mode.
+        if ($user->isSystemAdmin()) {
+            $viewAs = app(\App\Services\ViewAsService::class);
+            if ($viewAs->getCurrentViewRole() === null) {
+                return true;
+            }
+        }
+
+        // System-admin gate shortcut. View-As SA loses this short-circuit so
+        // the impersonated user does NOT inherit system permissions.
+        if ($permission === 'super-admin-only') {
             return false;
         }
 
@@ -28,9 +49,6 @@ if (! function_exists('canPermission')) {
         if (! $context instanceof OrganizationContext) {
             return false;
         }
-
-        /** @var User $user */
-        $user = auth()->user();
 
         return app(AuthorizationManager::class)->allows($user, $permission, $context);
     }
@@ -98,8 +116,8 @@ if (! function_exists('authorizationContextFor')) {
      */
     function authorizationContextFor(
         ?string $schoolId = null,
-        string  $academicYearId = 'global',
-        string  $roleDimension = 'default',
+        string $academicYearId = 'global',
+        string $roleDimension = 'default',
     ): OrganizationContext {
         return new OrganizationContext(
             schoolId: $schoolId,
@@ -123,6 +141,7 @@ if (! function_exists('usersHavingPermission')) {
                 ? app(OrganizationContext::class)
                 : authorizationContextFor();
         }
+
         return app(\App\Authorization\Services\UserFilterService::class)
             ->userIdsWithPermission($permission, $context);
     }
@@ -141,6 +160,7 @@ if (! function_exists('usersMissingPermission')) {
                 ? app(OrganizationContext::class)
                 : authorizationContextFor();
         }
+
         return app(\App\Authorization\Services\UserFilterService::class)
             ->usersWithoutPermission($permission, $context);
     }

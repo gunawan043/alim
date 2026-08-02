@@ -29,7 +29,7 @@ final class SnapshotFingerprintFactory
     }
 
     /**
-     * @param array<int, PermissionOrigin> $sortedOrigins
+     * @param  array<int, PermissionOrigin>  $sortedOrigins
      */
     private static function canonicalize(array $sortedOrigins): string
     {

@@ -14,7 +14,7 @@ final class RevocationResolver
      *   - Any non-REVOCATION origin whose permission also has a REVOCATION origin is removed.
      *   - REVOCATION origins are preserved for audit trail.
      *
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, PermissionOrigin>  $origins
      * @return array<int, PermissionOrigin>
      */
     public static function resolve(array $origins): array
@@ -24,7 +24,7 @@ final class RevocationResolver
 
         foreach ($origins as $origin) {
             if ($origin->source === PermissionSource::REVOCATION) {
-                $denied[$origin->permission . '::' . $origin->scope->value] = true;
+                $denied[$origin->permission.'::'.$origin->scope->value] = true;
             }
         }
 
@@ -35,7 +35,7 @@ final class RevocationResolver
         $kept = [];
 
         foreach ($origins as $origin) {
-            $denyKey = $origin->permission . '::' . $origin->scope->value;
+            $denyKey = $origin->permission.'::'.$origin->scope->value;
             if ($origin->source !== PermissionSource::REVOCATION && isset($denied[$denyKey])) {
                 continue;
             }

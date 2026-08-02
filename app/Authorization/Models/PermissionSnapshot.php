@@ -28,9 +28,9 @@ final class PermissionSnapshot extends Model
 
     protected $casts = [
         'permissions' => 'array',
-        'revoked'     => 'array',
-        'is_current'  => 'bool',
-        'expires_at'  => 'datetime',
+        'revoked' => 'array',
+        'is_current' => 'bool',
+        'expires_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

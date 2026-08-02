@@ -26,6 +26,7 @@ final class PermissionTreeNormalizer
                 if ($cmp !== 0) {
                     return $cmp;
                 }
+
                 return strcmp($a->provider, $b->provider);
             }
         );

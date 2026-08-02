@@ -11,9 +11,9 @@ use DateTimeImmutable;
 final readonly class PermissionBag
 {
     /**
-     * @param array<int, string> $permissions
-     * @param array<int, string> $revoked
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, string>  $permissions
+     * @param  array<int, string>  $revoked
+     * @param  array<int, PermissionOrigin>  $origins
      */
     public function __construct(
         public array $permissions,
@@ -69,15 +69,15 @@ final readonly class PermissionBag
     public function toArray(): array
     {
         return [
-            'permissions'  => $this->permissions,
-            'revoked'      => $this->revoked,
-            'fingerprint'  => $this->fingerprint,
-            'expires_at'   => $this->expiresAt?->format(DateTimeImmutable::ATOM),
-            'metadata'     => [
-                'created_at'  => $this->metadata->createdAt->format(DateTimeImmutable::ATOM),
-                'scope_key'   => $this->metadata->scopeKey->value,
-                'version'     => $this->metadata->version,
-                'status'      => $this->metadata->status->value,
+            'permissions' => $this->permissions,
+            'revoked' => $this->revoked,
+            'fingerprint' => $this->fingerprint,
+            'expires_at' => $this->expiresAt?->format(DateTimeImmutable::ATOM),
+            'metadata' => [
+                'created_at' => $this->metadata->createdAt->format(DateTimeImmutable::ATOM),
+                'scope_key' => $this->metadata->scopeKey->value,
+                'version' => $this->metadata->version,
+                'status' => $this->metadata->status->value,
             ],
             'origins_count' => count($this->origins),
         ];
@@ -91,7 +91,7 @@ final readonly class PermissionBag
         $createdAt = DateTimeImmutable::createFromFormat(
             DateTimeImmutable::ATOM,
             $data['metadata']['created_at']
-        ) ?: new DateTimeImmutable();
+        ) ?: new DateTimeImmutable;
 
         $expiresAt = isset($data['expires_at'])
             ? DateTimeImmutable::createFromFormat(

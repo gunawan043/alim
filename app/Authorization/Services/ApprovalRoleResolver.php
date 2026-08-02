@@ -2,6 +2,8 @@
 
 namespace App\Authorization\Services;
 
+use App\Authorization\Providers\RoleGroupPermissionProvider;
+
 /**
  * Maps workflow role-name identifiers (approval steps, notification dispatch)
  * to snapshot permission strings.
@@ -48,6 +50,7 @@ final class ApprovalRoleResolver
     {
         if (array_key_exists($roleName, self::ROLE_TO_PERMISSION)) {
             $perm = self::ROLE_TO_PERMISSION[$roleName];
+
             return $perm ? [$perm] : [];
         }
 
@@ -80,6 +83,7 @@ final class ApprovalRoleResolver
                 }
             }
         }
+
         return null;
     }
 }

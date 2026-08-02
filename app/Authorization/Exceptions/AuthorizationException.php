@@ -6,6 +6,4 @@ namespace App\Authorization\Exceptions;
 
 use RuntimeException;
 
-class AuthorizationException extends RuntimeException
-{
-}
+class AuthorizationException extends RuntimeException {}

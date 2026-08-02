@@ -29,8 +29,8 @@ final class TahfidzPermissionProvider implements PermissionProvider
         $origins = [];
         $roleLevel = $user->roles()->min('level');
 
-        // Guru Tahfidz and above (level 18 admin departemen, 15 guru tahfidz)
-        if ($roleLevel !== null && (int) $roleLevel <= 18) {
+        // Guru Tahfidz and above (level 16 admin departemen, 13 guru tahfidz)
+        if ($roleLevel !== null && (int) $roleLevel <= 16) {
             $origins[] = new PermissionOrigin(
                 provider: 'tahfidz',
                 permission: 'students.read',

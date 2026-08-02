@@ -21,7 +21,7 @@ interface PermissionCacheManager
     public function forgetScope(string $scopeKey): void;
 
     /**
-     * @param array<int|string> $userIds
+     * @param  array<int|string>  $userIds
      */
     public function warm(array $userIds): int;
 

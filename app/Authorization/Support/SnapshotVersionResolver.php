@@ -24,7 +24,8 @@ final readonly class SnapshotVersionResolver
      * The lock is scoped per (scopeKey, userId) so unrelated users/scope builds do not serialize.
      *
      * @template T
-     * @param Closure(): T $build
+     *
+     * @param  Closure(): T  $build
      * @return T
      */
     public function run(ScopeKey $scopeKey, int|string $userId, Closure $build): mixed
@@ -43,7 +44,8 @@ final readonly class SnapshotVersionResolver
 
     /**
      * @template T
-     * @param Closure(): T $build
+     *
+     * @param  Closure(): T  $build
      * @return T
      */
     private function runPostgres(ScopeKey $scopeKey, int|string $userId, Closure $build): mixed
@@ -53,7 +55,7 @@ final readonly class SnapshotVersionResolver
 
             if ($this->lockTimeoutSeconds > 0) {
                 $this->connection->statement(
-                    'SET LOCAL lock_timeout = ' . (int) $this->lockTimeoutSeconds . 's'
+                    'SET LOCAL lock_timeout = '.(int) $this->lockTimeoutSeconds.'s'
                 );
             }
 
@@ -68,7 +70,8 @@ final readonly class SnapshotVersionResolver
 
     /**
      * @template T
-     * @param Closure(): T $build
+     *
+     * @param  Closure(): T  $build
      * @return T
      */
     private function runMySql(ScopeKey $scopeKey, int|string $userId, Closure $build): mixed
@@ -88,7 +91,8 @@ final readonly class SnapshotVersionResolver
 
     /**
      * @template T
-     * @param Closure(): T $build
+     *
+     * @param  Closure(): T  $build
      * @return T
      */
     private function runSqlite(ScopeKey $scopeKey, int|string $userId, Closure $build): mixed
@@ -96,14 +100,16 @@ final readonly class SnapshotVersionResolver
         return $this->connection->transaction(function () use ($scopeKey, $userId, $build) {
             $lockKey = $this->lockKeyFor($scopeKey, $userId);
             $this->connection->statement('BEGIN IMMEDIATE');
+
             return $build();
         });
     }
 
     private function lockKeyFor(ScopeKey $scopeKey, int|string $userId): int
     {
-        $hash = hash('sha256', (string) $scopeKey . ':' . (string) $userId);
+        $hash = hash('sha256', (string) $scopeKey.':'.(string) $userId);
         $unpacked = unpack('J', substr($hash, 0, 8));
+
         return $unpacked[1] ?? 0;
     }
 

@@ -22,10 +22,10 @@ final readonly class ScopeKey
         // null is deliberately kept as-is here; fromComponents() will
         // substitute '_no_school_' as the hash input so that a no-tenant
         // scope key never collides with a real school scope key.
-        $schoolId       = $schoolId       ?? $appContext->schoolId;
+        $schoolId = $schoolId ?? $appContext->schoolId;
         $academicYearId = $academicYearId ?? ($appContext->academicYearId ?? 'global');
-        $roleDimension  = $appContext->roleDimension ?? 'default';
-        $tenant         = $appContext->tenant         ?? 'public';
+        $roleDimension = $appContext->roleDimension ?? 'default';
+        $tenant = $appContext->tenant ?? 'public';
 
         return self::fromComponents(
             schoolId: $schoolId,
@@ -37,8 +37,8 @@ final readonly class ScopeKey
 
     public static function fromComponents(
         ?string $schoolId,
-        string  $academicYearId,
-        string  $roleDimension,
+        string $academicYearId,
+        string $roleDimension,
         ?string $tenantId = null,
     ): self {
         // When schoolId is null we use a reserved token that can never be a
@@ -58,15 +58,15 @@ final readonly class ScopeKey
 
     public static function fromHash(string $hash): self
     {
-        if (!preg_match('/^[a-f0-9]{64}$/', $hash)) {
+        if (! preg_match('/^[a-f0-9]{64}$/', $hash)) {
             throw new InvalidScopeException(
-                "Scope key must be a 64-character lowercase hex string."
+                'Scope key must be a 64-character lowercase hex string.'
             );
         }
 
         if (Str::length($hash) > self::MAX_LENGTH) {
             throw new InvalidScopeException(
-                "Scope key exceeds maximum length of " . self::MAX_LENGTH . "."
+                'Scope key exceeds maximum length of '.self::MAX_LENGTH.'.'
             );
         }
 

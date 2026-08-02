@@ -10,7 +10,7 @@ use App\Authorization\Enums\PermissionSource;
 final class PermissionTreeFlattener
 {
     /**
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, PermissionOrigin>  $origins
      * @return array<string, PermissionSource>
      */
     public static function toPermissionMap(array $origins): array

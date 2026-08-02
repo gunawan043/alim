@@ -17,7 +17,7 @@ final readonly class PermissionMergeResolver
     ) {}
 
     /**
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, PermissionOrigin>  $origins
      * @return array<int, PermissionOrigin>
      */
     public function resolve(array $origins): array
@@ -32,7 +32,8 @@ final readonly class PermissionMergeResolver
 
         foreach ($expandedOrigins as $origin) {
             if ($origin->source === PermissionSource::REVOCATION) {
-                $denied[$origin->permission . '::' . $origin->scope->value] = true;
+                $denied[$origin->permission.'::'.$origin->scope->value] = true;
+
                 continue;
             }
             $filtered[] = $origin;
@@ -45,14 +46,14 @@ final readonly class PermissionMergeResolver
             $priority = $this->priorityFor($origin->source);
             $permission = $origin->permission;
             $scopeKey = $origin->scope->value;
-            $denyKey = $permission . '::' . $scopeKey;
+            $denyKey = $permission.'::'.$scopeKey;
 
             // Skip if revoked
             if (isset($denied[$denyKey])) {
                 continue;
             }
 
-            if (!isset($byPriority[$denyKey]) || $byPriority[$denyKey]['priority'] < $priority) {
+            if (! isset($byPriority[$denyKey]) || $byPriority[$denyKey]['priority'] < $priority) {
                 $byPriority[$denyKey] = [
                     'priority' => $priority,
                     'origin' => $origin,
@@ -69,6 +70,7 @@ final readonly class PermissionMergeResolver
             $resolved,
             static function (PermissionOrigin $a, PermissionOrigin $b): int {
                 $cmp = strcmp($a->permission, $b->permission);
+
                 return $cmp !== 0 ? $cmp : strcmp((string) $a->scope, (string) $b->scope);
             }
         );
@@ -79,7 +81,7 @@ final readonly class PermissionMergeResolver
     /**
      * Expand wildcard permissions (e.g., students.*) to their registered leaf permissions.
      *
-     * @param array<int, PermissionOrigin> $origins
+     * @param  array<int, PermissionOrigin>  $origins
      * @return array<int, PermissionOrigin>
      */
     private function expandWildcards(array $origins): array
@@ -119,7 +121,7 @@ final readonly class PermissionMergeResolver
         return match ($source) {
             PermissionSource::DELEGATION => $this->delegationPriority,
             PermissionSource::ASSIGNMENT => $this->assignmentPriority,
-            PermissionSource::MANUAL     => $this->manualPriority,
+            PermissionSource::MANUAL => $this->manualPriority,
             PermissionSource::EMPLOYMENT => $this->employmentPriority,
             PermissionSource::REVOCATION => PHP_INT_MIN,
         };

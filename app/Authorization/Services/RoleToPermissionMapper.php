@@ -31,11 +31,8 @@ final class RoleToPermissionMapper
         'general_teacher' => [
             'permissions' => ['general_teacher.readable'],
             'roles' => [
-                'Guru Umum',
-                'Guru Agama',
-                'Guru Hadits',
+                'Guru',
                 'Guru Tahfidz',
-                'GTK',
                 'Coordinator Guru',
                 'Wakil Kepala Sekolah',
             ],
@@ -44,29 +41,23 @@ final class RoleToPermissionMapper
         'student_teacher' => [
             'permissions' => ['student_teacher.readable'],
             'roles' => [
-                'Guru Umum',
-                'Guru Agama',
-                'Guru Hadits',
+                'Guru',
                 'Guru Tahfidz',
-                'GTK',
                 'Coordinator Guru',
                 'Kepala Sekolah',
                 'Wakil Kepala Sekolah',
             ],
         ],
 
-        'general_tutor' => [
-            'permissions' => ['general_tutor.readable'],
-            'roles' => [
-                'Guru Mata Pelajaran',
-                'Guru',
-                'GTK',
-            ],
-        ],
-
         'admin_staff' => [
             'permissions' => ['admin.tu.assessable'],
             'roles' => ['Admin Tata Usaha'],
+        ],
+
+        // Admin TU: can view schools in their work unit
+        'admin_tu_school' => [
+            'permissions' => ['school_view'],
+            'roles' => ['Admin Tata Usaha', 'Tata Usaha'],
         ],
 
         'general_admin' => [
@@ -188,6 +179,7 @@ final class RoleToPermissionMapper
     public static function getRolesFor(string $groupName): array
     {
         $mapping = self::findMapping($groupName);
+
         return $mapping ? $mapping['roles'] : [];
     }
 
@@ -199,6 +191,7 @@ final class RoleToPermissionMapper
     public static function getPermissionsFor(string $groupName): array
     {
         $mapping = self::findMapping($groupName);
+
         return $mapping ? $mapping['permissions'] : [];
     }
 

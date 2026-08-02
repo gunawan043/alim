@@ -28,12 +28,12 @@ final class UserFilterService
     /**
      * Return user IDs whose snapshot contains the given permission.
      *
-     * @param string $permission e.g. 'gtk.teacher.assignable'
+     * @param  string  $permission  e.g. 'gtk.teacher.assignable'
      * @return array<int, string>
      */
     public function userIdsWithPermission(string $permission, OrganizationContext $context): array
     {
-        $snapshotModel = new \App\Authorization\Models\PermissionSnapshot();
+        $snapshotModel = new \App\Authorization\Models\PermissionSnapshot;
         $snapshotTable = $snapshotModel->getTable();
 
         // The permissions column is JSON-cast array, so we can use whereJsonContains
@@ -70,6 +70,7 @@ final class UserFilterService
         if ($ids === []) {
             return User::query()->whereRaw('0 = 1')->get();
         }
+
         return User::query()->whereIn('id', $ids)->get();
     }
 
@@ -77,13 +78,14 @@ final class UserFilterService
      * Apply the permission filter to an existing Eloquent query.
      * Returns the same builder with a whereIn applied.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      */
     public function applyToQuery($query, string $permission, OrganizationContext $context): void
     {
         $ids = $this->userIdsWithPermission($permission, $context);
         if ($ids === []) {
             $query->whereRaw('0 = 1');
+
             return;
         }
         $query->whereIn('users.id', $ids);
@@ -102,13 +104,14 @@ final class UserFilterService
         if ($ids === []) {
             return $query->get();
         }
+
         return $query->whereNotIn('users.id', $ids)->get();
     }
 
     /**
      * Apply the inverse permission filter to a query.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      */
     public function applyInverseToQuery($query, string $permission, OrganizationContext $context): void
     {

@@ -125,6 +125,19 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
             $models[] = \App\Models\GTKEmployment::class;
         }
 
+        // Assignment models: changes here affect workspace permissions (wali kelas,
+        // koordinator rumpun, structural) so rebuild the snapshot immediately.
+        $assignmentModels = [
+            \App\Models\HomeroomAssignment::class,
+            \App\Models\CoordinatorAssignment::class,
+            \App\Models\StructuralAssignment::class,
+        ];
+        foreach ($assignmentModels as $assignmentModel) {
+            if (class_exists($assignmentModel)) {
+                $models[] = $assignmentModel;
+            }
+        }
+
         foreach ($models as $modelClass) {
             $modelClass::observe($observer);
         }

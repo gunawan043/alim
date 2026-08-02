@@ -8,12 +8,10 @@ use App\Authorization\Contracts\PermissionCacheManager;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\Contracts\SnapshotResolver as SnapshotResolverContract;
 use App\Authorization\DTO\PermissionBag;
-use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\Events\SnapshotCacheHit;
 use App\Authorization\Events\SnapshotCacheMiss;
 use App\Authorization\Events\SnapshotExpired;
 use App\Authorization\Events\SnapshotLoaded;
-use App\Authorization\Models\PermissionSnapshot;
 use App\Authorization\ValueObjects\OrganizationContext;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
@@ -41,6 +39,7 @@ final class SnapshotResolver implements SnapshotResolverContract
                 $this->events->dispatch(new SnapshotCacheHit($bag, $userId, $scopeKey));
                 $this->events->dispatch(new SnapshotLoaded($bag, $userId, $scopeKey, 'cache'));
             }
+
             return $bag;
         }
 
@@ -63,6 +62,7 @@ final class SnapshotResolver implements SnapshotResolverContract
                     if ($this->emitEvents) {
                         $this->events->dispatch(new SnapshotLoaded($rebuilt, $userId, $scopeKey, 'rebuild'));
                     }
+
                     return $rebuilt;
                 }
 
@@ -72,6 +72,7 @@ final class SnapshotResolver implements SnapshotResolverContract
             if ($this->emitEvents) {
                 $this->events->dispatch(new SnapshotLoaded($stored, $userId, $scopeKey, 'repository'));
             }
+
             return $stored;
         }
 
@@ -81,6 +82,7 @@ final class SnapshotResolver implements SnapshotResolverContract
                 if ($this->emitEvents) {
                     $this->events->dispatch(new SnapshotLoaded($bag, $userId, $scopeKey, 'cold-start'));
                 }
+
                 return $bag;
             } catch (Throwable) {
                 // Fail-closed: return null when rebuild fails.
@@ -116,7 +118,8 @@ final class SnapshotResolver implements SnapshotResolverContract
 
         try {
             $expiresAt = $createdAt->modify("+{$this->snapshotTtl} seconds");
-            return new \DateTimeImmutable() >= $expiresAt;
+
+            return new \DateTimeImmutable >= $expiresAt;
         } catch (Throwable) {
             return false;
         }

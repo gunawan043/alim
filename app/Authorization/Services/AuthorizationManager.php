@@ -22,6 +22,10 @@ final class AuthorizationManager
 
     public function allows(User $user, string $permission, OrganizationContext $context): bool
     {
+        if ($user->isSystemAdmin()) {
+            return $this->succeedAndDispatch($user, $permission, $context);
+        }
+
         $bag = $this->resolveBag($user, $context);
         if ($bag === null) {
             return $this->denyAndDispatch($user, $permission, $context, 'no-snapshot');
@@ -40,11 +44,27 @@ final class AuthorizationManager
     }
 
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      * @return array<string, bool> Map permission => bool
      */
     public function checkMany(User $user, array $permissions, OrganizationContext $context): array
     {
+        if ($user->isSystemAdmin()) {
+            $result = [];
+            foreach ($permissions as $permission) {
+                $result[$permission] = true;
+                if ($this->emitEvents) {
+                    $this->events->dispatch(new AuthorizationSucceeded(
+                        userId: (string) $user->getKey(),
+                        permission: $permission,
+                        scopeKey: (string) $context->toScopeKey(),
+                    ));
+                }
+            }
+
+            return $result;
+        }
+
         $bag = $this->resolveBag($user, $context);
         $result = [];
 
@@ -59,6 +79,7 @@ final class AuthorizationManager
                         reason: 'no-snapshot',
                     ));
                 }
+
                 continue;
             }
 
@@ -107,6 +128,7 @@ final class AuthorizationManager
                 scopeKey: (string) $context->toScopeKey(),
             ));
         }
+
         return true;
     }
 
@@ -120,6 +142,7 @@ final class AuthorizationManager
                 reason: $reason,
             ));
         }
+
         return false;
     }
 }

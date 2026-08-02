@@ -36,29 +36,29 @@ final readonly class AuthorizationBladeCompiler
 
         $parts = array_map('trim', explode(',', $trimmed));
         $parts = array_values(array_filter($parts, static fn ($p) => $p !== ''));
-        $literals = array_map(static fn ($p) => "'" . addslashes($p) . "'", $parts);
+        $literals = array_map(static fn ($p) => "'".addslashes($p)."'", $parts);
 
-        $permissionList = '[' . implode(',', $literals) . ']';
+        $permissionList = '['.implode(',', $literals).']';
 
         $decision = $mode === 'any'
             ? '$__authzDecision = false; '
-              . 'foreach ($__authzPermissions as $__authzPerm) { '
-              . '    if ($__authz->allows($__authzUser, $__authzPerm, $__authzContext)) { '
-              . '        $__authzDecision = true; break; '
-              . '    } '
-              . '}'
+              .'foreach ($__authzPermissions as $__authzPerm) { '
+              .'    if ($__authz->allows($__authzUser, $__authzPerm, $__authzContext)) { '
+              .'        $__authzDecision = true; break; '
+              .'    } '
+              .'}'
             : '$__authzDecision = $__authz->allows($__authzUser, $__authzPermissions[0], $__authzContext);';
 
-        return "<?php "
-            . "\$__authz = app(\\App\\Authorization\\Services\\AuthorizationManager::class); "
-            . "\$__authzUser = auth()->user(); "
-            . "\$__authzContext = app()->bound(\\App\\Authorization\\ValueObjects\\OrganizationContext::class) "
-            . "? app(\\App\\Authorization\\ValueObjects\\OrganizationContext::class) : null; "
-            . "\$__authzPermissions = {$permissionList}; "
-            . "\$__authzDecision = false; "
-            . "if (\$__authzContext instanceof \\App\\Authorization\\ValueObjects\\OrganizationContext && \$__authzUser !== null) { "
-            . "    {$decision} "
-            . "} "
-            . "if (\$__authzDecision): ?>";
+        return '<?php '
+            .'$__authz = app(\\App\\Authorization\\Services\\AuthorizationManager::class); '
+            .'$__authzUser = auth()->user(); '
+            .'$__authzContext = app()->bound(\\App\\Authorization\\ValueObjects\\OrganizationContext::class) '
+            .'? app(\\App\\Authorization\\ValueObjects\\OrganizationContext::class) : null; '
+            ."\$__authzPermissions = {$permissionList}; "
+            .'$__authzDecision = false; '
+            .'if ($__authzContext instanceof \\App\\Authorization\\ValueObjects\\OrganizationContext && $__authzUser !== null) { '
+            ."    {$decision} "
+            .'} '
+            .'if ($__authzDecision): ?>';
     }
 }
