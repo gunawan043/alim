@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\AuditTrail;
+use App\Models\Notification;
 use App\Models\Quotation;
-use App\Models\QuotationItem;
 use App\Models\RfqRequest;
 use App\Models\Vendor;
-use App\Models\Notification;
-use App\Models\AuditTrail;
 use App\Services\Sarpras\StateMachine;
 use Illuminate\Support\Facades\DB;
 
@@ -41,7 +40,7 @@ class QuotationService
     {
         return DB::transaction(function () use ($rfq, $vendor, $userId, $data, $items) {
             $quotation = Quotation::create([
-                'quotation_number' => (new Quotation())->generateNumber(),
+                'quotation_number' => (new Quotation)->generateNumber(),
                 'rfq_id' => $rfq->id,
                 'vendor_id' => $vendor->id,
                 'quotation_date' => $data['quotation_date'] ?? now()->toDateString(),
@@ -76,7 +75,7 @@ class QuotationService
         }
 
         return DB::transaction(function () use ($quotation, $data, $items) {
-            $quotation->update(array_filter($data, fn ($v) => !is_null($v)));
+            $quotation->update(array_filter($data, fn ($v) => ! is_null($v)));
 
             if ($items) {
                 $quotation->items()->delete();
@@ -135,7 +134,7 @@ class QuotationService
 
     public function negotiate(Quotation $quotation, array $adjustments): Quotation
     {
-        if (!in_array($quotation->status, [
+        if (! in_array($quotation->status, [
             Quotation::STATUS_UNDER_REVIEW,
             Quotation::STATUS_SUBMITTED,
         ], true)) {

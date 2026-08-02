@@ -12,39 +12,48 @@ class PurchaseOrderItem extends Model
 
     protected $table = 'purchase_order_items';
 
+    public $timestamps = false;
+
     protected $fillable = [
-        'purchase_order_id', 'sparepart_id', 'description',
-        'quantity', 'received_quantity', 'unit_price',
-        'discount_pct', 'tax_pct', 'line_total',
-        'warehouse_id',
+        'purchase_order_id',
+        'quotation_item_id',
+        'item_name',
+        'specification',
+        'brand',
+        'ordered_quantity',
+        'received_quantity',
+        'unit_price',
+        'line_total',
+        'failed_quantity',
+        'returned_quantity',
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
-        'received_quantity' => 'decimal:2',
+        'ordered_quantity' => 'integer',
+        'received_quantity' => 'integer',
+        'failed_quantity' => 'integer',
+        'returned_quantity' => 'integer',
         'unit_price' => 'decimal:2',
-        'discount_pct' => 'decimal:2',
-        'tax_pct' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];
 
     public function purchaseOrder(): BelongsTo
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
 
-    public function sparepart(): BelongsTo
+    public function quotationItem(): BelongsTo
     {
-        return $this->belongsTo(Sparepart::class);
+        return $this->belongsTo(QuotationItem::class, 'quotation_item_id');
     }
 
-    public function warehouse(): BelongsTo
+    public function outstandingQuantity(): int
     {
-        return $this->belongsTo(Warehouse::class);
+        return max(0, $this->ordered_quantity - $this->received_quantity);
     }
 
-    public function outstandingQuantity(): float
+    public function isFullyReceived(): bool
     {
-        return (float) ((float) $this->quantity - (float) $this->received_quantity);
+        return $this->outstandingQuantity() === 0;
     }
 }

@@ -27,6 +27,7 @@ class QuotationRepository implements QuotationRepositoryInterface
     public function update(Quotation $quotation, array $data): Quotation
     {
         $quotation->update($data);
+
         return $quotation->fresh();
     }
 

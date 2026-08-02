@@ -2,13 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Vendor;
-use App\Models\Quotation;
-use App\Models\RfqRequest;
-use App\Models\RfqItem;
-use App\Models\RfqInvitation;
 use App\Models\AuditTrail;
 use App\Models\Notification;
+use App\Models\Quotation;
+use App\Models\RfqRequest;
+use App\Models\Vendor;
 use App\Services\Sarpras\StateMachine;
 use Illuminate\Support\Facades\DB;
 
@@ -44,7 +42,7 @@ class RfqService
     {
         return DB::transaction(function () use ($userId, $data, $items) {
             $rfq = RfqRequest::create([
-                'rfq_number' => (new RfqRequest())->generateNumber(),
+                'rfq_number' => (new RfqRequest)->generateNumber(),
                 'title' => $data['title'] ?? null,
                 'description' => $data['description'] ?? null,
                 'quotation_deadline' => $data['quotation_deadline'] ?? null,
@@ -162,7 +160,7 @@ class RfqService
 
     public function close(RfqRequest $rfq): RfqRequest
     {
-        if (!in_array($rfq->status, [
+        if (! in_array($rfq->status, [
             RfqRequest::STATUS_DRAFT,
             RfqRequest::STATUS_PUBLISHED,
             RfqRequest::STATUS_AWAITING_QUOTATIONS,
@@ -202,7 +200,7 @@ class RfqService
                 ['status' => 'invited']
             );
 
-            if (!$invitation->wasRecentlyCreated) {
+            if (! $invitation->wasRecentlyCreated) {
                 $invitation->update(['status' => 'invited']);
             }
 

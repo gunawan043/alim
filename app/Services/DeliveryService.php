@@ -6,7 +6,6 @@ use App\Models\AuditTrail;
 use App\Models\DeliveryTracking;
 use App\Models\PurchaseOrder;
 use App\Services\Sarpras\StateMachine;
-use Illuminate\Support\Facades\DB;
 
 class DeliveryService
 {
@@ -41,7 +40,7 @@ class DeliveryService
     {
         $delivery = $po->deliveries()->create([
             'tracking_number' => $data['tracking_number']
-                ?? ('TRK-' . strtoupper(substr(md5(uniqid('', true)), 0, 12))),
+                ?? ('TRK-'.strtoupper(substr(md5(uniqid('', true)), 0, 12))),
             'courier' => $data['courier'] ?? null,
             'service_type' => $data['service_type'] ?? null,
             'dispatched_date' => $data['dispatched_date'] ?? now()->toDateString(),
@@ -70,7 +69,7 @@ class DeliveryService
             'status' => $status,
             'current_location' => $location ?? $delivery->current_location,
             'delivery_notes' => $notes
-                ? ($delivery->delivery_notes . "\n[{$status}] {$notes}")
+                ? ($delivery->delivery_notes."\n[{$status}] {$notes}")
                 : $delivery->delivery_notes,
         ]);
 
@@ -111,7 +110,7 @@ class DeliveryService
             'received_at' => now(),
             'actual_arrival' => now(),
             'delivery_notes' => $notes
-                ? ($delivery->delivery_notes . "\n[Delivered] {$notes}")
+                ? ($delivery->delivery_notes."\n[Delivered] {$notes}")
                 : $delivery->delivery_notes,
         ]);
 
@@ -133,7 +132,7 @@ class DeliveryService
 
         $delivery->update([
             'status' => DeliveryTracking::STATUS_FAILED,
-            'delivery_notes' => $delivery->delivery_notes . "\n[Failed] {$reason}",
+            'delivery_notes' => $delivery->delivery_notes."\n[Failed] {$reason}",
         ]);
 
         $delivery->addTrackingEvent('Delivery failed', ['reason' => $reason]);
@@ -151,7 +150,7 @@ class DeliveryService
         $delivery->update([
             'status' => DeliveryTracking::STATUS_RETURNED,
             'delivery_notes' => $reason
-                ? ($delivery->delivery_notes . "\n[Returned] {$reason}")
+                ? ($delivery->delivery_notes."\n[Returned] {$reason}")
                 : $delivery->delivery_notes,
         ]);
 

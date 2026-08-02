@@ -32,6 +32,7 @@ class VendorRepository implements VendorRepositoryInterface
     public function update(Vendor $vendor, array $data): Vendor
     {
         $vendor->update($data);
+
         return $vendor->fresh();
     }
 
@@ -56,8 +57,8 @@ class VendorRepository implements VendorRepositoryInterface
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 

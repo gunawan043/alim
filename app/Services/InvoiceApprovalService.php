@@ -38,7 +38,7 @@ class InvoiceApprovalService
 
     public function create(int $userId, int $vendorId, array $data): InvoiceApproval
     {
-        $invoice = new InvoiceApproval();
+        $invoice = new InvoiceApproval;
         $invoice->setAttribute('approval_number', $invoice->generateNumber());
         $invoice->setAttribute('vendor_id', $vendorId);
         $invoice->setAttribute('purchase_order_id', $data['purchase_order_id'] ?? null);
@@ -241,7 +241,7 @@ class InvoiceApprovalService
             ]);
 
             $this->audit($invoice, 'all_approved');
-        } elseif ($steps->some(fn ($s) => $s->status === InvoiceApprovalStep::STATUS_APPROVED) && !$allApproved) {
+        } elseif ($steps->some(fn ($s) => $s->status === InvoiceApprovalStep::STATUS_APPROVED) && ! $allApproved) {
             $invoice->update([
                 'status' => InvoiceApproval::STATUS_PARTIALLY_APPROVED,
             ]);

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\AuditTrail;
 use App\Models\DeliveryTracking;
 use App\Models\GoodsReceipt;
-use App\Models\GoodsReceiptItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Services\Sarpras\StateMachine;
@@ -43,7 +42,7 @@ class GoodsReceiptService
     {
         return DB::transaction(function () use ($po, $userId, $delivery, $data, $items) {
             $gr = GoodsReceipt::create([
-                'gr_number' => (new GoodsReceipt())->generateNumber(),
+                'gr_number' => (new GoodsReceipt)->generateNumber(),
                 'purchase_order_id' => $po->id,
                 'delivery_id' => $delivery?->id,
                 'receipt_date' => $data['receipt_date'] ?? now()->toDateString(),
@@ -127,7 +126,7 @@ class GoodsReceiptService
 
         $gr->update([
             'status' => GoodsReceipt::STATUS_REJECTED,
-            'notes' => $gr->notes . "\n[Rejected] {$reason}",
+            'notes' => $gr->notes."\n[Rejected] {$reason}",
         ]);
 
         $this->audit($gr, 'rejected', ['reason' => $reason]);

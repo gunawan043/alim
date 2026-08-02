@@ -8,7 +8,6 @@ use App\Models\Notification;
 use App\Models\PurchaseOrder;
 use App\Models\QualityCheck;
 use App\Services\Sarpras\StateMachine;
-use Illuminate\Support\Facades\DB;
 
 class QualityCheckService
 {
@@ -36,7 +35,7 @@ class QualityCheckService
         array $data = []
     ): QualityCheck {
         $qc = QualityCheck::create([
-            'qc_number' => (new QualityCheck())->generateNumber(),
+            'qc_number' => (new QualityCheck)->generateNumber(),
             'purchase_order_id' => $po->id,
             'goods_receipt_id' => $gr?->id,
             'status' => QualityCheck::STATUS_PENDING,
@@ -70,7 +69,7 @@ class QualityCheckService
 
     public function recordResults(QualityCheck $qc, array $results): QualityCheck
     {
-        if (!in_array($qc->status, [QualityCheck::STATUS_IN_PROGRESS], true)) {
+        if (! in_array($qc->status, [QualityCheck::STATUS_IN_PROGRESS], true)) {
             throw new \InvalidArgumentException('Cannot record results in current state.');
         }
 
@@ -96,7 +95,7 @@ class QualityCheckService
         $qc->update([
             'status' => QualityCheck::STATUS_PASSED,
             'completed_at' => now(),
-            'notes' => $notes ? ($qc->notes . "\n[Pass] {$notes}") : $qc->notes,
+            'notes' => $notes ? ($qc->notes."\n[Pass] {$notes}") : $qc->notes,
         ]);
 
         $this->notifyCompleted($qc, 'passed');
@@ -145,7 +144,7 @@ class QualityCheckService
 
         $qc->update([
             'status' => QualityCheck::STATUS_CANCELLED,
-            'notes' => $qc->notes . "\n[Cancelled] {$reason}",
+            'notes' => $qc->notes."\n[Cancelled] {$reason}",
         ]);
 
         $this->audit($qc, 'cancelled', ['reason' => $reason]);
@@ -181,7 +180,7 @@ class QualityCheckService
 
     private function notifyCompleted(QualityCheck $qc, string $result): void
     {
-        if (!$qc->purchaseOrder) {
+        if (! $qc->purchaseOrder) {
             return;
         }
 

@@ -3,9 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditTrail;
-use App\Models\Notification;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use App\Models\Quotation;
 use App\Models\Vendor;
 use App\Services\Sarpras\StateMachine;
@@ -76,7 +74,7 @@ class PurchaseOrderService
     ): PurchaseOrder {
         return DB::transaction(function () use ($userId, $vendor, $quotation, $data, $items) {
             $po = PurchaseOrder::create([
-                'po_number' => (new PurchaseOrder())->generateNumber(),
+                'po_number' => (new PurchaseOrder)->generateNumber(),
                 'vendor_id' => $vendor->id,
                 'rfq_id' => $quotation?->rfq_id,
                 'quotation_id' => $quotation?->id,
@@ -128,7 +126,7 @@ class PurchaseOrderService
         }
 
         return DB::transaction(function () use ($po, $data, $items) {
-            $po->update(array_filter($data, fn ($v) => !is_null($v)));
+            $po->update(array_filter($data, fn ($v) => ! is_null($v)));
 
             if ($items) {
                 $po->items()->delete();
@@ -152,7 +150,7 @@ class PurchaseOrderService
             'status' => PurchaseOrder::STATUS_SENT,
             'sent_at' => now(),
             'special_instructions' => $notes
-                ? ($po->special_instructions . "\n[Sent] " . $notes)
+                ? ($po->special_instructions."\n[Sent] ".$notes)
                 : $po->special_instructions,
         ]);
 

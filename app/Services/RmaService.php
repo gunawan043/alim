@@ -46,7 +46,7 @@ class RmaService
 
     public function create(PurchaseOrder $po, int $userId, string $type, array $data): Rma
     {
-        $rma = new Rma();
+        $rma = new Rma;
         $rma->setAttribute('rma_number', $rma->generateNumber());
         $rma->setAttribute('purchase_order_id', $po->id);
         $rma->setAttribute('vendor_id', $po->vendor_id);

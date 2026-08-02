@@ -27,6 +27,7 @@ class RfqRepository implements RfqRepositoryInterface
     public function update(Rfq $rfq, array $data): Rfq
     {
         $rfq->update($data);
+
         return $rfq->fresh();
     }
 

@@ -27,6 +27,7 @@ class InvoiceApprovalRepository implements InvoiceApprovalRepositoryInterface
     public function update(InvoiceApproval $invoice, array $data): InvoiceApproval
     {
         $invoice->update($data);
+
         return $invoice->fresh();
     }
 

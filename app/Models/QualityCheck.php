@@ -41,10 +41,15 @@ class QualityCheck extends Model
     ];
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_PASSED = 'passed';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_PARTIALLY_PASSED = 'partially_passed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const ALLOWED_STATUSES = [

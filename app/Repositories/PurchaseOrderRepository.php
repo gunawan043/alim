@@ -27,6 +27,7 @@ class PurchaseOrderRepository implements PurchaseOrderRepositoryInterface
     public function update(PurchaseOrder $po, array $data): PurchaseOrder
     {
         $po->update($data);
+
         return $po->fresh();
     }
 

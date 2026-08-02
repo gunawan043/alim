@@ -27,6 +27,7 @@ class GoodsReceiptRepository implements GoodsReceiptRepositoryInterface
     public function update(GoodsReceipt $gr, array $data): GoodsReceipt
     {
         $gr->update($data);
+
         return $gr->fresh();
     }
 
