@@ -57,6 +57,7 @@ class PhotoDocumentationService
                 $uploaded[] = $this->upload($context, $file, $meta);
             }
         }
+
         return $uploaded;
     }
 
@@ -67,6 +68,7 @@ class PhotoDocumentationService
         } catch (\Throwable $e) {
             Log::warning("Could not delete file {$photo->file_path}: ".$e->getMessage());
         }
+
         return $photo->delete();
     }
 
@@ -96,12 +98,14 @@ class PhotoDocumentationService
         if (method_exists($context, 'asset') && $context->asset) {
             return $context->asset->getKey();
         }
+
         return null;
     }
 
     protected function diskPath(Model $context): string
     {
         $type = strtolower(class_basename($context));
+
         return "sarpras/photos/{$type}/".now()->format('Y/m');
     }
 }

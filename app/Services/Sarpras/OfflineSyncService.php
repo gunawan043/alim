@@ -3,11 +3,8 @@
 namespace App\Services\Sarpras;
 
 use App\Models\Asset;
-use App\Models\AssetEventLog;
 use App\Models\AssetMovement;
-use App\Models\StockOpnameSession;
 use App\Models\WorkOrder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -167,6 +164,7 @@ class OfflineSyncService
                         'index' => $idx,
                         'reasons' => $validator->errors()->all(),
                     ];
+
                     continue;
                 }
 
@@ -182,6 +180,7 @@ class OfflineSyncService
                         'index' => $idx,
                         'reasons' => ['duplicate_or_older_sync_token'],
                     ];
+
                     continue;
                 }
 
@@ -205,6 +204,7 @@ class OfflineSyncService
                     };
                 } catch (\Throwable $e) {
                     $rejected[] = ['index' => $idx, 'reasons' => [$e->getMessage()]];
+
                     continue;
                 }
 
@@ -245,7 +245,7 @@ class OfflineSyncService
         if ($model) {
             $context = $model::where('id', $contextId)->first();
             if ($context) {
-                $photo = new \App\Models\AssetPhoto();
+                $photo = new \App\Models\AssetPhoto;
                 $photo->attributes = [
                     'id' => (string) Str::uuid(),
                     'asset_id' => $assetId,
@@ -301,7 +301,7 @@ class OfflineSyncService
         $payload = $item['payload'];
         $movement = AssetMovement::where('id', $payload['context_id'])->first();
         if ($movement) {
-            $photo = new \App\Models\AssetPhoto();
+            $photo = new \App\Models\AssetPhoto;
             $photo->attributes = [
                 'id' => (string) Str::uuid(),
                 'asset_id' => $movement->asset_id,
@@ -327,6 +327,7 @@ class OfflineSyncService
     {
         $ts = time();
         $salt = Str::random(8);
+
         return hash('sha256', $ts.':'.$salt);
     }
 
@@ -351,6 +352,7 @@ class OfflineSyncService
     {
         // Deterministic: sha256(atomic_id:epoch_ts)
         $ts = $asset->updated_at?->timestamp ?? $asset->created_at?->timestamp ?? time();
+
         return hash('sha256', $asset->id.':'.$ts);
     }
 
@@ -371,6 +373,7 @@ class OfflineSyncService
     protected function computeMovementToken(AssetMovement $m): string
     {
         $ts = $m->updated_at?->timestamp ?? $m->created_at?->timestamp ?? time();
+
         return hash('sha256', $m->id.':'.$ts);
     }
 
@@ -392,6 +395,7 @@ class OfflineSyncService
     protected function computeOrderToken(WorkOrder $o): string
     {
         $ts = $o->updated_at?->timestamp ?? $o->created_at?->timestamp ?? time();
+
         return hash('sha256', $o->id.':'.$ts);
     }
 }

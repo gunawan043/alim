@@ -71,7 +71,7 @@
                 <a href="{{ route('sarpass.scan.start', $asset->id) }}" class="btn btn-outline-info w-100 mb-2">
                     <i class="ri-qr-scan-line me-1"></i> Scan QR
                 </a>
-                <a href="{{ route('sarpras.repairs.create', $asset->id) }}" class="btn btn-warning w-100 mb-2">
+                <a href="{{ route('sarpras.divisi.report_form', $asset->id) }}" class="btn btn-warning w-100 mb-2">
                     <i class="ri-tools-line me-1"></i> Buat Laporan Kerusakan
                 </a>
             </div>

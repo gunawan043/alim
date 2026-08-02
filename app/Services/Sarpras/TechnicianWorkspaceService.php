@@ -2,18 +2,13 @@
 
 namespace App\Services\Sarpras;
 
-use App\Models\Asset;
-use App\Models\AssetHealthMetric;
-use App\Models\RepairRequest;
 use App\Models\TechnicianAvailability;
-use App\Models\TechnicianSkill;
 use App\Models\User;
 use App\Models\WorkOrder;
-use App\Models\WorkOrderProgressNote;
 use App\Models\WorkOrderPauseEvent;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\WorkOrderProgressNote;
 use App\Services\SarprasCacheInvalidator;
+use Illuminate\Support\Facades\DB;
 
 class TechnicianWorkspaceService
 {
@@ -251,6 +246,7 @@ class TechnicianWorkspaceService
         if (! $instance) {
             return null;
         }
+
         return [
             'id' => $instance->id,
             'status' => $instance->status,

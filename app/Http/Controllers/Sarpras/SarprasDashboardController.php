@@ -4,16 +4,15 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Models\Asset;
 use App\Models\AssetBuilding;
-use App\Models\AssetRoom;
 use App\Models\AssetLoan;
 use App\Models\AssetMaintenanceSchedule;
-use App\Models\AssetMaintenanceLog;
-use App\Models\RoomBooking;
+use App\Models\AssetRoom;
 use App\Models\ProcurementRequest;
+use App\Models\RoomBooking;
 use App\Models\School;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
 
 class SarprasDashboardController extends SarprasBaseController
 {
@@ -21,7 +20,6 @@ class SarprasDashboardController extends SarprasBaseController
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
-
 
     public function index(Request $request)
     {
@@ -60,14 +58,14 @@ class SarprasDashboardController extends SarprasBaseController
         // AKTIVITAS TERAKHIR (audit log-style)
         // ===================================================================
         $recentAssets = Asset::query()
-            ->when($filterSchoolId, fn($q) => $q->where('school_id', $filterSchoolId))
+            ->when($filterSchoolId, fn ($q) => $q->where('school_id', $filterSchoolId))
             ->where('is_active', true)
             ->orderBy('updated_at', 'desc')
             ->limit(5)
             ->get();
 
         $recentLoans = AssetLoan::query()
-            ->when($filterSchoolId, fn($q) => $q->where('school_id', $filterSchoolId))
+            ->when($filterSchoolId, fn ($q) => $q->where('school_id', $filterSchoolId))
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->with('asset', 'borrower')

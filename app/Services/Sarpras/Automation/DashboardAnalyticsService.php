@@ -3,13 +3,10 @@
 namespace App\Services\Sarpras\Automation;
 
 use App\Models\Asset;
-use App\Models\AssetCriticality;
 use App\Models\AssetHealthMetric;
 use App\Models\MaintenanceHistory;
-use App\Models\RepairRequest;
 use App\Models\SlaTracker;
 use App\Models\TechnicianAvailability;
-use App\Models\WorkOrder;
 use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsService

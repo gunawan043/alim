@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Gate;
 abstract class SarprasBaseController extends Controller
 {
     use ApiResponse;
+
     public function __construct()
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
@@ -29,6 +30,7 @@ abstract class SarprasBaseController extends Controller
         if (! $user) {
             return false;
         }
+
         return Gate::forUser($user)->allows('sarpras-view-all');
     }
 
@@ -42,6 +44,7 @@ abstract class SarprasBaseController extends Controller
             return true;
         }
         $schoolId = $request->attributes->get('schoolContextId');
+
         return ! $schoolId || ($resource->{$schoolField} ?? null) === $schoolId;
     }
 
@@ -189,4 +192,3 @@ abstract class SarprasBaseController extends Controller
         app(\App\Services\SarprasCacheInvalidator::class)->invalidateAll();
     }
 }
-

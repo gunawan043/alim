@@ -23,8 +23,7 @@ class SarprasAsetController extends SarprasBaseController
     public function __construct(
         public AssetEventLogger $eventLogger,
         public AssetStatusTransitionService $transition,
-    )
-    {
+    ) {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
 
@@ -329,6 +328,7 @@ class SarprasAsetController extends SarprasBaseController
 
         $photo = DB::transaction(function () use ($request, $aset) {
             $path = $request->file('photo')->store('assets/photos', 'public');
+
             return AssetPhoto::create([
                 'asset_id' => $aset->id,
                 'photo_path' => $path,

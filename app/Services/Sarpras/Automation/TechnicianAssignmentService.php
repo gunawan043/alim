@@ -2,10 +2,8 @@
 
 namespace App\Services\Sarpras\Automation;
 
-use App\Models\TechnicianAvailability;
-use App\Models\TechnicianSkill;
-use App\Models\WorkOrder;
 use App\Models\User;
+use App\Models\WorkOrder;
 
 class TechnicianAssignmentService
 {
@@ -43,6 +41,7 @@ class TechnicianAssignmentService
         }
 
         usort($scored, fn ($a, $b) => $b['score'] <=> $a['score']);
+
         return array_slice($scored, 0, $limit);
     }
 
@@ -58,7 +57,7 @@ class TechnicianAssignmentService
         $skill = $user->technicianSkills->first();
         if ($skill) {
             $score += $skill->proficiencyScore() * 0.5;
-            $reasons[] = "Skill {$skill->proficiency}" . ($skill->is_certified ? ' (certified)' : '');
+            $reasons[] = "Skill {$skill->proficiency}".($skill->is_certified ? ' (certified)' : '');
         } else {
             $score += 5;
             $reasons[] = 'No skill record — fallback';
@@ -86,6 +85,7 @@ class TechnicianAssignmentService
         }
 
         $score = min(100, max(0, $score));
+
         return ['score' => $score, 'reasons' => $reasons];
     }
 
@@ -101,6 +101,7 @@ class TechnicianAssignmentService
         $top = $ranked[0];
         $order->assigned_to = $top['user_id'];
         $order->save();
+
         return $top['user_id'];
     }
 }

@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class AssetPassportController extends SarprasBaseController
 {
-    public function __construct(public AssetPassportService $passportService)
-    {
-    }
+    public function __construct(public AssetPassportService $passportService) {}
 
     /**
      * Asset Passport — full lifecycle view for a single asset.
@@ -44,6 +42,34 @@ class AssetPassportController extends SarprasBaseController
         $this->authorizeAssetAccess($asset, $request);
 
         return $this->ok($this->passportService->buildFull($asset));
+    }
+
+    /**
+     * Passport 2.0 — adds TCO + Repair-vs-Replace + predictive insights.
+     */
+    public function showV2(Request $request, string $uuid)
+    {
+        $asset = Asset::with([
+            'room', 'room.building', 'room.school',
+            'category', 'creator', 'workUnit',
+            'photos', 'healthMetric',
+        ])->findOrFail($uuid);
+        $this->authorizeAssetAccess($asset, $request);
+
+        $passport = $this->passportService->buildPassportV2($asset);
+
+        return view('sarpras.passport.v2', [
+            'asset' => $asset,
+            'passport' => $passport,
+        ]);
+    }
+
+    public function jsonV2(Request $request, string $uuid)
+    {
+        $asset = Asset::findOrFail($uuid);
+        $this->authorizeAssetAccess($asset, $request);
+
+        return $this->ok($this->passportService->buildPassportV2($asset));
     }
 
     /**

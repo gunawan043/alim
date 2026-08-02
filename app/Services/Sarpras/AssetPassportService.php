@@ -58,6 +58,7 @@ class AssetPassportService
         $data['photos'] = $this->buildPhotos($asset);
         $data['spareparts_used'] = $this->buildSparepartHistory($asset);
         $data['technician_performance'] = $this->buildTechnicianNotes($asset, $related = $this->fetchRelations($asset));
+
         return $data;
     }
 
@@ -351,12 +352,18 @@ class AssetPassportService
 
         // Deduct for high repair costs
         $totalRepairCost = (float) $costs->sum('amount');
-        if ($totalRepairCost > 10_000_000) $score -= 20;
-        elseif ($totalRepairCost > 5_000_000) $score -= 15;
-        elseif ($totalRepairCost > 1_000_000) $score -= 10;
+        if ($totalRepairCost > 10_000_000) {
+            $score -= 20;
+        } elseif ($totalRepairCost > 5_000_000) {
+            $score -= 15;
+        } elseif ($totalRepairCost > 1_000_000) {
+            $score -= 10;
+        }
 
         // Bonus for regular maintenance
-        if ($maints->count() > 0) $score += 5;
+        if ($maints->count() > 0) {
+            $score += 5;
+        }
 
         // Condition penalty
         $conditionPenalty = match ($asset->condition) {
@@ -501,9 +508,10 @@ class AssetPassportService
 
     protected function buildLoanHistory(Asset $asset): array
     {
-        if (!class_exists('App\\Models\\AssetLoan')) {
+        if (! class_exists('App\\Models\\AssetLoan')) {
             return [];
         }
+
         return \App\Models\AssetLoan::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
@@ -513,9 +521,10 @@ class AssetPassportService
 
     protected function buildTransferHistory(Asset $asset): array
     {
-        if (!class_exists('App\\Models\\AssetTransfer')) {
+        if (! class_exists('App\\Models\\AssetTransfer')) {
             return [];
         }
+
         return \App\Models\AssetTransfer::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
@@ -525,9 +534,10 @@ class AssetPassportService
 
     protected function buildAuditHistory(Asset $asset): array
     {
-        if (!class_exists('App\\Models\\AssetAudit')) {
+        if (! class_exists('App\\Models\\AssetAudit')) {
             return [];
         }
+
         return \App\Models\AssetAudit::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
@@ -537,9 +547,10 @@ class AssetPassportService
 
     protected function buildStockOpnameHistory(Asset $asset): array
     {
-        if (!class_exists('App\\Models\\StockOpnameItem')) {
+        if (! class_exists('App\\Models\\StockOpnameItem')) {
             return [];
         }
+
         return \App\Models\StockOpnameItem::with('session')
             ->where('asset_id', $asset->id)
             ->orderByDesc('observed_at')
@@ -576,7 +587,10 @@ class AssetPassportService
 
     protected function buildPhotos(Asset $asset): array
     {
-        if (! $asset->photo_path) return [];
+        if (! $asset->photo_path) {
+            return [];
+        }
+
         return [
             ['path' => $asset->photo_path, 'label' => 'Primary', 'is_primary' => true],
         ];
@@ -756,5 +770,30 @@ class AssetPassportService
         }
 
         return $actions;
+    }
+
+    /**
+     * Passport 2.0 — adds Total Cost of Ownership, Repair vs Replace,
+     * and predictive maintenance insights on top of the standard passport.
+     */
+    public function buildPassportV2(Asset $asset): array
+    {
+        $base = $this->getForAsset($asset);
+
+        $tcoService = app(TcoService::class);
+        $rvrService = app(RepairVsReplaceService::class);
+
+        $tco = $tcoService->build($asset);
+        $rvr = $rvrService->evaluate($asset);
+        $predictive = $this->getPredictiveMaintenance($asset->school_id);
+        $ownPredictive = collect($predictive)->firstWhere('code', $asset->asset_code);
+
+        $base['tco'] = $tco;
+        $base['repair_vs_replace'] = $rvr;
+        $base['predictive'] = $ownPredictive;
+        $base['passport_version'] = '2.0';
+        $base['generated_at'] = now()->toIso8601String();
+
+        return $base;
     }
 }

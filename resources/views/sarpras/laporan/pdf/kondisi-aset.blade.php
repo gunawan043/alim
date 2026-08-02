@@ -31,7 +31,7 @@ tr:nth-child(even) { background: #fafafa; }
 <body>
 <div class="header">
     <h2>LAPORAN KONDISI ASET</h2>
-    <p>{{ config('app.name') ?? 'ALIM PUSTIK' }} — Dicetak {{ date('d F Y, H:i') }}</p>
+    <p>{{ config('app.name') ?? 'ALIM Alim' }} — Dicetak {{ date('d F Y, H:i') }}</p>
 </div>
 
 <div class="summary">

@@ -3,7 +3,6 @@
 namespace App\Services\Sarpras\Automation;
 
 use App\Models\Asset;
-use App\Models\AssetCriticality;
 use App\Models\AssetHealthMetric;
 use App\Models\MaintenanceHistory;
 use App\Models\RepairCostHistory;
@@ -78,6 +77,7 @@ class AssetHealthService
                 $ended = $row->ended_at ? Carbon::parse($row->ended_at) : now();
                 $totalMinutes += $started->diffInMinutes($ended);
             }
+
             return $totalMinutes;
         } catch (\Throwable $e) {
             return 0;
@@ -96,6 +96,7 @@ class AssetHealthService
                 $count++;
             }
         });
+
         return $count;
     }
 

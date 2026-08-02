@@ -7,9 +7,9 @@ use App\Models\AssetAudit;
 use App\Models\AuditDiscrepancy;
 use App\Models\AuditSession;
 use App\Models\User;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\SarprasCacheInvalidator;
 
 class AuditorWorkspaceService
 {
@@ -184,6 +184,7 @@ class AuditorWorkspaceService
     {
         $year = now()->year;
         $seq = AuditSession::whereYear('created_at', $year)->count() + 1;
+
         return sprintf('AUD-%d-%04d', $year, $seq);
     }
 }

@@ -5,10 +5,12 @@ namespace App\Services\Sarpras;
 use App\Models\Asset;
 use App\Models\DivisionBudget;
 use App\Models\DivisionInventory;
+use App\Models\RepairRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
-use Illuminate\Support\Facades\DB;
 use App\Services\SarprasCacheInvalidator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DivisionPortalService
 {
@@ -93,12 +95,12 @@ class DivisionPortalService
                 ->first();
 
             if (! $budget) {
-                throw new \DomainException("No budget allocated for fiscal year ".now()->year);
+                throw new \DomainException('No budget allocated for fiscal year '.now()->year);
             }
 
             $estimatedCost = (float) ($payload['estimated_cost'] ?? 0);
             if ($budget->remaining_amount < $estimatedCost) {
-                throw new \DomainException("Insufficient budget. Remaining: ".number_format($budget->remaining_amount, 0));
+                throw new \DomainException('Insufficient budget. Remaining: '.number_format($budget->remaining_amount, 0));
             }
 
             // 2. Reserve budget for the request.
@@ -130,7 +132,7 @@ class DivisionPortalService
 
         if ($budget->remaining_amount < $amount) {
             throw new \DomainException(
-                "Insufficient remaining budget. Available: ".number_format($budget->remaining_amount, 0)
+                'Insufficient remaining budget. Available: '.number_format($budget->remaining_amount, 0)
             );
         }
 
@@ -154,5 +156,132 @@ class DivisionPortalService
         $this->cacheInvalidator->invalidate('portfolio.'.$divisionId);
 
         return $budget->fresh();
+    }
+
+    public function overview(string $divisionId): array
+    {
+        $assets = Asset::where('work_unit_id', $divisionId)
+            ->with('category', 'room', 'healthMetric')
+            ->get();
+
+        $totalAssets = $assets->count();
+        $good = $assets->filter(fn ($a) => in_array($a->condition, ['good', 'baik'], true))->count();
+        $maintenance = $assets->filter(fn ($a) => in_array($a->condition, ['fair', 'maintenance'], true))->count();
+        $broken = $assets->filter(fn ($a) => in_array($a->condition, ['poor', 'broken', 'rusak'], true))->count();
+
+        $pendingWOs = WorkOrder::whereHas('asset', fn ($q) => $q->where('work_unit_id', $divisionId))
+            ->whereIn('status', ['assigned', 'in_progress', 'paused', 'pending'])
+            ->with(['asset', 'technician.profile'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $recentAssets = $assets->sortByDesc('created_at')->take(10)->values();
+
+        $openRepairs = RepairRequest::whereHas('asset', fn ($q) => $q->where('work_unit_id', $divisionId))
+            ->whereIn('status', [
+                RepairRequest::STATUS_VERIFICATION_PENDING,
+                RepairRequest::STATUS_VERIFICATION_IN_PROGRESS,
+                RepairRequest::STATUS_APPROVAL_PENDING,
+                RepairRequest::STATUS_EXECUTION_PENDING,
+                RepairRequest::STATUS_STARTED,
+            ])
+            ->count();
+
+        return [
+            'stats' => [
+                'total_assets' => $totalAssets,
+                'good' => $good,
+                'maintenance' => $maintenance,
+                'broken' => $broken,
+            ],
+            'recentAssets' => $recentAssets,
+            'pendingWOs' => $pendingWOs,
+            'slaAlerts' => $this->buildSlaAlerts($pendingWOs),
+            'openRepairs' => $openRepairs,
+        ];
+    }
+
+    public function history(string $divisionId): array
+    {
+        $repairIds = WorkOrder::whereHas('asset', fn ($q) => $q->where('work_unit_id', $divisionId))
+            ->pluck('repair_request_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $repairs = RepairRequest::with(['asset', 'workOrders'])
+            ->whereIn('id', $repairIds)
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        return [
+            'repairs' => $repairs->map(fn ($r) => [
+                'id' => $r->id,
+                'request_number' => $r->request_number,
+                'asset_name' => $r->asset?->asset_name,
+                'asset_code' => $r->asset?->asset_code,
+                'title' => $r->title,
+                'status' => $r->status,
+                'priority' => $r->priority,
+                'reported_at' => $r->created_at?->toDateTimeString(),
+                'completed_at' => $r->completed_at?->toDateTimeString(),
+                'work_orders_count' => $r->workOrders->count(),
+            ])->all(),
+        ];
+    }
+
+    public function notifyPicOfNewIssue(RepairRequest $repair): void
+    {
+        $asset = $repair->asset;
+        if (! $asset) {
+            return;
+        }
+
+        $picUser = $this->resolvePicUser($asset);
+
+        Log::info('sarpras.repair.reported', [
+            'repair_id' => $repair->id,
+            'request_number' => $repair->request_number,
+            'asset_id' => $asset->id,
+            'asset_code' => $asset->asset_code,
+            'reporter_id' => $repair->reported_by,
+            'priority' => $repair->priority,
+            'pic_user_id' => $picUser?->id,
+        ]);
+    }
+
+    protected function resolvePicUser(Asset $asset): ?User
+    {
+        $pic = trim((string) ($asset->pic ?? ''));
+        if ($pic === '') {
+            return null;
+        }
+
+        if (is_numeric($pic)) {
+            return User::find((int) $pic);
+        }
+
+        return User::where('email', $pic)->first()
+            ?? User::where('name', 'like', "%{$pic}%")->first();
+    }
+
+    protected function buildSlaAlerts($pendingWOs): array
+    {
+        $alerts = [];
+        foreach ($pendingWOs as $wo) {
+            if (! $wo->sla_tracker || ! $wo->sla_tracker->breached) {
+                continue;
+            }
+            $alerts[] = [
+                'type' => 'breached',
+                'title' => 'SLA Breached: '.$wo->wo_number,
+                'message' => "Aset {$wo->asset?->asset_name} melewati batas waktu penyelesaian.",
+                'link' => route('sarpras.teknisi.show', $wo->id),
+            ];
+        }
+
+        return $alerts;
     }
 }

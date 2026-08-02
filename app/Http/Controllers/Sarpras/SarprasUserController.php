@@ -112,7 +112,7 @@ class SarprasUserController extends SarprasBaseController
         $room = AssetRoom::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if (!$this->canAccess($request, $room, 'school_id')) {
+        if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
         }
 
@@ -129,7 +129,7 @@ class SarprasUserController extends SarprasBaseController
         $room = AssetRoom::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if (!$this->canAccess($request, $room, 'school_id')) {
+        if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
         }
         if ($room->assets()->count() > 0) {
@@ -219,7 +219,7 @@ class SarprasUserController extends SarprasBaseController
             ->where('is_active', true)
             ->findOrFail($id);
 
-        if (!$this->canAccess($request, $room, 'school_id')) {
+        if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
         }
 

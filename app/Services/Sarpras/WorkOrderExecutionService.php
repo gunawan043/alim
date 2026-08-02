@@ -2,14 +2,13 @@
 
 namespace App\Services\Sarpras;
 
-use App\Models\Asset;
+use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderPauseEvent;
 use App\Models\WorkOrderProgressNote;
-use App\Models\User;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\SarprasCacheInvalidator;
 
 /**
  * Delegates the low-level work order lifecycle to the service so controllers remain thin.
@@ -185,6 +184,7 @@ class WorkOrderExecutionService
         if (! $instance) {
             return null;
         }
+
         return [
             'id' => $instance->id,
             'status' => $instance->status,

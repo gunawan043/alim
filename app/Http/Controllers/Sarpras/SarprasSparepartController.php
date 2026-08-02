@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Sarpras;
 use App\Http\Controllers\Controller;
 use App\Models\Sparepart;
 use App\Models\SparepartCategory;
-use App\Models\Warehouse;
-use App\Models\Vendor;
 use App\Models\Unit;
+use App\Models\Vendor;
+use App\Models\Warehouse;
 use App\Services\Sarpras\AutomationSuggestionService;
 use App\Services\Sarpras\StockManagementService;
 use Illuminate\Http\Request;
@@ -28,8 +28,8 @@ class SarprasSparepartController extends Controller
             $q = $request->input('q');
             $query->where(function ($w) use ($q) {
                 $w->where('part_number', 'like', "%{$q}%")
-                  ->orWhere('name', 'like', "%{$q}%")
-                  ->orWhere('barcode', 'like', "%{$q}%");
+                    ->orWhere('name', 'like', "%{$q}%")
+                    ->orWhere('barcode', 'like', "%{$q}%");
             });
         }
 
@@ -133,7 +133,7 @@ class SarprasSparepartController extends Controller
     public function update(Request $request, Sparepart $sparepart)
     {
         $validated = $request->validate([
-            'part_number' => 'required|string|max:100|unique:spareparts,part_number,' . $sparepart->id,
+            'part_number' => 'required|string|max:100|unique:spareparts,part_number,'.$sparepart->id,
             'name' => 'required|string|max:200',
             'category_id' => 'required|integer|exists:sparepart_categories,id',
             'unit_id' => 'required|integer|exists:units,id',
@@ -172,7 +172,7 @@ class SarprasSparepartController extends Controller
             $validated['reason'] ?? ''
         );
 
-        return back()->with('success', 'Stok bertambah: ' . $validated['quantity'] . ' ' . ($sparepart->unit?->symbol ?? ''));
+        return back()->with('success', 'Stok bertambah: '.$validated['quantity'].' '.($sparepart->unit?->symbol ?? ''));
     }
 
     public function adjust(Request $request, Sparepart $sparepart)
@@ -195,6 +195,7 @@ class SarprasSparepartController extends Controller
     public function lowStock(Request $request)
     {
         $recommendations = $this->automation->detectLowStock();
+
         return view('sarpras.sparepart.low_stock', [
             'recommendations' => $recommendations,
         ]);

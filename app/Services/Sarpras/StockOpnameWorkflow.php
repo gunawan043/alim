@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 class StockOpnameWorkflow
 {
     public const SO_STATE = 'so_state';
+
     public const SO_TRANSITIONS = [
         'planned' => ['in_progress', 'cancelled'],
         'in_progress' => ['closed'],
@@ -123,6 +124,7 @@ class StockOpnameWorkflow
         $this->stateMachine->assert(self::SO_STATE, $from, 'cancelled');
 
         $session->update(['status' => 'cancelled']);
+
         return $session;
     }
 

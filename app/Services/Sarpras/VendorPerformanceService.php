@@ -3,10 +3,9 @@
 namespace App\Services\Sarpras;
 
 use App\Events\Sarpras\VendorEvaluationCompleted;
+use App\Models\PurchaseOrder;
 use App\Models\Vendor;
 use App\Models\WorkOrder;
-use App\Models\PurchaseOrder;
-use Illuminate\Support\Facades\DB;
 
 class VendorPerformanceService
 {
@@ -129,6 +128,7 @@ class VendorPerformanceService
             ]);
             $count++;
         });
+
         return $count;
     }
 

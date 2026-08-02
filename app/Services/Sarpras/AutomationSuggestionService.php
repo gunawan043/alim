@@ -10,13 +10,17 @@ class AutomationSuggestionService
     /**
      * Suggest the best vendor for a sparepart based on historical rating and price.
      */
-    public function suggestVendor(int $sparepartId, int $vendorCategoryId = null): ?array
+    public function suggestVendor(int $sparepartId, ?int $vendorCategoryId = null): ?array
     {
         $sparepart = Sparepart::with('primaryVendor')->find($sparepartId);
-        if (! $sparepart) return null;
+        if (! $sparepart) {
+            return null;
+        }
 
         $vendor = $sparepart->primaryVendor;
-        if (! $vendor) return null;
+        if (! $vendor) {
+            return null;
+        }
 
         return [
             'vendor_id' => $vendor->id,
@@ -45,7 +49,9 @@ class AutomationSuggestionService
             } else {
                 $qty = $part->max_stock - $part->stock;
             }
-            if ($qty <= 0) $qty = $part->min_stock * 2;
+            if ($qty <= 0) {
+                $qty = $part->min_stock * 2;
+            }
 
             $recommendations[] = [
                 'sparepart_id' => $part->id,
@@ -99,8 +105,13 @@ class AutomationSuggestionService
             ->where('occurred_at', '>=', $sixMonthsAgo)
             ->sum('quantity');
 
-        if ($totalIssued > 100) return 'fast';
-        if ($totalIssued > 10) return 'normal';
+        if ($totalIssued > 100) {
+            return 'fast';
+        }
+        if ($totalIssued > 10) {
+            return 'normal';
+        }
+
         return 'slow';
     }
 
@@ -110,12 +121,16 @@ class AutomationSuggestionService
     public function autoReserveForWorkOrder(string $woId, User $actor): array
     {
         $wo = \App\Models\WorkOrder::with('sparePartUsages.sparePart')->find($woId);
-        if (! $wo) return ['success' => false, 'error' => 'Work Order not found'];
+        if (! $wo) {
+            return ['success' => false, 'error' => 'Work Order not found'];
+        }
 
         $reservations = [];
         foreach ($wo->sparePartUsages ?? [] as $usage) {
             $part = $usage->sparePart;
-            if (! $part) continue;
+            if (! $part) {
+                continue;
+            }
 
             $result = app(StockManagementService::class)->reserve(
                 $part,

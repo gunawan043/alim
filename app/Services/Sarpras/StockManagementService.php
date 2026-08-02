@@ -3,12 +3,10 @@
 namespace App\Services\Sarpras;
 
 use App\Models\Sparepart;
-use App\Models\SparepartStockMovement;
 use App\Models\SparepartReservation;
-use App\Models\WorkOrder;
+use App\Models\SparepartStockMovement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class StockManagementService
 {
@@ -54,10 +52,14 @@ class StockManagementService
             $movements = [];
 
             foreach ($reservations as $res) {
-                if ($remaining <= 0) break;
+                if ($remaining <= 0) {
+                    break;
+                }
 
                 $canConsume = min($res->quantity - $res->consumed_quantity, $remaining);
-                if ($canConsume <= 0) continue;
+                if ($canConsume <= 0) {
+                    continue;
+                }
 
                 $res->consumed_quantity += $canConsume;
                 if ($res->consumed_quantity >= $res->quantity) {
@@ -78,13 +80,13 @@ class StockManagementService
                     'reference_type' => $refType,
                     'reference_id' => $refId,
                     'performed_by' => $actor->id,
-                    'reason' => 'Consumed by reservation ' . $res->id,
+                    'reason' => 'Consumed by reservation '.$res->id,
                 ];
                 $remaining -= $canConsume;
             }
 
             if ($remaining > 0) {
-                return ['success' => false, 'error' => "Could only consume " . ($qty - $remaining) . " of " . $qty];
+                return ['success' => false, 'error' => 'Could only consume '.($qty - $remaining).' of '.$qty];
             }
 
             foreach ($movements as &$m) {
@@ -210,7 +212,7 @@ class StockManagementService
                 'unit_cost' => $part->average_cost,
                 'total_cost' => abs($diff) * $part->average_cost,
                 'performed_by' => $actor->id,
-                'reason' => $reason ?: "Stock adjustment: " . $part->stock . " → " . $newStock,
+                'reason' => $reason ?: 'Stock adjustment: '.$part->stock.' → '.$newStock,
             ]);
 
             event(new \App\Events\Sarpras\SparepartAdjusted($part, $movement, $actor));

@@ -5,7 +5,6 @@ namespace App\Services\Sarpras\Automation;
 use App\Models\SlADefinition;
 use App\Models\SlaTracker;
 use App\Models\WorkOrder;
-use Carbon\Carbon;
 
 class SlAService
 {
@@ -80,6 +79,7 @@ class SlAService
             $tracker->paused_at = now();
             $tracker->save();
         }
+
         return $tracker;
     }
 
@@ -92,6 +92,7 @@ class SlAService
             $tracker->paused_at = null;
             $tracker->save();
         }
+
         return $tracker;
     }
 
@@ -100,6 +101,7 @@ class SlAService
         $tracker->completed_at = now();
         $tracker->status = 'completed';
         $tracker->save();
+
         return $tracker;
     }
 
@@ -112,6 +114,7 @@ class SlAService
         $tracker->escalate($newLevel);
 
         event(new \App\Events\Sarpras\SlATrackerEscalated($tracker, $newLevel));
+
         return $tracker;
     }
 
@@ -149,6 +152,7 @@ class SlAService
                 $changes++;
             }
         }
+
         return $changes;
     }
 
@@ -166,6 +170,7 @@ class SlAService
             $this->escalate($tracker);
             $escalated++;
         }
+
         return $escalated;
     }
 }

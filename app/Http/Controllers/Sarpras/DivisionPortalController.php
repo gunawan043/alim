@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Sarpras;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Divisi;
-use App\Models\WorkOrder;
-use App\Models\MaintenanceRequest;
 use App\Models\RepairRequest;
+use App\Models\WorkOrder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Division-level dashboard portal.
@@ -73,14 +71,14 @@ class DivisionPortalController extends Controller
                     $slaAlerts->push([
                         'type' => 'breached',
                         'title' => $wo->asset->asset_name ?? 'Unknown',
-                        'message' => 'SLA sudah terlewat: ' . $wo->sla_tracker->breach_description,
+                        'message' => 'SLA sudah terlewat: '.$wo->sla_tracker->breach_description,
                         'link' => route('sarpras.work-orders.show', $wo->id),
                     ]);
                 } elseif ($wo->sla_tracker->is_imminent) {
                     $slaAlerts->push([
                         'type' => 'warning',
                         'title' => $wo->asset->asset_name ?? 'Unknown',
-                        'message' => 'SLA mendekati batas: ' . $wo->sla_tracker->time_remaining_text,
+                        'message' => 'SLA mendekati batas: '.$wo->sla_tracker->time_remaining_text,
                         'link' => route('sarpras.work-orders.show', $wo->id),
                     ]);
                 }
@@ -137,7 +135,7 @@ class DivisionPortalController extends Controller
         // Check ownership
         $asset = Asset::with(['category', 'room', 'pic'])->find($assetId);
 
-        if (!$asset || !$this->userOwnsAsset($asset)) {
+        if (! $asset || ! $this->userOwnsAsset($asset)) {
             abort(403, 'Aset tidak ada di division Anda');
         }
 
@@ -174,6 +172,7 @@ class DivisionPortalController extends Controller
     private function calculateStats($assets): array
     {
         $total = $assets->count();
+
         return [
             'total_assets' => $total,
             'good' => $assets->where('condition', 'baik')->count(),

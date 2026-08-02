@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers\Sarpras;
 
-use App\Models\Asset;
-use App\Models\AuditSession;
 use App\Models\AuditDiscrepancy;
+use App\Models\AuditSession;
 use App\Models\Room;
 use App\Services\Sarpras\AuditorWorkspaceService;
 use App\Services\Sarpras\StateMachineRegistry;
@@ -37,8 +36,8 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
     public function startSession(Request $request)
     {
         $data = $request->validate([
-            'audit_type'      => 'required|in:periodic,stock_opname,spot_check,surveillance',
-            'target_room_id'  => 'nullable|uuid',
+            'audit_type' => 'required|in:periodic,stock_opname,spot_check,surveillance',
+            'target_room_id' => 'nullable|uuid',
         ]);
 
         $session = $this->service->startSession(Auth::user(), $data);
@@ -46,6 +45,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'session' => $session]);
         }
+
         return redirect()->route('sarpras.auditor.session.show', $session->id);
     }
 
@@ -73,7 +73,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
     {
         $data = $request->validate([
             'reason' => 'required|string|max:255',
-            'notes'  => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $session = AuditSession::findOrFail($sessionId);
@@ -86,7 +86,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
     {
         $data = $request->validate([
             'condition' => 'required|string',
-            'notes'     => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $session = AuditSession::findOrFail($sessionId);
@@ -104,14 +104,16 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'session' => $closed]);
         }
+
         return redirect()->route('sarpras.auditor.dashboard')->with('success', 'Session audit ditutup.');
     }
 
     public function progress(string $sessionId): JsonResponse
     {
         $session = AuditSession::findOrFail($sessionId);
+
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'progress' => $this->service->progress($session),
         ]);
     }

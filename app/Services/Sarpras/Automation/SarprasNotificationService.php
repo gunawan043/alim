@@ -2,9 +2,7 @@
 
 namespace App\Services\Sarpras\Automation;
 
-use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 
 class SarprasNotificationService
 {
@@ -21,6 +19,7 @@ class SarprasNotificationService
     ): void {
         if (empty($recipientUserIds)) {
             Log::info("SarprasNotification: no recipients for {$eventType}");
+
             return;
         }
 
@@ -67,7 +66,7 @@ class SarprasNotificationService
                 'priority' => $payload['priority'] ?? 'medium',
             ]);
         } catch (\Throwable $e) {
-            Log::warning("SarprasNotification deliver failed for user {$userId}: " . $e->getMessage());
+            Log::warning("SarprasNotification deliver failed for user {$userId}: ".$e->getMessage());
         }
     }
 
@@ -82,6 +81,7 @@ class SarprasNotificationService
         if (str_contains($eventType, 'Completed') || str_contains($eventType, 'Approved')) {
             return 'success';
         }
+
         return 'info';
     }
 }

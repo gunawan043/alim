@@ -4,6 +4,4 @@ namespace App\Services\Sarpras;
 
 use RuntimeException;
 
-class IllegalStateTransitionException extends RuntimeException
-{
-}
+class IllegalStateTransitionException extends RuntimeException {}

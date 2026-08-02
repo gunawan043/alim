@@ -110,6 +110,7 @@ class ChecklistEngine
             'completed_at' => now(),
             'result_summary' => array_merge($instance->result_summary ?? [], ['cancel_reason' => $reason]),
         ]);
+
         return $instance->fresh();
     }
 
@@ -138,12 +139,14 @@ class ChecklistEngine
             return (bool) $value === true;
         }
         if ($item->response_type === 'severity') {
-            return !in_array($value, ['high', 'critical', 'severe', 'rusak_berat'], true);
+            return ! in_array($value, ['high', 'critical', 'severe', 'rusak_berat'], true);
         }
         if ($item->response_type === 'choice' && is_array($item->options)) {
             $failures = $item->options['fail_on'] ?? [];
-            return !in_array($value, $failures, true);
+
+            return ! in_array($value, $failures, true);
         }
+
         return $value !== null && $value !== '' && $value !== false;
     }
 

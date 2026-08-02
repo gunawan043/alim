@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Models\Asset;
-use App\Models\AssetBuilding;
-use App\Models\AssetRoom;
 use App\Models\AssetLoan;
-use App\Models\AssetMaintenanceSchedule;
 use App\Models\AssetMaintenanceLog;
+use App\Models\AssetRoom;
 use App\Models\School;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 use PDF;
 
 class SarprasReportController extends SarprasBaseController
@@ -19,7 +16,6 @@ class SarprasReportController extends SarprasBaseController
     {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
-
 
     public function index(Request $request)
     {
@@ -37,7 +33,7 @@ class SarprasReportController extends SarprasBaseController
         $query = AssetRoom::with(['school', 'building', 'assets.category'])
             ->where('is_active', true);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -72,7 +68,7 @@ class SarprasReportController extends SarprasBaseController
         $query = AssetRoom::with(['school', 'building', 'assets'])
             ->where('is_active', true);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -84,7 +80,7 @@ class SarprasReportController extends SarprasBaseController
         $pdf = PDF::loadView('sarpras.laporan.pdf.inventaris-per-ruang', compact('rooms'));
         $pdf->setPaper('A4', 'landscape');
 
-        return $pdf->download('laporan-inventaris-' . date('Ymd') . '.pdf');
+        return $pdf->download('laporan-inventaris-'.date('Ymd').'.pdf');
     }
 
     /**
@@ -97,7 +93,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = Asset::where('is_active', true);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -112,12 +108,12 @@ class SarprasReportController extends SarprasBaseController
 
         // Summary
         $summary = [
-            'baik'         => (clone $query)->where('condition', 'baik')->count(),
-            'rusak_ringan'  => (clone $query)->where('condition', 'rusak_ringan')->count(),
-            'rusak_sedang'  => (clone $query)->where('condition', 'rusak_sedang')->count(),
-            'rusak_berat'  => (clone $query)->where('condition', 'rusak_berat')->count(),
-            'hilang'       => (clone $query)->where('condition', 'hilang')->count(),
-            'total'        => $assets->count(),
+            'baik' => (clone $query)->where('condition', 'baik')->count(),
+            'rusak_ringan' => (clone $query)->where('condition', 'rusak_ringan')->count(),
+            'rusak_sedang' => (clone $query)->where('condition', 'rusak_sedang')->count(),
+            'rusak_berat' => (clone $query)->where('condition', 'rusak_berat')->count(),
+            'hilang' => (clone $query)->where('condition', 'hilang')->count(),
+            'total' => $assets->count(),
         ];
 
         return view('sarpras.laporan.kondisi-aset', compact('assets', 'schools', 'summary'));
@@ -133,7 +129,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = Asset::where('is_active', true);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -146,18 +142,18 @@ class SarprasReportController extends SarprasBaseController
         $assets = $query->orderBy('condition')->orderBy('asset_name')->get();
 
         $summary = [
-            'baik'        => $assets->where('condition', 'baik')->count(),
+            'baik' => $assets->where('condition', 'baik')->count(),
             'rusak_ringan' => $assets->where('condition', 'rusak_ringan')->count(),
             'rusak_sedang' => $assets->where('condition', 'rusak_sedang')->count(),
             'rusak_berat' => $assets->where('condition', 'rusak_berat')->count(),
-            'hilang'      => $assets->where('condition', 'hilang')->count(),
-            'total'       => $assets->count(),
+            'hilang' => $assets->where('condition', 'hilang')->count(),
+            'total' => $assets->count(),
         ];
 
         $pdf = PDF::loadView('sarpras.laporan.pdf.kondisi-aset', compact('assets', 'summary'));
         $pdf->setPaper('A4', 'portrait');
 
-        return $pdf->download('laporan-kondisi-aset-' . date('Ymd') . '.pdf');
+        return $pdf->download('laporan-kondisi-aset-'.date('Ymd').'.pdf');
     }
 
     /**
@@ -170,7 +166,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = AssetLoan::with(['asset', 'borrower']);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -190,12 +186,12 @@ class SarprasReportController extends SarprasBaseController
         $schools = $viewAll ? School::orderBy('name')->get() : collect();
 
         $summary = [
-            'pending'     => $loans->where('status', 'pending')->count(),
-            'approved'    => $loans->where('status', 'approved')->count(),
-            'dipinjam'    => $loans->where('status', 'dipinjam')->count(),
+            'pending' => $loans->where('status', 'pending')->count(),
+            'approved' => $loans->where('status', 'approved')->count(),
+            'dipinjam' => $loans->where('status', 'dipinjam')->count(),
             'dikembalikan' => $loans->where('status', 'dikembalikan')->count(),
-            'terlambat'   => $loans->where('status', 'terlambat')->count(),
-            'total'       => $loans->count(),
+            'terlambat' => $loans->where('status', 'terlambat')->count(),
+            'total' => $loans->count(),
         ];
 
         return view('sarpras.laporan.peminjaman', compact('loans', 'schools', 'summary'));
@@ -211,7 +207,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = AssetMaintenanceLog::with(['asset', 'performer']);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -242,7 +238,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = Asset::where('is_active', true);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -269,7 +265,7 @@ class SarprasReportController extends SarprasBaseController
 
         $query = Asset::with(['room', 'room.building', 'category', 'school']);
 
-        if (!$viewAll && $schoolId) {
+        if (! $viewAll && $schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('school_id') && $viewAll) {
@@ -279,9 +275,15 @@ class SarprasReportController extends SarprasBaseController
         $assets = $query->orderBy('asset_name')->get();
 
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new class($assets) implements \Maatwebsite\Excel\Concerns\FromCollection {
-                public function __construct($assets) { $this->assets = $assets; }
-                public function collection() {
+            new class($assets) implements \Maatwebsite\Excel\Concerns\FromCollection
+            {
+                public function __construct($assets)
+                {
+                    $this->assets = $assets;
+                }
+
+                public function collection()
+                {
                     $data = [['No', 'Kode', 'Nama Aset', 'Kategori', 'Ruang', 'Gedung', 'Kondisi', 'Status', 'Nilai Perolehan', 'Nilai Buku']];
                     foreach ($this->assets as $i => $a) {
                         $data[] = [
@@ -297,10 +299,11 @@ class SarprasReportController extends SarprasBaseController
                             $a->current_value ?? 0,
                         ];
                     }
+
                     return collect($data);
                 }
             },
-            'laporan-aset-' . date('Ymd') . '.xlsx'
+            'laporan-aset-'.date('Ymd').'.xlsx'
         );
     }
 }

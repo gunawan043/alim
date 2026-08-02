@@ -6,10 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\VendorStoreRequest;
 use App\Models\Vendor;
 use App\Models\VendorCategory;
-use App\Models\VendorContact;
-use App\Models\VendorAddress;
-use App\Models\VendorBank;
-use App\Models\VendorTax;
 use App\Services\Sarpras\VendorPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,9 +22,9 @@ class SarprasVendorController extends Controller
             $q = $request->input('q');
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
-                  ->orWhere('vendor_code', 'like', "%{$q}%")
-                  ->orWhere('legal_name', 'like', "%{$q}%")
-                  ->orWhere('npwp', 'like', "%{$q}%");
+                    ->orWhere('vendor_code', 'like', "%{$q}%")
+                    ->orWhere('legal_name', 'like', "%{$q}%")
+                    ->orWhere('npwp', 'like', "%{$q}%");
             });
         }
 
@@ -68,29 +64,29 @@ class SarprasVendorController extends Controller
                 $data['created_by'] = auth()->id();
                 $vendor = Vendor::create(collect($data)->except(['contacts', 'addresses', 'banks', 'tax'])->toArray());
 
-                if (!empty($data['contacts'])) {
+                if (! empty($data['contacts'])) {
                     foreach ($data['contacts'] as $c) {
                         $vendor->contacts()->create($c);
                     }
                 }
-                if (!empty($data['addresses'])) {
+                if (! empty($data['addresses'])) {
                     foreach ($data['addresses'] as $a) {
                         $vendor->addresses()->create($a);
                     }
                 }
-                if (!empty($data['banks'])) {
+                if (! empty($data['banks'])) {
                     foreach ($data['banks'] as $b) {
                         $vendor->banks()->create($b);
                     }
                 }
-                if (!empty($data['tax'])) {
+                if (! empty($data['tax'])) {
                     $vendor->tax()->create($data['tax']);
                 }
             });
 
             return redirect()->route('sarpras.vendor.index')->with('success', 'Vendor berhasil ditambahkan');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Gagal: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal: '.$e->getMessage());
         }
     }
 
@@ -127,9 +123,10 @@ class SarprasVendorController extends Controller
             DB::transaction(function () use ($request, $vendor) {
                 $vendor->update($request->validated());
             });
+
             return redirect()->route('sarpras.vendor.show', $vendor)->with('success', 'Vendor diperbarui');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Gagal: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal: '.$e->getMessage());
         }
     }
 
@@ -140,15 +137,17 @@ class SarprasVendorController extends Controller
                 return back()->with('error', 'Tidak dapat menghapus vendor dengan PO aktif.');
             }
             $vendor->delete();
+
             return redirect()->route('sarpras.vendor.index')->with('success', 'Vendor dihapus');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal: ' . $e->getMessage());
+            return back()->with('error', 'Gagal: '.$e->getMessage());
         }
     }
 
     public function rank(Request $request)
     {
         $rankings = $this->performance->rankings($request->input('limit', 10));
+
         return view('sarpras.vendor.rank', [
             'rankings' => $rankings,
         ]);

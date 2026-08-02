@@ -5,11 +5,17 @@ namespace App\Services\Sarpras;
 class StateMachineRegistry
 {
     public const REPAIR_REQUEST = 'repair_request';
+
     public const WORK_ORDER = 'work_order';
+
     public const STOCK_OPNAME_SESSION = 'stock_opname_session';
+
     public const STOCK_OPNAME_ITEM = 'stock_opname_item';
+
     public const ASSET_STATUS = 'asset_status';
+
     public const MAINTENANCE_SCHEDULE = 'maintenance_schedule';
+
     public const MAINTENANCE_LOG = 'maintenance_log';
 
     /* =========================================================================
@@ -135,6 +141,7 @@ class StateMachineRegistry
     public static function canTransition(string $model, string $from, string $to): bool
     {
         $allowed = self::transitionsFor($model)[$from] ?? [];
+
         return in_array($to, $allowed, true);
     }
 

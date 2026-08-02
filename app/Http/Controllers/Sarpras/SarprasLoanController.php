@@ -16,8 +16,7 @@ class SarprasLoanController extends SarprasBaseController
     public function __construct(
         public AssetEventLogger $eventLogger,
         public AssetStatusTransitionService $transition,
-    )
-    {
+    ) {
         view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
     }
 

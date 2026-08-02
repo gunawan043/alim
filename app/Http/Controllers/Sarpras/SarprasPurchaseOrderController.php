@@ -83,7 +83,7 @@ class SarprasPurchaseOrderController extends Controller
             }
 
             $po = PurchaseOrder::create([
-                'po_number' => 'PO-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4)),
+                'po_number' => 'PO-'.now()->format('Ymd').'-'.strtoupper(Str::random(4)),
                 'vendor_id' => $validated['vendor_id'],
                 'order_date' => $validated['order_date'],
                 'expected_date' => $validated['expected_date'] ?? null,
@@ -129,6 +129,7 @@ class SarprasPurchaseOrderController extends Controller
     public function show(PurchaseOrder $po)
     {
         $po->load(['vendor', 'items.sparepart', 'items.warehouse']);
+
         return view('sarpras.po.show', [
             'po' => $po,
         ]);
@@ -155,6 +156,7 @@ class SarprasPurchaseOrderController extends Controller
             return back()->with('error', 'Tidak dapat membatalkan PO ini');
         }
         $po->update(['status' => 'cancelled']);
+
         return back()->with('success', 'PO dibatalkan');
     }
 
@@ -185,7 +187,7 @@ class SarprasPurchaseOrderController extends Controller
                         $item->warehouse_id ?? $item->sparepart->warehouse_id,
                         $item->sparepart->bin_id ?? null,
                         auth()->user(),
-                        'Received from PO ' . $po->po_number
+                        'Received from PO '.$po->po_number
                     );
                 }
             }
