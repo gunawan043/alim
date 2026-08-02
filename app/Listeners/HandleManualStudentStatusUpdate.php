@@ -85,13 +85,13 @@ final class HandleManualStudentStatusUpdate
         if ($recipientUserId !== null) {
             SendLifecycleNotificationJob::dispatch(
                 userId: $recipientUserId,
-            message: new \App\Support\LifecycleMessage(
-                event: 'student.status_changed',
-                student: $student,
-                previousStatus: $previousStatus ?? ($student->getOriginal('status') ?? 'unknown'),
-                newStatus: $newStatus,
-                context: $auditContext + ['out_type' => $newStatus === 'graduate' ? 'graduation' : null],
-            ),
+                message: new \App\Support\LifecycleMessage(
+                    event: 'student.status_changed',
+                    student: $student,
+                    previousStatus: $previousStatus ?? ($student->getOriginal('status') ?? 'unknown'),
+                    newStatus: $newStatus,
+                    context: $auditContext + ['out_type' => $newStatus === 'graduate' ? 'graduation' : null],
+                ),
             );
         }
     }
@@ -100,10 +100,11 @@ final class HandleManualStudentStatusUpdate
     {
         try {
             $school = $student->school;
-            if (!$school) {
+            if (! $school) {
                 return null;
             }
             $user = $school->users()->roleName('admin')->first() ?? $school->users()->first();
+
             return $user?->id;
         } catch (\Throwable) {
             return null;

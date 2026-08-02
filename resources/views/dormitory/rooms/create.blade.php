@@ -44,14 +44,38 @@
                                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
-                                <label for="room_wing" class="form-label">Gedung</label>
+                                <label for="room_wing" class="form-label">Blok</label>
                                 <select name="wing_id" id="room_wing" class="form-control @error('wing_id') is-invalid @enderror">
-                                    <option value="">— Pilih Gedung —</option>
+                                    <option value="">— Pilih Blok —</option>
                                     @foreach($wings as $w)
                                         <option value="{{ $w->id }}" {{ old('wing_id') == $w->id || request('wing_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('wing_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-8">
+                                <label for="room_wali_kamar" class="form-label">Wali Kamar <span class="text-danger">*</span></label>
+                                @if($waliKamarCandidates->isEmpty())
+                                    <div class="alert alert-warning mb-2 py-2">
+                                        Belum ada GTK yang terdata pada satuan kerja
+                                        <strong>{{ $dormitory->workUnit?->name ?? '—' }}</strong>.
+                                        Tambahkan GTK ke satuan kerja ini terlebih dahulu di modul GTK.
+                                    </div>
+                                @endif
+                                <select name="wali_kamar_user_id" id="room_wali_kamar" class="form-control @error('wali_kamar_user_id') is-invalid @enderror" required {{ $waliKamarCandidates->isEmpty() ? 'disabled' : '' }}>
+                                    <option value="">— Pilih Wali Kamar —</option>
+                                    @foreach($waliKamarCandidates as $u)
+                                        <option value="{{ $u->id }}" {{ old('wali_kamar_user_id') == $u->id ? 'selected' : '' }}>
+                                            {{ $u->name }}{{ $u->email ? ' · '.$u->email : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Pegawai yang bertugas di satuan kerja
+                                    <strong>{{ $dormitory->workUnit?->name ?? '—' }}</strong>
+                                    ({{ $waliKamarCandidates->count() }} tersedia).
+                                </small>
+                                @error('wali_kamar_user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
                                 <label for="room_floor" class="form-label">Lantai</label>

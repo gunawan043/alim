@@ -256,11 +256,15 @@
                                 <i class="ri-edit-line me-1"></i> Edit
                             </button>
                             @if(isset($template) && $template)
-                                <a href="{{ route('user.asrama.templates.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'session' => $session]) }}"
-                                   class="btn btn-sm btn-outline-danger"
-                                   onclick="return confirm('Hapus template sesi {{ $sessionLabels[$session] }}?')">
-                                    <i class="ri-delete-bin-line"></i>
-                                </a>
+                                <form action="{{ route('user.asrama.templates.toggle', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'session' => $session]) }}"
+                                      method="POST"
+                                      class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('{{ $template->is_active ? 'Nonaktifkan' : 'Aktifkan' }} template sesi {{ $sessionLabels[$session] }}?')">
+                                        <i class="ri-{{ $template->is_active ? 'eye-off' : 'delete-bin' }}-line"></i>
+                                    </button>
+                                </form>
                             @endif
                         </div>
                     </div>

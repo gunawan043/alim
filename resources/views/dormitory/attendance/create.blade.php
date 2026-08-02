@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? '' }}</a> @endslot
         @slot('li_4') <a href="{{ route('user.asrama.attendance.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Absensi</a> @endslot
         @slot('title') Catat @endslot
@@ -207,10 +207,10 @@
                         <i class="ri-user-search-line fs-1 d-block text-muted" style="font-size: 4rem;"></i>
                     </div>
                     <h5 class="text-muted mb-2">Tidak Ada Penghuni Aktif</h5>
-                    <p class="text-muted">Belum ada penghuni aktif di asrama ini. Check-in santri terlebih dahulu.</p>
+                    <p class="text-muted">Belum ada penghuni aktif di asrama ini. Tempatkan santri terlebih dahulu.</p>
                     <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                        class="btn btn-primary">
-                        <i class="ri-add-line me-1"></i> Check-in Santri
+                        <i class="ri-add-line me-1"></i> Tempatkan Santri
                     </a>
                 </div>
             </div>

@@ -112,7 +112,11 @@
                                     <td><span class="badge bg-{{ $p->status === 'approved' ? 'success' : ($p->status === 'pending' ? 'warning' : 'secondary') }}">{{ ucfirst($p->status) }}</span></td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="text-center text-muted py-3">Tidak ada izin aktif.</td></tr>
+                                <tr><td colspan="4" class="text-center py-5">
+                                    <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                    <h6 class="text-muted mb-1 mt-3">Tidak Ada Izin Aktif</h6>
+                                    <p class="text-muted mb-3 small">Semua santri tercatat hadir sesuai jadwal.</p>
+                                </td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -146,7 +150,11 @@
                                     <td><strong class="text-danger">{{ $v->points }}</strong></td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="text-center text-muted py-3">Tidak ada pelanggaran terbaru.</td></tr>
+                                <tr><td colspan="4" class="text-center py-5">
+                                    <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                    <h6 class="text-muted mb-1 mt-3">Tidak Ada Pelanggaran Terbaru</h6>
+                                    <p class="text-muted mb-3 small">Semua santri mematuhi aturan asrama.</p>
+                                </td></tr>
                                 @endforelse
                             </tbody>
                         </table>

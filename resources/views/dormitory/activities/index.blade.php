@@ -24,13 +24,11 @@
     {{-- Stats Cards --}}
     <div class="row g-3 mb-4">
         <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-primary">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-primary-subtle">
-                                <i class="ri-list-check-3 fs-24 text-primary"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-list-check-3 fs-24 text-primary"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Log</p>
@@ -41,13 +39,11 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-success">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-success-subtle">
-                                <i class="ri-user-follow-line fs-24 text-success"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-user-follow-line fs-24 text-success"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Hadir</p>
@@ -58,13 +54,11 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-warning">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-warning-subtle">
-                                <i class="ri-time-line fs-24 text-warning"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line fs-24 text-warning"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Tidak Hadir</p>
@@ -144,7 +138,7 @@
                                         } catch (\Exception $e) { $dataItems = []; }
                                     @endphp
                                     <tr>
-                                        <td class="text-center">{{ $logs->firstItem() + $i }}</td>
+                                        <td class="text-center">{{ $i + 1 }}</td>
                                         <td>
                                             <div class="fw-semibold">{{ $log->student?->name ?? '&mdash;' }}</div>
                                             @if($log->student?->nisn)
@@ -242,8 +236,7 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">Menampilkan {{ $logs->firstItem() ?? 0 }} - {{ $logs->lastItem() ?? 0 }} dari {{ $logs->total() }} data</div>
-                        <div>{{ $logs->withQueryString()->links() }}</div>
+                        <div class="text-muted small">Menampilkan 1 - {{ $logs->count() }} dari {{ $logs->count() }} data</div>
                     </div>
                 </div>
             </div>

@@ -3,14 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\Todo;
-use App\Models\NotificationUniversal;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SendTodoReminderJob implements ShouldQueue
 {
@@ -31,7 +30,7 @@ class SendTodoReminderJob implements ShouldQueue
     {
         try {
             // Skip if todo is already completed or deleted
-            if (!in_array($this->todo->status, ['belum_mulai', 'sedang_berjalan', 'ditunda'])) {
+            if (! in_array($this->todo->status, ['belum_mulai', 'sedang_berjalan', 'ditunda'])) {
                 return;
             }
 
@@ -48,23 +47,23 @@ class SendTodoReminderJob implements ShouldQueue
                 : "[ALIM] ⏰ Reminder Todo: {$this->todo->title}";
 
             $viewData = [
-                'todo'      => $this->todo,
-                'owner'     => $this->todo->owner,
-                'dueText'   => $dueText,
+                'todo' => $this->todo,
+                'owner' => $this->todo->owner,
+                'dueText' => $dueText,
                 'isOverdue' => $this->todo->is_overdue,
-                'priority'  => $priorityLabel,
-                'url'       => route('user.todos.index', ['id' => $this->todo->id]),
+                'priority' => $priorityLabel,
+                'url' => route('user.todos.index', ['id' => $this->todo->id]),
             ];
 
             Mail::send('emails.todo-reminder', $viewData, function ($message) use ($subject) {
                 $message->to($this->todo->owner->email, $this->todo->owner->name)
-                        ->subject($subject);
+                    ->subject($subject);
             });
 
             Log::info("SendTodoReminderJob: email terkirim untuk todo {$this->todo->id}");
         } catch (\Exception $e) {
-            Log::error("SendTodoReminderJob gagal untuk todo {$this->todo->id}: " . $e->getMessage(), [
-                'todo_id'   => $this->todo->id,
+            Log::error("SendTodoReminderJob gagal untuk todo {$this->todo->id}: ".$e->getMessage(), [
+                'todo_id' => $this->todo->id,
                 'exception' => $e,
             ]);
             throw $e;
@@ -73,6 +72,6 @@ class SendTodoReminderJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("SendTodoReminderJob gagal permanen untuk todo {$this->todo->id}: " . $exception->getMessage());
+        Log::error("SendTodoReminderJob gagal permanen untuk todo {$this->todo->id}: ".$exception->getMessage());
     }
 }

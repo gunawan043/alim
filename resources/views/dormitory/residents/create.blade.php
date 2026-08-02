@@ -1,13 +1,13 @@
 @extends('layouts.master')
-@section('title') Check-in Santri - Asrama @endsection
+@section('title') Tempatkan Santri - Asrama @endsection
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
-        @slot('li_4') Penghuni @endslot
-        @slot('title') Check-in Santri @endslot
+        @slot('li_4') Santri @endslot
+        @slot('title') Tempatkan Santri @endslot
     @endcomponent
 
     @if(session('success'))
@@ -43,7 +43,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="ri-user-add-line me-2 text-primary"></i>Form Check-in Santri
+                            <i class="ri-user-location-line me-2 text-primary"></i>Form Penempatan Santri
                         </h5>
                         <p class="text-muted mb-0 mt-1 small">
                             Asrama: <strong>{{ $dormitory->name }}</strong>
@@ -56,7 +56,7 @@
                         ============================================================ --}}
                         <div class="mb-4">
                             <label class="form-label">
-                                Cari Santri <span class="text-danger">*</span>
+                                Pilih Santri dari Akademik <span class="text-danger">*</span>
                             </label>
 
                             {{-- Hidden inputs for selected student --}}
@@ -72,7 +72,7 @@
                                            id="studentSearch"
                                            name="student_search"
                                            class="form-control"
-                                           placeholder="Ketik nama atau NISN untuk mencari..."
+                                           placeholder="Cari nama atau NISN untuk menempatkan santri..."
                                            value="{{ old('student_search') }}"
                                            autocomplete="off"
                                            aria-describedby="studentSearchHelp">
@@ -80,7 +80,7 @@
                                         <i class="ri-close-line"></i>
                                     </button>
                                 </div>
-                                <small id="studentSearchHelp" class="form-text text-muted">Ketik minimal 2 karakter untuk memulai pencarian.</small>
+                                <small id="studentSearchHelp" class="form-text text-muted">Ketik minimal 2 karakter. Data ini dibaca langsung dari Modul Akademik — tidak membuat data siswa baru.</small>
 
                                 {{-- Dropdown results --}}
                                 <div id="searchResults" class="list-group position-absolute w-100 mt-1 shadow-lg rounded-3 overflow-auto" style="max-height: 260px; z-index: 1050; display: none;"></div>
@@ -168,7 +168,7 @@
 
                             <div class="col-md-3">
                                 <label class="form-label" for="check_in_date">
-                                    Tgl. Check-in <span class="text-danger">*</span>
+                                    Tgl. Penempatan <span class="text-danger">*</span>
                                 </label>
                                 <input type="date"
                                        name="check_in_date"
@@ -203,7 +203,7 @@
                                       id="notes"
                                       class="form-control @error('notes') is-invalid @enderror"
                                       rows="4"
-                                      placeholder="Catatan tambahan saat check-in, misalnya kondisi kesehatan, kebutuhan khusus, dll.">{{ old('notes') }}</textarea>
+                                      placeholder="Catatan tambahan saat penempatan, misalnya kondisi kesehatan, kebutuhan khusus, dll.">{{ old('notes') }}</textarea>
                             @error('notes')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -218,10 +218,11 @@
                             <i class="ri-information-line text-primary me-2"></i>Petunjuk
                         </h6>
                         <ul class="ps-3 mb-0 small">
-                            <li class="mb-2">Cari dan pilih santri yang akan di-check-in menggunakan kolom pencarian.</li>
+                            <li class="mb-2">Pilih santri dari Modul Akademik melalui kolom pencarian — asrama tidak membuat data siswa baru.</li>
                             <li class="mb-2">Pastikan kamar yang dipilih masih memiliki kapasitas kosong.</li>
                             <li class="mb-2">Bed number adalah nomor tempat tidur di dalam kamar (1, 2, 3, dst).</li>
-                            <li class="mb-2">Tanggal check-in akan diisi otomatis dengan hari ini.</li>
+                            <li class="mb-2">Tanggal penempatan akan diisi otomatis dengan hari ini.</li>
+                            <li>Semua identitas (nama, NISN, foto, dll) dibaca langsung dari Modul Akademik.</li>
                             <li>Satu kamar hanya bisa dihuni oleh satu gender.</li>
                         </ul>
                     </div>
@@ -245,7 +246,7 @@
                                 <i class="ri-reset-right-line align-middle me-1"></i> Reset
                             </button>
                             <button type="submit" class="btn btn-primary" id="submitBtn">
-                                <i class="ri-user-add-line align-middle me-1"></i> Check-in Santri
+                                <i class="ri-user-add-line align-middle me-1"></i> Tempatkan Santri
                             </button>
                         </div>
                     </div>
@@ -295,7 +296,7 @@
 
     async function fetchStudent(q) {
         try {
-            var url = '/{userId}/asrama/' + asramaUuid + '/penghuni/find-student?q=' + encodeURIComponent(q);
+            var url = '/{userId}/asrama/' + asramaUuid + '/santri/find?q=' + encodeURIComponent(q);
             var res = await fetch(url);
             var data = await res.json();
 

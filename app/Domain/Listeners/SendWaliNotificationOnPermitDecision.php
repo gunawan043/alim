@@ -3,8 +3,8 @@
 namespace App\Domain\Listeners;
 
 use App\Domain\Events\BoardingPermitDecided;
-use App\Models\WaliSantri;
 use App\Models\NotificationUniversal;
+use App\Models\WaliSantri;
 
 /**
  * Kirim notifikasi ke wali ketika izin disetujui/ditolak.
@@ -52,21 +52,21 @@ class SendWaliNotificationOnPermitDecision
             }
 
             NotificationUniversal::create([
-                'user_id'         => $wali->user_id,
-                'module'          => 'boarding',
-                'type'            => 'permit_decision',
-                'action'          => $event->decision,
-                'title'           => $title,
-                'message'         => $message,
-                'reference_type'  => \App\Models\DormitoryPermit::class,
-                'reference_id'    => $permit->id,
-                'action_url'      => route('user.asrama.approval-center', [
-                    'userId'   => $wali->user_id,
+                'user_id' => $wali->user_id,
+                'module' => 'boarding',
+                'type' => 'permit_decision',
+                'action' => $event->decision,
+                'title' => $title,
+                'message' => $message,
+                'reference_type' => \App\Models\DormitoryPermit::class,
+                'reference_id' => $permit->id,
+                'action_url' => route('user.asrama.approval-center', [
+                    'userId' => $wali->user_id,
                     'asramaUuid' => $permit->dormitory_id,
                 ]),
-                'action_text'     => 'Lihat Detail',
-                'is_read'         => false,
-                'priority'        => $event->decision === 'rejected' ? 'high' : 'medium',
+                'action_text' => 'Lihat Detail',
+                'is_read' => false,
+                'priority' => $event->decision === 'rejected' ? 'high' : 'medium',
             ]);
         }
     }

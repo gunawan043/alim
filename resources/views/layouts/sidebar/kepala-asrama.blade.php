@@ -105,6 +105,13 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.leave-policies') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-settings-4-line"></i>
+        <span>Konfigurasi Izin</span>
+    </a>
+</li>
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.violations.') ? ' active' : '' }}"
        href="{{ $hasAsramaContext ? route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
         <i class="ri-error-warning-line"></i>
@@ -130,6 +137,13 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
        href="{{ $hasAsramaContext ? route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
         <i class="ri-arrow-left-right-line"></i>
         <span>Mutasi Kamar</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.room-supervisors.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-shield-user-line"></i>
+        <span>Wali Kamar</span>
     </a>
 </li>
 
@@ -172,14 +186,14 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.boarding-policies.') ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'boarding-policies.') ? ' active' : '' }}"
        href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}">
         <i class="ri-file-shield-2-line"></i>
         <span>Kebijakan Asrama</span>
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.calendar.return.') ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'calendar.return.') ? ' active' : '' }}"
        href="{{ route('user.calendar.return.index', ['userId' => $userId]) }}">
         <i class="ri-calendar-event-line"></i>
         <span>Kalender Kepulangan</span>
@@ -193,7 +207,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.calendar.visit.') ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'calendar.visit.') ? ' active' : '' }}"
        href="{{ route('user.calendar.visit.index', ['userId' => $userId]) }}">
         <i class="ri-footprint-line"></i>
         <span>Kalender Kunjungan</span>
@@ -202,7 +216,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
 
 <li class="menu-title"><span>Mahrom & Peserta Didik</span></li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.students.') && !str_contains($currentRoute, 'mahrom') ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'students.') && !str_contains($currentRoute, 'mahrom') ? ' active' : '' }}"
        href="{{ route('user.students.index', ['userId' => $userId]) }}">
         <i class="ri-user-star-line"></i>
         <span>Data Santri</span>
@@ -210,7 +224,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
 </li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ str_contains($currentRoute, 'mahrom') ? ' active' : '' }}"
-       href="{{ route('user.students.index', ['userId' => $userId]) }}">
+       href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
         <i class="ri-parent-line"></i>
         <span>Data Mahrom</span>
     </a>

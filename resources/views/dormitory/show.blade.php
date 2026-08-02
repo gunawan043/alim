@@ -197,7 +197,7 @@
                                     <i class="ri-team-line me-2 text-primary"></i> Kelola Penghuni
                                 </a>
                                 <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light text-start">
-                                    <i class="ri-user-add-line me-2 text-success"></i> Check-in Santri
+                                    <i class="ri-user-add-line me-2 text-success"></i> Tempatkan Santri
                                 </a>
                                 <a href="{{ route('user.asrama.attendance.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light text-start">
                                     <i class="ri-checkbox-circle-line me-2 text-info"></i> Catat Absensi
@@ -228,7 +228,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="ri-team-line me-1"></i> Penghuni Aktif ({{ $dormitory->residents()->where('is_active', true)->count() }} orang)</h5>
                         <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-primary">
-                            <i class="ri-add-line"></i> Check-in
+                            <i class="ri-add-line"></i> Tempatkan
                         </a>
                     </div>
                 </div>
@@ -242,7 +242,7 @@
                                     <th>Kelas</th>
                                     <th>Kamar</th>
                                     <th>Bed</th>
-                                    <th>Tanggal Masuk</th>
+                                    <th>Tanggal Ditempatkan</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>

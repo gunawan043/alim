@@ -99,9 +99,10 @@
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">
-                            <i class="ri-shield-check-line" style="font-size:2rem"></i>
-                            <p class="mt-2">Tidak ada catatan pelanggaran.</p>
+                        <tr><td colspan="7" class="text-center py-5">
+                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                            <h6 class="text-muted mb-1 mt-3">Tidak Ada Catatan Pelanggaran</h6>
+                            <p class="text-muted mb-3 small">Santri ini belum memiliki catatan pelanggaran tercatat.</p>
                         </td></tr>
                         @endforelse
                     </tbody>

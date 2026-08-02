@@ -3,9 +3,9 @@
 namespace App\Domain\Listeners;
 
 use App\Domain\Events\BoardingVisitDecided;
-use App\Models\WaliSantri;
-use App\Models\NotificationUniversal;
 use App\Models\DormitoryVisitLog;
+use App\Models\NotificationUniversal;
+use App\Models\WaliSantri;
 
 /**
  * Kirim notifikasi ke wali ketika penjengukan disetujui/ditolak.
@@ -33,23 +33,23 @@ class SendWaliNotificationOnVisitDecision
 
         foreach ($wals as $wali) {
             NotificationUniversal::create([
-                'user_id'         => $wali->user_id,
-                'module'          => 'boarding',
-                'type'            => 'visit_decision',
-                'action'          => $event->decision,
-                'title'           => $isApproved ? 'Penjengukan Diterima' : 'Penjengukan Ditolak',
-                'message'         => $isApproved
+                'user_id' => $wali->user_id,
+                'module' => 'boarding',
+                'type' => 'visit_decision',
+                'action' => $event->decision,
+                'title' => $isApproved ? 'Penjengukan Diterima' : 'Penjengukan Ditolak',
+                'message' => $isApproved
                     ? "Permohonan penjengukan untuk {$student->name} telah disetujui."
-                    : "Permohonan penjengukan untuk {$student->name} ditolak." . ($event->note ? " Alasan: {$event->note}" : ''),
-                'reference_type'  => DormitoryVisitLog::class,
-                'reference_id'    => $visit->id,
-                'action_url'      => route('user.asrama.approval-center', [
-                    'userId'   => $wali->user_id,
+                    : "Permohonan penjengukan untuk {$student->name} ditolak.".($event->note ? " Alasan: {$event->note}" : ''),
+                'reference_type' => DormitoryVisitLog::class,
+                'reference_id' => $visit->id,
+                'action_url' => route('user.asrama.approval-center', [
+                    'userId' => $wali->user_id,
                     'asramaUuid' => $visit->dormitory_id,
                 ]),
-                'action_text'     => 'Lihat Detail',
-                'is_read'         => false,
-                'priority'        => $isApproved ? 'low' : 'high',
+                'action_text' => 'Lihat Detail',
+                'is_read' => false,
+                'priority' => $isApproved ? 'low' : 'high',
             ]);
         }
     }

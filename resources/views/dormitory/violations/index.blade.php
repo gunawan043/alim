@@ -22,15 +22,13 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-2">
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-dark">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-dark-subtle">
-                                <i class="ri-error-warning-line fs-24 text-dark"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-dark-subtle rounded fs-2"><i class="ri-error-warning-line fs-24 text-dark"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Pelanggaran</p>
@@ -41,13 +39,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-info">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-info-subtle">
-                                <i class="ri-information-line fs-24 text-info"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-information-line fs-24 text-info"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Ringan</p>
@@ -58,13 +54,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-warning">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-warning-subtle">
-                                <i class="ri-alert-line fs-24 text-warning"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-alert-line fs-24 text-warning"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Sedang</p>
@@ -75,13 +69,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-animate h-90 border-start border-danger">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="avatar-md rounded-circle bg-danger-subtle">
-                                <i class="ri-goblet-line fs-24 text-danger"></i>
-                            </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-goblet-line fs-24 text-danger"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Berat</p>
@@ -232,7 +224,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="10" class="text-center text-muted py-5">
-                                            <i class="ri-checkbox-indeterminate-line fs-1 d-block mb-2 text-muted"></i>
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon> <br>
                                             Belum ada data pelanggaran.
                                             <br>
                                             <a href="{{ route('user.asrama.violations.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"

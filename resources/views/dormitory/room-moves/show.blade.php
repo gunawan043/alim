@@ -32,7 +32,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? 'Asrama' }}</a> @endslot
         @slot('li_4') Mutasi Kamar @endslot
         @slot('title') Detail @endslot
@@ -265,42 +265,30 @@
 
             {{-- Reject Modal --}}
             @if($roomMove->status === 'pending')
-            <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="rejectModalLabel">
-                                <i class="ri-close-circle-line me-2 text-danger"></i>Tolak Permohonan
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form method="POST"
-                              action="{{ route('user.asrama.room-moves.reject', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomMoveUuid' => $roomMove->id]) }}">
-                            @csrf
-                            <div class="modal-body">
-                                <p>Yakin ingin menolak permohonan mutasi kamar ini?</p>
-                                <div class="mb-3">
-                                    <label class="form-label" for="rejection_reason">
-                                        Alasan Penolakan <span class="text-danger">*</span>
-                                    </label>
-                                    <textarea name="rejection_reason"
-                                              id="rejection_reason"
-                                              class="form-control"
-                                              rows="3"
-                                              placeholder="Jelaskan alasan penolakan..."
-                                              required></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="ri-close-line me-1"></i> Tolak Permohonan
-                                </button>
-                            </div>
-                        </form>
+            <x-modal id="rejectModal">
+                @slot('title')<i class="ri-close-circle-line me-2 text-danger"></i>Tolak Permohonan @endslot
+                <form method="POST" id="rejectForm"
+                      action="{{ route('user.asrama.room-moves.reject', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomMoveUuid' => $roomMove->id]) }}">
+                    @csrf
+                    <p>Yakin ingin menolak permohonan mutasi kamar ini?</p>
+                    <div class="mb-3">
+                        <label class="form-label" for="rejection_reason">
+                            Alasan Penolakan <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="rejection_reason"
+                                  id="rejection_reason"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Jelaskan alasan penolakan..."
+                                  required></textarea>
                     </div>
-                </div>
-            </div>
+                </form>
+                @slot('actions')
+                    <button type="submit" form="rejectForm" class="btn btn-danger">
+                        <i class="ri-close-line me-1"></i> Tolak Permohonan
+                    </button>
+                @endslot
+            </x-modal>
             @endif
         </div>
 

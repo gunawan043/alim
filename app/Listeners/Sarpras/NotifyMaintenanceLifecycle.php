@@ -26,6 +26,7 @@ class NotifyMaintenanceLifecycle
                 ],
                 priority: 'medium',
             );
+
             return;
         }
 

@@ -8,21 +8,21 @@
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                 <h4 class="mb-sm-0">Edit: {{ $policy->name }}</h4>
-                <a href="{{ route('user.boarding-policies.index') }}" class="btn btn-secondary">
+                <a href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}" class="btn btn-secondary">
                     <i class="ri-arrow-left-line me-1"></i> Kembali
                 </a>
             </div>
         </div>
     </div>
 
-    <form action="{{ route('user.boarding-policies.update', $policy->id) }}" method="POST">
+    <form action="{{ route('user.boarding-policies.update', ['userId' => $userId, 'id' => $policy->id]) }}" method="POST">
         @csrf
         @method('PUT')
 
         <div class="row">
             <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header"><h5 class="card-title mb-0">Informasi Dasar</h5></div>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom-0 py-3"><h5 class="card-title mb-0 fw-semibold text-primary">Informasi Dasar</h5></div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -42,8 +42,8 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header"><h5 class="card-title mb-0">Kebijakan Izin</h5></div>
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-white border-bottom-0 py-3"><h5 class="card-title mb-0 fw-semibold text-primary">Kebijakan Izin</h5></div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Strategi <span class="text-danger">*</span></label>
@@ -97,8 +97,8 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header"><h5 class="card-title mb-0">Kebijakan Kunjungan</h5></div>
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-white border-bottom-0 py-3"><h5 class="card-title mb-0 fw-semibold text-primary">Kebijakan Kunjungan</h5></div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Strategi <span class="text-danger">*</span></label>
@@ -133,8 +133,8 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header"><h5 class="card-title mb-0">Terapkan ke Asrama</h5></div>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom-0 py-3"><h5 class="card-title mb-0 fw-semibold text-primary">Terapkan ke Asrama</h5></div>
                     <div class="card-body">
                         @forelse($dormitories as $dorm)
                         <div class="form-check">
@@ -147,8 +147,8 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header"><h5 class="card-title mb-0">Status</h5></div>
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-white border-bottom-0 py-3"><h5 class="card-title mb-0 fw-semibold text-primary">Status</h5></div>
                     <div class="card-body">
                         <div class="form-check form-switch">
                             <input type="hidden" name="is_active" value="0">
@@ -158,7 +158,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg w-100">
+                <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
                     <i class="ri-save-line me-1"></i> Simpan Perubahan
                 </button>
             </div>

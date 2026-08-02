@@ -25,13 +25,13 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-2">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-100 border-start border-primary">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-hotel-line text-primary"></i></span>
+                            <span class="avatar-title bg-primary rounded fs-2"><i class="ri-hotel-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Asrama</p>
@@ -42,11 +42,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-100 border-start border-success">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                            <span class="avatar-title bg-success rounded fs-2"><i class="ri-checkbox-circle-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Aktif</p>
@@ -57,11 +57,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-100 border-start border-info">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-user-location-line text-info"></i></span>
+                            <span class="avatar-title bg-info rounded fs-2"><i class="ri-user-location-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Putra</p>
@@ -72,11 +72,11 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-100 border-start border-warning">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-user-heart-line text-warning"></i></span>
+                            <span class="avatar-title bg-warning rounded fs-2"><i class="ri-user-heart-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Putri</p>
@@ -144,7 +144,7 @@
                                     <th class="text-center">Kapasitas</th>
                                     <th class="text-center">Penghuni</th>
                                     <th class="text-center">Kamar</th>
-                                    <th class="text-center">Gedung</th>
+                                    <th class="text-center">Blok</th>
                                     <th>Kepala Asrama</th>
                                     <th class="text-center">Status</th>
                                     <th class="text-center">Aksi</th>
@@ -204,10 +204,13 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="12" class="text-center text-muted py-4">
-                                        <i class="ri-hotel-line fs-1 d-block mb-2"></i>
-                                        Belum ada data asrama.
-                                        <a href="{{ route('user.asrama.create', ['userId' => $userId]) }}">Tambah asrama baru</a>
+                                    <td colspan="12" class="text-center py-5">
+                                        <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                        <h6 class="text-muted mb-1 mt-3">Belum Ada Data Asrama</h6>
+                                        <p class="text-muted mb-3 small">
+                                            Tambahkan asrama pertama Anda untuk memulai mengelola sistem asrama.
+                                            <a href="{{ route('user.asrama.create', ['userId' => $userId]) }}" class="fw-bold">Tambah asrama baru</a>
+                                        </p>
                                     </td>
                                 </tr>
                                 @endforelse
@@ -216,10 +219,7 @@
                     </div>
 
                     <div class="mt-3">
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $dormitories->firstItem() ?? 0 }} - {{ $dormitories->lastItem() ?? 0 }} dari {{ $dormitories->total() }} data</div>
-                            <div>{{ $dormitories->withQueryString()->links() }}</div>
-                        </div>
+                        <x-pagination :paginator="$dormitories" />
                     </div>
                 </div>
             </div>

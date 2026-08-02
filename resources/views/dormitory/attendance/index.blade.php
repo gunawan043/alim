@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? '' }}</a> @endslot
         @slot('title') Absensi @endslot
     @endcomponent
@@ -28,73 +28,82 @@
         </div>
     @endif
 
-    {{-- ============================================================
-         STATS CARDS
-    ============================================================ --}}
-    <div class="row mb-4">
+    <div class="row g-3 mb-2">
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-success-subtle">
-                        <i class="ri-checkbox-circle-line fs-24 text-success"></i>
+            <div class="card card-animate h-90 border-start border-success">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Hadir</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['hadir'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['hadir'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Hadir</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-success rounded fs-2"><i class="ri-checkbox-circle-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-warning-subtle">
-                        <i class="ri-flight-takeoff-line fs-24 text-warning"></i>
+            <div class="card card-animate h-90 border-start border-warning">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Izin</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['izin'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['izin'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Izin</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-warning rounded fs-2"><i class="ri-flight-takeoff-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-info-subtle">
-                        <i class="ri-sick-line fs-24 text-info"></i>
+            <div class="card card-animate h-90 border-start border-info">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Sakit</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['sakit'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['sakit'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Sakit</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-info rounded fs-2"><i class="ri-heart-pulse-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-danger-subtle">
-                        <i class="ri-prohibited-line fs-24 text-danger"></i>
+            <div class="card card-animate h-90 border-start border-danger">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Alpa</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['alpa'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['alpa'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Alpa</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-danger rounded fs-2"><i class="ri-prohibited-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-secondary-subtle">
-                        <i class="ri-logout-box-r-line fs-24 text-secondary"></i>
+            <div class="card card-animate h-90 border-start border-secondary">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Pulang</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['pulang'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['pulang'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Pulang</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-secondary rounded fs-2"><i class="ri-logout-box-r-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <div class="avatar-md mx-auto mb-2 rounded-circle bg-dark-subtle">
-                        <i class="ri-team-line fs-24 text-dark"></i>
+            <div class="card card-animate h-90 border-start border-dark">
+                <div class="card-body py-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Penghuni</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ $stats['total'] ?? 0 }}</h3>
                     </div>
-                    <h4 class="mb-0">{{ $stats['total'] ?? 0 }}</h4>
-                    <p class="text-muted mb-0 small">Total Penghuni</p>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-dark rounded fs-2"><i class="ri-team-line fs-24 text-white"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -225,7 +234,7 @@
                                                     @break
                                                 @case('sakit')
                                                     <span class="badge bg-info-subtle text-info">
-                                                        <i class="ri-sick-line me-1"></i>Sakit
+                                                        <i class="ri-heart-pulse-line me-1"></i>Sakit
                                                     </span>
                                                     @break
                                                 @case('alpa')
@@ -260,16 +269,14 @@
                                             </a>
                                         </td>
                                     </tr>
-                                @empty
+                                                                @empty
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-5">
-                                            <div class="mb-3">
-                                                <i class="ri-calendar-check-line fs-1 d-block text-muted"></i>
-                                            </div>
-                                            <h6 class="text-muted mb-1">Belum Ada Data Absensi</h6>
+                                        <td colspan="9" class="text-center py-5">
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Absensi</h6>
                                             <p class="text-muted mb-3">
                                                 @if($selectedDate)
-                                                    <p class="text-muted mb-1">Tidak ada data absensi untuk <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d M Y') }}</strong>.</p>
+                                                    Tidak ada data absensi untuk <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d M Y') }}</strong>.
                                                 @else
                                                     Belum ada data absensi yang tercatat.
                                                 @endif
@@ -285,14 +292,7 @@
                         </table>
                     </div>
 
-                    @if($attendanceRecords->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $attendanceRecords->firstItem() ?? 0 }} - {{ $attendanceRecords->lastItem() ?? 0 }} dari {{ $attendanceRecords->total() }} data</div>
-                            <div class="d-flex justify-content-center">
-                                {{ $attendanceRecords->withQueryString()->links() }}
-                            </div>
-                        </div>
-                    @endif
+                    <x-pagination :paginator="$attendanceRecords" />
                 </div>
             </div>
         </div>

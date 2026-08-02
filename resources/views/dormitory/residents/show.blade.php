@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Detail Penghuni - {{ $resident->student?->name ?? '?' }} @endsection
+@section('title') Detail Santri - {{ $resident->student?->name ?? '?' }} @endsection
 
 @php
     $userId = $userId ?? request()->route('userId') ?? (function() { if (auth()->check()) return auth()->id(); return null; })();
@@ -8,10 +8,8 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
-        @slot('li_3') <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? '' }}</a> @endslot
-        @slot('li_4') Penghuni @endslot
-        @slot('title') {{ $resident->student?->name ?? '-' }} @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
+        @slot('title') Detail Santri @endslot
     @endcomponent
 
     @if(session('success'))
@@ -95,11 +93,11 @@
                     <div class="mt-2">
                         <span class="small text-muted">
                             <i class="ri-time-line me-1"></i>
-                            Check-in: {{ $resident->check_in_date?->format('d M Y') ?? '-' }}
+                            Tanggal Ditempatkan: {{ $resident->check_in_date?->format('d M Y') ?? '-' }}
                             @if($resident->check_out_date)
                                 &nbsp;|&nbsp;
                                 <i class="ri-logout-box-r-line me-1"></i>
-                                Check-out: {{ $resident->check_out_date->format('d M Y') }}
+                                Tanggal Keluar: {{ $resident->check_out_date->format('d M Y') }}
                             @endif
                         </span>
                     </div>
@@ -117,7 +115,7 @@
                               class="d-inline">
                             @csrf
                             <button type="button" class="btn btn-warning checkout-btn">
-                                <i class="ri-logout-box-r-line align-middle me-1"></i> Check-out
+                                <i class="ri-logout-box-r-line align-middle me-1"></i> Keluar
                             </button>
                         </form>
                     @endif
@@ -221,6 +219,66 @@
                                                     <div class="col-md-6">
                                                         <label class="form-label detail-label">No. HP</label>
                                                         <div class="detail-value">{{ $resident->student->mobile_phone ?: '-' }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h5 class="card-title mb-0">
+                                                    <i class="ri-file-check-line text-primary me-2"></i>Informasi Asrama
+                                                </h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">Asrama</label>
+                                                        <div class="detail-value">
+                                                            <span class="badge bg-info-subtle text-info">{{ $dormitory->name ?? '-' }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">Kamar</label>
+                                                        <div class="detail-value">
+                                                            {{ $resident->room?->name ?? '-' }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">No. Bed</label>
+                                                        <div class="detail-value">
+                                                            <span class="badge bg-secondary-subtle text-secondary">#{{ $resident->bed_number }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">Status</label>
+                                                        <div class="detail-value">
+                                                            @if($resident->is_active)
+                                                                <span class="badge bg-success-subtle text-success">
+                                                                    <i class="ri-checkbox-circle-line me-1"></i>Aktif
+                                                                </span>
+                                                            @else
+                                                                <span class="badge bg-secondary-subtle text-secondary">
+                                                                    <i class="ri-close-circle-line me-1"></i>Nonaktif
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">Tanggal Ditempatkan</label>
+                                                        <div class="detail-value">{{ $resident->check_in_date?->format('d F Y') ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label detail-label">Tanggal Keluar</label>
+                                                        <div class="detail-value">{{ $resident->check_out_date?->format('d F Y') ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label detail-label">Catatan</label>
+                                                        <div class="detail-value">
+                                                            <div class="p-2 rounded" style="background: var(--bs-tertiary-bg);">
+                                                                {{ $resident->notes ?? '-' }}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -395,65 +453,6 @@
                                     </div>
 
                                     <div class="col-xxl-6">
-                                        <div class="card mb-4">
-                                            <div class="card-header">
-                                                <h5 class="card-title mb-0">
-                                                    <i class="ri-file-check-line text-primary me-2"></i>Informasi Asrama
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row g-3">
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">Asrama</label>
-                                                        <div class="detail-value">
-                                                            <span class="badge bg-info-subtle text-info">{{ $dormitory->name ?? '-' }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">Kamar</label>
-                                                        <div class="detail-value">
-                                                            {{ $resident->room?->name ?? '-' }}
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">No. Bed</label>
-                                                        <div class="detail-value">
-                                                            <span class="badge bg-secondary-subtle text-secondary">#{{ $resident->bed_number }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">Status</label>
-                                                        <div class="detail-value">
-                                                            @if($resident->is_active)
-                                                                <span class="badge bg-success-subtle text-success">
-                                                                    <i class="ri-checkbox-circle-line me-1"></i>Aktif
-                                                                </span>
-                                                            @else
-                                                                <span class="badge bg-secondary-subtle text-secondary">
-                                                                    <i class="ri-close-circle-line me-1"></i>Nonaktif
-                                                                </span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">Tanggal Check-in</label>
-                                                        <div class="detail-value">{{ $resident->check_in_date?->format('d F Y') ?? '-' }}</div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label detail-label">Tanggal Check-out</label>
-                                                        <div class="detail-value">{{ $resident->check_out_date?->format('d F Y') ?? '-' }}</div>
-                                                    </div>
-                                                    <div class="col-12">
-                                                        <label class="form-label detail-label">Catatan</label>
-                                                        <div class="detail-value">
-                                                            <div class="p-2 rounded" style="background: var(--bs-tertiary-bg);">
-                                                                {{ $resident->notes ?: '<em class="text-muted">Tidak ada catatan</em>' }}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             @else
@@ -566,7 +565,7 @@
                                             <div class="card">
                                                 <div class="card-header">
                                                     <h5 class="card-title mb-0">
-                                                        <i class="ri-team-line text-info me-2"></i>Penghuni Lain di Kamar Ini
+                                                        <i class="ri-team-line text-info me-2"></i>Santri Lain di Kamar Ini
                                                     </h5>
                                                 </div>
                                                 <div class="card-body p-0">
@@ -650,7 +649,7 @@
                                 </div>
                             @else
                                 <div class="alert alert-secondary">
-                                    <i class="ri-home-line me-2"></i>Kamar belum ditetapkan untuk penghuni ini.
+                                    <i class="ri-home-line me-2"></i>Kamar belum ditetapkan untuk santri ini.
                                 </div>
                             @endif
                         </div>
@@ -784,7 +783,7 @@
                                         <i class="ri-file-list-line fs-1 d-block text-muted" style="font-size: 4rem;"></i>
                                     </div>
                                     <h5 class="text-muted mb-2">Belum Ada Izin</h5>
-                                    <p class="text-muted">Tidak ada catatan izin asrama untuk santri ini.</p>
+                                    <p class="text-muted">-</p>
                                 </div>
                             @endif
                         </div>
@@ -804,11 +803,11 @@
             e.preventDefault();
             var form = btn.closest('form');
             Swal.fire({
-                title: 'Konfirmasi Check-out',
-                html: '<p>Yakin ingin men-check-out <strong>{{ $resident->student?->name ?? 'santri ini' }}</strong> dari asrama?</p>',
+                title: 'Konfirmasi Keluar',
+                html: '<p>Yakin ingin mengeluarkan <strong>{{ $resident->student?->name ?? 'santri ini' }}</strong> dari asrama?</p>',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: '<i class="ri-logout-box-r-line me-1"></i> Ya, Check-out',
+                confirmButtonText: '<i class="ri-logout-box-r-line me-1"></i> Ya, Keluarkan',
                 cancelButtonText: 'Batal',
                 confirmButtonClass: 'btn btn-warning me-2',
                 cancelButtonClass: 'btn btn-light',

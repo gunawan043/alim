@@ -29,22 +29,16 @@ class StoreResidentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'student_id.required' => 'Santri wajib dipilih.',
+            'student_id.required' => 'Pilih santri yang akan ditempatkan.',
             'student_id.exists' => 'Santri tidak ditemukan.',
             'room_id.required' => 'Kamar wajib dipilih.',
             'room_id.exists' => 'Kamar tidak ditemukan.',
             'bed_number.min' => 'Nomor tempat tidur minimal 1.',
-            'check_in_date.required' => 'Tanggal check-in wajib diisi.',
-            'check_in_date.date' => 'Format tanggal check-in tidak valid.',
+            'check_in_date.required' => 'Tanggal penempatan wajib diisi.',
+            'check_in_date.date' => 'Format tanggal penempatan tidak valid.',
         ];
     }
 
-    /**
-     * Additional validation using StudentLookupService:
-     * - Student must be 'active' status
-     * - Not already assigned as a resident
-     * - Room must belong to the target dormitory
-     */
     protected function prepareForValidation(): void
     {
         // nothing to add, but hook into afterValidation
@@ -55,7 +49,7 @@ class StoreResidentRequest extends FormRequest
         $data = $this->validated();
         $service = $this->getLookupService();
 
-        // Validate student is active
+        // Validate student is active and eligible for placement
         $validation = $service->validateAssignment(
             $data['student_id'],
             $this->route('asramaUuid'),

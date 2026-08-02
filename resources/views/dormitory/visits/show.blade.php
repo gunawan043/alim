@@ -59,6 +59,11 @@
                     <h5 class="mb-0 flex-grow-1">
                         <i class="ri-user-location-line me-2 text-primary"></i>Detail Kunjungan
                     </h5>
+                    <a href="{{ route('user.asrama.visits.card', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                       target="_blank"
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="ri-printer-line me-1"></i> Cetak Kartu
+                    </a>
                     <div>{!! $visit->status_badge !!}</div>
                 </div>
                 <div class="card-body">
@@ -244,7 +249,7 @@
                             @if($visit->status === 'approved')
                                 {{-- Check-in --}}
                                 <form method="POST"
-                                      action="{{ route('user.asrama.visits.checkin', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
+                                      action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-primary">
                                         <i class="ri-login-box-line me-1"></i> Check-in
@@ -254,7 +259,7 @@
                             @if($visit->status === 'arrived')
                                 {{-- Check-out --}}
                                 <form method="POST"
-                                      action="{{ route('user.asrama.visits.checkout', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
+                                      action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-warning">
                                         <i class="ri-logout-box-r-line me-1"></i> Check-out
@@ -370,6 +375,40 @@
                     </div>
                 </div>
             </div>
+
+            {{-- QR Code Card (only when approved) --}}
+            @if(in_array($visit->status, ['approved', 'arrived']))
+                @php
+                    $scanUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                        'user.asrama.visits.scan.store',
+                        now()->addDays(30),
+                        [
+                            'userId' => $userId,
+                            'asramaUuid' => $dormitory->id,
+                            'visitUuid' => $visit->id,
+                        ]
+                    );
+                @endphp
+                <div class="card mt-3">
+                    <div class="card-header bg-transparent">
+                        <h5 class="mb-0"><i class="ri-qr-code-line me-2 text-primary"></i>QR Code Kunjungan</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ urlencode($scanUrl) }}"
+                             alt="QR Code Kunjungan"
+                             class="img-fluid rounded border"
+                             style="max-width: 200px;">
+                        <p class="text-muted small mt-2 mb-2">Scan oleh pengasuh untuk {{ $visit->status === 'approved' ? 'check-in' : 'check-out' }} tamu.</p>
+                        <div class="small text-muted mb-2">
+                            URL: <code class="text-truncate d-inline-block" style="max-width: 100%;">{{ $scanUrl }}</code>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="navigator.clipboard.writeText('{{ $scanUrl }}').then(() => this.innerHTML='<i class=\'ri-check-line\'></i> Tersalin')">
+                            <i class="ri-file-copy-line me-1"></i> Salin URL
+                        </button>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 @endsection

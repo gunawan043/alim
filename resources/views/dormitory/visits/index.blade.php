@@ -23,76 +23,72 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-2">
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-100 border border-warning-subtle">
+            <div class="card card-animate h-90 border-start border-warning">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-warning-subtle rounded fs-2">
-                                <i class="ri-time-line text-warning"></i>
+                                <i class="ri-time-line fs-24 text-warning"></i>
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Pending</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Pending</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['pending'] ?? 0) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">Menunggu persetujuan</small>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-100 border border-success-subtle">
+            <div class="card card-animate h-90 border-start border-success">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="ri-checkbox-circle-line text-success"></i>
+                                <i class="ri-checkbox-circle-line fs-24 text-success"></i>
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Approved</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Approved</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['approved'] ?? 0) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">Disetujui</small>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-100 border border-info-subtle">
+            <div class="card card-animate h-90 border-start border-info">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="ri-user-location-line text-info"></i>
+                                <i class="ri-user-location-line fs-24 text-info"></i>
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Arrived</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Arrived</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['arrived'] ?? 0) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">Sudah tiba</small>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-100 border border-secondary-subtle">
+            <div class="card card-animate h-90 border-start border-secondary">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-secondary-subtle rounded fs-2">
-                                <i class="ri-logout-box-line text-secondary"></i>
+                                <i class="ri-logout-box-line fs-24 text-secondary"></i>
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Checked Out</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Checked Out</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['checked_out'] ?? 0) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">Selesai</small>
                 </div>
             </div>
         </div>
@@ -108,10 +104,16 @@
                             <p class="text-muted mb-0">Daftar kunjungan tamu ke asrama.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                               class="btn btn-primary">
-                                <i class="ri-add-line align-bottom me-1"></i> Ajukan Kunjungan
-                            </a>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('user.asrama.visits.scan', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
+                                   class="btn btn-info">
+                                    <i class="ri-qr-scan-2-line align-bottom me-1"></i> Scan QR
+                                </a>
+                                <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
+                                   class="btn btn-primary">
+                                    <i class="ri-add-line align-bottom me-1"></i> Ajukan Kunjungan
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -167,7 +169,7 @@
                                     <th>Hubungan</th>
                                     <th>Tujuan</th>
                                     <th>Waktu Datang</th>
-                                    <th class="text-center">Durasi</th>
+                                    <!-- <th class="text-center">Durasi</th> -->
                                     <th class="text-center">Status</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
@@ -211,24 +213,30 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        <td class="text-center">
+                                        <!-- <td class="text-center">
                                             @if($visit->expected_duration_minutes)
                                                 <span class="badge bg-light text-dark">{{ $visit->expected_duration_minutes }} menit</span>
                                             @else
                                                 —
                                             @endif
-                                        </td>
+                                        </td> -->
                                         <td class="text-center">
                                             {!! $visit->status_badge !!}
                                         </td>
                                         <td class="text-center">
+                                            <!-- Tombol Cetak Kartu -->
+                                            <a href="{{ route('user.asrama.visits.card', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                                               target="_blank"
+                                               class="btn btn-sm btn-outline-secondary me-1" title="Cetak Kartu Kunjungan">
+                                                <i class="ri-printer-line"></i>
+                                            </a>
                                             <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
                                                class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                                 <i class="ri-eye-line"></i>
                                             </a>
                                             @if($visit->status === 'approved')
                                                 <form method="POST"
-                                                      action="{{ route('user.asrama.visits.checkin', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                                                      action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
                                                       class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Check-in">
@@ -238,7 +246,7 @@
                                             @endif
                                             @if($visit->status === 'arrived')
                                                 <form method="POST"
-                                                      action="{{ route('user.asrama.visits.checkout', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                                                      action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
                                                       class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-warning" title="Check-out">
@@ -250,13 +258,13 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">
-                                            <i class="ri-user-follow-line fs-1 d-block mb-2"></i>
-                                            Belum ada data kunjungan.
-                                            <br>
+                                        <td colspan="9" class="text-center py-5">
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Kunjungan</h6>
+                                            <p class="text-muted mb-3">Belum ada data kunjungan yang tercatat.</p>
                                             <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                                               class="btn btn-sm btn-primary mt-2">
-                                                <i class="ri-add-line"></i> Ajukan Kunjungan Baru
+                                               class="btn btn-primary btn-sm">
+                                                <i class="ri-add-line me-1"></i> Ajukan Kunjungan Baru
                                             </a>
                                         </td>
                                     </tr>
@@ -265,12 +273,7 @@
                         </table>
                     </div>
 
-                    @if(isset($visits) && $visits->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $visits->firstItem() ?? 0 }} - {{ $visits->lastItem() ?? 0 }} dari {{ $visits->total() }} data</div>
-                            <div>{{ $visits->withQueryString()->links() }}</div>
-                        </div>
-                    @endif
+                    <x-pagination :paginator="$visits" />
                 </div>
             </div>
         </div>

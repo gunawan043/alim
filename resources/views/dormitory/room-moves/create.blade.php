@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? 'Asrama' }}</a> @endslot
         @slot('li_4') Mutasi Kamar @endslot
         @slot('title') Ajukan Mutasi @endslot
@@ -328,8 +328,16 @@
 
     async function fetchStudent(q) {
         try {
-            var url = '/asrama/' + asramaUuid + '/penghuni/find-student?q=' + encodeURIComponent(q) + '&userId=' + userId;
+            // Full route pattern: /{userId}/asrama/{asramaUuid}/penghuni/find-student
+            var url = '/' + userId + '/asrama/' + asramaUuid + '/penghuni/find-student?q=' + encodeURIComponent(q) + '&dormitory_id=' + asramaUuid;
             var res = await fetch(url);
+            if (!res.ok) {
+                console.error('HTTP Error:', res.status, res.statusText);
+                var txt = await res.text();
+                console.error('Response body:', txt);
+                renderEmpty('Gagal mencari data (' + res.status + '). Periksa konsol.');
+                return;
+            }
             var data = await res.json();
 
             if (data.results && data.results.length > 0) {
@@ -338,6 +346,7 @@
                 renderEmpty('Tidak ada hasil untuk "' + q + '"');
             }
         } catch (err) {
+            console.error('Fetch error:', err);
             renderEmpty('Gagal mencari data. Coba lagi.');
         }
     }
@@ -348,10 +357,11 @@
             var genderBadge = s.gender === 'L'
                 ? '<span class="badge bg-primary-subtle text-primary ms-2">L</span>'
                 : '<span class="badge bg-danger-subtle text-danger ms-2">P</span>';
+            var roomInfo = s.room_name ? '<small class="text-muted mt-1 d-block">Kamar: ' + s.room_name + '</small>' : '';
             var item = document.createElement('a');
             item.href = '#';
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start py-2 px-3';
-            item.innerHTML = '<div><div class="fw-semibold">' + s.name + '</div><div class="small text-muted">NISN: ' + (s.nisn ?? '-') + '</div></div>' + genderBadge;
+            item.innerHTML = '<div><div class="fw-semibold">' + s.name + '</div><div class="small text-muted">NISN: ' + (s.nisn ?? '-') + '</div>' + roomInfo + '</div>' + genderBadge;
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 selectStudent(s);

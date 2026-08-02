@@ -34,7 +34,7 @@
                             <td><span class="badge bg-dark">{{ $room->code }}</span></td>
                         </tr>
                         <tr>
-                            <th class="text-muted">Gedung</th>
+                            <th class="text-muted">Blok</th>
                             <td>{{ $room->wing?->name ?? '-' }}</td>
                         </tr>
                         <tr>
@@ -69,6 +69,19 @@
                             </td>
                         </tr>
                         <tr>
+                            <th class="text-muted">Keberadaan</th>
+                            <td>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="badge bg-success-subtle text-success">
+                                        <i class="ri-home-heart-line me-1"></i> Di Asrama: {{ $stats['in_dormitory'] }}
+                                    </span>
+                                    <span class="badge bg-warning-subtle text-warning">
+                                        <i class="ri-route-line me-1"></i> Izin Pulang: {{ $stats['on_permit'] }}
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
                             <th class="text-muted">Fasilitas</th>
                             <td>{{ $room->facility_notes ?? '-' }}</td>
                         </tr>
@@ -89,6 +102,43 @@
                         <i class="ri-pencil-line me-1"></i> Edit
                     </a>
                     <a href="{{ route('user.asrama.rooms.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light">Kembali</a>
+                </div>
+            </div>
+
+            {{-- Wali Kamar --}}
+            <div class="card mt-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0"><i class="ri-shield-user-line me-1"></i> Wali Kamar</h5>
+                    <a href="{{ route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="ri-list-unordered me-1"></i> Kelola
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($room->activeSupervisor)
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="supervisor-avatar-lg" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#405189,#5b6cb8);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;">
+                                {{ strtoupper(substr($room->activeSupervisor->user->name ?? '?', 0, 1)) }}
+                            </span>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">
+                                    <a href="{{ route('user.asrama.room-supervisors.profile', ['userId' => $userId, 'supervisorUserUuid' => $room->activeSupervisor->user_id]) }}" class="text-body">
+                                        {{ $room->activeSupervisor->user->name ?? '-' }}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">
+                                    <i class="ri-mail-line me-1"></i>{{ $room->activeSupervisor->user->email ?? '' }}
+                                </small>
+                            </div>
+                            <a href="{{ route('user.asrama.room-supervisors.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $room->activeSupervisor->id]) }}" class="btn btn-sm btn-soft-info">
+                                <i class="ri-eye-line"></i>
+                            </a>
+                        </div>
+                    @else
+                        <p class="text-muted text-center py-3 mb-0">
+                            <i class="ri-shield-user-line fs-3 d-block mb-1"></i>
+                            Kamar ini belum memiliki Wali Kamar.
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -117,13 +167,19 @@
                                         <th>Nama Santri</th>
                                         <th>NISN</th>
                                         <th>JK</th>
-                                        <th>No. Tempat Tidur</th>
+                                        <th>No. TT</th>
+                                        <th>Status</th>
                                         <th style="width:60px"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="memberTableBody">
                                     @foreach($activeResidents as $resident)
-                                        <tr id="resident-row-{{ $resident->id }}">
+                                        @php
+                                            $permit = $activePermits->get($resident->student_id);
+                                            $isOverdue = $permit && $permit->status === 'overdue';
+                                            $expectedReturn = $permit?->expected_return_datetime;
+                                        @endphp
+                                        <tr id="resident-row-{{ $resident->id }}" class="{{ $isOverdue ? 'table-warning' : '' }}">
                                             <td class="text-center text-muted">{{ $loop->iteration }}</td>
                                             <td>
                                                 <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $resident->student_id]) }}">
@@ -139,6 +195,23 @@
                                                 @endif
                                             </td>
                                             <td>{{ $resident->bed_number ?? '-' }}</td>
+                                            <td>
+                                                @if($permit)
+                                                    <span class="badge bg-{{ $isOverdue ? 'danger' : 'warning' }}-subtle text-{{ $isOverdue ? 'danger' : 'warning' }}" title="Kembali: {{ $expectedReturn?->format('d M Y H:i') }}">
+                                                        <i class="ri-{{ $isOverdue ? 'alarm-warning-line' : 'route-line' }} me-1"></i>
+                                                        {{ $isOverdue ? 'Terlambat' : 'Izin Pulang' }}
+                                                    </span>
+                                                    @if($expectedReturn)
+                                                        <div class="small text-muted mt-1">
+                                                            Kembali: {{ $expectedReturn->format('d M H:i') }}
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    <span class="badge bg-success-subtle text-success">
+                                                        <i class="ri-home-heart-line me-1"></i> Di Asrama
+                                                    </span>
+                                                @endif
+                                            </td>
                                             <td>
                                                 <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
                                                     onclick="removeResident('{{ $resident->id }}')"
@@ -157,6 +230,12 @@
                 <div class="card-footer text-muted small">
                     <i class="ri-information-line me-1"></i>
                     {{ $activeResidents->count() }} / {{ $room->capacity }} kuota terisi
+                    @if($stats['on_permit'] > 0)
+                        <span class="ms-2 text-warning">
+                            <i class="ri-route-line me-1"></i>
+                            {{ $stats['on_permit'] }} santri sedang izin pulang
+                        </span>
+                    @endif
                 </div>
                 @endif
             </div>

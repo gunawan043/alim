@@ -22,17 +22,20 @@ class StoreRoomRequest extends FormRequest
             'room_type' => 'required|in:reguler,khusus,isolasi,musyrif',
             'facility_notes' => 'nullable|string',
             'is_active' => 'boolean',
+            'wali_kamar_user_id' => 'required|exists:users,id',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'wing_id.required' => 'Gedung wajib dipilih.',
+            'wing_id.required' => 'Blok wajib dipilih.',
             'code.required' => 'Kode kamar wajib diisi.',
             'capacity.required' => 'Kapasitas kamar wajib diisi.',
             'capacity.min' => 'Kapasitas minimal 1.',
-            'room_type.required' => 'Tipe kamar wajib dipilih.',
+            'room_type.required' => 'Tipe kamar wajib diisi.',
+            'wali_kamar_user_id.required' => 'Wali Kamar wajib dipilih.',
+            'wali_kamar_user_id.exists' => 'Wali Kamar yang dipilih tidak ditemukan.',
         ];
     }
 }

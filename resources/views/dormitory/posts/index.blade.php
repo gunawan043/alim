@@ -157,12 +157,12 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-5">
-                                            <i class="ri-broadcast-line fs-1 d-block mb-2 text-muted"></i>
-                                            Belum ada informasi posted.
-                                            <br>
+                                        <td colspan="7" class="text-center py-5">
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Posting</h6>
+                                            <p class="text-muted mb-3">Belum ada informasi / posting yang diterbitkan.</p>
                                             <a href="{{ route('user.asrama.posts.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-sm btn-primary mt-2">
+                                               class="btn btn-primary btn-sm">
                                                 <i class="ri-add-line me-1"></i> Buat Posting Baru
                                             </a>
                                         </td>
@@ -172,12 +172,7 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $posts->firstItem() ?? 0 }} - {{ $posts->lastItem() ?? 0 }} dari {{ $posts->total() }} data</div>
-                            <div>{{ $posts->withQueryString()->links() }}</div>
-                        </div>
-                    </div>
+                    <x-pagination :paginator="$posts" />
                 </div>
             </div>
         </div>

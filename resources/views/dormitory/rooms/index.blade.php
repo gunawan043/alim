@@ -51,7 +51,7 @@
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Terisi</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $rooms->total() ? $rooms->sum('residents') : 0 }}</h3>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $rooms->total() ? $occupied : 0 }}</h3>
                         </div>
                     </div>
                 </div>
@@ -66,7 +66,7 @@
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Kosong</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $rooms->total() ? $rooms->total() - $rooms->sum('residents') : 0 }}</h3>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $rooms->total() ? $totalCapacity - $occupied : 0 }}</h3>
                         </div>
                     </div>
                 </div>
@@ -99,6 +99,9 @@
                             <p class="text-muted mb-0">Pengelolaan kamar asrama.</p>
                         </div>
                         <div class="col-sm-auto">
+                            <a href="{{ route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-outline-primary me-1">
+                                <i class="ri-shield-user-line align-bottom me-1"></i> Wali Kamar
+                            </a>
                             <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Kamar
                             </a>
@@ -138,6 +141,7 @@
                                     <th>Kode</th>
                                     <th>Nama Kamar</th>
                                     <th>Sayap</th>
+                                    <th>Wali Kamar</th>
                                     <th class="text-center">Lantai</th>
                                     <th class="text-center">Tipe</th>
                                     <th class="text-center">Kapasitas</th>
@@ -158,6 +162,13 @@
                                         </a>
                                     </td>
                                     <td>{{ $r->wing?->name ?? '—' }}</td>
+                                    <td>
+                                        @if($r->activeSupervisor?->user)
+                                            <span class="fw-semibold">{{ $r->activeSupervisor->user->name }}</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">{{ $r->floor ?? '—' }}</td>
                                     <td class="text-center">
                                         @if($r->room_type)
@@ -203,7 +214,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">
+                                    <td colspan="11" class="text-center text-muted py-4">
                                         <i class="ri-door-open-line fs-1 d-block mb-2"></i>
                                         Belum ada data kamar.
                                         <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah kamar baru</a>

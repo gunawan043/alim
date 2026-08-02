@@ -20,6 +20,7 @@ class NotifyRepairLifecycle
                 'Laporan Disetujui',
                 "Laporan {$event->repair->request_number} disetujui oleh {$event->approver->name}.",
             );
+
             return;
         }
 

@@ -41,6 +41,7 @@ class SendTodoReminderCommand extends Command
 
         if ($todos->isEmpty()) {
             $this->info('✅ Tidak ada todo yang perlu direminder.');
+
             return 0;
         }
 
@@ -56,6 +57,7 @@ class SendTodoReminderCommand extends Command
                 if ($dryRun) {
                     $this->line("\n  → [DRY RUN] #{$todo->id}: {$todo->title}");
                     $bar->advance();
+
                     continue;
                 }
 
@@ -72,35 +74,35 @@ class SendTodoReminderCommand extends Command
                 }
 
                 $dueText = $todo->due_date
-                    ? $todo->due_date->format('d/m/Y') . ($todo->due_time ? ' ' . $todo->due_time->format('H:i') : '')
+                    ? $todo->due_date->format('d/m/Y').($todo->due_time ? ' '.$todo->due_time->format('H:i') : '')
                     : 'tanpa tenggat';
 
                 // Kirim ke owner
                 $this->notificationService->send($todo->owner_id, [
-                    'module'        => 'todo',
-                    'type'          => $type,
-                    'title'         => $todo->is_overdue
-                        ? '⏰ Tugas TERLAMBAT: ' . $todo->title
-                        : '⏰ Reminder: ' . $todo->title,
-                    'message'       => $todo->is_overdue
+                    'module' => 'todo',
+                    'type' => $type,
+                    'title' => $todo->is_overdue
+                        ? '⏰ Tugas TERLAMBAT: '.$todo->title
+                        : '⏰ Reminder: '.$todo->title,
+                    'message' => $todo->is_overdue
                         ? "Tugas '{$todo->title}' sudah melewati tenggat ({$dueText}). Segera selesaikan tugas ini."
                         : "Pengingat: tugas '{$todo->title}' memiliki tenggat pada {$dueText}. Prioritas: {$todo->priorityLabel}.",
-                    'action'        => 'view',
-                    'action_url'    => route('user.todos.index', ['userId' => $todo->owner_id]),
-                    'action_text'   => 'Lihat Detail',
+                    'action' => 'view',
+                    'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
+                    'action_text' => 'Lihat Detail',
                     'reference_type' => Todo::class,
-                    'reference_id'  => $todo->id,
+                    'reference_id' => $todo->id,
                     'reference_code' => $todo->id,
-                    'priority'      => $priority,
-                    'data'          => [
-                        'todo_id'    => $todo->id,
-                        'title'      => $todo->title,
-                        'due_date'   => $todo->due_date?->format('Y-m-d'),
-                        'due_time'   => $todo->due_time?->format('H:i'),
-                        'priority'   => $todo->priority,
+                    'priority' => $priority,
+                    'data' => [
+                        'todo_id' => $todo->id,
+                        'title' => $todo->title,
+                        'due_date' => $todo->due_date?->format('Y-m-d'),
+                        'due_time' => $todo->due_time?->format('H:i'),
+                        'priority' => $todo->priority,
                         'is_overdue' => $todo->is_overdue,
-                        'status'     => $todo->status,
-                        'reminder_at'=> $todo->reminder_at?->format('Y-m-d H:i:s'),
+                        'status' => $todo->status,
+                        'reminder_at' => $todo->reminder_at?->format('Y-m-d H:i:s'),
                     ],
                 ]);
 
@@ -110,7 +112,7 @@ class SendTodoReminderCommand extends Command
                 $stats['sent']++;
             } catch (\Exception $e) {
                 $stats['errors']++;
-                Log::error("Gagal kirim reminder todo {$todo->id}: " . $e->getMessage(), [
+                Log::error("Gagal kirim reminder todo {$todo->id}: ".$e->getMessage(), [
                     'todo_id' => $todo->id,
                     'exception' => $e,
                 ]);
@@ -126,7 +128,7 @@ class SendTodoReminderCommand extends Command
             $this->info("🔍 [DRY RUN] {$stats['sent']} todo akan direminder (tidak benar-benar dikirim).");
         } else {
             $this->info("✅ Reminder terkirim untuk {$stats['sent']} todo."
-                . ($stats['errors'] > 0 ? " {$stats['errors']} gagal." : ''));
+                .($stats['errors'] > 0 ? " {$stats['errors']} gagal." : ''));
         }
 
         return $stats['errors'] > 0 ? 1 : 0;

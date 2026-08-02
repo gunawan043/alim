@@ -25,6 +25,7 @@ class NotifyWorkOrderLifecycle
                 ],
                 priority: 'medium',
             );
+
             return;
         }
 

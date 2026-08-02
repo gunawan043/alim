@@ -2,8 +2,8 @@
 
 namespace App\Events\Boarding;
 
-use App\Models\StudentHealthPermit;
 use App\Models\Student;
+use App\Models\StudentHealthPermit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 

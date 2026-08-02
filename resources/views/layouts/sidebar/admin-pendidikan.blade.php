@@ -55,6 +55,15 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 
+{{-- Konfigurasi Izin --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.leave-policies') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-settings-4-line"></i>
+        <span>Konfigurasi Izin</span>
+    </a>
+</li>
+
 {{-- Kebijakan Asrama --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.boarding-policies.') ? ' active' : '' }}"
@@ -129,7 +138,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
 </li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ str_contains($currentRoute, 'mahrom') ? ' active' : '' }}"
-       href="{{ route('user.students.index', ['userId' => $userId]) }}">
+       href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
         <i class="ri-parent-line"></i>
         <span>Data Mahrom</span>
     </a>

@@ -36,7 +36,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li> --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ $currentRoute === 'user.profile.my' ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ $currentRoute === 'profile.my' ? ' active' : '' }}"
        href="{{ route('user.profile.my', ['userId' => $userId]) }}">
         <i class="ri-user-line"></i>
         <span>Profile</span>
@@ -90,6 +90,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
         <span>Absensi</span>
     </a>
 </li>
+{{-- Perizinan Kepulangan --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.permits.') ? ' active' : '' }}"
        href="{{ $hasAsramaContext ? route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
@@ -98,10 +99,17 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.permit-wizard.step1') ? ' active' : '' }}"
-       href="{{ $hasAsramaContext ? route('user.asrama.permit-wizard.step1', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
-        <i class="ri-magic-line"></i>
-        <span>Izin Kepulangan</span>
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.leave-policies') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-settings-4-line"></i>
+        <span>Konfigurasi Izin</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $currentRoute === 'user.asrama.permits.scan' ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.permits.scan', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-qr-scan-2-line"></i>
+        <span>Scan QR Penjemputan</span>
     </a>
 </li>
 <li class="nav-item">
@@ -130,6 +138,13 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
        href="{{ $hasAsramaContext ? route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
         <i class="ri-arrow-left-right-line"></i>
         <span>Mutasi Kamar</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.room-supervisors.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-shield-user-line"></i>
+        <span>Wali Kamar</span>
     </a>
 </li>
 
@@ -212,7 +227,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
 </li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ str_contains($currentRoute, 'mahrom') ? ' active' : '' }}"
-       href="{{ route('user.students.index', ['userId' => $userId]) }}">
+       href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
         <i class="ri-parent-line"></i>
         <span>Data Mahrom</span>
     </a>

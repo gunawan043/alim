@@ -1,10 +1,17 @@
 @extends('layouts.master')
 @section('title') Mutasi Kamar — Asrama @endsection
 
+@section('css')
+    <style>
+        .card-animate { transition: all 0.3s ease; }
+        .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    </style>
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') {{ $dormitory->name ?? 'Asrama' }} @endslot
         @slot('title') Mutasi Kamar @endslot
     @endcomponent
@@ -29,57 +36,71 @@
     @endif
 
     {{-- ============================================================
-         STATS CARDS
+         STATS CARDS — TEMPLATE PERIZINAN (seperti permits)
     ============================================================ --}}
-    <div class="row mb-4">
-        <div class="col-xl-4 col-md-4">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0 me-3">
-                            <div class="avatar-md rounded-circle bg-warning-subtle">
-                                <i class="ri-time-line fs-24 text-warning"></i>
-                            </div>
+    <div class="row g-3 mb-3">
+        {{-- 1. Menunggu --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2">
+                                <i class="ri-time-line text-warning"></i>
+                            </span>
                         </div>
-                        <div class="flex-grow-1 overflow-hidden">
-                            <p class="text-muted text-truncate mb-1">Menunggu</p>
-                            <h4 class="mb-0">{{ $stats['pending'] ?? 0 }}</h4>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Menunggu</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['pending'] ?? 0 }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">permohonan</small></h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0" style="font-size:11px;">
+                        <i class="ri-information-line me-1"></i>Perlu tindakan admin
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-4">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0 me-3">
-                            <div class="avatar-md rounded-circle bg-success-subtle">
-                                <i class="ri-checkbox-circle-line fs-24 text-success"></i>
-                            </div>
+
+        {{-- 2. Disetujui --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2">
+                                <i class="ri-checkbox-circle-line text-success"></i>
+                            </span>
                         </div>
-                        <div class="flex-grow-1 overflow-hidden">
-                            <p class="text-muted text-truncate mb-1">Disetujui</p>
-                            <h4 class="mb-0">{{ $stats['approved'] ?? 0 }}</h4>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Disetujui</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['approved'] ?? 0 }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">permohonan</small></h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0" style="font-size:11px;">
+                        <i class="ri-information-line me-1"></i>Berlaku valid
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-4">
-            <div class="card card-animate border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0 me-3">
-                            <div class="avatar-md rounded-circle bg-danger-subtle">
-                                <i class="ri-close-circle-line fs-24 text-danger"></i>
-                            </div>
+
+        {{-- 3. Ditolak --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2">
+                                <i class="ri-close-circle-line text-danger"></i>
+                            </span>
                         </div>
-                        <div class="flex-grow-1 overflow-hidden">
-                            <p class="text-muted text-truncate mb-1">Ditolak</p>
-                            <h4 class="mb-0">{{ $stats['rejected'] ?? 0 }}</h4>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Ditolak</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['rejected'] ?? 0 }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">permohonan</small></h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0" style="font-size:11px;">
+                        <i class="ri-information-line me-1"></i>Tidak disetujui
+                    </p>
                 </div>
             </div>
         </div>
@@ -88,20 +109,18 @@
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
-                <div class="card-header border-bottom-dashed">
-                    <div class="row g-4 align-items-center">
-                        <div class="col-sm">
-                            <h5 class="card-title mb-0">Mutasi Kamar</h5>
-                            <p class="text-muted mb-0">
-                                {{ $dormitory->name ?? 'Asrama' }} &mdash; {{ $roomMoves->total() ?? 0 }} permohonan
-                            </p>
-                        </div>
-                        <div class="col-sm-auto">
-                            <a href="{{ route('user.asrama.room-moves.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-primary">
-                                <i class="ri-add-line align-bottom me-1"></i> Ajukan Mutasi
-                            </a>
-                        </div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">Mutasi Kamar</h5>
+                        <p class="text-muted mb-0" style="font-size:11px;">
+                            {{ $dormitory->name ?? 'Asrama' }} &mdash; {{ $roomMoves->total() ?? 0 }} permohonan
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{{ route('user.asrama.room-moves.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                           class="btn btn-primary">
+                            <i class="ri-add-line align-bottom me-1"></i> Ajukan Mutasi
+                        </a>
                     </div>
                 </div>
 
@@ -111,7 +130,8 @@
                     ============================================================ --}}
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <select name="status" class="form-control">
+                            <label class="form-label" style="font-size:11px;">Status</label>
+                            <select name="status" class="form-select">
                                 <option value="">Semua Status</option>
                                 <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Menunggu</option>
                                 <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Disetujui</option>
@@ -119,32 +139,35 @@
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="form-label" style="font-size:11px;">Dari</label>
                             <input type="date" name="start_date" class="form-control"
-                                   value="{{ request('start_date') }}" placeholder="Dari Tanggal">
+                                   value="{{ request('start_date') }}">
                         </div>
                         <div class="col-md-2">
+                            <label class="form-label" style="font-size:11px;">Sampai</label>
                             <input type="date" name="end_date" class="form-control"
-                                   value="{{ request('end_date') }}" placeholder="Sampai Tanggal">
+                                   value="{{ request('end_date') }}">
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label" style="font-size:11px;">Cari Santri</label>
                             <input type="text" name="search" class="form-control"
                                    placeholder="Nama Santri..." value="{{ request('search') }}">
                         </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="ri-search-line me-1"></i> Filter
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100" title="Filter">
+                                <i class="ri-search-line"></i>
                             </button>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1 d-flex align-items-end">
                             <a href="{{ route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                               class="btn btn-light w-100">
-                                <i class="ri-reset-right-line"></i> Reset
+                               class="btn btn-light w-100" title="Reset">
+                                <i class="ri-reset-right-line"></i>
                             </a>
                         </div>
                     </form>
 
                     {{-- ============================================================
-                         TABLE
+                         TABLE (sesuai style perizinan)
                     ============================================================ --}}
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
@@ -203,7 +226,7 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-info-subtle text-info">
-                                                {{ ucfirst($move->move_type ?? '-') }}
+                                                {{ ucfirst($move->move_type ?? '') }}
                                             </span>
                                         </td>
                                         <td class="text-center">
@@ -213,7 +236,7 @@
                                                 </span>
                                             @elseif($move->status === 'approved')
                                                 <span class="badge bg-success-subtle text-success">
-                                                    <i class="ri-checkbox-circle-line me-1"></i>Disetujui
+                                                    <i class="ri-check-circle-line me-1"></i>Disetujui
                                                 </span>
                                             @elseif($move->status === 'rejected')
                                                 <span class="badge bg-danger-subtle text-danger">
@@ -221,7 +244,7 @@
                                                 </span>
                                             @else
                                                 <span class="badge bg-secondary-subtle text-secondary">
-                                                    {{ ucfirst($move->status ?? '-') }}
+                                                    {{ ucfirst($move->status ?? '') }}
                                                 </span>
                                             @endif
                                         </td>
@@ -236,11 +259,9 @@
                                 @empty
                                     <tr>
                                         <td colspan="8" class="text-center text-muted py-5">
-                                            <div class="mb-3">
-                                                <i class="ri-home-office-line fs-1 d-block text-muted"></i>
-                                            </div>
-                                            <h6 class="text-muted mb-1">Belum Ada Data Mutasi</h6>
-                                            <p class="text-muted mb-3">Tidak ada permohonan mutasi kamar.</p>
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon> <br>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Mutasi</h6>
+                                            <p class="text-muted mb-3">Tidak ada permohonan mutasi kamar yang tercatat.</p>
                                             <a href="{{ route('user.asrama.room-moves.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                                                class="btn btn-primary btn-sm">
                                                 <i class="ri-add-line me-1"></i> Ajukan Mutasi Baru
@@ -252,12 +273,7 @@
                         </table>
                     </div>
 
-                    @if($roomMoves->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $roomMoves->firstItem() ?? 0 }} - {{ $roomMoves->lastItem() ?? 0 }} dari {{ $roomMoves->total() }} data</div>
-                            <div>{{ $roomMoves->withQueryString()->links() }}</div>
-                        </div>
-                    @endif
+                    <x-pagination :paginator="$roomMoves" />
                 </div>
             </div>
         </div>

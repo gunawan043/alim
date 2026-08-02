@@ -2,7 +2,6 @@
 
 namespace App\Jobs\Sarpras;
 
-use App\Models\User;
 use App\Services\Sarpras\Automation\SarprasNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

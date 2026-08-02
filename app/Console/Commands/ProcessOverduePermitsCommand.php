@@ -33,6 +33,7 @@ class ProcessOverduePermitsCommand extends Command
 
         if ($dryRun) {
             $this->info('✅ Selesai (dry-run).');
+
             return 0;
         }
 
@@ -40,10 +41,12 @@ class ProcessOverduePermitsCommand extends Command
             $count = $this->service->processOverduePermits();
             $this->info("✅ Selesai. {$count} permit diproses.");
             Log::info("ProcessOverduePermits: {$count} permits processed.");
+
             return 0;
         } catch (\Throwable $e) {
-            $this->error('❌ Gagal: ' . $e->getMessage());
-            Log::error('ProcessOverduePermits failed: ' . $e->getMessage());
+            $this->error('❌ Gagal: '.$e->getMessage());
+            Log::error('ProcessOverduePermits failed: '.$e->getMessage());
+
             return 1;
         }
     }

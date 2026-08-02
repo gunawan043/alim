@@ -99,7 +99,7 @@ final class BoardingRulesEngine
             ? sprintf('%s_%s', $policy->id, $policy->updated_at?->timestamp ?? 0)
             : 'default';
         $quotaPeriod = $policy?->quota_period ?? QuotaPeriod::MONTHLY;
-        $dateSegment = match($quotaPeriod) {
+        $dateSegment = match ($quotaPeriod) {
             QuotaPeriod::WEEKLY => 'Y-W',
             QuotaPeriod::MONTHLY => 'Y-m',
             QuotaPeriod::YEARLY => 'Y',

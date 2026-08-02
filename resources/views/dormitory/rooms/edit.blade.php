@@ -45,9 +45,9 @@
                                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
-                                <label for="room_wing" class="form-label">Gedung</label>
+                                <label for="room_wing" class="form-label">Blok</label>
                                 <select name="wing_id" id="room_wing" class="form-control @error('wing_id') is-invalid @enderror">
-                                    <option value="">— Pilih Gedung —</option>
+                                    <option value="">— Pilih Blok —</option>
                                     @foreach($wings as $w)
                                         <option value="{{ $w->id }}" {{ old('wing_id', $room->wing_id) == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
                                     @endforeach

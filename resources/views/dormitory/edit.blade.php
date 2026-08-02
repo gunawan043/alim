@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
         @slot('title') Edit @endslot
     @endcomponent
@@ -66,7 +66,7 @@
                                 @error('total_rooms')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="dormitory_total_wings" class="form-label">Jumlah Gedung</label>
+                                <label for="dormitory_total_wings" class="form-label">Jumlah Blok</label>
                                 <input type="number" name="total_wings" id="dormitory_total_wings" class="form-control @error('total_wings') is-invalid @enderror" value="{{ old('total_wings', $dormitory->total_wings) }}">
                                 @error('total_wings')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

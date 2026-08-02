@@ -25,24 +25,24 @@ class NotifyOnCriticalAssetEvents
         try {
             // Higher-priority for asset_status_changed to "broken" or worse
             $priority = match (true) {
-                $event->eventType === 'damage_reported'                       => 'high',
-                ($event->detail['to'] ?? null) === 'broken'                   => 'high',
-                ($event->detail['to'] ?? null) === 'disposed'                 => 'critical',
-                default                                                       => 'normal',
+                $event->eventType === 'damage_reported' => 'high',
+                ($event->detail['to'] ?? null) === 'broken' => 'high',
+                ($event->detail['to'] ?? null) === 'disposed' => 'critical',
+                default => 'normal',
             };
 
             Log::channel('stack')->info('asset_critical_notification', [
-                'asset_id'   => $event->asset->id,
+                'asset_id' => $event->asset->id,
                 'asset_code' => $event->asset->asset_code,
-                'event'      => $event->eventType,
-                'priority'   => $priority,
-                'detail'     => $event->detail,
-                'actor_id'   => $event->actorId,
+                'event' => $event->eventType,
+                'priority' => $priority,
+                'detail' => $event->detail,
+                'actor_id' => $event->actorId,
             ]);
         } catch (\Throwable $e) {
             Log::warning('asset_notification_failed', [
                 'asset_id' => $event->asset->id,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

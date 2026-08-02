@@ -9,6 +9,7 @@ use App\Http\Requests\Mobile\CreateDormitoryVisitRequest;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
+use App\Models\StudentMahrom;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,33 @@ class DormitoryVisitController extends Controller
                     'message' => 'Santri tidak terdaftar sebagai penghuni aktif.',
                 ],
             ], 422);
+        }
+
+        // Verify referenced mahrom belongs to this student AND is active
+        if (! empty($data['mahrom_id'])) {
+            $mahrom = StudentMahrom::where('id', $data['mahrom_id'])
+                ->where('student_id', $data['student_id'])
+                ->first();
+
+            if (! $mahrom) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'MAHROM_NOT_FOUND',
+                        'message' => 'Mahrom tidak ditemukan untuk santri ini.',
+                    ],
+                ], 404);
+            }
+
+            if (! $mahrom->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'MAHROM_INACTIVE',
+                        'message' => 'Mahrom nonaktif tidak dapat digunakan untuk kunjungan.',
+                    ],
+                ], 422);
+            }
         }
 
         // Build visit data with access rights

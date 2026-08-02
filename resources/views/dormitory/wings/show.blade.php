@@ -1,12 +1,12 @@
 @extends('layouts.master')
-@section('title') {{ $wing->name }} @endsection
+@section('title') {{ $wing->display_name }} @endsection
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
         @slot('li_2') <a href="{{ route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
-        @slot('li_3') <a href="{{ route('user.asrama.wings.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Gedung</a> @endslot
-        @slot('title') {{ $wing->name }} @endslot
+        @slot('li_3') <a href="{{ route('user.asrama.wings.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Lantai Blok</a> @endslot
+        @slot('title') {{ $wing->display_name }} @endslot
     @endcomponent
 
     @if(session('success'))
@@ -16,7 +16,7 @@
     @endif
 
     <div class="row">
-        {{-- Info Gedung --}}
+        {{-- Info Blok --}}
         <div class="col-lg-5">
             <div class="card">
                 <div class="card-header"><h5 class="mb-0">{{ $wing->name }}</h5></div>
@@ -69,11 +69,11 @@
             </div>
         </div>
 
-        {{-- Kamar di gedung ini --}}
+        {{-- Kamar di blok ini --}}
         <div class="col-lg-7">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Kamar di Gedung Ini</h5>
+                    <h5 class="mb-0">Kamar di Blok Ini</h5>
                     <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?wing_id={{ $wing->id }}" class="btn btn-primary btn-sm">
                         <i class="ri-add-line me-1"></i> Tambah Kamar
                     </a>
@@ -85,7 +85,7 @@
                     @if($wingRooms->isEmpty())
                         <div class="text-center text-muted py-5">
                             <i class="ri-door-open-line fs-1 d-block mb-2"></i>
-                            Belum ada kamar di gedung ini.
+                            Belum ada kamar di blok ini.
                         </div>
                     @else
                         <div class="table-responsive">

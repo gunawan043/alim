@@ -9,6 +9,7 @@ use App\Http\Requests\Mobile\CreateDormitoryPermitRequest;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\Student;
+use App\Models\StudentMahrom;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class DormitoryPermitController extends Controller
             $student = Student::where('id', $data['student_id'])
                 ->where('school_id', $schoolId)
                 ->first();
-            if (!$student) {
+            if (! $student) {
                 return response()->json([
                     'success' => false,
                     'error' => [
@@ -60,6 +61,33 @@ class DormitoryPermitController extends Controller
             ->where('is_active', true)
             ->orderByDesc('check_in_date')
             ->first();
+
+        // Verify referenced mahrom belongs to this student AND is active
+        if (! empty($data['mahrom_id'])) {
+            $mahrom = StudentMahrom::where('id', $data['mahrom_id'])
+                ->where('student_id', $data['student_id'])
+                ->first();
+
+            if (! $mahrom) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'MAHROM_NOT_FOUND',
+                        'message' => 'Mahrom tidak ditemukan untuk santri ini.',
+                    ],
+                ], 404);
+            }
+
+            if (! $mahrom->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'MAHROM_INACTIVE',
+                        'message' => 'Mahrom nonaktif tidak dapat digunakan untuk kunjungan.',
+                    ],
+                ], 422);
+            }
+        }
 
         $permit = DormitoryPermit::create([
             'student_id' => $data['student_id'],

@@ -135,7 +135,11 @@
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="4" class="text-center text-muted py-3">Belum ada izin.</td></tr>
+                                <tr><td colspan="4" class="text-center py-5">
+                                    <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                    <h6 class="text-muted mb-1 mt-3">Belum Ada Izin</h6>
+                                    <p class="text-muted mb-3 small">Data perizinan anak akan muncul di sini.</p>
+                                </td></tr>
                                 @endforelse
                             </tbody>
                         </table>

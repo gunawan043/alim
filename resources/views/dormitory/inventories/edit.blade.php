@@ -72,9 +72,20 @@
                                     <option value="baik" {{ old('condition', $item->condition) == 'baik' ? 'selected' : '' }}>Baik</option>
                                     <option value="rusak" {{ old('condition', $item->condition) == 'rusak' ? 'selected' : '' }}>Rusak</option>
                                     <option value="perbaikan" {{ old('condition', $item->condition) == 'perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
-                                    <option value="hibahan" {{ old('condition', $item->condition) == 'hibahan' ? 'selected' : '' }}>Hibahan</option>
+                                    <option value="hilang" {{ old('condition', $item->condition) == 'hilang' ? 'selected' : '' }}>Hilang</option>
                                 </select>
                                 @error('condition')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit_category" class="form-label">Kategori <span class="text-danger">*</span></label>
+                                <select name="category_id" id="edit_category" class="form-control @error('category_id') is-invalid @enderror" required>
+                                    <option value="">— Pilih Kategori —</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ old('category_id', $item->category_id) == $cat->id ? 'selected' : '' }}>{{ $cat->name }} ({{ $cat->code }})</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Kategori klasifikasi Asset SARPRAS.</small>
+                                @error('category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_last_checked" class="form-label">Terakhir Dicek</label>

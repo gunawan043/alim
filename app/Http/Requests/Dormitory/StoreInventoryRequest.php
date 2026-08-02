@@ -20,9 +20,10 @@ class StoreInventoryRequest extends FormRequest
             'item_name' => 'required|string|max:191',
             'item_code' => 'nullable|string|max:50',
             'quantity' => $isUpdate ? 'nullable|integer|min:0' : 'required|integer|min:1',
-            'condition' => 'required|in:baik,rusak,perbaikan,hilang',
+            'condition' => 'required|in:baik,rusak,perbaikan,hilang', // ubah "hibahan" ke "hilang" agar sesuai enum DB
             'last_checked_at' => 'nullable|date',
             'notes' => 'nullable|string',
+            'category_id' => 'required|exists:asset_categories,id', // wajib FK
         ];
     }
 
@@ -31,6 +32,8 @@ class StoreInventoryRequest extends FormRequest
         return [
             'item_name.required' => 'Nama barang wajib diisi.',
             'condition.required' => 'Kondisi wajib dipilih.',
+            'condition.in' => 'Pilih kondisi yang valid: baik, rusak, atau perbaikan.',
+            'category_id.exists' => 'Kategori barang tidak valid.',
         ];
     }
 }

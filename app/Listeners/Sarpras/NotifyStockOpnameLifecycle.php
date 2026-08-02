@@ -30,6 +30,7 @@ class NotifyStockOpnameLifecycle
                 ],
                 priority: 'medium',
             );
+
             return;
         }
 

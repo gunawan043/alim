@@ -14,7 +14,8 @@ class StoreWingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => 'required|string|max:20',
+            'sarpras_building_id' => 'required|exists:sarpras_buildings,id',
+            'code' => 'nullable|string|max:20',
             'name' => 'nullable|string|max:100',
             'floor' => 'nullable|integer|min:0',
             'gender' => 'nullable|in:putra,putri',
@@ -28,7 +29,7 @@ class StoreWingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.required' => 'Kode gedung wajib diisi.',
+            'code.required' => 'Kode blok wajib diisi.',
         ];
     }
 }

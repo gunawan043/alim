@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.inventories.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? 'Asrama' }}</a> @endslot
         @slot('li_4') Inventaris @endslot
         @slot('title') Tambah Item @endslot
@@ -112,7 +112,7 @@
                                 @enderror
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label" for="quantity">
                                     Jumlah <span class="text-danger">*</span>
                                 </label>
@@ -130,7 +130,7 @@
                                 @enderror
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label" for="condition">
                                     Kondisi <span class="text-danger">*</span>
                                 </label>
@@ -142,9 +142,30 @@
                                     <option value="baik" {{ old('condition') === 'baik' ? 'selected' : '' }}>Baik</option>
                                     <option value="rusak" {{ old('condition') === 'rusak' ? 'selected' : '' }}>Rusak</option>
                                     <option value="perbaikan" {{ old('condition') === 'perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
-                                    <option value="hibahan" {{ old('condition') === 'hibahan' ? 'selected' : '' }}>Hibahan</option>
+                                    <option value="hilang" {{ old('condition') === 'hilang' ? 'selected' : '' }}>Hilang</option>
                                 </select>
                                 @error('condition')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label" for="category_id">
+                                    Kategori <span class="text-danger">*</span>
+                                </label>
+                                <select name="category_id"
+                                        id="category_id"
+                                        class="form-select @error('category_id') is-invalid @enderror"
+                                        required>
+                                    <option value="">-- Pilih --</option>
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category->id }}"
+                                                {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                            {{ $category->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('category_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -196,7 +217,8 @@
                             <li class="mb-2">Pilih kamar tempat item inventaris berada.</li>
                             <li class="mb-2">Nama item harus jelas dan deskriptif (misal: "Kasur Single", bukan hanya "Kasur").</li>
                             <li class="mb-2">Kode item bersifat opsional tetapi sangat membantu dalam pelacakan.</li>
-                            <li class="mb-2">Pilih kondisi item yang sesuai: baik, rusak, perlu perbaikan, atau hibahan.</li>
+                            <li class="mb-2">Pilih kondisi item yang sesuai: baik, rusak, perlu perbaikan, atau hilang.</li>
+                            <li class="mb-2"><strong>Kategori</strong> barang mengacu pada klasifikasi Asset SARPRAS (misal: Meubelair, Elektronik, dll).</li>
                             <li>Update tanggal pengecekan secara berkala untuk menjaga akurasi data.</li>
                         </ul>
                     </div>

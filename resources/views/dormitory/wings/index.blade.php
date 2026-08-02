@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Gedung Asrama — {{ $dormitory->name }} @endsection
+@section('title') Blok Asrama — {{ $dormitory->name }} @endsection
 @section('css')
 <style>
 .card-animate { transition: all 0.3s ease; }
@@ -11,7 +11,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
         @slot('li_2') <a href="{{ route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
-        @slot('title') Gedung @endslot
+        @slot('title') Blok @endslot
     @endcomponent
 
     @if(session('success'))
@@ -26,16 +26,16 @@
     @endif
 
     {{-- Stats --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-2">
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90 border-start border-primary-subtle">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-hotel-line text-primary"></i></span>
+                            <span class="avatar-title bg-primary rounded fs-2"><i class="ri-hotel-line text-white"></i></span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Gedung</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Blok</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($wings->total()) }}</h3>
                         </div>
                     </div>
@@ -43,30 +43,35 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90 border-start border-success-subtle">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-door-open-line text-success"></i></span>
+                            <span class="avatar-title bg-success rounded fs-2"><i class="ri-door-open-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Kamar</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $wings->total() ? $wings->sum('rooms') : 0 }}</h3>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $wings->total() ? $wings->sum('total_rooms') : 0 }}</h3>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90 border-start border-warning-subtle">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-user-location-line text-info"></i></span>
+                            <span class="avatar-title bg-warning rounded fs-2"><i class="ri-user-location-line text-white"></i></span>
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Penghuni Aktif</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $wings->total() ? $wings->sum('rooms.*.residents') : 0 }}</h3>
+                            <h3 class="fw-bold ff-secondary mb-0">
+                                @php
+                                    $activeResidents = $wings->sum(function ($wing) { return $wing->rooms->sum(function ($room) { return $room->residents->where('is_active', true)->count(); }); });
+                                @endphp
+                                {{ number_format($activeResidents) }}
+                            </h3>
                         </div>
                     </div>
                 </div>
@@ -80,12 +85,12 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Gedung — {{ $dormitory->name }}</h5>
-                            <p class="text-muted mb-0">Pengelolaan gedung asrama.</p>
+                            <h5 class="card-title mb-0">Blok — {{ $dormitory->name }}</h5>
+                            <p class="text-muted mb-0">Pengelolaan blok asrama per gedung Sarpras.</p>
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
-                                <i class="ri-add-line align-bottom me-1"></i> Tambah Gedung
+                                <i class="ri-add-line align-bottom me-1"></i> Tambah Blok
                             </a>
                         </div>
                     </div>
@@ -93,7 +98,7 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <input type="text" name="search" class="form-control" placeholder="Cari nama / kode gedung..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama / kode blok..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-3">
                             <select name="is_active" class="form-control">
@@ -113,7 +118,7 @@
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Kode</th>
-                                    <th>Nama Gedung</th>
+                                    <th>Nama Blok</th>
                                     <th class="text-center">Lantai</th>
                                     <th class="text-center">Kapasitas</th>
                                     <th class="text-center">Kamar</th>
@@ -129,10 +134,10 @@
                                     <td><span class="badge bg-dark">{{ $w->code }}</span></td>
                                     <td>
                                         <a href="{{ route('user.asrama.wings.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}" class="text-decoration-none fw-semibold">
-                                            {{ $w->name }}
+                                            {{ $w->sarprasBuilding?->name ?? '—' }}
                                         </a>
                                     </td>
-                                    <td class="text-center">{{ $w->floor ?? '—' }}</td>
+                                    <td class="text-center">Lantai {{ $w->floor ?? '—' }}</td>
                                     <td class="text-center">{{ number_format($w->capacity) }}</td>
                                     <td class="text-center">{{ number_format($w->rooms->count()) }}</td>
                                     <td>{{ $w->supervisor?->name ?? '—' }}</td>
@@ -154,7 +159,7 @@
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </a></li>
                                                 <li>
-                                                    <form action="{{ route('user.asrama.wings.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}" method="POST" onsubmit="return confirm('Yakin hapus gedung ini?')">
+                                                    <form action="{{ route('user.asrama.wings.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}" method="POST" onsubmit="return confirm('Yakin hapus blok ini?')">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="dropdown-item text-danger">
                                                             <i class="ri-delete-bin-line me-1"></i> Hapus
@@ -167,20 +172,21 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        <i class="ri-door-open-line fs-1 d-block mb-2"></i>
-                                        Belum ada data gedung.
-                                        <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah gedung baru</a>
+                                    <td colspan="9" class="text-center py-5">
+                                        <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                        <h6 class="text-muted mb-1 mt-3">Belum Ada Data Blok</h6>
+                                        <p class="text-muted mb-3">Belum ada data blok yang terdaftar.</p>
+                                        <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                           class="btn btn-primary btn-sm">
+                                            <i class="ri-add-line me-1"></i> Tambah Blok Baru
+                                        </a>
                                     </td>
                                 </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">Menampilkan {{ $wings->firstItem() ?? 0 }} - {{ $wings->lastItem() ?? 0 }} dari {{ $wings->total() }} data</div>
-                        <div>{{ $wings->withQueryString()->links() }}</div>
-                    </div>
+                    <x-pagination :paginator="$wings" />
                 </div>
             </div>
         </div>

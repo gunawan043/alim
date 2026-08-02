@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                 <h4 class="mb-sm-0">Detail: {{ $policy->name }}</h4>
-                <a href="{{ route('user.boarding-policies.index') }}" class="btn btn-secondary">
+                <a href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}" class="btn btn-secondary">
                     <i class="ri-arrow-left-line me-1"></i> Kembali
                 </a>
             </div>
@@ -98,6 +98,41 @@
                 </div>
             </div>
 
+            {{-- Quota Usage Section --}}
+            @if($sampleStudent)
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0">Penggunaan Kuota (Contoh)</h5></div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">Contoh Pengguna: {{ $sampleStudent->name }}</p>
+                    <hr class="my-2">
+                    <div class="row mb-2">
+                        <div class="col-sm-6">Kunjungan (Visit)</div>
+                        <div class="col-sm-6 fw-semibold text-end">
+                            @if($policy->visit_strategy === 'quota' && $policy->visit_quota)
+                                {{ $visitUsage ?? 0 }}/{{ $policy->visit_quota }} (Sisa: {{ max(0, $policy->visit_quota - ($visitUsage ?? 0)) }})
+                            @elseif($policy->visit_strategy === 'unrestricted')
+                                Unrestricted
+                            @else
+                                —
+                            @endif
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Pulang (Leave)</div>
+                        <div class="col-sm-6 fw-semibold text-end">
+                            @if($policy->leave_strategy === 'quota' && $policy->leave_quota)
+                                {{ $leaveUsage ?? 0 }}/{{ $policy->leave_quota }} (Sisa: {{ max(0, $policy->leave_quota - ($leaveUsage ?? 0)) }})
+                            @elseif($policy->leave_strategy === 'unrestricted')
+                                Unrestricted
+                            @else
+                                —
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <div class="card">
                 <div class="card-header"><h5 class="card-title mb-0">Log Kebijakan (10 Terakhir)</h5></div>
                 <div class="card-body">
@@ -141,7 +176,7 @@
             </div>
 
             <div class="d-grid gap-2">
-                <a href="{{ route('user.boarding-policies.edit', $policy->id) }}" class="btn btn-primary">
+                <a href="{{ route('user.boarding-policies.edit', ['userId' => $userId, 'id' => $policy->id]) }}" class="btn btn-primary">
                     <i class="ri-edit-line me-1"></i> Edit Kebijakan
                 </a>
             </div>

@@ -99,6 +99,15 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </a>
 </li>
 
+{{-- Konfigurasi Izin --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.leave-policies') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-settings-4-line"></i>
+        <span>Konfigurasi Izin</span>
+    </a>
+</li>
+
 {{-- Pelanggaran --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.violations.') ? ' active' : '' }}"
@@ -132,6 +141,15 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
        href="{{ $hasAsramaContext ? route('user.asrama.room-moves.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
         <i class="ri-arrow-left-right-line"></i>
         <span>Mutasi Kamar</span>
+    </a>
+</li>
+
+{{-- Wali Kamar --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.room-supervisors.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-shield-user-line"></i>
+        <span>Wali Kamar</span>
     </a>
 </li>
 

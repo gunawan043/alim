@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name ?? '' }}</a> @endslot
         @slot('li_4') <a href="{{ route('user.asrama.attendance.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Absensi</a> @endslot
         @slot('title') Rekap Bulanan @endslot
@@ -116,7 +116,7 @@
                             <p class="text-muted mb-0">
                                 {{ \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->locale('id')->monthName }} {{ $selectedYear }}
                                 &mdash;
-                                {{ $studentRecap->count() }} santi
+                                {{ $studentRecap->count() }} Santri
                             </p>
                         </div>
                         <div class="col-sm-auto">
@@ -243,9 +243,10 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="11" class="text-center text-muted py-5">
-                                                <i class="ri-file-chart-line fs-1 d-block mb-2"></i>
-                                                Belum ada data absensi untuk periode ini.
+                                            <td colspan="11" class="text-center py-5">
+                                                <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                                <h6 class="text-muted mb-1 mt-3">Belum Ada Data Absensi</h6>
+                                                <p class="text-muted mb-3 small">Tidak ada data absensi untuk periode ini.</p>
                                             </td>
                                         </tr>
                                     @endforelse
@@ -300,7 +301,7 @@
                     @else
                         <div class="text-center py-5">
                             <div class="mb-4">
-                                <i class="ri-file-chart-line fs-1 d-block text-muted" style="font-size: 4rem;"></i>
+                                <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                             </div>
                             <h5 class="text-muted mb-2">Belum Ada Data Rekap</h5>
                             <p class="text-muted mb-4">
@@ -368,7 +369,11 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">Belum ada data absensi.</td>
+                                        <td colspan="7" class="text-center py-5">
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Absensi</h6>
+                                            <p class="text-muted mb-3 small">Tidak ada data absensi yang tercatat.</p>
+                                        </td>
                                     </tr>
                                 @endforelse
                             </tbody>

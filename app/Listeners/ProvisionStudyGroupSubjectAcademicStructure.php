@@ -4,7 +4,6 @@ namespace App\Listeners;
 
 use App\Events\SubjectAssignedToStudyGroup;
 use App\Jobs\ProvisionStudyGroupSubjectAcademicStructureJob;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Listener for SubjectAssignedToStudyGroup.

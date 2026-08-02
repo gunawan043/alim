@@ -16,7 +16,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('title') Broadcast Darurat @endslot
     @endcomponent
 
@@ -149,7 +149,7 @@
                                     <tr class="{{ $bc->severity === 'emergency' ? 'severity-emergency' : ($bc->severity === 'urgent' ? 'severity-urgent' : '') }}">
                                         <td class="text-center">{{ ($broadcasts->currentPage() - 1) * $broadcasts->perPage() + $i + 1 }}</td>
                                         <td>
-                                            <a href="{{ route('user.asrama.broadcasts.show', ['userId' => $userId, 'broadcastUuid' => $bc->id]) }}"
+                                            <a href="{{ route('user.asrama.broadcasts.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'broadcastUuid' => $bc->id]) }}"
                                                class="fw-semibold text-decoration-none text-dark">
                                                 {{ Str::limit($bc->title, 50) }}
                                             </a>
@@ -196,17 +196,17 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="small fw-semibold">{{ $bc->author?->name ?? '—' }}</div>
+                                            <div class="small fw-semibold">{{ $bc->creator?->name ?? '—' }}</div>
                                             <div class="text-muted small">{{ $bc->created_at->format('d/m/Y H:i') }}</div>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('user.asrama.broadcasts.show', ['userId' => $userId, 'broadcastUuid' => $bc->id]) }}"
+                                            <a href="{{ route('user.asrama.broadcasts.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'broadcastUuid' => $bc->id]) }}"
                                                class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                                 <i class="ri-eye-line"></i>
                                             </a>
                                             @if($bc->created_by === (function_exists('auth') && auth()->check() ? auth()->id() : null))
                                                 <form method="POST"
-                                                      action="{{ route('user.asrama.broadcasts.destroy', ['userId' => $userId, 'broadcastUuid' => $bc->id]) }}"
+                                                      action="{{ route('user.asrama.broadcasts.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'broadcastUuid' => $bc->id]) }}"
                                                       class="d-inline"
                                                       onsubmit="return confirm('Yakin hapus broadcast ini?')">
                                                     @csrf @method('DELETE')
@@ -219,9 +219,10 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center text-muted py-4">
-                                            <i class="ri-notification-3-line fs-1 d-block mb-2"></i>
-                                            Belum ada pesan broadcast. Gunakan formulir di atas untuk mengirim pesan.
+                                        <td colspan="8" class="text-center py-5">
+                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Pesan Broadcast</h6>
+                                            <p class="text-muted mb-3">Gunakan formulir di atas untuk mengirim pesan kepada pengguna.</p>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -229,12 +230,7 @@
                         </table>
                     </div>
 
-                    @if(isset($broadcasts) && $broadcasts->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">Menampilkan {{ $broadcasts->firstItem() ?? 0 }} - {{ $broadcasts->lastItem() ?? 0 }} dari {{ $broadcasts->total() }} data</div>
-                            <div>{{ $broadcasts->withQueryString()->links() }}</div>
-                        </div>
-                    @endif
+                    <x-pagination :paginator="$broadcasts" />
                 </div>
             </div>
         </div>

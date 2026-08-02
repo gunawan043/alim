@@ -144,9 +144,10 @@
                 </div>
             </div>
             @empty
-            <div class="text-center text-muted py-5">
-                <i class="ri-footprint-line" style="font-size:3rem"></i>
-                <p class="mt-2">Tidak ada jadwal kunjungan dalam rentang waktu ini.</p>
+            <div class="text-center py-5">
+                <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                <h6 class="text-muted mb-1 mt-3">Tidak Ada Jadwal Kunjungan</h6>
+                <p class="text-muted mb-3 small">Tidak ada jadwal kunjungan dalam rentang waktu ini.</p>
             </div>
             @endforelse
         </div>

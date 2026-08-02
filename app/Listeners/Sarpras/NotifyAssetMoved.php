@@ -27,6 +27,7 @@ class NotifyAssetMoved
                 ],
                 priority: 'low',
             );
+
             return;
         }
 

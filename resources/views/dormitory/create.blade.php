@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
-        @slot('li_2') <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
+        @slot('li_2') <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">Daftar Asrama</a> @endslot
         @slot('title') Tambah Asrama @endslot
     @endcomponent
 
@@ -69,7 +69,7 @@
                                 <input type="number" name="total_rooms" class="form-control" value="{{ old('total_rooms', 0) }}" min="0">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Jumlah Gedung</label>
+                                <label class="form-label">Jumlah Blok</label>
                                 <input type="number" name="total_wings" class="form-control" value="{{ old('total_wings', 0) }}" min="0">
                             </div>
                             <div class="col-12">
@@ -86,7 +86,7 @@
                     </div>
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i> Simpan</button>
-                        <a href="{{ route('user.asrama.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+                        <a href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
                     </div>
                 </div>
             </form>

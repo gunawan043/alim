@@ -3,11 +3,11 @@
 namespace App\Domain\Services;
 
 use App\Models\BoardingTimelineEvent;
-use Illuminate\Support\Facades\Cache;
 use App\Models\Dormitory;
 use App\Models\DormitoryRoom;
 use App\Models\Student;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Central service for recording boarding timeline events.
