@@ -10,9 +10,7 @@ use App\Models\AcademicYear;
 use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
-use App\Models\DormitoryRoom;
 use App\Models\DormitoryVisitLog;
-use App\Models\DormitoryWing;
 use App\Models\School;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +27,7 @@ class BoardingDomainEventsTest extends TestCase
         $id = (string) Str::uuid();
         DB::table('work_units')->insert([
             'id' => $id,
-            'code' => 'WU-TEST-' . Str::random(4),
+            'code' => 'WU-TEST-'.Str::random(4),
             'name' => 'Work Unit Test',
             'type' => 'Unit Akademik',
             'is_active' => true,
@@ -43,12 +41,12 @@ class BoardingDomainEventsTest extends TestCase
     private function setUpSchool(string $workUnitId): School
     {
         $schoolId = (string) Str::uuid();
-        $schoolName = 'Test Madrasah ' . Str::random(4);
+        $schoolName = 'Test Madrasah '.Str::random(4);
 
         DB::table('schools')->insert([
             'id' => $schoolId,
             'work_unit_id' => $workUnitId,
-            'npsn' => '12' . Str::random(6),
+            'npsn' => '12'.Str::random(6),
             'name' => $schoolName,
             'address' => 'Jl. Test No. 1',
             'is_active' => true,
@@ -59,7 +57,7 @@ class BoardingDomainEventsTest extends TestCase
         return School::where('id', $schoolId)->firstOrFail();
     }
 
-private function setUpDormitory(School $school): array
+    private function setUpDormitory(School $school): array
     {
         $dormitoryId = (string) Str::uuid();
         $wingId = (string) Str::uuid();
@@ -69,8 +67,8 @@ private function setUpDormitory(School $school): array
             'id' => $dormitoryId,
             'school_id' => $school->id,
             'work_unit_id' => $school->work_unit_id,
-            'code' => 'DORM-' . Str::random(4),
-            'name' => 'Asrama ' . Str::random(4),
+            'code' => 'DORM-'.Str::random(4),
+            'name' => 'Asrama '.Str::random(4),
             'gender' => 'campuran',
             'address' => 'Jl. Asrama No. 1',
             'capacity' => 40,
@@ -135,9 +133,9 @@ private function setUpDormitory(School $school): array
         DB::table('students')->insert([
             'id' => $studentId,
             'school_id' => $school->id,
-            'name' => 'Ahmad Fauzi',
+            'name' => 'Fulan',
             'nisn' => '12345678',
-            'email' => $studentId . '-test@test.com',
+            'email' => $studentId.'-test@test.com',
             'phone' => '081234567890',
             'gender' => 'L',
             'special_needs' => 'tidak',
@@ -159,7 +157,7 @@ private function setUpDormitory(School $school): array
     private function setUpAdmin(): \App\Models\User
     {
         return \App\Models\User::firstOrCreate(
-            ['email' => 'domain-test-' . Str::random(6) . '@test.com'],
+            ['email' => 'domain-test-'.Str::random(6).'@test.com'],
             [
                 'name' => 'Domain Admin',
                 'password' => bcrypt('password'),
@@ -169,7 +167,7 @@ private function setUpDormitory(School $school): array
     }
 
     /** @test */
-public function boarding_permit_submitted_dispatches_timeline_event(): void
+    public function boarding_permit_submitted_dispatches_timeline_event(): void
     {
         $wuId = $this->setUpWorkUnit();
         $school = $this->setUpSchool($wuId);
@@ -203,7 +201,7 @@ public function boarding_permit_submitted_dispatches_timeline_event(): void
     }
 
     /** @test */
-public function boarding_permit_approved_dispatches_approval_timeline(): void
+    public function boarding_permit_approved_dispatches_approval_timeline(): void
     {
         $wuId = $this->setUpWorkUnit();
         $school = $this->setUpSchool($wuId);
@@ -236,7 +234,7 @@ public function boarding_permit_approved_dispatches_approval_timeline(): void
     }
 
     /** @test */
-public function boarding_permit_rejected_dispatches_rejection_timeline(): void
+    public function boarding_permit_rejected_dispatches_rejection_timeline(): void
     {
         $wuId = $this->setUpWorkUnit();
         $school = $this->setUpSchool($wuId);

@@ -10,7 +10,6 @@ use App\Domain\Listeners\RecordBoardingPermitTimeline;
 use App\Domain\Listeners\RecordBoardingVisitTimeline;
 use App\Models\BoardingTimelineEvent;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
-
 use ReflectionClass;
 
 /**

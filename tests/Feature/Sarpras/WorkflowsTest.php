@@ -9,7 +9,6 @@ use App\Models\RepairRequest;
 use App\Models\StockOpnameSession;
 use App\Models\User;
 use App\Models\WorkOrder;
-use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\IllegalStateTransitionException;
 use App\Services\Sarpras\MaintenanceWorkflow;
 use App\Services\Sarpras\RepairRequestWorkflow;
@@ -25,16 +24,20 @@ class WorkflowsTest extends TestCase
     protected static $migrated = false;
 
     protected User $user;
+
     protected User $pic;
+
     protected User $technician;
+
     protected \stdClass $unit;
+
     protected Asset $asset;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (!self::$migrated) {
+        if (! self::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$migrated = true;
         }
@@ -79,7 +82,7 @@ class WorkflowsTest extends TestCase
 
     public function test_state_machine_allows_valid_transition(): void
     {
-        $sm = new StateMachine();
+        $sm = new StateMachine;
         $sm->define('asset', ['active' => ['under_maintenance', 'broken']]);
 
         $sm->assert('asset', 'active', 'under_maintenance');
@@ -88,7 +91,7 @@ class WorkflowsTest extends TestCase
 
     public function test_state_machine_rejects_invalid_transition(): void
     {
-        $sm = new StateMachine();
+        $sm = new StateMachine;
         $sm->define('asset', ['active' => ['under_maintenance']]);
 
         $this->expectException(IllegalStateTransitionException::class);

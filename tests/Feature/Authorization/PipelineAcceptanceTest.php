@@ -56,7 +56,7 @@ final class PipelineAcceptanceTest extends TestCase
         $deduped = PermissionConflictResolver::resolve($merged);
         $final = RevocationResolver::resolve($deduped);
 
-        $names = array_map(fn($o) => $o->permission, $final);
+        $names = array_map(fn ($o) => $o->permission, $final);
         sort($names);
 
         $this->assertSame(['attendance.mark', 'gtk.read', 'students.view'], $names);
@@ -74,7 +74,7 @@ final class PipelineAcceptanceTest extends TestCase
         $deduped = PermissionConflictResolver::resolve($merged);
         $final = RevocationResolver::resolve($deduped);
 
-        $names = array_map(fn($o) => $o->permission, $final);
+        $names = array_map(fn ($o) => $o->permission, $final);
 
         $this->assertNotContains('students.view', $names, 'students.view must be revoked');
     }
@@ -91,7 +91,7 @@ final class PipelineAcceptanceTest extends TestCase
         $merged = app(PermissionMergeResolver::class)->resolve($origins);
         $deduped = PermissionConflictResolver::resolve($merged);
 
-        $matches = array_filter($deduped, fn($o) => $o->permission === 'students.view');
+        $matches = array_filter($deduped, fn ($o) => $o->permission === 'students.view');
         $this->assertCount(1, $matches, 'Conflict resolver should keep exactly one students.view origin');
     }
 

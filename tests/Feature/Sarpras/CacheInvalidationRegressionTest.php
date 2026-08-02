@@ -2,15 +2,14 @@
 
 namespace Tests\Feature\Sarpras;
 
-use App\Services\SarprasCacheInvalidator;
-use App\Services\Sarpras\AssetEventLogger;
 use App\Http\Controllers\Sarpras\SarprasAsetController;
 use App\Http\Controllers\Sarpras\SarprasBookingController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
-use App\Http\Controllers\Sarpras\SarprasRuangController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
-use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
+use App\Http\Controllers\Sarpras\SarprasProcurementController;
+use App\Http\Controllers\Sarpras\SarprasRuangController;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -21,7 +20,7 @@ use Tests\TestCase;
  */
 class CacheInvalidationRegressionTest extends TestCase
 {
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         Cache::flush();
@@ -29,6 +28,7 @@ class CacheInvalidationRegressionTest extends TestCase
 
     /**
      * @test
+     *
      * @dataProvider controllerProvider
      */
     public function controller_delegates_bump_to_centralized_invalidator(string $class): void

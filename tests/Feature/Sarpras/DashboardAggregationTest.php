@@ -2,8 +2,6 @@
 
 namespace Tests\Feature\Sarpras;
 
-use App\Models\Asset;
-use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -18,7 +16,7 @@ class DashboardAggregationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (!self::$migrated) {
+        if (! self::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$migrated = true;
         }

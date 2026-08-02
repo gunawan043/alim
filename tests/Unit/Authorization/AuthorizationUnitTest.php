@@ -8,8 +8,8 @@ use App\Authorization\DTO\PermissionBag;
 use App\Authorization\DTO\PermissionOrigin;
 use App\Authorization\DTO\SnapshotFingerprint;
 use App\Authorization\DTO\SnapshotMetadata;
-use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\Enums\PermissionSource;
+use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
 use DateTimeImmutable;
@@ -26,7 +26,7 @@ final class AuthorizationUnitTest extends TestCase
     {
         $scopeKey = ScopeKey::fromComponents('s1', 'ay1', 'r1');
         $meta = new SnapshotMetadata(
-            createdAt: new DateTimeImmutable(),
+            createdAt: new DateTimeImmutable,
             scopeKey: $scopeKey,
             version: 42,
             status: SnapshotStatus::ACTIVE,
@@ -69,7 +69,7 @@ final class AuthorizationUnitTest extends TestCase
     {
         $scopeKey = ScopeKey::fromComponents('s1', 'ay1', 'r1');
         $meta = new SnapshotMetadata(
-            createdAt: new DateTimeImmutable(),
+            createdAt: new DateTimeImmutable,
             scopeKey: $scopeKey,
             version: 1,
             status: SnapshotStatus::ACTIVE,
@@ -88,7 +88,7 @@ final class AuthorizationUnitTest extends TestCase
     {
         $scopeKey = ScopeKey::fromComponents('s1', 'ay1', 'r1');
         $meta = new SnapshotMetadata(
-            createdAt: new DateTimeImmutable(),
+            createdAt: new DateTimeImmutable,
             scopeKey: $scopeKey,
             version: 1,
             status: SnapshotStatus::ACTIVE,
@@ -106,7 +106,7 @@ final class AuthorizationUnitTest extends TestCase
 
     public function test_snapshot_fingerprint(): void
     {
-        $fp = new SnapshotFingerprint('abcdef1234567890', 'sha256', new DateTimeImmutable());
+        $fp = new SnapshotFingerprint('abcdef1234567890', 'sha256', new DateTimeImmutable);
 
         $this->assertSame('abcdef1234567890', $fp->hash);
         $this->assertSame('sha256', $fp->algorithm);

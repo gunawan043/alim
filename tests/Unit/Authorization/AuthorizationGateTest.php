@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Authorization;
 
 use App\Authorization\ValueObjects\OrganizationContext;
-use App\Authorization\ValueObjects\ScopeKey;
 use Tests\TestCase;
 
 /**

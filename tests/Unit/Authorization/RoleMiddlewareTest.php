@@ -16,7 +16,7 @@ final class RoleMiddlewareTest extends TestCase
 {
     public function test_middleware_includes_has_role_fallback(): void
     {
-        $source = file_get_contents(__DIR__ . '/../../../app/Http/Middleware/RoleMiddleware.php');
+        $source = file_get_contents(__DIR__.'/../../../app/Http/Middleware/RoleMiddleware.php');
 
         // The source must contain the hasRole fallback call
         $this->assertStringContainsString(

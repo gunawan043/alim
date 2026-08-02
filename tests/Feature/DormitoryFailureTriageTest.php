@@ -13,14 +13,17 @@ use Tests\TestCase;
 class DormitoryFailureTriageTest extends TestCase
 {
     private static $bootstrapped = false;
+
     private static $user = null;
+
     private static $userId = null;
+
     private static $dormId = null;
 
     protected function setUp(): void
     {
         parent::setUp();
-        if (!self::$bootstrapped) {
+        if (! self::$bootstrapped) {
             $userId = DB::table('users')->value('id');
             self::$userId = $userId ? (string) $userId : null;
             try {
@@ -28,17 +31,20 @@ class DormitoryFailureTriageTest extends TestCase
                 if (self::$user && method_exists(self::$user, 'assignRole')) {
                     self::$user->assignRole('super_admin');
                 }
-            } catch (\Throwable $e) { /* ignore */ }
+            } catch (\Throwable $e) { /* ignore */
+            }
             self::$bootstrapped = true;
         }
-        if (self::$user) $this->actingAs(self::$user);
+        if (self::$user) {
+            $this->actingAs(self::$user);
+        }
     }
 
     /**
      * Provide representative failing URLs from the smoke output,
      * exercise them with full exception capture.
      */
-    public function testTriageFiveHundredRoutes(): void
+    public function test_triage_five_hundred_routes(): void
     {
         $urls = [
             ['GET',  'broadcasting/auth'],

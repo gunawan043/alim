@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Sarpras;
 
-use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
@@ -16,7 +15,7 @@ class AssetQRScanTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (!self::$migrated) {
+        if (! self::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$migrated = true;
         }

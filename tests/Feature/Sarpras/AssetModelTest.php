@@ -3,8 +3,6 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
-use App\Models\User;
-use App\Services\Sarpras\WorkOrderStateMachine;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
@@ -19,7 +17,7 @@ class AssetModelTest extends TestCase
     {
         parent::setUp();
 
-        if (!self::$migrated) {
+        if (! self::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$migrated = true;
         }
@@ -64,7 +62,7 @@ class AssetModelTest extends TestCase
     {
         $validConditions = ['baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat', 'hilang', 'dihapus'];
         foreach ($validConditions as $cond) {
-            $code = 'TEST-' . strtoupper(Str::random(5));
+            $code = 'TEST-'.strtoupper(Str::random(5));
             Asset::firstOrCreate(['asset_code' => $code], [
                 'school_id' => $this->createSchool()->id,
                 'asset_name' => 'Test',
@@ -105,17 +103,18 @@ class AssetModelTest extends TestCase
     private function assetData(array $overrides = []): array
     {
         $school = $this->createSchool();
+
         return array_merge([
-            'school_id'         => $school->id,
-            'asset_code'        => 'TEST-' . strtoupper(Str::random(6)),
-            'asset_name'        => 'Test Asset ' . strtoupper(Str::random(4)),
-            'brand'             => 'TestBrand',
-            'model'             => 'TestModel',
-            'condition'         => 'baik',
-            'status'            => 'tersedia',
+            'school_id' => $school->id,
+            'asset_code' => 'TEST-'.strtoupper(Str::random(6)),
+            'asset_name' => 'Test Asset '.strtoupper(Str::random(4)),
+            'brand' => 'TestBrand',
+            'model' => 'TestModel',
+            'condition' => 'baik',
+            'status' => 'tersedia',
             'acquisition_price' => 1000000,
-            'year'              => date('Y'),
-            'room_id'           => null,
+            'year' => date('Y'),
+            'room_id' => null,
         ], $overrides);
     }
 }

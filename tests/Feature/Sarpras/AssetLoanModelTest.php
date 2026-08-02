@@ -15,7 +15,7 @@ class AssetLoanModelTest extends TestCase
     {
         parent::setUp();
 
-        if (!self::$migrated) {
+        if (! self::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             self::$migrated = true;
         }
@@ -25,7 +25,7 @@ class AssetLoanModelTest extends TestCase
     public function loan_uuid_is_generated_on_create()
     {
         $loan = AssetLoan::create([
-            'loan_code' => 'LOAN-' . strtoupper(Str::random(6)),
+            'loan_code' => 'LOAN-'.strtoupper(Str::random(6)),
             'loan_date' => now(),
             'expected_return_date' => now()->addDays(7),
             'status' => 'menunggu',
@@ -41,7 +41,7 @@ class AssetLoanModelTest extends TestCase
     public function status_transitions()
     {
         $data = [
-            'loan_code' => 'LOAN-' . strtoupper(Str::random(6)),
+            'loan_code' => 'LOAN-'.strtoupper(Str::random(6)),
             'loan_date' => now(),
             'expected_return_date' => now()->addDays(7),
             'status' => 'menunggu',

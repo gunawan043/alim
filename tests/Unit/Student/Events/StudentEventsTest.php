@@ -59,7 +59,7 @@ class StudentEventsTest extends TestCase
             'school_id' => '11111111-1111-1111-1111-111111111111',
             'nisn' => (string) \Faker\Factory::create()->unique()->numerify('##########'),
             'nis' => '99001',
-            'name' => 'Ahmad Fauzi',
+            'name' => 'Fulan',
             'status' => 'active',
             'gender' => 'L',
             'birth_date' => '2008-01-15',

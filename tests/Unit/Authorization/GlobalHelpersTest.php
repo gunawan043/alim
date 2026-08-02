@@ -14,14 +14,14 @@ final class GlobalHelpersTest extends TestCase
     public function test_helpers_file_exists(): void
     {
         $this->assertTrue(
-            file_exists(__DIR__ . '/../../../app/Authorization/helpers.php'),
+            file_exists(__DIR__.'/../../../app/Authorization/helpers.php'),
             'app/Authorization/helpers.php should exist.'
         );
     }
 
     public function test_helpers_file_contains_expected_functions(): void
     {
-        $source = file_get_contents(__DIR__ . '/../../../app/Authorization/helpers.php');
+        $source = file_get_contents(__DIR__.'/../../../app/Authorization/helpers.php');
 
         $this->assertStringContainsString('function canPermission', $source);
         $this->assertStringContainsString('function cannotPermission', $source);

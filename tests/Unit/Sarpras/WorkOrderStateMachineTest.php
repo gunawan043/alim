@@ -2,9 +2,9 @@
 
 namespace Tests\Unit\Sarpras;
 
+use App\Services\Sarpras\IllegalStateTransitionException;
 use App\Services\Sarpras\StateMachine;
 use App\Services\Sarpras\StateMachineRegistry;
-use App\Services\Sarpras\IllegalStateTransitionException;
 use Tests\TestCase;
 
 class WorkOrderStateMachineTest extends TestCase
