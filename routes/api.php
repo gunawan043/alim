@@ -21,6 +21,12 @@ Route::get('wilayah/villages/{districtCode}', [WilayahController::class, 'villag
 
 Route::prefix('mobile/v1')->group(function () {
 
+    // ── META / VERSION / BUILD ───────────────────────────────────────────────
+    Route::get('version', [App\Http\Controllers\Api\Mobile\V1\VersionController::class, 'version'])->name('mobile.v1.version');
+    Route::get('build', [App\Http\Controllers\Api\Mobile\V1\VersionController::class, 'build'])->name('mobile.v1.build');
+    Route::get('system/status', [App\Http\Controllers\Api\Mobile\V1\VersionController::class, 'status'])->name('mobile.v1.system.status');
+    Route::get('health', [App\Http\Controllers\Api\Mobile\V1\VersionController::class, 'health'])->name('mobile.v1.health');
+
     // ── AUTH ─────────────────────────────────────────────────────────────────
     Route::prefix('auth')->group(function () {
         Route::post('register', [App\Http\Controllers\Api\Mobile\V1\AuthController::class, 'register']);
@@ -62,6 +68,15 @@ Route::prefix('mobile/v1')->group(function () {
             Route::get('requests', [App\Http\Controllers\Api\Mobile\V1\WaliSantriController::class, 'listRequests']);
             Route::put('requests/{token}', [App\Http\Controllers\Api\Mobile\V1\WaliSantriController::class, 'approveReject']);
             Route::delete('{id}', [App\Http\Controllers\Api\Mobile\V1\WaliSantriController::class, 'destroy']);
+        });
+
+        // ── MAHROM MANAGEMENT (Sprint 5) ──────────────────────
+        Route::prefix('students/{student}/mahrom')->group(function () {
+            Route::get('/', [App\Http\Controllers\Api\Mobile\V1\MobileMahromController::class, 'index']);
+            Route::post('/', [App\Http\Controllers\Api\Mobile\V1\MobileMahromController::class, 'store']);
+            Route::put('/{mahrom}', [App\Http\Controllers\Api\Mobile\V1\MobileMahromController::class, 'update']);
+            Route::patch('/{mahrom}', [App\Http\Controllers\Api\Mobile\V1\MobileMahromController::class, 'update']);
+            Route::delete('/{mahrom}', [App\Http\Controllers\Api\Mobile\V1\MobileMahromController::class, 'destroy']);
         });
 
         // ── SANTRI DATA ───────────────────────────────────────────────────��──
@@ -213,6 +228,24 @@ Route::middleware(['auth:sanctum', 'organization.context'])->prefix('sarpras')->
             'completeOrder',
         ])->name('api.sarpras.work-orders.complete');
     });
+
+    // ── ASSET INTELLIGENCE (v2 mobile) ─────────────────────────────────────
+    Route::prefix('tco')->group(function () {
+        Route::get('{assetId}', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetTcoApiController::class, 'show'])->name('api.sarpras.tco.show');
+        Route::post('compare', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetTcoApiController::class, 'compare'])->name('api.sarpras.tco.compare');
+    });
+
+    Route::prefix('repair-vs-replace')->group(function () {
+        Route::get('{assetId}', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetRepairVsReplaceApiController::class, 'show'])->name('api.sarpras.rvr.show');
+        Route::get('priority/list', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetRepairVsReplaceApiController::class, 'listHighPriority'])->name('api.sarpras.rvr.priority');
+    });
+
+    Route::prefix('predictive')->group(function () {
+        Route::get('{assetId}', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetPredictiveApiController::class, 'show'])->name('api.sarpras.predictive.show');
+        Route::get('high-risk/list', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\AssetPredictiveApiController::class, 'highRisk'])->name('api.sarpras.predictive.high_risk');
+    });
+
+    Route::get('intelligence/summary', [\App\Http\Controllers\Api\Mobile\V1\Sarpras\SarprasIntelligenceApiController::class, 'summary'])->name('api.sarpras.intelligence.summary');
 });
 
 // ── SARPRAS WEB API v2 ─────────────────────────────────────────────────────────
