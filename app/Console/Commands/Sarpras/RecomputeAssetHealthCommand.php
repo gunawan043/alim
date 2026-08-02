@@ -15,6 +15,7 @@ class RecomputeAssetHealthCommand extends Command
     protected $description = 'Recompute asset health & criticality metrics for all assets';
 
     protected AssetHealthService $health;
+
     protected CriticalityService $criticality;
 
     public function __construct(AssetHealthService $health, CriticalityService $criticality)

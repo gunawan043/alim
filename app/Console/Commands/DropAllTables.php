@@ -3,11 +3,11 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class DropAllTables extends Command
 {
     protected $signature = 'db:drop-all';
+
     protected $description = 'Drop ALL tables including migrations table';
 
     public function handle()

@@ -4,13 +4,14 @@ namespace App\Console\Commands;
 
 use App\Models\ScheduledReport;
 use App\Services\RecruitmentReportService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
-use Carbon\Carbon;
 
 class GenerateScheduledReports extends Command
 {
     protected $signature = 'recruitment:generate-scheduled-reports';
+
     protected $description = 'Generate and send scheduled reports';
 
     protected $reportService;
@@ -31,6 +32,7 @@ class GenerateScheduledReports extends Command
 
         if ($schedules->isEmpty()) {
             $this->info('✅ Tidak ada report yang perlu dikirim.');
+
             return 0;
         }
 
@@ -44,15 +46,15 @@ class GenerateScheduledReports extends Command
             try {
                 // Generate report
                 $data = $this->reportService->getDashboardStats($schedule->frequency);
-                
+
                 // Kirim email ke semua recipients
                 foreach ($schedule->recipients as $recipient) {
                     Mail::send('emails.scheduled-report', [
                         'schedule' => $schedule,
-                        'data' => $data
+                        'data' => $data,
                     ], function ($message) use ($recipient, $schedule) {
                         $message->to($recipient)
-                                ->subject("Report: {$schedule->name}");
+                            ->subject("Report: {$schedule->name}");
                     });
                 }
 
@@ -65,7 +67,7 @@ class GenerateScheduledReports extends Command
 
             } catch (\Exception $e) {
                 $failed++;
-                \Log::error("Gagal kirim report {$schedule->id}: " . $e->getMessage());
+                \Log::error("Gagal kirim report {$schedule->id}: ".$e->getMessage());
             }
 
             $bar->advance();

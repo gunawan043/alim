@@ -14,6 +14,7 @@ class SafeWipeCommand extends Command
     use ConfirmableTrait, Prohibitable;
 
     protected $name = 'db:safe-wipe';
+
     protected $description = 'Drop all tables in small batches to avoid MySQL deadlocks';
 
     public function handle()
@@ -33,19 +34,20 @@ class SafeWipeCommand extends Command
 
         if (empty($names)) {
             $this->components->info('No tables to drop.');
+
             return 0;
         }
 
         $conn->statement('SET FOREIGN_KEY_CHECKS=0');
 
         foreach (array_chunk($names, 5) as $i => $chunk) {
-            $sql = 'DROP TABLE IF EXISTS ' . implode(',', array_map(fn ($t) => '`' . $t . '`', $chunk));
+            $sql = 'DROP TABLE IF EXISTS '.implode(',', array_map(fn ($t) => '`'.$t.'`', $chunk));
             try {
                 $conn->statement($sql);
             } catch (\Throwable $e) {
                 foreach ($chunk as $t) {
                     try {
-                        $conn->statement('DROP TABLE IF EXISTS `' . $t . '`');
+                        $conn->statement('DROP TABLE IF EXISTS `'.$t.'`');
                     } catch (\Throwable $e2) {
                         // last resort
                     }

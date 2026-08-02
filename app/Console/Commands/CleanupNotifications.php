@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class CleanupNotifications extends Command
 {
     protected $signature = 'notifications:cleanup {--days=30 : Days to keep archived notifications}';
+
     protected $description = 'Clean up old archived notifications';
 
     protected $notificationService;

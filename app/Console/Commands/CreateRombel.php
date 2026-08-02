@@ -12,13 +12,15 @@ use Illuminate\Support\Str;
 class CreateRombel extends Command
 {
     protected $signature = 'create:rombel {--force}';
+
     protected $description = 'Buat rombel untuk 4 sekolah (SD IT Putri, SD IT Putra, SMP IT Putra, SMP IT Putri)';
 
     public function handle(): int
     {
         $activeYear = AcademicYear::where('is_active', true)->first();
-        if (!$activeYear) {
+        if (! $activeYear) {
             $this->error('❌ Tidak ada tahun ajaran aktif.');
+
             return self::FAILURE;
         }
 
@@ -55,12 +57,12 @@ class CreateRombel extends Command
         ];
 
         $schoolLevelCapacity = [
-            'sd'  => 36,
+            'sd' => 36,
             'smp' => 32,
         ];
 
         $schoolRoman = [
-            'sd'  => [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI'],
+            'sd' => [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI'],
             'smp' => [7 => 'VII', 8 => 'VIII', 9 => 'IX'],
         ];
 
@@ -69,21 +71,23 @@ class CreateRombel extends Command
 
         foreach ($rombelMap as $schoolName => $gradeMap) {
             $school = School::where('name', $schoolName)->first();
-            if (!$school) {
+            if (! $school) {
                 $this->warn("⚠️ Sekolah tidak ditemukan: {$schoolName}");
+
                 continue;
             }
 
             $this->info("🏫 {$schoolName}");
-            $this->line("   Level  Rombel                          → Detail");
+            $this->line('   Level  Rombel                          → Detail');
 
             foreach ($gradeMap as $level => $letters) {
                 $gradeLevel = GradeLevel::where('school_id', $school->id)
                     ->where('level', $level)
                     ->first();
 
-                if (!$gradeLevel) {
+                if (! $gradeLevel) {
                     $this->warn("   ⚠️ GradeLevel level={$level} tidak ada di {$schoolName}, dilewati.");
+
                     continue;
                 }
 
@@ -101,23 +105,24 @@ class CreateRombel extends Command
                     if ($exists) {
                         $this->line("   Kelas {$level}  {$fullName}              → <fg=yellow>SUDAH ADA (dilewati)</>");
                         $skipped++;
+
                         continue;
                     }
 
                     StudyGroup::create([
-                        'id'                   => (string) Str::uuid(),
-                        'school_id'            => $school->id,
-                        'academic_year_id'     => $activeYear->id,
-                        'grade_level_id'       => $gradeLevel->id,
-                        'homeroom_teacher_id'  => null,
-                        'name'                 => $fullName,
-                        'code'                 => $fullName,
-                        'capacity'             => $capacity,
-                        'room'                 => "Ruang {$level}{$letter}",
-                        'curriculum_type'      => 'merdeka',
-                        'shift'                => 'pagi',
-                        'is_active'           => true,
-                        'notes'                => null,
+                        'id' => (string) Str::uuid(),
+                        'school_id' => $school->id,
+                        'academic_year_id' => $activeYear->id,
+                        'grade_level_id' => $gradeLevel->id,
+                        'homeroom_teacher_id' => null,
+                        'name' => $fullName,
+                        'code' => $fullName,
+                        'capacity' => $capacity,
+                        'room' => "Ruang {$level}{$letter}",
+                        'curriculum_type' => 'merdeka',
+                        'shift' => 'pagi',
+                        'is_active' => true,
+                        'notes' => null,
                     ]);
 
                     $this->line("   Kelas {$level}  {$fullName}              → <fg=green>✅ DIBUAT</>");

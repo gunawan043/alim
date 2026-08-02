@@ -9,7 +9,7 @@
 @endcomponent
 
 @component('components.hrd-page-header', [
-    'subtitle' => 'Kelola aturan dan kebijakan cuti & izin untuk GTK PUSTIK.',
+    'subtitle' => 'Kelola aturan dan kebijakan cuti & izin untuk GTK Alim.',
     'icon' => 'ri-settings-3-line',
     'color' => 'slate',
 ])

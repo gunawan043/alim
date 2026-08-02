@@ -3,7 +3,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8" />
-    <title>Data Pegawai | ALIM PUSTIK</title>
+    <title>Data Pegawai | ALIM Alim</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -81,7 +81,7 @@
         </div>
 
         <div class="text-center mt-4 text-muted small">
-            ALIM PUSTIK - Academic Learning & Information Management
+            ALIM Alim - Academic Learning & Information Management
         </div>
     </div>
 

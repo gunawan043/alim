@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 class DispatchAssetMovedEvent extends Command
 {
     protected $signature = 'sarpras:movement-events';
+
     protected $description = 'Dispatch AssetMoved and LoanOverdue events';
 
     public function handle(): int

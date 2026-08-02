@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 class DeleteSantriData extends Command
 {
     protected $signature = 'delete:santri-data {--force : Skip confirmation}';
+
     protected $description = 'Hapus semua data rombel (study_groups) dan santri (students) beserta data terkait';
 
     public function handle(): int
@@ -28,16 +29,16 @@ class DeleteSantriData extends Command
         // ── Count before ──────────────────────────────────────────────────────
         $counts = [
             'student_class_histories' => StudentClassHistory::count(),
-            'student_mahroms'         => StudentMahrom::count(),
-            'dormitory_residents'     => DormitoryResident::count(),
-            'dormitory_attendances'   => DormitoryAttendance::count(),
+            'student_mahroms' => StudentMahrom::count(),
+            'dormitory_residents' => DormitoryResident::count(),
+            'dormitory_attendances' => DormitoryAttendance::count(),
             'dormitory_attendance_recaps' => DormitoryAttendanceRecap::count(),
-            'dormitory_permits'       => DormitoryPermit::count(),
-            'dormitory_violations'   => DormitoryViolation::count(),
-            'dormitory_room_moves'    => DormitoryRoomMove::count(),
-            'dormitory_inventories'   => DormitoryInventory::count(),
-            'students'               => Student::count(),
-            'study_groups'           => StudyGroup::count(),
+            'dormitory_permits' => DormitoryPermit::count(),
+            'dormitory_violations' => DormitoryViolation::count(),
+            'dormitory_room_moves' => DormitoryRoomMove::count(),
+            'dormitory_inventories' => DormitoryInventory::count(),
+            'students' => Student::count(),
+            'study_groups' => StudyGroup::count(),
         ];
 
         $totalRelated = $counts['student_class_histories']
@@ -57,13 +58,14 @@ class DeleteSantriData extends Command
             $this->line("  {$table}: {$count}");
         }
         $this->line('───────────────────────────────────────────');
-        $this->line("Total semua record: " . ($totalRelated + $counts['students'] + $counts['study_groups']));
+        $this->line('Total semua record: '.($totalRelated + $counts['students'] + $counts['study_groups']));
         $this->line('───────────────���───────────────────────────');
 
-        if (!$force) {
+        if (! $force) {
             $confirm = $this->confirm('Yakin ingin menghapus SEMUA data ini? [yes/no]');
-            if (!$confirm) {
+            if (! $confirm) {
                 $this->info('Dibatalkan.');
+
                 return self::SUCCESS;
             }
         }

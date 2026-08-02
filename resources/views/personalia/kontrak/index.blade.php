@@ -34,7 +34,7 @@
 <div class="page-header-card d-flex justify-content-between align-items-center mb-4">
     <div>
         <h5 class="fw-semibold mb-1">Daftar Kontrak Kerja</h5>
-        <p class="text-muted mb-0" style="font-size:.85rem">Kelola kontrak kerja GTK di lingkungan PUSTIK.</p>
+        <p class="text-muted mb-0" style="font-size:.85rem">Kelola kontrak kerja GTK di lingkungan Alim.</p>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ route('user.ats.kontrak.expiring', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
