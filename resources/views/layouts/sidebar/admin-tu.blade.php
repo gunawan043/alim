@@ -31,8 +31,8 @@ $isActiveFn = 'isActiveTU';
 $userSarprasAccess = \App\Models\GtkWorkUnit::where('user_id', $currentUser->id)
     ->whereHas('workUnit', fn($q) => $q->where('code', 'PAH-ADM-003'))
     ->exists()
-    || $currentUser->role()->hasPermission('sarpras_all_access')
-    || $currentUser->role()->hasPermission('inventory_view');
+    || $currentUser->hasPermissionTo('sarpras_all_access')
+    || $currentUser->hasPermissionTo('inventory_view');
 
 $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 @endphp
@@ -255,14 +255,17 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link" href="#sumatif" data-bs-toggle="collapse" role="button"
-       aria-expanded="false" aria-controls="sumatif">
+    <a class="nav-link menu-link{{ $currentRoute === 'waka.kisi-kisi-soal' || $currentRoute === 'waka.bank-soal' || $currentRoute === 'waka.soal-sumatif' ? ' active' : '' }}"
+       href="#sumatif" data-bs-toggle="collapse" role="button"
+       aria-expanded="{{ $currentRoute === 'waka.kisi-kisi-soal' || $currentRoute === 'waka.bank-soal' || $currentRoute === 'waka.soal-sumatif' ? 'true' : 'false' }}"
+       aria-controls="sumatif">
         <i class="ri-file-edit-line"></i>
         <span>Pelaksanaan Sumatif</span>
     </a>
-    <div class="collapse menu-dropdown" id="sumatif">
+    <div class="collapse menu-dropdown{{ $currentRoute === 'waka.kisi-kisi-soal' || $currentRoute === 'waka.bank-soal' || $currentRoute === 'waka.soal-sumatif' ? ' show' : '' }}" id="sumatif">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.kisi-kisi-soal' ? ' active' : '' }}" href="{{ route('waka.kisi-kisi-soal') }}" style="font-size:0.85rem">Kisi-Kisi Soal</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.bank-soal' ? ' active' : '' }}" href="{{ route('waka.bank-soal') }}" style="font-size:0.85rem">Bank Soal</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.soal-sumatif' ? ' active' : '' }}" href="{{ route('waka.soal-sumatif') }}" style="font-size:0.85rem">Soal Sumatif</a></li>
         </ul>
     </div>
