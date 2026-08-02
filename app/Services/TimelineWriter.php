@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\BoardingTimelineEvent;
-use Illuminate\Support\CarbonImmutable;
+use Carbon\CarbonImmutable;
 
 /**
  * Unified Student Timeline Writer.

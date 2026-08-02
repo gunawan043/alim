@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +18,12 @@ class AccessValidatorController extends Controller
     public function show()
     {
         $user = Auth::user();
+
+        // System Administrator bypasses the validator entirely.
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return redirect()->route('system.dashboard')
+                ->with('info', 'Akun Anda sudah memiliki akses sistem penuh.');
+        }
 
         // If already has valid role, redirect to dashboard
         if ($this->hasEmployeeRole($user)) {
@@ -42,7 +47,7 @@ class AccessValidatorController extends Controller
         $user = Auth::user();
 
         // Verify password first
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'password' => 'Password tidak cocok.',
             ]);
@@ -51,7 +56,7 @@ class AccessValidatorController extends Controller
         // Check verification against stored data
         $verified = $this->checkVerificationData($user, $request->verification_type, $request->verification_value);
 
-        if (!$verified) {
+        if (! $verified) {
             throw ValidationException::withMessages([
                 'verification_value' => 'Data yang dimasukkan tidak cocok dengan data kami. Hubungi HRD untuk verifikasi.',
             ]);
@@ -83,6 +88,7 @@ class AccessValidatorController extends Controller
                 $waliSantri = \App\Models\WaliSantri::where('user_id', $user->id)
                     ->where('nik_wali', $value)
                     ->exists();
+
                 return $waliSantri;
 
             case 'employee_id':
@@ -91,17 +97,19 @@ class AccessValidatorController extends Controller
                 if ($employeeId && strcasecmp($employeeId, $value) === 0) {
                     return true;
                 }
+
                 return false;
 
             case 'phone':
                 // Check against phone number in user or wali_santri table
                 $phone = $user->getAttribute('no_hp') ?? $user->getAttribute('phone');
-                if ($phone && preg_match('/' . preg_quote($value, '/') . '$/', $phone)) {
+                if ($phone && preg_match('/'.preg_quote($value, '/').'$/', $phone)) {
                     return true;
                 }
                 $waliSantri = \App\Models\WaliSantri::where('user_id', $user->id)
-                    ->where('no_hp', 'like', '%' . $value)
+                    ->where('no_hp', 'like', '%'.$value)
                     ->exists();
+
                 return $waliSantri;
 
             default:
@@ -111,11 +119,15 @@ class AccessValidatorController extends Controller
 
     private function hasEmployeeRole($user): bool
     {
-        if (!$user) return false;
+        if (! $user) {
+            return false;
+        }
 
         $roles = $user->getRoleNames();
-        if ($roles->isEmpty()) return false;
+        if ($roles->isEmpty()) {
+            return false;
+        }
 
-        return !$roles->contains(fn($name) => $name === 'Wali Santri');
+        return ! $roles->contains(fn ($name) => $name === 'Wali Santri');
     }
 }

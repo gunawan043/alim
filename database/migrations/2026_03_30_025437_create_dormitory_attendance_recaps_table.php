@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('dormitory_attendance_recaps', function (Blueprint $table) {
@@ -22,19 +23,19 @@ return new class extends Migration {
             $table->integer('total_alpa')->default(0);
             $table->integer('total_pulang')->default(0);
             $table->timestamps();
- 
+
             $table->foreign('student_id')->references('id')->on('students')->cascadeOnDelete();
             $table->foreign('room_id')->references('id')->on('dormitory_rooms')->cascadeOnDelete();
             $table->foreign('dormitory_id')->references('id')->on('dormitories')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
- 
+
             $table->unique(
                 ['student_id', 'academic_year_id', 'recap_month', 'recap_year'],
                 'unique_dormitory_recap_per_month'
             );
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('dormitory_attendance_recaps');

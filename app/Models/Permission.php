@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
-use Spatie\Permission\Models\Permission as SpatiePermission;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission as SpatiePermission;
 
 class Permission extends SpatiePermission
 {
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

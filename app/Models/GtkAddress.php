@@ -11,7 +11,9 @@ class GtkAddress extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -43,7 +45,7 @@ class GtkAddress extends Model
     ];
 
     protected $casts = [
-        'id'             => 'string',
+        'id' => 'string',
         'gtk_profile_id' => 'string',
     ];
 
@@ -104,13 +106,13 @@ class GtkAddress extends Model
     {
         $parts = array_filter([
             $this->jalan,
-            $this->rt_rw   ? 'RT/RW ' . $this->rt_rw     : null,
-            $this->dusun   ? 'Dusun ' . $this->dusun      : null,
+            $this->rt_rw ? 'RT/RW '.$this->rt_rw : null,
+            $this->dusun ? 'Dusun '.$this->dusun : null,
             $this->desa,
-            $this->kecamatan ? 'Kec. ' . $this->kecamatan : null,
+            $this->kecamatan ? 'Kec. '.$this->kecamatan : null,
             $this->kab_kota,
-            $this->provinsi  ? 'Prov. ' . $this->provinsi : null,
-            $this->kode_pos  ? 'Kode Pos: ' . $this->kode_pos : null,
+            $this->provinsi ? 'Prov. '.$this->provinsi : null,
+            $this->kode_pos ? 'Kode Pos: '.$this->kode_pos : null,
         ]);
 
         return implode(', ', $parts);
@@ -119,11 +121,11 @@ class GtkAddress extends Model
     public function getMaskedAddressAttribute(): array
     {
         return [
-            'jalan'      => preg_replace('/\b(\w+)\b/', '***', $this->jalan ?? ''),
-            'desa'       => $this->desa,
-            'kecamatan'  => $this->kecamatan,
-            'kab_kota'   => $this->kab_kota,
-            'provinsi'   => $this->provinsi,
+            'jalan' => preg_replace('/\b(\w+)\b/', '***', $this->jalan ?? ''),
+            'desa' => $this->desa,
+            'kecamatan' => $this->kecamatan,
+            'kab_kota' => $this->kab_kota,
+            'provinsi' => $this->provinsi,
         ];
     }
 }

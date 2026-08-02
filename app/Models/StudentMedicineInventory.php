@@ -10,7 +10,9 @@ use Illuminate\Support\Str;
 class StudentMedicineInventory extends Model
 {
     protected $table = 'student_medicine_inventory';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -62,18 +64,21 @@ class StudentMedicineInventory extends Model
     public function getCategoryTextAttribute(): string
     {
         return match ($this->category) {
-            'obat_dalam'         => 'Obat Dalam',
-            'obat_luar'          => 'Obat Luar',
-            'vitamin_suplemen'   => 'Vitamin & Suplemen',
-            'antiseptik'         => 'Antiseptik',
-            'alat_kesehatan'    => 'Alat Kesehatan',
-            default              => $this->category,
+            'obat_dalam' => 'Obat Dalam',
+            'obat_luar' => 'Obat Luar',
+            'vitamin_suplemen' => 'Vitamin & Suplemen',
+            'antiseptik' => 'Antiseptik',
+            'alat_kesehatan' => 'Alat Kesehatan',
+            default => $this->category,
         };
     }
 
     public function getIsExpiringSoonAttribute(): bool
     {
-        if (!$this->expiry_date) return false;
+        if (! $this->expiry_date) {
+            return false;
+        }
+
         return $this->expiry_date->between(now(), now()->addMonth(3));
     }
 
@@ -92,7 +97,7 @@ class StudentMedicineInventory extends Model
     public function scopeLowStock($q)
     {
         return $q->whereColumn('current_stock', '<=', 'min_stock_alert')
-                 ->where('min_stock_alert', '>', 0);
+            ->where('min_stock_alert', '>', 0);
     }
 
     public function scopeExpiringSoon($q)

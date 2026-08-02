@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class PekanEfektif extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'pekan_efektif';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -37,9 +39,13 @@ class PekanEfektif extends Model
     ];
 
     const JENIS_EFEKTIF = 'efektif';
+
     const JENIS_LIBUR = 'libur';
+
     const JENIS_UJIAN = 'ujian';
+
     const JENIS_KEGIATAN_SEKOLAH = 'kegiatan_sekolah';
+
     const JENIS_LAINNYA = 'lainnya';
 
     const JENIS_OPTIONS = [
@@ -51,6 +57,7 @@ class PekanEfektif extends Model
     ];
 
     const SEMESTER_GANJIL = 1;
+
     const SEMESTER_GENAP = 2;
 
     const SEMESTER_OPTIONS = [
@@ -83,6 +90,7 @@ class PekanEfektif extends Model
         if (! $this->tanggal_mulai || ! $this->tanggal_selesai) {
             return 0;
         }
+
         return (int) Carbon::parse($this->tanggal_mulai)
             ->diffInDays(Carbon::parse($this->tanggal_selesai)) + 1;
     }
@@ -92,6 +100,7 @@ class PekanEfektif extends Model
         if ($schoolId) {
             return $query->where('school_id', $schoolId);
         }
+
         return $query;
     }
 
@@ -100,6 +109,7 @@ class PekanEfektif extends Model
         if ($academicYearId) {
             return $query->where('academic_year_id', $academicYearId);
         }
+
         return $query;
     }
 
@@ -108,6 +118,7 @@ class PekanEfektif extends Model
         if ($semester) {
             return $query->where('semester', $semester);
         }
+
         return $query;
     }
 
@@ -116,6 +127,7 @@ class PekanEfektif extends Model
         if ($jenis) {
             return $query->where('jenis', $jenis);
         }
+
         return $query;
     }
 }

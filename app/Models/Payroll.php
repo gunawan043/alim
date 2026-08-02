@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payroll extends Model
 {
     use HasUuids;
+
     protected $table = 'payroll';
 
     protected $fillable = [

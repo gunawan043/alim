@@ -195,6 +195,14 @@ class DormitoryPostController extends Controller
 
     // ── EMERGENCY BROADCAST ──────────────────────────────────────
 
+    public function broadcastShow(Request $request, string $userId, string $asramaUuid, string $broadcastUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $broadcast = DormitoryEmergencyBroadcast::where('dormitory_id', $asramaUuid)->findOrFail($broadcastUuid);
+
+        return view('dormitory.broadcasts.show', compact('dormitory', 'broadcast', 'userId'));
+    }
+
     public function broadcastIndex(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
@@ -227,5 +235,19 @@ class DormitoryPostController extends Controller
         $this->service->broadcastToDormitoryWalis($dormitory, $data);
 
         return back()->with('success', 'Broadcast darurat berhasil dikirim.');
+    }
+
+    public function broadcastDestroy(Request $request, string $userId, string $asramaUuid, string $broadcastUuid)
+    {
+        $broadcast = DormitoryEmergencyBroadcast::where('dormitory_id', $asramaUuid)->findOrFail($broadcastUuid);
+
+        if ($broadcast->created_by !== auth()->id()) {
+            abort(403);
+        }
+
+        $broadcast->delete();
+
+        return redirect()->route('user.asrama.broadcasts.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', 'Broadcast berhasil dihapus.');
     }
 }

@@ -3,10 +3,8 @@
 namespace App\Services;
 
 use App\Models\KinerjaPenilaian;
-use App\Models\KinerjaSkor;
-use App\Models\KinerjaIndikator;
 use App\Models\KinerjaPeriode;
-use App\Models\User;
+use App\Models\KinerjaSkor;
 use Illuminate\Support\Facades\DB;
 
 class KinerjaService
@@ -58,7 +56,7 @@ class KinerjaService
                 'C' => $penilaians->where('nilai_huruf', 'C')->count(),
                 'D' => $penilaians->where('nilai_huruf', 'D')->count(),
             ],
-            'per_user' => $penilaians->map(fn($p) => [
+            'per_user' => $penilaians->map(fn ($p) => [
                 'user' => $p->user->name,
                 'skor' => $p->total_skor,
                 'huruf' => $p->nilai_huruf,

@@ -139,65 +139,12 @@ return new class extends Migration
             $table->index(['reference_type', 'reference_id']);
         });
 
-        Schema::create('purchase_orders', function (Blueprint $table) {
-            $table->id();
-            $table->string('po_number', 50)->unique();
-            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
-            $table->enum('status', ['draft', 'submitted', 'approved', 'rejected', 'partial', 'received', 'cancelled', 'closed'])->default('draft');
-            $table->date('order_date');
-            $table->date('expected_date')->nullable();
-            $table->date('received_date')->nullable();
-            $table->decimal('subtotal', 18, 2)->default(0);
-            $table->decimal('tax', 18, 2)->default(0);
-            $table->decimal('discount', 18, 2)->default(0);
-            $table->decimal('shipping', 18, 2)->default(0);
-            $table->decimal('total', 18, 2)->default(0);
-            $table->string('currency', 5)->default('IDR');
-            $table->unsignedSmallInteger('payment_term_days')->default(30);
-            $table->string('incoterms', 30)->nullable();
-            $table->text('notes')->nullable();
-            $table->foreignUuid('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignUuid('approved_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('approved_at')->nullable();
-            $table->timestamps();
-            $table->index('status');
-            $table->index('vendor_id');
-        });
-
-        Schema::create('purchase_order_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
-            $table->foreignId('sparepart_id')->nullable()->constrained('spareparts')->nullOnDelete();
-            $table->string('description', 255);
-            $table->decimal('quantity', 14, 2);
-            $table->decimal('received_quantity', 14, 2)->default(0);
-            $table->decimal('unit_price', 18, 2);
-            $table->decimal('discount_pct', 5, 2)->default(0);
-            $table->decimal('tax_pct', 5, 2)->default(0);
-            $table->decimal('line_total', 18, 2);
-            $table->foreignId('warehouse_id')->nullable()->constrained('warehouses')->nullOnDelete();
-            $table->timestamps();
-            $table->index('purchase_order_id');
-        });
-
-        Schema::create('vendor_invoices', function (Blueprint $table) {
-            $table->id();
-            $table->string('invoice_number', 100)->unique();
-            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
-            $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders')->nullOnDelete();
-            $table->string('work_order_ref')->nullable();
-            $table->date('invoice_date');
-            $table->date('due_date');
-            $table->decimal('subtotal', 18, 2)->default(0);
-            $table->decimal('tax', 18, 2)->default(0);
-            $table->decimal('total', 18, 2)->default(0);
-            $table->decimal('paid_amount', 18, 2)->default(0);
-            $table->enum('status', ['pending', 'partial', 'paid', 'overdue', 'cancelled'])->default('pending');
-            $table->string('document_path')->nullable();
-            $table->timestamps();
-            $table->index('status');
-            $table->index('vendor_id');
-        });
+        // purchase_orders, purchase_order_items, vendor_invoices, and warranty_claims
+        // are created by the 2026_07_20_000009+ vendor PO workflow migrations, which
+        // supersede the schema originally declared here. The new migrations own
+        // the canonical definition (RFQ → Quotation → PO → Goods Receipt → QC → RMA
+        // → Invoice flow) and rely on FK references that did not exist when this
+        // sparepart_master migration was written.
 
         Schema::create('warranty_claims', function (Blueprint $table) {
             $table->id();
@@ -223,9 +170,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('warranty_claims');
-        Schema::dropIfExists('vendor_invoices');
-        Schema::dropIfExists('purchase_order_items');
-        Schema::dropIfExists('purchase_orders');
         Schema::dropIfExists('sparepart_reservations');
         Schema::dropIfExists('sparepart_stock_movements');
         Schema::dropIfExists('spareparts');

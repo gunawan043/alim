@@ -11,8 +11,8 @@ class AuditTrailService
         Model|string $entity,
         int|string $entityId,
         string $action,
-        array $oldValues = null,
-        array $newValues = null,
+        ?array $oldValues = null,
+        ?array $newValues = null,
         $actor = null
     ): VendorAuditTrail {
         $entityType = is_string($entity) ? $entity : $this->resolveEntityType($entity);

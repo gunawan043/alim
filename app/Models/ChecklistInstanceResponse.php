@@ -11,8 +11,11 @@ class ChecklistInstanceResponse extends Model
     use HasFactory;
 
     protected $table = 'checklist_instance_responses';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

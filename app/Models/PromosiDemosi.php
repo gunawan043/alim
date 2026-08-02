@@ -11,8 +11,11 @@ class PromosiDemosi extends Model
     use HasFactory;
 
     protected $table = 'promosi_demosi';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -77,20 +80,20 @@ class PromosiDemosi extends Model
     public function getStatusLabelAttribute()
     {
         return [
-            'draft'    => 'Draft',
+            'draft' => 'Draft',
             'diajukan' => 'Diajukan',
             'disetujui' => 'Disetujui',
-            'ditolak'  => 'Ditolak',
+            'ditolak' => 'Ditolak',
         ][$this->status] ?? $this->status;
     }
 
     public function getStatusColorAttribute()
     {
         return [
-            'draft'    => 'secondary',
+            'draft' => 'secondary',
             'diajukan' => 'warning',
             'disetujui' => 'success',
-            'ditolak'  => 'danger',
+            'ditolak' => 'danger',
         ][$this->status] ?? 'secondary';
     }
 

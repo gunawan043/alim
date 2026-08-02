@@ -17,7 +17,7 @@ class JamKerjaController extends Controller
 
         $stats = [
             'total_jam_kerja' => JamKerja::count(),
-            'total_shift'     => Shift::count(),
+            'total_shift' => Shift::count(),
             'active_jam_kerja' => JamKerja::where('is_active', true)->count(),
         ];
 
@@ -33,12 +33,12 @@ class JamKerjaController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
-            'jam_masuk'  => 'required|date_format:H:i',
+            'jam_masuk' => 'required|date_format:H:i',
             'jam_pulang' => 'required|date_format:H:i|after:jam_masuk',
             'istirahat_menit' => 'nullable|integer|min:0|max:480',
             'istirahat_mulai' => 'nullable|date_format:H:i',
             'keterangan' => 'nullable|string',
-            'is_active'  => 'nullable',
+            'is_active' => 'nullable',
         ]);
 
         JamKerja::create([
@@ -59,6 +59,7 @@ class JamKerjaController extends Controller
     public function edit(Request $request, string $userId, string $id)
     {
         $jamKerja = JamKerja::findOrFail($id);
+
         return view('personalia.jam-kerja.edit', compact('userId', 'jamKerja'));
     }
 
@@ -68,12 +69,12 @@ class JamKerjaController extends Controller
 
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
-            'jam_masuk'  => 'required|date_format:H:i',
+            'jam_masuk' => 'required|date_format:H:i',
             'jam_pulang' => 'required|date_format:H:i',
             'istirahat_menit' => 'nullable|integer|min:0|max:480',
             'istirahat_mulai' => 'nullable|date_format:H:i',
             'keterangan' => 'nullable|string',
-            'is_active'  => 'nullable',
+            'is_active' => 'nullable',
         ]);
 
         $jamKerja->update([
@@ -99,6 +100,7 @@ class JamKerjaController extends Controller
             return redirect()->back()->with('error', 'Jam kerja masih dipakai oleh shift aktif.');
         }
         $jamKerja->delete();
+
         return redirect()->route('user.jam-kerja.index', $userId)
             ->with('success', 'Jam kerja berhasil dihapus.');
     }
@@ -106,6 +108,7 @@ class JamKerjaController extends Controller
     public function shift(Request $request, string $userId)
     {
         $shifts = Shift::with('jamKerja')->orderBy('tanggal_mulai', 'desc')->paginate(20);
+
         return view('personalia.jam-kerja.shift', compact('userId', 'shifts'));
     }
 
@@ -115,29 +118,31 @@ class JamKerjaController extends Controller
             ->whereYear('tanggal_mulai', $request->get('tahun', now()->year))
             ->orderBy('tanggal_mulai')
             ->get();
+
         return view('personalia.jam-kerja.kalender', compact('userId', 'shifts'));
     }
 
     public function datatable(Request $request, string $userId)
     {
         $query = JamKerja::query()
-            ->when($request->get('is_active') !== null, fn($q) => $q->where('is_active', $request->boolean('is_active')))
+            ->when($request->get('is_active') !== null, fn ($q) => $q->where('is_active', $request->boolean('is_active')))
             ->orderBy('jam_masuk');
 
         return datatables()->of($query)
             ->addColumn('durasi', function ($r) {
                 try {
                     $start = \Carbon\Carbon::parse($r->jam_masuk);
-                    $end   = \Carbon\Carbon::parse($r->jam_pulang);
+                    $end = \Carbon\Carbon::parse($r->jam_pulang);
                     $minutes = $end->diffInMinutes($start);
                     $hours = intdiv($minutes, 60);
-                    $mins  = $minutes % 60;
+                    $mins = $minutes % 60;
+
                     return sprintf('%d jam %d menit', $hours, $mins);
                 } catch (\Throwable $e) {
                     return '-';
                 }
             })
-            ->addColumn('status_badge', fn($r) => $r->is_active
+            ->addColumn('status_badge', fn ($r) => $r->is_active
                 ? '<span class="badge bg-success-subtle text-success">Aktif</span>'
                 : '<span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>')
             ->rawColumns(['status_badge'])

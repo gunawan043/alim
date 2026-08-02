@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
-use App\Models\Traits\LogsDeletion;
 
 class Student extends Model
 {
     use LogsDeletion;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -58,18 +59,18 @@ class Student extends Model
     ];
 
     protected $casts = [
-        'birth_date'       => 'date',
-        'entry_date'       => 'date',
-        'graduation_date'  => 'date',
-        'father_birth_year'    => 'integer',
-        'mother_birth_year'    => 'integer',
+        'birth_date' => 'date',
+        'entry_date' => 'date',
+        'graduation_date' => 'date',
+        'father_birth_year' => 'integer',
+        'mother_birth_year' => 'integer',
         'guardian_birth_year' => 'integer',
-        'distance_to_school'  => 'decimal:2',
-        'father_income'       => 'decimal:2',
-        'mother_income'       => 'decimal:2',
-        'guardian_income'     => 'decimal:2',
-        'latitude'           => 'decimal:8',
-        'longitude'          => 'decimal:8',
+        'distance_to_school' => 'decimal:2',
+        'father_income' => 'decimal:2',
+        'mother_income' => 'decimal:2',
+        'guardian_income' => 'decimal:2',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
         'is_kps_receiver' => 'boolean',
         'is_kip_receiver' => 'boolean',
         'is_pip_eligible' => 'boolean',
@@ -87,6 +88,19 @@ class Student extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    /**
+     * A student may have a dormitory/resident record (boarding assignment).
+     */
+    public function dormitoryResident()
+    {
+        return $this->hasOne(DormitoryResident::class, 'student_id');
+    }
+
+    public function activeDormitoryResident()
+    {
+        return $this->hasOne(DormitoryResident::class, 'student_id')->where('is_active', true);
     }
 
     public function province()
@@ -139,6 +153,11 @@ class Student extends Model
         return $this->hasOne(StudentClassHistory::class)->latestOfMany();
     }
 
+    public function healthRecord()
+    {
+        return $this->hasOne(StudentHealthRecord::class);
+    }
+
     // ── Accessors ────────────────────────────────────────────────
 
     public function getGenderTextAttribute(): string
@@ -149,26 +168,26 @@ class Student extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'active'       => 'Aktif',
-            'inactive'     => 'Nonaktif',
-            'graduate'     => 'Lulus',
-            'dropped'      => 'Dropout',
-            'transfer'     => 'Pindah',
+            'active' => 'Aktif',
+            'inactive' => 'Nonaktif',
+            'graduate' => 'Lulus',
+            'dropped' => 'Dropout',
+            'transfer' => 'Pindah',
             'transfer_out' => 'Pindah (Keluar)',
-            'transfer_in'  => 'Pindah (Masuk)',
-            default        => ucfirst($this->status ?? ''),
+            'transfer_in' => 'Pindah (Masuk)',
+            default => ucfirst($this->status ?? ''),
         };
     }
 
     public function getSpecialNeedsTextAttribute(): string
     {
         return match ($this->special_needs) {
-            'tidak'     => 'Tidak ada',
-            'fisik'     => 'Fisik',
+            'tidak' => 'Tidak ada',
+            'fisik' => 'Fisik',
             'intelektual' => 'Intelektual',
-            'mental'    => 'Mental',
-            'sosial'    => 'Sosial',
-            default     => ucfirst($this->special_needs ?? ''),
+            'mental' => 'Mental',
+            'sosial' => 'Sosial',
+            default => ucfirst($this->special_needs ?? ''),
         };
     }
 
@@ -183,24 +202,33 @@ class Student extends Model
             $this->province?->name,
             $this->postal_code ? "{$this->postal_code}" : null,
         ]);
+
         return implode(', ', $parts);
     }
 
-    public function getPhotoUrlAttribute(): string
+    public function getPhotoUrlAttribute(): ?string
     {
         // photo_path stored relative to storage/app/public/students/photos/
         if ($this->photo_path) {
-            return asset('storage/' . $this->photo_path);
+            return asset('storage/'.$this->photo_path);
         }
-        // Fallback initials avatar
-        $color = $this->gender === 'P' ? 'pink' : 'primary';
-        return null; // handled in view
+
+        // Fallback initials avatar (handled in view layer)
+        // return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=' . (($this->gender === 'P') ? 'ff6b9b' : '#4a90e2');
+        return null;
     }
 
     // ── Scopes ─────────────────────────────────────────────────
 
-    public function scopeActive($q)   { return $q->where('status', 'active'); }
-    public function scopeBySchool($q, $sid) { return $q->where('school_id', $sid); }
+    public function scopeActive($q)
+    {
+        return $q->where('status', 'active');
+    }
+
+    public function scopeBySchool($q, $sid)
+    {
+        return $q->where('school_id', $sid);
+    }
 
     // ── Achievements ────────────────────────────────────────────
 

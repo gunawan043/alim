@@ -1,8 +1,9 @@
 <?php
+
 namespace App\Http\Middleware;
 
-use Closure;
 use App\Models\SecureAccessToken;
+use Closure;
 
 class VerifySecureToken
 {
@@ -15,7 +16,7 @@ class VerifySecureToken
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             abort(403, 'Secure token invalid or expired');
         }
 

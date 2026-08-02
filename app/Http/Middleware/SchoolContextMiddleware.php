@@ -36,13 +36,77 @@ class SchoolContextMiddleware
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 
         // Can this user see all schools?
         $isGlobalView = SchoolGroupService::userCanGlobalView($user);
         $request->attributes->set('isGlobalView', $isGlobalView);
+
+        $isSystemAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
+        $isSuperAdmin = ! $isSystemAdmin
+            && method_exists($user, 'hasPermissionTo')
+            && $user->hasPermissionTo('impersonate_role');
+
+        $viewAs = app(\App\Services\ViewAsService::class);
+        $canUseViewAs = ($isSystemAdmin || $isSuperAdmin) && $viewAs->isViewingAs();
+        $effectiveUserId = $viewAs->getCurrentViewUserId();
+
+        // View-As context: when SA or Super Admin is Viewing-As a role/user, force a
+        // scoped school context from the ViewAsService so the impersonated user
+        // is NOT granted global access (they wouldn't have it in reality).
+        if ($canUseViewAs) {
+            // If Login-As (specific user), resolve their school
+            if ($effectiveUserId !== null) {
+                $targetUser = \App\Models\User::find($effectiveUserId);
+                if ($targetUser) {
+                    $viewAs->setCurrentViewRole($targetUser->getRoleNames()->first());
+                    $school = \App\Services\SchoolGroupService::getUserSchool($targetUser);
+                    $request->attributes->set('schoolContextId', $school?->id);
+                    $request->attributes->set('schoolContext', $school);
+                    $request->attributes->set('schoolGender', $school?->school_gender);
+                    $request->attributes->set('saSchoolScoped', true);
+                    $request->attributes->set('isGlobalView', false);
+                    $request->attributes->set('viewAsForced', true);
+
+                    return $next($request);
+                }
+            }
+
+            $viewAsRole = $viewAs->getCurrentViewRole();
+            if ($viewAsRole !== null) {
+                $ctx = app(\App\Services\ViewAsService::class)->getCurrentViewContext();
+                $ctxSchoolId = $ctx['school_id'] ?? null;
+                if ($ctxSchoolId) {
+                    $school = \App\Models\School::find($ctxSchoolId);
+                    $request->attributes->set('schoolContextId', $school?->id);
+                    $request->attributes->set('schoolContext', $school);
+                    $request->attributes->set('schoolGender', $school?->school_gender);
+                    $request->attributes->set('saSchoolScoped', true);
+                    $request->attributes->set('isGlobalView', false);
+                    $request->attributes->set('viewAsForced', true);
+
+                    return $next($request);
+                }
+
+                // View-as active but no explicit school picked — force scoped
+                // based on the real user's own school employment (so SA/Super
+                // Admin can preview data scoped to their own school).
+                if ($isSystemAdmin) {
+                    return $next($request);
+                }
+                $school = SchoolGroupService::getUserSchool($user);
+                $request->attributes->set('schoolContext', $school);
+                $request->attributes->set('schoolContextId', $school?->id);
+                $request->attributes->set('schoolGender', $school?->school_gender);
+                $request->attributes->set('saSchoolScoped', true);
+                $request->attributes->set('isGlobalView', false);
+                $request->attributes->set('viewAsForced', true);
+
+                return $next($request);
+            }
+        }
 
         if ($isGlobalView) {
             // Super Admin: check session for scoped view

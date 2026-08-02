@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class KinerjaRewardPunishment extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_reward_punishment';
 
     protected $fillable = [
@@ -18,7 +19,18 @@ class KinerjaRewardPunishment extends Model
 
     protected $casts = ['tanggal' => 'date'];
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function periode(): BelongsTo { return $this->belongsTo(KinerjaPeriode::class, 'kinerja_periode_id'); }
-    public function pemberi(): BelongsTo { return $this->belongsTo(User::class, 'diberikan_oleh'); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function periode(): BelongsTo
+    {
+        return $this->belongsTo(KinerjaPeriode::class, 'kinerja_periode_id');
+    }
+
+    public function pemberi(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'diberikan_oleh');
+    }
 }

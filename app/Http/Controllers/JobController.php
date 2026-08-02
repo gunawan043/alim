@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\RecruitmentJob;
-use App\Models\WorkUnit;
 use App\Models\Jabatan;
 use App\Models\JenisGtk;
+use App\Models\RecruitmentJob;
+use App\Models\WorkUnit;
 use App\Services\NotificationUniversalService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class JobController extends Controller
 {
@@ -32,10 +30,10 @@ class JobController extends Controller
 
         // Search
         if ($request->has('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('judul', 'like', '%' . $request->search . '%')
-                  ->orWhere('kode_lowongan', 'like', '%' . $request->search . '%')
-                  ->orWhere('posisi', 'like', '%' . $request->search . '%');
+            $query->where(function ($q) use ($request) {
+                $q->where('judul', 'like', '%'.$request->search.'%')
+                    ->orWhere('kode_lowongan', 'like', '%'.$request->search.'%')
+                    ->orWhere('posisi', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -63,7 +61,7 @@ class JobController extends Controller
         }
 
         $jobs = $query->orderBy('created_at', 'desc')->paginate(15);
-        
+
         // Get filter options
         $workUnits = WorkUnit::all();
         $statusCounts = [
@@ -89,43 +87,44 @@ class JobController extends Controller
             ->distinct()
             ->orderBy('kategori')
             ->pluck('kategori');
+
         return view('recruitment.jobs.create', compact('workUnits', 'jabatanList', 'jenisGtkList', 'kategoriList', 'userId'));
     }
 
     public function store(Request $request, string $userId)
     {
         $validated = $request->validate([
-            'judul'                    => 'required|string|max:255',
-            'posisi'                   => 'required|string|max:255',
-            'kategori'                 => 'nullable|array',
-            'kategori.*'               => 'nullable|uuid|exists:jabatan,uuid',
-            'work_unit_id'          => 'nullable|exists:work_units,uuid',
-            'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
-            'deskripsi_pekerjaan'      => 'required|string',
-            'kuota'                    => 'required|integer|min:1',
-            'tanggal_mulai'            => 'required|date',
-            'tanggal_selesai'          => 'required|date|after_or_equal:tanggal_mulai',
-            'status'                   => 'required|in:draft,aktif',
+            'judul' => 'required|string|max:255',
+            'posisi' => 'required|string|max:255',
+            'kategori' => 'nullable|array',
+            'kategori.*' => 'nullable|uuid|exists:jabatan,uuid',
+            'work_unit_id' => 'nullable|exists:work_units,uuid',
+            'status_pegawai' => 'nullable|in:tetap,kontrak,probation',
+            'deskripsi_pekerjaan' => 'required|string',
+            'kuota' => 'required|integer|min:1',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'status' => 'required|in:draft,aktif',
             // Gaji (array field di model)
-            'rentang_gaji'             => 'nullable|array',
-            'rentang_gaji.min'         => 'nullable|numeric|min:0',
-            'rentang_gaji.max'         => 'nullable|numeric|min:0|gte:rentang_gaji.min',
+            'rentang_gaji' => 'nullable|array',
+            'rentang_gaji.min' => 'nullable|numeric|min:0',
+            'rentang_gaji.max' => 'nullable|numeric|min:0|gte:rentang_gaji.min',
             // Array fields dikirim sebagai JSON string dari JS
-            'persyaratan_umum'         => 'nullable|string',
-            'persyaratan_khusus'       => 'nullable|string',
-            'kualifikasi_pendidikan'   => 'nullable|string',
-            'kualifikasi_pengalaman'   => 'nullable|string',
-            'kompetensi_dibutuhkan'    => 'nullable|array',
-            'kompetensi_dibutuhkan.*'  => 'nullable|string|max:255',
-            'fasilitas'                => 'nullable|string',
+            'persyaratan_umum' => 'nullable|string',
+            'persyaratan_khusus' => 'nullable|string',
+            'kualifikasi_pendidikan' => 'nullable|string',
+            'kualifikasi_pengalaman' => 'nullable|string',
+            'kompetensi_dibutuhkan' => 'nullable|array',
+            'kompetensi_dibutuhkan.*' => 'nullable|string|max:255',
+            'fasilitas' => 'nullable|string',
             // Tahapan seleksi dikirim sebagai array[] dari input
-            'tahapan_seleksi'          => 'nullable|array',
-            'tahapan_seleksi.*'        => 'nullable|string|max:255',
+            'tahapan_seleksi' => 'nullable|array',
+            'tahapan_seleksi.*' => 'nullable|string|max:255',
         ]);
 
         // Tentukan rentang_gaji: null jika toggle dimatikan (inputs disabled → tidak terkirim)
         $rentangGaji = null;
-        if (!empty($request->input('rentang_gaji.min')) || !empty($request->input('rentang_gaji.max'))) {
+        if (! empty($request->input('rentang_gaji.min')) || ! empty($request->input('rentang_gaji.max'))) {
             $rentangGaji = [
                 'min' => $request->input('rentang_gaji.min'),
                 'max' => $request->input('rentang_gaji.max'),
@@ -134,33 +133,33 @@ class JobController extends Controller
 
         // Filter tahapan kosong
         $tahapan = collect($request->input('tahapan_seleksi', []))
-            ->filter(fn($t) => !empty(trim($t)))
+            ->filter(fn ($t) => ! empty(trim($t)))
             ->values()
             ->toArray();
 
         $job = RecruitmentJob::create([
-            'kode_lowongan'          => $this->generateKode(),
-            'judul'                  => $validated['judul'],
-            'posisi'                 => $validated['posisi'],
-            'kategori'               => $validated['kategori'] ?? null,
-            'work_unit_id'           => $validated['work_unit_id'] ?? null,
-            'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
-            'status_pegawai'         => $validated['status_pegawai'] ?? null,
-            'deskripsi_pekerjaan'    => $validated['deskripsi_pekerjaan'],
-            'kuota'                  => $validated['kuota'],
-            'kuota_terisi'           => 0,
-            'tanggal_mulai'          => $validated['tanggal_mulai'],
-            'tanggal_selesai'        => $validated['tanggal_selesai'],
-            'status'                 => $validated['status'],
-            'rentang_gaji'           => $rentangGaji,
-            'persyaratan_umum'       => $this->decodeJsonField($request->input('persyaratan_umum')),
-            'persyaratan_khusus'     => $this->decodeJsonField($request->input('persyaratan_khusus')),
+            'kode_lowongan' => $this->generateKode(),
+            'judul' => $validated['judul'],
+            'posisi' => $validated['posisi'],
+            'kategori' => $validated['kategori'] ?? null,
+            'work_unit_id' => $validated['work_unit_id'] ?? null,
+            'jenis_pegawai' => $validated['jenis_pegawai'] ?? null,
+            'status_pegawai' => $validated['status_pegawai'] ?? null,
+            'deskripsi_pekerjaan' => $validated['deskripsi_pekerjaan'],
+            'kuota' => $validated['kuota'],
+            'kuota_terisi' => 0,
+            'tanggal_mulai' => $validated['tanggal_mulai'],
+            'tanggal_selesai' => $validated['tanggal_selesai'],
+            'status' => $validated['status'],
+            'rentang_gaji' => $rentangGaji,
+            'persyaratan_umum' => $this->decodeJsonField($request->input('persyaratan_umum')),
+            'persyaratan_khusus' => $this->decodeJsonField($request->input('persyaratan_khusus')),
             'kualifikasi_pendidikan' => $this->decodeJsonField($request->input('kualifikasi_pendidikan')),
             'kualifikasi_pengalaman' => $this->decodeJsonField($request->input('kualifikasi_pengalaman')),
-            'kompetensi_dibutuhkan'  => $this->decodeJsonField($request->input('kompetensi_dibutuhkan')),
-            'fasilitas'              => $this->decodeJsonField($request->input('fasilitas')),
-            'tahapan_seleksi'        => !empty($tahapan) ? $tahapan : null,
-            'created_by'             => Auth::id(),
+            'kompetensi_dibutuhkan' => $this->decodeJsonField($request->input('kompetensi_dibutuhkan')),
+            'fasilitas' => $this->decodeJsonField($request->input('fasilitas')),
+            'tahapan_seleksi' => ! empty($tahapan) ? $tahapan : null,
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()
@@ -171,35 +170,35 @@ class JobController extends Controller
     public function update(Request $request, string $userId, RecruitmentJob $job)
     {
         $validated = $request->validate([
-            'judul'                    => 'required|string|max:255',
-            'posisi'                   => 'required|string|max:255',
-            'kategori'                 => 'nullable|array',
-            'kategori.*'               => 'nullable|uuid|exists:jabatan,uuid',
-            'work_unit_id'             => 'nullable|exists:work_units,uuid',
-            'jenis_pegawai'            => 'nullable|in:pns,pppk,honor,kontrak,magang',
-            'status_pegawai'           => 'nullable|in:tetap,kontrak,probation',
-            'deskripsi_pekerjaan'      => 'required|string',
-            'kuota'                    => 'required|integer|min:1',
-            'tanggal_mulai'            => 'required|date',
-            'tanggal_selesai'          => 'required|date|after_or_equal:tanggal_mulai',
-            'status'                   => 'required|in:draft,aktif,ditutup',
-            'rentang_gaji'             => 'nullable|array',
-            'rentang_gaji.min'         => 'nullable|numeric|min:0',
-            'rentang_gaji.max'         => 'nullable|numeric|min:0|gte:rentang_gaji.min',
-            'persyaratan_umum'         => 'nullable|string',
-            'persyaratan_khusus'       => 'nullable|string',
-            'kualifikasi_pendidikan'   => 'nullable|string',
-            'kualifikasi_pengalaman'   => 'nullable|string',
-            'kompetensi_dibutuhkan'    => 'nullable|array',
-            'kompetensi_dibutuhkan.*'  => 'nullable|string|max:255',
-            'fasilitas'                => 'nullable|string',
-            'tahapan_seleksi'          => 'nullable|array',
-            'tahapan_seleksi.*'        => 'nullable|string|max:255',
+            'judul' => 'required|string|max:255',
+            'posisi' => 'required|string|max:255',
+            'kategori' => 'nullable|array',
+            'kategori.*' => 'nullable|uuid|exists:jabatan,uuid',
+            'work_unit_id' => 'nullable|exists:work_units,uuid',
+            'jenis_pegawai' => 'nullable|in:pns,pppk,honor,kontrak,magang',
+            'status_pegawai' => 'nullable|in:tetap,kontrak,probation',
+            'deskripsi_pekerjaan' => 'required|string',
+            'kuota' => 'required|integer|min:1',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'status' => 'required|in:draft,aktif,ditutup',
+            'rentang_gaji' => 'nullable|array',
+            'rentang_gaji.min' => 'nullable|numeric|min:0',
+            'rentang_gaji.max' => 'nullable|numeric|min:0|gte:rentang_gaji.min',
+            'persyaratan_umum' => 'nullable|string',
+            'persyaratan_khusus' => 'nullable|string',
+            'kualifikasi_pendidikan' => 'nullable|string',
+            'kualifikasi_pengalaman' => 'nullable|string',
+            'kompetensi_dibutuhkan' => 'nullable|array',
+            'kompetensi_dibutuhkan.*' => 'nullable|string|max:255',
+            'fasilitas' => 'nullable|string',
+            'tahapan_seleksi' => 'nullable|array',
+            'tahapan_seleksi.*' => 'nullable|string|max:255',
         ]);
 
         // Rentang gaji: null jika toggle off (disabled fields tidak terkirim)
         $rentangGaji = null;
-        if (!empty($request->input('rentang_gaji.min')) || !empty($request->input('rentang_gaji.max'))) {
+        if (! empty($request->input('rentang_gaji.min')) || ! empty($request->input('rentang_gaji.max'))) {
             $rentangGaji = [
                 'min' => $request->input('rentang_gaji.min'),
                 'max' => $request->input('rentang_gaji.max'),
@@ -207,30 +206,30 @@ class JobController extends Controller
         }
 
         $tahapan = collect($request->input('tahapan_seleksi', []))
-            ->filter(fn($t) => !empty(trim($t)))
+            ->filter(fn ($t) => ! empty(trim($t)))
             ->values()
             ->toArray();
 
         $job->update([
-            'judul'                  => $validated['judul'],
-            'posisi'                 => $validated['posisi'],
-            'kategori'               => $validated['kategori'] ?? null,
-            'work_unit_id'           => $validated['work_unit_id'] ?? null,
-            'jenis_pegawai'          => $validated['jenis_pegawai'] ?? null,
-            'status_pegawai'         => $validated['status_pegawai'] ?? null,
-            'deskripsi_pekerjaan'    => $validated['deskripsi_pekerjaan'],
-            'kuota'                  => $validated['kuota'],
-            'tanggal_mulai'          => $validated['tanggal_mulai'],
-            'tanggal_selesai'        => $validated['tanggal_selesai'],
-            'status'                 => $validated['status'],
-            'rentang_gaji'           => $rentangGaji,
-            'persyaratan_umum'       => $this->decodeJsonField($request->input('persyaratan_umum'), $job->persyaratan_umum),
-            'persyaratan_khusus'     => $this->decodeJsonField($request->input('persyaratan_khusus'), $job->persyaratan_khusus),
+            'judul' => $validated['judul'],
+            'posisi' => $validated['posisi'],
+            'kategori' => $validated['kategori'] ?? null,
+            'work_unit_id' => $validated['work_unit_id'] ?? null,
+            'jenis_pegawai' => $validated['jenis_pegawai'] ?? null,
+            'status_pegawai' => $validated['status_pegawai'] ?? null,
+            'deskripsi_pekerjaan' => $validated['deskripsi_pekerjaan'],
+            'kuota' => $validated['kuota'],
+            'tanggal_mulai' => $validated['tanggal_mulai'],
+            'tanggal_selesai' => $validated['tanggal_selesai'],
+            'status' => $validated['status'],
+            'rentang_gaji' => $rentangGaji,
+            'persyaratan_umum' => $this->decodeJsonField($request->input('persyaratan_umum'), $job->persyaratan_umum),
+            'persyaratan_khusus' => $this->decodeJsonField($request->input('persyaratan_khusus'), $job->persyaratan_khusus),
             'kualifikasi_pendidikan' => $this->decodeJsonField($request->input('kualifikasi_pendidikan'), $job->kualifikasi_pendidikan),
             'kualifikasi_pengalaman' => $this->decodeJsonField($request->input('kualifikasi_pengalaman'), $job->kualifikasi_pengalaman),
-            'kompetensi_dibutuhkan'  => $this->decodeJsonField($request->input('kompetensi_dibutuhkan'), $job->kompetensi_dibutuhkan),
-            'fasilitas'              => $this->decodeJsonField($request->input('fasilitas'), $job->fasilitas),
-            'tahapan_seleksi'        => !empty($tahapan) ? $tahapan : null,
+            'kompetensi_dibutuhkan' => $this->decodeJsonField($request->input('kompetensi_dibutuhkan'), $job->kompetensi_dibutuhkan),
+            'fasilitas' => $this->decodeJsonField($request->input('fasilitas'), $job->fasilitas),
+            'tahapan_seleksi' => ! empty($tahapan) ? $tahapan : null,
         ]);
 
         return redirect()
@@ -268,12 +267,12 @@ class JobController extends Controller
 
         // Fallback: anggap sebagai teks biasa per baris (jika JS gagal)
         $lines = collect(explode("\n", $value))
-            ->map(fn($l) => preg_replace('/^[-•]\s*/', '', trim($l)))
+            ->map(fn ($l) => preg_replace('/^[-•]\s*/', '', trim($l)))
             ->filter()
             ->values()
             ->toArray();
 
-        return !empty($lines) ? $lines : $fallback;
+        return ! empty($lines) ? $lines : $fallback;
     }
 
     /**
@@ -281,10 +280,10 @@ class JobController extends Controller
      */
     private function generateKode(): string
     {
-        $year  = now()->year;
+        $year = now()->year;
         $count = RecruitmentJob::withTrashed()
-                    ->whereYear('created_at', $year)
-                    ->count() + 1;
+            ->whereYear('created_at', $year)
+            ->count() + 1;
 
         return sprintf('LOW-%d-%04d', $year, $count);
     }
@@ -294,7 +293,7 @@ class JobController extends Controller
      */
     public function show(string $userId, RecruitmentJob $job)
     {
-        $job->load(['workUnit', 'creator', 'applications' => function($q) {
+        $job->load(['workUnit', 'creator', 'applications' => function ($q) {
             $q->with('recruitmentProfile.user');
         }]);
 
@@ -318,6 +317,7 @@ class JobController extends Controller
         $workUnits = WorkUnit::all();
         $jabatanList = Jabatan::with('jenisGtk')->active()->orderBy('urutan')->orderBy('nama')->get();
         $jenisGtkList = JenisGtk::orderBy('nama')->get();
+
         return view('recruitment.jobs.edit', compact('job', 'workUnits', 'jabatanList', 'jenisGtkList', 'userId'));
     }
 
@@ -331,7 +331,7 @@ class JobController extends Controller
 
             $newJob = $job->replicate();
             $newJob->kode_lowongan = $this->generateJobCode();
-            $newJob->judul = $job->judul . ' (Copy)';
+            $newJob->judul = $job->judul.' (Copy)';
             $newJob->status = 'draft';
             $newJob->kuota_terisi = 0;
             $newJob->created_at = now();
@@ -344,7 +344,8 @@ class JobController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal menggandakan lowongan: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal menggandakan lowongan: '.$e->getMessage());
         }
     }
 
@@ -363,7 +364,7 @@ class JobController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message,
-            'status' => $job->status
+            'status' => $job->status,
         ]);
     }
 
@@ -379,7 +380,7 @@ class JobController extends Controller
         if ($search = $request->string('q')->toString()) {
             $query->whereHas('recruitmentProfile.user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -390,17 +391,17 @@ class JobController extends Controller
         $applications = $query->paginate(20)->withQueryString();
 
         $stats = [
-            'total'      => $job->applications()->count(),
-            'diterima'   => $job->applications()->where('status', 'diterima')->count(),
-            'ditolak'    => $job->applications()->where('status', 'ditolak')->count(),
-            'proses'     => $job->applications()->whereNotIn('status', ['diterima', 'ditolak'])->count(),
+            'total' => $job->applications()->count(),
+            'diterima' => $job->applications()->where('status', 'diterima')->count(),
+            'ditolak' => $job->applications()->where('status', 'ditolak')->count(),
+            'proses' => $job->applications()->whereNotIn('status', ['diterima', 'ditolak'])->count(),
         ];
 
         return view('recruitment.jobs.applications', [
-            'job'          => $job,
+            'job' => $job,
             'applications' => $applications,
-            'stats'        => $stats,
-            'userId'       => $userId,
+            'stats' => $stats,
+            'userId' => $userId,
         ]);
     }
 
@@ -412,7 +413,7 @@ class JobController extends Controller
         $prefix = 'JOB';
         $year = date('Y');
         $month = date('m');
-        
+
         $lastJob = RecruitmentJob::whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->orderBy('id', 'desc')

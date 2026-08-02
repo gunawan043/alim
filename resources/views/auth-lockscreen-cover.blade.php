@@ -19,7 +19,7 @@
                                         <div class="position-relative h-100 d-flex flex-column">
                                             <div class="mb-4">
                                                 <a href="index" class="d-block">
-                                                    <img src="{{ URL::asset('build/images/logo-light.png') }}" alt="" height="18">
+                                                    <img src="{{ URL::asset('build/images/alim-light-name.png') }}" alt="" height="18">
                                                 </a>
                                             </div>
                                             <div class="mt-auto">

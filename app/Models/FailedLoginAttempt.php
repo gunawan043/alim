@@ -45,7 +45,7 @@ class FailedLoginAttempt extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('locked_until')
-              ->orWhere('locked_until', '>', now());
+                ->orWhere('locked_until', '>', now());
         });
     }
 

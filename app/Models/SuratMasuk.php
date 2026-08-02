@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class SuratMasuk extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'surat_masuk';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -38,7 +40,9 @@ class SuratMasuk extends Model
     ];
 
     const SIFAT_RAHASIA = 'rahasia';
+
     const SIFAT_BIASA = 'biasa';
+
     const SIFAT_PENTING = 'penting';
 
     const SIFAT_OPTIONS = [
@@ -48,6 +52,7 @@ class SuratMasuk extends Model
     ];
 
     const PENYELESAIAN_SEGERA = 'segera';
+
     const PENYELESAIAN_BIASA = 'biasa';
 
     const PENYELESAIAN_OPTIONS = [
@@ -56,7 +61,9 @@ class SuratMasuk extends Model
     ];
 
     const STATUS_BARU = 'baru';
+
     const STATUS_DIDISPOSISI = 'didisposisi';
+
     const STATUS_SELESAI = 'selesai';
 
     const STATUS_OPTIONS = [
@@ -85,6 +92,7 @@ class SuratMasuk extends Model
         if ($schoolId) {
             return $query->where('school_id', $schoolId);
         }
+
         return $query;
     }
 
@@ -93,6 +101,7 @@ class SuratMasuk extends Model
         if ($status) {
             return $query->where('status', $status);
         }
+
         return $query;
     }
 
@@ -101,6 +110,7 @@ class SuratMasuk extends Model
         if ($sifat) {
             return $query->where('sifat', $sifat);
         }
+
         return $query;
     }
 }

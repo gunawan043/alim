@@ -27,7 +27,7 @@
                             <p class="text-muted mb-0">Kelola data sekolah/unit kerja.</p>
                         </div>
                         <div class="col-sm-auto">
-                            @if(auth()->user()->role()->hasPermission('school-create'))
+                            @if(auth()->user()->hasPermissionTo('school-create'))
                             <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Sekolah
                             </a>

@@ -10,19 +10,19 @@
                 <div class="navbar-brand-box horizontal-logo">
                     <a href="index" class="logo logo-dark">
                         <span class="logo-sm">
-                            <img src="{{ URL::asset('build/images/logo-sm.png') }}" alt="" height="22">
+                            <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" alt="" height="22">
                         </span>
                         <span class="logo-lg">
-                            <img src="{{ URL::asset('build/images/logo-dark.png') }}" alt="" height="17">
+                            <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" alt="" height="17">
                         </span>
                     </a>
 
                     <a href="index" class="logo logo-light">
                         <span class="logo-sm">
-                            <img src="{{ URL::asset('build/images/logo-sm.png') }}" alt="" height="22">
+                            <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" alt="" height="22">
                         </span>
                         <span class="logo-lg">
-                            <img src="{{ URL::asset('build/images/logo-light.png') }}" alt="" height="17">
+                            <img src="{{ URL::asset('build/images/alim-light-name.png') }}" alt="" height="17">
                         </span>
                     </a>
                 </div>
@@ -182,13 +182,19 @@
                     </div>
                 </div>
 
+                {{-- Only View As is available — non-destructive role preview.
+                     The legacy "Login As" (impersonate) switcher is intentionally
+                     disabled so the System Admin can preview any role from one
+                     account without ever switching identities. --}}
+                @include('system._switcher')
+
                 <div class="dropdown ms-sm-3 header-item">
                     <button type="button" class="btn" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="d-flex align-items-center">
                             <img class="rounded-circle header-profile-user" src="@if (Auth::user()->avatar != '') {{ URL::asset('images/' . Auth::user()->avatar) }}@else{{ URL::asset('build/images/users/about.jpg') }} @endif" alt="Header Avatar">
                             <span class="text-start ms-xl-2">
                                 <span class="d-none d-xl-inline-block ms-1 fw-medium user-name-text">{{ Auth::user()->name }}</span>
-                                <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text">Founder</span>
+                                <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text">{{ Auth::user()->getRoleNames()->first() ?? '-' }}</span>
                             </span>
                         </span>
                     </button>

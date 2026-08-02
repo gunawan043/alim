@@ -14,8 +14,7 @@ class SecureAccessController extends Controller
         $secure->update(['used_at' => now()]);
 
         return view('pegawai.index', [
-            'data' => User::with('gtkProfile')->get()
+            'data' => User::with('gtkProfile')->get(),
         ]);
     }
 }
-

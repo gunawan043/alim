@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Dormitory;
-use App\Models\DormitoryWing;
 use App\Models\DormitoryRoom;
+use App\Models\DormitoryWing;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class DormitorySeeder extends Seeder
@@ -15,7 +15,7 @@ class DormitorySeeder extends Seeder
     {
         // ── Buat role Asrama jika belum ada ───────────────────────────
         $asramaRoleId = DB::table('roles')->where('name', 'Asrama')->where('guard_name', 'web')->value('id');
-        if (!$asramaRoleId) {
+        if (! $asramaRoleId) {
             $role = \Spatie\Permission\Models\Role::create([
                 'name' => 'Asrama',
                 'guard_name' => 'web',
@@ -26,7 +26,7 @@ class DormitorySeeder extends Seeder
         }
 
         $adminRoleId = DB::table('roles')->where('name', 'Admin Asrama')->where('guard_name', 'web')->value('id');
-        if (!$adminRoleId) {
+        if (! $adminRoleId) {
             $role = \Spatie\Permission\Models\Role::create([
                 'name' => 'Admin Asrama',
                 'guard_name' => 'web',
@@ -40,7 +40,7 @@ class DormitorySeeder extends Seeder
         $kepalaAsrama = User::firstOrCreate(
             ['email' => 'kepala.asrama@example.com'],
             [
-                'name' => 'Ustadz Ahmad Fauzi',
+                'name' => 'Ustadz Fulan',
                 'password' => 'password123',
                 'is_active' => true,
             ]
@@ -55,7 +55,7 @@ class DormitorySeeder extends Seeder
         $adminAsrama = User::firstOrCreate(
             ['email' => 'admin.asrama@example.com'],
             [
-                'name' => 'Ustadz Budi Santoso',
+                'name' => 'Ustadz Fulan',
                 'password' => 'password123',
                 'is_active' => true,
             ]
@@ -69,8 +69,9 @@ class DormitorySeeder extends Seeder
         // ── Ambil work_unit & school default ───────────────────────────
         $workUnit = \App\Models\WorkUnit::first();
         $school = \App\Models\School::first();
-        if (!$workUnit) {
+        if (! $workUnit) {
             $this->command->warn('⚠️ WorkUnit tidak ditemukan. Lewati seeder asrama.');
+
             return;
         }
 
@@ -130,7 +131,7 @@ class DormitorySeeder extends Seeder
             [
                 'work_unit_id' => $workUnit->id,
                 'school_id' => $school?->id,
-                'name' => 'Asrama Putri Al-Hikmah',
+                'name' => 'Asrama Putri',
                 'gender' => 'putri',
                 'address' => 'Jl. Pondok, Mataram NTB',
                 'phone' => '0878-9876-5432',

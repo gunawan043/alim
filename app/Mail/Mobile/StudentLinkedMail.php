@@ -2,8 +2,8 @@
 
 namespace App\Mail\Mobile;
 
-use App\Models\User;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -33,10 +33,10 @@ class StudentLinkedMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.mobile.student-linked',
             with: [
-                'waliName'   => $this->wali->name,
+                'waliName' => $this->wali->name,
                 'studentName' => $this->student->name,
-                'roleLabel'  => $this->roleLabel,
-                'dashboardUrl' => config('app.url') . '/mobile/dashboard',
+                'roleLabel' => $this->roleLabel,
+                'dashboardUrl' => config('app.url').'/mobile/dashboard',
             ],
         );
     }

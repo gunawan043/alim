@@ -17,7 +17,7 @@
 @section('content')
 @php
     $currentUser = auth()->user();
-    $canViewAllSchools = $currentUser && $currentUser->role()->hasPermission('subject-all-access');
+    $canViewAllSchools = $currentUser && $currentUser->hasPermissionTo('subject-all-access');
 @endphp
 
 @component('components.breadcrumb')

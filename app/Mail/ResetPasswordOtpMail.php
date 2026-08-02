@@ -11,11 +11,12 @@ class ResetPasswordOtpMail extends Mailable
     use Queueable, SerializesModels;
 
     public string $otp;
+
     public string $name;
 
     public function __construct(string $otp, string $name)
     {
-        $this->otp  = $otp;
+        $this->otp = $otp;
         $this->name = $name;
     }
 
@@ -24,7 +25,7 @@ class ResetPasswordOtpMail extends Mailable
         return $this->subject('Kode OTP Reset Password Akun')
             ->view('auth.reset-password-otp')
             ->with([
-                'otp'  => $this->otp,
+                'otp' => $this->otp,
                 'name' => $this->name,
             ]);
     }

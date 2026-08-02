@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class StudentHealthPermit extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -89,24 +90,24 @@ class StudentHealthPermit extends Model
     public function getPermitTypeTextAttribute(): string
     {
         return match ($this->permit_type) {
-            'sakit_ringan'   => 'Sakit Ringan',
-            'sakit_sedang'   => 'Sakit Sedang',
-            'sakit_berat'    => 'Sakit Berat',
+            'sakit_ringan' => 'Sakit Ringan',
+            'sakit_sedang' => 'Sakit Sedang',
+            'sakit_berat' => 'Sakit Berat',
             'kontrol_dokter' => 'Kontrol Dokter',
-            'isolasi'        => 'Isolasi',
-            default          => $this->permit_type,
+            'isolasi' => 'Isolasi',
+            default => $this->permit_type,
         };
     }
 
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'pending'    => 'Menunggu',
-            'approved'   => 'Disetujui',
-            'rejected'   => 'Ditolak',
-            'extended'   => 'Diperpanjang',
-            'cancelled'  => 'Dibatalkan',
-            default      => $this->status,
+            'pending' => 'Menunggu',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            'extended' => 'Diperpanjang',
+            'cancelled' => 'Dibatalkan',
+            default => $this->status,
         };
     }
 

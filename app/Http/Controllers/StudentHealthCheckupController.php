@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentHealthCheckup;
-use App\Models\Student;
-use App\Models\StudyGroup;
 use App\Models\AcademicYear;
+use App\Models\Student;
+use App\Models\StudentHealthCheckup;
+use App\Models\StudyGroup;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -26,7 +26,7 @@ class StudentHealthCheckupController extends Controller
 
         $schoolGender = $request->attributes->get('schoolGender');
         if ($schoolGender) {
-            $query->whereHas('student', fn($s) => $s->where('gender', $schoolGender === 'putra' ? 'L' : 'P'));
+            $query->whereHas('student', fn ($s) => $s->where('gender', $schoolGender === 'putra' ? 'L' : 'P'));
         }
 
         if ($activeAy) {
@@ -35,15 +35,15 @@ class StudentHealthCheckupController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('checkup_type', 'like', "%{$q}%")
-                ->orWhereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
         if ($request->filled('study_group_id')) {
-            $query->whereHas('student', fn($st) => $st
-                ->whereHas('studyGroups', fn($sc) => $sc
+            $query->whereHas('student', fn ($st) => $st
+                ->whereHas('studyGroups', fn ($sc) => $sc
                     ->where('study_group_id', $request->study_group_id)
                     ->where('is_active', true)
                 )
@@ -57,7 +57,7 @@ class StudentHealthCheckupController extends Controller
         if ($request->filled('month') && $request->month !== '') {
             [$year, $month] = explode('-', $request->month);
             $query->whereRaw('YEAR(checkup_date) = ?', [$year])
-                  ->whereRaw('MONTH(checkup_date) = ?', [$month]);
+                ->whereRaw('MONTH(checkup_date) = ?', [$month]);
         } elseif ($activeAy) {
             $query->where('academic_year_id', $activeAy->id);
         }
@@ -81,15 +81,21 @@ class StudentHealthCheckupController extends Controller
         $studentQuery = Student::with('studyGroups.studyGroup.gradeLevel')
             ->where('status', 'active');
 
-        if ($schoolId) $studentQuery->where('school_id', $schoolId);
-        if ($schoolGender) $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        if ($schoolId) {
+            $studentQuery->where('school_id', $schoolId);
+        }
+        if ($schoolGender) {
+            $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        }
 
         $students = $studentQuery->orderBy('name')->get();
         $groupedStudents = [];
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
-            if (!isset($groupedStudents[$label])) $groupedStudents[$label] = [];
+            if (! isset($groupedStudents[$label])) {
+                $groupedStudents[$label] = [];
+            }
             $groupedStudents[$label][] = $s;
         }
 
@@ -149,15 +155,21 @@ class StudentHealthCheckupController extends Controller
         $studentQuery = Student::with('studyGroups.studyGroup.gradeLevel')
             ->where('status', 'active');
 
-        if ($schoolId) $studentQuery->where('school_id', $schoolId);
-        if ($schoolGender) $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        if ($schoolId) {
+            $studentQuery->where('school_id', $schoolId);
+        }
+        if ($schoolGender) {
+            $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        }
 
         $students = $studentQuery->orderBy('name')->get();
         $groupedStudents = [];
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
-            if (!isset($groupedStudents[$label])) $groupedStudents[$label] = [];
+            if (! isset($groupedStudents[$label])) {
+                $groupedStudents[$label] = [];
+            }
             $groupedStudents[$label][] = $s;
         }
 

@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\GtkWorkUnit;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
-use App\Models\GtkWorkUnit;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class SchoolSeeder extends Seeder
 {
@@ -26,26 +25,26 @@ class SchoolSeeder extends Seeder
 
         // ── 2. USER: Para Pimpinan (GTK) ─────────────────────────────────────
         $pimpinans = [
-            'muh_husnul_fikri'    => ['name' => 'Muh. Husnul Fikri, M. Pd.',    'jabatan' => 'Mudir / Pimpinan'],
-            'budiman'             => ['name' => 'Budiman, S. Pd.',               'jabatan' => 'Pimpinan'],
-            'muhammad_sidik'     => ['name' => 'Muhammad Sidik, M. Pd.',       'jabatan' => 'Pimpinan'],
-            'munawar'             => ['name' => 'Munawar, M. Pd.',               'jabatan' => 'Pimpinan'],
-            'gunawan_trianto'     => ['name' => 'Gunawan Trianto, M. Pd.',       'jabatan' => 'Pimpinan'],
-            'muh_saleh_sukiman'   => ['name' => 'Muhammad Saleh Sukiman, M. Pd.', 'jabatan' => 'Pimpinan'],
-            'muh_abdul_maad'      => ['name' => "Muhammad Abdul Ma'ad, S. Pd.",  'jabatan' => 'Pimpinan'],
-            'ahmad_firdaus'       => ['name' => 'Ahmad Firdaus, Lc.',            'jabatan' => 'Pimpinan'],
-            'lalu_wirabuana'      => ['name' => 'Lalu Wirabuana, Lc, M.H.',      'jabatan' => 'Pimpinan'],
+            'muh_husnul_fikri' => ['name' => 'Muh. Husnul Fikri, M. Pd.',    'jabatan' => 'Mudir / Pimpinan'],
+            'budiman' => ['name' => 'Budiman, S. Pd.',               'jabatan' => 'Pimpinan'],
+            'muhammad_sidik' => ['name' => 'Muhammad Sidik, M. Pd.',       'jabatan' => 'Pimpinan'],
+            'munawar' => ['name' => 'Munawar, M. Pd.',               'jabatan' => 'Pimpinan'],
+            'gunawan_trianto' => ['name' => 'Gunawan Trianto, M. Pd.',       'jabatan' => 'Pimpinan'],
+            'muh_saleh_sukiman' => ['name' => 'Muhammad Saleh Sukiman, M. Pd.', 'jabatan' => 'Pimpinan'],
+            'muh_abdul_maad' => ['name' => "Muhammad Abdul Ma'ad, S. Pd.",  'jabatan' => 'Pimpinan'],
+            'ahmad_firdaus' => ['name' => 'Ahmad Firdaus, Lc.',            'jabatan' => 'Pimpinan'],
+            'lalu_wirabuana' => ['name' => 'Lalu Wirabuana, Lc, M.H.',      'jabatan' => 'Pimpinan'],
         ];
 
         $userMap = [];
         foreach ($pimpinans as $key => $data) {
-            $email = $key . '@abuhurairah.id';
+            $email = $key.'@abuhurairah.id';
             $user = User::firstOrCreate(
                 ['email' => $email],
                 ['name' => $data['name'], 'password' => bcrypt('password123'), 'is_active' => true]
             );
-            $user->syncRoles(['GTK']);
-            if (!GtkWorkUnit::where('user_id', $user->id)->where('work_unit_id', $pondok->id)->exists()) {
+            $user->syncRoles(['Guru']);
+            if (! GtkWorkUnit::where('user_id', $user->id)->where('work_unit_id', $pondok->id)->exists()) {
                 GtkWorkUnit::create([
                     'user_id' => $user->id,
                     'work_unit_id' => $pondok->id,
@@ -153,7 +152,7 @@ class SchoolSeeder extends Seeder
 
         // ── 7. SCHOOLS: Data sekolah formal ──────────────────────────────────
         // Geographic: 52=NTB, 5271=KOTA MATARAM, 527102=MATARAM, 5271021012=PUNIA
-        $baseAddr  = 'Jalan Majapahit No. 54 B Punia, Mataram';
+        $baseAddr = 'Jalan Majapahit No. 54 B Punia, Mataram';
         $kopAlamat = 'Jalan Majapahit No. 54 B Punia, Mataram. Telp. (0370) 633295 / (0370) 639259';
 
         $principalMap = [
@@ -258,43 +257,43 @@ class SchoolSeeder extends Seeder
         foreach ($schoolEntries as $e) {
             $pm = $principalMap[$e['wu']] ?? null;
             $data = [
-                'work_unit_id'          => $unitAkademikMap[$e['wu']],
-                'name'                  => $e['name'],
-                'school_gender'         => $e['gender'],
-                'npsn'                 => $e['npsn'],
-                'nss'                  => $e['nss'],
-                'school_level'         => $e['level'],
-                'school_status'        => $e['status'],
-                'accreditation'        => $e['acc'],
-                'accreditation_year'  => $e['accYear'],
-                'principal_user_id'   => $pm ? ($userMap[$pm['user']] ?? null) : null,
-                'principal_name'       => $pm['name'] ?? null,
-                'address'               => $baseAddr,
-                'province_code'         => '52',
-                'city_code'             => '5271',
-                'district_code'        => '527102',
-                'village_code'         => '5271021012',
-                'postal_code'          => '83115',
-                'phone'                => '(0370) 633295',
-                'email'                => $e['email'],
-                'website'              => $e['web'],
-                'operational_hours'    => 'full_day',
-                'established_date'     => $e['est'],
-                'established_decree'   => $e['decree'],
-                'land_area'            => $e['land'],
-                'building_area'        => $e['build'],
-                'is_active'            => true,
-                'kop_nama'             => strtoupper($e['name']),
-                'kop_alamat'           => $kopAlamat,
-                'kop_telp'             => '(0370) 633295 / (0370) 639259',
-                'kop_email'            => $e['email'],
-                'kop_npsn'             => $e['npsn'],
-                'kopsis_active'        => true,
-                'bank_name'            => $e['bank'],
-                'bank_cabang'          => $e['cabang'],
-                'bank_rekening'        => $e['rek'],
-                'bank_an'              => $e['name'],
-                'npwp'                 => $e['npwp'],
+                'work_unit_id' => $unitAkademikMap[$e['wu']],
+                'name' => $e['name'],
+                'school_gender' => $e['gender'],
+                'npsn' => $e['npsn'],
+                'nss' => $e['nss'],
+                'school_level' => $e['level'],
+                'school_status' => $e['status'],
+                'accreditation' => $e['acc'],
+                'accreditation_year' => $e['accYear'],
+                'principal_user_id' => $pm ? ($userMap[$pm['user']] ?? null) : null,
+                'principal_name' => $pm['name'] ?? null,
+                'address' => $baseAddr,
+                'province_code' => '52',
+                'city_code' => '5271',
+                'district_code' => '527102',
+                'village_code' => '5271021012',
+                'postal_code' => '83115',
+                'phone' => '(0370) 633295',
+                'email' => $e['email'],
+                'website' => $e['web'],
+                'operational_hours' => 'full_day',
+                'established_date' => $e['est'],
+                'established_decree' => $e['decree'],
+                'land_area' => $e['land'],
+                'building_area' => $e['build'],
+                'is_active' => true,
+                'kop_nama' => strtoupper($e['name']),
+                'kop_alamat' => $kopAlamat,
+                'kop_telp' => '(0370) 633295 / (0370) 639259',
+                'kop_email' => $e['email'],
+                'kop_npsn' => $e['npsn'],
+                'kopsis_active' => true,
+                'bank_name' => $e['bank'],
+                'bank_cabang' => $e['cabang'],
+                'bank_rekening' => $e['rek'],
+                'bank_an' => $e['name'],
+                'npwp' => $e['npwp'],
             ];
 
             $school = School::where('npsn', $e['npsn'])->first();
@@ -309,8 +308,8 @@ class SchoolSeeder extends Seeder
         }
 
         $this->command->info("✅ SchoolSeeder selesai — Created: {$created}, Updated: {$updated}");
-        $this->command->info("   WorkUnits total: " . WorkUnit::count());
-        $this->command->info("   Schools total: " . School::count());
-        $this->command->info("   Users (Pimpinan) total: " . User::count());
+        $this->command->info('   WorkUnits total: '.WorkUnit::count());
+        $this->command->info('   Schools total: '.School::count());
+        $this->command->info('   Users (Pimpinan) total: '.User::count());
     }
 }

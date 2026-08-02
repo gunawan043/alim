@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 9. create_tahfidz_schedules_table.php
 // Jadwal halaqah per kelompok — hari, jam, jenis sesi.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_schedules', function (Blueprint $table) {
@@ -29,5 +30,9 @@ return new class extends Migration {
             $table->index(['tahfidz_group_id', 'day_of_week']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_schedules'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_schedules');
+    }
 };

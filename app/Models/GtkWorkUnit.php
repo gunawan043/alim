@@ -11,8 +11,11 @@ class GtkWorkUnit extends Model
     use HasFactory;
 
     protected $table = 'gtk_work_unit';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\RecruitmentApplication;
-use App\Models\RecruitmentJob;
 use App\Models\RecruitmentApplicationStage;
-use App\Models\ActivityLog;
+use App\Models\RecruitmentJob;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class AtsDashboardController extends Controller
 {
@@ -17,31 +15,31 @@ class AtsDashboardController extends Controller
 
         // ── Statistik Utama ──────────────────────────────────────────
         $stats = [
-            'total_jobs'         => RecruitmentJob::count(),
-            'active_jobs'         => RecruitmentJob::where('status', 'aktif')->count(),
-            'draft_jobs'         => RecruitmentJob::where('status', 'draft')->count(),
-            'closed_jobs'        => RecruitmentJob::whereIn('status', ['ditutup', 'dibatalkan'])->count(),
+            'total_jobs' => RecruitmentJob::count(),
+            'active_jobs' => RecruitmentJob::where('status', 'aktif')->count(),
+            'draft_jobs' => RecruitmentJob::where('status', 'draft')->count(),
+            'closed_jobs' => RecruitmentJob::whereIn('status', ['ditutup', 'dibatalkan'])->count(),
             'total_applications' => RecruitmentApplication::count(),
-            'menunggu'           => RecruitmentApplication::where('status', 'menunggu_seleksi')->count(),
-            'seleksi_adm'        => RecruitmentApplication::whereIn('status', ['seleksi_administrasi', 'lolos_administrasi', 'tidak_lolos_administrasi'])->count(),
-            'diterima'           => RecruitmentApplication::where('status', 'diterima')->count(),
-            'ditolak'            => RecruitmentApplication::where('status', 'ditolak')->count(),
-            'dalam_proses'       => RecruitmentApplication::whereNotIn('status', ['diterima', 'ditolak', 'mengundurkan_diri', 'blacklist'])->count(),
+            'menunggu' => RecruitmentApplication::where('status', 'menunggu_seleksi')->count(),
+            'seleksi_adm' => RecruitmentApplication::whereIn('status', ['seleksi_administrasi', 'lolos_administrasi', 'tidak_lolos_administrasi'])->count(),
+            'diterima' => RecruitmentApplication::where('status', 'diterima')->count(),
+            'ditolak' => RecruitmentApplication::where('status', 'ditolak')->count(),
+            'dalam_proses' => RecruitmentApplication::whereNotIn('status', ['diterima', 'ditolak', 'mengundurkan_diri', 'blacklist'])->count(),
         ];
 
-        $stats['app_growth']    = $this->calcGrowth(RecruitmentApplication::class, 'created_at');
+        $stats['app_growth'] = $this->calcGrowth(RecruitmentApplication::class, 'created_at');
         $stats['hired_growth'] = $this->calcGrowth(RecruitmentApplication::class, 'updated_at', 'diterima');
 
         // ── Hiring Funnel ───────────────────────────────────────────
         $total = RecruitmentApplication::count();
         $funnel = [
-            'total'          => ['count' => $total,                        'label' => 'Total Pelamar'],
-            'seleksi_adm'    => ['count' => RecruitmentApplication::whereIn('status', ['seleksi_administrasi'])->count(), 'label' => 'Seleksi Adm'],
-            'lolos_adm'      => ['count' => RecruitmentApplication::where('status', 'lolos_administrasi')->count(), 'label' => 'Lolos Adm'],
-            'tes'            => ['count' => RecruitmentApplication::whereIn('status', ['tes_tertulis', 'lolos_tes', 'tidak_lolos_tes'])->count(), 'label' => 'Tes Tertulis'],
-            'lolos_tes'      => ['count' => RecruitmentApplication::where('status', 'lolos_tes')->count(), 'label' => 'Lolos Tes'],
-            'wawancara'      => ['count' => RecruitmentApplication::whereIn('status', ['wawancara_hr', 'wawancara_user', 'lolos_wawancara_hr', 'lolos_wawancara_user', 'tidak_lolos_wawancara'])->count(), 'label' => 'Wawancara'],
-            'diterima'       => ['count' => $stats['diterima'],            'label' => 'Diterima'],
+            'total' => ['count' => $total,                        'label' => 'Total Pelamar'],
+            'seleksi_adm' => ['count' => RecruitmentApplication::whereIn('status', ['seleksi_administrasi'])->count(), 'label' => 'Seleksi Adm'],
+            'lolos_adm' => ['count' => RecruitmentApplication::where('status', 'lolos_administrasi')->count(), 'label' => 'Lolos Adm'],
+            'tes' => ['count' => RecruitmentApplication::whereIn('status', ['tes_tertulis', 'lolos_tes', 'tidak_lolos_tes'])->count(), 'label' => 'Tes Tertulis'],
+            'lolos_tes' => ['count' => RecruitmentApplication::where('status', 'lolos_tes')->count(), 'label' => 'Lolos Tes'],
+            'wawancara' => ['count' => RecruitmentApplication::whereIn('status', ['wawancara_hr', 'wawancara_user', 'lolos_wawancara_hr', 'lolos_wawancara_user', 'tidak_lolos_wawancara'])->count(), 'label' => 'Wawancara'],
+            'diterima' => ['count' => $stats['diterima'],            'label' => 'Diterima'],
         ];
 
         // ── Chart Data (12 bulan terakhir) ─────────────────────────
@@ -63,9 +61,9 @@ class AtsDashboardController extends Controller
         }
 
         $chartData = [
-            'labels'        => $labels,
-            'applications'  => $applications,
-            'hired'         => $hired,
+            'labels' => $labels,
+            'applications' => $applications,
+            'hired' => $hired,
         ];
 
         // ── Lowongan Akan Ditutup (7 hari ke depan) ─────────────────
@@ -82,7 +80,7 @@ class AtsDashboardController extends Controller
         // ── Top Lowongan ─────────────────────────────────────────────
         $topJobs = RecruitmentJob::withCount([
             'applications',
-            'applications as accepted_count' => fn($q) => $q->where('status', 'diterima'),
+            'applications as accepted_count' => fn ($q) => $q->where('status', 'diterima'),
         ])
             ->where('status', 'aktif')
             ->orderBy('applications_count', 'desc')
@@ -99,9 +97,9 @@ class AtsDashboardController extends Controller
 
         // ── Reminder Interview (7 hari ke depan) ──────────────────────
         $interviewReminders = RecruitmentApplicationStage::with([
-                'recruitmentApplication.recruitmentProfile.user',
-                'recruitmentApplication.recruitmentJob',
-            ])
+            'recruitmentApplication.recruitmentProfile.user',
+            'recruitmentApplication.recruitmentJob',
+        ])
             ->whereIn('status', ['menunggu', 'sedang_berlangsung'])
             ->whereNotNull('jadwal_mulai')
             ->whereBetween('jadwal_mulai', [$now, $now->copy()->addDays(7)])
@@ -139,14 +137,21 @@ class AtsDashboardController extends Controller
         $lastMonth = (clone now())->subMonth()->startOfMonth();
 
         $q = $model::where($dateCol, '>=', $thisMonth);
-        if ($statusFilter) $q->where('status', $statusFilter);
+        if ($statusFilter) {
+            $q->where('status', $statusFilter);
+        }
         $current = $q->count();
 
         $q = $model::whereBetween($dateCol, [$lastMonth, $thisMonth->copy()->subSecond()]);
-        if ($statusFilter) $q->where('status', $statusFilter);
+        if ($statusFilter) {
+            $q->where('status', $statusFilter);
+        }
         $previous = $q->count();
 
-        if ($previous == 0) return $current > 0 ? 100 : 0;
+        if ($previous == 0) {
+            return $current > 0 ? 100 : 0;
+        }
+
         return (int) round((($current - $previous) / $previous) * 100);
     }
 
@@ -154,9 +159,10 @@ class AtsDashboardController extends Controller
     {
         try {
             $logModel = app(config('activitylog.package', 'Spatie\Activitylog\Models\Activity'));
-            if (!class_exists($logModel)) {
+            if (! class_exists($logModel)) {
                 return collect();
             }
+
             return $logModel::with('subject', 'causer')
                 ->where('log_name', 'recruitment')
                 ->orWhere('description', 'like', '%lamaran%')

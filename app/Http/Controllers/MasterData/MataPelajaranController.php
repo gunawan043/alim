@@ -5,7 +5,6 @@ namespace App\Http\Controllers\MasterData;
 use App\Http\Controllers\Controller;
 use App\Models\Subject;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class MataPelajaranController extends Controller
 {
@@ -17,7 +16,7 @@ class MataPelajaranController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $subjects = Subject::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $subjects = Subject::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByRaw("CASE
                 WHEN category = 'nasional' THEN 1
                 WHEN category = 'muatan_lokal' THEN 2
@@ -26,10 +25,10 @@ class MataPelajaranController extends Controller
             ->orderBy('name')
             ->get();
 
-        $grouped = $subjects->groupBy(fn($s) => $s->category ?? 'lain')->map(fn($g, $k) => [
-            'label'    => $k === 'nasional' ? 'Nasional' : ($k === 'muatan_lokal' ? 'Muatan Lokal' : ucfirst($k)),
-            'items'    => $g,
-            'count'    => $g->count(),
+        $grouped = $subjects->groupBy(fn ($s) => $s->category ?? 'lain')->map(fn ($g, $k) => [
+            'label' => $k === 'nasional' ? 'Nasional' : ($k === 'muatan_lokal' ? 'Muatan Lokal' : ucfirst($k)),
+            'items' => $g,
+            'count' => $g->count(),
         ])->values();
 
         return view('master-data.mata-pelajaran.index', compact('userId', 'grouped'));
@@ -43,8 +42,8 @@ class MataPelajaranController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $validated = $request->validate([
-            'name'    => 'required|string|max:255',
-            'code'    => 'nullable|string|max:50',
+            'name' => 'required|string|max:255',
+            'code' => 'nullable|string|max:50',
             'category' => 'required|in:nasional,muatan_lokal,pilihan,lain',
             'credit_hours' => 'nullable|integer|min:1|max:10',
             'description' => 'nullable|string|max:500',
@@ -54,12 +53,12 @@ class MataPelajaranController extends Controller
         Subject::updateOrCreate(
             ['id' => $request->id, 'school_id' => $schoolId],
             [
-                'name'        => $validated['name'],
-                'code'        => $validated['code'] ?? null,
-                'category'    => $validated['category'],
+                'name' => $validated['name'],
+                'code' => $validated['code'] ?? null,
+                'category' => $validated['category'],
                 'credit_hours' => $validated['credit_hours'] ?? null,
-                'description'  => $validated['description'] ?? null,
-                'is_active'    => $request->boolean('is_active', true),
+                'description' => $validated['description'] ?? null,
+                'is_active' => $request->boolean('is_active', true),
             ]
         );
 
@@ -73,10 +72,10 @@ class MataPelajaranController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $subject = Subject::where('id', $subjectId)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->firstOrFail();
 
-        $subject->update(['is_active' => !$subject->is_active]);
+        $subject->update(['is_active' => ! $subject->is_active]);
 
         return redirect()->back()->with('success', 'Status mata pelajaran berhasil diubah.');
     }

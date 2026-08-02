@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class TodoSubtask extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -22,8 +23,8 @@ class TodoSubtask extends Model
 
     protected $casts = [
         'is_completed' => 'integer',
-        'completed_at'  => 'datetime',
-        'sort_order'    => 'integer',
+        'completed_at' => 'datetime',
+        'sort_order' => 'integer',
     ];
 
     protected static function boot()

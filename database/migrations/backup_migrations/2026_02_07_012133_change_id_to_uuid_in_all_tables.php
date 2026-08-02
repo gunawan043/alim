@@ -39,7 +39,7 @@ return new class extends Migration
         'migrations',
         'password_resets',
         'sessions',
-        'personal_access_tokens', 
+        'personal_access_tokens',
         'model_has_permissions',
         'model_has_roles',
         'role_has_permissions',
@@ -55,27 +55,27 @@ return new class extends Migration
     {
         foreach ($this->tables as $tableName) {
             if (Schema::hasTable($tableName)) {
-                
-                if (!Schema::hasColumn($tableName, 'uuid')) {
+
+                if (! Schema::hasColumn($tableName, 'uuid')) {
                     Schema::table($tableName, function (Blueprint $table) use ($tableName) {
                         $table->uuid('uuid')->nullable()->after('id');
-                        
+
                         // Tambah unique constraint
-                        if (!Schema::hasColumn($tableName, 'deleted_at')) {
+                        if (! Schema::hasColumn($tableName, 'deleted_at')) {
                             $table->unique('uuid');
                         } else {
                             $table->unique(['uuid', 'deleted_at']);
                         }
                     });
-                    
+
                     $this->generateUuidForExistingData($tableName);
                 }
             }
         }
-        
+
         $this->createUuidForeignKeys();
     }
-    
+
     private function generateUuidForExistingData($tableName)
     {
         DB::table($tableName)
@@ -89,7 +89,7 @@ return new class extends Migration
                 }
             });
     }
-    
+
     private function createUuidForeignKeys()
     {
         $foreignKeyUpdates = [
@@ -102,13 +102,13 @@ return new class extends Migration
                 ['column' => 'approver_id', 'references' => 'users', 'on' => 'id'],
             ],
         ];
-        
+
         foreach ($foreignKeyUpdates as $table => $relations) {
             foreach ($relations as $relation) {
                 if (Schema::hasColumn($table, $relation['column'])) {
                     Schema::table($table, function (Blueprint $table) use ($relation) {
                         $table->dropForeign([$relation['column']]);
-                        
+
                         $table->index([$relation['column']]);
                     });
                 }
@@ -120,9 +120,9 @@ return new class extends Migration
     {
         foreach ($this->tables as $tableName) {
             if (Schema::hasTable($tableName) && Schema::hasColumn($tableName, 'uuid')) {
-                Schema::table($tableName, function (Blueprint $table) use ($tableName) {
+                Schema::table($tableName, function (Blueprint $table) {
                     $table->dropUnique(['uuid']);
-                    
+
                     $table->dropColumn('uuid');
                 });
             }

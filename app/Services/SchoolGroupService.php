@@ -112,7 +112,7 @@ class SchoolGroupService
                 'permission' => 'school_view',
             ],
             [
-                'name' => 'GTK',
+                'name' => 'Guru',
                 'route' => 'role.gtk.index',
                 'params' => ['roleId' => '__roleId__', 'school_id' => $schoolId],
                 'icon' => 'ri-user-settings-line',

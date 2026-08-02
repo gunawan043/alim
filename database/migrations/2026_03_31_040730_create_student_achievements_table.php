@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_achievements', function (Blueprint $table) {
@@ -37,7 +38,7 @@ return new class extends Migration {
                 'peserta', 'lainnya',
             ]);
             $table->string('position_detail', 100)->nullable()
-                  ->comment('Detail posisi jika lainnya, misal: Medali Emas, Best Paper');
+                ->comment('Detail posisi jika lainnya, misal: Medali Emas, Best Paper');
             $table->date('event_date');
             $table->string('event_location', 191)->nullable();
             $table->uuid('coach_id')->nullable()->comment('Guru pembimbing / pelatih');
@@ -49,23 +50,22 @@ return new class extends Migration {
             $table->text('notes')->nullable();
             $table->uuid('created_by');
             $table->timestamps();
- 
+
             $table->foreign('student_id')->references('id')->on('students')->cascadeOnDelete();
             $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
             $table->foreign('coach_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('verified_by')->references('id')->on('users')->nullOnDelete();
             $table->foreign('created_by')->references('id')->on('users');
- 
+
             $table->index(['student_id', 'academic_year_id']);
             $table->index(['school_id', 'academic_year_id', 'level']);
             $table->index(['school_id', 'achievement_type']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('student_achievements');
     }
 };
- 

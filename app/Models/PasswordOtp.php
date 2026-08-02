@@ -12,7 +12,9 @@ class PasswordOtp extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -99,16 +101,16 @@ class PasswordOtp extends Model
     public static function verifyOtp($userId, $otp)
     {
         $otpRecord = self::where('user_id', $userId)
-                        ->valid()
-                        ->first();
+            ->valid()
+            ->first();
 
-        if (!$otpRecord) {
+        if (! $otpRecord) {
             return false;
         }
 
         if (Hash::check($otp, $otpRecord->otp_hash)) {
             $otpRecord->delete();
-            
+
             AuditLog::create([
                 'user_id' => $userId,
                 'action' => 'PASSWORD_OTP_VERIFIED',
@@ -117,7 +119,7 @@ class PasswordOtp extends Model
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ]);
-            
+
             return true;
         }
 
@@ -132,6 +134,6 @@ class PasswordOtp extends Model
     // ACCESSORS
     public function getMaskedOtpAttribute()
     {
-        return '***' . substr($this->otp_hash, -3);
+        return '***'.substr($this->otp_hash, -3);
     }
 }

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Traits\LogsDeletion;
 
 class GtkRequest extends Model
 {
@@ -13,17 +13,24 @@ class GtkRequest extends Model
     use LogsDeletion;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
-    const TYPE_PROCUREMENT    = 'procurement';
-    const TYPE_TRIAL          = 'trial';
+    const TYPE_PROCUREMENT = 'procurement';
+
+    const TYPE_TRIAL = 'trial';
+
     const TYPE_STATUS_INCREASE = 'status_increase';
 
-    const STATUS_DRAFT     = 'draft';
+    const STATUS_DRAFT = 'draft';
+
     const STATUS_SUBMITTED = 'submitted';
+
     const STATUS_APPROVED = 'approved';
-    const STATUS_REJECTED  = 'rejected';
+
+    const STATUS_REJECTED = 'rejected';
 
     protected static function boot()
     {
@@ -46,11 +53,11 @@ class GtkRequest extends Model
     ];
 
     protected $casts = [
-        'id'                  => 'string',
-        'work_unit_id'         => 'string',
-        'academic_year_id'     => 'string',
-        'established_date'     => 'date',
-        'created_at'          => 'datetime',
+        'id' => 'string',
+        'work_unit_id' => 'string',
+        'academic_year_id' => 'string',
+        'established_date' => 'date',
+        'created_at' => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -82,18 +89,33 @@ class GtkRequest extends Model
         return $query->where('type', $type);
     }
 
-    public function scopeDraft($query)      { return $query->where('status', self::STATUS_DRAFT); }
-    public function scopeSubmitted($query)  { return $query->where('status', self::STATUS_SUBMITTED); }
-    public function scopeApproved($query)   { return $query->where('status', self::STATUS_APPROVED); }
-    public function scopeRejected($query)   { return $query->where('status', self::STATUS_REJECTED); }
+    public function scopeDraft($query)
+    {
+        return $query->where('status', self::STATUS_DRAFT);
+    }
+
+    public function scopeSubmitted($query)
+    {
+        return $query->where('status', self::STATUS_SUBMITTED);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', self::STATUS_APPROVED);
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', self::STATUS_REJECTED);
+    }
 
     // ── Accessors ────────────────────────────────────────────────────
 
     public function getTypeTextAttribute(): string
     {
         return match ($this->type) {
-            self::TYPE_PROCUREMENT    => 'Pengadaan GTK',
-            self::TYPE_TRIAL          => 'Pengangkatan Percobaan',
+            self::TYPE_PROCUREMENT => 'Pengadaan GTK',
+            self::TYPE_TRIAL => 'Pengangkatan Percobaan',
             self::TYPE_STATUS_INCREASE => 'Kenaikan Status GTK',
             default => $this->type,
         };
@@ -102,10 +124,10 @@ class GtkRequest extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            self::STATUS_DRAFT     => 'Draft',
+            self::STATUS_DRAFT => 'Draft',
             self::STATUS_SUBMITTED => 'Tercadangkan',
-            self::STATUS_APPROVED  => 'Disetujui',
-            self::STATUS_REJECTED  => 'Ditolak',
+            self::STATUS_APPROVED => 'Disetujui',
+            self::STATUS_REJECTED => 'Ditolak',
             default => $this->status,
         };
     }
@@ -113,10 +135,10 @@ class GtkRequest extends Model
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            self::STATUS_DRAFT     => 'secondary',
+            self::STATUS_DRAFT => 'secondary',
             self::STATUS_SUBMITTED => 'info',
-            self::STATUS_APPROVED  => 'success',
-            self::STATUS_REJECTED  => 'danger',
+            self::STATUS_APPROVED => 'success',
+            self::STATUS_REJECTED => 'danger',
             default => 'secondary',
         };
     }

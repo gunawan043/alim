@@ -36,7 +36,7 @@
                                 <div class="toast fade show" role="alert" aria-live="assertive" data-bs-autohide="false"
                                     aria-atomic="true">
                                     <div class="toast-header">
-                                        <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..." height="20">
+                                        <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..." height="20">
                                         <span class="fw-semibold me-auto">Alim</span>
                                         <small>06 mins ago</small>
                                         <button type="button" class="btn-close" data-bs-dismiss="toast"
@@ -57,7 +57,7 @@
                                         <div class="toast fade show" role="alert" aria-live="assertive"
                                             data-bs-autohide="false" aria-atomic="true">
                                             <div class="toast-header">
-                                                <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..."
+                                                <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..."
                                                     height="20">
                                                 <span class="fw-semibold me-auto">Alim</span>
                                                 <small>11 mins ago</small>
@@ -85,7 +85,7 @@
                                         <div class="toast fade show" role="alert" aria-live="assertive"
                                             data-bs-autohide="false" aria-atomic="true">
                                             <div class="toast-header">
-                                                <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..."
+                                                <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..."
                                                     height="20">
                                                 <span class="fw-semibold me-auto">Alim</span>
                                                 <small>Just now</small>
@@ -100,7 +100,7 @@
                                         <div class="toast fade show" role="alert" aria-live="assertive"
                                             data-bs-autohide="false" aria-atomic="true">
                                             <div class="toast-header">
-                                                <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..."
+                                                <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..."
                                                     height="20">
                                                 <span class="fw-semibold me-auto">Alim</span>
                                                 <small>2 seconds ago</small>
@@ -138,7 +138,7 @@
                                                 aria-atomic="true" data-bs-toggle="toast"
                                                 style="position: absolute; top: 16px; right: 16px;">
                                                 <div class="toast-header">
-                                                    <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..."
+                                                    <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..."
                                                         height="20">
                                                     <span class="fw-semibold me-auto">Alim</span>
                                                     <small>06 mins ago</small>
@@ -168,7 +168,7 @@
                                             <div class="toast fade show" role="alert" aria-live="assertive"
                                                 data-bs-autohide="false" aria-atomic="true">
                                                 <div class="toast-header">
-                                                    <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..."
+                                                    <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..."
                                                         height="20">
                                                     <span class="fw-semibold me-auto">Alim</span>
                                                     <small>11 mins ago</small>
@@ -194,7 +194,7 @@
 &lt;div class=&quot;toast fade show&quot; role=&quot;alert&quot; aria-live=&quot;assertive&quot;
 data-bs-autohide=&quot;false&quot; aria-atomic=&quot;true&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot; class=&quot;rounded me-2&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot; class=&quot;rounded me-2&quot;
 alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;span class=&quot;fw-semibold me-auto&quot;&gt;Alim&lt;/span&gt;
 &lt;small&gt;06 mins ago&lt;/small&gt;
@@ -211,7 +211,7 @@ Hello, world! This is a toast message.
 &lt;div class=&quot;toast fade show&quot; role=&quot;alert&quot; aria-live=&quot;assertive&quot;
 data-bs-autohide=&quot;false&quot; aria-atomic=&quot;true&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot; class=&quot;rounded me-2&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot; class=&quot;rounded me-2&quot;
 alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;span class=&quot;fw-semibold me-auto&quot;&gt;Alim&lt;/span&gt;
 &lt;small&gt;11 mins ago&lt;/small&gt;
@@ -228,7 +228,7 @@ Hello, world! This is a toast message.
 &lt;div class=&quot;toast fade show&quot; role=&quot;alert&quot; aria-live=&quot;assertive&quot;
 data-bs-autohide=&quot;false&quot; aria-atomic=&quot;true&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot; class=&quot;rounded me-2&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot; class=&quot;rounded me-2&quot;
 alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;span class=&quot;fw-semibold me-auto&quot;&gt;Alim&lt;/span&gt;
 &lt;small&gt;Just now&lt;/small&gt;
@@ -247,7 +247,7 @@ style=&quot;position: relative; min-height: 200px;&quot;&gt;
 aria-atomic=&quot;true&quot; data-bs-toggle=&quot;toast&quot;
 style=&quot;position: absolute; top: 16px; right: 16px;&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot;
 class=&quot;rounded me-2&quot; alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;span class=&quot;fw-semibold me-auto&quot;&gt;Alim&lt;/span&gt;
 &lt;small&gt;06 mins ago&lt;/small&gt;
@@ -267,7 +267,7 @@ style=&quot;height: 200px;&quot;&gt;
 &lt;div class=&quot;toast fade show&quot; role=&quot;alert&quot; aria-live=&quot;assertive&quot;
 data-bs-autohide=&quot;false&quot; aria-atomic=&quot;true&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot;
 class=&quot;rounded me-2&quot; alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;span class=&quot;fw-semibold me-auto&quot;&gt;Alim&lt;/span&gt;
 &lt;small&gt;11 mins ago&lt;/small&gt;
@@ -326,7 +326,7 @@ Hello, world! This is a toast message.
                             <div class="toast-container position-absolute p-3" id="toastPlacement">
                                 <div class="toast">
                                     <div class="toast-header">
-                                        <img src="{{ URL::asset('build/images/logo-sm.png') }}" class="rounded me-2" alt="..." height="20">
+                                        <img src="{{ URL::asset('build/images/alim-sm-light.png') }}" class="rounded me-2" alt="..." height="20">
                                         <strong class="me-auto">Alim</strong>
                                         <small>11 mins ago</small>
                                         <button type="button" class="btn-close" data-bs-dismiss="toast"
@@ -363,7 +363,7 @@ Hello, world! This is a toast message.
 &lt;div class=&quot;toast-container position-absolute p-3&quot; id=&quot;toastPlacement&quot;&gt;
 &lt;div class=&quot;toast&quot;&gt;
 &lt;div class=&quot;toast-header&quot;&gt;
-&lt;img src=&quot;build/images/logo-sm.png&quot; class=&quot;rounded me-2&quot;
+&lt;img src=&quot;build/images/alim-sm-light.png&quot; class=&quot;rounded me-2&quot;
     alt=&quot;...&quot; height=&quot;20&quot;&gt;
 &lt;strong class=&quot;me-auto&quot;&gt;Alim&lt;/strong&gt;
 &lt;small&gt;11 mins ago&lt;/small&gt;

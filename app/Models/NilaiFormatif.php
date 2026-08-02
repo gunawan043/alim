@@ -9,8 +9,11 @@ use Illuminate\Support\Str;
 class NilaiFormatif extends Model
 {
     protected $table = 'admin_nilai_formatif';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected static function boot()

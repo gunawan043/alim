@@ -85,9 +85,9 @@ Skenario:
 
 | Pendekatan | Problem |
 |---|---|
-| `students.user_id` (1:N) | 1 Santi hanya punya 1 wali. Tidak bisa punya ayah + ibu. ❌ |
+| `students.user_id` (1:N) | 1 Santri hanya punya 1 wali. Tidak bisa punya ayah + ibu. ❌ |
 | `users.no_kk` → lookup students | Rumit, tidak bisa model peran (ayah vs kakek). ❌ |
-| **wali_santri pivot** | ✅ Peran fleksibel (ayah, ibu, kakek…). ✅ Satu Santi banyak wali. ✅ Satu wali banyak Santi. |
+| **wali_santri pivot** | ✅ Peran fleksibel (ayah, ibu, kakek…). ✅ Satu Santri banyak wali. ✅ Satu wali banyak Santri. |
 
 ---
 
@@ -214,7 +214,7 @@ CEK NIK SAAT REGISTRASI SANTRI:
 
 // KK wajib saat:
 // - Registrasi wali pertama kali: opsional (bisa kosong dulu)
-// - Daftarkan Santi pertama: WAJIB (biar bisa link)
+// - Daftarkan Santri pertama: WAJIB (biar bisa link)
 // - Minta jadi wali kedua: WAJIB (untuk validasi match)
 ```
 
@@ -236,32 +236,32 @@ POST /api/mobile/v1/auth/password/reset    Reset password dengan token
 
 ### 4.2 Santri
 ```
-GET  /api/mobile/v1/santri                 List semua Santi (dashboard wali)
-GET  /api/mobile/v1/santri/:id             Detail satu Santi (with other walis)
-POST /api/mobile/v1/santri                 Daftarkan Santi baru + klaim ke wali
+GET  /api/mobile/v1/santri                 List semua Santri (dashboard wali)
+GET  /api/mobile/v1/santri/:id             Detail satu Santri (with other walis)
+POST /api/mobile/v1/santri                 Daftarkan Santri baru + klaim ke wali
 POST /api/mobile/v1/santri/verify-nik      Cek apakah NIK sudah terdaftar
 ```
 
 ### 4.3 Wali-Santri Connection
 ```
-POST /api/mobile/v1/wali-santri/link       Klaim Santi yang sudah ada ke akun wali
+POST /api/mobile/v1/wali-santri/link       Klaim Santri yang sudah ada ke akun wali
 POST /api/mobile/v1/wali-santri/request    Minta jadi wali kedua/ketiga
 GET  /api/mobile/v1/wali-santri/requests   List request approval (untuk wali utama)
 PUT  /api/mobile/v1/wali-santri/requests/:token  Approve/Reject request
-DELETE /api/mobile/v1/wali-santri/:id      Lepas hubungan wali-Santi
+DELETE /api/mobile/v1/wali-santri/:id      Lepas hubungan wali-Santri
 ```
 
 ### 4.4 Dashboard
 ```
-GET /api/mobile/v1/dashboard                 Ringkasan: jumlah Santi, statistik
-GET /api/mobile/v1/dashboard/attendance     Absensi semua Santi tanggal tertentu
+GET /api/mobile/v1/dashboard                 Ringkasan: jumlah Santri, statistik
+GET /api/mobile/v1/dashboard/attendance     Absensi semua Santri tanggal tertentu
 ```
 
 ---
 
 ## 5. CONTOH REQUEST-RESPONSE KRITIS
 
-### 5.1 Endpoint: Daftarkan Santi + Klaim ke Wali (Ayah)
+### 5.1 Endpoint: Daftarkan Santri + Klaim ke Wali (Ayah)
 
 **Request:**
 ```http
@@ -326,14 +326,14 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "KK_MISMATCH",
-    "message": "No KK yang Anda masukkan tidak cocok dengan data KK Santi ini."
+    "message": "No KK yang Anda masukkan tidak cocok dengan data KK Santri ini."
   }
 }
 ```
 
 ---
 
-### 5.2 Endpoint: Tambahkan Wali Kedua (Ibu) ke Santi yang Sudah Ada
+### 5.2 Endpoint: Tambahkan Wali Kedua (Ibu) ke Santri yang Sudah Ada
 
 **Request:**
 ```http
@@ -394,7 +394,7 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "KK_MISMATCH",
-    "message": "No KK yang Anda masukkan tidak cocok dengan data KK Santi ini.",
+    "message": "No KK yang Anda masukkan tidak cocok dengan data KK Santri ini.",
     "details": {
       "hint": "Hubungi wali utama untuk mengkonfirmasi No KK yang benar."
     }
@@ -402,13 +402,13 @@ Content-Type: application/json
 }
 ```
 
-**Response ERROR — Maksimal 5 wali per Santi (409):**
+**Response ERROR — Maksimal 5 wali per Santri (409):**
 ```json
 {
   "success": false,
   "error": {
     "code": "MAX_WALI_EXCEEDED",
-    "message": "Santi ini sudah memiliki maksimal 5 wali."
+    "message": "Santri ini sudah memiliki maksimal 5 wali."
   }
 }
 ```
@@ -419,7 +419,7 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "DUPLICATE_REQUEST",
-    "message": "Anda sudah memiliki permintaan pending untuk Santi ini."
+    "message": "Anda sudah memiliki permintaan pending untuk Santri ini."
   }
 }
 ```
@@ -862,8 +862,8 @@ class WaliSantriService {
       const err = new Error('KK_MISMATCH');
       err.code = 422;
       err.details = {
-        message: 'No KK tidak cocok dengan data Santi.',
-        hint: `KK Santi adalah: ${student.noKk.slice(0, 4)}••••••••`,
+        message: 'No KK tidak cocok dengan data Santri.',
+        hint: `KK Santri adalah: ${student.noKk.slice(0, 4)}••••••••`,
       };
       throw err;
     }
@@ -884,7 +884,7 @@ class WaliSantriService {
         student,
         waliSantri: existingLink,
         alreadyLinked: true,
-        message: 'Santi sudah terhubung dengan akun Anda.',
+        message: 'Santri sudah terhubung dengan akun Anda.',
       };
     }
 
@@ -892,7 +892,7 @@ class WaliSantriService {
       const err = new Error('DUPLICATE_REQUEST');
       err.code = 409;
       err.details = {
-        message: 'Anda sudah memiliki permintaan pending untuk Santi ini.',
+        message: 'Anda sudah memiliki permintaan pending untuk Santri ini.',
         wali_santri_id: existingLink.id,
       };
       throw err;
@@ -981,7 +981,7 @@ class WaliSantriService {
       approvalToken: newStatus === 'pending' ? accessToken : null,
       message: newStatus === 'pending'
         ? `Permintaan telah dikirim. Menunggu persetujuan dari ${primaryLink?.user?.name || 'wali utama'}.`
-        : 'Santi berhasil terhubung dengan akun Anda.',
+        : 'Santri berhasil terhubung dengan akun Anda.',
     };
   }
 
@@ -1650,7 +1650,7 @@ class StudentController {
             ? result.status === 'already_linked_to_you'
               ? 'NIK ini sudah terhubung dengan akun Anda.'
               : 'NIK ini sudah terdaftar di sistem.'
-            : 'NIK ini belum terdaftar. Bisa digunakan untuk registrasi Santi baru.',
+            : 'NIK ini belum terdaftar. Bisa digunakan untuk registrasi Santri baru.',
           suggestion: result.suggestion || null,
         },
       });
@@ -1744,7 +1744,7 @@ class WaliSantriController {
 
       return res.status(200).json({
         success: true,
-        message: 'Hubungan wali-Santi berhasil dilepas.',
+        message: 'Hubungan wali-Santri berhasil dilepas.',
       });
     } catch (err) {
       next(err);
@@ -2149,9 +2149,9 @@ public function render($request, Throwable $e)
 │                           ▼                                 │
 │              ┌────────────────────────┐                    │
 │              │ Register: Input No KK   │                    │
-│              │ Input NIK Santi         │                    │
+│              │ Input NIK Santri         │                    │
 │              │ OR: Request to existing │                    │
-│              │ Santi via NIK search    │                    │
+│              │ Santri via NIK search    │                    │
 │              └────────────────────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -2214,8 +2214,8 @@ class ApiClient {
 | `NIK_ALREADY_EXISTS` | 409 | NIK sudah didaftarkan orang lain |
 | `INVALID_NIK_FORMAT` | 422 | Format NIK tidak valid |
 | `KK_MISMATCH` | 422 | No KK tidak cocok |
-| `STUDENT_NOT_FOUND` | 404 | Santi tidak ditemukan |
-| `LINK_NOT_FOUND` | 404 | Hubungan wali-santi tidak ditemukan |
+| `STUDENT_NOT_FOUND` | 404 | Santri tidak ditemukan |
+| `LINK_NOT_FOUND` | 404 | Hubungan wali-Santri tidak ditemukan |
 | `DUPLICATE_REQUEST` | 409 | Request sudah ada |
 | `MAX_WALI_EXCEEDED` | 409 | Maksimal wali tercapai |
 | `TOKEN_INVALID` | 404 | Token otorisasi invalid |

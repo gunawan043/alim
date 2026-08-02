@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class StudyGroupSubject extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'study_group_subjects';
 

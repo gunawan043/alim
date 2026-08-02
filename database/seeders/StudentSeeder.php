@@ -106,9 +106,9 @@ class StudentSeeder extends Seeder
             $student['entry_date'] = '2025-07-14';
             $student['entry_grade_level'] = (int) preg_replace('/[^0-9]/', '', $groupMap[$sgId]['grade']);
             $student['status'] = 'active';
-            $student['address'] = 'Jl. Pendidikan No. ' . ($index + 1) . ', Mataram, NTB';
-            $student['father_name'] = 'Bapak ' . explode(' ', $student['name'])[1] . ' bin Orang Tua';
-            $student['mother_name'] = 'Ibu ' . explode(' ', $student['name'])[1] . ' binti Orang Tua';
+            $student['address'] = 'Jl. Pendidikan No. '.($index + 1).', Mataram, NTB';
+            $student['father_name'] = 'Bapak '.explode(' ', $student['name'])[1].' bin Orang Tua';
+            $student['mother_name'] = 'Ibu '.explode(' ', $student['name'])[1].' binti Orang Tua';
             $student['father_occupation'] = 'Wiraswasta';
             $student['mother_occupation'] = 'Ibu Rumah Tangga';
             $student['father_education'] = 'SMA/Sederajat';

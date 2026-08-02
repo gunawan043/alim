@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Dormitory\StoreRoomRequest;
 use App\Models\Dormitory;
+use App\Models\DormitoryPermit;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryWing;
+use App\Models\User;
+use App\Services\Asrama\RoomSupervisorService;
 use Illuminate\Http\Request;
 
 class DormitoryRoomController extends Controller
@@ -14,7 +17,7 @@ class DormitoryRoomController extends Controller
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $query = DormitoryRoom::with(['wing', 'residents.student'])
+        $query = DormitoryRoom::with(['wing', 'residents.student', 'activeSupervisor.user'])
             ->where('dormitory_id', $asramaUuid);
 
         if ($request->filled('wing_id')) {
@@ -36,7 +39,15 @@ class DormitoryRoomController extends Controller
             ->where('is_active', true)
             ->orderBy('name')->get();
 
-        return view('dormitory.rooms.index', compact('dormitory', 'rooms', 'wings', 'userId'));
+        $occupied = DormitoryRoom::where('dormitory_id', $asramaUuid)
+            ->whereHas('residents', fn ($q) => $q->where('is_active', true))
+            ->withCount(['residents as active_residents_count' => fn ($q) => $q->where('is_active', true)])
+            ->get()
+            ->sum('active_residents_count');
+
+        $totalCapacity = DormitoryRoom::where('dormitory_id', $asramaUuid)->sum('capacity');
+
+        return view('dormitory.rooms.index', compact('dormitory', 'rooms', 'wings', 'userId', 'occupied', 'totalCapacity'));
     }
 
     public function create(Request $request, string $userId, string $asramaUuid)
@@ -47,20 +58,46 @@ class DormitoryRoomController extends Controller
             ->where('is_active', true)
             ->orderBy('name')->get();
 
-        return view('dormitory.rooms.create', compact('dormitory', 'wings', 'userId'));
+        $waliKamarCandidates = User::query()
+            ->when($dormitory->work_unit_id, fn ($q) => $q->whereHas('workUnits', fn ($qq) => $qq->where('gtk_work_unit.work_unit_id', $dormitory->work_unit_id)))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('dormitory.rooms.create', compact('dormitory', 'wings', 'waliKamarCandidates', 'userId'));
     }
 
-    public function store(StoreRoomRequest $request, string $userId, string $asramaUuid)
+    public function store(StoreRoomRequest $request, string $userId, string $asramaUuid, RoomSupervisorService $service)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
         $data = $request->validated();
 
-        $data['dormitory_id'] = $asramaUuid;
-        $data['is_active'] = $request->boolean('is_active', true);
-        $data['gender'] = $dormitory->gender;
+        try {
+            $room = \DB::transaction(function () use ($request, $asramaUuid, $dormitory, $data, $service) {
+                $payload = $data;
+                $payload['dormitory_id'] = $asramaUuid;
+                $payload['is_active'] = $request->boolean('is_active', true);
+                $payload['gender'] = $dormitory->gender;
 
-        $room = DormitoryRoom::create($data);
+                $waliKamarUserId = $payload['wali_kamar_user_id'];
+                unset($payload['wali_kamar_user_id']);
+
+                $room = DormitoryRoom::create($payload);
+
+                $service->assign(
+                    userId: $waliKamarUserId,
+                    roomId: $room->id,
+                    actorId: $request->user()?->id,
+                );
+
+                return $room;
+            });
+        } catch (\Throwable $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan kamar: '.$e->getMessage());
+        }
 
         return redirect()->route('user.asrama.rooms.show', [
             'userId' => $userId,
@@ -75,11 +112,22 @@ class DormitoryRoomController extends Controller
             'dormitory',
             'wing',
             'residents' => fn ($q) => $q->where('is_active', true)->with('student'),
+            'supervisors' => fn ($q) => $q->with('user')->orderByDesc('start_date'),
+            'activeSupervisor.user',
         ])->where('dormitory_id', $asramaUuid)
             ->findOrFail($roomUuid);
 
         $dormitory = $room->dormitory;
         $activeResidents = $room->residents;
+
+        $residentIds = $activeResidents->pluck('student_id')->all();
+
+        $activePermits = DormitoryPermit::with(['student'])
+            ->whereIn('student_id', $residentIds)
+            ->whereIn('status', ['approved', 'overdue'])
+            ->whereNull('actual_return_datetime')
+            ->get()
+            ->keyBy('student_id');
 
         $stats = [
             'total_residents' => $activeResidents->count(),
@@ -87,9 +135,11 @@ class DormitoryRoomController extends Controller
             'occupancy_rate' => $room->capacity > 0
                 ? round($activeResidents->count() / $room->capacity * 100, 1)
                 : 0,
+            'on_permit' => $activePermits->count(),
+            'in_dormitory' => $activeResidents->count() - $activePermits->count(),
         ];
 
-        return view('dormitory.rooms.show', compact('room', 'dormitory', 'userId', 'stats'));
+        return view('dormitory.rooms.show', compact('room', 'dormitory', 'userId', 'stats', 'activeResidents', 'activePermits'));
     }
 
     public function edit(string $userId, string $asramaUuid, string $roomUuid)

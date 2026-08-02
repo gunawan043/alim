@@ -5,7 +5,8 @@ namespace App\Services;
 use App\Models\AuditTrail;
 use App\Models\Notification;
 use App\Models\RepairRequest;
-use App\Models\User;
+use App\Models\WorkOrder;
+use App\Services\Sarpras\SarprasNotificationService;
 use Illuminate\Support\Facades\DB;
 
 class RepairRequestService
@@ -32,7 +33,10 @@ class RepairRequestService
         ],
     ];
 
-    public function __construct(private RepairCostHistoryService $costHistoryService) {}
+    public function __construct(
+        private RepairCostHistoryService $costHistoryService,
+        private ?SarprasNotificationService $notifier = null,
+    ) {}
 
     public function create(int $userId, int $assetId, array $data): RepairRequest
     {
@@ -52,7 +56,7 @@ class RepairRequestService
 
     public function assignInspector(RepairRequest $rr, string $userId, array $inspectors, int $selectedUserId): RepairRequest
     {
-        return DB::transaction(function () use ($rr, $userId, $inspectors, $selectedUserId) {
+        return DB::transaction(function () use ($rr, $inspectors, $selectedUserId) {
             $rr->update([
                 'status' => RepairRequest::STATUS_VERIFICATION_PENDING,
                 'assigned_to' => $selectedUserId,
@@ -143,7 +147,7 @@ class RepairRequestService
 
     public function approveForRepair(RepairRequest $rr, int $userId = 0): RepairRequest
     {
-        return DB::transaction(function () use ($rr, $userId) {
+        $rr = DB::transaction(function () use ($rr) {
             $rr->update([
                 'status' => RepairRequest::STATUS_EXECUTION_PENDING,
                 'approved_at' => now(),
@@ -161,8 +165,40 @@ class RepairRequestService
 
             $this->audit($rr, 'assigned_to_technician', ['assigned_to' => $technician ?: $reporter]);
 
-            return $rr;
+            return $rr->fresh();
         });
+
+        // Auto-create Work Order unless the caller (who is the project owner) opted out
+        // by passing userId=0 and the repair was just for notification purposes. For all
+        // PIC approvals, userId > 0, so a WO is created.
+        if ($userId > 0) {
+            try {
+                $existingWo = WorkOrder::where('repair_request_id', $rr->id)->first();
+                if (! $existingWo) {
+                    $wo = WorkOrder::create([
+                        'repair_request_id' => $rr->id,
+                        'asset_id' => $rr->asset_id,
+                        'type' => 'corrective',
+                        'scope_of_work' => $rr->title.' — '.$rr->description,
+                        'scheduled_date' => now(),
+                        'status' => 'created',
+                    ]);
+                    $this->audit($rr, 'work_order_auto_created', [
+                        'work_order_number' => $wo->wo_number ?? $wo->id,
+                    ]);
+                    if ($this->notifier) {
+                        $this->notifier->dispatchWorkOrderCreated($wo);
+                    }
+                }
+            } catch (\Throwable $e) {
+                logger()->warning('sarpras.repair.wo_auto_create_failed', [
+                    'repair_id' => $rr->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $rr;
     }
 
     public function rejectVerification(RepairRequest $rr, int $userId, string $reason): RepairRequest

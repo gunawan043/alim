@@ -22,8 +22,11 @@ class StudentAssignedToRombelEventTest extends TestCase
     use SafeRefreshDatabase;
 
     protected string $workUnitId;
+
     protected string $schoolId;
+
     protected string $gradeLevelId;
+
     protected ?AcademicYear $academicYear = null;
 
     protected function setUp(): void
@@ -44,7 +47,7 @@ class StudentAssignedToRombelEventTest extends TestCase
         DB::table('work_units')->insert([
             'id' => $this->workUnitId,
             'name' => 'PONTREN Test',
-            'code' => 'WT-SAR-' . substr(uniqid(), -5),
+            'code' => 'WT-SAR-'.substr(uniqid(), -5),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

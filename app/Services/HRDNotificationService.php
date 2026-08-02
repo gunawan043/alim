@@ -2,30 +2,35 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\NotificationUniversal;
 use App\Models\CutiRequest;
+use App\Models\KesejahteraanKlaim;
 use App\Models\KontrakKerja;
+use App\Models\NotificationUniversal;
 use App\Models\Pelatihan;
 use App\Models\PelatihanPeserta;
-use App\Models\KesejahteraanKlaim;
-use App\Models\GtkProfile;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use App\Models\User;
 
 class HRDNotificationService
 {
-    public const MODULE_CUTI       = 'hrd.cuti';
-    public const MODULE_KONTRAK    = 'hrd.kontrak';
-    public const MODULE_PELATIHAN  = 'hrd.pelatihan';
-    public const MODULE_KINERJA    = 'hrd.kinerja';
+    public const MODULE_CUTI = 'hrd.cuti';
+
+    public const MODULE_KONTRAK = 'hrd.kontrak';
+
+    public const MODULE_PELATIHAN = 'hrd.pelatihan';
+
+    public const MODULE_KINERJA = 'hrd.kinerja';
+
     public const MODULE_KESEJAHTERAAN = 'hrd.kesejahteraan';
 
-    public const TYPE_APPROVAL     = 'approval';
-    public const TYPE_REMINDER     = 'reminder';
-    public const TYPE_STATUS       = 'status_change';
-    public const TYPE_INFO         = 'info';
-    public const TYPE_NEW_REQUEST  = 'new_request';
+    public const TYPE_APPROVAL = 'approval';
+
+    public const TYPE_REMINDER = 'reminder';
+
+    public const TYPE_STATUS = 'status_change';
+
+    public const TYPE_INFO = 'info';
+
+    public const TYPE_NEW_REQUEST = 'new_request';
 
     public static function personaliaAdmins()
     {
@@ -43,7 +48,7 @@ class HRDNotificationService
                 $cuti->id,
                 self::TYPE_NEW_REQUEST,
                 'Pengajuan Cuti Baru',
-                ($cuti->user?->name ?? 'GTK') . ' mengajukan ' . ($cuti->template?->nama ?? 'cuti') . ' (' . $cuti->jumlah_hari . ' hari)',
+                ($cuti->user?->name ?? 'GTK').' mengajukan '.($cuti->template?->nama ?? 'cuti').' ('.$cuti->jumlah_hari.' hari)',
                 'cuti.index',
                 $cuti->user_id,
                 'normal'
@@ -60,8 +65,8 @@ class HRDNotificationService
             $cuti->id,
             $cuti->id,
             self::TYPE_STATUS,
-            'Status Cuti: ' . ucfirst($decision),
-            'Pengajuan ' . ($cuti->template?->nama ?? 'cuti') . ' Anda telah ' . ($decision === 'approved' ? 'disetujui' : 'ditolak'),
+            'Status Cuti: '.ucfirst($decision),
+            'Pengajuan '.($cuti->template?->nama ?? 'cuti').' Anda telah '.($decision === 'approved' ? 'disetujui' : 'ditolak'),
             'cuti.index',
             null,
             $decision === 'rejected' ? 'high' : 'normal'
@@ -87,7 +92,7 @@ class HRDNotificationService
                     $k->id,
                     self::TYPE_REMINDER,
                     'Kontrak Akan Berakhir',
-                    'Kontrak ' . ($k->gtk?->nama ?? 'GTK') . ' berakhir pada ' . $k->tanggal_selesai->format('d M Y'),
+                    'Kontrak '.($k->gtk?->nama ?? 'GTK').' berakhir pada '.$k->tanggal_selesai->format('d M Y'),
                     'kontrak.expiring',
                     null,
                     'high'
@@ -95,6 +100,7 @@ class HRDNotificationService
                 $count++;
             }
         }
+
         return $count;
     }
 
@@ -110,7 +116,7 @@ class HRDNotificationService
                 $pelatihan->id,
                 self::TYPE_INFO,
                 'Jadwal Pelatihan',
-                'Anda terdaftar pada pelatihan "' . $pelatihan->nama . '" mulai ' . $pelatihan->tanggal_mulai->format('d M Y'),
+                'Anda terdaftar pada pelatihan "'.$pelatihan->nama.'" mulai '.$pelatihan->tanggal_mulai->format('d M Y'),
                 'pelatihan.index',
                 null,
                 'normal'
@@ -128,7 +134,7 @@ class HRDNotificationService
             $klaim->id,
             self::TYPE_STATUS,
             'Klaim Disetujui',
-            'Klaim ' . ($klaim->kesejahteraan?->nama ?? 'kesejahteraan') . ' Anda telah disetujui',
+            'Klaim '.($klaim->kesejahteraan?->nama ?? 'kesejahteraan').' Anda telah disetujui',
             'kesejahteraan.index',
             null,
             'normal'
@@ -150,18 +156,18 @@ class HRDNotificationService
     ): void {
         try {
             NotificationUniversal::create([
-                'user_id'         => $userId,
-                'module'          => $module,
-                'reference_type'  => $refType,
-                'reference_id'    => $refId,
-                'reference_code'  => $refCode,
-                'type'            => $type,
-                'title'           => $title,
-                'message'         => $message,
-                'action_url'      => $routeName,
-                'action_text'     => 'Lihat Detail',
-                'priority'        => $priority,
-                'data'            => ['route' => $routeName, 'by' => $createdBy],
+                'user_id' => $userId,
+                'module' => $module,
+                'reference_type' => $refType,
+                'reference_id' => $refId,
+                'reference_code' => $refCode,
+                'type' => $type,
+                'title' => $title,
+                'message' => $message,
+                'action_url' => $routeName,
+                'action_text' => 'Lihat Detail',
+                'priority' => $priority,
+                'data' => ['route' => $routeName, 'by' => $createdBy],
             ]);
         } catch (\Throwable $e) {
             // swallow - notification should never break business flow

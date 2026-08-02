@@ -75,7 +75,7 @@ class StudentLookupServiceTest extends TestCase
         return Student::create([
             'id' => (string) Str::uuid(),
             'school_id' => $school->id,
-            'name' => 'Ahmad Fauzi',
+            'name' => 'Fulan',
             'nisn' => '12345678',
             'nis' => 'NIS001',
             'nik' => '3201012345678901',
@@ -114,7 +114,7 @@ class StudentLookupServiceTest extends TestCase
         $results = $service->search('Ahmad', $school->id.'.dormitorys.1');
 
         $this->assertCount(1, $results);
-        $this->assertEquals('Ahmad Fauzi', $results->first()->name);
+        $this->assertEquals('Fulan', $results->first()->name);
     }
 
     /** @test */
@@ -168,7 +168,7 @@ class StudentLookupServiceTest extends TestCase
         $profile = $this->getService()->getProfile($student->id);
 
         $this->assertNotNull($profile);
-        $this->assertEquals('Ahmad Fauzi', $profile->name);
+        $this->assertEquals('Fulan', $profile->name);
         $this->assertEquals('12345678', $profile->nisn);
         $this->assertEquals('Jakarta', $profile->birth_place);
         $this->assertEquals('active', $profile->status);

@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_health_checkups', function (Blueprint $table) {
@@ -22,7 +23,7 @@ return new class extends Migration {
             $table->integer('height_cm')->nullable();
             $table->integer('weight_kg')->nullable();
             $table->decimal('bmi', 5, 2)->nullable()
-                  ->comment('BMI dihitung otomatis dari tinggi/berat');
+                ->comment('BMI dihitung otomatis dari tinggi/berat');
             $table->enum('bmi_category', [
                 'sangat_kurang',
                 'kurang',
@@ -31,9 +32,9 @@ return new class extends Migration {
                 'gemuk',
             ])->nullable();
             $table->decimal('vision_left', 4, 2)->nullable()
-                  ->comment('Visus mata kiri, misal 1.0');
+                ->comment('Visus mata kiri, misal 1.0');
             $table->decimal('vision_right', 4, 2)->nullable()
-                  ->comment('Visus mata kanan, misal 1.0');
+                ->comment('Visus mata kanan, misal 1.0');
             $table->enum('hearing_status', ['normal', 'kurang', 'tidak_ada'])->
                   default('normal');
             $table->enum('dental_status', ['normal', 'karies', 'gangguan'])->
@@ -43,9 +44,9 @@ return new class extends Migration {
             ])->nullable();
             $table->text('tb_notes')->nullable();
             $table->tinyInteger('is_school_entry')->default(0)
-                  ->comment('1 = pemeriksaan saat masuk sekolah baru');
+                ->comment('1 = pemeriksaan saat masuk sekolah baru');
             $table->uuid('exam_by')->nullable()
-                  ->comment('Petugas yang memeriksa');
+                ->comment('Petugas yang memeriksa');
             $table->text('notes')->nullable();
             $table->timestamps();
 

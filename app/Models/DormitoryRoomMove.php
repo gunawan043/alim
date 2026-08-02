@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class DormitoryRoomMove extends Model
 {
     protected $table = 'dormitory_room_moves';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

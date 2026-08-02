@@ -5,26 +5,36 @@ namespace App\Exports;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AbsensiDetailExport extends Collection implements FromCollection, WithTitle, WithStyles, ShouldAutoSize
+class AbsensiDetailExport extends Collection implements FromCollection, ShouldAutoSize, WithStyles, WithTitle
 {
     protected Collection $studentRows;
+
     protected $monthData;
+
     protected string $rombelName;
+
     protected string $homeroomName;
+
     protected string $schoolName;
+
     protected string $semester;
+
     protected string $academicYear;
+
     protected int $month;
+
     protected int $year;
+
     protected int $daysInMonth;
+
     protected Carbon $startDate;
 
     public function __construct(
@@ -38,22 +48,22 @@ class AbsensiDetailExport extends Collection implements FromCollection, WithTitl
         int $month,
         int $year,
     ) {
-        $this->studentRows   = $studentRows;
-        $this->monthData     = $monthData;
-        $this->rombelName    = $rombelName;
-        $this->homeroomName  = $homeroomName;
-        $this->schoolName    = $schoolName;
-        $this->semester      = $semester;
-        $this->academicYear  = $academicYear;
-        $this->month         = $month;
-        $this->year          = $year;
-        $this->startDate     = Carbon::create($year, $month, 1)->startOfMonth();
-        $this->daysInMonth   = $this->startDate->daysInMonth;
+        $this->studentRows = $studentRows;
+        $this->monthData = $monthData;
+        $this->rombelName = $rombelName;
+        $this->homeroomName = $homeroomName;
+        $this->schoolName = $schoolName;
+        $this->semester = $semester;
+        $this->academicYear = $academicYear;
+        $this->month = $month;
+        $this->year = $year;
+        $this->startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $this->daysInMonth = $this->startDate->daysInMonth;
     }
 
     public function title(): string
     {
-        return $this->startDate->locale('id')->monthName . ' ' . $this->year;
+        return $this->startDate->locale('id')->monthName.' '.$this->year;
     }
 
     public function collection(): Collection
@@ -93,16 +103,20 @@ class AbsensiDetailExport extends Collection implements FromCollection, WithTitl
                 $dateStr = $this->startDate->copy()->day($d)->toDateString();
                 $record = $this->monthData[$student->id][$dateStr] ?? null;
                 $symbol = match ($record?->status) {
-                    'hadir'     => 'H',
+                    'hadir' => 'H',
                     'terlambat' => 'T',
-                    'izin'      => 'I',
-                    'sakit'     => 'S',
-                    'alpa'      => 'A',
-                    default     => '',
+                    'izin' => 'I',
+                    'sakit' => 'S',
+                    'alpa' => 'A',
+                    default => '',
                 };
-                if ($record?->status === 'sakit') $totalS++;
-                elseif ($record?->status === 'izin') $totalI++;
-                elseif ($record?->status === 'alpa') $totalA++;
+                if ($record?->status === 'sakit') {
+                    $totalS++;
+                } elseif ($record?->status === 'izin') {
+                    $totalI++;
+                } elseif ($record?->status === 'alpa') {
+                    $totalA++;
+                }
                 $cells->push($symbol);
             }
 
@@ -118,9 +132,13 @@ class AbsensiDetailExport extends Collection implements FromCollection, WithTitl
         foreach ($this->studentRows as $student) {
             foreach ($this->monthData[$student->id] ?? [] as $dateStr => $record) {
                 $s = $record?->status;
-                if ($s === 'sakit') $stats['S']++;
-                elseif ($s === 'izin') $stats['I']++;
-                elseif ($s === 'alpa') $stats['A']++;
+                if ($s === 'sakit') {
+                    $stats['S']++;
+                } elseif ($s === 'izin') {
+                    $stats['I']++;
+                } elseif ($s === 'alpa') {
+                    $stats['A']++;
+                }
             }
         }
         $rows->push(collect([]));
@@ -141,59 +159,59 @@ class AbsensiDetailExport extends Collection implements FromCollection, WithTitl
         $styles = [];
 
         // ── Info block rows (1-5) ──
-        $styles['A1:' . $lastColLetter . '5'] = [
-            'font'    => ['size' => 9],
+        $styles['A1:'.$lastColLetter.'5'] = [
+            'font' => ['size' => 9],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
         $styles['A1:B5'] = [
-            'font'  => ['bold' => true],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E8F5E9']],
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E8F5E9']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
         // ── Table header row (row 7) ──
-        $styles['A7:' . $lastColLetter . '7'] = [
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 9],
+        $styles['A7:'.$lastColLetter.'7'] = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 9],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'     => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '1565C0']],
-            'borders'  => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '1565C0']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
         // ── Data rows (starts row 8) ──
         $dataStart = 8;
-        $dataEnd   = $totalRows - 4;
+        $dataEnd = $totalRows - 4;
         $styles["A{$dataStart}:A{$dataEnd}"] = [
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'font'     => ['size' => 9],
-            'borders'  => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'font' => ['size' => 9],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
         $styles["B{$dataStart}:C{$dataEnd}"] = [
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
-            'font'     => ['size' => 9],
-            'borders'  => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'font' => ['size' => 9],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
         $styles["D{$dataStart}:D{$dataEnd}"] = [
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'font'     => ['size' => 9],
-            'borders'  => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'font' => ['size' => 9],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
         $styles["E{$dataStart}:{$lastColLetter}{$dataEnd}"] = [
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'font'     => ['size' => 9],
-            'borders'  => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'font' => ['size' => 9],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
         // ── Summary footer ──
         $footerStart = $totalRows - 2;
-        $footerEnd   = $totalRows;
+        $footerEnd = $totalRows;
         $styles["A{$footerStart}:B{$footerEnd}"] = [
-            'font'   => ['bold' => true],
-            'fill'   => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E3F2FD']],
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E3F2FD']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
-        $styles["C{$footerStart}:" . $lastColLetter . $footerEnd] = [
-            'font'   => ['bold' => true],
-            'fill'   => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFF9C4']],
+        $styles["C{$footerStart}:".$lastColLetter.$footerEnd] = [
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFF9C4']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
@@ -205,9 +223,10 @@ class AbsensiDetailExport extends Collection implements FromCollection, WithTitl
         $letter = '';
         while ($col > 0) {
             $col--;
-            $letter = chr(65 + ($col % 26)) . $letter;
+            $letter = chr(65 + ($col % 26)).$letter;
             $col = intval($col / 26);
         }
+
         return $letter;
     }
 }

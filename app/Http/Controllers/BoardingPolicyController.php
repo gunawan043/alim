@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BoardingPolicy;
 use App\Models\Dormitory;
-use App\Models\DormitoryPolicyAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
 
 class BoardingPolicyController extends Controller
 {
@@ -28,15 +26,12 @@ class BoardingPolicyController extends Controller
         return view('dormitory.policies.index', compact('policies', 'stats'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $dormitories = Dormitory::where('is_active', true)->orderBy('name')->get();
+        $userId = $request->route('userId');
 
-        $dormitoryOptions = BoardingPolicy::pluck('assigned_dormitories', 'id')
-            ->map(fn($d) => $d ?? collect())
-            ->keyBy('id');
-
-        return view('dormitory.policies.create', compact('dormitories', 'dormitoryOptions'));
+        return view('dormitory.policies.create', compact('dormitories', 'userId'));
     }
 
     public function store(Request $request)
@@ -62,7 +57,7 @@ class BoardingPolicyController extends Controller
             'dormitory_ids.*' => 'exists:dormitories,id',
         ]);
 
-        $policy = BoardingPolicy::create(array_filter($validated, fn($v, $k) => in_array($k, [
+        $policy = BoardingPolicy::create(array_filter($validated, fn ($v, $k) => in_array($k, [
             'name', 'code', 'description', 'leave_strategy', 'leave_quota', 'leave_quota_period',
             'visit_strategy', 'visit_quota', 'visit_quota_period', 'max_visitors_per_visit',
             'curfew_hour', 'special_permission_allowed', 'special_permission_types',
@@ -103,24 +98,74 @@ class BoardingPolicyController extends Controller
         return back()->with('success', 'Kuota berhasil diperbarui.');
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $policy = BoardingPolicy::with([
             'assignments.dormitory',
-            'assignments' => fn($q) => $q->orderByDesc('created_at')->take(10),
+            'assignments' => fn ($q) => $q->orderByDesc('created_at')->take(10),
         ])->findOrFail($id);
 
-        return view('dormitory.policies.show', compact('policy'));
+        // Gather quota usage for a sample student from assigned dormitories (for demonstration)
+        $sampleStudent = null;
+        $visitUsage = null;
+        $leaveUsage = null;
+        $remainingVisit = null;
+        $remainingLeave = null;
+        $sampleStudentId = null;
+        $sampleDormId = null;
+
+        if ($policy->assignments->count() > 0) {
+            // Pick first dorm assignment
+            $firstAssign = $policy->assignments->first();
+            $dorm = $firstAssign->dormitory;
+            if ($dorm) {
+                $sampleDormId = $dorm->id;
+                // Find first active resident/student in this dorm
+                $resident = \App\Models\DormitoryResident::where('dormitory_id', $sampleDormId)
+                    ->where('is_active', true)
+                    ->with('student')
+                    ->first();
+                if ($resident && $resident->student) {
+                    $sampleStudent = $resident->student;
+                    $sampleStudentId = $sampleStudent->id;
+
+                    // Use rules engine to get current usage
+                    $engine = \App\Domain\Services\BoardingRulesEngine::getInstance();
+                    $currentUsageVisit = $engine->countUsageForCurrentPeriod(
+                        $sampleStudentId, 'visit', $sampleDormId, $policy->visit_quota_period ?? 'monthly'
+                    );
+                    $currentUsageLeave = $engine->countUsageForCurrentPeriod(
+                        $sampleStudentId, 'leave', $sampleDormId, $policy->leave_quota_period ?? 'weekly'
+                    );
+
+                    $visitUsage = $currentUsageVisit;
+                    $leaveUsage = $currentUsageLeave;
+
+                    // Calculate remaining based on policy quota
+                    if ($policy->visit_strategy === 'quota' && $policy->visit_quota) {
+                        $remainingVisit = max(0, $policy->visit_quota - $currentUsageVisit);
+                    }
+                    if ($policy->leave_strategy === 'quota' && $policy->leave_quota) {
+                        $remainingLeave = max(0, $policy->leave_quota - $currentUsageLeave);
+                    }
+                }
+            }
+        }
+
+        $userId = $request->route('userId');
+
+        return view('dormitory.policies.show', compact('policy', 'userId', 'sampleStudent', 'visitUsage', 'leaveUsage', 'remainingVisit', 'remainingLeave', 'sampleStudentId', 'sampleDormId'));
     }
 
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         $policy = BoardingPolicy::with('assignments.dormitory')->findOrFail($id);
         $dormitories = Dormitory::where('is_active', true)->orderBy('name')->get();
 
         $assignedDormIds = $policy->assignments->pluck('target_id')->toArray();
+        $userId = $request->route('userId');
 
-        return view('dormitory.policies.edit', compact('policy', 'dormitories', 'assignedDormIds'));
+        return view('dormitory.policies.edit', compact('policy', 'dormitories', 'assignedDormIds', 'userId'));
     }
 
     public function update(Request $request, string $id)
@@ -148,7 +193,7 @@ class BoardingPolicyController extends Controller
             'dormitory_ids.*' => 'exists:dormitories,id',
         ]);
 
-        $policy->update(array_filter($validated, fn($v, $k) => in_array($k, [
+        $policy->update(array_filter($validated, fn ($v, $k) => in_array($k, [
             'name', 'code', 'description', 'leave_strategy', 'leave_quota', 'leave_quota_period',
             'visit_strategy', 'visit_quota', 'visit_quota_period', 'max_visitors_per_visit',
             'curfew_hour', 'special_permission_allowed', 'special_permission_types',

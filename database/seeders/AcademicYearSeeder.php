@@ -35,14 +35,14 @@ class AcademicYearSeeder extends Seeder
             }
 
             AcademicYear::create([
-                'id'                    => (string) Str::uuid(),
-                'name'                  => $year['name'],
-                'semester'              => $year['semester'],
-                'is_active'            => $year['is_active'] ?? false,
-                'start_date'           => $year['start'],
-                'end_date'             => $year['end'],
-                'registration_start'   => date('Y-m-d', strtotime($year['start'] . ' -60 days')),
-                'registration_end'     => date('Y-m-d', strtotime($year['start'] . ' -1 day')),
+                'id' => (string) Str::uuid(),
+                'name' => $year['name'],
+                'semester' => $year['semester'],
+                'is_active' => $year['is_active'] ?? false,
+                'start_date' => $year['start'],
+                'end_date' => $year['end'],
+                'registration_start' => date('Y-m-d', strtotime($year['start'].' -60 days')),
+                'registration_end' => date('Y-m-d', strtotime($year['start'].' -1 day')),
             ]);
             $count++;
         }

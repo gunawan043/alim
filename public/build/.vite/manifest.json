@@ -151,9 +151,9 @@
     "file": "icons/remixicon.woff2",
     "src": "resources/fonts/remixicon.woff2"
   },
-  "resources/images/auth-one-bg.jpg": {
-    "file": "icons/auth-one-bg.jpg",
-    "src": "resources/images/auth-one-bg.jpg"
+  "resources/images/alim-one-bg.png": {
+    "file": "icons/alim-one-bg.png",
+    "src": "resources/images/alim-one-bg.png"
   },
   "resources/images/chat-bg-pattern.png": {
     "file": "icons/chat-bg-pattern.png",

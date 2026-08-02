@@ -11,30 +11,30 @@ return new class extends Migration
         // ── Update gtk_requests ──────────────────────────────────────────
         Schema::table('gtk_requests', function (Blueprint $table) {
             // type: procurement (analisis kebutuhan), trial (pengangkatan percobaan), status_increase (kenaikan status)
-            if (!Schema::hasColumn('gtk_requests', 'type')) {
+            if (! Schema::hasColumn('gtk_requests', 'type')) {
                 $table->string('type', 50)->default('procurement')->after('requested_by');
             }
             // Procurement fields
-            if (!Schema::hasColumn('gtk_requests', 'academic_year_id')) {
+            if (! Schema::hasColumn('gtk_requests', 'academic_year_id')) {
                 $table->string('academic_year_id', 36)->nullable()->after('type');
             }
-            if (!Schema::hasColumn('gtk_requests', 'notes')) {
+            if (! Schema::hasColumn('gtk_requests', 'notes')) {
                 $table->text('notes')->nullable()->after('jabatan');
             }
             // Letter fields (trial & status_increase)
-            if (!Schema::hasColumn('gtk_requests', 'letter_number')) {
+            if (! Schema::hasColumn('gtk_requests', 'letter_number')) {
                 $table->string('letter_number', 100)->nullable()->after('notes');
             }
-            if (!Schema::hasColumn('gtk_requests', 'letter_subject')) {
+            if (! Schema::hasColumn('gtk_requests', 'letter_subject')) {
                 $table->string('letter_subject', 255)->nullable()->after('letter_number');
             }
-            if (!Schema::hasColumn('gtk_requests', 'letter_attachment')) {
+            if (! Schema::hasColumn('gtk_requests', 'letter_attachment')) {
                 $table->string('letter_attachment', 100)->nullable()->after('letter_subject');
             }
-            if (!Schema::hasColumn('gtk_requests', 'established_city')) {
+            if (! Schema::hasColumn('gtk_requests', 'established_city')) {
                 $table->string('established_city', 100)->nullable()->after('letter_attachment');
             }
-            if (!Schema::hasColumn('gtk_requests', 'established_date')) {
+            if (! Schema::hasColumn('gtk_requests', 'established_date')) {
                 $table->date('established_date')->nullable()->after('established_city');
             }
             // Drop old unused columns
@@ -50,7 +50,7 @@ return new class extends Migration
         });
 
         // ── Create gtk_request_items ─────────────────────────────────────
-        if (!Schema::hasTable('gtk_request_items')) {
+        if (! Schema::hasTable('gtk_request_items')) {
             Schema::create('gtk_request_items', function (Blueprint $table) {
                 $table->id();
                 $table->char('gtk_request_id', 36);

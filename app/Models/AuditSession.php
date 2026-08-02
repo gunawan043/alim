@@ -59,7 +59,7 @@ class AuditSession extends Model
     public static function generateCode(): string
     {
         do {
-            $code = 'AUD-' . strtoupper(Str::random(8));
+            $code = 'AUD-'.strtoupper(Str::random(8));
         } while (self::where('session_code', $code)->exists());
 
         return $code;

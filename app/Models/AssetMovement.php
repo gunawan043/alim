@@ -12,8 +12,11 @@ class AssetMovement extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'asset_movements';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -120,6 +123,7 @@ class AssetMovement extends Model
     {
         $year = now()->year;
         $num = self::whereYear('created_at', $year)->count() + 1;
+
         return sprintf('MOV-%d-%05d', $year, $num);
     }
 }

@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\RecruitmentJob;
 use App\Models\RecruitmentApplication;
+use App\Models\RecruitmentJob;
 use App\Models\RecruitmentProfile;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class RecruitmentReportService
 {
@@ -19,10 +19,10 @@ class RecruitmentReportService
     public function getDashboardStats($period = 'month')
     {
         $cacheKey = "recruitment_dashboard_stats_{$period}";
-        
+
         return Cache::remember($cacheKey, $this->cacheTime, function () use ($period) {
             $dateRange = $this->getDateRange($period);
-            
+
             return [
                 'overview' => $this->getOverviewStats($dateRange),
                 'hiring_funnel' => $this->getHiringFunnel($dateRange),
@@ -31,7 +31,7 @@ class RecruitmentReportService
                 'job_performance' => $this->getJobPerformance($dateRange),
                 'applicant_demographics' => $this->getApplicantDemographics($dateRange),
                 'trends' => $this->getTrends($period),
-                'top_performers' => $this->getTopPerformers($dateRange)
+                'top_performers' => $this->getTopPerformers($dateRange),
             ];
         });
     }
@@ -51,14 +51,14 @@ class RecruitmentReportService
                 ->count(),
             'rejected_count' => RecruitmentApplication::where('status', 'ditolak')
                 ->whereBetween('updated_at', [$dateRange['start'], $dateRange['end']])
-                ->count()
+                ->count(),
         ];
 
         // Calculate conversion rates
-        $current['application_rate'] = $current['total_applications'] > 0 
-            ? round(($current['hired_count'] / $current['total_applications']) * 100, 2) 
+        $current['application_rate'] = $current['total_applications'] > 0
+            ? round(($current['hired_count'] / $current['total_applications']) * 100, 2)
             : 0;
-            
+
         $current['job_fill_rate'] = $current['total_jobs'] > 0
             ? round(($current['hired_count'] / $current['total_jobs']) * 100, 2)
             : 0;
@@ -66,21 +66,21 @@ class RecruitmentReportService
         // Get previous period for comparison
         $previousRange = [
             'start' => Carbon::parse($dateRange['start'])->subDays($dateRange['days']),
-            'end' => Carbon::parse($dateRange['start'])->subDay()
+            'end' => Carbon::parse($dateRange['start'])->subDay(),
         ];
 
         $previous = [
             'total_applications' => RecruitmentApplication::whereBetween('created_at', [$previousRange['start'], $previousRange['end']])->count(),
             'hired_count' => RecruitmentApplication::where('status', 'diterima')
                 ->whereBetween('updated_at', [$previousRange['start'], $previousRange['end']])
-                ->count()
+                ->count(),
         ];
 
         // Calculate growth
         $current['application_growth'] = $previous['total_applications'] > 0
             ? round((($current['total_applications'] - $previous['total_applications']) / $previous['total_applications']) * 100, 2)
             : 100;
-            
+
         $current['hired_growth'] = $previous['hired_count'] > 0
             ? round((($current['hired_count'] - $previous['hired_count']) / $previous['hired_count']) * 100, 2)
             : 100;
@@ -109,19 +109,19 @@ class RecruitmentReportService
                 ->count(),
             'hired' => RecruitmentApplication::where('status', 'diterima')
                 ->whereBetween('updated_at', [$dateRange['start'], $dateRange['end']])
-                ->count()
+                ->count(),
         ];
 
         // Calculate conversion rates
         $funnel = [];
         $prev = $stages['applications'];
-        
+
         foreach ($stages as $stage => $count) {
             $funnel[$stage] = [
                 'count' => $count,
                 'conversion_rate' => $prev > 0 ? round(($count / $prev) * 100, 2) : 0,
                 'dropoff' => $prev - $count,
-                'dropoff_rate' => $prev > 0 ? round((($prev - $count) / $prev) * 100, 2) : 0
+                'dropoff_rate' => $prev > 0 ? round((($prev - $count) / $prev) * 100, 2) : 0,
             ];
             $prev = $count;
         }
@@ -145,7 +145,7 @@ class RecruitmentReportService
                 'median_days' => 0,
                 'min_days' => 0,
                 'max_days' => 0,
-                'by_job_type' => []
+                'by_job_type' => [],
             ];
         }
 
@@ -156,11 +156,11 @@ class RecruitmentReportService
             $created = Carbon::parse($app->created_at);
             $hired = Carbon::parse($app->updated_at);
             $days = $created->diffInDays($hired);
-            
+
             $daysToHire[] = $days;
-            
+
             $jobType = $app->recruitmentJob->jenis_pegawai ?? 'unknown';
-            if (!isset($byJobType[$jobType])) {
+            if (! isset($byJobType[$jobType])) {
                 $byJobType[$jobType] = [];
             }
             $byJobType[$jobType][] = $days;
@@ -173,13 +173,13 @@ class RecruitmentReportService
             'min_days' => min($daysToHire),
             'max_days' => max($daysToHire),
             'distribution' => $this->getDistribution($daysToHire, [7, 14, 30, 60, 90]),
-            'by_job_type' => []
+            'by_job_type' => [],
         ];
 
         foreach ($byJobType as $type => $days) {
             $stats['by_job_type'][$type] = [
                 'average' => round(array_sum($days) / count($days), 1),
-                'count' => count($days)
+                'count' => count($days),
             ];
         }
 
@@ -193,10 +193,10 @@ class RecruitmentReportService
     {
         // Asumsi ada field 'source' di recruitment_applications
         // Bisa dari referensi, website, sosial media, dll
-        
+
         $sources = RecruitmentApplication::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
-            ->select('source', DB::raw('count(*) as total'), 
-                     DB::raw("sum(case when status = 'diterima' then 1 else 0 end) as hired"))
+            ->select('source', DB::raw('count(*) as total'),
+                DB::raw("sum(case when status = 'diterima' then 1 else 0 end) as hired"))
             ->groupBy('source')
             ->get();
 
@@ -211,7 +211,7 @@ class RecruitmentReportService
                 'percentage' => $totalApplications > 0 ? round(($source->total / $totalApplications) * 100, 2) : 0,
                 'hired' => $source->hired,
                 'success_rate' => $source->total > 0 ? round(($source->hired / $source->total) * 100, 2) : 0,
-                'contribution_to_hired' => $totalHired > 0 ? round(($source->hired / $totalHired) * 100, 2) : 0
+                'contribution_to_hired' => $totalHired > 0 ? round(($source->hired / $totalHired) * 100, 2) : 0,
             ];
         }
 
@@ -224,7 +224,7 @@ class RecruitmentReportService
     protected function getJobPerformance($dateRange)
     {
         return RecruitmentJob::whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
-            ->withCount(['applications', 'applications as hired_count' => function($q) {
+            ->withCount(['applications', 'applications as hired_count' => function ($q) {
                 $q->where('status', 'diterima');
             }])
             ->with(['workUnit', 'creator'])
@@ -242,11 +242,11 @@ class RecruitmentReportService
                     'terisi' => $job->hired_count,
                     'sisa_kuota' => $job->kuota - $job->hired_count,
                     'total_pelamar' => $job->applications_count,
-                    'konversi' => $job->applications_count > 0 
-                        ? round(($job->hired_count / $job->applications_count) * 100, 2) 
+                    'konversi' => $job->applications_count > 0
+                        ? round(($job->hired_count / $job->applications_count) * 100, 2)
                         : 0,
                     'created_by' => $job->creator->name ?? '-',
-                    'created_at' => $job->created_at->format('Y-m-d')
+                    'created_at' => $job->created_at->format('Y-m-d'),
                 ];
             });
     }
@@ -256,42 +256,42 @@ class RecruitmentReportService
      */
     protected function getApplicantDemographics($dateRange)
     {
-        $profiles = RecruitmentProfile::whereHas('applications', function($q) use ($dateRange) {
+        $profiles = RecruitmentProfile::whereHas('applications', function ($q) use ($dateRange) {
             $q->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
         })->get();
 
         return [
             'gender' => [
                 'L' => $profiles->where('jenis_kelamin', 'L')->count(),
-                'P' => $profiles->where('jenis_kelamin', 'P')->count()
+                'P' => $profiles->where('jenis_kelamin', 'P')->count(),
             ],
             'age_groups' => [
-                '< 25' => $profiles->filter(fn($p) => $p->tanggal_lahir && $p->tanggal_lahir->age < 25)->count(),
-                '25-30' => $profiles->filter(fn($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 25 && $p->tanggal_lahir->age <= 30)->count(),
-                '31-35' => $profiles->filter(fn($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 31 && $p->tanggal_lahir->age <= 35)->count(),
-                '36-40' => $profiles->filter(fn($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 36 && $p->tanggal_lahir->age <= 40)->count(),
-                '> 40' => $profiles->filter(fn($p) => $p->tanggal_lahir && $p->tanggal_lahir->age > 40)->count()
+                '< 25' => $profiles->filter(fn ($p) => $p->tanggal_lahir && $p->tanggal_lahir->age < 25)->count(),
+                '25-30' => $profiles->filter(fn ($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 25 && $p->tanggal_lahir->age <= 30)->count(),
+                '31-35' => $profiles->filter(fn ($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 31 && $p->tanggal_lahir->age <= 35)->count(),
+                '36-40' => $profiles->filter(fn ($p) => $p->tanggal_lahir && $p->tanggal_lahir->age >= 36 && $p->tanggal_lahir->age <= 40)->count(),
+                '> 40' => $profiles->filter(fn ($p) => $p->tanggal_lahir && $p->tanggal_lahir->age > 40)->count(),
             ],
             'education' => $this->getEducationDemographics($dateRange),
             'location' => $profiles->groupBy('provinsi')
-                ->map(fn($group, $prov) => [
+                ->map(fn ($group, $prov) => [
                     'provinsi' => $prov ?: 'Tidak diketahui',
-                    'total' => $group->count()
+                    'total' => $group->count(),
                 ])
                 ->values()
                 ->take(10),
             'marital_status' => $profiles->groupBy('status_perkawinan')
-                ->map(fn($group, $status) => [
+                ->map(fn ($group, $status) => [
                     'status' => $status,
-                    'total' => $group->count()
+                    'total' => $group->count(),
                 ])
                 ->values(),
             'religion' => $profiles->groupBy('agama')
-                ->map(fn($group, $agama) => [
+                ->map(fn ($group, $agama) => [
                     'agama' => $agama ?: 'Tidak diketahui',
-                    'total' => $group->count()
+                    'total' => $group->count(),
                 ])
-                ->values()
+                ->values(),
         ];
     }
 
@@ -309,12 +309,12 @@ class RecruitmentReportService
             ->get();
 
         $total = $educations->sum('total');
-        
+
         return $educations->map(function ($edu) use ($total) {
             return [
                 'jenjang' => $edu->jenjang,
                 'total' => $edu->total,
-                'percentage' => $total > 0 ? round(($edu->total / $total) * 100, 2) : 0
+                'percentage' => $total > 0 ? round(($edu->total / $total) * 100, 2) : 0,
             ];
         });
     }
@@ -326,11 +326,11 @@ class RecruitmentReportService
     {
         $interval = $period == 'week' ? 'day' : ($period == 'month' ? 'week' : 'month');
         $format = $interval == 'day' ? '%Y-%m-%d' : ($interval == 'week' ? '%Y-%u' : '%Y-%m');
-        
+
         $applications = RecruitmentApplication::select(
-                DB::raw("DATE_FORMAT(created_at, '{$format}') as period"),
-                DB::raw('count(*) as total')
-            )
+            DB::raw("DATE_FORMAT(created_at, '{$format}') as period"),
+            DB::raw('count(*) as total')
+        )
             ->groupBy('period')
             ->orderBy('period', 'desc')
             ->limit($period == 'week' ? 7 : ($period == 'month' ? 12 : 12))
@@ -348,7 +348,7 @@ class RecruitmentReportService
 
         return [
             'applications' => $applications,
-            'hires' => $hires
+            'hires' => $hires,
         ];
     }
 
@@ -369,7 +369,7 @@ class RecruitmentReportService
                     'posisi' => $app->recruitmentJob->judul,
                     'nilai' => $app->nilai_akhir,
                     'status' => $app->status,
-                    'tanggal_melamar' => $app->tanggal_melamar
+                    'tanggal_melamar' => $app->tanggal_melamar,
                 ];
             });
     }
@@ -380,7 +380,7 @@ class RecruitmentReportService
     public function exportReport($type, $format = 'pdf', $period = 'month')
     {
         $data = $this->getDashboardStats($period);
-        
+
         switch ($format) {
             case 'pdf':
                 return $this->exportToPdf($type, $data, $period);
@@ -398,13 +398,13 @@ class RecruitmentReportService
      */
     protected function exportToPdf($type, $data, $period)
     {
-        $pdf = \PDF::loadView('reports.recruitment.' . $type, [
+        $pdf = \PDF::loadView('reports.recruitment.'.$type, [
             'data' => $data,
             'period' => $period,
-            'generated_at' => now()
+            'generated_at' => now(),
         ]);
-        
-        return $pdf->download("recruitment-report-{$type}-{$period}-" . now()->format('Y-m-d') . ".pdf");
+
+        return $pdf->download("recruitment-report-{$type}-{$period}-".now()->format('Y-m-d').'.pdf');
     }
 
     /**
@@ -430,7 +430,7 @@ class RecruitmentReportService
     protected function getDateRange($period)
     {
         $end = Carbon::now();
-        
+
         switch ($period) {
             case 'week':
                 $start = Carbon::now()->subWeek();
@@ -456,7 +456,7 @@ class RecruitmentReportService
         return [
             'start' => $start,
             'end' => $end,
-            'days' => $days
+            'days' => $days,
         ];
     }
 
@@ -468,7 +468,7 @@ class RecruitmentReportService
         sort($arr);
         $count = count($arr);
         $middle = floor(($count - 1) / 2);
-        
+
         if ($count % 2) {
             return $arr[$middle];
         } else {
@@ -483,16 +483,16 @@ class RecruitmentReportService
     {
         $distribution = [];
         $prev = 0;
-        
+
         foreach ($thresholds as $threshold) {
-            $count = count(array_filter($arr, fn($v) => $v > $prev && $v <= $threshold));
+            $count = count(array_filter($arr, fn ($v) => $v > $prev && $v <= $threshold));
             $distribution["{$prev}-{$threshold}"] = $count;
             $prev = $threshold;
         }
-        
-        $count = count(array_filter($arr, fn($v) => $v > $prev));
+
+        $count = count(array_filter($arr, fn ($v) => $v > $prev));
         $distribution["> {$prev}"] = $count;
-        
+
         return $distribution;
     }
 }

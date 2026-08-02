@@ -2,25 +2,26 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class DormitoryPost extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -38,8 +39,8 @@ class DormitoryPost extends Model
 
     protected $casts = [
         'needs_response' => 'boolean',
-        'is_pinned'      => 'boolean',
-        'is_active'      => 'boolean',
+        'is_pinned' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     // ── Relationships ────────────────────────────────────────────
@@ -62,7 +63,7 @@ class DormitoryPost extends Model
             'post_id',
             'student_id'
         )->withPivot(['parent_name', 'response_type', 'message', 'created_at'])
-         ->withTimestamps();
+            ->withTimestamps();
     }
 
     // ── Accessors ────────────────────────────────────────────────
@@ -71,26 +72,29 @@ class DormitoryPost extends Model
     {
         return match ($this->category) {
             'pengumuman' => 'Pengumuman',
-            'undangan'   => 'Undangan',
-            'laporan'    => 'Laporan',
-            'darurat'    => 'Darurat',
-            default      => ucfirst($this->category ?? ''),
+            'undangan' => 'Undangan',
+            'laporan' => 'Laporan',
+            'darurat' => 'Darurat',
+            default => ucfirst($this->category ?? ''),
         };
     }
 
     public function getVisibilityTextAttribute(): string
     {
         return match ($this->visibility) {
-            'wali'     => 'Wali Santri',
+            'wali' => 'Wali Santri',
             'pengurus' => 'Pengurus Asrama',
-            'umum'     => 'Umum',
-            default    => ucfirst($this->visibility ?? ''),
+            'umum' => 'Umum',
+            default => ucfirst($this->visibility ?? ''),
         };
     }
 
     public function getResponseRateAttribute(): float
     {
-        if (!$this->needs_response) return 0;
+        if (! $this->needs_response) {
+            return 0;
+        }
+
         // Placeholder: calculate from DormitoryPostResponse
         return 0;
     }

@@ -2,17 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\AuditTrail;
 use App\Models\Vendor;
 use App\Models\VendorDocument;
-use App\Models\AuditTrail;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class VendorDocumentService
 {
     private const DISK = 'public';
+
     private const FOLDER = 'vendor-documents';
 
     public function __construct() {}
@@ -24,7 +23,7 @@ class VendorDocumentService
         ?array $metadata = []
     ): VendorDocument {
         $path = $file->store(
-            self::FOLDER . '/' . $vendor->id,
+            self::FOLDER.'/'.$vendor->id,
             self::DISK
         );
 
@@ -54,7 +53,7 @@ class VendorDocumentService
         $oldPath = $document->storage_path;
         $document->update([
             'storage_path' => $file->store(
-                self::FOLDER . '/' . $document->vendor_id,
+                self::FOLDER.'/'.$document->vendor_id,
                 self::DISK
             ),
             'mime_type' => $file->getMimeType(),
@@ -137,6 +136,7 @@ class VendorDocumentService
     public function download(VendorDocument $document)
     {
         $this->audit('download', $document);
+
         return Storage::disk(self::DISK)->download($document->storage_path);
     }
 

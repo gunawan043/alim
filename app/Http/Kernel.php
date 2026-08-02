@@ -48,6 +48,8 @@ class Kernel extends HttpKernel
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SecurityHeadersMiddleware::class,
+            \App\Http\Middleware\RequestIdMiddleware::class,
         ],
     ];
 
@@ -72,6 +74,7 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'role.level' => \App\Http\Middleware\RoleLevelMiddleware::class,
         'role.access' => \App\Http\Middleware\EnsureRoleAccess::class,
+        'super.or.system' => \App\Http\Middleware\EnsureSuperAdminOrSystemAdmin::class,
         'school.context' => \App\Http\Middleware\SchoolContextMiddleware::class,
         'wali.school.context' => \App\Http\Middleware\WaliSchoolContextMiddleware::class,
         'ip.blocked' => \App\Http\Middleware\CheckIpBlocked::class,
@@ -79,5 +82,6 @@ class Kernel extends HttpKernel
         'organization.context' => \App\Http\Middleware\BindOrganizationContext::class,
         'permission' => \App\Http\Middleware\RequirePermission::class,
         'permission-all' => \App\Http\Middleware\RequirePermission::class,
+        'dormitory.restrict' => \App\Http\Middleware\RestrictDormitoryUserFromStudents::class,
     ];
 }

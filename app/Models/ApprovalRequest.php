@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class ApprovalRequest extends Model
@@ -13,7 +11,9 @@ class ApprovalRequest extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -26,6 +26,7 @@ class ApprovalRequest extends Model
             }
         });
     }
+
     protected $fillable = [
         'request_type',
         'reference_id',

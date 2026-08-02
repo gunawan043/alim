@@ -16,7 +16,7 @@ class JenisGtk extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'urutan'    => 'integer',
+        'urutan' => 'integer',
     ];
 
     public function jabatans(): HasMany

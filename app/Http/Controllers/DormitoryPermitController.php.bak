@@ -1,0 +1,536 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Domain\Exceptions\QuotaExceededException;
+use App\Http\Requests\Dormitory\ApprovePermitRequest;
+use App\Http\Requests\Dormitory\RecordReturnRequest;
+use App\Http\Requests\Dormitory\RejectPermitRequest;
+use App\Http\Requests\Dormitory\StorePermitRequest;
+use App\Models\AcademicYear;
+use App\Models\Dormitory;
+use App\Models\DormitoryPermit;
+use App\Models\Student;
+use App\Services\Boarding\LeaveWorkflowService;
+use App\Services\DormitoryService;
+use Illuminate\Http\Request;
+
+class DormitoryPermitController extends Controller
+{
+    protected DormitoryService $service;
+
+    public function __construct(
+        DormitoryService $service,
+        private readonly LeaveWorkflowService $leave,
+    ) {
+        $this->service = $service;
+    }
+
+    public function index(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        $query = DormitoryPermit::with(['student', 'room', 'mahrom', 'approvedBy'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id);
+
+        // Token-based direct lookup (QR scan search from index)
+        if ($request->filled('token')) {
+            $studentId = DormitoryPermit::verifyScanToken($request->token);
+            if ($studentId) {
+                $permitsFound = DormitoryPermit::with(['student', 'room', 'approvedBy'])
+                    ->where('dormitory_id', $asramaUuid)
+                    ->where('student_id', $studentId)
+                    ->whereNotNull('scan_token')
+                    ->get();
+                if ($permitsFound->isNotEmpty()) {
+                    return redirect()->route('user.asrama.permits.show', [
+                        'userId' => $userId,
+                        'asramaUuid' => $asramaUuid,
+                        'permitUuid' => $permitsFound->first()->id,
+                    ])->with('token_found', 'Izin ditemukan untuk token!');
+                }
+            }
+
+            return back()->with('token_error', 'Token tidak valid atau izin tidak ditemukan di asrama ini.');
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('permit_type')) {
+            $query->where('permit_type', $request->permit_type);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('departure_datetime', [$request->start_date, $request->end_date]);
+        }
+
+        if ($request->filled('search')) {
+            $q = $request->search;
+            $query->where(fn ($sq) => $sq
+                ->whereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
+            );
+        }
+
+        $permits = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        $stats = [
+            'pending' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'pending')->count(),
+            'approved' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'approved')->count(),
+            'overdue' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'overdue')->count(),
+        ];
+
+        // Residents for dropdown & quota view
+        $residents = \App\Models\DormitoryResident::with('student.mahroms')
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->orderBy('room_id')
+            ->get();
+
+        // Quota information
+        $quotaInfo = null;
+        if ($dormitory->policy) {
+            $pol = is_string($dormitory->policy) ? json_decode($dormitory->policy, true) : $dormitory->policy;
+            if (! empty($pol['leave'])) {
+                $quotaInfo = $pol['leave'];
+            }
+        }
+
+        return view('dormitory.permits.index', compact(
+            'dormitory', 'permits', 'userId', 'stats', 'activeYear',
+            'residents', 'quotaInfo'
+        ));
+    }
+
+    public function create(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        // Ambil resident aktif
+        $residents = \App\Models\DormitoryResident::with('student.mahroms')
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->orderBy('room_id')
+            ->get();
+
+        return view('dormitory.permits.create', compact('dormitory', 'residents', 'userId', 'activeYear'));
+    }
+
+    public function store(StorePermitRequest $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
+
+        $data = $request->validated();
+
+        // Jika permit_type = sakit, wajib ada StudentHealthPermit yg sudah approved
+        if ($data['permit_type'] === 'sakit') {
+            $healthPermit = StudentHealthPermit::where('student_id', $data['student_id'])
+                ->where('status', 'approved')
+                ->where('dormitory_id', $asramaUuid)
+                ->whereDate('start_date', '<=', $data['departure_datetime'])
+                ->whereDate('end_date', '>=', $data['departure_datetime'])
+                ->first();
+
+            if (! $healthPermit) {
+                return back()->withInput()->withErrors([
+                    'permit_type' => 'Izin sakit hanya bisa diajukan jika ada keterangan sakit dari UKS yang sudah disetujui.',
+                ]);
+            }
+        }
+
+        // Submit through the workflow service — it handles policy check,
+        // rules engine, timeline, and quota update atomically.
+        try {
+            $permit = $this->leave->submit(
+                data: $data,
+                dormitoryId: $asramaUuid,
+                activeYearId: $activeYear->id,
+            );
+        } catch (QuotaExceededException $e) {
+            \Log::warning('Kuota izin habis', [
+                'student_id' => $data['student_id'] ?? null,
+                'dormitory' => $asramaUuid,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->withErrors([
+                'quota' => $e->getMessage(),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return back()->withInput()->withErrors([
+                'permit_type' => $e->getMessage(),
+            ]);
+        }
+
+        return redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', 'Permintaan izin berhasil diajukan.');
+    }
+
+    public function show(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $permit = DormitoryPermit::with(['student.mahroms', 'room', 'mahrom', 'approvedBy', 'creator'])
+            ->where('dormitory_id', $asramaUuid)
+            ->findOrFail($permitUuid);
+
+        return view('dormitory.permits.show', compact('dormitory', 'permit', 'userId'));
+    }
+
+    /** Generate QR image for a permit (public, no auth required). */
+    public function qrImage(string $asramaUuid, string $permitUuid): \Symfony\Component\HttpFoundation\Response
+    {
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)
+            ->findOrFail($permitUuid);
+
+        // Ensure scan token exists
+        if (! $permit->scan_token) {
+            $permit->getOrCreateScanToken();
+        }
+
+        $qrPayload = json_encode($permit->qrPayload());
+        $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+            ->size(280)
+            ->margin(2)
+            ->generate($qrPayload);
+
+        return response($qrImage, 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
+    }
+
+    public function approve(ApprovePermitRequest $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $data = $request->validated();
+
+        // Delegate to the workflow service. It re-runs the rules engine,
+        // transitions the student status to ON_LEAVE, and emits the timeline event.
+        $this->leave->approve(
+            permitId: $permitUuid,
+            dormitoryId: $asramaUuid,
+            note: $data['approval_note'] ?? null,
+        );
+
+        return back()->with('success', 'Izin berhasil disetujui dan notifikasi ke wali telah dikirim.');
+    }
+
+    public function reject(RejectPermitRequest $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $data = $request->validated();
+
+        $this->leave->reject(
+            permitId: $permitUuid,
+            dormitoryId: $asramaUuid,
+            note: $data['approval_note'] ?? null,
+        );
+
+        return back()->with('success', 'Izin ditolak.');
+    }
+
+    public function returnRecord(RecordReturnRequest $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $data = $request->validated();
+
+        $this->leave->recordReturn(
+            permitId: $permitUuid,
+            dormitoryId: $asramaUuid,
+            actualReturnDatetime: $data['actual_return_datetime'],
+        );
+
+        // Catat bahwa permit selesai (bukan overdue)
+        return back()->with('success', 'Kedatangan santri berhasil dicatat.');
+    }
+
+    /**
+     * Print view for a single permit card with QR code.
+     */
+    public function card(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $permit = DormitoryPermit::with([
+            'student',
+            'student.currentClassHistory.studyGroup.gradeLevel',
+            'room',
+        ])
+            ->where('dormitory_id', $asramaUuid)
+            ->findOrFail($permitUuid);
+
+        // Only approved permits can be printed
+        if ($permit->status !== 'approved') {
+            return redirect()->route('user.asrama.permits.show', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid,
+                'permitUuid' => $permit->id,
+            ])->with('warning', 'Kartu hanya dapat dicetak untuk izin yang telah disetujui.');
+        }
+
+        $now = now();
+
+        return view('dormitory.permits.card', compact('dormitory', 'permit', 'userId', 'now'));
+    }
+
+    /**
+     * Bulk print view for all approved permits.
+     */
+    public function bulkCard(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        $query = DormitoryPermit::with([
+            'student',
+            'student.currentClassHistory.studyGroup.gradeLevel',
+            'room',
+        ])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id);
+
+        if ($request->filled('status')) {
+            $query->whereIn('status', $request->status === 'approved' ? ['approved', 'returned'] : [$request->status]);
+        }
+
+        if ($request->filled('permit_type')) {
+            $query->where('permit_type', $request->permit_type);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('departure_datetime', [$request->start_date, $request->end_date]);
+        }
+
+        // Only approved permits can be printed
+        $query->where('status', 'approved');
+
+        $permits = $query->orderByDesc('departure_datetime')->paginate(30)->withQueryString();
+
+        $now = now();
+
+        return view('dormitory.permits.bulk-card', compact('dormitory', 'permits', 'userId', 'now'));
+    }
+
+    // ── Scan & Verify ───────────────────────────────────────────
+
+    /**
+     * Scan page for internal use (requires auth).
+     */
+    public function scan(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        // Approved / returned — split into unscanned (awaiting pickup) and scanned (already picked up)
+        $approvedUnscanned = DormitoryPermit::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->whereIn('status', ['approved', 'overdue'])
+            ->whereNull('scanned_at')
+            ->orderByDesc('departure_datetime')
+            ->get();
+
+        $alreadyScanned = DormitoryPermit::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->whereNotNull('scanned_at')
+            ->orderByDesc('scanned_at')
+            ->limit(10)
+            ->get();
+
+        $recentScans = DormitoryPermit::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->whereNotNull('scanned_at')
+            ->orderByDesc('scanned_at')
+            ->limit(5)
+            ->get();
+
+        return view('dormitory.permits.scan', compact(
+            'dormitory', 'userId', 'approvedUnscanned', 'alreadyScanned', 'recentScans'
+        ));
+    }
+
+    /**
+     * Process scan with automatic state-based action.
+     */
+    public function scanStore(Request $request, string $userId, string $asramaUuid)
+    {
+        $request->validate([
+            'token' => 'required|string|min:10',
+        ]);
+
+        $studentId = DormitoryPermit::verifyScanToken($request->token);
+        if (! $studentId) {
+            return $this->scanResponse($request, 'Token tidak valid atau izin tidak ditemukan.', false);
+        }
+
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)
+            ->where('student_id', $studentId)
+            ->whereNotNull('scan_token')
+            ->first();
+
+        if (! $permit) {
+            return $this->scanResponse($request, 'Token tidak cocok dengan izin di asrama ini.', false);
+        }
+
+        $user = $request->user();
+
+        // State machine: allow only when status is approved/overdue and not yet scanned
+        if (($permit->status === 'approved' || $permit->status === 'overdue') && is_null($permit->scanned_at)) {
+            // First scan: record pickup / return (student taken away / returned)
+            $permit->actual_return_datetime = now();
+            $permit->scanned_at = now();
+            $permit->scanned_by = $user?->id;
+            $permit->last_actioned_by = $user?->id;
+            $permit->status = 'returned';
+            $permit->pickup_details = array_merge($permit->pickup_details ?? [], [
+                'mode' => 'manual_scan',
+                'scanned_at' => now()->toDateTimeString(),
+                'scanner_name' => $user?->name ?? 'Anonymous',
+            ]);
+            $permit->save();
+
+            return $this->scanResponse(
+                $request,
+                "Penjemputan / Kedatangan {$permit->student->name} berhasil dicatat via scan.",
+                true,
+                ['student_name' => $permit->student->name, 'status' => 'returned'],
+                redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            );
+        }
+
+        return $this->scanResponse($request, 'Izin ini tidak dapat dipindai pada kondisi saat ini.', false);
+    }
+
+    /**
+     * Return JSON for AJAX scans, redirect for HTML form fallback.
+     */
+    private function scanResponse(Request $request, string $message, bool $success, array $data = [], ?\Illuminate\Http\RedirectResponse $redirect = null)
+    {
+        if ($request->wantsJson() || $request->ajax()) {
+            $payload = array_merge([
+                'success' => $success,
+                'message' => $message,
+            ], $data);
+
+            return response()->json($payload, $success ? 200 : 422);
+        }
+
+        if ($success) {
+            return $redirect
+                ? $redirect->with('success', $message)
+                : back()->with('success', $message);
+        }
+
+        return back()->withErrors(['token' => $message])->withInput();
+    }
+
+    /**
+     * Public verify page - accepts token as query param or form input.
+     */
+    public function verify(Request $request)
+    {
+        $token = $request->query('t');
+
+        return view('dormitory.permits.verify', compact('token'));
+    }
+
+    /**
+     * Handle verify action from both internal scan page and public verify page.
+     */
+    public function verifyStore(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string|min:10',
+            'action' => 'sometimes|in:pickup:return,return',
+        ]);
+
+        $studentId = DormitoryPermit::verifyScanToken($request->token);
+        if (! $studentId) {
+            return back()->withErrors(['token' => 'Token tidak valid atau izin tidak ditemukan.'])->withInput();
+        }
+
+        $permit = DormitoryPermit::where('student_id', $studentId)
+            ->whereNotNull('scan_token')
+            ->first();
+
+        if (! $permit) {
+            return back()->withErrors(['token' => 'Token tidak cocok dengan izin mana pun.'])->withInput();
+        }
+
+        if ($request->action === 'return') {
+            try {
+                $this->leave->recordReturn(
+                    permitId: $permit->id,
+                    dormitoryId: $permit->dormitory_id,
+                    actualReturnDatetime: $request->actual_return_datetime ?? now(),
+                );
+
+                return redirect()->route('permits.verify', ['t' => $request->token])
+                    ->with('success', 'Santri berhasil ditandai sudah kembali.');
+            } catch (\Exception $e) {
+                return back()->withErrors(['return' => $e->getMessage()])->withInput();
+            }
+        }
+
+        // Default: pickup mode
+        $permit->update([
+            'scanned_at' => now(),
+            'scanned_by' => auth()->id(),
+            'last_actioned_by' => auth()->id(),
+            'pickup_details' => [
+                'mode' => 'web',
+                'scanned_at' => now()->toDateTimeString(),
+                'scanner_name' => auth()->user()?->name ?? 'Anonymous',
+            ],
+        ]);
+
+        return redirect()->route('permits.verify', ['t' => $request->token])
+            ->with('success', 'Pengambilan santri berhasil dicatat.');
+    }
+
+    /**
+     * Public verify by token — direct URL open from mobile/camera scan.
+     */
+    public function publicVerify(string $token)
+    {
+        $studentId = DormitoryPermit::verifyScanToken($token);
+
+        if (! $studentId) {
+            return view('dormitory.permits.verify', [
+                'token' => null,
+                'error' => 'Token tidak valid. Izin tidak ditemukan.',
+            ]);
+        }
+
+        $permit = DormitoryPermit::where('student_id', $studentId)
+            ->whereNotNull('scan_token')
+            ->first();
+
+        if (! $permit) {
+            return view('dormitory.permits.verify', [
+                'token' => null,
+                'error' => 'Token tidak cocok dengan data izin.',
+            ]);
+        }
+
+        // Auto-verify pickup on public access
+        $permit->update([
+            'scanned_at' => now(),
+            'scanned_by' => null, // public scan = no authenticated user
+            'last_actioned_by' => null,
+            'pickup_details' => [
+                'mode' => 'public_qr',
+                'scanned_at' => now()->toDateTimeString(),
+            ],
+        ]);
+
+        return view('dormitory.permits.verify', compact('permit'), [
+            'success' => "Santri {$permit->student->name} berhasil diverifikasi.",
+        ]);
+    }
+}

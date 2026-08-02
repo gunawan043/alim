@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class GtkContact extends Model
@@ -13,7 +12,9 @@ class GtkContact extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -44,7 +45,7 @@ class GtkContact extends Model
     ];
 
     protected $casts = [
-        'id'      => 'string',
+        'id' => 'string',
         'user_id' => 'string',
     ];
 
@@ -68,8 +69,8 @@ class GtkContact extends Model
     protected function noHp(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value) => $value, 
-            set: fn (?string $value) => $value, 
+            get: fn (?string $value) => $value,
+            set: fn (?string $value) => $value,
         );
     }
 
@@ -98,19 +99,22 @@ class GtkContact extends Model
     public function getMaskedNoHpAttribute(): ?string
     {
         $val = $this->no_hp;
-        return $val ? substr($val, 0, 4) . '****' . substr($val, -3) : null;
+
+        return $val ? substr($val, 0, 4).'****'.substr($val, -3) : null;
     }
 
     public function getMaskedNoWhatsappAttribute(): ?string
     {
         $val = $this->no_whatsapp;
-        return $val ? substr($val, 0, 4) . '****' . substr($val, -3) : null;
+
+        return $val ? substr($val, 0, 4).'****'.substr($val, -3) : null;
     }
 
     public function getMaskedKontakDaruratAttribute(): ?string
     {
         $val = $this->kontak_darurat;
-        return $val ? substr($val, 0, 4) . '****' . substr($val, -3) : null;
+
+        return $val ? substr($val, 0, 4).'****'.substr($val, -3) : null;
     }
 
     /*
@@ -124,15 +128,15 @@ class GtkContact extends Model
         $links = [];
 
         if ($this->instagram) {
-            $links['instagram'] = 'https://instagram.com/' . ltrim($this->instagram, '@');
+            $links['instagram'] = 'https://instagram.com/'.ltrim($this->instagram, '@');
         }
 
         if ($this->facebook) {
-            $links['facebook'] = 'https://facebook.com/' . $this->facebook;
+            $links['facebook'] = 'https://facebook.com/'.$this->facebook;
         }
 
         if ($this->twitter) {
-            $links['twitter'] = 'https://twitter.com/' . ltrim($this->twitter, '@');
+            $links['twitter'] = 'https://twitter.com/'.ltrim($this->twitter, '@');
         }
 
         return $links;
@@ -148,8 +152,8 @@ class GtkContact extends Model
     {
         return $query->where(function ($q) {
             $q->whereNotNull('instagram')
-              ->orWhereNotNull('facebook')
-              ->orWhereNotNull('twitter');
+                ->orWhereNotNull('facebook')
+                ->orWhereNotNull('twitter');
         });
     }
 }

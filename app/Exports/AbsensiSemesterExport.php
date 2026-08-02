@@ -4,21 +4,23 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AbsensiSemesterExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle
+class AbsensiSemesterExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     protected Collection $data;
+
     protected string $rombelName;
+
     protected string $semester;
+
     protected string $academicYear;
 
     public function __construct(Collection $data, string $rombelName, string $semester, string $academicYear)
@@ -74,7 +76,7 @@ class AbsensiSemesterExport implements FromCollection, WithHeadings, WithMapping
             $row['sakit'],
             $row['alpa'],
             $hariEfektif,
-            $persen . '%',
+            $persen.'%',
             '',
         ];
     }

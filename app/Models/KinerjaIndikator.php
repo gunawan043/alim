@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class KinerjaIndikator extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_indikator';
 
     protected $fillable = ['kinerja_komponen_id', 'nama', 'deskripsi', 'bobot_persen', 'urutan', 'is_active'];

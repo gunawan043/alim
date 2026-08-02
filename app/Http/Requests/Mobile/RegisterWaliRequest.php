@@ -6,17 +6,20 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterWaliRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
         return [
-            'name'     => 'required|string|min:2|max:100',
-            'email'    => 'required|email:rfc,strict|unique:users,email',
+            'name' => 'required|string|min:2|max:100',
+            'email' => 'required|email:rfc,strict|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'no_kk'    => 'nullable|string|size:16|regex:/^\d{16}$/',
+            'no_kk' => 'nullable|string|size:16|regex:/^\d{16}$/',
             'nik_wali' => 'nullable|string|size:16|regex:/^\d{16}$/',
-            'no_hp'    => 'nullable|string|min:10|max:20|regex:/^[\d+\-\s]+$/',
+            'no_hp' => 'nullable|string|min:10|max:20|regex:/^[\d+\-\s]+$/',
             'hubungan' => 'nullable|in:ayah,ibu,kakek,nenek,wali,lainnya',
         ];
     }

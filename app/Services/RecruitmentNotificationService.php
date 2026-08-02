@@ -1,13 +1,14 @@
 <?php
+
 // app/Services/RecruitmentNotificationService.php
 
 namespace App\Services;
 
 use App\Models\RecruitmentApplication;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 /**
  * Service untuk mengirim notification ke applicant melalui recruitment app
@@ -39,7 +40,7 @@ class RecruitmentNotificationService
     public static function send(string $type, int $userId, array $payload = []): ?array
     {
         try {
-            $url = self::getBaseUrl() . '/api/notifications/send';
+            $url = self::getBaseUrl().'/api/notifications/send';
 
             $response = Http::withToken(self::getApiToken())
                 ->post($url, [
@@ -65,6 +66,7 @@ class RecruitmentNotificationService
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -75,7 +77,7 @@ class RecruitmentNotificationService
     public static function sendBulk(string $type, array $userIds, array $payload = []): ?array
     {
         try {
-            $url = self::getBaseUrl() . '/api/notifications/send-bulk';
+            $url = self::getBaseUrl().'/api/notifications/send-bulk';
 
             $response = Http::withToken(self::getApiToken())
                 ->post($url, [
@@ -93,6 +95,7 @@ class RecruitmentNotificationService
             Log::error('RecruitmentNotificationService: Bulk send failed', [
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -112,10 +115,11 @@ class RecruitmentNotificationService
     ): ?array {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) {
+        if (! $userId) {
             Log::warning('RecruitmentNotificationService: No user_id for application', [
                 'application_id' => $application->id,
             ]);
+
             return null;
         }
 
@@ -137,7 +141,9 @@ class RecruitmentNotificationService
     ): ?array {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         return self::send('interview_scheduled', $userId, [
             'application_id' => $application->id,
@@ -154,7 +160,9 @@ class RecruitmentNotificationService
     ): ?array {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         return self::send('interview_rescheduled', $userId, [
             'application_id' => $application->id,
@@ -173,7 +181,9 @@ class RecruitmentNotificationService
     ): ?array {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         return self::send('stage_result', $userId, [
             'application_id' => $application->id,
@@ -208,7 +218,9 @@ class RecruitmentNotificationService
     {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         return self::send('application_accepted', $userId, [
             'application_id' => $application->id,
@@ -224,7 +236,9 @@ class RecruitmentNotificationService
     ): ?array {
         $userId = $application->recruitmentProfile->user_id ?? null;
 
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         return self::send('application_rejected', $userId, [
             'application_id' => $application->id,
@@ -246,7 +260,9 @@ class RecruitmentNotificationService
             ->values()
             ->toArray();
 
-        if (empty($userIds)) return null;
+        if (empty($userIds)) {
+            return null;
+        }
 
         return self::sendBulk('application_accepted', $userIds, []);
     }
@@ -265,7 +281,9 @@ class RecruitmentNotificationService
             ->values()
             ->toArray();
 
-        if (empty($userIds)) return null;
+        if (empty($userIds)) {
+            return null;
+        }
 
         return self::sendBulk('application_rejected', $userIds, [
             'reason' => $reason,

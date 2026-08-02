@@ -47,6 +47,7 @@ class PekanEfektifController extends Controller
     public function create(Request $request)
     {
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
+
         return view('waka.pekan-efektif.create', compact('academicYears'));
     }
 
@@ -54,12 +55,12 @@ class PekanEfektifController extends Controller
     {
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
-            'semester'         => 'required|in:1,2',
-            'minggu_ke'        => 'required|integer|min:1|max:52',
-            'tanggal_mulai'    => 'required|date',
-            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
-            'jenis'            => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
-            'keterangan'       => 'nullable|string|max:255',
+            'semester' => 'required|in:1,2',
+            'minggu_ke' => 'required|integer|min:1|max:52',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
+            'keterangan' => 'nullable|string|max:255',
         ]);
 
         $validated['school_id'] = $request->attributes->get('schoolContextId');
@@ -77,6 +78,7 @@ class PekanEfektifController extends Controller
         }
 
         PekanEfektif::create($validated);
+
         return redirect()->route('waka.pekan-efektif.index')
             ->with('success', 'Pekan efektif berhasil ditambahkan.');
     }
@@ -85,7 +87,7 @@ class PekanEfektifController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $query = PekanEfektif::with(['academicYear:id,name'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $pekan = $query->findOrFail($id);
 
         return view('waka.pekan-efektif.show', compact('pekan'));
@@ -94,7 +96,7 @@ class PekanEfektifController extends Controller
     public function edit(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $query = PekanEfektif::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+        $query = PekanEfektif::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $pekan = $query->findOrFail($id);
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
 
@@ -104,19 +106,20 @@ class PekanEfektifController extends Controller
     public function update(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $pekan = PekanEfektif::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $pekan = PekanEfektif::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
-            'semester'         => 'required|in:1,2',
-            'minggu_ke'        => 'required|integer|min:1|max:52',
-            'tanggal_mulai'    => 'required|date',
-            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
-            'jenis'            => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
-            'keterangan'       => 'nullable|string|max:255',
+            'semester' => 'required|in:1,2',
+            'minggu_ke' => 'required|integer|min:1|max:52',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
+            'keterangan' => 'nullable|string|max:255',
         ]);
 
         $pekan->update($validated);
+
         return redirect()->route('waka.pekan-efektif.show', $pekan->id)
             ->with('success', 'Pekan efektif berhasil diperbarui.');
     }
@@ -124,7 +127,7 @@ class PekanEfektifController extends Controller
     public function destroy(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $pekan = PekanEfektif::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $pekan = PekanEfektif::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
         $pekan->delete();
 
         return redirect()->route('waka.pekan-efektif.index')

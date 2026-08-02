@@ -46,8 +46,8 @@ trait NotifiableUniversal
      */
     public function getNotificationReferenceCode()
     {
-        return property_exists($this, 'notificationReferenceCode') 
-            ? $this->{$this->notificationReferenceCode} 
+        return property_exists($this, 'notificationReferenceCode')
+            ? $this->{$this->notificationReferenceCode}
             : $this->id;
     }
 
@@ -56,8 +56,8 @@ trait NotifiableUniversal
      */
     public function getNotificationModule()
     {
-        return property_exists($this, 'notificationModule') 
-            ? $this->notificationModule 
+        return property_exists($this, 'notificationModule')
+            ? $this->notificationModule
             : strtolower(class_basename($this));
     }
 }

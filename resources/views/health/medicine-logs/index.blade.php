@@ -68,7 +68,7 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Pemberian Obat ke Santi</h5>
+                            <h5 class="card-title mb-0">Pemberian Obat ke Santri</h5>
                             <p class="text-muted mb-0 small">Dokumentasi pemberian obat di UKS pondok</p>
                         </div>
                         <div class="col-sm-auto">
@@ -82,7 +82,7 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" placeholder="Nama Santi..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control" placeholder="Nama Santri..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
                             <select name="study_group_id" class="form-control">
@@ -116,7 +116,7 @@
                                 <tr>
                                     <th style="width:40px">#</th>
                                     <th>Tanggal</th>
-                                    <th>Nama Santi</th>
+                                    <th>Nama Santri</th>
                                     <th>Obat</th>
                                     <th class="text-center">Jumlah</th>
                                     <th>Dosis</th>

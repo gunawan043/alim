@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class GtkEmployment extends Model
@@ -13,7 +12,9 @@ class GtkEmployment extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -55,15 +56,15 @@ class GtkEmployment extends Model
     ];
 
     protected $casts = [
-        'id'              => 'string',
-        'user_id'         => 'string',
-        'school_id'       => 'string',
+        'id' => 'string',
+        'user_id' => 'string',
+        'school_id' => 'string',
         'academic_year_id' => 'string',
-        'study_group_id'  => 'string',
-        'tmt'             => 'date',
-        'tanggal_sk'      => 'date',
-        'decree_date'     => 'date',
-        'is_homeroom'     => 'boolean',
+        'study_group_id' => 'string',
+        'tmt' => 'date',
+        'tanggal_sk' => 'date',
+        'decree_date' => 'date',
+        'is_homeroom' => 'boolean',
     ];
 
     /*
@@ -138,6 +139,7 @@ class GtkEmployment extends Model
     public function isNupyEncrypted(): bool
     {
         $raw = $this->getRawOriginal('nupy');
+
         return $raw && str_starts_with($raw, 'eyJpdiI6');
     }
 
@@ -147,6 +149,7 @@ class GtkEmployment extends Model
     public function isNomorSkEncrypted(): bool
     {
         $raw = $this->getRawOriginal('nomor_sk');
+
         return $raw && str_starts_with($raw, 'eyJpdiI6');
     }
 
@@ -175,31 +178,31 @@ class GtkEmployment extends Model
     public function getMaskedNupyAttribute(): ?string
     {
         $val = $this->nupy; // Sudah otomatis decrypt atau plain
-        if (!$val) {
+        if (! $val) {
             return null;
         }
-        
+
         // Masking: 4 karakter awal + **** + 2 karakter akhir
         if (strlen($val) <= 6) {
-            return substr($val, 0, 2) . '****';
+            return substr($val, 0, 2).'****';
         }
-        
-        return substr($val, 0, 4) . '****' . substr($val, -2);
+
+        return substr($val, 0, 4).'****'.substr($val, -2);
     }
 
     public function getMaskedNomorSkAttribute(): ?string
     {
         $val = $this->nomor_sk; // Sudah otomatis decrypt atau plain
-        if (!$val) {
+        if (! $val) {
             return null;
         }
-        
+
         // Masking untuk format SK: contoh "1234/SK/2024" -> "1234/****/2024"
         if (strlen($val) <= 10) {
-            return substr($val, 0, 4) . '/****/' . substr($val, -4);
+            return substr($val, 0, 4).'/****/'.substr($val, -4);
         }
-        
-        return substr($val, 0, 6) . '/****/' . substr($val, -4);
+
+        return substr($val, 0, 6).'/****/'.substr($val, -4);
     }
 
     /*
@@ -215,28 +218,34 @@ class GtkEmployment extends Model
 
     public function getMasaKerjaAttribute(): ?int
     {
-        if (!$this->tmt) {
+        if (! $this->tmt) {
             return null;
         }
-        
+
         return $this->tmt->diffInYears(now());
     }
 
     public function getMasaKerjaDetailAttribute(): ?string
     {
-        if (!$this->tmt) {
+        if (! $this->tmt) {
             return null;
         }
-        
+
         $years = $this->tmt->diffInYears(now());
         $months = $this->tmt->diffInMonths(now()) % 12;
         $days = $this->tmt->diffInDays(now()) % 30;
-        
+
         $parts = [];
-        if ($years > 0) $parts[] = "{$years} tahun";
-        if ($months > 0) $parts[] = "{$months} bulan";
-        if ($days > 0 && $years == 0) $parts[] = "{$days} hari";
-        
+        if ($years > 0) {
+            $parts[] = "{$years} tahun";
+        }
+        if ($months > 0) {
+            $parts[] = "{$months} bulan";
+        }
+        if ($days > 0 && $years == 0) {
+            $parts[] = "{$days} hari";
+        }
+
         return implode(' ', $parts) ?: 'Kurang dari 1 bulan';
     }
 
@@ -257,13 +266,13 @@ class GtkEmployment extends Model
     */
 
     const STATUS_LABELS = [
-        'PTT'       => 'Pegawai Tidak Tetap',
-        'PTY'       => 'Pegawai Tetap Yayasan',
+        'PTT' => 'Pegawai Tidak Tetap',
+        'PTY' => 'Pegawai Tetap Yayasan',
         'Percobaan' => 'Masa Percobaan',
-        'Magang'    => 'Magang',
-        'GTT'       => 'Guru Tidak Tetap',
-        'GTY'       => 'Guru Tetap Yayasan',
-        'KONTRAK'   => 'Kontrak',
+        'Magang' => 'Magang',
+        'GTT' => 'Guru Tidak Tetap',
+        'GTY' => 'Guru Tetap Yayasan',
+        'KONTRAK' => 'Kontrak',
     ];
 
     const STATUS_LIST = [

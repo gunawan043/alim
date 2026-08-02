@@ -4,17 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\TodoRequest;
 use App\Models\Todo;
+use App\Models\TodoAttachment;
+use App\Models\TodoComment;
 use App\Models\TodoList;
 use App\Models\TodoSubtask;
-use App\Models\TodoComment;
-use App\Models\TodoAttachment;
 use App\Models\TodoWatcher;
 use App\Models\User;
 use App\Services\NotificationUniversalService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
 class TodoController extends Controller
@@ -67,10 +66,10 @@ class TodoController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'todoLists' => $todoLists,
-                'stats'     => $stats,
-                'todos'     => $todos->items(),
+                'stats' => $stats,
+                'todos' => $todos->items(),
                 'currentPage' => $todos->currentPage(),
-                'lastPage'  => $todos->lastPage(),
+                'lastPage' => $todos->lastPage(),
             ]);
         }
 
@@ -82,10 +81,10 @@ class TodoController extends Controller
             'stats' => $stats,
             'todos' => $todos,
             'filters' => [
-                'status'   => $request->get('status', ''),
+                'status' => $request->get('status', ''),
                 'priority' => $request->get('priority', ''),
-                'search'   => $request->get('search', ''),
-                'sort_by'  => $request->get('sort_by', 'sort_order'),
+                'search' => $request->get('search', ''),
+                'sort_by' => $request->get('sort_by', 'sort_order'),
                 'sort_dir' => $request->get('sort_dir', 'asc'),
             ],
             'userOptions' => User::query()
@@ -125,14 +124,14 @@ class TodoController extends Controller
             $todo->delegated_by,
         ]) || $todo->watchers->contains('user_id', $userId);
 
-        if (!$canView && $todo->is_private) {
+        if (! $canView && $todo->is_private) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
         return response()->json([
             'success' => true,
             'data' => array_merge($todo->toArray(), [
-                'status_badge_class'   => $todo->status_badge_class,
+                'status_badge_class' => $todo->status_badge_class,
                 'priority_badge_class' => $todo->priority_badge_class,
             ]),
         ]);
@@ -160,7 +159,7 @@ class TodoController extends Controller
             }
 
             // If owner is different from creator, it's delegated
-            if (!empty($data['owner_id']) && $data['owner_id'] !== $userId) {
+            if (! empty($data['owner_id']) && $data['owner_id'] !== $userId) {
                 $data['delegated_by'] = $userId;
                 $data['delegated_at'] = now();
             }
@@ -169,19 +168,19 @@ class TodoController extends Controller
             $data['created_at_timezone'] = config('app.timezone');
 
             // Convert boolean-like values to integer (checkbox unchecked = key not sent, default to 0)
-            $data['is_pinned']   = isset($data['is_pinned'])   ? 1 : 0;
+            $data['is_pinned'] = isset($data['is_pinned']) ? 1 : 0;
             $data['is_private'] = isset($data['is_private']) ? 1 : 0;
 
             $todo = Todo::create($data);
 
             // Create subtasks if provided (form sends subtasks[N][title])
-            if (!empty($request->subtasks) && is_array($request->subtasks)) {
+            if (! empty($request->subtasks) && is_array($request->subtasks)) {
                 foreach ($request->subtasks as $index => $st) {
                     $title = is_array($st) ? ($st['title'] ?? '') : ($st ?? '');
-                    if (!empty(trim($title))) {
+                    if (! empty(trim($title))) {
                         TodoSubtask::create([
-                            'todo_id'    => $todo->id,
-                            'title'      => trim($title),
+                            'todo_id' => $todo->id,
+                            'title' => trim($title),
                             'sort_order' => $index,
                         ]);
                     }
@@ -199,15 +198,16 @@ class TodoController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message'  => 'Tugas berhasil dibuat.',
-                'data'    => $todo,
+                'message' => 'Tugas berhasil dibuat.',
+                'data' => $todo,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('TodoController@store error: ' . $e->getMessage());
+            Log::error('TodoController@store error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membuat tugas: ' . $e->getMessage(),
+                'message' => 'Gagal membuat tugas: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -215,13 +215,13 @@ class TodoController extends Controller
     public function update(TodoRequest $request, string $id): JsonResponse
     {
         $todo = $this->findTodoOrFail($id);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $userId = auth()->id();
 
         // Authorization: only owner, creator, or delegator can update
-        if (!in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by])) {
+        if (! in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by])) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
@@ -231,7 +231,7 @@ class TodoController extends Controller
         DB::beginTransaction();
         try {
             // If delegating to someone else
-            if (!empty($data['owner_id']) && $data['owner_id'] !== $todo->owner_id && $data['owner_id'] !== $todo->created_by) {
+            if (! empty($data['owner_id']) && $data['owner_id'] !== $todo->owner_id && $data['owner_id'] !== $todo->created_by) {
                 $data['delegated_by'] = $userId;
                 $data['delegated_at'] = now();
             }
@@ -259,15 +259,16 @@ class TodoController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message'  => 'Tugas berhasil diperbarui.',
-                'data'    => $todo,
+                'message' => 'Tugas berhasil diperbarui.',
+                'data' => $todo,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('TodoController@update error: ' . $e->getMessage());
+            Log::error('TodoController@update error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memperbarui tugas: ' . $e->getMessage(),
+                'message' => 'Gagal memperbarui tugas: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -275,12 +276,12 @@ class TodoController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $todo = $this->findTodoOrFail($id);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $userId = auth()->id();
 
-        if (!in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by])) {
+        if (! in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by])) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
@@ -288,7 +289,7 @@ class TodoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Tugas berhasil dihapus.',
+            'message' => 'Tugas berhasil dihapus.',
         ]);
     }
 
@@ -297,7 +298,7 @@ class TodoController extends Controller
     public function subtaskStore(Request $request, string $todoId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $data = $request->validate([
@@ -305,8 +306,8 @@ class TodoController extends Controller
         ]);
 
         $subtask = TodoSubtask::create([
-            'todo_id'    => $todo->id,
-            'title'      => $data['title'],
+            'todo_id' => $todo->id,
+            'title' => $data['title'],
             'sort_order' => $todo->subtasks()->max('sort_order') + 1,
         ]);
 
@@ -314,9 +315,9 @@ class TodoController extends Controller
         $todo->recalculateProgress();
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Subtask berhasil ditambahkan.',
-            'data'     => $subtask,
+            'success' => true,
+            'message' => 'Subtask berhasil ditambahkan.',
+            'data' => $subtask,
             'progress' => $todo->fresh()->progress_percent,
         ], 201);
     }
@@ -324,7 +325,7 @@ class TodoController extends Controller
     public function subtaskToggle(string $todoId, string $subtaskId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $subtask = $todo->subtasks()->findOrFail($subtaskId);
@@ -338,9 +339,9 @@ class TodoController extends Controller
         $todo->recalculateProgress();
 
         return response()->json([
-            'success'  => true,
-            'message'  => $subtask->is_completed ? 'Subtask selesai.' : 'Subtask dibatalkan.',
-            'data'     => $subtask->fresh(),
+            'success' => true,
+            'message' => $subtask->is_completed ? 'Subtask selesai.' : 'Subtask dibatalkan.',
+            'data' => $subtask->fresh(),
             'progress' => $todo->fresh()->progress_percent,
         ]);
     }
@@ -348,7 +349,7 @@ class TodoController extends Controller
     public function subtaskDestroy(string $todoId, string $subtaskId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $subtask = $todo->subtasks()->findOrFail($subtaskId);
@@ -357,8 +358,8 @@ class TodoController extends Controller
         $todo->recalculateProgress();
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Subtask berhasil dihapus.',
+            'success' => true,
+            'message' => 'Subtask berhasil dihapus.',
             'progress' => $todo->fresh()->progress_percent,
         ]);
     }
@@ -368,18 +369,18 @@ class TodoController extends Controller
     public function commentStore(Request $request, string $todoId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
         $data = $request->validate([
-            'comment'          => 'required|string|max:5000',
+            'comment' => 'required|string|max:5000',
             'parent_comment_id' => 'nullable|uuid|exists:todo_comments,id',
         ]);
 
         $comment = TodoComment::create([
-            'todo_id'          => $todo->id,
-            'user_id'          => auth()->id(),
-            'comment'          => $data['comment'],
+            'todo_id' => $todo->id,
+            'user_id' => auth()->id(),
+            'comment' => $data['comment'],
             'parent_comment_id' => $data['parent_comment_id'] ?? null,
         ]);
 
@@ -388,7 +389,7 @@ class TodoController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Komentar berhasil ditambahkan.',
-            'data'    => $comment,
+            'data' => $comment,
         ], 201);
     }
 
@@ -405,7 +406,7 @@ class TodoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Komentar berhasil dihapus.',
+            'message' => 'Komentar berhasil dihapus.',
         ]);
     }
 
@@ -414,7 +415,7 @@ class TodoController extends Controller
     public function attachmentStore(Request $request, string $todoId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
 
@@ -426,11 +427,11 @@ class TodoController extends Controller
         $path = $file->store('attachments/todos', 'public');
 
         $attachment = TodoAttachment::create([
-            'todo_id'     => $todo->id,
-            'file_name'   => $file->getClientOriginalName(),
-            'file_path'   => $path,
-            'file_size'   => $file->getSize(),
-            'file_type'   => $file->getMimeType(),
+            'todo_id' => $todo->id,
+            'file_name' => $file->getClientOriginalName(),
+            'file_path' => $path,
+            'file_size' => $file->getSize(),
+            'file_type' => $file->getMimeType(),
             'uploaded_by' => auth()->id(),
         ]);
 
@@ -439,7 +440,7 @@ class TodoController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Lampiran berhasil diunggah.',
-            'data'    => $attachment,
+            'data' => $attachment,
         ], 201);
     }
 
@@ -455,7 +456,7 @@ class TodoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Lampiran berhasil dihapus.',
+            'message' => 'Lampiran berhasil dihapus.',
         ]);
     }
 
@@ -464,7 +465,7 @@ class TodoController extends Controller
     public function watcherAdd(Request $request, string $todoId): JsonResponse
     {
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
 
@@ -475,7 +476,7 @@ class TodoController extends Controller
         if (TodoWatcher::isWatching($todoId, $data['user_id'])) {
             return response()->json([
                 'success' => false,
-                'message'  => 'Pengguna sudah menjadi pengamat.',
+                'message' => 'Pengguna sudah menjadi pengamat.',
             ], 422);
         }
 
@@ -489,19 +490,19 @@ class TodoController extends Controller
 
         // Notify the new watcher
         $this->notificationService->send($data['user_id'], [
-            'module'     => 'todo',
-            'type'       => 'info',
-            'title'      => 'Anda ditambahkan sebagai pengamat',
-            'message'    => 'Anda sekarang mengamati tugas: ' . $todo->title,
-            'action'     => 'view',
+            'module' => 'todo',
+            'type' => 'info',
+            'title' => 'Anda ditambahkan sebagai pengamat',
+            'message' => 'Anda sekarang mengamati tugas: '.$todo->title,
+            'action' => 'view',
             'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
-            'priority'   => 'low',
+            'priority' => 'low',
         ]);
 
         return response()->json([
             'success' => true,
-            'message'  => 'Pengamat berhasil ditambahkan.',
-            'data'    => $watcher,
+            'message' => 'Pengamat berhasil ditambahkan.',
+            'data' => $watcher,
         ], 201);
     }
 
@@ -512,11 +513,11 @@ class TodoController extends Controller
         // Owner, creator, delegator, or the watcher themselves can remove
         $userId = auth()->id();
         $todo = $this->findTodoOrFail($todoId);
-        if (!$todo) {
+        if (! $todo) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
 
-        if (!in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by, $watcher->user_id])) {
+        if (! in_array($userId, [$todo->owner_id, $todo->created_by, $todo->delegated_by, $watcher->user_id])) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
@@ -524,7 +525,7 @@ class TodoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Pengamat berhasil dihapus.',
+            'message' => 'Pengamat berhasil dihapus.',
         ]);
     }
 
@@ -538,30 +539,30 @@ class TodoController extends Controller
 
         $baseQuery = match ($tab) {
             'delegated' => $query->delegatedBy($userId),
-            'watched'   => $query->watchedBy($userId)->notPrivate(),
-            default     => $query->where(fn ($q) => $q
+            'watched' => $query->watchedBy($userId)->notPrivate(),
+            default => $query->where(fn ($q) => $q
                 ->ownedBy($userId)
                 ->orWhere(fn ($q2) => $q2->delegatedBy($userId)->where('owner_id', $userId))
             ),
         };
 
         return [
-            'total'      => (clone $baseQuery)->count(),
-            'completed'  => (clone $baseQuery)->byStatus('selesai')->count(),
-            'in_progress'=> (clone $baseQuery)->byStatus('sedang_berjalan')->count(),
-            'overdue'    => (clone $baseQuery)->overdue()->count(),
+            'total' => (clone $baseQuery)->count(),
+            'completed' => (clone $baseQuery)->byStatus('selesai')->count(),
+            'in_progress' => (clone $baseQuery)->byStatus('sedang_berjalan')->count(),
+            'overdue' => (clone $baseQuery)->overdue()->count(),
         ];
     }
 
     protected function getTodos(string $userId, string $tab, Request $request)
     {
         $filters = [
-            'status'   => $request->get('status'),
+            'status' => $request->get('status'),
             'priority' => $request->get('priority'),
-            'search'   => $request->get('search'),
-            'sort_by'  => $request->get('sort_by', 'sort_order'),
+            'search' => $request->get('search'),
+            'sort_by' => $request->get('sort_by', 'sort_order'),
             'sort_dir' => $request->get('sort_dir', 'asc'),
-            'list_id'  => $request->get('list_id'),
+            'list_id' => $request->get('list_id'),
         ];
 
         $query = Todo::withFilters($filters)
@@ -569,8 +570,8 @@ class TodoController extends Controller
 
         return match ($tab) {
             'delegated' => $query->delegatedBy($userId)->paginate(20)->withQueryString(),
-            'watched'   => $query->watchedBy($userId)->notPrivate()->paginate(20)->withQueryString(),
-            default     => $query
+            'watched' => $query->watchedBy($userId)->notPrivate()->paginate(20)->withQueryString(),
+            default => $query
                 ->where(fn ($q) => $q
                     ->where('owner_id', $userId)
                     ->orWhere(fn ($q2) => $q2
@@ -589,24 +590,24 @@ class TodoController extends Controller
 
         // Notify owner
         $this->notificationService->send($todo->owner_id, [
-            'module'     => 'todo',
-            'type'       => 'info',
-            'title'      => 'Tugas baru didelegasikan',
-            'message'    => $delegator->name . ' telah mendelegasikan tugas "' . $todo->title . '" kepada Anda. Batas waktu: ' . ($todo->due_date?->format('d/m/Y') ?? '-'),
-            'action'     => 'view',
+            'module' => 'todo',
+            'type' => 'info',
+            'title' => 'Tugas baru didelegasikan',
+            'message' => $delegator->name.' telah mendelegasikan tugas "'.$todo->title.'" kepada Anda. Batas waktu: '.($todo->due_date?->format('d/m/Y') ?? '-'),
+            'action' => 'view',
             'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
-            'priority'   => $todo->priority === 'mendesak' ? 'high' : 'medium',
+            'priority' => $todo->priority === 'mendesak' ? 'high' : 'medium',
         ]);
 
         // Notify watchers
         $watcherIds = $todo->watchers()->pluck('user_id')->toArray();
-        if (!empty($watcherIds)) {
+        if (! empty($watcherIds)) {
             $this->notificationService->sendToMany($watcherIds, [
-                'module'  => 'todo',
-                'type'    => 'info',
-                'title'   => 'Tugas baru di-Amati',
-                'message' => 'Tugas "' . $todo->title . '" telah dibuat dan Anda mengamati tugas ini.',
-                'action'  => 'view',
+                'module' => 'todo',
+                'type' => 'info',
+                'title' => 'Tugas baru di-Amati',
+                'message' => 'Tugas "'.$todo->title.'" telah dibuat dan Anda mengamati tugas ini.',
+                'action' => 'view',
                 'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
                 'priority' => 'low',
             ]);
@@ -620,27 +621,27 @@ class TodoController extends Controller
         // Notify delegator
         if ($todo->delegated_by) {
             $this->notificationService->send($todo->delegated_by, [
-                'module'     => 'todo',
-                'type'       => 'success',
-                'title'      => 'Tugas selesai',
-                'message'    => $completer->name . ' telah menyelesaikan tugas "' . $todo->title . '".',
-                'action'     => 'view',
+                'module' => 'todo',
+                'type' => 'success',
+                'title' => 'Tugas selesai',
+                'message' => $completer->name.' telah menyelesaikan tugas "'.$todo->title.'".',
+                'action' => 'view',
                 'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
-                'priority'   => 'low',
+                'priority' => 'low',
             ]);
         }
 
         // Notify all watchers
         $watcherIds = $todo->watchers()->pluck('user_id')->toArray();
-        if (!empty($watcherIds)) {
+        if (! empty($watcherIds)) {
             $this->notificationService->sendToMany($watcherIds, [
-                'module'     => 'todo',
-                'type'       => 'success',
-                'title'      => 'Tugas selesai',
-                'message'    => 'Tugas "' . $todo->title . '" yang Anda amati telah selesai.',
-                'action'     => 'view',
+                'module' => 'todo',
+                'type' => 'success',
+                'title' => 'Tugas selesai',
+                'message' => 'Tugas "'.$todo->title.'" yang Anda amati telah selesai.',
+                'action' => 'view',
                 'action_url' => route('user.todos.index', ['userId' => $todo->owner_id]),
-                'priority'   => 'low',
+                'priority' => 'low',
             ]);
         }
     }

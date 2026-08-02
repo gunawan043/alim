@@ -11,8 +11,11 @@ class ChecklistTemplateItem extends Model
     use HasFactory;
 
     protected $table = 'checklist_template_items';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

@@ -34,7 +34,7 @@ $(document).ready(function () {
         width: 'resolve',
         language: {
             noResults: function () {
-                return 'Nama Santi tidak ditemukan';
+                return 'Nama Santri tidak ditemukan';
             }
         }
     });

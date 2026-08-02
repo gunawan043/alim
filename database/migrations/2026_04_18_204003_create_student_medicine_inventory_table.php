@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_medicine_inventory', function (Blueprint $table) {
@@ -12,7 +13,7 @@ return new class extends Migration {
             $table->uuid('school_id');
             $table->string('medicine_name', 191);
             $table->string('medicine_code', 50)->nullable()
-                  ->comment('Kode obat unik di UKS');
+                ->comment('Kode obat unik di UKS');
             $table->enum('category', [
                 'obat_dalam',
                 'obat_luar',
@@ -22,18 +23,18 @@ return new class extends Migration {
             ]);
             $table->string('generic_name', 191)->nullable();
             $table->string('unit', 50)
-                  ->comment('Satuan: tablet, kapsul, sirup_ml, botol, lembar, unit');
+                ->comment('Satuan: tablet, kapsul, sirup_ml, botol, lembar, unit');
             $table->decimal('current_stock', 10, 2)->default(0);
             $table->decimal('min_stock_alert', 10, 2)->default(0)
-                  ->comment('Batas minimum untuk trigger alert');
+                ->comment('Batas minimum untuk trigger alert');
             $table->date('expiry_date')->nullable();
             $table->string('storage_location', 191)->nullable()
-                  ->comment('Lokasi penyimpanan: lemari A1, dll');
+                ->comment('Lokasi penyimpanan: lemari A1, dll');
             $table->string('supplier', 191)->nullable();
             $table->date('purchase_date')->nullable();
             $table->decimal('unit_price', 12, 2)->nullable();
             $table->text('dosage_info')->nullable()
-                  ->comment('Info dosis umum untuk referensi');
+                ->comment('Info dosis umum untuk referensi');
             $table->text('notes')->nullable();
             $table->timestamps();
 

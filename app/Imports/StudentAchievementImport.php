@@ -5,10 +5,8 @@ namespace App\Imports;
 use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentAchievement;
-use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -17,14 +15,21 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 class StudentAchievementImport implements ToCollection, WithHeadingRow, WithValidation
 {
     protected string $schoolId;
+
     protected ?string $academicYearId;
+
     protected array $uploadedFiles;   // filename => \Illuminate\Http\UploadedFile
+
     protected string $userId;
+
     protected string $achievementType;
+
     protected ?string $hafalanCategory;
 
     protected array $errors = [];
+
     protected array $successes = [];
+
     protected array $studentMap = []; // nisn (lowercase) => Student
 
     public function __construct(
@@ -85,35 +90,46 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
             }
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->errors[] = "Error fatal: " . $e->getMessage();
+            $this->errors[] = 'Error fatal: '.$e->getMessage();
         }
     }
 
     public function rules(): array
     {
         return [
-            'nisn'        => 'required|string|max:30',
-            'nama_lomba'  => 'required|string|max:191',
-            'penyelenggara'=> 'nullable|string|max:191',
-            'tingkat'     => 'nullable|string|max:50',
-            'peringkat'   => 'nullable|string|max:100',
-            'tanggal'     => 'nullable|string|max:20',
-            'lokasi'      => 'nullable|string|max:191',
-            'keterangan'  => 'nullable|string|max:500',
+            'nisn' => 'required|string|max:30',
+            'nama_lomba' => 'required|string|max:191',
+            'penyelenggara' => 'nullable|string|max:191',
+            'tingkat' => 'nullable|string|max:50',
+            'peringkat' => 'nullable|string|max:100',
+            'tanggal' => 'nullable|string|max:20',
+            'lokasi' => 'nullable|string|max:191',
+            'keterangan' => 'nullable|string|max:500',
         ];
     }
 
     public function customValidationMessages(): array
     {
         return [
-            'nisn.required'       => 'NISN wajib diisi.',
+            'nisn.required' => 'NISN wajib diisi.',
             'nama_lomba.required' => 'Nama lomba / kompetisi wajib diisi.',
         ];
     }
 
-    public function getErrors(): array { return $this->errors; }
-    public function getSuccessCount(): int { return count($this->successes); }
-    public function getSuccesses(): array { return $this->successes; }
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+    public function getSuccessCount(): int
+    {
+        return count($this->successes);
+    }
+
+    public function getSuccesses(): array
+    {
+        return $this->successes;
+    }
 
     // ─── Row Processing ───────────────────────────────────────────────────
 
@@ -133,7 +149,7 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
         $student = $this->studentMap[strtolower($nisn)] ?? null;
 
         // Try fuzzy name match from optional column
-        if (!$student && !empty($row['nama_siswa'])) {
+        if (! $student && ! empty($row['nama_siswa'])) {
             $nameRef = strtolower(trim($row['nama_siswa']));
             foreach ($this->studentMap as $s) {
                 if (str_contains(strtolower($s->name), $nameRef)) {
@@ -143,7 +159,7 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
             }
         }
 
-        if (!$student) {
+        if (! $student) {
             return "Baris {$rowNumber}: Siswa dengan NISN '{$nisn}' tidak ditemukan atau tidak aktif.";
         }
 
@@ -153,7 +169,7 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
         $position = $this->normalizePosition($row['peringkat'] ?? '');
         // Parse date
         $eventDate = $this->parseDate($row['tanggal'] ?? '');
-        if (!$eventDate) {
+        if (! $eventDate) {
             return "Baris {$rowNumber}: Tanggal tidak valid. Gunakan format DD/MM/YYYY (contoh: 15/03/2024).";
         }
 
@@ -162,26 +178,26 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
 
         // Academic year fallback
         $academicYearId = $this->academicYearId;
-        if (!$academicYearId) {
+        if (! $academicYearId) {
             $activeYear = AcademicYear::where('is_active', true)->first();
             $academicYearId = $activeYear?->id;
         }
 
         $data = [
-            'student_id'        => $student->id,
-            'school_id'         => $this->schoolId,
-            'academic_year_id'  => $academicYearId,
-            'achievement_type'  => $this->achievementType,
-            'hafalan_category'  => $this->hafalanCategory,
-            'event_name'        => $eventName,
-            'organizer'         => trim($row['penyelenggara'] ?? '') ?: null,
-            'level'             => $level,
-            'position'          => $position,
-            'position_detail'   => $position === 'lainnya' ? (trim($row['peringkat'] ?? '') ?: null) : null,
-            'event_date'        => $eventDate,
-            'event_location'    => trim($row['lokasi'] ?? '') ?: null,
-            'notes'             => trim($row['keterangan'] ?? '') ?: null,
-            'created_by'        => $this->userId,
+            'student_id' => $student->id,
+            'school_id' => $this->schoolId,
+            'academic_year_id' => $academicYearId,
+            'achievement_type' => $this->achievementType,
+            'hafalan_category' => $this->hafalanCategory,
+            'event_name' => $eventName,
+            'organizer' => trim($row['penyelenggara'] ?? '') ?: null,
+            'level' => $level,
+            'position' => $position,
+            'position_detail' => $position === 'lainnya' ? (trim($row['peringkat'] ?? '') ?: null) : null,
+            'event_date' => $eventDate,
+            'event_location' => trim($row['lokasi'] ?? '') ?: null,
+            'notes' => trim($row['keterangan'] ?? '') ?: null,
+            'created_by' => $this->userId,
         ];
 
         if ($certPath) {
@@ -191,6 +207,7 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
         StudentAchievement::create($data);
 
         $this->successes[] = "{$student->name} — {$eventName}";
+
         return true;
     }
 
@@ -209,11 +226,13 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
             }
         }
 
-        if (!$matched) return null;
+        if (! $matched) {
+            return null;
+        }
 
-        $dir = 'student-achievements/certificates/' . date('Y/m');
+        $dir = 'student-achievements/certificates/'.date('Y/m');
         $ext = strtolower($matched->getClientOriginalExtension());
-        $storedName = Str::uuid() . '.' . $ext;
+        $storedName = Str::uuid().'.'.$ext;
         $path = $matched->storeAs($dir, $storedName, 'public');
 
         return $path;
@@ -224,25 +243,26 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
     private function normalizeLevel(?string $val): string
     {
         $map = [
-            'internal'        => 'internal',
-            'internal sekolah'=> 'internal',
-            'sekolah'        => 'internal',
-            'kelas'          => 'internal',
-            'kecamatan'      => 'kecamatan',
-            'kec'            => 'kecamatan',
-            'kabupaten'      => 'kabupaten_kota',
+            'internal' => 'internal',
+            'internal sekolah' => 'internal',
+            'sekolah' => 'internal',
+            'kelas' => 'internal',
+            'kecamatan' => 'kecamatan',
+            'kec' => 'kecamatan',
+            'kabupaten' => 'kabupaten_kota',
             'kabupaten kota' => 'kabupaten_kota',
-            'kab'            => 'kabupaten_kota',
-            'kota'           => 'kabupaten_kota',
-            'provinsi'       => 'provinsi',
-            'prov'           => 'provinsi',
-            'nasional'       => 'nasional',
-            'nas'            => 'nasional',
-            'internasional'  => 'internasional',
-            'international'  => 'internasional',
-            'internasional'  => 'internasional',
+            'kab' => 'kabupaten_kota',
+            'kota' => 'kabupaten_kota',
+            'provinsi' => 'provinsi',
+            'prov' => 'provinsi',
+            'nasional' => 'nasional',
+            'nas' => 'nasional',
+            'internasional' => 'internasional',
+            'international' => 'internasional',
+            'internasional' => 'internasional',
         ];
         $v = strtolower(trim($val ?? ''));
+
         return $map[$v] ?? 'internal';
     }
 
@@ -250,22 +270,25 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
     {
         $v = strtolower(trim($val ?? ''));
         $map = [
-            '1'         => 'juara_1', 'juara 1'  => 'juara_1', 'juara i'   => 'juara_1', 'gold'      => 'juara_1',
-            '2'         => 'juara_2', 'juara 2'  => 'juara_2', 'juara ii'  => 'juara_2', 'silver'    => 'juara_2',
-            '3'         => 'juara_3', 'juara 3'  => 'juara_3', 'juara iii' => 'juara_3', 'bronze'    => 'juara_3',
+            '1' => 'juara_1', 'juara 1' => 'juara_1', 'juara i' => 'juara_1', 'gold' => 'juara_1',
+            '2' => 'juara_2', 'juara 2' => 'juara_2', 'juara ii' => 'juara_2', 'silver' => 'juara_2',
+            '3' => 'juara_3', 'juara 3' => 'juara_3', 'juara iii' => 'juara_3', 'bronze' => 'juara_3',
             'harapan 1' => 'harapan_1', 'harapan1' => 'harapan_1', 'harapan i' => 'harapan_1',
             'harapan 2' => 'harapan_2', 'harapan2' => 'harapan_2', 'harapan ii' => 'harapan_2',
             'harapan 3' => 'harapan_3', 'harapan3' => 'harapan_3', 'harapan iii' => 'harapan_3',
-            'peserta'   => 'peserta',
-            'finalis'   => 'peserta',
-            'participan'=> 'peserta',
+            'peserta' => 'peserta',
+            'finalis' => 'peserta',
+            'participan' => 'peserta',
         ];
+
         return $map[$v] ?? 'lainnya';
     }
 
     private function parseDate(?string $val): ?string
     {
-        if (blank($val)) return date('Y-m-d');
+        if (blank($val)) {
+            return date('Y-m-d');
+        }
 
         // Try DD/MM/YYYY
         if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $val, $m)) {

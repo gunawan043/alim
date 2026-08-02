@@ -6,12 +6,8 @@ use App\Events\Sarpras\AssetQrScanned;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sarpras\QrScanRequest;
 use App\Models\Asset;
-use App\Models\AssetMaintenanceLog;
 use App\Models\QrScanHistory;
 use App\Models\RepairCostHistory;
-use App\Models\RepairRequest;
-use App\Models\StockOpnameItem;
-use App\Models\WorkOrder;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\AssetPassportService;
 use Illuminate\Http\JsonResponse;
@@ -39,9 +35,9 @@ class AssetPassportController extends Controller
             'category', 'workUnit.parent', 'building', 'room',
             'procurement',
         ])
-        ->where('id', $qrToken)
-        ->orWhere('asset_code', $qrToken)
-        ->firstOrFail();
+            ->where('id', $qrToken)
+            ->orWhere('asset_code', $qrToken)
+            ->firstOrFail();
 
         $user = $request->user();
 

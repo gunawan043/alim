@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use App\Models\Vendor;
-use App\Models\VendorContract;
-use App\Models\VendorDocument;
-use App\Models\VendorContact;
 use Illuminate\Support\Str;
 
 class VendorService
@@ -16,7 +13,7 @@ class VendorService
     public function create(array $data): Vendor
     {
         return Vendor::create(array_merge($data, [
-            'vendor_code' => 'VND-' . strtoupper(Str::random(8)),
+            'vendor_code' => 'VND-'.strtoupper(Str::random(8)),
         ]));
     }
 
@@ -151,7 +148,7 @@ class VendorService
 
         if ($recentIssues > 3) {
             $status = 'suspended';
-        } elseif (!$hasValidDocs && !$hasActiveContracts) {
+        } elseif (! $hasValidDocs && ! $hasActiveContracts) {
             $status = 'inactive';
         } else {
             $status = 'active';

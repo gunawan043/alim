@@ -33,7 +33,7 @@
   <div class="container">
     <div class="header">
       <h1>Permintaan-Verifikasi Wali Baru</h1>
-      <p>ALIM PUSTIK — Sistem Informasi Manajemen Pendidikan</p>
+      <p>ALIM Alim — Sistem Informasi Manajemen Pendidikan</p>
     </div>
 
     <div class="body">
@@ -44,7 +44,7 @@
 
       <div class="info-box">
         <div class="info-row">
-          <span class="info-label">Nama Santi</span>
+          <span class="info-label">Nama Santri</span>
           <span class="info-value">{{ $studentName }}</span>
         </div>
         <div class="info-row">
@@ -73,7 +73,7 @@
     </div>
 
     <div class="footer">
-      &copy; {{ date('Y') }} ALIM PUSTIK —email ini dikirim otomatis, mohon nicht dibalas.
+      &copy; {{ date('Y') }} ALIM Alim —email ini dikirim otomatis, mohon nicht dibalas.
     </div>
   </div>
 </body>

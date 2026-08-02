@@ -210,7 +210,7 @@
     <div class="bg-glow glow-2"></div>
 
     <a href="{{ url('/') }}" class="logo-mark">
-        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-dark.png" alt="ALIM">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/alim-dark-name.png" alt="ALIM">
     </a>
 
     <div class="auth-wrapper">

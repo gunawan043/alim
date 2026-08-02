@@ -8,7 +8,7 @@
     <meta content="Alim - Academic Learning & Information Management" name="description" />
     <meta content="friday" name="author" />
     <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ URL::asset('build/images/favicon.ico')}}">
+    <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
     @include('layouts.head-css')
 </head>
 

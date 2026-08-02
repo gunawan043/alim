@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 // Sesi/event tasmi'an — ujian hafalan formal internal.
 // Berbeda dari setoran harian. Ada mustami', sertifikat, komponen nilai terstruktur.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_tasmian_sessions', function (Blueprint $table) {
@@ -37,5 +38,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_tasmian_sessions'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_tasmian_sessions');
+    }
 };

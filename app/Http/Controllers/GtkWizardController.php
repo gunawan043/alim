@@ -8,6 +8,7 @@ use App\Models\GtkContact;
 use App\Models\GtkEducation;
 use App\Models\GtkEmployment;
 use App\Models\GtkFamilyMember;
+use App\Models\GtkHealthData;
 use App\Models\GtkProfile;
 use App\Models\GtkWorkUnit;
 use App\Models\JenisGtk;
@@ -304,8 +305,6 @@ class GtkWizardController extends Controller
                 $this->createFamilyMembers($profile->id, $data['family_members']);
             }
 
-            $user->assignRole('GTK');
-
             DB::commit();
 
             return response()->json([
@@ -354,6 +353,7 @@ class GtkWizardController extends Controller
             'educations',
             'gtkContact',
             'gtkWorkUnits.workUnit',
+            'gtkHealthData',
         ])->findOrFail($uuid);
 
         return view('gtk.profile', compact('gtk', 'userId'));
@@ -461,6 +461,62 @@ class GtkWizardController extends Controller
                 'message' => 'Terjadi kesalahan sistem.',
             ], 500);
         }
+    }
+
+    /**
+     * Store or update GTK health data.
+     */
+    public function storeHealthData(Request $request, string $userId, string $uuid): JsonResponse
+    {
+        try {
+            $user = User::findOrFail($uuid);
+
+            $data = $request->validate([
+                'golongan_darah' => ['nullable', 'string', 'max:2'],
+                'tekanan_darah' => ['nullable', 'string', 'max:10'],
+                'tinggi_badan' => ['nullable', 'numeric', 'min:0', 'max:300'],
+                'berat_badan' => ['nullable', 'numeric', 'min:0', 'max:500'],
+                'lingkar_kepala' => ['nullable', 'string', 'max:10'],
+                'riwayat_penyakit' => ['nullable', 'string'],
+                'alergi' => ['nullable', 'string'],
+                'p3k' => ['nullable', 'string'],
+                'keluhan_yang_dialami' => ['nullable', 'string'],
+            ]);
+
+            GtkHealthData::updateOrCreate(
+                ['user_id' => $user->id],
+                $data
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data kesehatan berhasil disimpan',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('GtkWizardController@storeHealthData failed', [
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem. Silakan coba lagi.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Update GTK health data (alias for storeHealthData with PUT semantics).
+     */
+    public function updateHealthData(Request $request, string $userId, string $uuid): JsonResponse
+    {
+        return $this->storeHealthData($request, $userId, $uuid);
     }
 
     public function datatable(Request $request): JsonResponse
@@ -1140,8 +1196,13 @@ class GtkWizardController extends Controller
             'kontak.twitter' => 'nullable|string|max:100',
 
             'kepegawaian.nupy' => ['required', 'string', 'max:50', Rule::unique('gtk_employments', 'nupy')->ignore($employmentId)],
-            'kepegawaian.jenis_gtk' => 'required',
-            'kepegawaian.jabatan' => 'required|string|max:150',
+            'kepegawaian.jenis_gtk' => ['required', Rule::exists('jenis_gtk', 'id')],
+            'kepegawaian.jabatan' => [
+                'required',
+                'string',
+                'max:150',
+                Rule::exists('jabatan', 'id'),
+            ],
             'kepegawaian.status_kepegawaian' => 'required|in:PTT,PTY,Percobaan,Magang,GTT,GTY,KONTRAK',
             'kepegawaian.tmt' => 'required|date',
             'kepegawaian.nomor_sk' => 'required|string|max:100',
@@ -1232,6 +1293,11 @@ class GtkWizardController extends Controller
             'employment' => array_merge($validated['kepegawaian'] ?? [], [
                 'jenis_gtk_id' => $this->resolveJenisGtkId($validated['kepegawaian']['jenis_gtk'] ?? null),
                 'jenis_gtk' => $this->resolveJenisGtkName($validated['kepegawaian']['jenis_gtk'] ?? null),
+                'jabatan_id' => $this->resolveJabatanId(
+                    $validated['kepegawaian']['jabatan'] ?? null,
+                    $this->resolveJenisGtkId($validated['kepegawaian']['jenis_gtk'] ?? null)
+                ),
+                'jabatan' => $this->resolveJabatanName($validated['kepegawaian']['jabatan'] ?? null),
                 'school_id' => $this->resolveSchoolId($validated['work_unit_id'] ?? null),
             ]),
             'work_unit_id' => $validated['work_unit_id'],
@@ -1511,6 +1577,45 @@ class GtkWizardController extends Controller
     }
 
     /**
+     * Accept Jabatan UUID or name string — return the Jabatan UUID.
+     * If jenisGtkId given, restrict lookup to that jenis.
+     */
+    private function resolveJabatanId(?string $value, ?string $jenisGtkId = null): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        $query = \App\Models\Jabatan::query();
+
+        if ($jenisGtkId) {
+            $query->where('jenis_gtk_id', $jenisGtkId);
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
+            return $query->where('id', $value)->value('id') ?? \App\Models\Jabatan::where('id', $value)->value('id');
+        }
+
+        return $query->where('nama', $value)->value('id');
+    }
+
+    /**
+     * Accept Jabatan UUID or name string — return the human-readable name.
+     */
+    private function resolveJabatanName(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
+            return \App\Models\Jabatan::find($value)?->nama;
+        }
+
+        return $value;
+    }
+
+    /**
      * Resolve school_id dari work_unit_id.
      * Relasi: schools.work_unit_id → work_units.id
      */
@@ -1547,7 +1652,7 @@ class GtkWizardController extends Controller
         ];
 
         $exampleRow = [
-            'Ahmad Fauzi', 'ahmad.fauzi@example.com', '3201234567890123', '3201234567890001',
+            'Fulan', 'ahmad.fauzi@example.com', '3201234567890123', '3201234567890001',
             'Mataram', '1990-01-15', 'Laki-laki', 'A', 'Islam', 'Menikah', '123456789012345',
             '081234567890', '081234567890',
             'GTK2024001', 'Tenaga Pendidik Pondok', 'Guru', 'Tetap', '2020-01-01',
@@ -1619,7 +1724,6 @@ class GtkWizardController extends Controller
                     'is_active' => true,
                     'email_verified_at' => now(),
                 ]);
-                $user->assignRole('gtk');
 
                 $profile = $this->createGtkProfile($user->id, [
                     'nik' => $row['nik'] ?? null,
@@ -1731,5 +1835,141 @@ class GtkWizardController extends Controller
             'rt_rw' => $row['alamat_rt_rw'] ?? null,
             'kode_pos' => $row['kode_pos'] ?? null,
         ];
+    }
+
+    /**
+     * Show GTK list filtered by a specific work unit (satuan kerja).
+     * Migrated from legacy GtkController@indexByWorkUnit.
+     */
+    public function indexByWorkUnit(Request $request, string $satuanKerja)
+    {
+        $workUnit = WorkUnit::findOrFail($satuanKerja);
+
+        $gtkQuery = User::with(['gtkProfile', 'employment', 'contact', 'workUnits'])
+            ->whereHas('employment')
+            ->whereHas('workUnits', function ($q) use ($workUnit) {
+                $q->where('gtk_work_unit.work_unit_id', $workUnit->id);
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $gtkQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('employment', function ($q) use ($search) {
+                        $q->where('nupy', 'like', "%{$search}%")
+                            ->orWhere('jenis_gtk', 'like', "%{$search}%")
+                            ->orWhere('jabatan', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('contact', function ($q) use ($search) {
+                        $q->where('no_hp', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('gtkProfile', function ($q) use ($search) {
+                        $q->where('nik', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('status_kepegawaian')) {
+            $gtkQuery->whereHas('employment', fn ($q) => $q->where('status_kepegawaian', $request->status_kepegawaian));
+        }
+
+        if ($request->filled('jenis_gtk')) {
+            $gtkQuery->whereHas('employment', fn ($q) => $q->where('jenis_gtk', $request->jenis_gtk));
+        }
+
+        if ($request->has('status_aktif') && $request->status_aktif !== '') {
+            $gtkQuery->where('is_active', $request->status_aktif);
+        }
+
+        $gtkIds = (clone $gtkQuery)->pluck('id');
+        $total = $gtkIds->count();
+        $genderL = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'L')->count();
+        $genderP = GtkProfile::whereIn('user_id', $gtkIds)->where('jenis_kelamin', 'P')->count();
+        $aktif = User::whereIn('id', $gtkIds)->where('is_active', true)->count();
+        $nonaktif = $total - $aktif;
+
+        $gtkList = $gtkQuery->orderBy('created_at', 'desc')->paginate(20);
+
+        $statistics = [
+            'total' => $total,
+            'aktif' => $aktif,
+            'nonaktif' => $nonaktif,
+            'gender_l' => $genderL,
+            'gender_p' => $genderP,
+        ];
+
+        $workUnits = WorkUnit::active()->get();
+
+        return view('gtk.index', compact('gtkList', 'workUnits', 'satuanKerja', 'statistics'));
+    }
+
+    /**
+     * Filtered list view with broader role coverage (used by Wadir 1 / Personalia).
+     * Migrated from legacy GtkController@filter.
+     */
+    public function filter(Request $request)
+    {
+        $query = User::with(['gtkProfile', 'employment', 'contact', 'workUnits'])
+            ->where(function ($q) {
+                $q->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->whereIn('name', ['gtk', 'Personalia', 'Guru', 'Tenaga Kependidikan']);
+                })
+                    ->orWhereHas('employment');
+            });
+
+        if ($request->filled('satuan_kerja')) {
+            $query->whereHas('workUnits', fn ($q) => $q->where('gtk_work_unit.work_unit_id', $request->satuan_kerja));
+        }
+
+        if ($request->filled('work_unit')) {
+            $query->whereHas('workUnits', fn ($q) => $q->where('gtk_work_unit.work_unit_id', $request->work_unit));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhereHas('employment', function ($q) use ($search) {
+                        $q->where('nupy', 'like', "%{$search}%")
+                            ->orWhere('jenis_gtk', 'like', "%{$search}%")
+                            ->orWhere('jabatan', 'like', "%{$search}%")
+                            ->orWhere('status_kepegawaian', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('contact', fn ($q) => $q->where('no_hp', 'like', "%{$search}%"))
+                    ->orWhereHas('gtkProfile', fn ($q) => $q->where('nik', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->filled('status_kepegawaian')) {
+            $query->whereHas('employment', fn ($q) => $q->where('status_kepegawaian', $request->status_kepegawaian));
+        }
+
+        if ($request->filled('jenis_gtk')) {
+            $query->whereHas('employment', fn ($q) => $q->where('jenis_gtk', $request->jenis_gtk));
+        }
+
+        if ($request->has('status_aktif') && $request->status_aktif !== '') {
+            $query->where('users.is_active', $request->status_aktif);
+        }
+
+        $gtkList = $query->orderBy('users.created_at', 'desc')->paginate(20);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            $html = view('gtk.partials.gtk-table-body', compact('gtkList'))->render();
+            $pagination = view('gtk.partials.pagination', ['gtkList' => $gtkList])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'total' => $gtkList->total(),
+            ]);
+        }
+
+        $workUnits = WorkUnit::active()->get();
+
+        return view('gtk.index', compact('gtkList', 'workUnits'));
     }
 }

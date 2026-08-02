@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\PasswordOtp;
-use Illuminate\Support\Facades\Mail;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use App\Mail\ResetPasswordOtpMail;
-use Illuminate\Support\Str;
+use App\Models\PasswordOtp;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ForgotPasswordController extends Controller
@@ -22,7 +22,7 @@ class ForgotPasswordController extends Controller
     public function sendOtp(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email'
+            'email' => 'required|email|exists:users,email',
         ]);
 
         try {
@@ -45,7 +45,7 @@ class ForgotPasswordController extends Controller
                 Mail::to($user->email)
                     ->send(new ResetPasswordOtpMail($otp, $user->name));
             } catch (\Exception $e) {
-                Log::error('Error sending OTP email: ' . $e->getMessage());
+                Log::error('Error sending OTP email: '.$e->getMessage());
                 // Jangan throw error, tapi log saja
             }
 
@@ -60,19 +60,19 @@ class ForgotPasswordController extends Controller
 
             return redirect()->route('password.otp.form')
                 ->with('status', 'Kode OTP dikirim ke email Anda.');
-                
+
         } catch (\Exception $e) {
-            Log::error('Error sending OTP: ' . $e->getMessage());
-            
+            Log::error('Error sending OTP: '.$e->getMessage());
+
             return back()->withErrors([
-                'email' => 'Terjadi kesalahan. Silakan coba lagi.'
+                'email' => 'Terjadi kesalahan. Silakan coba lagi.',
             ]);
         }
     }
 
     public function showOtpForm()
     {
-        if (!session('reset_user_uuid')) {
+        if (! session('reset_user_uuid')) {
             return redirect()->route('password.request')
                 ->with('error', 'Sesi tidak valid. Silakan request OTP lagi.');
         }
@@ -93,12 +93,12 @@ class ForgotPasswordController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'otp' => 'required|digits:6'
+            'otp' => 'required|digits:6',
         ]);
 
-        if (!session('reset_user_uuid')) {
+        if (! session('reset_user_uuid')) {
             throw ValidationException::withMessages([
-                'otp' => 'Sesi tidak valid. Silakan request OTP lagi.'
+                'otp' => 'Sesi tidak valid. Silakan request OTP lagi.',
             ]);
         }
 
@@ -107,13 +107,13 @@ class ForgotPasswordController extends Controller
                 ->where('expires_at', '>', now())
                 ->first();
 
-            if (!$otpData) {
+            if (! $otpData) {
                 throw ValidationException::withMessages([
-                    'otp' => 'OTP tidak ditemukan atau sudah kadaluarsa.'
+                    'otp' => 'OTP tidak ditemukan atau sudah kadaluarsa.',
                 ]);
             }
 
-            if (!Hash::check($request->otp, $otpData->otp_hash)) {
+            if (! Hash::check($request->otp, $otpData->otp_hash)) {
                 // Hitung percobaan yang gagal
                 $failedAttempts = session('otp_failed_attempts', 0) + 1;
                 session(['otp_failed_attempts' => $failedAttempts]);
@@ -122,24 +122,24 @@ class ForgotPasswordController extends Controller
                     // Hapus OTP jika gagal 3x
                     $otpData->delete();
                     session()->forget(['reset_user_uuid', 'otp_failed_attempts']);
-                    
+
                     throw ValidationException::withMessages([
-                        'otp' => 'Terlalu banyak percobaan gagal. Silakan request OTP baru.'
+                        'otp' => 'Terlalu banyak percobaan gagal. Silakan request OTP baru.',
                     ]);
                 }
 
                 $remainingAttempts = 3 - $failedAttempts;
                 throw ValidationException::withMessages([
-                    'otp' => "OTP salah. Sisa percobaan: {$remainingAttempts}"
+                    'otp' => "OTP salah. Sisa percobaan: {$remainingAttempts}",
                 ]);
             }
 
             // Reset failed attempts jika berhasil
             session()->forget('otp_failed_attempts');
-            
+
             // Tandai OTP sebagai terpakai
             $otpData->update(['is_used' => true]);
-            
+
             // Set session verifikasi
             session(['otp_verified' => true]);
 
@@ -149,17 +149,17 @@ class ForgotPasswordController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
-            Log::error('Error verifying OTP: ' . $e->getMessage());
-            
+            Log::error('Error verifying OTP: '.$e->getMessage());
+
             throw ValidationException::withMessages([
-                'otp' => 'Terjadi kesalahan. Silakan coba lagi.'
+                'otp' => 'Terjadi kesalahan. Silakan coba lagi.',
             ]);
         }
     }
 
     public function showResetForm()
     {
-        if (!session('reset_user_uuid') || !session('otp_verified')) {
+        if (! session('reset_user_uuid') || ! session('otp_verified')) {
             return redirect()->route('password.request')
                 ->with('error', 'Sesi tidak valid. Silakan mulai dari awal.');
         }
@@ -178,7 +178,7 @@ class ForgotPasswordController extends Controller
             'password' => 'required|min:8|confirmed',
         ]);
 
-        if (!session('reset_user_uuid')) {
+        if (! session('reset_user_uuid')) {
             return redirect()->route('password.request')
                 ->with('error', 'Sesi tidak valid. Silakan mulai dari awal.');
         }
@@ -196,10 +196,10 @@ class ForgotPasswordController extends Controller
 
             // Clear semua session terkait
             session()->forget([
-                'reset_user_uuid', 
-                'otp_verified', 
+                'reset_user_uuid',
+                'otp_verified',
                 'otp_failed_attempts',
-                'email'
+                'email',
             ]);
 
             // Hapus semua session lain yang mungkin terkait
@@ -209,17 +209,17 @@ class ForgotPasswordController extends Controller
                 ->with('success', 'Password berhasil direset. Silakan login dengan password baru.');
 
         } catch (\Exception $e) {
-            Log::error('Error resetting password: ' . $e->getMessage());
-            
+            Log::error('Error resetting password: '.$e->getMessage());
+
             return back()->withErrors([
-                'password' => 'Terjadi kesalahan. Silakan coba lagi.'
+                'password' => 'Terjadi kesalahan. Silakan coba lagi.',
             ]);
         }
     }
 
     public function resendOtp()
     {
-        if (!session('reset_user_uuid')) {
+        if (! session('reset_user_uuid')) {
             return redirect()->route('password.request')
                 ->with('error', 'Sesi tidak valid. Silakan request OTP lagi.');
         }
@@ -246,20 +246,20 @@ class ForgotPasswordController extends Controller
                 Mail::to($user->email)
                     ->send(new ResetPasswordOtpMail($otp, $user->name));
             } catch (\Exception $e) {
-                Log::error('Error resending OTP email: ' . $e->getMessage());
+                Log::error('Error resending OTP email: '.$e->getMessage());
             }
 
             // Simpan expiry timestamp di session agar survive refresh
             session(['otp_expires_at' => $newOtpData->expires_at->timestamp]);
 
             return back()->with('status', 'Kode OTP baru telah dikirim ke email Anda.')
-                         ->with('email', $user->email);
+                ->with('email', $user->email);
 
         } catch (\Exception $e) {
-            Log::error('Error resending OTP: ' . $e->getMessage());
-            
+            Log::error('Error resending OTP: '.$e->getMessage());
+
             return back()->withErrors([
-                'otp' => 'Terjadi kesalahan. Silakan coba lagi.'
+                'otp' => 'Terjadi kesalahan. Silakan coba lagi.',
             ]);
         }
     }
@@ -267,13 +267,13 @@ class ForgotPasswordController extends Controller
     public function checkOtpValidity(Request $request)
     {
         $request->validate([
-            'otp' => 'required|digits:6'
+            'otp' => 'required|digits:6',
         ]);
 
-        if (!session('reset_user_uuid')) {
+        if (! session('reset_user_uuid')) {
             return response()->json([
                 'valid' => false,
-                'message' => 'Sesi tidak valid'
+                'message' => 'Sesi tidak valid',
             ], 400);
         }
 
@@ -283,31 +283,31 @@ class ForgotPasswordController extends Controller
                 ->where('is_used', false)
                 ->first();
 
-            if (!$otpData) {
+            if (! $otpData) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'OTP tidak ditemukan atau sudah kadaluarsa'
+                    'message' => 'OTP tidak ditemukan atau sudah kadaluarsa',
                 ]);
             }
 
-            if (!Hash::check($request->otp, $otpData->otp_hash)) {
+            if (! Hash::check($request->otp, $otpData->otp_hash)) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'OTP salah'
+                    'message' => 'OTP salah',
                 ]);
             }
 
             return response()->json([
                 'valid' => true,
-                'message' => 'OTP valid'
+                'message' => 'OTP valid',
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error checking OTP validity: ' . $e->getMessage());
-            
+            Log::error('Error checking OTP validity: '.$e->getMessage());
+
             return response()->json([
                 'valid' => false,
-                'message' => 'Terjadi kesalahan'
+                'message' => 'Terjadi kesalahan',
             ], 500);
         }
     }
@@ -326,7 +326,7 @@ class ForgotPasswordController extends Controller
             'reset_user_uuid',
             'otp_verified',
             'otp_failed_attempts',
-            'email'
+            'email',
         ]);
 
         return redirect()->route('login')

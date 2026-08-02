@@ -42,6 +42,6 @@ class AssetCategorySeeder extends Seeder
             );
         }
 
-        $this->command->info('AssetCategorySeeder: ' . count($categories) . ' kategori dibuat.');
+        $this->command->info('AssetCategorySeeder: '.count($categories).' kategori dibuat.');
     }
 }

@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('asset_rooms', function (Blueprint $table) {
@@ -26,13 +27,13 @@ return new class extends Migration {
                 'baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat',
             ])->default('baik');
             $table->text('facilities')->nullable()
-                  ->comment('Daftar fasilitas: AC, proyektor, whiteboard, dll');
+                ->comment('Daftar fasilitas: AC, proyektor, whiteboard, dll');
             $table->tinyInteger('is_bookable')->default(0)
-                  ->comment('1 = dapat dipesan / dipinjam oleh GTK');
+                ->comment('1 = dapat dipesan / dipinjam oleh GTK');
             $table->tinyInteger('booking_requires_approval')->default(1)
-                  ->comment('1 = perlu persetujuan Admin Sarpras');
+                ->comment('1 = perlu persetujuan Admin Sarpras');
             $table->uuid('responsible_user_id')->nullable()
-                  ->comment('Penanggung jawab ruangan');
+                ->comment('Penanggung jawab ruangan');
             $table->string('photo_path', 255)->nullable();
             $table->tinyInteger('is_active')->default(1);
             $table->text('notes')->nullable();
@@ -48,5 +49,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('asset_rooms'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('asset_rooms');
+    }
 };

@@ -14,7 +14,7 @@ class Regulation extends Model
      * Atribut yang dapat diisi massal.
      */
     protected $fillable = [
-        'bab', 'pasal', 'title', 'content', 'order'
+        'bab', 'pasal', 'title', 'content', 'order',
     ];
 
     /**

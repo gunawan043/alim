@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class SubjectKktp extends Model
 {
     protected $table = 'subject_kktp';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -27,7 +29,7 @@ class SubjectKktp extends Model
 
     protected $casts = [
         'kktp_score' => 'float',
-        'kkm_score'  => 'float',
+        'kkm_score' => 'float',
     ];
 
     protected static function booted()

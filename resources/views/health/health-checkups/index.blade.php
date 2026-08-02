@@ -20,43 +20,49 @@
     $catColor = ['sangat_kurang'=>'warning','kurang'=>'info','normal'=>'success','lebih'=>'primary','gemuk'=>'danger'];
     ?>
 
-    {{-- Stats --}}
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <div class="card border-start border-1 border-primary">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-primary bg-opacity-10 text-primary rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-clipboard-check-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Total Check-up</p>
-                        <h5 class="mb-0">{{ $total }} <span class="fs-6 text-muted">record</span></h5>
+    {{-- Stats Cards --}}
+    <div class="row g-3 mb-2">
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-user-heart-line text-primary"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Total Check-up</p>
+                            <h3 class="mb-0">{{ $total }} <span class="fs-6 text-muted">record</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-start border-1 border-warning">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-warning bg-opacity-10 text-warning rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-alert-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Deviasi IMT</p>
-                        <h5 class="mb-0">{{ $abnormal }} <span class="fs-6 text-muted">santi</span></h5>
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-alert-line text-warning"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Deviasi IMT</p>
+                            <h3 class="mb-0">{{ $abnormal }} <span class="fs-6 text-muted">Santri</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-start border-1 border-success">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-success bg-opacity-10 text-success rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-heart-pulse-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">IMT Normal</p>
-                        <h5 class="mb-0">{{ $total - $abnormal }} <span class="fs-6 text-muted">santi</span></h5>
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-heart-pulse-line text-success"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">IMT Normal</p>
+                            <h3 class="mb-0">{{ $total - $abnormal }} <span class="fs-6 text-muted">Santri</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -83,7 +89,7 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" placeholder="Nama Santi..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control" placeholder="Nama Santri..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
                             <select name="study_group_id" class="form-control">
@@ -124,7 +130,7 @@
                             <thead>
                                 <tr>
                                     <th style="width:40px">#</th>
-                                    <th>Nama Santi</th>
+                                    <th>Nama Santri</th>
                                     <th>Tanggal</th>
                                     <th>Jenis</th>
                                     <th class="text-center">Tinggi(cm)</th>

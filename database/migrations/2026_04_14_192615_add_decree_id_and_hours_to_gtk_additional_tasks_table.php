@@ -10,14 +10,14 @@ return new class extends Migration
     {
         Schema::table('gtk_additional_tasks', function (Blueprint $table) {
             $table->foreignUuid('decree_id')
-                  ->nullable()
-                  ->after('user_id')
-                  ->constrained('institution_decrees')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('user_id')
+                ->constrained('institution_decrees')
+                ->nullOnDelete();
 
             $table->unsignedTinyInteger('hours_per_week')
-                  ->nullable()
-                  ->after('nama_tugas');
+                ->nullable()
+                ->after('nama_tugas');
         });
     }
 

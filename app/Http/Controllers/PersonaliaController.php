@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\GtkProfile;
+use App\Models\AuditLog;
 use App\Models\GtkAddress;
 use App\Models\GtkFamilyMember;
-use App\Models\GtkWorkUnitHistory;
+use App\Models\GtkProfile;
 use App\Models\GtkTransferRequest;
-use App\Models\AuditLog;
+use App\Models\GtkWorkUnitHistory;
+use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
 
 class PersonaliaController extends Controller
 {
@@ -58,8 +58,10 @@ class PersonaliaController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
-            /** ROLE PERSONALIA / GTK */
-            $user->assignRole('Guru Umum');
+            /** ROLE — observer GtkEmployment::created akan sinkronkan role
+             *  begitu GtkEmployment dibuat (lihat GtkEmploymentObserver).
+             *  Untuk sementara assign role Guru sebagai baseline. */
+            $user->assignRole('Guru');
 
             /** PROFILE */
             $profile = GtkProfile::create([
@@ -230,7 +232,7 @@ class PersonaliaController extends Controller
             $validated['work_unit_id'] => [
                 'jabatan' => $validated['jabatan'] ?? null,
                 'is_primary' => $validated['is_primary'] ?? false,
-            ]
+            ],
         ]);
 
         AuditLog::create([
@@ -265,7 +267,7 @@ class PersonaliaController extends Controller
             $validated['to_work_unit_id'] => [
                 'jabatan' => $validated['jabatan'],
                 'is_primary' => true,
-            ]
+            ],
         ]);
 
         // HISTORY
@@ -282,7 +284,7 @@ class PersonaliaController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Perpindahan GTK berhasil dicatat'
+            'message' => 'Perpindahan GTK berhasil dicatat',
         ]);
     }
 
@@ -291,11 +293,11 @@ class PersonaliaController extends Controller
         return GtkWorkUnitHistory::with([
             'fromWorkUnit',
             'toWorkUnit',
-            'performedBy'
+            'performedBy',
         ])
-        ->where('user_id', $user->id)
-        ->orderByDesc('created_at')
-        ->get();
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     public function requestTransfer(Request $request, User $user)
@@ -322,7 +324,7 @@ class PersonaliaController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Permohonan perpindahan berhasil diajukan'
+            'message' => 'Permohonan perpindahan berhasil diajukan',
         ]);
     }
 
@@ -349,7 +351,7 @@ class PersonaliaController extends Controller
                 $transfer->to_work_unit_id => [
                     'jabatan' => $transfer->jabatan,
                     'is_primary' => true,
-                ]
+                ],
             ]);
 
             // HISTORY (IMMUTABLE)
@@ -390,5 +392,4 @@ class PersonaliaController extends Controller
 
         return response()->json(['message' => 'Permohonan ditolak']);
     }
-
 }

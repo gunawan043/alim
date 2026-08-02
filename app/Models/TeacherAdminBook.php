@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class TeacherAdminBook extends Model
 {
     protected $table = 'teacher_admin_books';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -36,7 +38,7 @@ class TeacherAdminBook extends Model
     ];
 
     protected $casts = [
-        'nr_final_weight_rs'  => 'float',
+        'nr_final_weight_rs' => 'float',
         'nr_final_weight_sts' => 'float',
         'nr_final_weight_sas' => 'float',
     ];

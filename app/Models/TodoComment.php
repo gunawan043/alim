@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class TodoComment extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -23,7 +24,7 @@ class TodoComment extends Model
 
     protected $casts = [
         'is_edited' => 'integer',
-        'edited_at'  => 'datetime',
+        'edited_at' => 'datetime',
     ];
 
     protected static function boot()

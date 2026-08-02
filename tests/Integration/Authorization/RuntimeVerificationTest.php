@@ -6,7 +6,6 @@ namespace Tests\Integration\Authorization;
 
 use App\Authorization\Contracts\PermissionBuilder;
 use App\Authorization\Contracts\PermissionCacheManager;
-use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\Contracts\SnapshotResolver as SnapshotResolverContract;
 use App\Authorization\DTO\PermissionBag;
@@ -27,7 +26,6 @@ use App\Authorization\Services\AuthorizationManager;
 use App\Authorization\Services\SnapshotRebuildService;
 use App\Authorization\Services\SnapshotResolver;
 use App\Authorization\Support\AuthorizationBladeCompiler;
-use App\Authorization\Support\PermissionCacheManager as PermissionCacheManagerImpl;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
 use App\Models\Permission;
@@ -35,12 +33,9 @@ use App\Models\Role;
 use App\Models\User;
 use Carbon\Carbon;
 use DateTimeImmutable;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -190,7 +185,7 @@ final class RuntimeVerificationTest extends TestCase
         $expiredBag = new PermissionBag(
             permissions: $bag->getPermissions(),
             revoked: $bag->getRevoked(),
-            fingerprint: substr($bag->getFingerprint(), 0, 56) . '-exp',
+            fingerprint: substr($bag->getFingerprint(), 0, 56).'-exp',
             expiresAt: null,
             metadata: $expiredMeta,
         );
@@ -738,7 +733,7 @@ final class RuntimeVerificationTest extends TestCase
             resource_path('views'),
         ]);
 
-        $compiler = new AuthorizationBladeCompiler();
+        $compiler = new AuthorizationBladeCompiler;
         $compiler->register($blade);
 
         // Compile a simple directive
@@ -755,7 +750,7 @@ final class RuntimeVerificationTest extends TestCase
             resource_path('views'),
         ]);
 
-        $compiler = new AuthorizationBladeCompiler();
+        $compiler = new AuthorizationBladeCompiler;
         $compiler->register($blade);
 
         $compiled = $blade->compileString(
@@ -826,7 +821,8 @@ final class RuntimeVerificationTest extends TestCase
     public function test_rebuild_failure_raises_exception(): void
     {
         // Swap out the builder with one that throws
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('Provider connection refused');
@@ -848,7 +844,8 @@ final class RuntimeVerificationTest extends TestCase
     public function test_resolve_returns_null_on_rebuild_failure(): void
     {
         // Swap builder to always fail
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('build always fails');
@@ -875,7 +872,8 @@ final class RuntimeVerificationTest extends TestCase
         $context = new OrganizationContext('school-no-snap', 'ay-2025', 'teacher');
 
         // Swap builder to fail
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder {
+        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        {
             public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('denied');
@@ -933,16 +931,16 @@ final class RuntimeVerificationTest extends TestCase
         $rebuilder->rebuild($user, $context, 'setup');
 
         $cache = app(\App\Authorization\Contracts\PermissionCacheManager::class);
-        $sk = (string)$context->toScopeKey();
-        $uid = (string)$user->getKey();
+        $sk = (string) $context->toScopeKey();
+        $uid = (string) $user->getKey();
         $bagCheck = $cache->get($uid, $sk);
-        fwrite(STDERR, "\n[DIAG] cache after rebuild: " . ($bagCheck === null ? 'NULL' : 'GOT ' . $bagCheck->getFingerprint()) . "\n");
+        fwrite(STDERR, "\n[DIAG] cache after rebuild: ".($bagCheck === null ? 'NULL' : 'GOT '.$bagCheck->getFingerprint())."\n");
 
         $bagResult = app(SnapshotResolverContract::class)->resolve($user, $context);
-        fwrite(STDERR, "[DIAG] resolve result: " . ($bagResult === null ? 'NULL' : 'GOT ' . $bagResult->getFingerprint()) . "\n");
+        fwrite(STDERR, '[DIAG] resolve result: '.($bagResult === null ? 'NULL' : 'GOT '.$bagResult->getFingerprint())."\n");
 
         $bagCheck2 = $cache->get($uid, $sk);
-        fwrite(STDERR, "[DIAG] cache after resolve: " . ($bagCheck2 === null ? 'NULL' : 'GOT') . "\n");
+        fwrite(STDERR, '[DIAG] cache after resolve: '.($bagCheck2 === null ? 'NULL' : 'GOT')."\n");
 
         Event::assertDispatched(SnapshotCacheHit::class);
     }
@@ -950,7 +948,7 @@ final class RuntimeVerificationTest extends TestCase
     public function test_authorization_events_on_allow_and_deny(): void
     {
         Event::fake([\App\Authorization\Events\AuthorizationSucceeded::class,
-                     \App\Authorization\Events\AuthorizationDenied::class]);
+            \App\Authorization\Events\AuthorizationDenied::class]);
 
         $user = User::factory()->create();
         $context = new OrganizationContext('school-assert-events', 'ay-2025', 'teacher');

@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\VendorContract;
-use App\Models\Vendor;
 use App\Models\AuditTrail;
+use App\Models\Vendor;
+use App\Models\VendorContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class VendorContractService
 {
     private const DISK = 'public';
+
     private const FOLDER = 'vendor-contracts';
 
     public function __construct() {}
@@ -27,7 +28,7 @@ class VendorContractService
         }
 
         $contract = $vendor->contracts()->create([
-            'contract_number' => 'VC-' . strtoupper(substr(md5((string) time()), 0, 12)),
+            'contract_number' => 'VC-'.strtoupper(substr(md5((string) time()), 0, 12)),
             'title' => $data['title'] ?? null,
             'scope' => $data['scope'] ?? null,
             'terms_and_conditions' => $data['terms_and_conditions'] ?? null,
@@ -49,7 +50,7 @@ class VendorContractService
 
     public function update(VendorContract $contract, array $data): VendorContract
     {
-        $contract->update(array_filter($data, fn ($v) => !is_null($v) || in_array($v, [0, false, ''], true)));
+        $contract->update(array_filter($data, fn ($v) => ! is_null($v) || in_array($v, [0, false, ''], true)));
 
         $this->audit($contract, 'updated');
 
@@ -147,7 +148,7 @@ class VendorContractService
 
     public function download(VendorContract $contract)
     {
-        if (!$contract->attachment_path) {
+        if (! $contract->attachment_path) {
             throw new \RuntimeException('No attachment found.');
         }
 

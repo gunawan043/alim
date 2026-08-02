@@ -15,8 +15,8 @@
         <nav class="navbar navbar-expand-lg navbar-landing fixed-top job-navbar" id="navbar">
             <div class="container-fluid custom-container">
                 <a class="navbar-brand" href="index">
-                    <img src="{{URL::asset('build/images/logo-dark.png')}}" class="card-logo card-logo-dark" alt="logo dark" height="17">
-                    <img src="{{URL::asset('build/images/logo-light.png')}}" class="card-logo card-logo-light" alt="logo light" height="17">
+                    <img src="{{URL::asset('build/images/alim-dark-name.png')}}" class="card-logo card-logo-dark" alt="logo dark" height="17">
+                    <img src="{{URL::asset('build/images/alim-light-name.png')}}" class="card-logo card-logo-light" alt="logo light" height="17">
                 </a>
                 <button class="navbar-toggler py-0 fs-20 text-body" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <i class="mdi mdi-menu"></i>
@@ -1172,7 +1172,7 @@
                     <div class="col-lg-4 mt-4">
                         <div>
                             <div>
-                                <img src="{{URL::asset('build/images/logo-light.png')}}" alt="logo light" height="17" />
+                                <img src="{{URL::asset('build/images/alim-light-name.png')}}" alt="logo light" height="17" />
                             </div>
                             <div class="mt-4 fs-15">
                                 <p>Alim - Academic Learning & Information Management</p>

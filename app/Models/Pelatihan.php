@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Pelatihan extends Model
 {
     use HasUuids;
+
     protected $table = 'pelatihan';
 
     protected $fillable = [
@@ -25,11 +26,33 @@ class Pelatihan extends Model
         'biaya_per_peserta' => 'decimal:2',
     ];
 
-    public function jenis(): BelongsTo { return $this->belongsTo(JenisPelatihan::class, 'jenis_pelatihan_id'); }
-    public function pembuat(): BelongsTo { return $this->belongsTo(User::class, 'dibuat_oleh'); }
-    public function pesertas(): HasMany { return $this->hasMany(PelatihanPeserta::class); }
-    public function evaluasis(): HasMany { return $this->hasMany(PelatihanEvaluasi::class); }
+    public function jenis(): BelongsTo
+    {
+        return $this->belongsTo(JenisPelatihan::class, 'jenis_pelatihan_id');
+    }
 
-    public function scopeRencana($q) { return $q->where('status', 'rencana'); }
-    public function scopeSelesai($q) { return $q->where('status', 'selesai'); }
+    public function pembuat(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function pesertas(): HasMany
+    {
+        return $this->hasMany(PelatihanPeserta::class);
+    }
+
+    public function evaluasis(): HasMany
+    {
+        return $this->hasMany(PelatihanEvaluasi::class);
+    }
+
+    public function scopeRencana($q)
+    {
+        return $q->where('status', 'rencana');
+    }
+
+    public function scopeSelesai($q)
+    {
+        return $q->where('status', 'selesai');
+    }
 }

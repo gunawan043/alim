@@ -10,9 +10,13 @@ class AccountCompromisedMail extends Mailable
     use SerializesModels;
 
     public string $userName;
+
     public string $email;
+
     public int $attempts;
+
     public string $ipAddress;
+
     public string $loginUrl;
 
     public function __construct(string $userName, string $email, int $attempts, string $ipAddress)

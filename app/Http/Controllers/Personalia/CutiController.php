@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
-use App\Models\CutiRequest;
-use App\Models\CutiTemplate;
 use App\Models\CutiBalance;
 use App\Models\CutiPeriod;
+use App\Models\CutiRequest;
+use App\Models\CutiTemplate;
 use App\Models\User;
 use App\Services\HRDNotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class CutiController extends Controller
 {
@@ -21,8 +21,8 @@ class CutiController extends Controller
     public function index(Request $request, string $userId)
     {
         $query = CutiRequest::with(['user', 'template'])
-            ->when($request->get('status'), fn($q, $s) => $q->where('status', $s))
-            ->when($request->get('jenis'), fn($q, $j) => $q->whereHas('template', fn($qq) => $qq->where('jenis', $j)));
+            ->when($request->get('status'), fn ($q, $s) => $q->where('status', $s))
+            ->when($request->get('jenis'), fn ($q, $j) => $q->whereHas('template', fn ($qq) => $qq->where('jenis', $j)));
 
         // Staff hanya lihat miliknya sendiri
         $currentUserId = Auth::id();
@@ -59,37 +59,40 @@ class CutiController extends Controller
     {
         $validated = $request->validate([
             'cuti_template_id' => 'required|uuid|exists:cuti_templates,id',
-            'tanggal_mulai'    => 'required|date|after_or_equal:today',
-            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
-            'alasan'           => 'nullable|string|max:1000',
+            'tanggal_mulai' => 'required|date|after_or_equal:today',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'alasan' => 'nullable|string|max:1000',
         ]);
 
         $period = CutiPeriod::where('is_active', true)->first();
         $balance = CutiBalance::where('user_id', $userId)
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->where('cuti_template_id', $validated['cuti_template_id'])
             ->first();
 
         $start = Carbon::parse($validated['tanggal_mulai']);
-        $end   = Carbon::parse($validated['tanggal_selesai']);
+        $end = Carbon::parse($validated['tanggal_selesai']);
         $jumlah = $start->diffInDays($end) + 1;
 
         if ($balance && $balance->tersisa < $jumlah) {
-            return redirect()->back()->withInput()->with('error', 'Sisa quota tidak mencukupi. Tersisa: ' . $balance->tersisa . ' hari.');
+            return redirect()->back()->withInput()->with('error', 'Sisa quota tidak mencukupi. Tersisa: '.$balance->tersisa.' hari.');
         }
 
-        DB::transaction(function () use ($validated, $userId, $jumlah, $balance, $period) {
+        DB::transaction(function () use ($validated, $userId, $jumlah, $period) {
             $cuti = CutiRequest::create([
-                'user_id'          => $userId,
+                'user_id' => $userId,
                 'cuti_template_id' => $validated['cuti_template_id'],
-                'cuti_period_id'   => $period?->id,
-                'tanggal_mulai'    => $validated['tanggal_mulai'],
-                'tanggal_selesai'  => $validated['tanggal_selesai'],
-                'jumlah_hari'      => $jumlah,
-                'alasan'           => $validated['alasan'] ?? null,
-                'status'           => CutiRequest::STATUS_PENDING,
+                'cuti_period_id' => $period?->id,
+                'tanggal_mulai' => $validated['tanggal_mulai'],
+                'tanggal_selesai' => $validated['tanggal_selesai'],
+                'jumlah_hari' => $jumlah,
+                'alasan' => $validated['alasan'] ?? null,
+                'status' => CutiRequest::STATUS_PENDING,
             ]);
-            try { $this->notif->notifyCutiRequest($cuti); } catch (\Throwable $e) {}
+            try {
+                $this->notif->notifyCutiRequest($cuti);
+            } catch (\Throwable $e) {
+            }
         });
 
         return redirect()->route('user.cuti.index', $userId)
@@ -107,6 +110,7 @@ class CutiController extends Controller
                 ->where('cuti_template_id', $cuti->cuti_template_id)
                 ->value('tersisa');
         }
+
         return view('personalia.cuti.show', compact('userId', 'cuti', 'sisaKuota'));
     }
 
@@ -118,6 +122,7 @@ class CutiController extends Controller
         }
         $templates = CutiTemplate::where('is_active', true)->orderBy('urutan')->get();
         $period = CutiPeriod::where('is_active', true)->first();
+
         return view('personalia.cuti.edit', compact('userId', 'cuti', 'templates', 'period'));
     }
 
@@ -130,21 +135,21 @@ class CutiController extends Controller
 
         $validated = $request->validate([
             'cuti_template_id' => 'required|uuid|exists:cuti_templates,id',
-            'tanggal_mulai'    => 'required|date',
-            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
-            'alasan'           => 'nullable|string|max:1000',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'alasan' => 'nullable|string|max:1000',
         ]);
 
         $start = Carbon::parse($validated['tanggal_mulai']);
-        $end   = Carbon::parse($validated['tanggal_selesai']);
+        $end = Carbon::parse($validated['tanggal_selesai']);
         $jumlah = $start->diffInDays($end) + 1;
 
         $cuti->update([
             'cuti_template_id' => $validated['cuti_template_id'],
-            'tanggal_mulai'    => $validated['tanggal_mulai'],
-            'tanggal_selesai'  => $validated['tanggal_selesai'],
-            'jumlah_hari'      => $jumlah,
-            'alasan'           => $validated['alasan'] ?? null,
+            'tanggal_mulai' => $validated['tanggal_mulai'],
+            'tanggal_selesai' => $validated['tanggal_selesai'],
+            'jumlah_hari' => $jumlah,
+            'alasan' => $validated['alasan'] ?? null,
         ]);
 
         return redirect()->route('user.cuti.index', $userId)
@@ -158,6 +163,7 @@ class CutiController extends Controller
             return redirect()->route('user.cuti.index', $userId)->with('error', 'Tidak dapat menghapus cuti yang sudah diproses.');
         }
         $cuti->delete();
+
         return redirect()->route('user.cuti.index', $userId)->with('success', 'Pengajuan cuti berhasil dihapus.');
     }
 
@@ -180,9 +186,9 @@ class CutiController extends Controller
 
         DB::transaction(function () use ($cuti, $userId) {
             $cuti->update([
-                'status'       => CutiRequest::STATUS_APPROVED,
-                'approved_at'  => now(),
-                'approved_by'  => $userId,
+                'status' => CutiRequest::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => $userId,
                 'approval_notes' => request('notes'),
             ]);
 
@@ -192,7 +198,10 @@ class CutiController extends Controller
                 ->decrement('tersisa', $cuti->jumlah_hari);
         });
 
-        try { $this->notif->notifyCutiDecision($cuti, 'approved'); } catch (\Throwable $e) {}
+        try {
+            $this->notif->notifyCutiDecision($cuti, 'approved');
+        } catch (\Throwable $e) {
+        }
 
         return redirect()->route('user.cuti.approval', $userId)
             ->with('success', 'Cuti berhasil disetujui.');
@@ -207,13 +216,16 @@ class CutiController extends Controller
         }
 
         $cuti->update([
-            'status'           => CutiRequest::STATUS_REJECTED,
-            'rejected_at'      => now(),
-            'rejected_by'      => $userId,
+            'status' => CutiRequest::STATUS_REJECTED,
+            'rejected_at' => now(),
+            'rejected_by' => $userId,
             'rejection_reason' => $validated['rejection_reason'],
         ]);
 
-        try { $this->notif->notifyCutiDecision($cuti, 'rejected'); } catch (\Throwable $e) {}
+        try {
+            $this->notif->notifyCutiDecision($cuti, 'rejected');
+        } catch (\Throwable $e) {
+        }
 
         return redirect()->route('user.cuti.approval', $userId)
             ->with('success', 'Cuti berhasil ditolak.');
@@ -224,20 +236,20 @@ class CutiController extends Controller
         $period = CutiPeriod::where('is_active', true)->first();
 
         $stats = CutiRequest::with('template')
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->selectRaw('status, COUNT(*) as total, SUM(jumlah_hari) as total_hari')
             ->groupBy('status')
             ->get()
             ->keyBy('status');
 
         $byTemplate = CutiRequest::with('template')
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->selectRaw('cuti_template_id, COUNT(*) as total, SUM(jumlah_hari) as total_hari')
             ->groupBy('cuti_template_id')
             ->get();
 
         $recent = CutiRequest::with(['user', 'template'])
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -250,12 +262,12 @@ class CutiController extends Controller
         $period = CutiPeriod::where('is_active', true)->first();
         $balances = CutiBalance::with('template')
             ->where('user_id', $userId)
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->get();
 
         // All GTK balances untuk admin view
         $allBalances = CutiBalance::with(['template', 'user'])
-            ->when($period, fn($q) => $q->where('cuti_period_id', $period->id))
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
             ->orderBy('user_id')
             ->get()
             ->groupBy('user_id');
@@ -267,6 +279,7 @@ class CutiController extends Controller
     {
         $templates = CutiTemplate::orderBy('urutan')->get();
         $periods = CutiPeriod::orderBy('start_date', 'desc')->get();
+
         return view('personalia.cuti.settings', compact('userId', 'templates', 'periods'));
     }
 
@@ -276,20 +289,20 @@ class CutiController extends Controller
 
         if ($type === 'template') {
             $validated = $request->validate([
-                'nama'          => 'required|string|max:100',
-                'jenis'         => 'required|in:TAHUNAN,SAKIT,BESAR,LAINNYA',
-                'jumlah_hari'   => 'required|integer|min:1|max:365',
-                'paid'          => 'boolean',
-                'deskripsi'     => 'nullable|string',
-                'urutan'        => 'nullable|integer',
+                'nama' => 'required|string|max:100',
+                'jenis' => 'required|in:TAHUNAN,SAKIT,BESAR,LAINNYA',
+                'jumlah_hari' => 'required|integer|min:1|max:365',
+                'paid' => 'boolean',
+                'deskripsi' => 'nullable|string',
+                'urutan' => 'nullable|integer',
             ]);
             $validated['paid'] = $request->boolean('paid');
             CutiTemplate::create($validated);
         } elseif ($type === 'period') {
             $validated = $request->validate([
-                'name'       => 'required|string|max:50',
+                'name' => 'required|string|max:50',
                 'start_date' => 'required|date',
-                'end_date'   => 'required|date|after:start_date',
+                'end_date' => 'required|date|after:start_date',
             ]);
             if ($request->boolean('set_active')) {
                 CutiPeriod::query()->update(['is_active' => false]);
@@ -304,21 +317,21 @@ class CutiController extends Controller
     public function datatable(Request $request, string $userId)
     {
         $query = CutiRequest::with(['template', 'user'])
-            ->when($request->get('status'), fn($q, $s) => $q->where('status', $s));
+            ->when($request->get('status'), fn ($q, $s) => $q->where('status', $s));
 
         if (Auth::id() != $userId) {
             $query->where('user_id', $userId);
         }
 
         return datatables()->of($query->orderBy('created_at', 'desc'))
-            ->addColumn('gtk', fn($r) => $r->user?->name ?? '-')
-            ->addColumn('jenis_cuti', fn($r) => $r->template?->nama ?? '-')
-            ->addColumn('tanggal', fn($r) => $r->tanggal_mulai->format('d/m') . ' - ' . $r->tanggal_selesai->format('d/m/Y'))
-            ->addColumn('status_badge', fn($r) => match($r->status) {
-                'PENDING'   => '<span class="badge bg-warning-subtle text-warning">Menunggu</span>',
-                'APPROVED'  => '<span class="badge bg-success-subtle text-success">Disetujui</span>',
-                'REJECTED'  => '<span class="badge bg-danger-subtle text-danger">Ditolak</span>',
-                default     => '<span class="badge bg-secondary-subtle">-</span>',
+            ->addColumn('gtk', fn ($r) => $r->user?->name ?? '-')
+            ->addColumn('jenis_cuti', fn ($r) => $r->template?->nama ?? '-')
+            ->addColumn('tanggal', fn ($r) => $r->tanggal_mulai->format('d/m').' - '.$r->tanggal_selesai->format('d/m/Y'))
+            ->addColumn('status_badge', fn ($r) => match ($r->status) {
+                'PENDING' => '<span class="badge bg-warning-subtle text-warning">Menunggu</span>',
+                'APPROVED' => '<span class="badge bg-success-subtle text-success">Disetujui</span>',
+                'REJECTED' => '<span class="badge bg-danger-subtle text-danger">Ditolak</span>',
+                default => '<span class="badge bg-secondary-subtle">-</span>',
             })
             ->rawColumns(['status_badge'])
             ->make(true);

@@ -126,7 +126,7 @@
     <!-- Header Profile Background -->
     <div class="profile-foreground position-relative mx-n4 mt-n4">
         <div class="profile-wid-bg">
-            <img src="{{ URL::asset('build/images/auth-one-bg.jpg') }}" alt="Background Profile" class="profile-wid-img" />
+            <img src="{{ URL::asset('build/images/alim-one-bg.png') }}" alt="Background Profile" class="profile-wid-img" />
             <div class="overlay-content position-absolute bottom-0 start-0 p-4 text-white">
                 <h4 class="mb-1">{{ $student->name }}</h4>
                 <p class="mb-0 opacity-75">
@@ -208,9 +208,11 @@
             {{-- Tombol: rata kanan --}}
             <div class="col-auto d-flex align-items-center">
                 <div class="d-flex gap-2">
-                    <a href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $student->id]) }}" class="btn btn-success">
-                        <i class="ri-edit-box-line align-middle me-1"></i> Edit Data
-                    </a>
+                    @unless($isDormitoryUser ?? false)
+                        <a href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $student->id]) }}" class="btn btn-success">
+                            <i class="ri-edit-box-line align-middle me-1"></i> Edit Data
+                        </a>
+                    @endunless
                     <a href="{{ route('user.students.index', ['userId' => $userId]) }}" class="btn btn-light">
                         <i class="ri-arrow-left-line align-middle me-1"></i> Kembali
                     </a>
@@ -240,6 +242,14 @@
                             <li class="nav-item">
                                 <a class="nav-link fs-14" data-bs-toggle="tab" href="#keluarga-tab" role="tab">
                                     <i class="ri-parent-line me-1"></i> Keluarga
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fs-14" data-bs-toggle="tab" href="#mahrom-tab" role="tab">
+                                    <i class="ri-shield-user-line me-1"></i> Mahrom
+                                    @if($student->mahroms && $student->mahroms->count() > 0)
+                                        <span class="badge bg-success-subtle text-success ms-1">{{ $student->mahroms->count() }}</span>
+                                    @endif
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -706,6 +716,132 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {{-- ============================================================
+                             TAB MAHROM: Daftar Mahrom Santri
+                        ============================================================ --}}
+                        <div class="tab-pane fade" id="mahrom-tab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title mb-0 d-flex align-items-center">
+                                    <i class="ri-shield-user-line text-primary me-2"></i>Daftar Mahrom
+                                    <small class="text-muted ms-2">({{ $student->mahroms ? $student->mahroms->count() : 0 }} orang)</small>
+                                </h5>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('user.students.mahroms.index', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+                                       class="btn btn-sm btn-soft-primary">
+                                        <i class="ri-list-unordered me-1"></i>Kelola Mahrom
+                                    </a>
+                                    <a href="{{ route('user.students.mahroms.create', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+                                       class="btn btn-sm btn-success">
+                                        <i class="ri-add-line me-1"></i>Tambah
+                                    </a>
+                                </div>
+                            </div>
+
+                            @if($student->mahroms && $student->mahroms->count() > 0)
+                                <div class="row g-3">
+                                    @foreach($student->mahroms as $m)
+                                        <div class="col-xl-6">
+                                            <div class="card h-100 family-member-card border {{ $m->is_primary ? 'border-warning' : '' }}">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-start">
+                                                        {{-- Avatar/Photo --}}
+                                                        <div class="flex-shrink-0 me-3">
+                                                            @if($m->photo_path)
+                                                                <img src="{{ asset('storage/' . $m->photo_path) }}"
+                                                                     alt="{{ $m->name }}"
+                                                                     class="rounded-circle"
+                                                                     style="width:64px;height:64px;object-fit:cover;">
+                                                            @else
+                                                                <div class="avatar-md">
+                                                                    <span class="avatar-title rounded-circle fs-4 fw-bold bg-{{ $m->is_primary ? 'warning' : 'primary' }}-subtle text-{{ $m->is_primary ? 'warning' : 'primary' }}">
+                                                                        {{ strtoupper(substr($m->name, 0, 2)) }}
+                                                                    </span>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
+                                                        {{-- Info --}}
+                                                        <div class="flex-grow-1 min-w-0">
+                                                            <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                                                                <div>
+                                                                    <h6 class="mb-0 fw-semibold">
+                                                                        {{ $m->name }}
+                                                                        @if($m->is_primary)
+                                                                            <i class="ri-star-fill text-warning ms-1" title="Mahrom Utama"></i>
+                                                                        @endif
+                                                                    </h6>
+                                                                    <div class="text-muted small">
+                                                                        {{ $m->relationship_text ?? ucfirst(str_replace('_', ' ', $m->relationship)) }}
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex gap-1 flex-wrap">
+                                                                    @if($m->is_primary)
+                                                                        <span class="badge bg-warning-subtle text-warning">
+                                                                            <i class="ri-star-line me-1"></i>Utama
+                                                                        </span>
+                                                                    @endif
+                                                                    @if($m->is_active)
+                                                                        <span class="badge bg-success-subtle text-success">
+                                                                            <i class="ri-checkbox-circle-line me-1"></i>Aktif
+                                                                        </span>
+                                                                    @else
+                                                                        <span class="badge bg-secondary-subtle text-secondary">
+                                                                            <i class="ri-close-circle-line me-1"></i>Nonaktif
+                                                                        </span>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="row g-2 small">
+                                                                @if($m->phone)
+                                                                <div class="col-md-6">
+                                                                    <div class="text-muted">Telepon</div>
+                                                                    <div class="fw-semibold">{{ $m->phone }}</div>
+                                                                </div>
+                                                                @endif
+                                                                @if($m->id_number)
+                                                                <div class="col-md-6">
+                                                                    <div class="text-muted">NIK</div>
+                                                                    <div class="fw-semibold"><code class="small">{{ $m->id_number }}</code></div>
+                                                                </div>
+                                                                @endif
+                                                                @if($m->address)
+                                                                <div class="col-12">
+                                                                    <div class="text-muted">Alamat</div>
+                                                                    <div class="fw-semibold text-truncate" title="{{ $m->address }}">{{ $m->address }}</div>
+                                                                </div>
+                                                                @endif
+                                                            </div>
+
+                                                            <div class="d-flex gap-2 mt-3 pt-3 border-top">
+                                                                <a href="{{ route('user.students.mahroms.show', ['userId' => $userId, 'santriUuid' => $student->id, 'mahromUuid' => $m->id]) }}"
+                                                                   class="btn btn-sm btn-outline-primary">
+                                                                    <i class="ri-eye-line me-1"></i> Detail
+                                                                </a>
+                                                                <a href="{{ route('user.students.mahroms.edit', ['userId' => $userId, 'santriUuid' => $student->id, 'mahromUuid' => $m->id]) }}"
+                                                                   class="btn btn-sm btn-outline-success">
+                                                                    <i class="ri-edit-box-line me-1"></i> Edit
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="ri-shield-user-line text-muted" style="font-size:3rem;"></i>
+                                    <p class="text-muted mt-2 mb-3">Belum ada data mahrom untuk {{ $student->name }}.</p>
+                                    <a href="{{ route('user.students.mahroms.create', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+                                       class="btn btn-success">
+                                        <i class="ri-add-line me-1"></i>Tambah Mahrom Pertama
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- ============================================================

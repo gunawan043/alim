@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class Supervisi extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'supervisi';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -42,8 +44,11 @@ class Supervisi extends Model
     ];
 
     const JENIS_PERANGKAT = 'perangkat_pembelajaran';
+
     const JENIS_PROSES = 'proses_pembelajaran';
+
     const JENIS_PENILAIAN = 'penilaian';
+
     const JENIS_LAINNYA = 'lainnya';
 
     const JENIS_OPTIONS = [
@@ -54,8 +59,11 @@ class Supervisi extends Model
     ];
 
     const STATUS_TERJADWAL = 'terjadwal';
+
     const STATUS_BERLANGSUNG = 'berlangsung';
+
     const STATUS_SELESAI = 'selesai';
+
     const STATUS_DIBATALKAN = 'dibatalkan';
 
     const STATUS_OPTIONS = [
@@ -100,6 +108,7 @@ class Supervisi extends Model
         if ($schoolId) {
             return $query->where('school_id', $schoolId);
         }
+
         return $query;
     }
 
@@ -108,6 +117,7 @@ class Supervisi extends Model
         if ($academicYearId) {
             return $query->where('academic_year_id', $academicYearId);
         }
+
         return $query;
     }
 
@@ -116,6 +126,7 @@ class Supervisi extends Model
         if ($semester) {
             return $query->where('semester', $semester);
         }
+
         return $query;
     }
 
@@ -124,6 +135,7 @@ class Supervisi extends Model
         if ($status) {
             return $query->where('status', $status);
         }
+
         return $query;
     }
 

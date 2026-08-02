@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
-use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -18,7 +18,7 @@ class StudyGroupApiController extends Controller
     {
         // Ambil school_id langsung dari study group — tidak perlu middleware
         $studyGroup = StudyGroup::find($studyGroupId);
-        if (!$studyGroup) {
+        if (! $studyGroup) {
             return response()->json(['success' => false, 'message' => 'Rombel tidak ditemukan.'], 404);
         }
 
@@ -32,9 +32,9 @@ class StudyGroupApiController extends Controller
             ->orderBy('name');
 
         if ($request->filled('q')) {
-            $query->where(fn($sq) => $sq
-                ->where('name', 'like', '%' . $request->q . '%')
-                ->orWhere('nisn', 'like', '%' . $request->q . '%')
+            $query->where(fn ($sq) => $sq
+                ->where('name', 'like', '%'.$request->q.'%')
+                ->orWhere('nisn', 'like', '%'.$request->q.'%')
             );
         }
 
@@ -177,7 +177,7 @@ class StudyGroupApiController extends Controller
     public function getAssignedStudents(Request $request, string $studyGroupId)
     {
         $studyGroup = StudyGroup::with(['gradeLevel', 'school'])->find($studyGroupId);
-        if (!$studyGroup) {
+        if (! $studyGroup) {
             return response()->json(['success' => false, 'message' => 'Rombel tidak ditemukan.'], 404);
         }
 
@@ -237,7 +237,7 @@ class StudyGroupApiController extends Controller
         $schoolId = $request->get('school_id');
         $academicYearId = $request->get('academic_year_id');
 
-        if (!$schoolId) {
+        if (! $schoolId) {
             return response()->json(['success' => false, 'message' => 'school_id diperlukan.'], 400);
         }
 
@@ -249,13 +249,15 @@ class StudyGroupApiController extends Controller
             $query->where('academic_year_id', $academicYearId);
         } else {
             $activeAy = AcademicYear::where('is_active', true)->first();
-            if ($activeAy) $query->where('academic_year_id', $activeAy->id);
+            if ($activeAy) {
+                $query->where('academic_year_id', $activeAy->id);
+            }
         }
 
-        $groups = $query->orderBy(fn($q) => $q->orderByRaw('COALESCE((SELECT level FROM grade_levels gl WHERE gl.id = study_groups.grade_level_id), 0) ASC'))
+        $groups = $query->orderBy(fn ($q) => $q->orderByRaw('COALESCE((SELECT level FROM grade_levels gl WHERE gl.id = study_groups.grade_level_id), 0) ASC'))
             ->orderBy('name')
             ->get(['id', 'name', 'grade_level_id'])
-            ->map(fn($sg) => [
+            ->map(fn ($sg) => [
                 'id' => $sg->id,
                 'name' => $sg->name,
                 'level' => $sg->gradeLevel?->level ?? 0,

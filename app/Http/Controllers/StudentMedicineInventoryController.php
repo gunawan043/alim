@@ -19,7 +19,7 @@ class StudentMedicineInventoryController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('medicine_name', 'like', "%{$q}%")
                 ->orWhere('medicine_code', 'like', "%{$q}%")
             );

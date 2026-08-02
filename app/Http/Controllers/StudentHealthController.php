@@ -24,8 +24,8 @@ class StudentHealthController extends Controller
         $stats = [
             'bmi_normal' => $record && $record->bmi >= 18.5 && $record->bmi < 25,
             'permits_total' => $permits->count(),
-            'permits_sakit' => $permits->whereIn('permit_type', ['sakit_ringan','sakit_sedang'])->count(),
-            'permits_berat' => $permits->whereIn('permit_type', ['sakit_berat','rawat_inap'])->count(),
+            'permits_sakit' => $permits->whereIn('permit_type', ['sakit_ringan', 'sakit_sedang'])->count(),
+            'permits_berat' => $permits->whereIn('permit_type', ['sakit_berat', 'rawat_inap'])->count(),
         ];
 
         return view('dormitory.students.health', [

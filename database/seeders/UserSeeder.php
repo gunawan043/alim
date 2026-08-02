@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\School;
 use App\Models\GtkEmployment;
+use App\Models\School;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class UserSeeder extends Seeder
@@ -14,12 +14,11 @@ class UserSeeder extends Seeder
     {
         // ── Regular users (no school assignment) ───────────────────
         $users = [
-            ['name' => 'Super Administrator',  'email' => 'superadmin@example.com',  'password' => 'password123', 'role' => 'Super Admin'],
             ['name' => 'Staff Personalia',       'email' => 'personalia@example.com',   'password' => 'password123', 'role' => 'Personalia'],
             ['name' => 'Administrator',          'email' => 'admin@example.com',        'password' => 'password123', 'role' => 'Administrator'],
-            ['name' => 'Guru Contoh',           'email' => 'gtk@example.com',          'password' => 'password123', 'role' => 'Guru Umum'],
+            ['name' => 'Guru Contoh',           'email' => 'gtk@example.com',          'password' => 'password123', 'role' => 'Guru'],
             ['name' => 'Mudir',                  'email' => 'mudir@example.com',        'password' => 'password123', 'role' => 'Mudir'],
-            ['name' => 'Wakil Kepala Sekolah',  'email' => 'wakasek@example.com',     'password' => 'password123', 'role' => 'Wakil Kepala Sekolah'],
+            ['name' => 'Wakil Kepala Sekolah',  'email' => 'wakasek@example.com',     'password' => 'password123', 'role' => 'Wadir 1'],
             ['name' => 'Kepala Sekolah',         'email' => 'kepsek@example.com',       'password' => 'password123', 'role' => 'Kepala Sekolah'],
         ];
 
@@ -32,46 +31,46 @@ class UserSeeder extends Seeder
         // Tata Usaha = read-only mutations
         $tuUsers = [
             [
-                'name'     => 'Admin TU SD IT Putra',
-                'email'    => 'tu.sdputra@example.com',
+                'name' => 'Admin TU SD IT Putra',
+                'email' => 'tu.sdputra@example.com',
                 'password' => 'password123',
-                'role'     => 'Admin Tata Usaha',
-                'school'   => 'SD IT Putra Abu Hurairah Mataram',
+                'role' => 'Admin Tata Usaha',
+                'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
             [
-                'name'     => 'Admin TU SD IT Putri',
-                'email'    => 'tu.sdputri@example.com',
+                'name' => 'Admin TU SD IT Putri',
+                'email' => 'tu.sdputri@example.com',
                 'password' => 'password123',
-                'role'     => 'Admin Tata Usaha',
-                'school'   => 'SD IT Putri Abu Hurairah Mataram',
+                'role' => 'Admin Tata Usaha',
+                'school' => 'SD IT Putri Abu Hurairah Mataram',
             ],
             [
-                'name'     => 'Admin TU SMP IT Putra',
-                'email'    => 'tu.smpputra@example.com',
+                'name' => 'Admin TU SMP IT Putra',
+                'email' => 'tu.smpputra@example.com',
                 'password' => 'password123',
-                'role'     => 'Admin Tata Usaha',
-                'school'   => 'SMP IT Putra Abu Hurairah Mataram',
+                'role' => 'Admin Tata Usaha',
+                'school' => 'SMP IT Putra Abu Hurairah Mataram',
             ],
             [
-                'name'     => 'Admin TU SMP IT Putri',
-                'email'    => 'tu.smpputri@example.com',
+                'name' => 'Admin TU SMP IT Putri',
+                'email' => 'tu.smpputri@example.com',
                 'password' => 'password123',
-                'role'     => 'Admin Tata Usaha',
-                'school'   => 'SMP IT Putri Abu Hurairah Mataram',
+                'role' => 'Admin Tata Usaha',
+                'school' => 'SMP IT Putri Abu Hurairah Mataram',
             ],
             [
-                'name'     => 'Admin TU SMA IT',
-                'email'    => 'tu.sma@example.com',
+                'name' => 'Admin TU SMA IT',
+                'email' => 'tu.sma@example.com',
                 'password' => 'password123',
-                'role'     => 'Admin Tata Usaha',
-                'school'   => 'SMA IT Putra Abu Hurairah Mataram',
+                'role' => 'Admin Tata Usaha',
+                'school' => 'SMA IT Putra Abu Hurairah Mataram',
             ],
             [
-                'name'     => 'TU SD IT Putra (Read-Only)',
-                'email'    => 'tu-readonly@example.com',
+                'name' => 'TU SD IT Putra (Read-Only)',
+                'email' => 'tu-readonly@example.com',
                 'password' => 'password123',
-                'role'     => 'Tata Usaha',
-                'school'   => 'SD IT Putra Abu Hurairah Mataram',
+                'role' => 'Tata Usaha',
+                'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
         ];
 
@@ -88,15 +87,16 @@ class UserSeeder extends Seeder
             // Use DB facade to avoid model UUID issues in seeder context
             $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', 'web')->value('id');
 
-            if (!$roleId) {
+            if (! $roleId) {
                 $this->command->warn("  ⚠️ Role '{$roleName}' not found.");
+
                 return null;
             }
 
             $user = User::firstOrCreate(
                 ['email' => $email],
                 [
-                    'name'     => $name,
+                    'name' => $name,
                     // Pass raw password — User model's 'password' => 'hashed' cast handles hashing
                     'password' => $password,
                     'is_active' => true,
@@ -113,7 +113,8 @@ class UserSeeder extends Seeder
 
             return $user;
         } catch (\Exception $e) {
-            $this->command->error("  ❌ Failed to create user '{$name}': " . $e->getMessage());
+            $this->command->error("  ❌ Failed to create user '{$name}': ".$e->getMessage());
+
             return null;
         }
     }
@@ -126,21 +127,23 @@ class UserSeeder extends Seeder
         try {
             // Use DB facade to avoid model UUID issues in seeder context
             $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', 'web')->value('id');
-            if (!$roleId) {
+            if (! $roleId) {
                 $this->command->warn("  ⚠️ Role '{$roleName}' not found.");
+
                 return null;
             }
 
             $school = School::where('name', $schoolName)->first();
-            if (!$school) {
+            if (! $school) {
                 $this->command->warn("  ⚠️ School '{$schoolName}' not found — TU user '{$name}' skipped.");
+
                 return null;
             }
 
             $user = User::firstOrCreate(
                 ['email' => $email],
                 [
-                    'name'     => $name,
+                    'name' => $name,
                     // Pass raw password — User model's 'password' => 'hashed' cast handles hashing
                     'password' => $password,
                     'is_active' => true,
@@ -154,12 +157,12 @@ class UserSeeder extends Seeder
             );
 
             // Assign to school via gtk_employment
-            if (!GtkEmployment::where('user_id', $user->id)->where('school_id', $school->id)->exists()) {
+            if (! GtkEmployment::where('user_id', $user->id)->where('school_id', $school->id)->exists()) {
                 GtkEmployment::create([
-                    'user_id'           => $user->id,
-                    'school_id'         => $school->id,
+                    'user_id' => $user->id,
+                    'school_id' => $school->id,
                     'status_kepegawaian' => 'PTY',
-                    'jabatan'           => str_contains($roleName, 'Admin') ? 'Admin Tata Usaha' : 'Tata Usaha',
+                    'jabatan' => str_contains($roleName, 'Admin') ? 'Admin Tata Usaha' : 'Tata Usaha',
                 ]);
             }
 
@@ -167,7 +170,8 @@ class UserSeeder extends Seeder
 
             return $user;
         } catch (\Exception $e) {
-            $this->command->error("  ❌ Failed to create TU user '{$name}': " . $e->getMessage());
+            $this->command->error("  ❌ Failed to create TU user '{$name}': ".$e->getMessage());
+
             return null;
         }
     }

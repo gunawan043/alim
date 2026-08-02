@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 3. create_tahfidz_juz_master_table.php
 // Master data 30 juz. Di-seed sekali. Dipakai untuk progress map visualisasi.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_juz_master', function (Blueprint $table) {
@@ -28,5 +29,9 @@ return new class extends Migration {
             $table->foreign('surah_end_id')->references('id')->on('tahfidz_surah_master')->nullOnDelete();
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_juz_master'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_juz_master');
+    }
 };

@@ -14,15 +14,15 @@ return new class extends Migration
             $table->foreignUuid('from_school_id')->constrained('schools')->cascadeOnDelete();
             $table->foreignUuid('to_school_id')->constrained('schools')->cascadeOnDelete();
             $table->foreignUuid('approved_by')->nullable()->constrained('users')->nullOnDelete();
-            
+
             $table->date('transfer_date');
             $table->text('reason')->nullable();
             $table->enum('transfer_type', ['masuk', 'keluar', 'pindah'])->default('pindah');
             $table->enum('approval_status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('notes')->nullable();
-            
+
             $table->timestamps();
-            
+
             $table->index('student_id');
             $table->index('transfer_date');
             $table->index('approval_status');

@@ -3,12 +3,12 @@
 namespace App\Services;
 
 use App\Domain\Services\BoardingTimelineService;
+use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryViolation;
 use App\Models\StudentMahrom;
-use App\Models\BoardingTimelineEvent;
 
 class DormitoryService
 {

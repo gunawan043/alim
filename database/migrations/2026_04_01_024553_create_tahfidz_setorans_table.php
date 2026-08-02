@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
 // Implementasi digital Gambar 2: Waraqat al-Mutaba'ah.
 // Kolom khofi & jali sesuai kolom penilaian waraqat asli.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_setorans', function (Blueprint $table) {
@@ -22,9 +23,9 @@ return new class extends Migration {
             $table->date('setoran_date');
             $table->tinyInteger('week_number')->nullable()->comment('Pekan ke-1 s/d 5 dalam bulan');
             $table->enum('setoran_type', ['ziyadah', 'murajaah', 'tikror'])
-                  ->comment('ziyadah=hafalan baru, murajaah=pengulangan, tikror=penugasan ulang');
+                ->comment('ziyadah=hafalan baru, murajaah=pengulangan, tikror=penugasan ulang');
             $table->string('metode_pembelajaran', 100)->nullable()
-                  ->comment('Talaqqi, Tasmi, Mandiri, Sima\', dst');
+                ->comment('Talaqqi, Tasmi, Mandiri, Sima\', dst');
 
             // --- MATERI ---
             $table->smallInteger('surah_start_id')->unsigned()->nullable();
@@ -39,13 +40,13 @@ return new class extends Migration {
 
             // --- PENILAIAN WARAQAT (sesuai kolom Gambar 2) ---
             $table->tinyInteger('hasil_hafalan')->nullable()
-                  ->comment('Nilai hasil hafalan saat setoran: 1-100');
+                ->comment('Nilai hasil hafalan saat setoran: 1-100');
             $table->tinyInteger('khofi')->nullable()
-                  ->comment('Nilai khafi / dalam hati: 1-100');
+                ->comment('Nilai khafi / dalam hati: 1-100');
             $table->tinyInteger('jali')->nullable()
-                  ->comment('Nilai jali / keras nyaring: 1-100');
+                ->comment('Nilai jali / keras nyaring: 1-100');
             $table->decimal('nilai_setoran', 5, 2)->nullable()
-                  ->comment('Nilai akhir setoran ini (rata-rata atau kebijakan guru)');
+                ->comment('Nilai akhir setoran ini (rata-rata atau kebijakan guru)');
             $table->enum('capaian_target', ['tercapai', 'belum_tercapai', 'melampaui'])->nullable();
             $table->text('keterangan_capaian')->nullable();
 
@@ -64,5 +65,9 @@ return new class extends Migration {
             $table->index(['student_id', 'academic_year_id', 'juz']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_setorans'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_setorans');
+    }
 };

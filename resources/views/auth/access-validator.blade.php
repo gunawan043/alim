@@ -99,7 +99,7 @@
         .auth-title-main {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #e0eaf2;
+            color: #4a6a80;
             margin-bottom: 0.3rem;
         }
         .auth-title-sub {
@@ -123,7 +123,7 @@
             background: rgba(0, 89, 129, 0.06);
             border: 1.5px solid rgba(0, 89, 129, 0.2);
             border-radius: 12px;
-            color: #e0eaf2;
+            color: #4a6a80;
             font-size: 0.9rem;
             font-family: inherit;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -146,7 +146,7 @@
         }
         .form-control.is-invalid,
         .form-select.is-invalid { border-color: rgba(255, 174, 1, 0.5); }
-        .form-select option { background: #001e2e; color: #e0eaf2; }
+        .form-select option { background: #001e2e; color: #4a6a80; }
 
         .invalid-feedback {
             display: block;
@@ -237,7 +237,7 @@
             background: rgba(0, 89, 129, 0.06);
             color: #7a9ab5;
         }
-        .portal-btn:hover { background: rgba(0, 89, 129, 0.12); border-color: rgba(0, 89, 129, 0.4); color: #e0eaf2; }
+        .portal-btn:hover { background: rgba(0, 89, 129, 0.12); border-color: rgba(0, 89, 129, 0.4); color: #4a6a80; }
 
         .logout-btn {
             border-color: rgba(255, 174, 1, 0.2);
@@ -258,10 +258,9 @@
     <div class="bg-glow glow-1"></div>
     <div class="bg-glow glow-2"></div>
 
-    <a href="{{ url('/') }}" class="logo-mark">
-        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png" alt="ALIM">
-        <span>ALIM</span>
-    </a>
+    <!-- <a href="{{ url('/') }}" class="logo-mark">
+        <img src="/build/images/alim-dark-name.png" alt="ALIM">
+    </a> -->
 
     <div class="auth-wrapper">
         <div class="auth-card">
@@ -303,7 +302,7 @@
                     @enderror
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3" style="margin-top: 12px !important;">
                     <label for="verification_value" class="form-label">Nilai Verifikasi <span>*</span></label>
                     <input type="text" class="form-control @error('verification_value') is-invalid @enderror"
                            id="verification_value" name="verification_value"
@@ -314,7 +313,7 @@
                     @enderror
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3" style="margin-top: 12px !important;">
                     <label for="password" class="form-label">Konfirmasi Password <span>*</span></label>
                     <div class="input-group-wrap">
                         <input type="password" class="form-control @error('password') is-invalid @enderror"
@@ -329,7 +328,7 @@
                     @enderror
                 </div>
 
-                <button class="btn-submit" type="submit">
+                <button style="margin-top: 12px !important;" class="btn-submit mt-3" type="submit">
                     <i class="ri-verified-line"></i> Verifikasi Sekarang
                 </button>
             </form>
@@ -342,7 +341,7 @@
                 <i class="ri-external-link-line"></i> Portal Recruitment
             </a>
 
-            <a href="{{ route('logout') }}"
+            <a style="margin-top: 12px !important;" href="{{ route('logout') }}"
                onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
                class="portal-btn logout-btn">
                 <i class="ri-shut-down-line"></i> Logout

@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\RecruitmentEducation;
 use App\Models\RecruitmentProfile;
 use App\Models\RecruitmentSkill;
-use App\Models\RecruitmentEducation;
 use App\Models\User;
 use App\Services\RecruitmentDocumentService;
-use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,29 +25,29 @@ class CandidateController extends Controller
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('user', function($q) use ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             })->orWhere('nik', 'like', "%{$search}%");
         }
 
         // Filter by education
         if ($request->has('pendidikan')) {
-            $query->whereHas('educations', function($q) use ($request) {
+            $query->whereHas('educations', function ($q) use ($request) {
                 $q->where('jenjang', $request->pendidikan);
             });
         }
 
         // Filter by skill
         if ($request->has('skill')) {
-            $query->whereHas('skills', function($q) use ($request) {
+            $query->whereHas('skills', function ($q) use ($request) {
                 $q->where('nama_skill', 'like', "%{$request->skill}%");
             });
         }
 
         // Filter by experience
         if ($request->has('pengalaman_min')) {
-            $query->whereHas('workExperiences', function($q) use ($request) {
+            $query->whereHas('workExperiences', function ($q) use ($request) {
                 $q->havingRaw('SUM(lama_bekerja_bulan) >= ?', [$request->pengalaman_min * 12]);
             });
         }
@@ -91,7 +89,7 @@ class CandidateController extends Controller
         // Sync hanya jika service configured dan belum sync dalam 1 jam
         if (RecruitmentDocumentService::isConfigured()) {
             $lastSync = $candidate->documents()->whereNotNull('synced_at')->max('synced_at');
-            $shouldSync = !$lastSync || now()->diffInHours($lastSync) >= 1;
+            $shouldSync = ! $lastSync || now()->diffInHours($lastSync) >= 1;
 
             if ($shouldSync) {
                 try {
@@ -137,7 +135,7 @@ class CandidateController extends Controller
     {
         $cv = $candidate->documents()->where('jenis_dokumen', 'cv')->first();
 
-        if (!$cv) {
+        if (! $cv) {
             return back()->with('error', 'CV tidak ditemukan');
         }
 
@@ -146,9 +144,9 @@ class CandidateController extends Controller
             return redirect()->away($cv->external_url);
         }
 
-        $path = storage_path('app/public/' . $cv->file_path);
+        $path = storage_path('app/public/'.$cv->file_path);
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return back()->with('error', 'File CV tidak ditemukan');
         }
 
@@ -166,11 +164,11 @@ class CandidateController extends Controller
         foreach ($candidate->applications as $app) {
             $timeline->push([
                 'type' => 'application',
-                'title' => 'Melamar sebagai ' . $app->recruitmentJob->judul,
-                'description' => 'Status: ' . $app->status,
+                'title' => 'Melamar sebagai '.$app->recruitmentJob->judul,
+                'description' => 'Status: '.$app->status,
                 'date' => $app->created_at,
                 'icon' => 'ri-file-copy-line',
-                'color' => 'primary'
+                'color' => 'primary',
             ]);
         }
 
@@ -183,7 +181,7 @@ class CandidateController extends Controller
                     'description' => $stage->catatan,
                     'date' => $stage->created_at,
                     'icon' => 'ri-timeline-line',
-                    'color' => 'info'
+                    'color' => 'info',
                 ]);
             }
         }
@@ -193,7 +191,7 @@ class CandidateController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $timeline
+            'data' => $timeline,
         ]);
     }
 
@@ -206,7 +204,7 @@ class CandidateController extends Controller
             'kategori' => 'required|in:teknis,non_teknis,bahasa,sertifikasi',
             'nama_skill' => 'required|string|max:255',
             'level' => 'nullable|string',
-            'tahun_pengalaman' => 'nullable|integer'
+            'tahun_pengalaman' => 'nullable|integer',
         ]);
 
         $skill = $candidate->skills()->create($validated);
@@ -214,7 +212,7 @@ class CandidateController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Skill berhasil ditambahkan',
-            'data' => $skill
+            'data' => $skill,
         ]);
     }
 
@@ -228,7 +226,7 @@ class CandidateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Skill berhasil dihapus'
+            'message' => 'Skill berhasil dihapus',
         ]);
     }
 
@@ -243,10 +241,10 @@ class CandidateController extends Controller
 
         $user = $candidate->user;
 
-        if (!\Hash::check($request->password, $user->password)) {
+        if (! \Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Password yang Anda masukkan tidak valid.'
+                'message' => 'Password yang Anda masukkan tidak valid.',
             ], 401);
         }
 
@@ -256,7 +254,7 @@ class CandidateController extends Controller
             'data' => [
                 'nik' => $candidate->nik ?? '-',
                 'no_kk' => $candidate->no_kk ?? '-',
-            ]
+            ],
         ]);
     }
 
@@ -295,7 +293,7 @@ class CandidateController extends Controller
                 'email' => $validated['email'],
                 'password' => bcrypt($validated['password']),
                 'avatar' => 'default-avatar.jpg',
-                'is_active' => true
+                'is_active' => true,
             ]);
 
             // Assign role
@@ -312,7 +310,7 @@ class CandidateController extends Controller
                 'agama' => $validated['agama'] ?? null,
                 'status_perkawinan' => $validated['status_perkawinan'] ?? 'belum_kawin',
                 'alamat_lengkap' => $validated['alamat'] ?? null,
-                'status' => 'draft'
+                'status' => 'draft',
             ]);
 
             DB::commit();
@@ -322,7 +320,8 @@ class CandidateController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal menambah kandidat: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal menambah kandidat: '.$e->getMessage());
         }
     }
 
@@ -342,7 +341,7 @@ class CandidateController extends Controller
     public function update(Request $request, string $userId, RecruitmentProfile $candidate)
     {
         $validated = $request->validate([
-            'nik' => 'nullable|string|unique:recruitment_profiles,nik,' . $candidate->id,
+            'nik' => 'nullable|string|unique:recruitment_profiles,nik,'.$candidate->id,
             'no_kk' => 'nullable|string',
             'tempat_lahir' => 'nullable|string|max:255',
             'tanggal_lahir' => 'nullable|date',
@@ -445,9 +444,9 @@ class CandidateController extends Controller
         try {
             $candidateId = $candidate->id;
             $extension = $request->file('foto')->getClientOriginalExtension();
-            $filename = $candidateId . '_' . time() . '.' . $extension;
+            $filename = $candidateId.'_'.time().'.'.$extension;
             $path = $request->file('foto')->storeAs(
-                'recruitment/candidates/' . $candidateId,
+                'recruitment/candidates/'.$candidateId,
                 $filename,
                 'public'
             );
@@ -489,7 +488,7 @@ class CandidateController extends Controller
             }
 
             $service = app(\App\Services\RecruitmentDocumentService::class);
-            $result  = $service->syncDocumentsForProfile($profile);
+            $result = $service->syncDocumentsForProfile($profile);
 
             return back()->with(
                 $result['success'] ? 'success' : 'error',
@@ -499,7 +498,8 @@ class CandidateController extends Controller
             return back()->with('error', 'Kandidat tidak ditemukan.');
         } catch (\Exception $e) {
             \Log::error('syncDocuments failed', ['candidate' => $candidate, 'error' => $e->getMessage()]);
-            return back()->with('error', 'Gagal sinkronisasi dokumen: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal sinkronisasi dokumen: '.$e->getMessage());
         }
     }
 }

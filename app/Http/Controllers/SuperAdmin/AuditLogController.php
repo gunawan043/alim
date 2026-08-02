@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class AuditLogController extends Controller
 {
@@ -55,6 +54,7 @@ class AuditLogController extends Controller
     {
         $userId = $request->route('userId');
         $log = AuditLog::with('user')->findOrFail($id);
+
         return view('super-admin.audit-logs.show', compact('log', 'userId'));
     }
 
@@ -80,7 +80,7 @@ class AuditLogController extends Controller
 
         $logs = $query->orderBy('created_at', 'desc')->limit(1000)->get();
 
-        $filename = 'audit-log-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'audit-log-'.now()->format('Y-m-d-His').'.csv';
         $handle = fopen('php://temp', 'r+');
 
         fputcsv($handle, ['ID', 'User', 'Action', 'Table', 'Record ID', 'IP Address', 'Timestamp']);
@@ -101,7 +101,7 @@ class AuditLogController extends Controller
         $content = stream_get_contents($handle);
         fclose($handle);
 
-        return response()->streamDownload(fn() => $content, $filename, [
+        return response()->streamDownload(fn () => $content, $filename, [
             'Content-Type' => 'text/csv',
         ]);
     }

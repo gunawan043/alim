@@ -11,8 +11,11 @@ class SuccessionPlanKandidat extends Model
     use HasFactory;
 
     protected $table = 'succession_plan_kandidat';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -50,18 +53,18 @@ class SuccessionPlanKandidat extends Model
     public function getKesiapanLabelAttribute()
     {
         return [
-            'siap_sekarang'   => 'Siap Sekarang',
-            'siap_1_2_tahun'  => 'Siap 1-2 Tahun',
-            'siap_3_5_tahun'  => 'Siap 3-5 Tahun',
+            'siap_sekarang' => 'Siap Sekarang',
+            'siap_1_2_tahun' => 'Siap 1-2 Tahun',
+            'siap_3_5_tahun' => 'Siap 3-5 Tahun',
         ][$this->kesiapan] ?? $this->kesiapan;
     }
 
     public function getKesiapanColorAttribute()
     {
         return [
-            'siap_sekarang'   => 'success',
-            'siap_1_2_tahun'  => 'warning',
-            'siap_3_5_tahun'  => 'info',
+            'siap_sekarang' => 'success',
+            'siap_1_2_tahun' => 'warning',
+            'siap_3_5_tahun' => 'info',
         ][$this->kesiapan] ?? 'secondary';
     }
 }

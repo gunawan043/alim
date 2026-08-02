@@ -33,8 +33,9 @@ class NilaiDummySeeder extends Seeder
 
         // Sekolah: SD IT Putra (satu-satunya yang punya siswa)
         $school = \App\Models\School::where('name', 'like', '%SD IT Putra Abu Hurairah Mataram%')->first();
-        if (!$school) {
+        if (! $school) {
             $this->command?->error('School SD IT Putri tidak ditemukan.');
+
             return;
         }
 
@@ -43,10 +44,10 @@ class NilaiDummySeeder extends Seeder
             $subject = Subject::firstOrCreate(
                 ['school_id' => $school->id, 'code' => $sub['code']],
                 [
-                    'name'        => $sub['name'],
-                    'category'    => $sub['category'],
-                    'credit_hours'=> 4,
-                    'is_active'   => true,
+                    'name' => $sub['name'],
+                    'category' => $sub['category'],
+                    'credit_hours' => 4,
+                    'is_active' => true,
                 ]
             );
             $subjectIds[$sub['code']] = $subject->id;
@@ -90,7 +91,7 @@ class NilaiDummySeeder extends Seeder
 
         // ── 5. Semester ──────────────────────────────────────────────────────
         $semester = now()->month >= 7 ? 'ganjil' : 'genap';
-        echo "  Semester: {$semester} (bulan: " . now()->month . ")\n";
+        echo "  Semester: {$semester} (bulan: ".now()->month.")\n";
 
         // ── 6. TeacherAdminBook ─────────────────────────────────────────────
         $count = 0;
@@ -103,6 +104,7 @@ class NilaiDummySeeder extends Seeder
 
             if ($siswaCount == 0) {
                 echo "  Skip {$studyGroup->name}: belum ada siswa\n";
+
                 continue;
             }
 
@@ -120,14 +122,14 @@ class NilaiDummySeeder extends Seeder
                     }
 
                     TeacherAdminBook::create([
-                        'id'               => (string) Str::uuid(),
-                        'teacher_id'       => $teacher->id,
-                        'subject_id'       => $subjectId,
-                        'study_group_id'   => $studyGroup->id,
-                        'school_id'        => $school->id,
+                        'id' => (string) Str::uuid(),
+                        'teacher_id' => $teacher->id,
+                        'subject_id' => $subjectId,
+                        'study_group_id' => $studyGroup->id,
+                        'school_id' => $school->id,
                         'academic_year_id' => $ay->id,
-                        'semester'         => $semester,
-                        'is_active'        => true,
+                        'semester' => $semester,
+                        'is_active' => true,
                     ]);
                     $count++;
                     echo "  ✓ {$teacher->name} → {$studyGroup->name} / ID:{$subjectId} (semester {$semester})\n";

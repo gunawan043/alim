@@ -74,7 +74,7 @@ class TeachingAssignmentController extends Controller
 
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
-            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
             ->orderBy('name')
             ->get();
 
@@ -158,7 +158,7 @@ class TeachingAssignmentController extends Controller
             ->get();
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
-            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
             ->orderBy('name')
             ->get();
 

@@ -568,6 +568,10 @@
                                                         <option value="">Pilih jabatan...</option>
                                                     </select>
                                                     <div class="invalid-feedback">Harap pilih jabatan</div>
+                                                    <small id="jabatan-role-preview" class="form-text text-muted d-none">
+                                                        Role otomatis: <span class="badge bg-info">GTK</span>
+                                                        <span class="jabatan-roles-badges"></span>
+                                                    </small>
                                                 </div>
 
                                                 <div class="col-md-6">
@@ -853,7 +857,11 @@
 const jabatanByJenis = {};
 @foreach($jabatan as $j)
 if (!jabatanByJenis['{{ $j->jenis_gtk_id }}']) jabatanByJenis['{{ $j->jenis_gtk_id }}'] = [];
-jabatanByJenis['{{ $j->jenis_gtk_id }}'].push('{{ addslashes($j->nama) }}');
+jabatanByJenis['{{ $j->jenis_gtk_id }}'].push({
+    id: '{{ $j->id }}',
+    nama: @json($j->nama),
+    roles: @json($j->roles ?? [])
+});
 @endforeach
 
 let educationList  = [];
@@ -958,12 +966,38 @@ function setupJenisGtkListener() {
         const list = jabatanByJenis[this.value] || [];
         list.forEach(function(j) {
             const opt = document.createElement('option');
-            opt.value = j;
-            opt.textContent = j;
+            opt.value = j.id;
+            opt.textContent = j.nama;
+            opt.dataset.nama = j.nama;
+            opt.dataset.roles = (j.roles || []).join(',');
             jabatanSelect.appendChild(opt);
         });
         updateProgress();
+        updateJabatanRolePreview();
     });
+
+    document.getElementById('jabatan')?.addEventListener('change', updateJabatanRolePreview);
+}
+
+function updateJabatanRolePreview() {
+    const select = document.getElementById('jabatan');
+    const preview = document.getElementById('jabatan-role-preview');
+    const badgesEl = preview?.querySelector('.jabatan-roles-badges');
+    if (!select || !preview || !badgesEl) return;
+
+    const opt = select.options[select.selectedIndex];
+    const rolesCsv = opt?.dataset?.roles || '';
+    if (!opt || !opt.value || !rolesCsv) {
+        preview.classList.add('d-none');
+        badgesEl.innerHTML = '';
+        return;
+    }
+
+    const roles = rolesCsv.split(',').filter(Boolean);
+    badgesEl.innerHTML = roles.map(r =>
+        '<span class="badge bg-primary me-1">' + escHtml(r) + '</span>'
+    ).join('');
+    preview.classList.remove('d-none');
 }
 
 /* ==========================================================================

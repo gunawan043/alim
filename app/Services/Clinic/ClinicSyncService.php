@@ -2,7 +2,6 @@
 
 namespace App\Services\Clinic;
 
-use App\Models\IntegrationEventLog;
 use Illuminate\Support\Facades\DB;
 
 /**

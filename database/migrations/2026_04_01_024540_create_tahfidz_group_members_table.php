@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_group_members', function (Blueprint $table) {
@@ -25,5 +26,9 @@ return new class extends Migration {
             $table->index(['student_id', 'academic_year_id', 'status']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_group_members'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_group_members');
+    }
 };

@@ -11,8 +11,11 @@ class WorkOrderPauseEvent extends Model
     use HasFactory;
 
     protected $table = 'work_order_pause_events';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

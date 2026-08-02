@@ -17,6 +17,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL-only: SQLite does not support MODIFY COLUMN
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("UPDATE students SET status = 'transfer_out' WHERE status = 'transfer'");
 
         DB::statement("
@@ -29,6 +34,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("UPDATE students SET status = 'transfer' WHERE status IN ('transfer_in','transfer_out')");
 
         DB::statement("

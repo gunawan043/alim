@@ -26,7 +26,7 @@ class SoalController extends Controller
         }])->findOrFail($bankId);
 
         return view('evalusi.bank-soal.partials.soal-list', [
-            'bank'   => $bank,
+            'bank' => $bank,
             'userId' => $userId,
         ]);
     }

@@ -33,24 +33,24 @@ return new class extends Migration
 
             // Foreign key constraints - referensi ke code
             $table->foreign('province_code')
-                  ->references('code')
-                  ->on('indonesia_provinces')
-                  ->onDelete('set null');
-                  
+                ->references('code')
+                ->on('indonesia_provinces')
+                ->onDelete('set null');
+
             $table->foreign('city_code')
-                  ->references('code')
-                  ->on('indonesia_cities')
-                  ->onDelete('set null');
-                  
+                ->references('code')
+                ->on('indonesia_cities')
+                ->onDelete('set null');
+
             $table->foreign('district_code')
-                  ->references('code')
-                  ->on('indonesia_districts')
-                  ->onDelete('set null');
-                  
+                ->references('code')
+                ->on('indonesia_districts')
+                ->onDelete('set null');
+
             $table->foreign('village_code')
-                  ->references('code')
-                  ->on('indonesia_villages')
-                  ->onDelete('set null');
+                ->references('code')
+                ->on('indonesia_villages')
+                ->onDelete('set null');
         });
     }
 

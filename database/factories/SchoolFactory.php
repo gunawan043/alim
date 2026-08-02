@@ -32,11 +32,11 @@ class SchoolFactory extends Factory
                     ]
                 )->id;
             },
-            'school_code' => 'SKH-' . strtoupper($this->faker->lexify('???')),
+            'school_code' => 'SKH-'.strtoupper($this->faker->lexify('???')),
             'npsn' => $this->faker->numerify('##########'),
             'nss' => $this->faker->numerify('############'),
             'name' => $this->generateSchoolName($level),
-            'address' => $this->faker->streetAddress() . ', ' . $this->faker->city(),
+            'address' => $this->faker->streetAddress().', '.$this->faker->city(),
             'province_code' => null,
             'city_code' => null,
             'district_code' => null,
@@ -44,7 +44,7 @@ class SchoolFactory extends Factory
             'postal_code' => $this->faker->postcode(),
             'phone' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),
-            'website' => 'https://' . $this->faker->domainName(),
+            'website' => 'https://'.$this->faker->domainName(),
             'school_level' => $level,
             'school_status' => $this->faker->randomElement($statuses),
             'accreditation' => $this->faker->randomElement($akreditasi),
@@ -53,7 +53,7 @@ class SchoolFactory extends Factory
             'principal_nip' => $this->faker->numerify('################'),
             'operational_hours' => $this->faker->randomElement($opsHours),
             'established_date' => $this->faker->dateTimeBetween('1990-01-01', '2015-12-31'),
-            'established_decree' => 'SK. ' . $this->faker->randomElement(['DIKMENDAS', 'MENBUD', 'MENRISTEK']) . '/' . $this->faker->numerify('####/2020'),
+            'established_decree' => 'SK. '.$this->faker->randomElement(['DIKMENDAS', 'MENBUD', 'MENRISTEK']).'/'.$this->faker->numerify('####/2020'),
             'land_area' => $this->faker->randomFloat(2, 500, 10000),
             'building_area' => $this->faker->randomFloat(2, 300, 5000),
             'is_active' => $this->faker->boolean(85),
@@ -69,7 +69,7 @@ class SchoolFactory extends Factory
             'kop_npsn' => null,
             'kopsis_active' => true,
             'bank_name' => $this->faker->randomElement(['Bank Negara Indonesia', 'Bank Mandiri', 'Bank BRI', 'Bank BTPN', null]),
-            'bank_cabang' => $this->faker->city() . ' Branch',
+            'bank_cabang' => $this->faker->city().' Branch',
             'bank_rekening' => $this->faker->numerify('###########'),
             'bank_an' => $this->faker->name(),
             'npwp' => $this->faker->numerify('##.###.###.#-###.###'),
@@ -114,7 +114,7 @@ class SchoolFactory extends Factory
     private function generateSchoolName(string $level): string
     {
         $prefixes = [
-            'sd'  => ['SD Negeri', 'SD Islam', 'SD Kristen', 'SD Katolik', 'SD Tunas', 'SD Permata', 'SD Widya', 'SD Bintang'],
+            'sd' => ['SD Negeri', 'SD Islam', 'SD Kristen', 'SD Katolik', 'SD Tunas', 'SD Permata', 'SD Widya', 'SD Bintang'],
             'smp' => ['SMP Negeri', 'SMP Islam', 'SMP Kristen', 'SMP Katolik', 'SMP Tunas', 'SMP Widya', 'SMP Bintang', 'SMP Cendekia'],
             'sma' => ['SMA Negeri', 'SMA Islam', 'SMA Kristen', 'SMA Katolik', 'SMA Tunas', 'SMA Widya', 'SMA Bintang', 'SMA Cendekia'],
             'smk' => ['SMK Negeri', 'SMK Islam', 'SMK Teknologi', 'SMK Bisnis', 'SMK Kesehatan', 'SMK Pariwisata', 'SMK Negeri', 'SMK Cendekia'],
@@ -129,6 +129,6 @@ class SchoolFactory extends Factory
         $prefix = $this->faker->randomElement($prefixes[$level]);
         $suffix = $this->faker->randomElement($suffixes);
 
-        return $prefix . $suffix;
+        return $prefix.$suffix;
     }
 }

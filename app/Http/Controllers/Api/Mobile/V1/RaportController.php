@@ -10,7 +10,6 @@ use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
 use App\Models\RaportRegistration;
 use App\Models\StudentHealthCheckup;
-use App\Models\Subject;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

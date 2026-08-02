@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Konseling Santi @endsection
+@section('title') Konseling Santri @endsection
 
 @section('content')
     @component('components.breadcrumb')
@@ -70,7 +70,7 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Konseling Santi</h5>
+                            <h5 class="card-title mb-0">Konseling Santri</h5>
                             <p class="text-muted mb-0 small">Dokumentasi sesi konseling &amp; kesehatan jiwa</p>
                         </div>
                         <div class="col-sm-auto">
@@ -118,7 +118,7 @@
                                 <tr>
                                     <th style="width:40px">#</th>
                                     <th>Tanggal</th>
-                                    <th>Nama Santi</th>
+                                    <th>Nama Santri</th>
                                     <th>Tipe</th>
                                     <th>Topik</th>
                                     <th>Konselor</th>

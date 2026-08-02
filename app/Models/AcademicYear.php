@@ -8,7 +8,9 @@ use Illuminate\Support\Str;
 class AcademicYear extends Model
 {
     protected $table = 'academic_years';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -22,11 +24,11 @@ class AcademicYear extends Model
     ];
 
     protected $casts = [
-        'is_active'           => 'boolean',
-        'start_date'          => 'date',
-        'end_date'            => 'date',
+        'is_active' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'registration_start' => 'date',
-        'registration_end'   => 'date',
+        'registration_end' => 'date',
     ];
 
     protected $appends = ['semester_text'];
@@ -43,17 +45,18 @@ class AcademicYear extends Model
     {
         return match ($this->semester) {
             'ganjil' => 'Ganjil',
-            'genap'  => 'Genap',
-            default  => ucfirst($this->semester ?? ''),
+            'genap' => 'Genap',
+            default => ucfirst($this->semester ?? ''),
         };
     }
 
     public function getYearRangeAttribute(): string
     {
-        if (!$this->start_date || !$this->end_date) {
+        if (! $this->start_date || ! $this->end_date) {
             return $this->name;
         }
-        return $this->start_date->format('d M Y') . ' – ' . $this->end_date->format('d M Y');
+
+        return $this->start_date->format('d M Y').' – '.$this->end_date->format('d M Y');
     }
 
     // ── Scopes ────────────────────────────────────────────────────

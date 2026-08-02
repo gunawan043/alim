@@ -12,8 +12,11 @@ class SarprasSarana extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'sarpras_saranas';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

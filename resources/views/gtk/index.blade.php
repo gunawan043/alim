@@ -422,6 +422,10 @@
                                                 <label class="form-check-label" for="colTmt">TMT</label>
                                             </div>
                                             <div class="form-check mb-2">
+                                                <input class="form-check-input column-toggle" type="checkbox" value="roles_otomatis" id="colRolesOtomatis">
+                                                <label class="form-check-label" for="colRolesOtomatis">Role Otomatis</label>
+                                            </div>
+                                            <div class="form-check mb-2">
                                                 <input class="form-check-input column-toggle" type="checkbox" value="nomor_sk" id="colNomorSK">
                                                 <label class="form-check-label" for="colNomorSK">Nomor SK</label>
                                             </div>
@@ -471,7 +475,7 @@
                                     </div>
                                 </div>
 
-                                @if (Auth::user()->role()->hasPermission('gtk-create'))
+                                @if (Auth::user()->hasPermissionTo('gtk-create'))
                                     <a href="{{ route('user.gtk.import', ['userId' => $userId]) }}" class="btn btn-success">
                                         <i class="bx bx-add-to-queue ri-upload-2-line align-bottom me-1"></i> Import
                                     </a>
@@ -591,6 +595,9 @@
                                     <th data-column="status_kepegawaian">Status</th>
                                     <th data-column="tmt">TMT</th>
 
+                                    {{-- NON-DEFAULT: Roles (sinkron dengan Jabatan) --}}
+                                    <th data-column="roles_otomatis" class="col-hidden">Role Otomatis</th>
+
                                     {{-- NON-DEFAULT: Kepegawaian --}}
                                     <th data-column="nomor_sk" class="col-hidden">Nomor SK</th>
                                     <th data-column="tanggal_sk" class="col-hidden">Tanggal SK</th>
@@ -704,6 +711,16 @@
                                             {{ $gtk->employment?->tmt ? \Carbon\Carbon::parse($gtk->employment->tmt)->format('d/m/Y') : '-' }}
                                         </td>
 
+                                        {{-- NON-DEFAULT: Roles (sinkron dengan Jabatan) --}}
+                                        <td data-column="roles_otomatis" class="col-hidden">
+                                            @php $gtkRoles = $gtk->getRoleNames(); @endphp
+                                            @forelse($gtkRoles as $roleName)
+                                                <span class="badge bg-info-subtle text-info me-1">{{ $roleName }}</span>
+                                            @empty
+                                                -
+                                            @endforelse
+                                        </td>
+
                                         {{-- NON-DEFAULT: Kepegawaian --}}
                                         <td data-column="nomor_sk" class="col-hidden">{{ $gtk->employment?->nomor_sk ?? '-' }}</td>
                                         <td data-column="tanggal_sk" class="col-hidden">
@@ -783,7 +800,7 @@
                                                             <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
                                                         </button>
                                                     </li>
-                                                    @if (Auth::user()->role()->hasPermission('gtk-update'))
+                                                    @if (Auth::user()->hasPermissionTo('gtk-update'))
                                                         <li>
                                                             <button class="dropdown-item toggle-status" data-id="{{ $gtk->id }}" data-status="{{ $gtk->is_active }}">
                                                                 <i class="ri-toggle-{{ $gtk->is_active ? 'fill' : 'line' }} text-warning me-2"></i>
@@ -808,7 +825,7 @@
                                                 colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                                             <h5 class="mt-2">Belum ada data GTK</h5>
                                             <p class="text-muted mb-0">Tambahkan GTK untuk memulai</p>
-                                            @if (Auth::user()->role()->hasPermission('gtk-create'))
+                                            @if (Auth::user()->hasPermissionTo('gtk-create'))
                                                 <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-primary mt-3">
                                                     <i class="ri-add-line me-1"></i> Tambah GTK
                                                 </a>

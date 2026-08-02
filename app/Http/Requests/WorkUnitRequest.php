@@ -26,12 +26,12 @@ class WorkUnitRequest extends FormRequest
             'kode' => 'required|string|max:191|unique:work_units,kode',
             'jenis' => 'required|string|max:191',
             'induk' => 'nullable|string|max:191',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ];
 
         // Jika update, ignore unique untuk kode yang sedang diupdate
         if ($this->isMethod('put') || $this->isMethod('patch')) {
-            $rules['kode'] = 'required|string|max:191|unique:work_units,kode,' . $this->route('work_unit');
+            $rules['kode'] = 'required|string|max:191|unique:work_units,kode,'.$this->route('work_unit');
         }
 
         return $rules;

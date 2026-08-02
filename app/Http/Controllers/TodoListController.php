@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TodoList;
 use App\Models\Todo;
-use Illuminate\Http\Request;
+use App\Models\TodoList;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class TodoListController extends Controller
 {
@@ -23,9 +22,9 @@ class TodoListController extends Controller
             ->ordered()
             ->get()
             ->map(fn ($list) => [
-                'id'         => $list->id,
-                'name'       => $list->name,
-                'color'      => $list->color,
+                'id' => $list->id,
+                'name' => $list->name,
+                'color' => $list->color,
                 'is_default' => (bool) $list->is_default,
                 'sort_order' => $list->sort_order,
                 'todo_count' => $list->todo_count,
@@ -40,32 +39,32 @@ class TodoListController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
-            'color'      => 'nullable|string|max:20',
+            'name' => 'required|string|max:100',
+            'color' => 'nullable|string|max:20',
             'is_default' => 'nullable|integer|in:0,1',
         ]);
 
         $userId = auth()->id();
 
         // If setting as default, unset other defaults first
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             TodoList::forUser($userId)->update(['is_default' => 0]);
         }
 
         $maxOrder = TodoList::forUser($userId)->max('sort_order') ?? 0;
 
         $list = TodoList::create([
-            'user_id'    => $userId,
-            'name'       => $data['name'],
-            'color'      => $data['color'] ?? '#adb5bd',
+            'user_id' => $userId,
+            'name' => $data['name'],
+            'color' => $data['color'] ?? '#adb5bd',
             'is_default' => $data['is_default'] ?? 0,
             'sort_order' => $maxOrder + 1,
         ]);
 
         return response()->json([
             'success' => true,
-            'message'  => 'Daftar todo berhasil dibuat.',
-            'data'    => $list,
+            'message' => 'Daftar todo berhasil dibuat.',
+            'data' => $list,
         ], 201);
     }
 
@@ -77,13 +76,13 @@ class TodoListController extends Controller
         $list = TodoList::where('user_id', auth()->id())->findOrFail($id);
 
         $data = $request->validate([
-            'name'       => 'sometimes|required|string|max:100',
-            'color'      => 'nullable|string|max:20',
+            'name' => 'sometimes|required|string|max:100',
+            'color' => 'nullable|string|max:20',
             'is_default' => 'nullable|integer|in:0,1',
         ]);
 
         // If setting as default, unset other defaults first
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             TodoList::forUser(auth()->id())
                 ->where('id', '!=', $id)
                 ->update(['is_default' => 0]);
@@ -93,8 +92,8 @@ class TodoListController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Daftar todo berhasil diperbarui.',
-            'data'    => $list->fresh(),
+            'message' => 'Daftar todo berhasil diperbarui.',
+            'data' => $list->fresh(),
         ]);
     }
 
@@ -108,7 +107,7 @@ class TodoListController extends Controller
         if ($list->is_default) {
             return response()->json([
                 'success' => false,
-                'message'  => 'Daftar default tidak dapat dihapus.',
+                'message' => 'Daftar default tidak dapat dihapus.',
             ], 422);
         }
 
@@ -121,7 +120,7 @@ class TodoListController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Daftar todo berhasil dihapus.',
+            'message' => 'Daftar todo berhasil dihapus.',
         ]);
     }
 
@@ -139,7 +138,7 @@ class TodoListController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Daftar default berhasil diubah.',
+            'message' => 'Daftar default berhasil diubah.',
         ]);
     }
 
@@ -163,7 +162,7 @@ class TodoListController extends Controller
 
         return response()->json([
             'success' => true,
-            'message'  => 'Urutan berhasil diperbarui.',
+            'message' => 'Urutan berhasil diperbarui.',
         ]);
     }
 }

@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class GtkProfile extends Model
 {
-    use HasFactory, SoftDeletes, LogsDeletion;
+    use HasFactory, LogsDeletion, SoftDeletes;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -42,12 +44,12 @@ class GtkProfile extends Model
     ];
 
     protected $casts = [
-        'id'           => 'string',
-        'user_id'      => 'string',
+        'id' => 'string',
+        'user_id' => 'string',
         'tanggal_lahir' => 'date',
-        'created_at'   => 'datetime',
-        'updated_at'   => 'datetime',
-        'deleted_at'   => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     /*
@@ -68,10 +70,10 @@ class GtkProfile extends Model
 
         static::created(function ($profile) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'GTK_PROFILE_CREATED',
+                'user_id' => auth()->id(),
+                'action' => 'GTK_PROFILE_CREATED',
                 'table_name' => 'gtk_profiles',
-                'record_id'  => $profile->id,
+                'record_id' => $profile->id,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ]);
@@ -79,10 +81,10 @@ class GtkProfile extends Model
 
         static::updated(function ($profile) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'GTK_PROFILE_UPDATED',
+                'user_id' => auth()->id(),
+                'action' => 'GTK_PROFILE_UPDATED',
                 'table_name' => 'gtk_profiles',
-                'record_id'  => $profile->id,
+                'record_id' => $profile->id,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ]);
@@ -90,10 +92,10 @@ class GtkProfile extends Model
 
         static::deleted(function ($profile) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'GTK_PROFILE_DELETED',
+                'user_id' => auth()->id(),
+                'action' => 'GTK_PROFILE_DELETED',
                 'table_name' => 'gtk_profiles',
-                'record_id'  => $profile->id,
+                'record_id' => $profile->id,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ]);
@@ -184,19 +186,22 @@ class GtkProfile extends Model
     public function getMaskedNikAttribute(): ?string
     {
         $val = $this->nik;
-        return $val ? substr($val, 0, 6) . '****' . substr($val, -4) : null;
+
+        return $val ? substr($val, 0, 6).'****'.substr($val, -4) : null;
     }
 
     public function getMaskedNoKkAttribute(): ?string
     {
         $val = $this->no_kk;
-        return $val ? substr($val, 0, 6) . '****' . substr($val, -4) : null;
+
+        return $val ? substr($val, 0, 6).'****'.substr($val, -4) : null;
     }
 
     public function getMaskedNpwpAttribute(): ?string
     {
         $val = $this->npwp;
-        return $val ? substr($val, 0, 6) . '****' . substr($val, -3) : null;
+
+        return $val ? substr($val, 0, 6).'****'.substr($val, -3) : null;
     }
 
     /*

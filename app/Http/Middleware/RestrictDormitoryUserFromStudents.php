@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class RestrictDormitoryUserFromStudents
 {
-public function handle(Request $request, Closure $next, string $resourceKey = 'students'): Response
+    public function handle(Request $request, Closure $next, string $resourceKey = 'students'): Response
     {
         $user = $request->user();
         if (! $user || ! $user->isDormitoryUser()) {

@@ -106,27 +106,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('vendor_contracts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
-            $table->string('contract_number', 100)->unique();
-            $table->string('title', 200);
-            $table->date('start_date');
-            $table->date('end_date')->nullable();
-            $table->date('signed_at')->nullable();
-            $table->decimal('contract_value', 18, 2)->nullable();
-            $table->enum('contract_type', ['service', 'supply', 'rental', 'maintenance', 'framework', 'one_time'])->default('service');
-            $table->enum('status', ['draft', 'active', 'expired', 'terminated', 'renewed'])->default('draft');
-            $table->text('scope_of_work')->nullable();
-            $table->json('terms')->nullable();
-            $table->string('document_path')->nullable();
-            $table->unsignedInteger('auto_renew_days_before')->nullable();
-            $table->boolean('auto_renew')->default(false);
-            $table->foreignUuid('signed_by_user')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-            $table->index('status');
-            $table->index('end_date');
-        });
+        // vendor_contracts is created by 2026_07_20_000016_create_vendor_contracts_table.php
+        // (the canonical schema with renewal_type, slas JSON, dual-signature, etc.).
+        // This migration predates the vendor PO workflow work and must defer to it.
 
         Schema::create('vendor_warranties', function (Blueprint $table) {
             $table->id();
@@ -148,7 +130,9 @@ return new class extends Migration
         Schema::create('vendor_slas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
-            $table->foreignId('contract_id')->nullable()->constrained('vendor_contracts')->nullOnDelete();
+            // contract_id FK to vendor_contracts is added later by
+            // 2026_07_20_000016 (vendor_contracts doesn't exist yet at this point).
+            $table->unsignedBigInteger('contract_id')->nullable();
             $table->string('workflow_type', 50); // repair, supply, emergency
             $table->unsignedSmallInteger('response_minutes')->default(60);
             $table->unsignedSmallInteger('resolution_minutes')->default(1440);
@@ -158,21 +142,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('vendor_documents', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
-            $table->string('title', 200);
-            $table->enum('document_type', ['npwp', 'ktp', 'akta', 'skt', 'sbu', 'nib', 'iso', 'contract', 'invoice', 'other'])->default('other');
-            $table->string('document_number', 100)->nullable();
-            $table->date('issued_at')->nullable();
-            $table->date('expired_at')->nullable();
-            $table->string('file_path');
-            $table->string('mime_type', 100)->nullable();
-            $table->unsignedInteger('file_size')->nullable();
-            $table->foreignUuid('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-            $table->index('document_type');
-        });
+        // vendor_documents is created by 2026_07_20_000017_create_vendor_documents_table.php
+        // (the canonical schema with user_id, vendor_id FK, attachment_path, etc.).
+        // This migration predates the vendor PO workflow work and must defer to it.
 
         Schema::create('vendor_ratings', function (Blueprint $table) {
             $table->id();
@@ -227,10 +199,8 @@ return new class extends Migration
         Schema::dropIfExists('vendor_performance_history');
         Schema::dropIfExists('vendor_evaluations');
         Schema::dropIfExists('vendor_ratings');
-        Schema::dropIfExists('vendor_documents');
         Schema::dropIfExists('vendor_slas');
         Schema::dropIfExists('vendor_warranties');
-        Schema::dropIfExists('vendor_contracts');
         Schema::dropIfExists('vendor_taxes');
         Schema::dropIfExists('vendor_banks');
         Schema::dropIfExists('vendor_addresses');

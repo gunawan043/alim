@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Shift extends Model
 {
     use HasUuids;
+
     protected $table = 'shifts';
 
     protected $fillable = [

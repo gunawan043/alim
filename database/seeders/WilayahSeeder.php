@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 
 class WilayahSeeder extends Seeder
 {
@@ -19,11 +18,10 @@ class WilayahSeeder extends Seeder
         $this->seedVillages();
     }
 
-    
     private function seedProvinces()
     {
         $this->command->info('Seeding provinces...');
-        
+
         $provinces = [
             ['id' => '11', 'name' => 'ACEH'],
             ['id' => '12', 'name' => 'SUMATERA UTARA'],
@@ -64,7 +62,7 @@ class WilayahSeeder extends Seeder
             ['id' => '95', 'name' => 'PAPUA PEGUNUNGAN'],
             ['id' => '96', 'name' => 'PAPUA BARAT DAYA'],
         ];
-        
+
         foreach ($provinces as $province) {
             DB::table('indonesia_provinces')->updateOrInsert(
                 ['code' => $province['id']],
@@ -72,11 +70,11 @@ class WilayahSeeder extends Seeder
             );
         }
     }
-    
+
     private function seedRegencies()
     {
         $this->command->info('Seeding regencies...');
-        
+
         // Contoh data untuk beberapa provinsi (NTB = 52)
         $ntbRegencies = [
             ['id' => '5201', 'province_id' => '52', 'name' => 'KABUPATEN LOMBOK BARAT'],
@@ -90,7 +88,7 @@ class WilayahSeeder extends Seeder
             ['id' => '5271', 'province_id' => '52', 'name' => 'KOTA MATARAM'],
             ['id' => '5272', 'province_id' => '52', 'name' => 'KOTA BIMA'],
         ];
-        
+
         foreach ($ntbRegencies as $regency) {
             DB::table('indonesia_cities')->updateOrInsert(
                 ['code' => $regency['id']],
@@ -99,14 +97,14 @@ class WilayahSeeder extends Seeder
                     'province_code' => $regency['province_id'],
                     'name' => $regency['name'],
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]
             );
         }
-        
+
         // Anda bisa menambahkan data untuk provinsi lainnya sesuai kebutuhan
     }
-    
+
     private function seedDistricts()
     {
         $this->command->info('Seeding districts...');
@@ -135,16 +133,16 @@ class WilayahSeeder extends Seeder
                     'city_code' => $district['regency_id'],
                     'name' => $district['name'],
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]
             );
         }
     }
-    
+
     private function seedVillages()
     {
         $this->command->info('Seeding villages...');
-        
+
         // Contoh data untuk beberapa kecamatan
         $gerungVillages = [
             ['id' => '5201012001', 'district_id' => '520101', 'name' => 'GERUNG'],
@@ -162,7 +160,7 @@ class WilayahSeeder extends Seeder
             ['id' => '5201012013', 'district_id' => '520101', 'name' => 'GIRI MULYO'],
             ['id' => '5201012014', 'district_id' => '520101', 'name' => 'MENDIRAN'],
         ];
-        
+
         $mataramVillages = [
             ['id' => '5271021012', 'district_id' => '527102', 'name' => 'PUNIA'],
         ];
@@ -174,7 +172,7 @@ class WilayahSeeder extends Seeder
                     'district_code' => $village['district_id'],
                     'name' => $village['name'],
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]
             );
         }
@@ -187,7 +185,7 @@ class WilayahSeeder extends Seeder
                     'district_code' => $village['district_id'],
                     'name' => $village['name'],
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]
             );
         }

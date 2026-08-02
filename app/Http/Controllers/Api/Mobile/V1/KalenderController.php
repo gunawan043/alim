@@ -34,11 +34,11 @@ class KalenderController extends Controller
 
         // Filter by academic year with school context
         $academicYearId = \App\Models\AcademicYear::where(function ($q) use ($schoolId) {
-                $q->where('is_active', true);
-                if ($schoolId) {
-                    $q->orWhereHas('workUnit.school', fn ($sq) => $sq->where('id', $schoolId));
-                }
-            })
+            $q->where('is_active', true);
+            if ($schoolId) {
+                $q->orWhereHas('workUnit.school', fn ($sq) => $sq->where('id', $schoolId));
+            }
+        })
             ->value('id');
 
         if ($academicYearId) {

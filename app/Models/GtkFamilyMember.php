@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
@@ -13,7 +13,9 @@ class GtkFamilyMember extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -45,9 +47,9 @@ class GtkFamilyMember extends Model
     ];
 
     protected $casts = [
-        'id'             => 'string',
+        'id' => 'string',
         'gtk_profile_id' => 'string',
-        'tanggal_lahir'  => 'date',
+        'tanggal_lahir' => 'date',
     ];
 
     /*
@@ -58,10 +60,10 @@ class GtkFamilyMember extends Model
 
     const RELATIONSHIP_LABELS = [
         'suami' => 'Suami',
-        'istri'  => 'Istri',
-        'anak'   => 'Anak',
-        'ayah'   => 'Ayah',
-        'ibu'    => 'Ibu',
+        'istri' => 'Istri',
+        'anak' => 'Anak',
+        'ayah' => 'Ayah',
+        'ibu' => 'Ibu',
     ];
 
     /*
@@ -107,7 +109,7 @@ class GtkFamilyMember extends Model
 
     public function getJenisKelaminTextAttribute(): string
     {
-        return match($this->jenis_kelamin) {
+        return match ($this->jenis_kelamin) {
             'L' => 'Laki-laki',
             'P' => 'Perempuan',
             default => '-',

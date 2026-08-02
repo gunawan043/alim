@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Schema;
 // Sistem pengurangan: nilai_awal - Σ(error_count × deduction_per_error).
 // Ringan (×0.5) vs Berat (×1) sesuai bobot di Gambar 5.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_tasmian_error_details', function (Blueprint $table) {
@@ -19,17 +20,17 @@ return new class extends Migration {
             $table->uuid('tasmian_score_id');
             $table->enum('komponen', ['tajwid', 'fashohah', 'tahfizh']);
             $table->string('error_type', 100)
-                  ->comment('makharijul_huruf, shifatul_huruf, mad_wajib, mad_jaiz,
+                ->comment('makharijul_huruf, shifatul_huruf, mad_wajib, mad_jaiz,
                    ghunnah, idgham, ikhfa, iqlab, qalqalah,
                    waqaf_ibtida, tasydid, hamzah, lahn_jali, lahn_khafi');
             $table->enum('error_level', ['ringan', 'berat'])
-                  ->comment('Ringan = deduction ×0.5 | Berat = deduction ×1');
+                ->comment('Ringan = deduction ×0.5 | Berat = deduction ×1');
             $table->tinyInteger('error_count')->default(0)
-                  ->comment('Jumlah kesalahan jenis ini (kolom 1-4 pada Gambar 5)');
+                ->comment('Jumlah kesalahan jenis ini (kolom 1-4 pada Gambar 5)');
             $table->decimal('deduction_per_error', 4, 2)->default(0.5)
-                  ->comment('0.5 untuk ringan, 1.0 untuk berat');
+                ->comment('0.5 untuk ringan, 1.0 untuk berat');
             $table->decimal('total_deduction', 5, 2)->default(0)
-                  ->comment('= error_count × deduction_per_error');
+                ->comment('= error_count × deduction_per_error');
             $table->text('catatan')->nullable();
             $table->timestamps();
 
@@ -40,5 +41,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_tasmian_error_details'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_tasmian_error_details');
+    }
 };

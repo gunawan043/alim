@@ -28,8 +28,8 @@ Create Invoice
                                 <input id="profile-img-file-input" type="file" class="profile-img-file-input" />
                                 <label for="profile-img-file-input" class="d-block" tabindex="0">
                                     <span class="overflow-hidden border border-dashed d-flex align-items-center justify-content-center rounded" style="height: 60px; width: 256px;">
-                                        <img src="{{ URL::asset('build/images/logo-dark.png') }}" class="card-logo card-logo-dark user-profile-image img-fluid" alt="logo dark">
-                                        <img src="{{ URL::asset('build/images/logo-light.png') }}" class="card-logo card-logo-light user-profile-image img-fluid" alt="logo light">
+                                        <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" class="card-logo card-logo-dark user-profile-image img-fluid" alt="logo dark">
+                                        <img src="{{ URL::asset('build/images/alim-light-name.png') }}" class="card-logo card-logo-light user-profile-image img-fluid" alt="logo light">
                                     </span>
                                 </label>
                             </div>

@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class StudentMutationOut extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     protected $table = 'student_mutations_out';
 
     protected static function boot()
@@ -36,10 +38,10 @@ class StudentMutationOut extends Model
     ];
 
     protected $casts = [
-        'established_date'   => 'date',
+        'established_date' => 'date',
         'student_birth_date' => 'date',
-        'approved_at'        => 'datetime',
-        'graduation_year'    => 'integer',
+        'approved_at' => 'datetime',
+        'graduation_year' => 'integer',
     ];
 
     protected $appends = ['status_text', 'status_color', 'gender_text', 'out_type_text'];
@@ -71,22 +73,22 @@ class StudentMutationOut extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'Draft',
+            'draft' => 'Draft',
             'submitted' => 'Tercadangkan',
-            'approved'  => 'Disetujui',
-            'rejected'  => 'Ditolak',
-            default     => ucfirst($this->status ?? ''),
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            default => ucfirst($this->status ?? ''),
         };
     }
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'secondary',
+            'draft' => 'secondary',
             'submitted' => 'warning',
-            'approved'  => 'success',
-            'rejected'  => 'danger',
-            default     => 'secondary',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            default => 'secondary',
         };
     }
 
@@ -125,17 +127,20 @@ class StudentMutationOut extends Model
         if (isset($this->attributes['hijri_date']) && $this->attributes['hijri_date'] !== '') {
             return $this->attributes['hijri_date'];
         }
-        if (!$this->established_date) return null;
+        if (! $this->established_date) {
+            return null;
+        }
         $monthsID = [
-            'Muharram','Safar','Rabiul Awwal','Rabiul Akhir',
-            'Jumadil Awwal','Jumadil Akhir','Rajab','Syakban',
-            'Ramadan','Syawal','Dzulqa\'dah','Dzulhijjah',
+            'Muharram', 'Safar', 'Rabiul Awwal', 'Rabiul Akhir',
+            'Jumadil Awwal', 'Jumadil Akhir', 'Rajab', 'Syakban',
+            'Ramadan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah',
         ];
         try {
             $d = $this->established_date->copy()->locale('ar');
             $monthIdx = (int) $d->format('n') - 1;
             $monthName = $monthsID[$monthIdx] ?? '';
-            return $d->format('j') . ' ' . $monthName . ' ' . $d->format('jFY') . ' H';
+
+            return $d->format('j').' '.$monthName.' '.$d->format('jFY').' H';
         } catch (\Throwable) {
             return null;
         }

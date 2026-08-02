@@ -1969,7 +1969,7 @@ hover.&lt;/p&gt;
                                     </div>
                                     <div class="col-lg-5">
                                         <div class="subscribe-modals-cover h-100">
-                                            <img src="{{ URL::asset('build/images/modals/auth-one-bg.jpg') }}" alt="" class="h-100 w-100 object-fit-cover" style="clip-path: polygon(100% 0%, 100% 100%, 100% 100%, 0% 100%, 25% 50%, 0% 0%);">
+                                            <img src="{{ URL::asset('build/images/modals/alim-one-bg.png') }}" alt="" class="h-100 w-100 object-fit-cover" style="clip-path: polygon(100% 0%, 100% 100%, 100% 100%, 0% 100%, 25% 50%, 0% 0%);">
                                         </div>
                                     </div>
                                 </div>

@@ -9,8 +9,11 @@ class SkillCategoryMapping extends Model
     use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $table = 'skill_category_mappings';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

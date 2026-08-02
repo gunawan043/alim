@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
+use App\Models\GradeLevel;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
-use App\Models\AcademicYear;
-use App\Models\School;
-use App\Models\GradeLevel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +31,7 @@ class BulkPromotionController extends Controller
         $activeSemester = AcademicYear::where('is_active', true)->value('semester');
         $query = StudyGroup::with(['gradeLevel', 'academicYear'])
             ->where('is_active', true)
-            ->whereHas('academicYear', fn($q) => $q->where('semester', $activeSemester));
+            ->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
         if ($schoolContextId) {
             $query->where('school_id', $schoolContextId);
         }
@@ -45,7 +45,7 @@ class BulkPromotionController extends Controller
 
             $studentIds = StudentClassHistory::where('study_group_id', $studyGroup->id)
                 ->where('is_active', true)
-                ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                 ->pluck('student_id');
 
             $students = Student::whereIn('id', $studentIds)
@@ -55,9 +55,9 @@ class BulkPromotionController extends Controller
 
             $level = $studyGroup->gradeLevel?->level ?? 0;
             $schoolType = $studyGroup->school?->school_type ?? null;
-            $finalLevels = match($schoolType) {
+            $finalLevels = match ($schoolType) {
                 'smp' => [9],
-                'sd'  => [6],
+                'sd' => [6],
                 default => [6, 9, 12],
             };
             $isFinalGrade = in_array($level, $finalLevels);
@@ -79,12 +79,12 @@ class BulkPromotionController extends Controller
         }
 
         $validated = $request->validate([
-            'to_academic_year_id'   => 'required|exists:academic_years,id',
-            'to_study_group_id'     => 'nullable|exists:study_groups,id',
-            'promotion_date'        => 'required|date',
-            'student_ids'          => 'required|array|min:1',
-            'student_ids.*'         => 'exists:students,id',
-            'notes'                 => 'nullable|string',
+            'to_academic_year_id' => 'required|exists:academic_years,id',
+            'to_study_group_id' => 'nullable|exists:study_groups,id',
+            'promotion_date' => 'required|date',
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:students,id',
+            'notes' => 'nullable|string',
         ]);
 
         $fromAyId = AcademicYear::where('is_active', true)->value('id');
@@ -96,7 +96,7 @@ class BulkPromotionController extends Controller
 
         // Hitung target rombel dulu (di luar transaction supaya bisa dibaca untuk redirect)
         $targetSgId = $toStudyGroupId;
-        if (!$targetSgId) {
+        if (! $targetSgId) {
             $fromLevel = $studyGroup->gradeLevel?->level ?? 0;
             $targetLevel = $fromLevel + 1;
             $targetGradeLevel = GradeLevel::where('school_id', $studyGroup->school_id)
@@ -109,10 +109,12 @@ class BulkPromotionController extends Controller
             }
         }
 
-        DB::transaction(function () use ($studyGroup, $fromAyId, $toAyId, $targetSgId, $promotionDate, &$results, $validated) {
+        DB::transaction(function () use ($fromAyId, $toAyId, $targetSgId, $promotionDate, &$results, $validated) {
             foreach ($validated['student_ids'] as $studentId) {
                 $student = Student::find($studentId);
-                if (!$student || $student->status !== 'active') { continue; }
+                if (! $student || $student->status !== 'active') {
+                    continue;
+                }
 
                 // Tutup histori lama
                 StudentClassHistory::where('student_id', $studentId)
@@ -131,7 +133,9 @@ class BulkPromotionController extends Controller
         });
 
         $msg = "Kenaikan kelas selesai. {$results['success']} berhasil";
-        if ($results['failed'] > 0) $msg .= ", {$results['failed']} gagal";
+        if ($results['failed'] > 0) {
+            $msg .= ", {$results['failed']} gagal";
+        }
 
         return redirect()->route('user.students.index', [
             'userId' => $userId,
@@ -145,7 +149,9 @@ class BulkPromotionController extends Controller
             ->where('academic_year_id', $academicYearId)
             ->exists();
 
-        if ($alreadyEnrolled) return;
+        if ($alreadyEnrolled) {
+            return;
+        }
 
         $count = StudentClassHistory::where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $academicYearId)
@@ -170,7 +176,7 @@ class BulkPromotionController extends Controller
         $ayId = $request->get('academic_year_id');
         $fromStudyGroupId = $request->get('from_study_group_id');
 
-        if (!$ayId) {
+        if (! $ayId) {
             return response()->json(['study_groups' => []]);
         }
 
@@ -188,7 +194,7 @@ class BulkPromotionController extends Controller
             }
         }
 
-        $studyGroups = $query->get(['id', 'name', 'grade_level_id'])->map(fn($sg) => [
+        $studyGroups = $query->get(['id', 'name', 'grade_level_id'])->map(fn ($sg) => [
             'id' => $sg->id,
             'name' => $sg->name,
             'grade_level_name' => $sg->gradeLevel?->name ?? '',
@@ -205,15 +211,15 @@ class BulkPromotionController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $validated = $request->validate([
-            'from_study_group_id'   => 'required|exists:study_groups,id',
-            'to_academic_year_id'   => 'required|exists:academic_years,id',
-            'to_study_group_id'     => 'nullable|exists:study_groups,id',
-            'promotion_date'        => 'required|date',
-            'student_ids'           => 'required|array|min:1',
-            'student_ids.*'         => 'exists:students,id',
-            'student_actions'       => 'nullable|array',
-            'student_actions.*'     => 'in:promote,retain,graduate,mutate_out,skip',
-            'grade_shift'           => 'integer|min:-2|max:2',
+            'from_study_group_id' => 'required|exists:study_groups,id',
+            'to_academic_year_id' => 'required|exists:academic_years,id',
+            'to_study_group_id' => 'nullable|exists:study_groups,id',
+            'promotion_date' => 'required|date',
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:students,id',
+            'student_actions' => 'nullable|array',
+            'student_actions.*' => 'in:promote,retain,graduate,mutate_out,skip',
+            'grade_shift' => 'integer|min:-2|max:2',
         ]);
 
         $fromStudyGroup = StudyGroup::with(['gradeLevel', 'school'])->findOrFail($validated['from_study_group_id']);
@@ -242,6 +248,7 @@ class BulkPromotionController extends Controller
                 // Skip
                 if ($action === 'skip') {
                     $results['skipped']++;
+
                     continue;
                 }
 
@@ -257,6 +264,7 @@ class BulkPromotionController extends Controller
                 if ($action === 'mutate_out') {
                     $student->update(['status' => 'transfer']);
                     $results['success']++;
+
                     continue;
                 }
 
@@ -268,6 +276,7 @@ class BulkPromotionController extends Controller
                         'graduation_date' => $promotionDate,
                     ]);
                     $results['success']++;
+
                     continue;
                 }
 
@@ -277,7 +286,7 @@ class BulkPromotionController extends Controller
                         ->where('academic_year_id', $toAyId)
                         ->exists();
 
-                    if (!$alreadyEnrolled) {
+                    if (! $alreadyEnrolled) {
                         $count = StudentClassHistory::where('study_group_id', $fromStudyGroup->id)
                             ->where('academic_year_id', $toAyId)
                             ->count();
@@ -292,6 +301,7 @@ class BulkPromotionController extends Controller
                         ]);
                     }
                     $results['success']++;
+
                     continue;
                 }
 
@@ -299,7 +309,7 @@ class BulkPromotionController extends Controller
                 if ($action === 'promote') {
                     $targetSgId = $toStudyGroupId;
 
-                    if (!$targetSgId) {
+                    if (! $targetSgId) {
                         $fromLevel = $fromStudyGroup->gradeLevel?->level ?? 0;
                         $targetLevel = $fromLevel + $gradeShift;
 
@@ -320,7 +330,7 @@ class BulkPromotionController extends Controller
                             ->where('academic_year_id', $toAyId)
                             ->exists();
 
-                        if (!$alreadyEnrolled) {
+                        if (! $alreadyEnrolled) {
                             $count = StudentClassHistory::where('study_group_id', $targetSgId)
                                 ->where('academic_year_id', $toAyId)
                                 ->count();
@@ -340,14 +350,19 @@ class BulkPromotionController extends Controller
                     } else {
                         $results['failed']++;
                     }
+
                     continue;
                 }
             }
         });
 
         $msg = "Promosi selesai. {$results['success']} berhasil";
-        if ($results['failed'] > 0) $msg .= ", {$results['failed']} gagal";
-        if ($results['skipped'] > 0) $msg .= ", {$results['skipped']} dilompati";
+        if ($results['failed'] > 0) {
+            $msg .= ", {$results['failed']} gagal";
+        }
+        if ($results['skipped'] > 0) {
+            $msg .= ", {$results['skipped']} dilompati";
+        }
 
         return redirect()
             ->route('user.study-groups.show', ['userId' => $userId, 'id' => $fromStudyGroup->id])

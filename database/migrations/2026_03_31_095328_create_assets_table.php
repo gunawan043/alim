@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('assets', function (Blueprint $table) {
@@ -16,7 +17,7 @@ return new class extends Migration {
 
             // --- IDENTITAS ---
             $table->string('asset_code', 50)->unique()
-                  ->comment('Kode inventaris — jadi konten QR Code label aset');
+                ->comment('Kode inventaris — jadi konten QR Code label aset');
             $table->string('asset_name', 191);
             $table->string('brand', 100)->nullable();
             $table->string('model', 100)->nullable();
@@ -33,7 +34,7 @@ return new class extends Migration {
                 'pengadaan_bos', 'bantuan_pemerintah', 'lainnya',
             ])->default('pembelian');
             $table->string('funding_source', 100)->nullable()
-                  ->comment('BOS, BOSDA, Dana Ponpes, Donasi, dll');
+                ->comment('BOS, BOSDA, Dana Ponpes, Donasi, dll');
             $table->string('supplier_name', 191)->nullable();
             $table->string('purchase_document_path', 255)->nullable();
 
@@ -45,11 +46,11 @@ return new class extends Migration {
                 'tersedia', 'dipinjam', 'dalam_perbaikan', 'dihapus',
             ])->default('tersedia');
             $table->tinyInteger('is_bookable')->default(1)
-                  ->comment('1 = bisa dipinjam GTK');
+                ->comment('1 = bisa dipinjam GTK');
 
             // --- NILAI & PENYUSUTAN ---
             $table->decimal('current_value', 15, 2)->nullable()
-                  ->comment('Nilai buku saat ini setelah penyusutan');
+                ->comment('Nilai buku saat ini setelah penyusutan');
             $table->decimal('depreciation_per_year', 15, 2)->nullable();
             $table->date('last_valuation_date')->nullable();
 
@@ -58,7 +59,7 @@ return new class extends Migration {
             $table->uuid('last_audit_by')->nullable();
             $table->date('last_condition_update')->nullable();
             $table->timestamp('qr_generated_at')->nullable()
-                  ->comment('Kapan label QR terakhir digenerate / dicetak');
+                ->comment('Kapan label QR terakhir digenerate / dicetak');
 
             $table->string('photo_path', 255)->nullable();
             $table->text('notes')->nullable();
@@ -81,5 +82,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('assets'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('assets');
+    }
 };

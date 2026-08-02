@@ -4,14 +4,14 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AlumniExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class AlumniExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected Collection $records;
 
@@ -91,7 +91,7 @@ class AlumniExport implements FromCollection, WithHeadings, WithMapping, WithSty
             $alumni->company_address ?? '-',
             $alumni->company_city ?? '-',
             $alumni->company_phone ?? '-',
-            $alumni->monthly_income ? 'Rp ' . number_format($alumni->monthly_income, 0, ',', '.') : '-',
+            $alumni->monthly_income ? 'Rp '.number_format($alumni->monthly_income, 0, ',', '.') : '-',
             $alumni->working_year_start ?? '-',
             $alumni->is_contactable ? 'Ya' : 'Tidak',
             $alumni->achievements ?? '-',

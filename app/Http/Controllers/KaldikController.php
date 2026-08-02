@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kaldik;
 use App\Models\AcademicYear;
-use App\Models\WorkUnit;
-use App\Models\School;
+use App\Models\Kaldik;
 use App\Models\NotificationUniversal;
+use App\Models\School;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class KaldikController extends Controller
@@ -21,6 +20,7 @@ class KaldikController extends Controller
     {
         $schoolContextId = $request->attributes->get('schoolContextId');
         $school = $schoolContextId ? School::find($schoolContextId) : null;
+
         return $school?->work_unit_id;
     }
 
@@ -63,14 +63,14 @@ class KaldikController extends Controller
         }
 
         // ── FILTER WORK UNIT (NON-GLOBAL) ────────────────────
-        if (!$isGlobal && $userWorkUnitId) {
+        if (! $isGlobal && $userWorkUnitId) {
             // Admin TU: hanya lihat agenda miliknya + semua kaldik pondok
-            $query->where(function ($q) use ($userWorkUnitId) {
+            $query->where(function ($q) {
                 $q->where('category', Kaldik::CATEGORY_KALDIK)
-                  ->whereNull('work_unit_id');
+                    ->whereNull('work_unit_id');
             })->orWhere(function ($q) use ($userWorkUnitId) {
                 $q->where('category', Kaldik::CATEGORY_AGENDA)
-                  ->where('work_unit_id', $userWorkUnitId);
+                    ->where('work_unit_id', $userWorkUnitId);
             });
         }
 
@@ -79,6 +79,7 @@ class KaldikController extends Controller
         // Convert to FullCalendar event format
         $kaldikEvents = $kaldiks->map(function ($item) {
             $isKaldik = $item->category === Kaldik::CATEGORY_KALDIK;
+
             return [
                 'id' => $item->id,
                 'title' => $item->name,
@@ -104,14 +105,14 @@ class KaldikController extends Controller
 
         // Authorization flags for JS
         $canCreate = Gate::allows('create', Kaldik::class);
-        $canUpdate = Gate::allows('update', new Kaldik());
+        $canUpdate = Gate::allows('update', new Kaldik);
 
         // Dropdowns
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
 
         // Label role untuk JS
-        $isAdminTU = !$isGlobal && canPermission('kaldik-admin-tu');
+        $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
 
         return view('kaldik.index', compact(
             'kaldikEvents',
@@ -148,7 +149,7 @@ class KaldikController extends Controller
     {
         $user = $request->user();
         $isGlobal = $this->isGlobalUser($request);
-        $isAdminTU = !$isGlobal && canPermission('kaldik-admin-tu');
+        $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -196,6 +197,7 @@ class KaldikController extends Controller
     public function show(Request $request, string $userId, string $kaldikId)
     {
         $kaldik = Kaldik::with(['academicYear', 'workUnit', 'creator'])->findOrFail($kaldikId);
+
         return view('kaldik.show', compact('kaldik', 'userId'));
     }
 
@@ -209,7 +211,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh edit agenda miliknya sendiri
-        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
+        if (! $isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa mengedit agenda kegiatan.');
             }
@@ -236,7 +238,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh update agenda miliknya sendiri
-        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
+        if (! $isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa mengedit agenda kegiatan.');
             }
@@ -281,7 +283,7 @@ class KaldikController extends Controller
         $user = $request->user();
 
         // Admin TU → hanya boleh hapus agenda miliknya sendiri
-        if (!$isGlobal && canPermission('kaldik-admin-tu')) {
+        if (! $isGlobal && canPermission('kaldik-admin-tu')) {
             if ($kaldik->category !== Kaldik::CATEGORY_AGENDA) {
                 abort(403, 'Admin TU hanya bisa menghapus agenda kegiatan.');
             }
@@ -315,7 +317,7 @@ class KaldikController extends Controller
             abort(403);
         }
 
-        $kaldik->update(['is_active' => !$kaldik->is_active]);
+        $kaldik->update(['is_active' => ! $kaldik->is_active]);
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Status diperbarui.']);
@@ -331,8 +333,8 @@ class KaldikController extends Controller
     {
         $isAgenda = $kaldik->category === Kaldik::CATEGORY_AGENDA;
         $title = $isAgenda
-            ? "📅 Agenda Kegiatan Baru"
-            : "📅 Kaldik Baru";
+            ? '📅 Agenda Kegiatan Baru'
+            : '📅 Kaldik Baru';
 
         $workUnitName = $kaldik->workUnit?->name ?? 'Pondok';
         $message = $isAgenda
@@ -347,7 +349,7 @@ class KaldikController extends Controller
         if ($isAgenda && $kaldik->work_unit_id) {
             // Agenda satuan kerja → kirim ke Admin TU di satuan kerja itu
             $adminTUIds = \App\Models\GtkWorkUnit::where('work_unit_id', $kaldik->work_unit_id)
-                ->whereHas('user', fn($q) => $q->whereIn('id', usersHavingPermission('admin.tu.assessable')))
+                ->whereHas('user', fn ($q) => $q->whereIn('id', usersHavingPermission('admin.tu.assessable')))
                 ->pluck('user_id')
                 ->toArray();
             $targetUserIds = array_merge($targetUserIds, $adminTUIds);
@@ -358,7 +360,7 @@ class KaldikController extends Controller
         $targetUserIds = array_unique(array_merge($targetUserIds, $adminIds));
 
         // Hapus creator dari list agar tidak notifikasi ke dirinya sendiri
-        $targetUserIds = array_filter($targetUserIds, fn($id) => $id !== $creator->id);
+        $targetUserIds = array_filter($targetUserIds, fn ($id) => $id !== $creator->id);
 
         foreach ($targetUserIds as $targetUserId) {
             NotificationUniversal::create([

@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
 
 class RecruitmentApplication extends Model
 {
-    use HasFactory, SoftDeletes, HasUuids, LogsDeletion;
+    use HasFactory, HasUuids, LogsDeletion, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -21,7 +22,7 @@ class RecruitmentApplication extends Model
         'status', 'skor_administrasi', 'nilai_tes', 'nilai_wawancara',
         'nilai_akhir', 'ranking', 'tanggal_melamar', 'diproses_at',
         'selesai_at', 'catatan_pelamar', 'catatan_rekruter', 'feedback',
-        'processed_by', 'status_akhir', 'nilai_praktikum'
+        'processed_by', 'status_akhir', 'nilai_praktikum',
     ];
 
     protected $casts = [
@@ -72,19 +73,20 @@ class RecruitmentApplication extends Model
     {
         // Stage label based on application status
         $stageMap = [
-            'menunggu_seleksi'    => 'Menunggu Seleksi',
-            'seleksi_administrasi'=> 'Seleksi Administrasi',
-            'lolos_administrasi'   => 'Lolos Administrasi',
+            'menunggu_seleksi' => 'Menunggu Seleksi',
+            'seleksi_administrasi' => 'Seleksi Administrasi',
+            'lolos_administrasi' => 'Lolos Administrasi',
             'tidak_lolos_administrasi' => 'Tidak Lolos',
-            'tes_tertulis'        => 'Hari Tes',
-            'lolos_tes'            => 'Lolos Tes',
-            'tidak_lolos_tes'       => 'Tidak Lolos Tes',
-            'wawancara'            => 'Wawancara',
-            'lolos_wawancara'      => 'Lolos Wawancara',
-            'tidak_lolos_wawancara'=> 'Tidak Lolos Wawancara',
-            'diterima'             => 'Diterima',
-            'ditolak'              => 'Ditolak',
+            'tes_tertulis' => 'Hari Tes',
+            'lolos_tes' => 'Lolos Tes',
+            'tidak_lolos_tes' => 'Tidak Lolos Tes',
+            'wawancara' => 'Wawancara',
+            'lolos_wawancara' => 'Lolos Wawancara',
+            'tidak_lolos_wawancara' => 'Tidak Lolos Wawancara',
+            'diterima' => 'Diterima',
+            'ditolak' => 'Ditolak',
         ];
+
         return $stageMap[$this->status] ?? Str::title(str_replace('_', ' ', $this->status));
     }
 
@@ -103,9 +105,9 @@ class RecruitmentApplication extends Model
     {
         return match ($this->status_akhir) {
             'diterima' => 'DITERIMA',
-            'ditolak'  => 'DITOLAK',
+            'ditolak' => 'DITOLAK',
             'cadangan' => 'CADANGAN',
-            default    => 'MENUNGGU',
+            default => 'MENUNGGU',
         };
     }
 
@@ -116,6 +118,7 @@ class RecruitmentApplication extends Model
             $this->nilai_praktikum,
             $this->nilai_wawancara,
         ]);
+
         return count($values) > 0 ? round(array_sum($values) / count($values), 2) : null;
     }
 

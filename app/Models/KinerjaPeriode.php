@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class KinerjaPeriode extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_periode';
 
     protected $fillable = ['nama', 'tanggal_mulai', 'tanggal_selesai', 'status', 'notes'];
@@ -25,6 +26,13 @@ class KinerjaPeriode extends Model
         return $this->hasMany(KinerjaRewardPunishment::class, 'kinerja_periode_id');
     }
 
-    public function scopeAktif($q) { return $q->where('status', 'aktif'); }
-    public function scopeSelesai($q) { return $q->where('status', 'selesai'); }
+    public function scopeAktif($q)
+    {
+        return $q->where('status', 'aktif');
+    }
+
+    public function scopeSelesai($q)
+    {
+        return $q->where('status', 'selesai');
+    }
 }

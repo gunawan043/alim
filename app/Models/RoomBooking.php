@@ -11,14 +11,17 @@ class RoomBooking extends Model
     use HasFactory;
 
     protected $table = 'room_bookings';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [

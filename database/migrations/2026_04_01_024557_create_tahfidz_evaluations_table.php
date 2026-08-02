@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 16. create_tahfidz_evaluations_table.php
 // Evaluasi berkala: bulanan, tengah semester, akhir semester, kenaikan juz.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_evaluations', function (Blueprint $table) {
@@ -39,5 +40,9 @@ return new class extends Migration {
                 'idx_std_eval_type_date');
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_evaluations'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_evaluations');
+    }
 };

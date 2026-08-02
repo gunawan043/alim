@@ -3,12 +3,19 @@
 namespace App\Providers;
 
 use App\Events\AssetLifecycleEvent;
-use App\Events\Boarding\HealthDischarged;
-use App\Events\Boarding\HealthPermitApproved;
-use App\Events\Boarding\LeaveApproved;
-use App\Events\Boarding\LeaveReturned;
-use App\Events\Boarding\RoomDamageReported;
+use App\Events\GoodsReceived;
 use App\Events\GtkProfileUpdated;
+use App\Events\InvoiceApproved;
+use App\Events\PoAccepted;
+use App\Events\PoDelivered;
+use App\Events\PoQcCompleted;
+use App\Events\PoShipped;
+use App\Events\PurchaseOrderCreated;
+use App\Events\QualityChecked;
+use App\Events\QuotationAccepted;
+use App\Events\QuotationAwarded;
+use App\Events\QuotationSubmitted;
+use App\Events\RfqPublished;
 use App\Events\StudentAssignedToRombel;
 use App\Events\StudentGraduated;
 use App\Events\StudentMutatedIn;
@@ -17,6 +24,7 @@ use App\Events\StudentPromoted;
 use App\Events\StudyGroupSubjectChanged;
 use App\Events\SubjectAssignedToStudyGroup;
 use App\Events\TeachingAssignmentChanged;
+use App\Events\VendorRated;
 use App\Listeners\AuditLifecycleChange;
 use App\Listeners\Boarding\ConvertRoomDamageToMaintenance;
 use App\Listeners\Boarding\RecordHospitalizedOnTimeline;
@@ -29,9 +37,16 @@ use App\Listeners\Boarding\SyncHealthToClinic;
 use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
 use App\Listeners\DeactivateStudentAcademicRecordsListener;
 use App\Listeners\NotifyGuardiansOnLifecycle;
+use App\Listeners\NotifySarprasOfQuotation;
+use App\Listeners\NotifyVendorsOfRfq;
 use App\Listeners\PersistAssetEventLog;
 use App\Listeners\ProvisionStudentAcademicDataListener;
 use App\Listeners\ProvisionStudyGroupSubjectAcademicStructure;
+use App\Listeners\RecordInvoiceApprovalTransition;
+use App\Listeners\RecordPoTransition;
+use App\Listeners\RecordQualityCheckTransition;
+use App\Listeners\RecordQuotationTransition;
+use App\Listeners\RecordVendorRatingTransition;
 use App\Listeners\SyncStudentRombelAfterLifecycle;
 use App\Listeners\TriggerGtkWorkloadRecalculation;
 use App\Listeners\UpdateAssetCondition;
@@ -242,6 +257,60 @@ class EventServiceProvider extends ServiceProvider
 
         \App\Events\Sarpras\WorkOrderProgressAdded::class => [
             \App\Listeners\Sarpras\NotifyWorkOrderLifecycle::class,
+        ],
+
+        // Vendor procurement workflow events.
+        RfqPublished::class => [
+            [NotifyVendorsOfRfq::class, 'handle'],
+        ],
+
+        QuotationSubmitted::class => [
+            [RecordQuotationTransition::class, 'handleSubmitted'],
+            [NotifySarprasOfQuotation::class, 'handle'],
+        ],
+
+        QuotationAwarded::class => [
+            [RecordQuotationTransition::class, 'handleAwarded'],
+        ],
+
+        QuotationAccepted::class => [
+            [RecordQuotationTransition::class, 'handleAccepted'],
+        ],
+
+        PurchaseOrderCreated::class => [
+            [RecordPoTransition::class, 'handleCreated'],
+        ],
+
+        PoAccepted::class => [
+            [RecordPoTransition::class, 'onAccepted'],
+        ],
+
+        PoShipped::class => [
+            [RecordPoTransition::class, 'onShipped'],
+        ],
+
+        PoDelivered::class => [
+            [RecordPoTransition::class, 'onDelivered'],
+        ],
+
+        PoQcCompleted::class => [
+            [RecordPoTransition::class, 'onQcCompleted'],
+        ],
+
+        GoodsReceived::class => [
+            [RecordPoTransition::class, 'onGoodsReceived'],
+        ],
+
+        QualityChecked::class => [
+            RecordQualityCheckTransition::class,
+        ],
+
+        InvoiceApproved::class => [
+            RecordInvoiceApprovalTransition::class,
+        ],
+
+        VendorRated::class => [
+            RecordVendorRatingTransition::class,
         ],
     ];
 

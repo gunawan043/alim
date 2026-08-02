@@ -40,6 +40,7 @@ class StudentStatusService
             $stub->status = StudentBoardingStatus::CHECKED_OUT;
             $stub->effective_from = null;
             $stub->exists = false;
+
             return $stub;
         }
 
@@ -59,7 +60,6 @@ class StudentStatusService
      * Atomic transition + timeline event emission.
      *
      * @param  string|null  $contextSubjectType  e.g. 'DormitoryPermit'
-     * @param  string|null  $contextSubjectId
      * @param  CarbonImmutable|null  $expectedReturnAt  for ON_LEAVE / AT_HOSPITAL
      */
     public function transition(
@@ -171,6 +171,18 @@ class StudentStatusService
      */
     public function markOnLeave(string $studentId, string $permitId, ?CarbonImmutable $expectedReturnAt = null): StudentBoardingStatus
     {
+        $fromStatus = $this->currentStatus($studentId);
+
+        // If student is still CHECKED_OUT (never checked in or checkout),
+        // first transition to IN_DORM before moving to ON_LEAVE.
+        if ($fromStatus === StudentBoardingStatus::CHECKED_OUT) {
+            $this->transition(
+                studentId: $studentId,
+                toStatus: StudentBoardingStatus::IN_DORM,
+                note: 'Auto check-in before leave approval.',
+            );
+        }
+
         return $this->transition(
             studentId: $studentId,
             toStatus: StudentBoardingStatus::ON_LEAVE,

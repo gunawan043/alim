@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BoardingTimelineEvent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,9 +52,13 @@ class StudentBoardingStatus extends Model
 
     // Status codes — exported as constants so flows can reference them.
     public const IN_DORM = 'IN_DORM';
+
     public const ON_LEAVE = 'ON_LEAVE';
+
     public const AT_HOSPITAL = 'AT_HOSPITAL';
+
     public const OFFICIAL_ACTIVITY = 'OFFICIAL_ACTIVITY';
+
     public const CHECKED_OUT = 'CHECKED_OUT';
 
     /**

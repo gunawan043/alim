@@ -27,28 +27,28 @@ class AbsensiSemesterFullExport implements WithMultipleSheets
         $sheets = [];
         foreach ($months as $month) {
             $sheets[] = new AbsensiMonthlySheet(
-                studentRows:    $this->studentRows,
-                monthData:      $this->groupedData[$month] ?? collect(),
-                rombelName:     $this->rombelName,
-                homeroomName:   $this->homeroomName,
-                schoolName:     $this->schoolName,
-                semester:       $this->semester,
-                academicYear:   $this->academicYear,
-                month:          $month,
-                year:           $this->year,
+                studentRows: $this->studentRows,
+                monthData: $this->groupedData[$month] ?? collect(),
+                rombelName: $this->rombelName,
+                homeroomName: $this->homeroomName,
+                schoolName: $this->schoolName,
+                semester: $this->semester,
+                academicYear: $this->academicYear,
+                month: $month,
+                year: $this->year,
             );
         }
 
         // Sheet ke-7: Rekap Semester
         $sheets[] = new AbsensiRekapSemesterSheet(
-            studentRows:    $this->studentRows,
-            groupedData:    $this->groupedData,
-            rombelName:     $this->rombelName,
-            homeroomName:   $this->homeroomName,
-            schoolName:     $this->schoolName,
-            semester:       $this->semester,
-            academicYear:   $this->academicYear,
-            year:           $this->year,
+            studentRows: $this->studentRows,
+            groupedData: $this->groupedData,
+            rombelName: $this->rombelName,
+            homeroomName: $this->homeroomName,
+            schoolName: $this->schoolName,
+            semester: $this->semester,
+            academicYear: $this->academicYear,
+            year: $this->year,
         );
 
         return $sheets;

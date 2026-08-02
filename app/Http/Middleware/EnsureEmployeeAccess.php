@@ -29,6 +29,14 @@ class EnsureEmployeeAccess
         }
 
         // ============================================================
+        // RULE 1b: System administrators (is_system_admin=true) bypass
+        // access validator. They may legitimately have no Spatie role.
+        // ============================================================
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return $next($request);
+        }
+
+        // ============================================================
         // RULE 2: Applicants → redirect to external recruitment portal
         // Detection: user has RecruitmentProfile but NO Spatie role
         // ============================================================

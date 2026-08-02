@@ -7,7 +7,7 @@
       "Bash(php -r \"new PDO\\('mysql:host=localhost', 'root', ''\\)->exec\\('CREATE DATABASE common_admin_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'\\);\")",
       "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root -e \"SHOW TABLES IN common_admin_test;\")",
       "Bash(./vendor/bin/phpunit tests/Feature/WaliSantriApiTest.php --filter=test_attendance_returns_404)",
-      "Bash(grep -n '$table->uuid\\\\|->string\\('\\\\''uuid'\\\\''' /Users/gunawan_wawan43/Movies/PUSTIK/alim/database/migrations/2026_02_10_010531_create_users_table.php)"
+      "Bash(grep -n '$table->uuid\\\\|->string\\('\\\\''uuid'\\\\''' /Users/gunawan_wawan43/Movies/Alim/alim/database/migrations/2026_02_10_010531_create_users_table.php)"
     ]
   }
 }

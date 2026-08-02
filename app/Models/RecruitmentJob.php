@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Support\Str;
 
 class RecruitmentJob extends Model
 {
-    use HasFactory, SoftDeletes, LogsDeletion, HasUuids;
+    use HasFactory, HasUuids, LogsDeletion, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $table = 'recruitment_jobs'; // Tambahkan jika nama tabel tidak sesuai default
@@ -25,26 +25,26 @@ class RecruitmentJob extends Model
         'posisi',
         'kategori',
         'jenis_pegawai',
-        'status_pegawai', 
+        'status_pegawai',
         'persyaratan_umum',
-        'persyaratan_khusus', 
-        'kualifikasi_pendidikan', 
+        'persyaratan_khusus',
+        'kualifikasi_pendidikan',
         'kualifikasi_pengalaman',
-        'kompetensi_dibutuhkan', 
-        'kuota', 
-        'kuota_terisi', 
+        'kompetensi_dibutuhkan',
+        'kuota',
+        'kuota_terisi',
         'deskripsi_pekerjaan',
-        'fasilitas', 
-        'rentang_gaji', 
-        'tanggal_mulai', 
+        'fasilitas',
+        'rentang_gaji',
+        'tanggal_mulai',
         'tanggal_selesai',
-        'status', 
-        'tahapan_seleksi', 
-        'created_by', 
-        'approved_by', 
+        'status',
+        'tahapan_seleksi',
+        'created_by',
+        'approved_by',
         'approved_at',
         'location', // Tambahkan jika ada kolom location
-        'company_logo' // Tambahkan jika ada kolom company_logo
+        'company_logo', // Tambahkan jika ada kolom company_logo
     ];
 
     protected $casts = [
@@ -85,7 +85,7 @@ class RecruitmentJob extends Model
             if (empty($model->kode_lowongan)) {
                 $model->kode_lowongan = static::generateJobCode();
             }
-            
+
             // Set default status jika belum ada
             if (empty($model->status)) {
                 $model->status = 'draft';
@@ -105,7 +105,7 @@ class RecruitmentJob extends Model
         $prefix = 'LOW';
         $year = date('Y');
         $month = date('m');
-        
+
         $lastJob = static::where('kode_lowongan', 'LIKE', "{$prefix}-{$year}{$month}%")
             ->orderBy('kode_lowongan', 'desc')
             ->first();
@@ -245,6 +245,7 @@ class RecruitmentJob extends Model
 
         if (is_string($value)) {
             $decoded = json_decode($value, true);
+
             return is_array($decoded) ? $decoded : [];
         }
 
@@ -272,7 +273,7 @@ class RecruitmentJob extends Model
      */
     public function getStatusBadgeAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'aktif' => 'success',
             'ditutup' => 'danger',
             'draft' => 'warning',
@@ -285,7 +286,7 @@ class RecruitmentJob extends Model
      */
     public function getStatusTextAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'aktif' => 'Aktif',
             'ditutup' => 'Ditutup',
             'draft' => 'Draft',
@@ -299,11 +300,11 @@ class RecruitmentJob extends Model
     public function getCompanyLogoUrlAttribute()
     {
         if ($this->company_logo) {
-            return asset('storage/' . $this->company_logo);
+            return asset('storage/'.$this->company_logo);
         }
-        
+
         // Default logo based on work unit or random
-        return asset('build/images/companies/img-' . rand(1, 8) . '.png');
+        return asset('build/images/companies/img-'.rand(1, 8).'.png');
     }
 
     /**
@@ -311,7 +312,7 @@ class RecruitmentJob extends Model
      */
     public function getDaysRemainingAttribute()
     {
-        if (!$this->tanggal_selesai) {
+        if (! $this->tanggal_selesai) {
             return null;
         }
 
@@ -331,7 +332,7 @@ class RecruitmentJob extends Model
     public function getDaysRemainingTextAttribute()
     {
         $days = $this->days_remaining;
-        
+
         if (is_null($days)) {
             return 'No deadline';
         }
@@ -344,7 +345,7 @@ class RecruitmentJob extends Model
             return '1 day remaining';
         }
 
-        return $days . ' days remaining';
+        return $days.' days remaining';
     }
 
     // ============== SCOPES ==============
@@ -419,11 +420,11 @@ class RecruitmentJob extends Model
             return $query;
         }
 
-        return $query->where(function($q) use ($keyword) {
+        return $query->where(function ($q) use ($keyword) {
             $q->where('judul', 'LIKE', "%{$keyword}%")
-              ->orWhere('posisi', 'LIKE', "%{$keyword}%")
-              ->orWhere('kode_lowongan', 'LIKE', "%{$keyword}%")
-              ->orWhere('deskripsi_pekerjaan', 'LIKE', "%{$keyword}%");
+                ->orWhere('posisi', 'LIKE', "%{$keyword}%")
+                ->orWhere('kode_lowongan', 'LIKE', "%{$keyword}%")
+                ->orWhere('deskripsi_pekerjaan', 'LIKE', "%{$keyword}%");
         });
     }
 
@@ -466,8 +467,8 @@ class RecruitmentJob extends Model
      */
     public function isActive()
     {
-        return $this->status === 'aktif' 
-            && $this->tanggal_mulai <= now() 
+        return $this->status === 'aktif'
+            && $this->tanggal_mulai <= now()
             && $this->tanggal_selesai >= now();
     }
 
@@ -492,7 +493,7 @@ class RecruitmentJob extends Model
      */
     public function isApproved()
     {
-        return !is_null($this->approved_at) && !is_null($this->approved_by);
+        return ! is_null($this->approved_at) && ! is_null($this->approved_by);
     }
 
     /**
@@ -533,7 +534,7 @@ class RecruitmentJob extends Model
         $this->update([
             'approved_by' => $userId,
             'approved_at' => now(),
-            'status' => 'aktif'
+            'status' => 'aktif',
         ]);
 
         return $this;
@@ -547,7 +548,7 @@ class RecruitmentJob extends Model
         $this->update([
             'status' => 'draft',
             'approved_by' => null,
-            'approved_at' => null
+            'approved_at' => null,
         ]);
 
         // You can store rejection reason in a separate table if needed
@@ -561,7 +562,7 @@ class RecruitmentJob extends Model
     public function close()
     {
         $this->update([
-            'status' => 'ditutup'
+            'status' => 'ditutup',
         ]);
 
         return $this;
@@ -576,11 +577,11 @@ class RecruitmentJob extends Model
             // Extend the deadline if already passed
             $this->update([
                 'tanggal_selesai' => now()->addDays(30),
-                'status' => 'aktif'
+                'status' => 'aktif',
             ]);
         } else {
             $this->update([
-                'status' => 'aktif'
+                'status' => 'aktif',
             ]);
         }
 
@@ -593,7 +594,7 @@ class RecruitmentJob extends Model
     public function incrementFilledQuota($amount = 1)
     {
         $this->increment('kuota_terisi', $amount);
-        
+
         // Auto close if quota is full
         if ($this->kuota_terisi >= $this->kuota) {
             $this->close();
@@ -608,7 +609,7 @@ class RecruitmentJob extends Model
     public function decrementFilledQuota($amount = 1)
     {
         $this->decrement('kuota_terisi', max(0, $amount));
-        
+
         // Auto activate if quota becomes available and status was closed due to full quota
         if ($this->status === 'ditutup' && $this->kuota_terisi < $this->kuota) {
             $this->reopen();
@@ -625,18 +626,18 @@ class RecruitmentJob extends Model
         $requirements = [];
 
         // Pendidikan
-        if (!empty($this->kualifikasi_pendidikan)) {
-            $requirements[] = 'Pendidikan: ' . implode(', ', $this->kualifikasi_pendidikan);
+        if (! empty($this->kualifikasi_pendidikan)) {
+            $requirements[] = 'Pendidikan: '.implode(', ', $this->kualifikasi_pendidikan);
         }
 
         // Pengalaman
-        if (!empty($this->kualifikasi_pengalaman)) {
-            $requirements[] = 'Pengalaman: ' . implode(', ', $this->kualifikasi_pengalaman);
+        if (! empty($this->kualifikasi_pengalaman)) {
+            $requirements[] = 'Pengalaman: '.implode(', ', $this->kualifikasi_pengalaman);
         }
 
         // Kompetensi
-        if (!empty($this->kompetensi_dibutuhkan)) {
-            $requirements[] = 'Kompetensi: ' . implode(', ', $this->kompetensi_dibutuhkan);
+        if (! empty($this->kompetensi_dibutuhkan)) {
+            $requirements[] = 'Kompetensi: '.implode(', ', $this->kompetensi_dibutuhkan);
         }
 
         return $requirements;
@@ -652,18 +653,18 @@ class RecruitmentJob extends Model
         }
 
         $gaji = $this->rentang_gaji;
-        
+
         if (isset($gaji['min']) && isset($gaji['max'])) {
-            return 'Rp ' . number_format($gaji['min'], 0, ',', '.') . 
-                   ' - Rp ' . number_format($gaji['max'], 0, ',', '.');
+            return 'Rp '.number_format($gaji['min'], 0, ',', '.').
+                   ' - Rp '.number_format($gaji['max'], 0, ',', '.');
         }
 
         if (isset($gaji['min'])) {
-            return '≥ Rp ' . number_format($gaji['min'], 0, ',', '.');
+            return '≥ Rp '.number_format($gaji['min'], 0, ',', '.');
         }
 
         if (isset($gaji['max'])) {
-            return '≤ Rp ' . number_format($gaji['max'], 0, ',', '.');
+            return '≤ Rp '.number_format($gaji['max'], 0, ',', '.');
         }
 
         return 'Negotiable';
@@ -683,7 +684,7 @@ class RecruitmentJob extends Model
             $stages[] = [
                 'number' => $index + 1,
                 'name' => $stage,
-                'status' => 'pending' // You can implement actual status tracking
+                'status' => 'pending', // You can implement actual status tracking
             ];
         }
 
@@ -733,9 +734,10 @@ class RecruitmentJob extends Model
     public function getKategoriJabatanAttribute()
     {
         $uuids = $this->kategori;
-        if (empty($uuids) || !is_array($uuids)) {
+        if (empty($uuids) || ! is_array($uuids)) {
             return collect();
         }
+
         return Jabatan::whereIn('uuid', $uuids)->orderBy('nama')->get();
     }
 
@@ -753,6 +755,7 @@ class RecruitmentJob extends Model
     public function getKategoriLabelAttribute(): string
     {
         $names = $this->kategori_names;
+
         return empty($names) ? '-' : implode(', ', $names);
     }
 
@@ -764,8 +767,10 @@ class RecruitmentJob extends Model
         $val = $this->kategori;
         if (is_string($val)) {
             $decoded = json_decode($val, true);
+
             return is_array($decoded) ? $decoded : [];
         }
+
         return is_array($val) ? $val : [];
     }
 }

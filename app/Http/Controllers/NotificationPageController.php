@@ -28,15 +28,15 @@ class NotificationPageController extends Controller
             ->paginate(20);
 
         $stats = [
-            'total'      => NotificationUniversal::where('user_id', $userId)->notArchived()->count(),
-            'unread'     => $this->notificationService->getUnreadCount($userId),
-            'by_module'  => $this->getModuleStats($userId),
+            'total' => NotificationUniversal::where('user_id', $userId)->notArchived()->count(),
+            'unread' => $this->notificationService->getUnreadCount($userId),
+            'by_module' => $this->getModuleStats($userId),
         ];
 
         return view('notifications.index', [
             'notifications' => $notifications,
-            'filters'      => $filters,
-            'stats'        => $stats,
+            'filters' => $filters,
+            'stats' => $stats,
         ]);
     }
 
@@ -50,15 +50,15 @@ class NotificationPageController extends Controller
             ->notArchived()
             ->notExpired();
 
-        if (!empty($filters['module'])) {
+        if (! empty($filters['module'])) {
             $query->byModule($filters['module']);
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['priority'])) {
+        if (! empty($filters['priority'])) {
             $query->byPriority($filters['priority']);
         }
 

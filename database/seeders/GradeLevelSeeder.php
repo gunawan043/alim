@@ -15,7 +15,7 @@ class GradeLevelSeeder extends Seeder
         foreach ($schools as $school) {
             $level = $school->school_level;
             $levels = match ($level) {
-                'sd'  => [1, 2, 3, 4, 5, 6],
+                'sd' => [1, 2, 3, 4, 5, 6],
                 'smp' => [7, 8, 9],
                 'sma' => [10, 11, 12],
                 'smk' => [10, 11, 12],
@@ -39,6 +39,6 @@ class GradeLevelSeeder extends Seeder
             }
         }
 
-        $this->command->info('✅ GradeLevelSeeder selesai — GradeLevels: ' . GradeLevel::count());
+        $this->command->info('✅ GradeLevelSeeder selesai — GradeLevels: '.GradeLevel::count());
     }
 }

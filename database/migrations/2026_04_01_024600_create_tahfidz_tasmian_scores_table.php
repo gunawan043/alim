@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
 // Komponen: Tahfizh (bobot 40) + Tajwid (bobot 30) + Fashohah (bobot 30) = 100.
 // Sesuai Instrumen Penilaian Tasmi'an (Gambar 3).
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_tasmian_scores', function (Blueprint $table) {
@@ -22,9 +23,9 @@ return new class extends Migration {
 
             // --- TAHFIZH (bobot 40) ---
             $table->decimal('tahfizh_score_raw', 5, 2)->nullable()
-                  ->comment('Skor mentah Tahfizh sebelum dikali bobot');
+                ->comment('Skor mentah Tahfizh sebelum dikali bobot');
             $table->decimal('tahfizh_nilai', 5, 2)->nullable()
-                  ->comment('Nilai setelah bobot 40: (score_raw/100)*40');
+                ->comment('Nilai setelah bobot 40: (score_raw/100)*40');
 
             // --- TAJWID (bobot 30) ---
             $table->decimal('tajwid_score_raw', 5, 2)->nullable();
@@ -35,7 +36,7 @@ return new class extends Migration {
             $table->decimal('fashohah_nilai', 5, 2)->nullable();
 
             $table->decimal('nilai_akhir', 5, 2)->nullable()
-                  ->comment('= tahfizh_nilai + tajwid_nilai + fashohah_nilai');
+                ->comment('= tahfizh_nilai + tajwid_nilai + fashohah_nilai');
             $table->enum('predikat', ['mumtaz', 'jayyid_jiddan', 'jayyid', 'maqbul', 'rasib'])->nullable();
             $table->text('catatan_penilai')->nullable();
             $table->timestamps();
@@ -50,5 +51,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_tasmian_scores'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_tasmian_scores');
+    }
 };

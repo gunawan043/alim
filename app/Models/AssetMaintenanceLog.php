@@ -11,14 +11,17 @@ class AssetMaintenanceLog extends Model
     use HasFactory;
 
     protected $table = 'asset_maintenance_logs';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [

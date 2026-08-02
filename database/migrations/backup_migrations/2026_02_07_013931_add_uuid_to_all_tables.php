@@ -45,7 +45,7 @@ return new class extends Migration
         'secure_access_tokens',
         'sessions',
         'users',
-        'work_units'
+        'work_units',
     ];
 
     protected $tablesWithUuid = [
@@ -74,28 +74,28 @@ return new class extends Migration
         'roles',
         'secure_access_tokens',
         'users',
-        'work_units'
+        'work_units',
     ];
 
     public function up()
     {
         foreach ($this->tablesWithUuid as $tableName) {
             if (Schema::hasTable($tableName)) {
-                if (!Schema::hasColumn($tableName, 'uuid')) {
+                if (! Schema::hasColumn($tableName, 'uuid')) {
                     Schema::table($tableName, function (Blueprint $table) use ($tableName) {
                         $table->uuid('uuid')->nullable()->after('id');
-                        
+
                         $table->index('uuid');
-                        
+
                         if (Schema::hasColumn($tableName, 'deleted_at')) {
                             $table->unique(['uuid', 'deleted_at']);
                         } else {
                             $table->unique('uuid');
                         }
                     });
-                    
+
                     $this->generateUuidForExistingData($tableName);
-                    
+
                     Schema::table($tableName, function (Blueprint $table) {
                         $table->uuid('uuid')->nullable(false)->change();
                     });
@@ -103,7 +103,7 @@ return new class extends Migration
             }
         }
     }
-    
+
     private function generateUuidForExistingData($tableName)
     {
         DB::table($tableName)
@@ -112,14 +112,14 @@ return new class extends Migration
             ->chunk(500, function ($records) use ($tableName) {
                 $updates = [];
                 $now = now();
-                
+
                 foreach ($records as $record) {
                     $updates[] = [
                         'id' => $record->id,
-                        'uuid' => (string) Str::uuid()
+                        'uuid' => (string) Str::uuid(),
                     ];
                 }
-                
+
                 // Batch update untuk performa
                 foreach ($updates as $update) {
                     DB::table($tableName)
@@ -139,7 +139,7 @@ return new class extends Migration
                     } else {
                         $table->dropUnique(['uuid']);
                     }
-                    
+
                     $table->dropIndex(['uuid']);
                     $table->dropColumn('uuid');
                 });

@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('asset_lands', function (Blueprint $table) {
@@ -14,7 +15,7 @@ return new class extends Migration {
             $table->string('land_name', 191);
             $table->string('certificate_number', 100)->nullable();
             $table->enum('certificate_type', ['shm', 'shgb', 'hp', 'wakaf', 'lainnya'])
-                  ->nullable();
+                ->nullable();
             $table->decimal('land_area', 10, 2)->nullable()->comment('Luas dalam m²');
             $table->text('address')->nullable();
             $table->char('province_code', 2)->nullable();
@@ -32,7 +33,7 @@ return new class extends Migration {
                 'bangunan', 'lapangan', 'kebun', 'parkir', 'lainnya',
             ])->default('bangunan');
             $table->enum('status', ['aktif', 'sengketa', 'dijual', 'lainnya'])
-                  ->default('aktif');
+                ->default('aktif');
             $table->string('document_path', 255)->nullable();
             $table->text('notes')->nullable();
             $table->uuid('created_by');
@@ -49,5 +50,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('asset_lands'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('asset_lands');
+    }
 };

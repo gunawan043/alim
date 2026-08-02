@@ -2,8 +2,8 @@
 
 namespace App\Traits;
 
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 trait UuidTrait
 {
@@ -13,7 +13,7 @@ trait UuidTrait
             if (empty($model->{$model->getKeyName()}) && in_array('uuid', $model->getFillable())) {
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }
-            
+
             if (in_array('uuid', $model->getFillable()) && empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
             }

@@ -1,14 +1,18 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL-only: SQLite does not support CHANGE column syntax.
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Rename head_nip → head_nupy in student_mutations_in
         if (Schema::hasTable('student_mutations_in') && Schema::hasColumn('student_mutations_in', 'head_nip')) {
             DB::statement('ALTER TABLE student_mutations_in CHANGE head_nip head_nupy VARCHAR(50) NULL');
@@ -22,6 +26,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         if (Schema::hasTable('student_mutations_in') && Schema::hasColumn('student_mutations_in', 'head_nupy')) {
             DB::statement('ALTER TABLE student_mutations_in CHANGE head_nupy head_nip VARCHAR(30) NULL');
         }

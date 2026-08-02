@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::unprepared('
             DROP PROCEDURE IF EXISTS generate_teaching_decree;
             
@@ -138,6 +142,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::unprepared('DROP PROCEDURE IF EXISTS generate_teaching_decree');
     }
 };

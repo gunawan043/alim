@@ -35,7 +35,7 @@ class DokumenIsoObserver
                 $old[$field] = $dokumen->getOriginal($field);
             }
         }
-        if (!empty($old)) {
+        if (! empty($old)) {
             self::$pendingUpdates[$dokumen->getKey()] = $old;
         }
     }
@@ -64,7 +64,7 @@ class DokumenIsoObserver
 
     private function sendNotification(DokumenIso $dokumen, string $aksi, ?string $oldNama = null): void
     {
-        if (!$dokumen->divisi_id) {
+        if (! $dokumen->divisi_id) {
             return;
         }
 
@@ -88,10 +88,10 @@ class DokumenIsoObserver
                 ));
             } catch (\Throwable $e) {
                 Log::error('Gagal kirim email notifikasi dokumen ISO', [
-                    'user_id'      => $user->id,
-                    'dokumen_id'  => $dokumen->id,
-                    'aksi'        => $aksi,
-                    'error'       => $e->getMessage(),
+                    'user_id' => $user->id,
+                    'dokumen_id' => $dokumen->id,
+                    'aksi' => $aksi,
+                    'error' => $e->getMessage(),
                 ]);
             }
         }

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Str;
 
 class SarprasRuang extends Model
@@ -13,8 +12,11 @@ class SarprasRuang extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'sarpras_ruangs';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

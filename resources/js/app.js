@@ -372,7 +372,7 @@ File: Main Js File
                 document.querySelector(".navbar-menu").innerHTML = navbarMenuHTML;
             }
             var ul = document.createElement("ul");
-            ul.innerHTML = '<a href="#" class="logo"><img src="build/images/logo-sm.png" alt="" height="22"></a>';
+            ul.innerHTML = '<a href="#" class="logo"><img src="build/images/alim-sm-light.png" alt="" height="22"></a>';
             Array.from(document.getElementById("navbar-nav").querySelectorAll(".menu-link")).forEach(function (item) {
                 ul.className = "twocolumn-iconview";
                 var li = document.createElement("li");

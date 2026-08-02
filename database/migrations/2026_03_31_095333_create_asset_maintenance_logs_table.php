@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('asset_maintenance_logs', function (Blueprint $table) {
@@ -12,21 +13,21 @@ return new class extends Migration {
             $table->uuid('work_unit_id');
             $table->uuid('school_id')->nullable();
             $table->uuid('schedule_id')->nullable()
-                  ->comment('NULL jika laporan kerusakan mendadak tanpa jadwal');
+                ->comment('NULL jika laporan kerusakan mendadak tanpa jadwal');
             // Salah satu dari tiga ini diisi
             $table->uuid('asset_id')->nullable();
             $table->uuid('building_id')->nullable();
             $table->uuid('room_id')->nullable();
             $table->date('maintenance_date');
             $table->enum('log_type', ['preventif', 'korektif', 'inspeksi', 'penghapusan'])
-                  ->default('korektif');
+                ->default('korektif');
             $table->uuid('reported_by')->nullable()
-                  ->comment('Yang melaporkan kerusakan');
+                ->comment('Yang melaporkan kerusakan');
             $table->uuid('handled_by')->nullable()
-                  ->comment('Yang menangani perbaikan');
+                ->comment('Yang menangani perbaikan');
             $table->string('vendor_name', 191)->nullable();
             $table->text('description')
-                  ->comment('Deskripsi kerusakan atau pekerjaan pemeliharaan');
+                ->comment('Deskripsi kerusakan atau pekerjaan pemeliharaan');
             $table->enum('condition_before', [
                 'baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat',
             ])->nullable();
@@ -35,7 +36,7 @@ return new class extends Migration {
             ])->nullable();
             $table->decimal('cost', 15, 2)->nullable();
             $table->string('cost_source', 100)->nullable()
-                  ->comment('BOS, Dana Ponpes, Donasi, Asuransi, dll');
+                ->comment('BOS, Dana Ponpes, Donasi, Asuransi, dll');
             $table->decimal('duration_hours', 5, 1)->nullable();
             $table->enum('status', [
                 'dilaporkan', 'diproses', 'selesai', 'ditunda', 'tidak_dapat_diperbaiki',
@@ -64,5 +65,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('asset_maintenance_logs'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('asset_maintenance_logs');
+    }
 };

@@ -70,7 +70,7 @@
 </table>
 
 <div class="footer">
-    ALIM PUSTIK — Sistem Informasi Akademik Madrasah
+    ALIM Alim — Sistem Informasi Akademik Madrasah
 </div>
 
 </body>

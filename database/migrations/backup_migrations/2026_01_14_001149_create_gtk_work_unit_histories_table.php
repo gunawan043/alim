@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('action', [
                 'ASSIGN',
                 'TRANSFER',
-                'REMOVE'
+                'REMOVE',
             ]);
 
             $table->text('reason')->nullable();

@@ -14,6 +14,7 @@ trait Encryptable
         if ($value === null || $value === '') {
             return $value;
         }
+
         return Crypt::encryptString($value);
     }
 
@@ -25,11 +26,12 @@ trait Encryptable
         if ($value === null || $value === '') {
             return $value;
         }
-        
+
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            \Log::error("Failed to decrypt value for {$purpose}: " . $e->getMessage());
+            \Log::error("Failed to decrypt value for {$purpose}: ".$e->getMessage());
+
             return null;
         }
     }

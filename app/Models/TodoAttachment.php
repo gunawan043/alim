@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class TodoAttachment extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -60,12 +61,13 @@ class TodoAttachment extends Model
     {
         $bytes = $this->file_size ?? 0;
         if ($bytes < 1024) {
-            return $bytes . ' B';
+            return $bytes.' B';
         }
         if ($bytes < 1024 * 1024) {
-            return round($bytes / 1024, 1) . ' KB';
+            return round($bytes / 1024, 1).' KB';
         }
-        return round($bytes / (1024 * 1024), 1) . ' MB';
+
+        return round($bytes / (1024 * 1024), 1).' MB';
     }
 
     public function getIconAttribute(): string
@@ -83,6 +85,7 @@ class TodoAttachment extends Model
         if (str_contains($type, 'sheet') || str_contains($type, 'excel')) {
             return 'ri-file-excel-2-line';
         }
+
         return 'ri-file-3-line';
     }
 

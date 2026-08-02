@@ -11,8 +11,11 @@ class ChecklistInstance extends Model
     use HasFactory;
 
     protected $table = 'checklist_instances';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 1. create_tahfidz_packages_table.php
 // Paket program tahfidz. Contoh: Reguler, Intensif, Tahfidz Plus.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_packages', function (Blueprint $table) {
@@ -20,7 +21,7 @@ return new class extends Migration {
             $table->integer('total_target_juz')->default(30);
             $table->integer('total_target_halaman')->nullable();
             $table->integer('duration_semesters')->nullable()
-                  ->comment('Lama paket dalam semester');
+                ->comment('Lama paket dalam semester');
             $table->tinyInteger('is_active')->default(1);
             $table->timestamps();
 
@@ -28,5 +29,9 @@ return new class extends Migration {
             $table->index(['work_unit_id', 'is_active']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_packages'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_packages');
+    }
 };

@@ -12,12 +12,13 @@ class Subject extends Model
     protected $table = 'subjects';
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [

@@ -7,9 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
-use App\Models\TeacherAdminBook;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class KktpController extends Controller
 {
@@ -28,21 +26,21 @@ class KktpController extends Controller
 
         $selectedSemester = $request->filled('semester') ? $request->semester : 'ganjil';
 
-        $gradeLevels = GradeLevel::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $gradeLevels = GradeLevel::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('level')->get();
 
         $selectedGlId = $request->filled('grade_level_id') ? $request->grade_level_id : null;
 
         // Ambil semua mapel (subjects) — untuk lookup nama
-        $subjects = Subject::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $subjects = Subject::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')->get();
 
         // Ambil data KKTP yang sudah ada
         $kktpQuery = SubjectKktp::with('subject', 'gradeLevel')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when($selectedAyId, fn($q) => $q->where('academic_year_id', $selectedAyId))
-            ->when($selectedSemester, fn($q) => $q->where('semester', $selectedSemester))
-            ->when($selectedGlId, fn($q) => $q->where('grade_level_id', $selectedGlId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+            ->when($selectedSemester, fn ($q) => $q->where('semester', $selectedSemester))
+            ->when($selectedGlId, fn ($q) => $q->where('grade_level_id', $selectedGlId))
             ->orderBy('semester')
             ->orderBy('subject_id');
 
@@ -52,18 +50,18 @@ class KktpController extends Controller
             : $kktpQuery->get()->groupBy('subject_id');
 
         // Ambil subject_ids yang sudah punya KKTP
-        $usedSubjectIds = SubjectKktp::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when($selectedAyId, fn($q) => $q->where('academic_year_id', $selectedAyId))
-            ->when($selectedSemester, fn($q) => $q->where('semester', $selectedSemester))
+        $usedSubjectIds = SubjectKktp::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+            ->when($selectedSemester, fn ($q) => $q->where('semester', $selectedSemester))
             ->pluck('subject_id')
             ->unique()
             ->toArray();
 
         // Mapel yang belum ada KKTP
-        $unusedSubjects = $subjects->filter(fn($s) => !in_array($s->id, $usedSubjectIds))->values();
+        $unusedSubjects = $subjects->filter(fn ($s) => ! in_array($s->id, $usedSubjectIds))->values();
 
         // Mapel yang sudah ada KKTP
-        $usedSubjects = $subjects->filter(fn($s) => in_array($s->id, $usedSubjectIds))->values();
+        $usedSubjects = $subjects->filter(fn ($s) => in_array($s->id, $usedSubjectIds))->values();
 
         return view('akademik.kktp.index', compact(
             'userId', 'academicYears', 'gradeLevels', 'subjects',
@@ -81,28 +79,28 @@ class KktpController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $request->validate([
             'academic_year_id' => 'required',
-            'semester'         => 'required|in:ganjil,genap',
-            'grade_level_id'   => 'required',
-            'kktp'             => 'required|array',
+            'semester' => 'required|in:ganjil,genap',
+            'grade_level_id' => 'required',
+            'kktp' => 'required|array',
         ]);
 
-        $ayId  = $request->academic_year_id;
-        $sem   = $request->semester;
-        $glId  = $request->grade_level_id;
+        $ayId = $request->academic_year_id;
+        $sem = $request->semester;
+        $glId = $request->grade_level_id;
 
         foreach ($request->kktp as $subjectId => $data) {
             SubjectKktp::updateOrCreate(
                 [
-                    'subject_id'      => $subjectId,
-                    'school_id'       => $schoolId,
-                    'grade_level_id'  => $glId,
+                    'subject_id' => $subjectId,
+                    'school_id' => $schoolId,
+                    'grade_level_id' => $glId,
                     'academic_year_id' => $ayId,
-                    'semester'        => $sem,
+                    'semester' => $sem,
                 ],
                 [
                     'kktp_score' => $data['kktp_score'] ?? null,
-                    'kkm_score'  => $data['kkm_score'] ?? null,
-                    'notes'      => $data['notes'] ?? null,
+                    'kkm_score' => $data['kkm_score'] ?? null,
+                    'notes' => $data['notes'] ?? null,
                     'created_by' => $userId,
                 ]
             );
@@ -119,13 +117,13 @@ class KktpController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $request->validate([
             'academic_year_id' => 'required',
-            'semester'         => 'required|in:ganjil,genap',
-            'grade_level_id'   => 'required',
+            'semester' => 'required|in:ganjil,genap',
+            'grade_level_id' => 'required',
         ]);
 
         $glId = $request->grade_level_id;
         $ayId = $request->academic_year_id;
-        $sem  = $request->semester;
+        $sem = $request->semester;
 
         // Ambil KKTP dari semester sebelumnya (jika ganjil→genap, atau genap→ganjil dari tahun sebelumnya)
         $prevSem = $sem === 'ganjil' ? 'genap' : 'ganjil';
@@ -144,17 +142,17 @@ class KktpController extends Controller
                 ->where('semester', $sem)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 SubjectKktp::create([
-                    'subject_id'       => $subjectId,
-                    'school_id'        => $schoolId,
-                    'grade_level_id'   => $glId,
+                    'subject_id' => $subjectId,
+                    'school_id' => $schoolId,
+                    'grade_level_id' => $glId,
                     'academic_year_id' => $ayId,
-                    'semester'         => $sem,
-                    'kktp_score'       => $prev->kktp_score,
-                    'kkm_score'        => $prev->kkm_score,
-                    'notes'            => $prev->notes,
-                    'created_by'       => $userId,
+                    'semester' => $sem,
+                    'kktp_score' => $prev->kktp_score,
+                    'kkm_score' => $prev->kkm_score,
+                    'notes' => $prev->notes,
+                    'created_by' => $userId,
                 ]);
                 $created++;
             }

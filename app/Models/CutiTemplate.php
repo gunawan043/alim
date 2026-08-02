@@ -24,14 +24,17 @@ class CutiTemplate extends Model
 
     protected $casts = [
         'jumlah_hari' => 'integer',
-        'paid'        => 'boolean',
-        'is_active'   => 'boolean',
-        'urutan'      => 'integer',
+        'paid' => 'boolean',
+        'is_active' => 'boolean',
+        'urutan' => 'integer',
     ];
 
     public const JENIS_TAHUNAN = 'TAHUNAN';
-    public const JENIS_SAKIT  = 'SAKIT';
-    public const JENIS_BESAR   = 'BESAR';
+
+    public const JENIS_SAKIT = 'SAKIT';
+
+    public const JENIS_BESAR = 'BESAR';
+
     public const JENIS_LAINNYA = 'LAINNYA';
 
     public function balances(): HasMany

@@ -21,7 +21,10 @@ class SchoolController extends Controller
     {
         $authUser = auth()->user();
 
-        abort_unless($authUser && $authUser->id === $userId, 403, 'Akses ditolak.');
+        // Super Admin bypasses userId matching check
+        if (! ($authUser && $authUser->isSystemAdmin())) {
+            abort_unless($authUser && $authUser->id === $userId, 403, 'Akses ditolak.');
+        }
 
         $school = School::with('workUnit')->find($schoolId);
         if (! $school) {
@@ -48,13 +51,20 @@ class SchoolController extends Controller
     public function index(Request $request, string $userId)
     {
         $user = auth()->user();
-        abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        // Super Admin bypasses userId matching check
+        if (! $user || ! $user->isSystemAdmin()) {
+            abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        }
 
-        abort_unless(
-            canPermission('school-all-access') || canPermission('view_global_school_data'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat mengakses halaman sekolah.'
-        );
+        // Super Admin & Administrator: school-all-access or view_global_school_data
+        // Tata Usaha: school_view (can only see schools in their work unit)
+        $hasFullAccess = canPermission('school-all-access') || canPermission('view_global_school_data');
+        $hasViewAccess = canPermission('school_view');
+
+        // If the user doesn't have any school-related permission, show a helpful message
+        if (! $hasFullAccess && ! $hasViewAccess) {
+            abort(403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengakses halaman sekolah.');
+        }
 
         $query = School::with(['workUnit', 'principalUser'])->orderBy('name');
 
@@ -89,12 +99,16 @@ class SchoolController extends Controller
     public function create(Request $request, string $userId)
     {
         $user = auth()->user();
-        abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
-        abort_unless(
-            canPermission('school-create'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat membuat sekolah baru.'
-        );
+        // Super Admin bypasses userId matching check
+        if (! $user || ! $user->isSystemAdmin()) {
+            abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        }
+
+        // Super Admin & Tata Usaha: buat sekolah
+        $hasCreatePerm = canPermission('school-create') ||
+                         ($user && $user->roles()->where('name', 'Tata Usaha')->exists());
+
+        abort_unless($hasCreatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat membuat sekolah baru.');
 
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
@@ -110,12 +124,16 @@ class SchoolController extends Controller
     public function store(Request $request, string $userId)
     {
         $user = auth()->user();
-        abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
-        abort_unless(
-            canPermission('school-create'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat membuat sekolah baru.'
-        );
+        // Super Admin bypasses userId matching check
+        if (! $user || ! $user->isSystemAdmin()) {
+            abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        }
+
+        // Tata Usaha juga bisa buat sekolah via role detection
+        $hasCreatePerm = canPermission('school-create') ||
+                         ($user && $user->roles()->where('name', 'Tata Usaha')->exists());
+
+        abort_unless($hasCreatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat membuat sekolah baru.');
 
         $data = $request->validate([
             'work_unit_id' => 'nullable|exists:work_units,id',
@@ -199,11 +217,13 @@ class SchoolController extends Controller
 
     public function edit(string $userId, string $schoolId)
     {
-        abort_unless(
-            canPermission('school-update'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat mengedit sekolah.'
-        );
+        // Super Admin bypasses userId matching check via validateSchoolAccess already
+
+        // Tata Usaha juga bisa mengedit sekolah
+        $hasUpdatePerm = canPermission('school-update') ||
+                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+
+        abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
@@ -219,11 +239,11 @@ class SchoolController extends Controller
 
     public function update(Request $request, string $userId, string $schoolId)
     {
-        abort_unless(
-            canPermission('school-update'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat mengedit sekolah.'
-        );
+        // Tata Usaha juga bisa mengedit sekolah
+        $hasUpdatePerm = canPermission('school-update') ||
+                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+
+        abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
 
@@ -295,11 +315,11 @@ class SchoolController extends Controller
 
     public function destroy(Request $request, string $userId, string $schoolId)
     {
-        abort_unless(
-            canPermission('school-delete'),
-            403,
-            'Hanya Super Admin dan Administrator yang dapat menghapus sekolah.'
-        );
+        // Tata Usaha juga bisa menghapus sekolah
+        $hasDeletePerm = canPermission('school-delete') ||
+                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+
+        abort_unless($hasDeletePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat menghapus sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
 

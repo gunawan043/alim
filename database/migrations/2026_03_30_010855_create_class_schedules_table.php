@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('class_schedules', function (Blueprint $table) {
@@ -17,9 +18,9 @@ return new class extends Migration {
             $table->uuid('teacher_id');
             // FK ke SK guru — jalur: class_schedules → teaching_assignments → institution_decrees
             $table->uuid('teaching_assignment_id')->nullable()
-                  ->comment('FK ke teaching_assignments.id (terhubung SK guru via decree_id)');
+                ->comment('FK ke teaching_assignments.id (terhubung SK guru via decree_id)');
             $table->uuid('schedule_slot_id')
-                  ->comment('FK ke class_schedule_slots.id');
+                ->comment('FK ke class_schedule_slots.id');
             $table->tinyInteger('day_of_week')->comment('1=Senin ... 6=Sabtu');
             $table->time('time_start');
             $table->time('time_end');
@@ -31,18 +32,18 @@ return new class extends Migration {
             $table->uuid('created_by');
             $table->timestamps();
             $table->softDeletes();
- 
+
             $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
             $table->foreign('study_group_id')->references('id')->on('study_groups')->cascadeOnDelete();
             $table->foreign('subject_id')->references('id')->on('subjects')->cascadeOnDelete();
             $table->foreign('teacher_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('teaching_assignment_id')
-                  ->references('id')->on('teaching_assignments')->nullOnDelete();
+                ->references('id')->on('teaching_assignments')->nullOnDelete();
             $table->foreign('schedule_slot_id')
-                  ->references('id')->on('class_schedule_slots')->cascadeOnDelete();
+                ->references('id')->on('class_schedule_slots')->cascadeOnDelete();
             $table->foreign('created_by')->references('id')->on('users');
- 
+
             // Satu slot di satu kelas tidak boleh diisi dua mapel sekaligus
             $table->unique(
                 ['study_group_id', 'day_of_week', 'schedule_slot_id', 'academic_year_id', 'semester'],
@@ -59,7 +60,7 @@ return new class extends Migration {
             );
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('class_schedules');

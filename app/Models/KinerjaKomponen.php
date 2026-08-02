@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class KinerjaKomponen extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_komponen';
 
     protected $fillable = ['nama', 'deskripsi', 'bobot_persen', 'urutan', 'is_active'];

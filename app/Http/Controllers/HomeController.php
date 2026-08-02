@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
@@ -31,6 +31,7 @@ class HomeController extends Controller
         if (view()->exists($request->path())) {
             return view($request->path());
         }
+
         return abort(404);
     }
 
@@ -38,21 +39,68 @@ class HomeController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
-        // All users → redirect ke /{userId}/gtk
-        return redirect()->route('user.gtk.index', $user->id);
+        // System Administrator → dedicated dashboard (may have no Spatie role).
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return redirect()->route('system.dashboard');
+        }
+
+        $roles = $user->getRoleNames();
+
+        // Boarding roles with dedicated dashboards
+        if ($roles->contains('Kepala Asrama')) {
+            return redirect()->route('dashboard.boarding-head');
+        }
+
+        if ($roles->contains('Admin Pendidikan')) {
+            return redirect()->route('dashboard.boarding-education');
+        }
+
+        if ($roles->contains('Admin Kesehatan')) {
+            return redirect()->route('dashboard.boarding-health');
+        }
+
+        if ($roles->contains('Admin Asrama')) {
+            return redirect()->route('dashboard.admin-asrama');
+        }
+
+        if ($roles->contains('Wali Asrama')) {
+            return redirect()->route('dashboard.wali-asrama');
+        }
+
+        if ($roles->contains('Asrama')) {
+            return redirect()->route('dashboard.asrama');
+        }
+
+        // Existing dedicated dashboards for other roles
+        if ($roles->contains('Personalia')) {
+            return redirect()->route('user.dashboard');
+        }
+
+        if ($roles->contains('Admin Sarpras')) {
+            // No specific sarpras dashboard route defined; redirect to general dashboard
+            return redirect()->route('dashboard');
+        }
+
+        if ($roles->contains('Admin TU')) {
+            return redirect()->route('dashboard.admin-tu');
+        }
+
+        // Default → GTK dashboard for any remaining role (Guru/Tendik/GTK)
+        return redirect('/dashboard/gtk');
     }
 
-    /*Language Translation*/
+    /* Language Translation */
     public function lang($locale)
     {
         if ($locale) {
             App::setLocale($locale);
             Session::put('lang', $locale);
             Session::save();
+
             return redirect()->back()->with('locale', $locale);
         } else {
             return redirect()->back();
@@ -73,16 +121,17 @@ class HomeController extends Controller
 
         if ($request->file('avatar')) {
             $avatar = $request->file('avatar');
-            $avatarName = time() . '.' . $avatar->getClientOriginalExtension();
+            $avatarName = time().'.'.$avatar->getClientOriginalExtension();
             $avatarPath = public_path('/images/');
             $avatar->move($avatarPath, $avatarName);
-            $user->avatar =  $avatarName;
+            $user->avatar = $avatarName;
         }
 
         $user->update();
         if ($user) {
             Session::flash('message', 'User Details Updated successfully!');
             Session::flash('alert-class', 'alert-success');
+
             // return response()->json([
             //     'isSuccess' => true,
             //     'Message' => "User Details Updated successfully!"
@@ -91,6 +140,7 @@ class HomeController extends Controller
         } else {
             Session::flash('message', 'Something went wrong!');
             Session::flash('alert-class', 'alert-danger');
+
             // return response()->json([
             //     'isSuccess' => true,
             //     'Message' => "Something went wrong!"
@@ -107,10 +157,10 @@ class HomeController extends Controller
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        if (!(Hash::check($request->get('current_password'), Auth::user()->password))) {
+        if (! (Hash::check($request->get('current_password'), Auth::user()->password))) {
             return response()->json([
                 'isSuccess' => false,
-                'Message' => "Your Current password does not matches with the password you provided. Please try again."
+                'Message' => 'Your Current password does not matches with the password you provided. Please try again.',
             ], 200); // Status code
         } else {
             $user = User::find($id);
@@ -119,16 +169,18 @@ class HomeController extends Controller
             if ($user) {
                 Session::flash('message', 'Password updated successfully!');
                 Session::flash('alert-class', 'alert-success');
+
                 return response()->json([
                     'isSuccess' => true,
-                    'Message' => "Password updated successfully!"
+                    'Message' => 'Password updated successfully!',
                 ], 200); // Status code here
             } else {
                 Session::flash('message', 'Something went wrong!');
                 Session::flash('alert-class', 'alert-danger');
+
                 return response()->json([
                     'isSuccess' => true,
-                    'Message' => "Something went wrong!"
+                    'Message' => 'Something went wrong!',
                 ], 200); // Status code here
             }
         }

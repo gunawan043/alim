@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class StudentAchievement extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -36,9 +37,9 @@ class StudentAchievement extends Model
     ];
 
     protected $casts = [
-        'event_date'   => 'date',
-        'verified_at'  => 'datetime',
-        'is_verified'  => 'boolean',
+        'event_date' => 'date',
+        'verified_at' => 'datetime',
+        'is_verified' => 'boolean',
     ];
 
     protected static function boot()
@@ -62,58 +63,58 @@ class StudentAchievement extends Model
     public function getTypeLabelAttribute(): string
     {
         return match ($this->achievement_type) {
-            'akademik'       => 'Prestasi Akademik',
-            'non_akademik'   => 'Non Akademik',
-            'hafalan'        => match ($this->hafalan_category) {
-                'quran'  => 'Hafalan Qur\'an',
+            'akademik' => 'Prestasi Akademik',
+            'non_akademik' => 'Non Akademik',
+            'hafalan' => match ($this->hafalan_category) {
+                'quran' => 'Hafalan Qur\'an',
                 'hadits' => 'Hafalan Hadits',
-                default  => 'Hafalan',
+                default => 'Hafalan',
             },
-            'olahraga'       => 'Olahraga',
-            'seni'          => 'Seni',
-            'sains'         => 'Sains',
-            'lainnya'       => 'Lainnya',
-            default         => $this->achievement_type,
+            'olahraga' => 'Olahraga',
+            'seni' => 'Seni',
+            'sains' => 'Sains',
+            'lainnya' => 'Lainnya',
+            default => $this->achievement_type,
         };
     }
 
     public function getLevelLabelAttribute(): string
     {
         return match ($this->level) {
-            'internal'       => 'Internal',
-            'kecamatan'     => 'Kecamatan',
-            'kabupaten_kota'=> 'Kabupaten/Kota',
-            'provinsi'      => 'Provinsi',
-            'nasional'      => 'Nasional',
+            'internal' => 'Internal',
+            'kecamatan' => 'Kecamatan',
+            'kabupaten_kota' => 'Kabupaten/Kota',
+            'provinsi' => 'Provinsi',
+            'nasional' => 'Nasional',
             'internasional' => 'Internasional',
-            default         => $this->level,
+            default => $this->level,
         };
     }
 
     public function getPositionLabelAttribute(): string
     {
         return match ($this->position) {
-            'juara_1'   => 'Juara 1',
-            'juara_2'   => 'Juara 2',
-            'juara_3'   => 'Juara 3',
+            'juara_1' => 'Juara 1',
+            'juara_2' => 'Juara 2',
+            'juara_3' => 'Juara 3',
             'harapan_1' => 'Harapan 1',
             'harapan_2' => 'Harapan 2',
             'harapan_3' => 'Harapan 3',
-            'peserta'   => 'Peserta',
+            'peserta' => 'Peserta',
             'mumtaz_murtafi' => 'Mumtaz Murtafi',
-            'lainnya'   => $this->position_detail ?? 'Lainnya',
-            default     => $this->position,
+            'lainnya' => $this->position_detail ?? 'Lainnya',
+            default => $this->position,
         };
     }
 
     public function getCertificateUrlAttribute(): ?string
     {
-        return $this->certificate_path ? asset('storage/' . $this->certificate_path) : null;
+        return $this->certificate_path ? asset('storage/'.$this->certificate_path) : null;
     }
 
     public function getPhotoUrlAttribute(): ?string
     {
-        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+        return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
     }
 
     // ─── Relationships ────────────────────────────────────────────

@@ -24,12 +24,13 @@ class StudyGroupObserver
      */
     public function updated(StudyGroup $studyGroup): void
     {
-        $wasFilled  = filled($studyGroup->getOriginal('room'));
-        $isFilled   = filled($studyGroup->room);
+        $wasFilled = filled($studyGroup->getOriginal('room'));
+        $isFilled = filled($studyGroup->room);
 
         // room di-nullify → hapus AssetRoom terkait
-        if ($wasFilled && !$isFilled) {
+        if ($wasFilled && ! $isFilled) {
             AssetRoom::where('study_group_id', $studyGroup->id)->delete();
+
             return;
         }
 
@@ -51,7 +52,7 @@ class StudyGroupObserver
 
     private function createOrUpdateAssetRoom(StudyGroup $studyGroup): void
     {
-        if (!$studyGroup->school_id) {
+        if (! $studyGroup->school_id) {
             return;
         }
 
@@ -59,16 +60,16 @@ class StudyGroupObserver
         $roomName = $studyGroup->full_name; // "X IPA 1" dst.
 
         $data = [
-            'school_id'         => $studyGroup->school_id,
-            'work_unit_id'      => $school?->work_unit_id,
-            'study_group_id'    => $studyGroup->id,
-            'room_name'         => $roomName,
-            'room_type'         => 'kelas',
-            'capacity'          => $studyGroup->capacity,
-            'condition'         => 'baik',
-            'is_bookable'       => false,
-            'is_active'         => $studyGroup->is_active,
-            'notes'             => "Ruang Kelas — Rombongan Belajar",
+            'school_id' => $studyGroup->school_id,
+            'work_unit_id' => $school?->work_unit_id,
+            'study_group_id' => $studyGroup->id,
+            'room_name' => $roomName,
+            'room_type' => 'kelas',
+            'capacity' => $studyGroup->capacity,
+            'condition' => 'baik',
+            'is_bookable' => false,
+            'is_active' => $studyGroup->is_active,
+            'notes' => 'Ruang Kelas — Rombongan Belajar',
         ];
 
         AssetRoom::updateOrCreate(

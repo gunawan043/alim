@@ -11,8 +11,11 @@ class SuccessionPlan extends Model
     use HasFactory;
 
     protected $table = 'succession_plans';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -60,18 +63,18 @@ class SuccessionPlan extends Model
     public function getUrgensiColorAttribute()
     {
         return [
-            'rendah'  => 'secondary',
-            'sedang'  => 'warning',
-            'tinggi'  => 'danger',
-            'kritis'  => 'dark',
+            'rendah' => 'secondary',
+            'sedang' => 'warning',
+            'tinggi' => 'danger',
+            'kritis' => 'dark',
         ][$this->urgensi] ?? 'secondary';
     }
 
     public function getStatusLabelAttribute()
     {
         return [
-            'aktif'      => 'Aktif',
-            'selesai'    => 'Selesai',
+            'aktif' => 'Aktif',
+            'selesai' => 'Selesai',
             'dibatalkan' => 'Dibatalkan',
         ][$this->status] ?? $this->status;
     }

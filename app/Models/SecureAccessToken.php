@@ -12,7 +12,9 @@ class SecureAccessToken extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -57,13 +59,13 @@ class SecureAccessToken extends Model
     public function scopeValid($query)
     {
         return $query->where('expires_at', '>', now())
-                    ->whereNull('used_at');
+            ->whereNull('used_at');
     }
 
     public function scopeExpired($query)
     {
         return $query->where('expires_at', '<=', now())
-                    ->orWhereNotNull('used_at');
+            ->orWhereNotNull('used_at');
     }
 
     public function scopeByToken($query, $token)
@@ -99,7 +101,7 @@ class SecureAccessToken extends Model
 
     public function isValid()
     {
-        return $this->expires_at > now() && !$this->used_at;
+        return $this->expires_at > now() && ! $this->used_at;
     }
 
     public function isExpired()
@@ -131,25 +133,26 @@ class SecureAccessToken extends Model
     public static function verifyToken($token, $roleName = null)
     {
         $tokens = self::valid()->get();
-        
+
         foreach ($tokens as $secureToken) {
             if (Hash::check($token, $secureToken->token)) {
                 if ($roleName && $secureToken->role_name !== $roleName) {
                     continue;
                 }
-                
+
                 $secureToken->markAsUsed();
+
                 return $secureToken;
             }
         }
-        
+
         return null;
     }
 
     // ACCESSORS
     public function getMaskedTokenAttribute()
     {
-        return substr($this->token, 0, 8) . '...' . substr($this->token, -8);
+        return substr($this->token, 0, 8).'...'.substr($this->token, -8);
     }
 
     public function getMaskedIpAddressAttribute()
@@ -157,8 +160,9 @@ class SecureAccessToken extends Model
         $ip = $this->ip_address;
         $parts = explode('.', $ip);
         if (count($parts) == 4) {
-            return $parts[0] . '.' . $parts[1] . '.***.***';
+            return $parts[0].'.'.$parts[1].'.***.***';
         }
+
         return $ip;
     }
 }

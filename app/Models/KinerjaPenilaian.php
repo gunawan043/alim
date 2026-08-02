@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class KinerjaPenilaian extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_penilaian';
 
     protected $fillable = [
@@ -23,10 +24,25 @@ class KinerjaPenilaian extends Model
         'tanggal_penilaian' => 'datetime',
     ];
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function periode(): BelongsTo { return $this->belongsTo(KinerjaPeriode::class, 'kinerja_periode_id'); }
-    public function penilai(): BelongsTo { return $this->belongsTo(User::class, 'penilai_id'); }
-    public function skors(): HasMany { return $this->hasMany(KinerjaSkor::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function periode(): BelongsTo
+    {
+        return $this->belongsTo(KinerjaPeriode::class, 'kinerja_periode_id');
+    }
+
+    public function penilai(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'penilai_id');
+    }
+
+    public function skors(): HasMany
+    {
+        return $this->hasMany(KinerjaSkor::class);
+    }
 
     public static function hitungNilaiHuruf(float $skor): string
     {

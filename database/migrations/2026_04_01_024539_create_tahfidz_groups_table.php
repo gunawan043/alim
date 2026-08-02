@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 7. create_tahfidz_groups_table.php
 // Halaqah / kelompok tahfidz per tahun ajaran.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_groups', function (Blueprint $table) {
@@ -39,5 +40,9 @@ return new class extends Migration {
             $table->index(['work_unit_id', 'academic_year_id', 'gender']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_groups'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_groups');
+    }
 };

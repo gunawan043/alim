@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('asset_loans', function (Blueprint $table) {
@@ -32,7 +33,7 @@ return new class extends Migration {
             $table->uuid('approved_by')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->uuid('returned_to')->nullable()
-                  ->comment('GTK yang menerima pengembalian aset');
+                ->comment('GTK yang menerima pengembalian aset');
             $table->text('damage_notes')->nullable();
             $table->uuid('related_agenda_id')->nullable();
             $table->text('notes')->nullable();
@@ -52,5 +53,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('asset_loans'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('asset_loans');
+    }
 };

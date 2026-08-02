@@ -82,7 +82,7 @@ class InstitutionDecreeController extends Controller
 
         if ($selectedSchoolId) {
             $teacherIds = usersHavingPermission('general_teacher.readable');
-        $teachers = User::whereIn('id', $teacherIds)
+            $teachers = User::whereIn('id', $teacherIds)
                 ->whereHas('employments', fn ($q) => $q->where('school_id', $selectedSchoolId))
                 ->orderBy('name')->get();
 

@@ -35,12 +35,15 @@ class AuditDiscrepancy extends Model
     }
 
     public const SEVERITY_LOW = 'low';
+
     public const SEVERITY_MEDIUM = 'medium';
+
     public const SEVERITY_HIGH = 'high';
+
     public const SEVERITY_CRITICAL = 'critical';
 
     public const TYPES = [
         'not_found', 'wrong_location', 'condition_mismatch',
-        'missing_component', 'duplicate_record', 'ghost_asset'
+        'missing_component', 'duplicate_record', 'ghost_asset',
     ];
 }

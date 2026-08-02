@@ -45,17 +45,17 @@ class AcademicYearController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'                => 'required|string|max:50|unique:academic_years,name',
-            'semester'           => 'required|in:ganjil,genap|unique:academic_years,semester,name',
-            'is_active'          => 'boolean',
-            'start_date'         => 'nullable|date',
-            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'name' => 'required|string|max:50|unique:academic_years,name',
+            'semester' => 'required|in:ganjil,genap|unique:academic_years,semester,name',
+            'is_active' => 'boolean',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'registration_start' => 'nullable|date',
-            'registration_end'   => 'nullable|date|after_or_equal:registration_start',
+            'registration_end' => 'nullable|date|after_or_equal:registration_start',
         ]);
 
         // If set as active, deactivate all others
-        if (!empty($data['is_active'])) {
+        if (! empty($data['is_active'])) {
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
         }
 
@@ -71,6 +71,7 @@ class AcademicYearController extends Controller
     public function show(string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
+
         return view('academic-years.show', compact('academicYear'));
     }
 
@@ -80,6 +81,7 @@ class AcademicYearController extends Controller
     public function edit(string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
+
         return view('academic-years.edit', compact('academicYear'));
     }
 
@@ -91,17 +93,17 @@ class AcademicYearController extends Controller
         $academicYear = AcademicYear::findOrFail($id);
 
         $data = $request->validate([
-            'name'                => 'required|string|max:50|unique:academic_years,name,' . $id,
-            'semester'           => 'required|in:ganjil,genap|unique:academic_years,semester,' . $id . ',id',
-            'is_active'          => 'boolean',
-            'start_date'         => 'nullable|date',
-            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'name' => 'required|string|max:50|unique:academic_years,name,'.$id,
+            'semester' => 'required|in:ganjil,genap|unique:academic_years,semester,'.$id.',id',
+            'is_active' => 'boolean',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'registration_start' => 'nullable|date',
-            'registration_end'   => 'nullable|date|after_or_equal:registration_start',
+            'registration_end' => 'nullable|date|after_or_equal:registration_start',
         ]);
 
         // If set as active, deactivate all others
-        if (!empty($data['is_active'])) {
+        if (! empty($data['is_active'])) {
             AcademicYear::where('is_active', true)->where('id', '!=', $id)->update(['is_active' => false]);
         }
 
@@ -130,13 +132,14 @@ class AcademicYearController extends Controller
     {
         $academicYear = AcademicYear::findOrFail($id);
 
-        if (!$academicYear->is_active) {
+        if (! $academicYear->is_active) {
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
         }
 
-        $academicYear->update(['is_active' => !$academicYear->is_active]);
+        $academicYear->update(['is_active' => ! $academicYear->is_active]);
 
         $status = $academicYear->fresh()->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
         return back()->with('success', "Tahun ajaran berhasil {$status}.");
     }
 }

@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentProfile extends Model
 {
-    use HasFactory, SoftDeletes, HasUuids, LogsDeletion;
+    use HasFactory, HasUuids, LogsDeletion, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -22,7 +23,7 @@ class RecruitmentProfile extends Model
         'hubungan_kontak_darurat', 'alamat_lengkap', 'rt_rw', 'kelurahan_desa',
         'kecamatan', 'kota_kabupaten', 'provinsi', 'kode_pos',
         'status', 'submitted_at', 'verified_by', 'verified_at',
-        'external_id', 'foto_url_external'
+        'external_id', 'foto_url_external',
     ];
 
     protected $casts = [

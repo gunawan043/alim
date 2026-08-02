@@ -39,7 +39,6 @@ return new class extends Migration
             $table->index(['recruitment_job_id', 'urutan'], 'pipe_job_urutan_idx');
         });
 
-
         /*
         |--------------------------------------------------------------------------
         | 2. Create recruitment_pipeline_stages
@@ -71,7 +70,6 @@ return new class extends Migration
             $table->index(['recruitment_pipeline_id', 'urutan'], 'stage_pipe_urutan_idx');
         });
 
-
         /*
         |--------------------------------------------------------------------------
         | 3. Add current_stage_id AFTER pipeline_stages exists
@@ -85,7 +83,6 @@ return new class extends Migration
                 ->on('recruitment_pipeline_stages')
                 ->nullOnDelete();
         });
-
 
         /*
         |--------------------------------------------------------------------------
@@ -105,7 +102,7 @@ return new class extends Migration
                 'sedang_berlangsung',
                 'lolos',
                 'tidak_lolos',
-                'ulang'
+                'ulang',
             ])->default('menunggu');
 
             $table->dateTime('jadwal_mulai')->nullable();
@@ -143,7 +140,6 @@ return new class extends Migration
             $table->index('status', 'app_stage_status_idx');
         });
     }
-
 
     public function down(): void
     {

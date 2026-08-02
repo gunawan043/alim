@@ -104,7 +104,7 @@ class BoardingRegulationController extends Controller
 
         return response()->view('dormitory.regulations.export', compact('regulations'))
             ->header('Content-Type', 'text/html')
-            ->header('Content-Disposition', 'attachment; filename="peraturan-asrama-' . date('Y-m-d') . '.html"');
+            ->header('Content-Disposition', 'attachment; filename="peraturan-asrama-'.date('Y-m-d').'.html"');
     }
 
     public function print(Request $request, string $id)

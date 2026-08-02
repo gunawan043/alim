@@ -10,7 +10,9 @@ class IpBlockedMail extends Mailable
     use SerializesModels;
 
     public string $ipAddress;
+
     public string $blockedUntil;
+
     public int $attempts;
 
     public function __construct(string $ipAddress, string $blockedUntil, int $attempts)

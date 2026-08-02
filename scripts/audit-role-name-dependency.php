@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Audit script — scans every PHP file in app/ for hardcoded role-name
  * dependencies (string literals like 'Wadir 1', 'Admin Sarpras', 'super-admin',
@@ -16,13 +17,13 @@
 
 declare(strict_types=1);
 
-$root      = realpath(__DIR__ . '/..');
-$appPath   = $root . '/app';
+$root = realpath(__DIR__.'/..');
+$appPath = $root.'/app';
 $violations = [];
 
 // Allowed prefixes — directories/files that legitimately reference role names
 $allowlistDirs = [
-    $appPath . '/Authorization',
+    $appPath.'/Authorization',
 ];
 
 // Build a list of well-known role names in the system (from
@@ -66,7 +67,7 @@ $knownRoleNames = [
     'counselor',
 ];
 
-$rolePattern = '/\b(' . implode('|', array_map(fn ($n) => preg_quote($n, '/'), $knownRoleNames)) . ')\b/i';
+$rolePattern = '/\b('.implode('|', array_map(fn ($n) => preg_quote($n, '/'), $knownRoleNames)).')\b/i';
 
 $files = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($appPath, FilesystemIterator::SKIP_DOTS)
@@ -87,7 +88,7 @@ foreach ($files as $file) {
     }
 
     $content = file_get_contents($path);
-    $lines   = explode("\n", $content);
+    $lines = explode("\n", $content);
 
     foreach ($lines as $idx => $line) {
         // Skip comment lines
@@ -119,7 +120,7 @@ foreach ($files as $file) {
             if ($is_real) {
                 $violations[] = sprintf(
                     '%s:%d  %s',
-                    str_replace($root . '/', '', $path),
+                    str_replace($root.'/', '', $path),
                     $idx + 1,
                     trim($line)
                 );
@@ -131,8 +132,8 @@ foreach ($files as $file) {
 if ($violations) {
     echo "❌ ROLE-NAME DEPENDENCY AUDIT FAILED\n";
     echo "The following lines reference role names outside the Authorization layer:\n\n";
-    echo implode("\n", $violations) . "\n\n";
-    echo count($violations) . " violation(s) found.\n";
+    echo implode("\n", $violations)."\n\n";
+    echo count($violations)." violation(s) found.\n";
     exit(1);
 }
 

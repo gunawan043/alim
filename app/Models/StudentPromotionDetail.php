@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class StudentPromotionDetail extends Model
 {
     protected $table = 'student_promotion_details';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -49,12 +51,12 @@ class StudentPromotionDetail extends Model
     public function getActionLabelAttribute(): string
     {
         return match ($this->action) {
-            'promote'    => 'Naik Kelas',
-            'retain'     => 'Tinggal Kelas',
-            'graduate'   => 'Lulus',
+            'promote' => 'Naik Kelas',
+            'retain' => 'Tinggal Kelas',
+            'graduate' => 'Lulus',
             'mutate_out' => 'Mutasi Keluar',
-            'skip'       => 'Dilompati',
-            default      => ucfirst($this->action ?? ''),
+            'skip' => 'Dilompati',
+            default => ucfirst($this->action ?? ''),
         };
     }
 
@@ -63,8 +65,8 @@ class StudentPromotionDetail extends Model
         return match ($this->status) {
             'pending' => 'Menunggu',
             'success' => 'Berhasil',
-            'failed'  => 'Gagal',
-            default   => ucfirst($this->status ?? ''),
+            'failed' => 'Gagal',
+            default => ucfirst($this->status ?? ''),
         };
     }
 
@@ -73,8 +75,8 @@ class StudentPromotionDetail extends Model
         return match ($this->status) {
             'pending' => 'secondary',
             'success' => 'success',
-            'failed'  => 'danger',
-            default   => 'secondary',
+            'failed' => 'danger',
+            default => 'secondary',
         };
     }
 }

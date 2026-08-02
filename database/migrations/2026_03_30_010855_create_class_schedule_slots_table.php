@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('class_schedule_slots', function (Blueprint $table) {
@@ -18,15 +19,15 @@ return new class extends Migration {
             $table->tinyInteger('day_of_week')->comment('1=Senin, 2=Selasa, ..., 6=Sabtu, 7=Minggu');
             $table->tinyInteger('is_active')->default(1);
             $table->timestamps();
- 
+
             $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();
- 
+
             // Satu sekolah tidak boleh punya slot jam yang sama di hari yang sama
             $table->unique(['school_id', 'day_of_week', 'slot_number'], 'unique_slot_per_school_day');
             $table->index(['school_id', 'day_of_week']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('class_schedule_slots');

@@ -4,16 +4,14 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class GenericExport implements FromCollection, WithHeadings, WithStyles, ShouldAutoSize
+class GenericExport implements FromCollection, ShouldAutoSize, WithHeadings, WithStyles
 {
     protected array $rows;
 
@@ -29,7 +27,10 @@ class GenericExport implements FromCollection, WithHeadings, WithStyles, ShouldA
 
     public function headings(): array
     {
-        if (empty($this->rows)) return [];
+        if (empty($this->rows)) {
+            return [];
+        }
+
         return array_keys($this->rows[0]);
     }
 

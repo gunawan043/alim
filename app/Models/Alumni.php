@@ -11,6 +11,7 @@ class Alumni extends Model
     protected $table = 'alumni';
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -85,30 +86,30 @@ class Alumni extends Model
     public function getTracerStatusTextAttribute(): string
     {
         return match ($this->tracer_status) {
-            'pending'  => 'Belum Diisi',
-            'filled'   => 'Sudah Diisi',
+            'pending' => 'Belum Diisi',
+            'filled' => 'Sudah Diisi',
             'verified' => 'Diverifikasi',
-            default    => ucfirst($this->tracer_status ?? ''),
+            default => ucfirst($this->tracer_status ?? ''),
         };
     }
 
     public function getContinuingStudyStatusTextAttribute(): string
     {
         return match ($this->continuing_study_status) {
-            'belum'  => 'Belum',
+            'belum' => 'Belum',
             'sedang' => 'Sedang',
-            'sudah'  => 'Sudah',
-            default  => ucfirst($this->continuing_study_status ?? ''),
+            'sudah' => 'Sudah',
+            default => ucfirst($this->continuing_study_status ?? ''),
         };
     }
 
     public function getWorkingStatusTextAttribute(): string
     {
         return match ($this->working_status) {
-            'belum'  => 'Belum',
+            'belum' => 'Belum',
             'sedang' => 'Sedang',
-            'sudah'  => 'Sudah',
-            default  => ucfirst($this->working_status ?? ''),
+            'sudah' => 'Sudah',
+            default => ucfirst($this->working_status ?? ''),
         };
     }
 

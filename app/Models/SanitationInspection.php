@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class SanitationInspection extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -69,15 +70,15 @@ class SanitationInspection extends Model
     public function getLocationTypeTextAttribute(): string
     {
         return match ($this->location_type) {
-            'asrama'       => 'Asrama',
-            'kantin'       => 'Kantin',
-            'toilet'        => 'Toilet',
+            'asrama' => 'Asrama',
+            'kantin' => 'Kantin',
+            'toilet' => 'Toilet',
             'tempat_sampah' => 'Tempat Sampah',
-            'sumber_air'    => 'Sumber Air',
-            'ruang_kelas'   => 'Ruang Kelas',
-            'halaman'       => 'Halaman',
-            'dapur'         => 'Dapur',
-            default         => $this->location_type,
+            'sumber_air' => 'Sumber Air',
+            'ruang_kelas' => 'Ruang Kelas',
+            'halaman' => 'Halaman',
+            'dapur' => 'Dapur',
+            default => $this->location_type,
         };
     }
 
@@ -87,7 +88,7 @@ class SanitationInspection extends Model
             $this->score >= 80 => 'Baik',
             $this->score >= 60 => 'Cukup',
             $this->score >= 40 => 'Kurang',
-            default            => 'Buruk',
+            default => 'Buruk',
         };
     }
 
@@ -96,8 +97,8 @@ class SanitationInspection extends Model
     public function scopePendingFollowUp($q)
     {
         return $q->whereNotNull('follow_up_deadline')
-                  ->whereNull('follow_up_completed_at')
-                  ->where('follow_up_deadline', '<', now());
+            ->whereNull('follow_up_completed_at')
+            ->where('follow_up_deadline', '<', now());
     }
 
     public function scopeByAcademicYear($q, $yearId)

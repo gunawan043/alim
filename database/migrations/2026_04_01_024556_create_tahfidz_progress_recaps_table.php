@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 15. create_tahfidz_progress_recaps_table.php
 // Rekap total hafalan per santri per semester. Di-generate otomatis.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_progress_recaps', function (Blueprint $table) {
@@ -25,7 +26,7 @@ return new class extends Migration {
             $table->integer('total_hari_setoran')->default(0);
             $table->decimal('rata_rata_nilai', 5, 2)->nullable();
             $table->decimal('pencapaian_target_persen', 5, 2)->nullable()
-                  ->comment('% capaian dari target muqorrar');
+                ->comment('% capaian dari target muqorrar');
             $table->tinyInteger('last_position_juz')->nullable();
             $table->smallInteger('last_position_surah_id')->unsigned()->nullable();
             $table->integer('last_position_ayat')->nullable();
@@ -41,5 +42,9 @@ return new class extends Migration {
             $table->unique(['student_id', 'academic_year_id', 'semester'], 'unique_recap_per_semester');
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_progress_recaps'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_progress_recaps');
+    }
 };

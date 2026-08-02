@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AbsensiGtk extends Model
 {
     use HasUuids;
+
     protected $table = 'absensi_gtk';
 
     protected $fillable = [

@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentTraining extends Model
 {
     use HasFactory, HasUuids;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -19,7 +20,7 @@ class RecruitmentTraining extends Model
         'memiliki_sertifikat', 'no_sertifikat', 'tanggal_sertifikat',
         'masa_berlaku', 'status_sertifikat', 'deskripsi_materi',
         'kompetensi_diperoleh', 'nilai', 'sertifikat_path', 'materi_path',
-        'is_verified', 'verified_by', 'verified_at'
+        'is_verified', 'verified_by', 'verified_at',
     ];
 
     protected $casts = [

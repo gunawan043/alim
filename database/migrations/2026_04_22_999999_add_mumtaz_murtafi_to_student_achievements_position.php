@@ -1,13 +1,17 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
+        // MySQL-only: SQLite does not support MODIFY COLUMN
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE student_achievements MODIFY COLUMN `position` ENUM(
             'juara_1', 'juara_2', 'juara_3',
             'harapan_1', 'harapan_2', 'harapan_3',
@@ -17,6 +21,10 @@ return new class extends Migration {
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE student_achievements MODIFY COLUMN `position` ENUM(
             'juara_1', 'juara_2', 'juara_3',
             'harapan_1', 'harapan_2', 'harapan_3',

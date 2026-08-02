@@ -108,6 +108,8 @@
                                     <option value="kakek"    {{ old('relationship', $mahrom->relationship) === 'kakek'    ? 'selected' : '' }}>Kakek</option>
                                     <option value="nenek"    {{ old('relationship', $mahrom->relationship) === 'nenek'    ? 'selected' : '' }}>Nenek</option>
                                     <option value="wali"     {{ old('relationship', $mahrom->relationship) === 'wali'     ? 'selected' : '' }}>Wali</option>
+                                    <option value="anak"     {{ old('relationship', $mahrom->relationship) === 'anak'     ? 'selected' : '' }}>Anak</option>
+                                    <option value="sepupu"   {{ old('relationship', $mahrom->relationship) === 'sepupu'   ? 'selected' : '' }}>Sepupu</option>
                                     <option value="lainnya" {{ old('relationship', $mahrom->relationship) === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
                                 </select>
                             </div>

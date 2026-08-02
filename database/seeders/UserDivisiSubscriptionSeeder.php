@@ -18,7 +18,7 @@ class UserDivisiSubscriptionSeeder extends Seeder
         foreach ($superAdmins as $user) {
             foreach ($divisis as $divisi) {
                 UserDivisiSubscription::firstOrCreate([
-                    'user_id'   => $user->id,
+                    'user_id' => $user->id,
                     'divisi_id' => $divisi->id,
                 ]);
             }
@@ -32,7 +32,7 @@ class UserDivisiSubscriptionSeeder extends Seeder
             foreach ($user->gtkWorkUnits as $gwu) {
                 if ($gwu->workUnit && $gwu->workUnit->divisi_id) {
                     $created = UserDivisiSubscription::firstOrCreate([
-                        'user_id'   => $user->id,
+                        'user_id' => $user->id,
                         'divisi_id' => $gwu->workUnit->divisi_id,
                     ]);
                     if ($created->wasRecentlyCreated) {
@@ -44,7 +44,7 @@ class UserDivisiSubscriptionSeeder extends Seeder
 
         $total = UserDivisiSubscription::count();
         $this->command->info("UserDivisiSubscription seeder done. Total subscriptions: $total "
-            . "($subscribed dari WorkUnit, "
-            . ($total - $subscribed) . " dari Super Admin)");
+            ."($subscribed dari WorkUnit, "
+            .($total - $subscribed).' dari Super Admin)');
     }
 }

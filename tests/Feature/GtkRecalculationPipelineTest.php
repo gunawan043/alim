@@ -5,48 +5,33 @@ namespace Tests\Feature;
 use App\Events\GtkProfileUpdated;
 use App\Events\StudyGroupSubjectChanged;
 use App\Events\TeachingAssignmentChanged;
-use App\Services\GtkAnalysisEngine;
 use App\Models\AcademicYear;
+use App\Models\GradeLevel;
 use App\Models\GtkAnalysisRun;
 use App\Models\GtkProfile;
 use App\Models\School;
-use App\Models\GradeLevel;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
-use Illuminate\Support\Facades\Artisan;
+use App\Services\GtkAnalysisEngine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class GtkRecalculationPipelineTest extends TestCase
 {
-    /**
-     * Use migrate:fresh once per test class (not per-test) to avoid the
-     * 250+ table rollback problem. RefreshDatabase is unreliable with this
-     * many tables and complex FK constraints.
-     */
-    protected static $migrated = false;
+    use \Illuminate\Foundation\Testing\DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (!static::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            static::$migrated = true;
-        }
-
         // Register observers that are not registered in production AppServiceProvider
         GtkProfile::observe(\App\Observers\GtkProfileObserver::class);
         TeachingAssignment::observe(\App\Observers\TeachingAssignmentObserver::class);
-
-        // Use transaction per test for speed (no need to drop 250 tables)
-        $this->beginDatabaseTransaction();
     }
 
     protected function beginDatabaseTransaction(): void
@@ -219,7 +204,7 @@ class GtkRecalculationPipelineTest extends TestCase
         foreach ([$decreeIdA, $decreeIdB, $decreeIdC] as $did) {
             DB::table('institution_decrees')->insert([
                 'id' => $did,
-                'decree_number' => 'SK/' . strtoupper(Str::random(6)),
+                'decree_number' => 'SK/'.strtoupper(Str::random(6)),
                 'decree_type' => 'pengangkatan',
                 'title' => 'Penetapan GTK',
                 'academic_year_id' => $ay->id,
@@ -389,7 +374,7 @@ class GtkRecalculationPipelineTest extends TestCase
     {
         // The guard in TriggerGtkWorkloadRecalculation::handleGtkProfileUpdated
         // prevents dispatch when schoolId is null (no event data, no GtkEmployment)
-        $listener = new \App\Listeners\TriggerGtkWorkloadRecalculation();
+        $listener = new \App\Listeners\TriggerGtkWorkloadRecalculation;
 
         $user = $this->createUser();
         $profile = GtkProfile::create([
@@ -414,14 +399,15 @@ class GtkRecalculationPipelineTest extends TestCase
         $userId = (string) Str::uuid();
         DB::table('users')->insert([
             'id' => $userId,
-            'name' => 'Teacher ' . Str::random(5),
-            'email' => 'teacher_' . Str::random(5) . '@test.local',
+            'name' => 'Teacher '.Str::random(5),
+            'email' => 'teacher_'.Str::random(5).'@test.local',
             'email_verified_at' => now(),
             'password' => bcrypt('password'),
             'remember_token' => (string) Str::uuid(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         return User::findOrFail($userId);
     }
 
@@ -435,6 +421,7 @@ class GtkRecalculationPipelineTest extends TestCase
             'start_date' => '2026-07-15',
             'end_date' => '2026-12-20',
         ]);
+
         return $ay;
     }
 
@@ -481,25 +468,25 @@ class GtkRecalculationPipelineTest extends TestCase
         DB::table('work_units')->insert([
             'id' => $workUnitId,
             'name' => 'Unit Test',
-            'code' => 'WU-' . Str::random(8),
+            'code' => 'WU-'.Str::random(8),
         ]);
 
         $schoolId = (string) Str::uuid();
         DB::table('schools')->insert([
             'id' => $schoolId,
             'work_unit_id' => $workUnitId,
-            'school_code' => 'SKS-' . Str::random(5),
+            'school_code' => 'SKS-'.Str::random(5),
             'npsn' => (string) (1000000000 + rand(0, 8999999999)),
             'nss' => (string) rand(100000000000, 999999999999),
-            'name' => 'Sekolah Test ' . Str::random(3),
+            'name' => 'Sekolah Test '.Str::random(3),
             'address' => 'Jl. Test No. 1',
             'province_code' => null,
             'city_code' => null,
             'district_code' => null,
             'village_code' => null,
             'postal_code' => (string) rand(10000, 99999),
-            'phone' => '+' . rand(1000000000, 9999999999),
-            'email' => strtolower(Str::random(5)) . '@test.com',
+            'phone' => '+'.rand(1000000000, 9999999999),
+            'email' => strtolower(Str::random(5)).'@test.com',
             'website' => 'https://test.com',
             'school_level' => 'smp',
             'school_gender' => 'putra',
@@ -510,9 +497,9 @@ class GtkRecalculationPipelineTest extends TestCase
             'principal_nip' => (string) rand(100000000000000, 999999999999999),
             'operational_hours' => 'full_day',
             'established_date' => '1995-08-17',
-            'established_decree' => 'SK. MENRISTEK/' . rand(1000, 9999) . '/2020',
-            'land_area' => (float) rand(500, 10000) . '.' . rand(10, 99),
-            'building_area' => (float) rand(500, 5000) . '.' . rand(10, 99),
+            'established_decree' => 'SK. MENRISTEK/'.rand(1000, 9999).'/2020',
+            'land_area' => (float) rand(500, 10000).'.'.rand(10, 99),
+            'building_area' => (float) rand(500, 5000).'.'.rand(10, 99),
             'is_active' => 1,
             'created_at' => now(),
             'updated_at' => now(),

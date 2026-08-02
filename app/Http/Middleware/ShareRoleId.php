@@ -14,7 +14,7 @@ class ShareRoleId
         // Share userId globally to all views for navigation links
         $userId = $request->route('userId');
 
-        if (!$userId && Auth::check()) {
+        if (! $userId && Auth::check()) {
             $userId = Auth::id();
         }
 

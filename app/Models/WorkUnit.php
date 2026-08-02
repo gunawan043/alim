@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Str;
 
 class WorkUnit extends Model
 {
-    use HasFactory, SoftDeletes, LogsDeletion;
+    use HasFactory, LogsDeletion, SoftDeletes;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -43,7 +45,8 @@ class WorkUnit extends Model
         'Unit Penunjang Akademik',
         'Unit Administrasi',
         'Unit Pelayanan',
-        'Unit Homem Publikasi'
+        'Unit Humas Publikasi',
+        'Pelayanan Kesehatan', // UKS
     ];
 
     const PARENT_OPTIONS = [
@@ -54,12 +57,12 @@ class WorkUnit extends Model
 
     public static function generateUniqueCode($divisiId = null, $parentId = null, $type = null)
     {
-        if (!$divisiId) {
+        if (! $divisiId) {
             return null;
         }
 
         $divisi = Divisi::find($divisiId);
-        if (!$divisi || !$divisi->kode) {
+        if (! $divisi || ! $divisi->kode) {
             return null;
         }
 
@@ -74,7 +77,7 @@ class WorkUnit extends Model
             $number = intval($match[1]) + 1;
         }
 
-        return $prefix . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
+        return $prefix.'-'.str_pad($number, 3, '0', STR_PAD_LEFT);
     }
 
     // RELATIONSHIPS
@@ -143,14 +146,14 @@ class WorkUnit extends Model
     protected function name(): Attribute
     {
         return Attribute::make(
-            get: fn(string $value) => ucwords(strtolower($value)),
+            get: fn (string $value) => ucwords(strtolower($value)),
         );
     }
 
     protected function code(): Attribute
     {
         return Attribute::make(
-            get: fn(string $value) => strtoupper($value),
+            get: fn (string $value) => strtoupper($value),
         );
     }
 

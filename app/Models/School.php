@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
 class School extends Model
@@ -12,6 +12,7 @@ class School extends Model
     use HasFactory;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -68,12 +69,12 @@ class School extends Model
     ];
 
     protected $casts = [
-        'established_date'       => 'date',
-        'accreditation_year'    => 'integer',
-        'land_area'             => 'decimal:2',
-        'building_area'         => 'decimal:2',
-        'is_active'            => 'boolean',
-        'kopsis_active'         => 'boolean',
+        'established_date' => 'date',
+        'accreditation_year' => 'integer',
+        'land_area' => 'decimal:2',
+        'building_area' => 'decimal:2',
+        'is_active' => 'boolean',
+        'kopsis_active' => 'boolean',
     ];
 
     protected $appends = ['level_text', 'status_text'];
@@ -115,7 +116,7 @@ class School extends Model
     public function getLevelTextAttribute(): string
     {
         return match ($this->school_level) {
-            'sd'  => 'Sekolah Dasar (SD)',
+            'sd' => 'Sekolah Dasar (SD)',
             'smp' => 'Sekolah Menengah Pertama (SMP)',
             'sma' => 'Sekolah Menengah Atas (SMA)',
             'smk' => 'Sekolah Menengah Kejuruan (SMK)',
@@ -126,8 +127,8 @@ class School extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->school_status) {
-            'negeri'  => 'Negeri',
-            'swasta'  => 'Swasta',
+            'negeri' => 'Negeri',
+            'swasta' => 'Swasta',
             default => ucfirst($this->school_status ?? ''),
         };
     }
@@ -142,19 +143,28 @@ class School extends Model
             $this->province?->name,
             $this->postal_code ? "{$this->postal_code}" : null,
         ]);
+
         return implode(', ', $parts);
     }
 
     public function getLogoUrlAttribute(): string
     {
         if ($this->logo_path) {
-            return asset('storage/' . $this->logo_path);
+            return asset('storage/'.$this->logo_path);
         }
+
         return asset('build/images/avatar-1.jpg');
     }
 
     // ── Scopes ────────────────────────────────────────────────────
 
-    public function scopeActive($q)  { return $q->where('is_active', true); }
-    public function scopeLevel($q, $l) { return $q->where('school_level', $l); }
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeLevel($q, $l)
+    {
+        return $q->where('school_level', $l);
+    }
 }

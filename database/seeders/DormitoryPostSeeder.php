@@ -11,7 +11,6 @@ use App\Models\DormitoryPost;
 use App\Models\DormitoryPostResponse;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
-use App\Models\DormitoryRoom;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -33,23 +32,27 @@ class DormitoryPostSeeder extends Seeder
     private function academicYear(string $name, ?string $semester = null): ?AcademicYear
     {
         $q = AcademicYear::where('name', $name);
-        if ($semester) $q->where('semester', $semester);
+        if ($semester) {
+            $q->where('semester', $semester);
+        }
+
         return $q->first();
     }
 
     public function run(): void
     {
-        $activeYear  = $this->academicYear('2025/2026', 'ganjil');
+        $activeYear = $this->academicYear('2025/2026', 'ganjil');
         $activeYearId = $activeYear?->id;
 
-        $dormPutra   = Dormitory::where('code', 'ASR-001')->first();
-        $dormPutri   = Dormitory::where('code', 'ASR-002')->first();
+        $dormPutra = Dormitory::where('code', 'ASR-001')->first();
+        $dormPutri = Dormitory::where('code', 'ASR-002')->first();
         $kepalaAsrama = User::where('email', 'kepala.asrama@example.com')->first();
-        $adminAsrama  = User::where('email', 'admin.asrama@example.com')->first();
-        $allUsers    = User::where('is_active', true)->get();
+        $adminAsrama = User::where('email', 'admin.asrama@example.com')->first();
+        $allUsers = User::where('is_active', true)->get();
 
-        if (!$dormPutra || !$activeYear) {
+        if (! $dormPutra || ! $activeYear) {
             $this->command->error('❌ Dormitory or AcademicYear tidak ditemukan.');
+
             return;
         }
 
@@ -142,7 +145,7 @@ class DormitoryPostSeeder extends Seeder
             }
         }
 
-        $this->command->info("  ✅ Template kegiatan dibuat untuk Putra & Putri");
+        $this->command->info('  ✅ Template kegiatan dibuat untuk Putra & Putri');
 
         // ════════════════════════════════════════════════════════════════════
         // 2. POSTS (PENGUMUMAN / INFORMASI)
@@ -234,7 +237,7 @@ class DormitoryPostSeeder extends Seeder
 </ul>
 <h4>4. Permohonan Izin</h4>
 <p>Total izin yang disetujui: 48 izin</p>
-<p><em>Dibuat oleh: Ustadz Ahmad Fauzi (Kepala Asrama)</em></p>',
+<p><em>Dibuat oleh: Ustadz Fulan (Kepala Asrama)</em></p>',
             ],
             [
                 'dorm' => $dormPutra,
@@ -399,7 +402,9 @@ class DormitoryPostSeeder extends Seeder
 
         foreach ($allStudentIds as $studentId) {
             $resident = $allResidents->firstWhere('student_id', $studentId);
-            if (!$resident) continue;
+            if (! $resident) {
+                continue;
+            }
 
             // 1-2 visit records per student (some may not have visits)
             $numVisits = rand(0, 2);
@@ -417,8 +422,8 @@ class DormitoryPostSeeder extends Seeder
                     'room_id' => $resident->room_id,
                     'student_id' => $studentId,
                     'visitor_name' => $visitorName,
-                    'visitor_id_number' => '52' . rand(1000, 9999) . rand(1000, 9999),
-                    'visitor_phone' => '08' . rand(1000, 9999) . rand(1000, 9999),
+                    'visitor_id_number' => '52'.rand(1000, 9999).rand(1000, 9999),
+                    'visitor_phone' => '08'.rand(1000, 9999).rand(1000, 9999),
                     'visitor_relationship' => $relationship,
                     'purpose' => $purpose,
                     'expected_arrival_datetime' => $expectedArrival,
@@ -448,17 +453,17 @@ class DormitoryPostSeeder extends Seeder
 
         $activityDates = [];
         for ($d = 1; $d <= 5; $d++) {
-            $activityDates[] = "2026-05-" . str_pad($d, 2, '0', STR_PAD_LEFT);
+            $activityDates[] = '2026-05-'.str_pad($d, 2, '0', STR_PAD_LEFT);
         }
 
         $logCount = 0;
         $sessions = ['subuh', 'pagi', 'siang', 'sore', 'isya', 'malam'];
         $activityTemplates = [
             'subuh' => ['shubuh_jamaah' => true, 'setoran_hafalan' => true, 'tadarus_quran' => true],
-            'pagi'  => ['shalat_dhuha' => true, 'senam' => true, 'sarapan' => true],
+            'pagi' => ['shalat_dhuha' => true, 'senam' => true, 'sarapan' => true],
             'siang' => ['makan_siang' => true, 'istirahat' => true, 'belajar' => true],
-            'sore'  => ['mandi' => true, 'mengaji' => true, 'olahraga' => true],
-            'isya'  => ['shalat_isya' => true, 'tahajud' => true, 'tilawatil_quran' => true],
+            'sore' => ['mandi' => true, 'mengaji' => true, 'olahraga' => true],
+            'isya' => ['shalat_isya' => true, 'tahajud' => true, 'tilawatil_quran' => true],
             'malam' => ['apel_malam' => true, 'pencerahan' => true, 'tidur' => false],
         ];
 
@@ -468,13 +473,17 @@ class DormitoryPostSeeder extends Seeder
             foreach ($activityDates as $date) {
                 foreach ($sessions as $session) {
                     // 90% chance of log entry
-                    if (rand(1, 100) > 90) continue;
+                    if (rand(1, 100) > 90) {
+                        continue;
+                    }
 
                     $existing = DormitoryActivityLog::where('resident_id', $resident->id)
                         ->where('activity_date', $date)
                         ->where('session', $session)
                         ->exists();
-                    if ($existing) continue;
+                    if ($existing) {
+                        continue;
+                    }
 
                     $data = $activityTemplates[$session] ?? [];
                     $filledData = [];
@@ -564,7 +573,7 @@ class DormitoryPostSeeder extends Seeder
         $this->command->info('═══════════════════════════════════════════════════');
         $this->command->info('✅ DormitoryPostSeeder selesai!');
         $this->command->info('─────────────────────────���─────────────────────────');
-        $this->command->info("  Template Kegiatan : " . (count($templateSessions) * 2) . " template");
+        $this->command->info('  Template Kegiatan : '.(count($templateSessions) * 2).' template');
         $this->command->info("  Pengumuman        : {$postCount} pengumuman");
         $this->command->info("  Response          : {$responseCount} response");
         $this->command->info("  Log Kunjungan     : {$visitCount} kunjungan");

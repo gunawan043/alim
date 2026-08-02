@@ -34,6 +34,7 @@ class SlaTracker extends Model
         if ($this->completed_at) {
             return 0;
         }
+
         return (int) now()->diffInMinutes($this->deadline_at, false);
     }
 
@@ -42,6 +43,7 @@ class SlaTracker extends Model
         if ($this->completed_at || ! $this->deadline_at->isPast()) {
             return 0;
         }
+
         return (int) $this->deadline_at->diffInMinutes(now());
     }
 

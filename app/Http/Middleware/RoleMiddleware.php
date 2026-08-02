@@ -21,6 +21,11 @@ class RoleMiddleware
             abort(403, 'Unauthorized.');
         }
 
+        // System Admin bypasses role checks entirely
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return $next($request);
+        }
+
         if (! app()->bound(OrganizationContext::class)) {
             $this->logSnapshotMissing($request, $user, null, $roles);
 
@@ -43,8 +48,17 @@ class RoleMiddleware
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
+        // Snapshot-based permission check (preferred)
+        $manager = app(AuthorizationManager::class);
         foreach ($roles as $role) {
-            if (in_array($role, $bag->getPermissions(), true)) {
+            if ($manager->canPermission($bag, $role)) {
+                return $next($request);
+            }
+        }
+
+        // Fallback: identity-only role names (e.g. "super_admin") check via $user->hasRole()
+        foreach ($roles as $role) {
+            if (method_exists($user, 'hasRole') && $user->hasRole($role)) {
                 return $next($request);
             }
         }

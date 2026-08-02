@@ -98,6 +98,8 @@
                                     <option value="kakek" {{ old('relationship') === 'kakek' ? 'selected' : '' }}>Kakek</option>
                                     <option value="nenek" {{ old('relationship') === 'nenek' ? 'selected' : '' }}>Nenek</option>
                                     <option value="wali" {{ old('relationship') === 'wali' ? 'selected' : '' }}>Wali</option>
+                                    <option value="anak" {{ old('relationship') === 'anak' ? 'selected' : '' }}>Anak</option>
+                                    <option value="sepupu" {{ old('relationship') === 'sepupu' ? 'selected' : '' }}>Sepupu</option>
                                     <option value="lainnya" {{ old('relationship') === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
                                 </select>
                             </div>
@@ -133,7 +135,7 @@
                                            id="isPrimarySwitch" value="1" {{ old('is_primary') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="isPrimarySwitch">
                                         <strong>Mahrom Utama</strong>
-                                        <div class="text-muted small">Mahrom utama adalah kontak utama untuk menerima informasi seputar Santi.</div>
+                                        <div class="text-muted small">Mahrom utama adalah kontak utama untuk menerima informasi seputar Santri.</div>
                                     </label>
                                 </div>
                             </div>
@@ -143,7 +145,7 @@
                                            id="isActiveSwitch" value="1" {{ old('is_active', '1') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="isActiveSwitch">
                                         <strong>Mahrom Aktif</strong>
-                                        <div class="text-muted small">Mahrom nonaktif tidak dapat menjenguk Santi.</div>
+                                        <div class="text-muted small">Mahrom nonaktif tidak dapat menjenguk Santri.</div>
                                     </label>
                                 </div>
                             </div>
@@ -196,19 +198,19 @@
                         <ul class="list-unstyled mb-0 small">
                             <li class="d-flex gap-2 mb-3">
                                 <i class="ri-checkbox-circle-line text-success mt-1"></i>
-                                <span><strong>Mahrom</strong> adalah orang yang memiliki hubungan darah atau صلاح (walimat) dengan Santi dan diperbolehkan menjengukdi dalam.</span>
+                                <span><strong>Mahrom</strong> adalah orang yang memiliki hubungan darah atau صلاح (walimat) dengan Santri dan diperbolehkan menjengukdi dalam.</span>
                             </li>
                             <li class="d-flex gap-2 mb-3">
                                 <i class="ri-checkbox-circle-line text-success mt-1"></i>
-                                <span>Hanya mahrom yang diperbolehkan menjengukdi dalam kamar Santi.</span>
+                                <span>Hanya mahrom yang diperbolehkan menjengukdi dalam kamar Santri.</span>
                             </li>
                             <li class="d-flex gap-2 mb-3">
                                 <i class="ri-checkbox-circle-line text-success mt-1"></i>
-                                <span>Batas maksimal <strong>{{ config('alim.max_mahrom', 4) }} mahrom</strong> per Santi.</span>
+                                <span>Batas maksimal <strong>{{ config('alim.max_mahrom', 4) }} mahrom</strong> per Santri.</span>
                             </li>
                             <li class="d-flex gap-2 mb-0">
                                 <i class="ri-checkbox-circle-line text-success mt-1"></i>
-                                <span>Mahrom utama menerima semua informasi terkait Santi.</span>
+                                <span>Mahrom utama menerima semua informasi terkait Santri.</span>
                             </li>
                         </ul>
                     </div>

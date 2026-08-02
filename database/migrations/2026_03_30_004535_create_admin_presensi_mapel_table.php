@@ -20,14 +20,14 @@ return new class extends Migration
             $table->enum('status', ['hadir', 'izin', 'sakit', 'alpa', 'pengganti']);
             $table->text('notes')->nullable();
             $table->timestamps();
- 
+
             $table->foreign('admin_book_id')->references('id')->on('teacher_admin_books')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
- 
-            $table->unique(['admin_book_id', 'attendance_date'], 'unique_guru_attendance_per_day');
+
+            $table->unique(['admin_book_id', 'attendance_date'], 'unique_presensi_mapel_per_day');
             $table->index(
                 ['admin_book_id', 'academic_year_id', 'semester'],
-                'idx_presensi_guru'
+                'idx_presensi_mapel'
             );
         });
     }

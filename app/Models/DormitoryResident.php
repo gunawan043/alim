@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class DormitoryResident extends Model
 {
     protected $table = 'dormitory_residents';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

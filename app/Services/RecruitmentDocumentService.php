@@ -4,9 +4,9 @@ namespace App\Services;
 
 use App\Models\RecruitmentDocument;
 use App\Models\RecruitmentProfile;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 /**
  * Service untuk mengambil dokumen pelamar dari recruitment.abuhurairah.id
@@ -35,7 +35,7 @@ class RecruitmentDocumentService
     /**
      * Ambil semua dokumen untuk profile tertentu dari API
      *
-     * @param int $profileId RecruitmentProfile ID
+     * @param  int  $profileId  RecruitmentProfile ID
      * @return array Array of document metadata
      */
     public static function getDocuments(int $profileId): array
@@ -44,8 +44,9 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 Log::warning('RecruitmentDocumentService: No API token configured');
+
                 return [];
             }
 
@@ -59,6 +60,7 @@ class RecruitmentDocumentService
                     'profile_id' => $profileId,
                     'count' => count($data),
                 ]);
+
                 return $data;
             }
 
@@ -74,6 +76,7 @@ class RecruitmentDocumentService
                 'profile_id' => $profileId,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -81,7 +84,7 @@ class RecruitmentDocumentService
     /**
      * Ambil URL foto profil dari API
      *
-     * @param int $profileId RecruitmentProfile ID
+     * @param  int  $profileId  RecruitmentProfile ID
      * @return string|null Full URL ke foto atau null jika tidak ada
      */
     public static function getPhotoUrl(int $profileId): ?string
@@ -90,7 +93,7 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 return null;
             }
 
@@ -108,6 +111,7 @@ class RecruitmentDocumentService
                 'profile_id' => $profileId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -115,8 +119,8 @@ class RecruitmentDocumentService
     /**
      * Ambil URL dokumen spesifik berdasarkan jenis dokumen
      *
-     * @param int $profileId RecruitmentProfile ID
-     * @param string $jenis Jenis dokumen (cv, ktp, ijazah, dll)
+     * @param  int  $profileId  RecruitmentProfile ID
+     * @param  string  $jenis  Jenis dokumen (cv, ktp, ijazah, dll)
      * @return string|null Full URL ke dokumen atau null jika tidak ada
      */
     public static function getDocumentUrl(int $profileId, string $jenis): ?string
@@ -125,7 +129,7 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 return null;
             }
 
@@ -144,6 +148,7 @@ class RecruitmentDocumentService
                 'jenis' => $jenis,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -152,7 +157,7 @@ class RecruitmentDocumentService
      * Sync dokumen dari API ke database lokal
      * Menyimpan metadata dan external URL ke tabel recruitment_documents
      *
-     * @param int $profileId RecruitmentProfile ID
+     * @param  int  $profileId  RecruitmentProfile ID
      * @return int Jumlah dokumen yang disync
      */
     public static function syncToLocal(int $profileId): int
@@ -193,6 +198,7 @@ class RecruitmentDocumentService
                 'profile_id' => $profileId,
                 'error' => $e->getMessage(),
             ]);
+
             return 0;
         }
     }
@@ -200,7 +206,6 @@ class RecruitmentDocumentService
     /**
      * Sync dokumen untuk profile object — convenience method untuk controller
      *
-     * @param RecruitmentProfile $profile
      * @return array ['success' => bool, 'message' => string, 'synced' => int]
      */
     public function syncDocumentsForProfile(RecruitmentProfile $profile): array
@@ -231,7 +236,7 @@ class RecruitmentDocumentService
     /**
      * Sync foto profil dari API ke database lokal
      *
-     * @param int $profileId RecruitmentProfile ID
+     * @param  int  $profileId  RecruitmentProfile ID
      * @return bool True jika berhasil sync
      */
     public static function syncPhotoToLocal(int $profileId): bool
@@ -239,14 +244,14 @@ class RecruitmentDocumentService
         try {
             $url = self::getPhotoUrl($profileId);
 
-            if (!$url) {
+            if (! $url) {
                 return false;
             }
 
             // Update profile dengan URL foto external
             $profile = RecruitmentProfile::find($profileId);
 
-            if (!$profile) {
+            if (! $profile) {
                 return false;
             }
 
@@ -266,24 +271,23 @@ class RecruitmentDocumentService
                 'profile_id' => $profileId,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
 
     /**
      * Cek apakah service siap digunakan (config ada)
-     *
-     * @return bool
      */
     public static function isConfigured(): bool
     {
-        return !empty(self::getApiToken()) && !empty(self::getBaseUrl());
+        return ! empty(self::getApiToken()) && ! empty(self::getBaseUrl());
     }
 
     /**
      * Ambil data nilai/application dari recruitment.abuhurairah.id
      *
-     * @param int $applicationId Local application ID
+     * @param  int  $applicationId  Local application ID
      * @return array Data nilai dari recruitment (skor_administrasi, nilai_tes, dll)
      */
     public static function getApplicationNilai(int $applicationId): array
@@ -292,7 +296,7 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 return [];
             }
 
@@ -308,12 +312,14 @@ class RecruitmentDocumentService
                 'application_id' => $applicationId,
                 'status' => $response->status(),
             ]);
+
             return [];
         } catch (Exception $e) {
             Log::error('RecruitmentDocumentService: Exception while fetching nilai', [
                 'application_id' => $applicationId,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -321,8 +327,8 @@ class RecruitmentDocumentService
     /**
      * Push/Update nilai ke recruitment.abuhurairah.id
      *
-     * @param int $applicationId Local application ID
-     * @param array $nilaiData Data nilai yang akan di-push
+     * @param  int  $applicationId  Local application ID
+     * @param  array  $nilaiData  Data nilai yang akan di-push
      * @return bool True jika berhasil
      */
     public static function pushNilaiToRecruitment(int $applicationId, array $nilaiData): bool
@@ -331,8 +337,9 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 Log::warning('RecruitmentDocumentService: No token, cannot push nilai');
+
                 return false;
             }
 
@@ -344,6 +351,7 @@ class RecruitmentDocumentService
                 Log::info('RecruitmentDocumentService: Successfully pushed nilai', [
                     'application_id' => $applicationId,
                 ]);
+
                 return true;
             }
 
@@ -352,12 +360,14 @@ class RecruitmentDocumentService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
+
             return false;
         } catch (Exception $e) {
             Log::error('RecruitmentDocumentService: Exception while pushing nilai', [
                 'application_id' => $applicationId,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -366,8 +376,8 @@ class RecruitmentDocumentService
      * Sync application profile ke recruitment.abuhurairah.id
      * Membuat data application di recruitment jika belum ada
      *
-     * @param int $profileId Local profile ID
-     * @param array $applicationData Data application
+     * @param  int  $profileId  Local profile ID
+     * @param  array  $applicationData  Data application
      * @return array|null Response dari API
      */
     public static function syncApplicationToRecruitment(int $profileId, array $applicationData): ?array
@@ -376,7 +386,7 @@ class RecruitmentDocumentService
             $baseUrl = self::getBaseUrl();
             $token = self::getApiToken();
 
-            if (!$token) {
+            if (! $token) {
                 return null;
             }
 
@@ -393,12 +403,14 @@ class RecruitmentDocumentService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
+
             return null;
         } catch (Exception $e) {
             Log::error('RecruitmentDocumentService: Exception while syncing application', [
                 'profile_id' => $profileId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }

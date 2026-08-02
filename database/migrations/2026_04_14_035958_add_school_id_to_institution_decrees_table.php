@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::table('institution_decrees', function (Blueprint $table) {
             $table->foreignUuid('school_id')
-                  ->nullable()
-                  ->constrained('schools')
-                  ->cascadeOnDelete();
+                ->nullable()
+                ->constrained('schools')
+                ->cascadeOnDelete();
 
             $table->index('school_id');
         });

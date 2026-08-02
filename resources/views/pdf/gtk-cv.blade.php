@@ -433,7 +433,7 @@
 
     {{-- FOOTER --}}
     <tr><td class="footer">
-        <div class="fb">PUSTIK &nbsp;|&nbsp; Curriculum Vitae &mdash; {{ $gtk->name }}</div>
+        <div class="fb">Alim &nbsp;|&nbsp; Curriculum Vitae &mdash; {{ $gtk->name }}</div>
         <div class="fr">Dicetak: {{ now()->translatedFormat('d F Y, H:i') }} WIB</div>
     </td></tr>
 

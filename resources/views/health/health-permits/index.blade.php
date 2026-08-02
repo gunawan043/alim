@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Izin Sakit Santi @endsection
+@section('title') Izin Sakit Santri @endsection
 
 @section('content')
     @component('components.breadcrumb')
@@ -24,55 +24,65 @@
     ?>
 
     {{-- Stats --}}
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <div class="card border-start border-1 border-primary">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-primary bg-opacity-10 text-primary rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-file-list-3-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Total Izin</p>
-                        <h5 class="mb-0">{{ $total }} <span class="fs-6 text-muted">record</span></h5>
+    
+    {{-- Stats Cards --}}
+    <div class="row g-3 mb-2">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-file-list-3-line text-primary"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Total Izin</p>
+                            <h3 class="mb-0">{{ $total }} <span class="fs-6 text-muted">record</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-start border-1 border-warning">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-warning bg-opacity-10 text-warning rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-time-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Menunggu</p>
-                        <h5 class="mb-0">{{ $pending }} <span class="fs-6 text-muted">izin</span></h5>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line text-warning"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Menunggu</p>
+                            <h3 class="mb-0">{{ $pending }} <span class="fs-6 text-muted">izin</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-start border-1 border-success">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-success bg-opacity-10 text-success rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-checkbox-circle-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Disetujui</p>
-                        <h5 class="mb-0">{{ $approved }} <span class="fs-6 text-muted">izin</span></h5>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Disetujui</p>
+                            <h3 class="mb-0">{{ $approved }} <span class="fs-6 text-muted">izin</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-start border-1 border-info">
-                <div class="card-body py-2 d-flex align-items-center gap-2">
-                    <span class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
-                        <i class="ri-notification-3-line fs-6"></i>
-                    </span>
-                    <div>
-                        <p class="text-muted mb-0 small">Wali Dinotifikasi</p>
-                        <h5 class="mb-0">{{ $notified }} <span class="fs-6 text-muted">kali</span></h5>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-notification-3-line text-info"></i></span>
+                        </div>
+                        <div>
+                            <p class="text-muted mb-0 small">Wali Dinotifikasi</p>
+                            <h3 class="mb-0">{{ $notified }} <span class="fs-6 text-muted">kali</span></h3>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -85,7 +95,7 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Izin Sakit Santi</h5>
+                            <h5 class="card-title mb-0">Izin Sakit Santri</h5>
                             <p class="text-muted mb-0 small">Permohonan izin sakit &amp; istirahat</p>
                         </div>
                         <div class="col-sm-auto">
@@ -99,7 +109,7 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" placeholder="Nama Santi..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control" placeholder="Nama Santri..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
                             <select name="study_group_id" class="form-control">
@@ -141,7 +151,7 @@
                             <thead>
                                 <tr>
                                     <th style="width:40px">#</th>
-                                    <th>Nama Santi</th>
+                                    <th>Nama Santri</th>
                                     <th>Jenis Izin</th>
                                     <th>Tanggal Mulai</th>
                                     <th>Tanggal Selesai</th>

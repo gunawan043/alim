@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::unprepared('
             DROP PROCEDURE IF EXISTS get_gtk_report;
             
@@ -80,6 +84,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::unprepared('DROP PROCEDURE IF EXISTS get_gtk_report');
     }
 };

@@ -57,18 +57,29 @@ class RepairRequest extends Model
     ];
 
     public const STATUS_VERIFICATION_PENDING = 'verification_pending';
+
     public const STATUS_VERIFICATION_IN_PROGRESS = 'verification_in_progress';
+
     public const STATUS_ADDITIONAL_INFO = 'additional_info';
+
     public const STATUS_APPROVAL_PENDING = 'approval_pending';
+
     public const STATUS_EXECUTION_PENDING = 'execution_pending';
+
     public const STATUS_STARTED = 'started';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_STOPPED = 'stopped';
+
     public const STATUS_VERIFICATION_REJECTED = 'verification_rejected';
+
     public const STATUS_APPROVAL_REJECTED = 'approval_rejected';
+
     public const STATUS_CLOSED = 'closed';
 
     public const RECOMMENDATION_APPROVED = 'approved';
+
     public const RECOMMENDATION_REJECTED = 'rejected';
 
     public const ALLOWED_STATUSES = [

@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 // Progress per juz per santri — membentuk visualisasi peta 30 juz.
 // Otomatis diupdate setiap setoran lulus.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_juz_progress', function (Blueprint $table) {
@@ -21,7 +22,7 @@ return new class extends Migration {
             $table->decimal('halaman_completed', 4, 1)->default(0);
             $table->decimal('total_halaman_juz', 4, 1)->default(20);
             $table->decimal('percentage', 5, 2)->default(0)
-                  ->comment('Persentase: (halaman_completed / total_halaman_juz) * 100');
+                ->comment('Persentase: (halaman_completed / total_halaman_juz) * 100');
             $table->date('ziyadah_started_at')->nullable();
             $table->date('ziyadah_completed_at')->nullable();
             $table->date('last_setoran_date')->nullable();
@@ -34,5 +35,9 @@ return new class extends Migration {
             $table->index(['student_id', 'status']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_juz_progress'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_juz_progress');
+    }
 };

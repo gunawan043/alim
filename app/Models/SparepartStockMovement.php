@@ -36,8 +36,8 @@ class SparepartStockMovement extends Model
         parent::boot();
         static::creating(function ($model) {
             if (! $model->movement_code) {
-                $prefix = 'MOVE-' . now()->format('Ymd') . '-';
-                $model->movement_code = $prefix . strtoupper(substr(uniqid(), -6));
+                $prefix = 'MOVE-'.now()->format('Ymd').'-';
+                $model->movement_code = $prefix.strtoupper(substr(uniqid(), -6));
             }
         });
     }

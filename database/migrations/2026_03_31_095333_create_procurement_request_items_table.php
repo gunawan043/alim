@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('procurement_requests', function (Blueprint $table) {
@@ -13,13 +14,13 @@ return new class extends Migration {
             $table->uuid('school_id')->nullable();
             $table->uuid('academic_year_id')->nullable();
             $table->string('request_number', 50)->unique()
-                  ->comment('Generate otomatis, misal: PBJ/2025/001');
+                ->comment('Generate otomatis, misal: PBJ/2025/001');
             $table->uuid('requested_by');
             $table->date('request_date');
             $table->enum('urgency', ['rendah', 'sedang', 'tinggi', 'mendesak'])
-                  ->default('sedang');
+                ->default('sedang');
             $table->decimal('total_estimated_price', 15, 2)->nullable()
-                  ->comment('Dihitung otomatis dari sum procurement_request_items');
+                ->comment('Dihitung otomatis dari sum procurement_request_items');
             $table->enum('status', [
                 'draft', 'submitted', 'review', 'approved',
                 'rejected', 'purchasing', 'received', 'cancelled',
@@ -42,5 +43,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('procurement_requests'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('procurement_requests');
+    }
 };

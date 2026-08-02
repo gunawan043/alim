@@ -3,16 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
-use App\Models\WaliSantri;
 use App\Models\WaliRegistrationToken;
+use App\Models\WaliSantri;
 use App\Services\Boarding\HealthWorkflowService;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\Boarding\VisitWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * Wali Santri Portal.
@@ -185,30 +183,30 @@ class GuardianPortalController extends Controller
 
             // Aggregate three workflows into chronological timeline
             $permits = \App\Models\DormitoryPermit::where('student_id', $studentId)->get()->map(fn ($p) => [
-                'kind'      => 'leave',
-                'date'      => $p->created_at,
-                'title'     => "Izin Pulang #{$p->permit_code}",
-                'subtitle'  => $p->start_date?->format('d M Y') . ' – ' . $p->end_date?->format('d M Y'),
-                'status'    => $p->status,
-                'note'      => $p->notes,
+                'kind' => 'leave',
+                'date' => $p->created_at,
+                'title' => "Izin Pulang #{$p->permit_code}",
+                'subtitle' => $p->start_date?->format('d M Y').' – '.$p->end_date?->format('d M Y'),
+                'status' => $p->status,
+                'note' => $p->notes,
             ]);
 
             $visits = \App\Models\DormitoryVisitLog::where('student_id', $studentId)->get()->map(fn ($v) => [
-                'kind'      => 'visit',
-                'date'      => $v->created_at,
-                'title'     => "Penjengukan",
-                'subtitle'  => $v->visit_date?->format('d M Y H:i'),
-                'status'    => $v->status,
-                'note'      => $v->purpose,
+                'kind' => 'visit',
+                'date' => $v->created_at,
+                'title' => 'Penjengukan',
+                'subtitle' => $v->visit_date?->format('d M Y H:i'),
+                'status' => $v->status,
+                'note' => $v->purpose,
             ]);
 
             $health = \App\Models\StudentHealthPermit::where('student_id', $studentId)->get()->map(fn ($h) => [
-                'kind'      => 'health',
-                'date'      => $h->created_at,
-                'title'     => "Izin Sakit ({$h->permit_type})",
-                'subtitle'  => $h->start_date?->format('d M Y') . " ({$h->rest_days} hari)",
-                'status'    => $h->status,
-                'note'      => $h->approval_note,
+                'kind' => 'health',
+                'date' => $h->created_at,
+                'title' => "Izin Sakit ({$h->permit_type})",
+                'subtitle' => $h->start_date?->format('d M Y')." ({$h->rest_days} hari)",
+                'status' => $h->status,
+                'note' => $h->approval_note,
             ]);
 
             $timeline = collect()
@@ -220,11 +218,11 @@ class GuardianPortalController extends Controller
         }
 
         return view('portal.timeline', [
-            'wali'            => $wali,
-            'waliStudents'    => $waliStudents,
+            'wali' => $wali,
+            'waliStudents' => $waliStudents,
             'selectedStudent' => $selectedStudent,
-            'timeline'        => $timeline,
-            'token'           => $token,
+            'timeline' => $timeline,
+            'token' => $token,
         ]);
     }
 
@@ -344,7 +342,7 @@ class GuardianPortalController extends Controller
 
         $wali = WaliSantri::where(function ($q) use ($token, $hash) {
             $q->where('access_token', $token)
-              ->orWhere('access_token', $hash);
+                ->orWhere('access_token', $hash);
         })
             ->where('status', WaliSantri::STATUS_ACTIVE)
             ->where('access_expires_at', '>', now())

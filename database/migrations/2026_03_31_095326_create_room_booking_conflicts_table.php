@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('room_booking_conflicts', function (Blueprint $table) {
@@ -25,5 +26,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('room_booking_conflicts'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('room_booking_conflicts');
+    }
 };

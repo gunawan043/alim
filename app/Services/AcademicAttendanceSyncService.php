@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\StudentAttendance;
-use App\Models\AttendancePermit;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +48,7 @@ class AcademicAttendanceSyncService
                 // Skip if already marked hadir/sakit/izin
                 if ($existingRecords->has($dateKey)) {
                     $current->addDay();
+
                     continue;
                 }
 

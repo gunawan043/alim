@@ -10,27 +10,27 @@ return new class extends Migration
     {
         // ── 1. Extend `users` table with mobile-wali columns ──────────────────
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'google_id')) {
+            if (! Schema::hasColumn('users', 'google_id')) {
                 $table->string('google_id', 191)->nullable()->unique()->after('avatar');
             }
-            if (!Schema::hasColumn('users', 'no_kk')) {
+            if (! Schema::hasColumn('users', 'no_kk')) {
                 $table->string('no_kk', 30)->nullable()->after('google_id');
             }
-            if (!Schema::hasColumn('users', 'nik_wali')) {
+            if (! Schema::hasColumn('users', 'nik_wali')) {
                 $table->string('nik_wali', 30)->nullable()->after('no_kk');
             }
-            if (!Schema::hasColumn('users', 'no_hp')) {
+            if (! Schema::hasColumn('users', 'no_hp')) {
                 $table->string('no_hp', 20)->nullable()->after('nik_wali');
             }
-            if (!Schema::hasColumn('users', 'hubungan')) {
+            if (! Schema::hasColumn('users', 'hubungan')) {
                 $table->enum('hubungan', ['ayah', 'ibu', 'kakek', 'nenek', 'wali', 'lainnya'])
-                      ->nullable()
-                      ->after('no_hp');
+                    ->nullable()
+                    ->after('no_hp');
             }
-            if (!Schema::hasColumn('users', 'is_wali')) {
+            if (! Schema::hasColumn('users', 'is_wali')) {
                 $table->boolean('is_wali')->default(false)->after('hubungan');
             }
-            if (!Schema::hasColumn('users', 'google_token')) {
+            if (! Schema::hasColumn('users', 'google_token')) {
                 $table->text('google_token')->nullable()->after('is_wali');
             }
         });
@@ -42,12 +42,12 @@ return new class extends Migration
             $table->uuid('id')->primary();
 
             $table->foreignUuid('user_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->foreignUuid('student_id')
-                  ->constrained('students')
-                  ->cascadeOnDelete();
+                ->constrained('students')
+                ->cascadeOnDelete();
 
             $table->string('role', 20)->default('wali');
             $table->boolean('is_primary')->default(false);
@@ -55,8 +55,8 @@ return new class extends Migration
             $table->timestamp('access_expires_at')->nullable();
             $table->timestamp('verified_at')->nullable();
             $table->foreignUuid('verified_by')->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+                ->constrained('users')
+                ->nullOnDelete();
             $table->string('status', 20)->default('pending');
 
             $table->timestamps();

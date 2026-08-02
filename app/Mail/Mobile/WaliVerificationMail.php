@@ -2,9 +2,8 @@
 
 namespace App\Mail\Mobile;
 
-use App\Models\User;
 use App\Models\Student;
-use App\Models\WaliSantri;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -37,12 +36,12 @@ class WaliVerificationMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.mobile.wali-verification',
             with: [
-                'waliName'  => $this->wali->name,
+                'waliName' => $this->wali->name,
                 'studentName' => $this->student->name,
-                'roleLabel'  => $this->roleLabel,
+                'roleLabel' => $this->roleLabel,
                 'approveUrl' => $this->approveUrl,
-                'rejectUrl'  => $this->rejectUrl,
-                'expiresAt'  => now()->addHours(48)->format('d M Y, H:i'),
+                'rejectUrl' => $this->rejectUrl,
+                'expiresAt' => now()->addHours(48)->format('d M Y, H:i'),
             ],
         );
     }

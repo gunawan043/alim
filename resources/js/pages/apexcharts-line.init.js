@@ -823,7 +823,7 @@ if (linechartannotationsColors) {
                     size: 0
                 },
                 image: {
-                    path: './build/images/logo-sm.png',
+                    path: './build/images/alim-sm-light.png',
                     width: 40,
                     height: 40
                 }

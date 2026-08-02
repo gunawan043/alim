@@ -2,27 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\GtkProfile;
-use App\Models\GtkContact;
-use App\Models\GtkAddress;
-use App\Models\GtkFamilyMember;
-use App\Models\GtkEmployment;
-use App\Models\GtkEducation;
-use App\Models\WorkUnit;
-use App\Models\Province;
 use App\Models\City;
 use App\Models\District;
+use App\Models\GtkAddress;
+use App\Models\GtkContact;
+use App\Models\GtkEducation;
+use App\Models\GtkEmployment;
+use App\Models\GtkFamilyMember;
+use App\Models\GtkProfile;
+use App\Models\Province;
+use App\Models\User;
 use App\Models\Village;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use App\Models\WorkUnit;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -44,7 +44,8 @@ class ProfileController extends Controller
 
             return view('gtk.profile', compact('gtk', 'userId', 'completionPercentage'));
         } catch (\Exception $e) {
-            Log::error('Error fetching GTK profile: ' . $e->getMessage());
+            Log::error('Error fetching GTK profile: '.$e->getMessage());
+
             return redirect()->route('user.gtk.index', ['userId' => $userId])
                 ->with('error', 'Data GTK tidak ditemukan.');
         }
@@ -70,7 +71,8 @@ class ProfileController extends Controller
 
             return view('gtk.edit', compact('gtk', 'userId', 'workUnits', 'provinces', 'completionPercentage'));
         } catch (\Exception $e) {
-            Log::error('Error fetching GTK for edit: ' . $e->getMessage());
+            Log::error('Error fetching GTK for edit: '.$e->getMessage());
+
             return redirect()->route('user.gtk.index', ['userId' => $userId])
                 ->with('error', 'Data GTK tidak ditemukan.');
         }
@@ -82,15 +84,15 @@ class ProfileController extends Controller
             $cities = City::where('province_uuid', $provinceUuid)
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']);
-            
+
             return response()->json([
                 'success' => true,
-                'data' => $cities
+                'data' => $cities,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data kota/kabupaten'
+                'message' => 'Gagal memuat data kota/kabupaten',
             ], 500);
         }
     }
@@ -101,15 +103,15 @@ class ProfileController extends Controller
             $districts = District::where('city_uuid', $cityUuid)
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']);
-            
+
             return response()->json([
                 'success' => true,
-                'data' => $districts
+                'data' => $districts,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data kecamatan'
+                'message' => 'Gagal memuat data kecamatan',
             ], 500);
         }
     }
@@ -120,21 +122,22 @@ class ProfileController extends Controller
             $villages = Village::where('district_uuid', $districtUuid)
                 ->orderBy('name')
                 ->get(['id', 'name', 'code', 'meta']);
-            
+
             $villages = $villages->map(function ($village) {
                 $meta = json_decode($village->meta, true);
                 $village->postal_code = $meta['pos'] ?? null;
+
                 return $village;
             });
-            
+
             return response()->json([
                 'success' => true,
-                'data' => $villages
+                'data' => $villages,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data desa'
+                'message' => 'Gagal memuat data desa',
             ], 500);
         }
     }
@@ -233,7 +236,7 @@ class ProfileController extends Controller
             if (isset($validated['work_units']) && is_array($validated['work_units'])) {
                 // Hapus relasi lama
                 DB::table('gtk_work_unit')->where('user_id', $user->id)->delete();
-                
+
                 // Tambah relasi baru
                 foreach ($validated['work_units'] as $index => $workUnitId) {
                     $workUnit = WorkUnit::where('id', $workUnitId)->first();
@@ -257,25 +260,25 @@ class ProfileController extends Controller
                 if (isset($validated['alamat_domisili'])) {
                     $domisiliData = $this->prepareAddressData($validated['alamat_domisili'], 'domisili');
                     $domisiliData['gtk_profile_id_uuid'] = $profile->id;
-                    
+
                     GtkAddress::updateOrCreate(
                         [
                             'gtk_profile_id_uuid' => $profile->id,
-                            'type' => 'domisili'
+                            'type' => 'domisili',
                         ],
                         $domisiliData
                     );
                 }
 
                 // KTP Address
-                if (isset($validated['alamat_ktp']) && !empty($validated['alamat_ktp']['jalan'])) {
+                if (isset($validated['alamat_ktp']) && ! empty($validated['alamat_ktp']['jalan'])) {
                     $ktpData = $this->prepareAddressData($validated['alamat_ktp'], 'ktp');
                     $ktpData['gtk_profile_id_uuid'] = $profile->id;
-                    
+
                     GtkAddress::updateOrCreate(
                         [
                             'gtk_profile_id_uuid' => $profile->id,
-                            'type' => 'ktp'
+                            'type' => 'ktp',
                         ],
                         $ktpData
                     );
@@ -291,7 +294,7 @@ class ProfileController extends Controller
                 $profile->familyMembers()->delete();
 
                 foreach ($validated['anggota_keluarga'] as $anggota) {
-                    if (!empty($anggota['nama'])) {
+                    if (! empty($anggota['nama'])) {
                         GtkFamilyMember::create([
                             'id' => Str::id(),
                             'gtk_profile_id_uuid' => $profile->id,
@@ -311,10 +314,10 @@ class ProfileController extends Controller
             if (isset($validated['pendidikan']) && is_array($validated['pendidikan'])) {
                 // Hapus data pendidikan lama
                 GtkEducation::where('user_id', $user->id)->delete();
-                
+
                 // Tambah data pendidikan baru
                 foreach ($validated['pendidikan'] as $pendidikan) {
-                    if (!empty($pendidikan['jenjang_pendidikan']) && !empty($pendidikan['nama_satuan_pendidikan'])) {
+                    if (! empty($pendidikan['jenjang_pendidikan']) && ! empty($pendidikan['nama_satuan_pendidikan'])) {
                         $educationData = [
                             'id' => Str::uuid(),
                             'user_id' => $user->id,
@@ -333,7 +336,7 @@ class ProfileController extends Controller
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
-                        
+
                         GtkEducation::create($educationData);
                     }
                 }
@@ -343,10 +346,11 @@ class ProfileController extends Controller
             if ($request->filled('current_password') && $request->filled('new_password')) {
                 if (Hash::check($request->current_password, $user->password)) {
                     $user->update([
-                        'password' => Hash::make($request->new_password)
+                        'password' => Hash::make($request->new_password),
                     ]);
                 } else {
                     DB::rollBack();
+
                     return redirect()->back()
                         ->with('error', 'Password saat ini tidak sesuai')
                         ->withInput();
@@ -359,13 +363,13 @@ class ProfileController extends Controller
 
             return redirect()->route('user.gtk.show', ['userId' => $userId, 'uuid' => $user->id])
                 ->with('success', $successMessage);
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating profile: ' . $e->getMessage());
+            Log::error('Error updating profile: '.$e->getMessage());
 
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -378,9 +382,9 @@ class ProfileController extends Controller
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')->ignore($user->id, 'id')
+                Rule::unique('users', 'email')->ignore($user->id, 'id'),
             ],
-            
+
             // Profile data
             'nik' => 'required|string|max:20',
             'no_kk' => 'nullable|string|max:20',
@@ -408,7 +412,7 @@ class ProfileController extends Controller
             'employment.tmt' => 'nullable|date',
             'employment.nomor_sk' => 'nullable|string|max:100',
             'employment.tanggal_sk' => 'nullable|date',
-            
+
             // Work Units - multiple
             'work_units' => 'nullable|array',
             'work_units.*' => 'nullable|exists:work_units,id',
@@ -449,8 +453,8 @@ class ProfileController extends Controller
             'pendidikan.*.nama_satuan_pendidikan' => 'required_with:pendidikan.*.jenjang_pendidikan|string|max:255',
             'pendidikan.*.jurusan' => 'nullable|string|max:100',
             'pendidikan.*.fakultas' => 'nullable|string|max:100',
-            'pendidikan.*.tahun_masuk' => 'nullable|integer|min:1900|max:' . date('Y'),
-            'pendidikan.*.tahun_lulus' => 'nullable|integer|min:1900|max:' . date('Y'),
+            'pendidikan.*.tahun_masuk' => 'nullable|integer|min:1900|max:'.date('Y'),
+            'pendidikan.*.tahun_lulus' => 'nullable|integer|min:1900|max:'.date('Y'),
             'pendidikan.*.no_ijazah' => 'nullable|string|max:100',
             'pendidikan.*.nilai_akhir' => 'nullable|numeric|min:0|max:100',
             'pendidikan.*.status' => 'nullable|in:LULUS,BELUM_LULUS,DROPOUT,PINDAH',
@@ -490,7 +494,9 @@ class ProfileController extends Controller
         $userFields = ['name', 'email'];
         foreach ($userFields as $field) {
             $totalFields++;
-            if (!empty($user->$field)) $completedFields++;
+            if (! empty($user->$field)) {
+                $completedFields++;
+            }
         }
 
         // Profile fields
@@ -498,7 +504,9 @@ class ProfileController extends Controller
             $profileFields = ['nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'no_kk'];
             foreach ($profileFields as $field) {
                 $totalFields++;
-                if (!empty($user->gtkProfile->$field)) $completedFields++;
+                if (! empty($user->gtkProfile->$field)) {
+                    $completedFields++;
+                }
             }
         } else {
             $totalFields += 5;
@@ -509,7 +517,9 @@ class ProfileController extends Controller
             $contactFields = ['no_hp', 'kontak_darurat'];
             foreach ($contactFields as $field) {
                 $totalFields++;
-                if (!empty($user->gtkContact->$field)) $completedFields++;
+                if (! empty($user->gtkContact->$field)) {
+                    $completedFields++;
+                }
             }
         } else {
             $totalFields += 2;
@@ -522,7 +532,9 @@ class ProfileController extends Controller
                 $addressFields = ['jalan', 'desa', 'kecamatan', 'kab_kota', 'provinsi'];
                 foreach ($addressFields as $field) {
                     $totalFields++;
-                    if (!empty($domisiliAddress->$field)) $completedFields++;
+                    if (! empty($domisiliAddress->$field)) {
+                        $completedFields++;
+                    }
                 }
             } else {
                 $totalFields += 5;
@@ -542,7 +554,9 @@ class ProfileController extends Controller
             $employmentFields = ['nupy', 'jenis_gtk', 'jabatan', 'status_kepegawaian'];
             foreach ($employmentFields as $field) {
                 $totalFields++;
-                if (!empty($user->gtkEmployment->$field)) $completedFields++;
+                if (! empty($user->gtkEmployment->$field)) {
+                    $completedFields++;
+                }
             }
         } else {
             $totalFields += 4;
@@ -570,12 +584,14 @@ class ProfileController extends Controller
     public function myProfile()
     {
         $user = Auth::user();
+
         return $this->show($user->id, $user->id);
     }
 
     public function editMyProfile()
     {
         $user = Auth::user();
+
         return $this->edit($user->id, $user->id);
     }
 
@@ -588,35 +604,35 @@ class ProfileController extends Controller
     {
         $request->validate([
             'password' => 'required|string',
-            'gtk_uuid' => 'required|string'
+            'gtk_uuid' => 'required|string',
         ]);
 
         try {
             $user = Auth::user();
-            
+
             if (Hash::check($request->password, $user->password)) {
                 $gtk = User::with('gtkProfile')->where('id', $request->gtk_uuid)->first();
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Verifikasi berhasil',
                     'data' => [
                         'nik' => $gtk->gtkProfile?->nik,
-                        'no_kk' => $gtk->gtkProfile?->no_kk
-                    ]
+                        'no_kk' => $gtk->gtkProfile?->no_kk,
+                    ],
                 ]);
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Password yang Anda masukkan salah'
+                    'message' => 'Password yang Anda masukkan salah',
                 ], 401);
             }
         } catch (\Exception $e) {
-            Log::error('Error verifying password: ' . $e->getMessage());
-            
+            Log::error('Error verifying password: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada server'
+                'message' => 'Terjadi kesalahan pada server',
             ], 500);
         }
     }
@@ -636,29 +652,29 @@ class ProfileController extends Controller
                 }
 
                 $path = $request->file('photo')->store('profile-photos', 'public');
-                
+
                 $user->update([
-                    'profile_photo_path' => $path
+                    'profile_photo_path' => $path,
                 ]);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Foto profil berhasil diunggah',
-                    'photo_url' => asset('storage/' . $path)
+                    'photo_url' => asset('storage/'.$path),
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada file yang diunggah'
+                'message' => 'Tidak ada file yang diunggah',
             ], 400);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error uploading profile photo: ' . $e->getMessage());
-            
+            Log::error('Error uploading profile photo: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengunggah foto'
+                'message' => 'Gagal mengunggah foto',
             ], 500);
         }
     }
@@ -677,24 +693,24 @@ class ProfileController extends Controller
             if ($user->profile_photo_path) {
                 \Storage::delete($user->profile_photo_path);
                 $user->update(['profile_photo_path' => null]);
-                
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Foto profil berhasil dihapus'
+                    'message' => 'Foto profil berhasil dihapus',
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada foto profil'
+                'message' => 'Tidak ada foto profil',
             ], 400);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error deleting profile photo: ' . $e->getMessage());
-            
+            Log::error('Error deleting profile photo: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus foto'
+                'message' => 'Gagal menghapus foto',
             ], 500);
         }
     }
@@ -717,49 +733,50 @@ class ProfileController extends Controller
             ])->where('id', $uuid)->firstOrFail();
 
             $domisiliAddress = $gtk->gtkProfile?->addresses->where('type', 'domisili')->first();
-            $ktpAddress      = $gtk->gtkProfile?->addresses->where('type', 'ktp')->first();
+            $ktpAddress = $gtk->gtkProfile?->addresses->where('type', 'ktp')->first();
 
             $avatarPath = $gtk->avatar
-                ? public_path('images/' . $gtk->avatar)
+                ? public_path('images/'.$gtk->avatar)
                 : public_path('build/images/users/avatar-1.jpg');
 
             $ext = strtolower(pathinfo($gtk->avatar ?? 'avatar.jpg', PATHINFO_EXTENSION));
             $mimeType = $ext === 'png' ? 'image/png' : 'image/jpeg';
 
             $avatarBase64 = file_exists($avatarPath)
-                ? 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($avatarPath))
+                ? 'data:'.$mimeType.';base64,'.base64_encode(file_get_contents($avatarPath))
                 : null;
 
             $html = view('pdf.gtk-cv', [
-                'gtk'              => $gtk,
-                'avatarBase64'     => $avatarBase64,
-                'domisiliAddress'  => $domisiliAddress,
-                'ktpAddress'       => $ktpAddress,
+                'gtk' => $gtk,
+                'avatarBase64' => $avatarBase64,
+                'domisiliAddress' => $domisiliAddress,
+                'ktpAddress' => $ktpAddress,
             ])->render();
 
             $options = (new Options)->set('isRemoteEnabled', false);
-            $dompdf  = new Dompdf($options);
+            $dompdf = new Dompdf($options);
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'portrait');
             $dompdf->render();
-            $output   = $dompdf->output();
-            $filename = 'CV_' . Str::slug($gtk->name) . '_' . now()->format('Ymd') . '.pdf';
+            $output = $dompdf->output();
+            $filename = 'CV_'.Str::slug($gtk->name).'_'.now()->format('Ymd').'.pdf';
 
             return response($output, 200, [
-                'Content-Type'        => 'application/pdf',
-                'Content-Length'      => strlen($output),
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-                'Cache-Control'       => 'no-cache, no-store, must-revalidate',
+                'Content-Type' => 'application/pdf',
+                'Content-Length' => strlen($output),
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
             ]);
         } catch (\Exception $e) {
-            Log::error('Error generating CV PDF: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            Log::error('Error generating CV PDF: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
             $msg = $e->getMessage();
+
             return response(
-                "<html><body style=\"font-family:Arial;padding:40px;text-align:center\">" .
-                "<h2 style=\"color:#c0392b\">Gagal Membuat CV</h2>" .
-                "<p style=\"color:#555\">{$msg}</p>" .
-                "<a href=\"javascript:history.back()\" style=\"color:#3498db\">« Kembali</a>" .
-                "</body></html>",
+                '<html><body style="font-family:Arial;padding:40px;text-align:center">'.
+                '<h2 style="color:#c0392b">Gagal Membuat CV</h2>'.
+                "<p style=\"color:#555\">{$msg}</p>".
+                '<a href="javascript:history.back()" style="color:#3498db">« Kembali</a>'.
+                '</body></html>',
                 500,
                 ['Content-Type' => 'text/html; charset=utf-8']
             );

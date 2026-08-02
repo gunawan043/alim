@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JenisGtk;
 use App\Models\Jabatan;
+use App\Models\JenisGtk;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class MasterDataController extends Controller
@@ -35,10 +35,10 @@ class MasterDataController extends Controller
     public function jenisGtkStore(Request $request)
     {
         $data = $request->validate([
-            'nama'       => 'required|string|max:100|unique:jenis_gtk,nama',
-            'deskripsi'  => 'nullable|string|max:255',
-            'is_active'  => 'boolean',
-            'urutan'     => 'nullable|integer|min:0',
+            'nama' => 'required|string|max:100|unique:jenis_gtk,nama',
+            'deskripsi' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+            'urutan' => 'nullable|integer|min:0',
         ]);
 
         $data['id'] = Str::uuid();
@@ -53,10 +53,10 @@ class MasterDataController extends Controller
         $jenis = JenisGtk::findOrFail($id);
 
         $data = $request->validate([
-            'nama'       => ['required', 'string', 'max:100', Rule::unique('jenis_gtk', 'nama')->ignore($id)],
-            'deskripsi'  => 'nullable|string|max:255',
-            'is_active'  => 'boolean',
-            'urutan'     => 'nullable|integer|min:0',
+            'nama' => ['required', 'string', 'max:100', Rule::unique('jenis_gtk', 'nama')->ignore($id)],
+            'deskripsi' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+            'urutan' => 'nullable|integer|min:0',
         ]);
 
         $jenis->update($data);
@@ -105,16 +105,15 @@ class MasterDataController extends Controller
     {
         $data = $request->validate([
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
-            'nama'         => [
+            'nama' => [
                 'required', 'string', 'max:150',
-                Rule::unique('jabatan')->where(fn ($q) =>
-                    $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('jabatan')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 ),
             ],
-            'kategori'     => 'nullable|string|max:50',
-            'deskripsi'    => 'nullable|string|max:255',
-            'is_active'    => 'boolean',
-            'urutan'       => 'nullable|integer|min:0',
+            'kategori' => 'nullable|string|max:50',
+            'deskripsi' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+            'urutan' => 'nullable|integer|min:0',
         ]);
 
         $data['id'] = Str::uuid();
@@ -130,16 +129,15 @@ class MasterDataController extends Controller
 
         $data = $request->validate([
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
-            'nama'         => [
+            'nama' => [
                 'required', 'string', 'max:150',
-                Rule::unique('jabatan')->where(fn ($q) =>
-                    $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('jabatan')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 )->ignore($id),
             ],
-            'kategori'     => 'nullable|string|max:50',
-            'deskripsi'    => 'nullable|string|max:255',
-            'is_active'    => 'boolean',
-            'urutan'       => 'nullable|integer|min:0',
+            'kategori' => 'nullable|string|max:50',
+            'deskripsi' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+            'urutan' => 'nullable|integer|min:0',
         ]);
 
         $jabatan->update($data);
@@ -218,11 +216,11 @@ class MasterDataController extends Controller
         $code = WorkUnit::generateUniqueCode($request->divisi_id, $parentId);
 
         WorkUnit::create([
-            'name'       => $request->name,
-            'code'       => $code,
-            'divisi_id'  => $request->divisi_id ?: null,
-            'induk'      => $request->induk ?: null,
-            'is_active'  => $request->boolean('is_active', true),
+            'name' => $request->name,
+            'code' => $code,
+            'divisi_id' => $request->divisi_id ?: null,
+            'induk' => $request->induk ?: null,
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
         return response()->json([
@@ -234,6 +232,7 @@ class MasterDataController extends Controller
     public function satuanKerjaShow(Request $request, string $userId, string $id)
     {
         $wu = WorkUnit::with('divisi')->findOrFail($id);
+
         return response()->json(['success' => true, 'data' => $wu]);
     }
 
@@ -249,9 +248,9 @@ class MasterDataController extends Controller
         ]);
 
         $satuanKerja->update([
-            'name'      => $request->name,
+            'name' => $request->name,
             'divisi_id' => $request->divisi_id ?: null,
-            'induk'     => $request->induk ?: null,
+            'induk' => $request->induk ?: null,
             'is_active' => $request->boolean('is_active', $satuanKerja->is_active),
         ]);
 
@@ -272,6 +271,7 @@ class MasterDataController extends Controller
         }
 
         $satuanKerja->delete();
+
         return response()->json([
             'success' => true,
             'message' => 'Satuan kerja berhasil dihapus.',
@@ -303,7 +303,9 @@ class MasterDataController extends Controller
 
         foreach ($request->ids as $id) {
             $wu = WorkUnit::find($id);
-            if (!$wu) continue;
+            if (! $wu) {
+                continue;
+            }
             if (DB::table('gtk_work_unit')->where('work_unit_id', $id)->exists()) {
                 return response()->json([
                     'success' => false,
@@ -313,14 +315,16 @@ class MasterDataController extends Controller
         }
 
         $deleted = WorkUnit::whereIn('id', $request->ids)->delete();
+
         return response()->json(['success' => true, 'message' => "$deleted satuan kerja dihapus."]);
     }
 
     public function satuanKerjaToggleStatus(Request $request, string $userId, string $id)
     {
         $wu = WorkUnit::findOrFail($id);
-        $wu->update(['is_active' => !$wu->is_active]);
+        $wu->update(['is_active' => ! $wu->is_active]);
         $status = $wu->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
         return response()->json(['success' => true, 'message' => "Satuan kerja berhasil $status"]);
     }
 }

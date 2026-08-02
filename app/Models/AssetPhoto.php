@@ -11,14 +11,17 @@ class AssetPhoto extends Model
     use HasFactory;
 
     protected $table = 'asset_photos';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -71,6 +74,7 @@ class AssetPhoto extends Model
         if ($contextId) {
             $q->where('context_id', $contextId);
         }
+
         return $q;
     }
 }

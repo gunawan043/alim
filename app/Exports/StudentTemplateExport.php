@@ -4,36 +4,37 @@ namespace App\Exports;
 
 use App\Models\School;
 use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Maatwebsite\Excel\Facades\Excel;
 
-class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths, WithStyles
+class StudentTemplateExport implements WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
-    private string $schoolName    = '';
+    private string $schoolName = '';
+
     private string $schoolAddress = '';
-    private string $downloadInfo  = '';
+
+    private string $downloadInfo = '';
 
     public function __construct(?string $schoolId = null)
     {
         if ($schoolId) {
             $school = School::with(['province', 'city', 'district'])->find($schoolId);
             if ($school) {
-                $this->schoolName    = $school->name;
-                $this->schoolAddress = 'Kec. ' . ($school->district?->name ?? '-') . ', '
-                    . 'Kabupaten ' . ($school->city?->name ?? '-') . ', '
-                    . 'Provinsi ' . ($school->province?->name ?? '-');
+                $this->schoolName = $school->name;
+                $this->schoolAddress = 'Kec. '.($school->district?->name ?? '-').', '
+                    .'Kabupaten '.($school->city?->name ?? '-').', '
+                    .'Provinsi '.($school->province?->name ?? '-');
             }
         }
 
-        if (!$this->schoolName) {
-            $this->schoolName    = 'NAMA SEKOLAH';
+        if (! $this->schoolName) {
+            $this->schoolName = 'NAMA SEKOLAH';
             $this->schoolAddress = 'Kec. ..., Kabupaten/Kota ..., Provinsi ...';
         }
 
@@ -42,7 +43,7 @@ class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths
         if ($user && $user->email) {
             $name .= " ({$user->email})";
         }
-        $this->downloadInfo = 'Tanggal Unduh: ' . now()->format('Y-m-d H:i:s') . '    Pengunduh: ' . $name;
+        $this->downloadInfo = 'Tanggal Unduh: '.now()->format('Y-m-d H:i:s').'    Pengunduh: '.$name;
     }
 
     public function title(): string
@@ -54,16 +55,16 @@ class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths
     {
         return [
             ['No', 'Nama', 'NIPD', 'JK', 'NISN', 'Tempat Lahir', 'Tanggal Lahir', 'NIK', 'Agama', 'Alamat',
-             'RT', 'RW', 'Dusun', 'Kelurahan', 'Kecamatan', 'Kode Pos', 'Jenis Tinggal', 'Alat Transportasi',
-             'Telepon', 'HP', 'E-Mail', 'SKHUN', 'Penerima KPS', 'No. KPS',
-             'Nama Ayah', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
-             'Nama Ibu', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
-             'Nama Wali', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
-             'No Peserta Ujian Nasional', 'No Seri Ijazah', 'Penerima KIP', 'Nomor KIP',
-             'Nama di KIP', 'Nomor KKS', 'No Registrasi Akta Lahir', 'Bank', 'Nomor Rekening Bank',
-             'Rekening Atas Nama', 'Layak PIP', 'Alasan Layak PIP', 'Kebutuhan Khusus', 'Sekolah Asal',
-             'Anak ke-berapa', 'Lintang', 'Bujur', 'No KK', 'Berat Badan', 'Tinggi Badan',
-             'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)'],
+                'RT', 'RW', 'Dusun', 'Kelurahan', 'Kecamatan', 'Kode Pos', 'Jenis Tinggal', 'Alat Transportasi',
+                'Telepon', 'HP', 'E-Mail', 'SKHUN', 'Penerima KPS', 'No. KPS',
+                'Nama Ayah', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
+                'Nama Ibu', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
+                'Nama Wali', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
+                'No Peserta Ujian Nasional', 'No Seri Ijazah', 'Penerima KIP', 'Nomor KIP',
+                'Nama di KIP', 'Nomor KKS', 'No Registrasi Akta Lahir', 'Bank', 'Nomor Rekening Bank',
+                'Rekening Atas Nama', 'Layak PIP', 'Alasan Layak PIP', 'Kebutuhan Khusus', 'Sekolah Asal',
+                'Anak ke-berapa', 'Lintang', 'Bujur', 'No KK', 'Berat Badan', 'Tinggi Badan',
+                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)'],
         ];
     }
 
@@ -89,8 +90,8 @@ class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths
     public function styles(Worksheet $sheet): array
     {
         $totalCols = 64;
-        $lastCol  = Coordinate::stringFromColumnIndex($totalCols);
-        $highest  = $sheet->getHighestRow();
+        $lastCol = Coordinate::stringFromColumnIndex($totalCols);
+        $highest = $sheet->getHighestRow();
         $highestCol = $sheet->getHighestColumn();
 
         // Info rows di baris 1, 2, 3
@@ -104,9 +105,9 @@ class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths
         $sheet->mergeCells("A2:{$lastCol}2");
         $sheet->mergeCells("A3:{$lastCol}3");
 
-        $cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X',
-                 'Y','Z','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP',
-                 'AQ','AR','AS','AT','AU','AV','AW','AX','AY','AZ','BA','BB','BC','BD','BE','BF','BG','BH','BI','BJ','BK'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+            'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP',
+            'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK'];
 
         foreach ($cols as $c) {
             $sheet->mergeCells("{$c}4:{$c}5");
@@ -115,20 +116,20 @@ class StudentTemplateExport implements WithTitle, WithHeadings, WithColumnWidths
         return [
             // Info rows
             1 => [
-                'font'      => ['bold' => true, 'size' => 14],
+                'font' => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ],
             2 => [
-                'font'      => ['bold' => true, 'size' => 10],
+                'font' => ['bold' => true, 'size' => 10],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ],
             3 => [
-                'font'      => ['bold' => true, 'size' => 9],
+                'font' => ['bold' => true, 'size' => 9],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ],
             // Heading row (merged with row 5)
             4 => [
-                'font'   => ['bold' => true, 'size' => 9],
+                'font' => ['bold' => true, 'size' => 9],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
             ],

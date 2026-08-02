@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
 // Implementasi: Tabel Data Peserta Tasmi'an (NO, NAMA, KELAS, JUZ, HARI/TGL,
 // WAKTU, MUSTAMI', TEMPAT).
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_tasmian_participants', function (Blueprint $table) {
@@ -22,7 +23,7 @@ return new class extends Migration {
             $table->tinyInteger('juz_tasmi')->nullable()->comment('Juz yang diujikan');
             $table->json('juz_detail')->nullable()->comment('Jika lebih dari 1 juz: [28,29,30]');
             $table->string('materi_detail', 191)->nullable()
-                  ->comment('Misal: Juz 30 halaman 580-604');
+                ->comment('Misal: Juz 30 halaman 580-604');
             $table->uuid('mustami_id')->nullable()->comment('Guru penguji / mustami\'');
             $table->time('waktu_mulai')->nullable();
             $table->time('waktu_selesai')->nullable();
@@ -41,5 +42,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_tasmian_participants'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_tasmian_participants');
+    }
 };

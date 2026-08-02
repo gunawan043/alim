@@ -2,23 +2,25 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentPipeline extends Model
 {
-    use HasFactory, SoftDeletes,, LogsDeletion HasUuids;
+    use HasFactory, HasUuids, LogsDeletion, SoftDeletes;
 
     protected $table = 'recruitment_pipelines';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
         'recruitment_job_id', 'nama_tahapan', 'urutan', 'deskripsi',
-        'durasi_hari', 'warna', 'icon', 'is_active', 'created_by'
+        'durasi_hari', 'warna', 'icon', 'is_active', 'created_by',
     ];
 
     protected $casts = [

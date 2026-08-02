@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('dormitory_violations', function (Blueprint $table) {
@@ -24,19 +25,19 @@ return new class extends Migration {
             $table->uuid('witness_id')->nullable();
             $table->timestamp('parent_notified_at')->nullable();
             $table->timestamps();
- 
+
             $table->foreign('student_id')->references('id')->on('students')->cascadeOnDelete();
             $table->foreign('room_id')->references('id')->on('dormitory_rooms')->cascadeOnDelete();
             $table->foreign('dormitory_id')->references('id')->on('dormitories')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
             $table->foreign('recorded_by')->references('id')->on('users');
             $table->foreign('witness_id')->references('id')->on('users')->nullOnDelete();
- 
+
             $table->index(['student_id', 'academic_year_id']);
             $table->index(['dormitory_id', 'violation_date']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('dormitory_violations');

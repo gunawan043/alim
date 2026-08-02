@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('schools', function (Blueprint $table) {
-            if (!Schema::hasColumn('schools', 'principal_user_id')) {
+            if (! Schema::hasColumn('schools', 'principal_user_id')) {
                 $table->string('principal_user_id', 36)->nullable()->after('principal_nip');
                 $table->foreign('principal_user_id')
-                      ->references('id')
-                      ->on('users')
-                      ->onDelete('set null');
+                    ->references('id')
+                    ->on('users')
+                    ->onDelete('set null');
             }
         });
     }

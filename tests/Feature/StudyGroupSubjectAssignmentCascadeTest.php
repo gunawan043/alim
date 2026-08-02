@@ -13,7 +13,6 @@ use App\Models\Subject;
 use App\Models\SubjectKktp;
 use App\Observers\StudyGroupSubjectObserver;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;

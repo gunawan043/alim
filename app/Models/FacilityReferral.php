@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class FacilityReferral extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -50,13 +51,13 @@ class FacilityReferral extends Model
     public function getFacilityTypeTextAttribute(): string
     {
         return match ($this->facility_type) {
-            'puskesmas'       => 'Puskesmas',
-            'rumah_sakit'     => 'Rumah Sakit',
-            'klinik'          => 'Klinik',
-            'dokter_praktik'  => 'Dokter Praktik',
+            'puskesmas' => 'Puskesmas',
+            'rumah_sakit' => 'Rumah Sakit',
+            'klinik' => 'Klinik',
+            'dokter_praktik' => 'Dokter Praktik',
             'rs_psychologist' => 'RS Psychologists',
-            'posyandu'        => 'Posyandu',
-            default           => $this->facility_type,
+            'posyandu' => 'Posyandu',
+            default => $this->facility_type,
         };
     }
 

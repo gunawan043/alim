@@ -16,12 +16,12 @@ return new class extends Migration
             $table->uuid('assessment_id');
             $table->enum('komponen', ['tajwid', 'fashohah', 'tahfizh']);
             $table->string('error_type', 100)
-                  ->comment('makharijul_huruf, shifatul_huruf, mad, ghunnah, idgham, ikhfa, iqlab, qalqalah, waqaf_ibtida, tasydid, hamzah, lahn_jali, lahn_khafi');
+                ->comment('makharijul_huruf, shifatul_huruf, mad, ghunnah, idgham, ikhfa, iqlab, qalqalah, waqaf_ibtida, tasydid, hamzah, lahn_jali, lahn_khafi');
             $table->enum('error_level', ['ringan', 'berat'])
-                  ->comment('Ringan=-1, Berat=-2 sesuai header Gambar 4');
+                ->comment('Ringan=-1, Berat=-2 sesuai header Gambar 4');
             $table->tinyInteger('error_count')->default(0);
             $table->decimal('deduction_per_error', 4, 2)->default(1.0)
-                  ->comment('1 untuk ringan, 2 untuk berat — sesuai bobot UTHQ');
+                ->comment('1 untuk ringan, 2 untuk berat — sesuai bobot UTHQ');
             $table->decimal('total_deduction', 5, 2)->default(0);
             $table->text('catatan')->nullable();
             $table->timestamps();

@@ -2,22 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentPipelineStage extends Model
 {
     use HasFactory, HasUuids;
 
     protected $table = 'recruitment_pipeline_stages';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
         'recruitment_pipeline_id', 'nama_tahapan', 'urutan', 'deskripsi',
         'durasi_hari', 'warna', 'icon', 'is_wajib', 'kriteria_kelulusan',
-        'form_penilaian', 'notification_template', 'email_template'
+        'form_penilaian', 'notification_template', 'email_template',
     ];
 
     protected $casts = [

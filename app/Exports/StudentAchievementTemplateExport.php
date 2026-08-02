@@ -12,7 +12,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class StudentAchievementTemplateExport
 {
     private string $typeLabel;
+
     private string $achievementType;
+
     private ?string $schoolId;
 
     public function __construct(string $typeLabel, string $achievementType, ?string $schoolId = null)
@@ -24,7 +26,7 @@ class StudentAchievementTemplateExport
 
     public function download(string $filename = 'template_import_prestasi.xlsx')
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         $ws = $spreadsheet->getActiveSheet();
         $ws->setTitle('IMPORT PRESTASI');
@@ -43,7 +45,7 @@ class StudentAchievementTemplateExport
 
         $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
         $tempPath = storage_path("app/templates/{$filename}");
-        if (!is_dir(dirname($tempPath))) {
+        if (! is_dir(dirname($tempPath))) {
             mkdir(dirname($tempPath), 0755, true);
         }
         $writer->save($tempPath);
@@ -55,14 +57,14 @@ class StudentAchievementTemplateExport
 
     private function buildTemplateSheet(Worksheet $ws): void
     {
-        $DARK  = '1E3A5F';
-        $MID   = '0590D6';
+        $DARK = '1E3A5F';
+        $MID = '0590D6';
         $LIGHT = 'DBEAFE';
         $LGRAY = 'F1F5F9';
         $MGRAY = 'E2E8F0';
         $DGRAY = '475569';
 
-        $cols = ['A','B','C','D','E','F','G','H'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
         $labels = [
             'NISN *',
@@ -76,18 +78,18 @@ class StudentAchievementTemplateExport
         ];
 
         $typeColor = match ($this->achievementType) {
-            'akademik'       => '0590D6',
-            'hafalan_quran'  => '065F46',
+            'akademik' => '0590D6',
+            'hafalan_quran' => '065F46',
             'hafalan_hadits' => '7C3AED',
-            default          => '0590D6',
+            default => '0590D6',
         };
 
         // Title
         $ws->mergeCells('A1:H1');
         $ws->setCellValue('A1', "TEMPLATE IMPORT — {$this->typeLabel}");
         $ws->getStyle('A1')->applyFromArray([
-            'font'  => ['bold' => true, 'size' => 14, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $typeColor]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$typeColor]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $ws->getRowDimension(1)->setRowHeight(32);
@@ -95,8 +97,8 @@ class StudentAchievementTemplateExport
         $ws->mergeCells('A2:H2');
         $ws->setCellValue('A2', 'Nama file gambar piagam: {NISN}.{ekstensi} — contoh: 0012345678.jpg. Ekstensi: .jpg, .jpeg, .png, .pdf');
         $ws->getStyle('A2')->applyFromArray([
-            'font'  => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF' . $DGRAY]],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $LIGHT]],
+            'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF'.$DGRAY]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$LIGHT]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
         $ws->getRowDimension(2)->setRowHeight(16);
@@ -104,14 +106,14 @@ class StudentAchievementTemplateExport
         // Header row
         $ws->getRowDimension(3)->setRowHeight(32);
         foreach ($cols as $i => $col) {
-            $ws->setCellValue($col . '3', $labels[$i]);
-            $ws->getStyle($col . '3')->applyFromArray([
-                'font'      => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $MID]],
+            $ws->setCellValue($col.'3', $labels[$i]);
+            $ws->getStyle($col.'3')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$MID]],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical'   => Alignment::VERTICAL_CENTER,
-                    'wrapText'   => true,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
                 ],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFD1D5DB']]],
             ]);
@@ -119,7 +121,7 @@ class StudentAchievementTemplateExport
 
         // Sample rows
         $samples = [
-            ['0012345678', 'Ahmad Fauzi', 'Olimpiade Matematika Tingkat Provinsi', 'Dinas Pendidikan Prov. Jawa Barat', 'provinsi', 'juara 1', '15/03/2024', ''],
+            ['0012345678', 'Fulan', 'Olimpiade Matematika Tingkat Provinsi', 'Dinas Pendidikan Prov. Jawa Barat', 'provinsi', 'juara 1', '15/03/2024', ''],
             ['0012345679', 'Siti Nurhaliza', 'Lomba Bahasa Inggris Nasional', 'Kemendikbudristek', 'nasional', 'juara 2', '20/05/2024', 'Jakarta'],
             ['0012345680', 'Budi Santoso', 'Lomba Cerdas Cermat', 'MTs Negeri 1', 'internal', 'peserta', '10/01/2024', 'Aula Madrasah'],
         ];
@@ -129,13 +131,13 @@ class StudentAchievementTemplateExport
             $bg = ($si % 2 === 0) ? $LGRAY : 'FFFFFF';
             $ws->getRowDimension($r)->setRowHeight(22);
             foreach ($cols as $ci => $col) {
-                $ws->setCellValue($col . $r, $row[$ci] ?? '');
-                $ws->getStyle($col . $r)->applyFromArray([
-                    'font'   => ['size' => 9],
-                    'fill'   => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $bg]],
+                $ws->setCellValue($col.$r, $row[$ci] ?? '');
+                $ws->getStyle($col.$r)->applyFromArray([
+                    'font' => ['size' => 9],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$bg]],
                     'alignment' => [
                         'horizontal' => $ci === 0 ? Alignment::HORIZONTAL_CENTER : Alignment::HORIZONTAL_LEFT,
-                        'vertical'   => Alignment::VERTICAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFD1D5DB']]],
                 ]);
@@ -147,16 +149,16 @@ class StudentAchievementTemplateExport
         $ws->mergeCells("A{$legendRow}:H{$legendRow}");
         $ws->setCellValue("A{$legendRow}", 'LEGENDA');
         $ws->getStyle("A{$legendRow}")->applyFromArray([
-            'font'  => ['bold' => true, 'size' => 9, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $DGRAY]],
+            'font' => ['bold' => true, 'size' => 9, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$DGRAY]],
         ]);
         $ws->getRowDimension($legendRow)->setRowHeight(16);
 
-        $ws->mergeCells("A9:H9");
+        $ws->mergeCells('A9:H9');
         $ws->setCellValue('A9', 'Tingkat: Internal | Kecamatan | Kabupaten/Kota | Provinsi | Nasional | Internasional     Peringkat: Juara 1 | Juara 2 | Juara 3 | Harapan 1 | Harapan 2 | Harapan 3 | Peserta | Lainnya');
         $ws->getStyle('A9')->applyFromArray([
-            'font'  => ['italic' => true, 'size' => 8, 'color' => ['argb' => 'FF' . $DGRAY]],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $MGRAY]],
+            'font' => ['italic' => true, 'size' => 8, 'color' => ['argb' => 'FF'.$DGRAY]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$MGRAY]],
         ]);
         $ws->getRowDimension(9)->setRowHeight(14);
 
@@ -169,7 +171,7 @@ class StudentAchievementTemplateExport
 
     private function buildGuideSheet(Worksheet $ws): void
     {
-        $MID   = '0590D6';
+        $MID = '0590D6';
         $DGRAY = '475569';
         $LGRAY = 'F1F5F9';
 
@@ -177,8 +179,8 @@ class StudentAchievementTemplateExport
         $ws->mergeCells('A1:E1');
         $ws->setCellValue('A1', 'PETUNJUK IMPORT DATA PRESTASI');
         $ws->getStyle('A1')->applyFromArray([
-            'font'  => ['bold' => true, 'size' => 13, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $MID]],
+            'font' => ['bold' => true, 'size' => 13, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$MID]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $ws->getRowDimension(1)->setRowHeight(28);
@@ -206,10 +208,10 @@ class StudentAchievementTemplateExport
         $ws->setCellValue('A2', 'Petunjuk');
         $ws->setCellValue('B2', 'Kolom');
         $ws->setCellValue('C2', 'Deskripsi');
-        foreach (['A','B','C'] as $col) {
-            $ws->getStyle($col . '2')->applyFromArray([
-                'font'  => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $MID]],
+        foreach (['A', 'B', 'C'] as $col) {
+            $ws->getStyle($col.'2')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$MID]],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
         }
@@ -219,18 +221,18 @@ class StudentAchievementTemplateExport
             $ws->getRowDimension($r)->setRowHeight(18);
             $isHeader = $row[0] === '';
             foreach ($row as $ci => $val) {
-                $col = ['A','B','C'][$ci];
-                $ws->setCellValue($col . $r, $val);
+                $col = ['A', 'B', 'C'][$ci];
+                $ws->setCellValue($col.$r, $val);
                 if ($i === 0) {
                     $ws->mergeCells("A{$r}:E{$r}");
                     $ws->getStyle("A{$r}")->applyFromArray([
-                        'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF' . $DGRAY]],
+                        'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF'.$DGRAY]],
                     ]);
                     $ws->getRowDimension($r)->setRowHeight(14);
                 } elseif ($row[0] !== '' && $ci === 0 && is_numeric($row[0])) {
                     $ws->getStyle("A{$r}")->applyFromArray([
-                        'font'  => ['bold' => true, 'size' => 9],
-                        'fill'  => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF' . $LGRAY]],
+                        'font' => ['bold' => true, 'size' => 9],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$LGRAY]],
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFD1D5DB']]],
                     ]);

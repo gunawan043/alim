@@ -5,7 +5,7 @@ return [
         'permission' => \App\Models\Permission::class,
         'role' => \App\Models\Role::class,
     ],
-    
+
     'guards' => [
         'web',
     ],

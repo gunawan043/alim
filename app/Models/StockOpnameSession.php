@@ -33,13 +33,19 @@ class StockOpnameSession extends Model
     ];
 
     public const STATUS_PLANNED = 'planned';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_CLOSED = 'closed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const OBSERVATION_FOUND = 'found';
+
     public const OBSERVATION_MISSING = 'missing';
+
     public const OBSERVATION_DAMAGED = 'damaged';
+
     public const OBSERVATION_MOVED = 'moved';
 
     public const TRANSITIONS = [

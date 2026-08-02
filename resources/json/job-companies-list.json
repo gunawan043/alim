@@ -1,4 +1,4 @@
-[   
+[
     {
         "id": 1,
         "companyLogo": "build/images/companies/img-3.png",
@@ -12,7 +12,8 @@
         "website": "www.martinsolution.com",
         "email": "info@martinsolution.com",
         "since": "1995"
-    },{
+    },
+    {
         "id": 2,
         "companyLogo": "build/images/companies/img-4.png",
         "companyName": "Syntyce Solutions",
@@ -25,20 +26,22 @@
         "website": "www.syntycesolution.com",
         "email": "info@syntycesolution.com",
         "since": "2001"
-    },{
+    },
+    {
         "id": 3,
         "companyLogo": "build/images/companies/img-1.png",
         "companyName": "Moetic Fashion",
         "industryType": "Textiles: Clothing, Footwear",
         "vacancy": "641",
-        "companyDesc":  "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim quia voluptas sit.",
+        "companyDesc": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accuSantrium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim quia voluptas sit.",
         "location": "Cullera, Spain",
         "employee": "900-950",
         "rating": "4.2",
         "website": "-",
         "email": "email@moeticfashion.com",
         "since": "2000"
-    },{
+    },
+    {
         "id": 4,
         "companyLogo": "build/images/companies/img-5.png",
         "companyName": "Meta4Systems",
@@ -51,7 +54,8 @@
         "website": "www.meta4systems.com",
         "email": "support@meta4systems.com",
         "since": "2019"
-    },{
+    },
+    {
         "id": 5,
         "companyLogo": "build/images/companies/img-1.png",
         "companyName": "Kent's",
@@ -64,7 +68,8 @@
         "website": "-",
         "email": "-",
         "since": "2018"
-    },{
+    },
+    {
         "id": 6,
         "companyLogo": "build/images/companies/img-7.png",
         "companyName": "Micro Design",
@@ -77,7 +82,8 @@
         "website": "www.microdesign.com",
         "email": "info@microdesign.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 7,
         "companyLogo": "build/images/companies/img-6.png",
         "companyName": "Zoetic Fashion",
@@ -90,7 +96,8 @@
         "website": "-",
         "email": "info@zoeticfashion.com",
         "since": "2018"
-    },{
+    },
+    {
         "id": 8,
         "companyLogo": "build/images/companies/img-8.png",
         "companyName": "Digitech Galaxy",
@@ -103,7 +110,8 @@
         "website": "-",
         "email": "-",
         "since": "2014"
-    },{
+    },
+    {
         "id": 9,
         "companyLogo": "build/images/companies/img-9.png",
         "companyName": "Erlebacher's",
@@ -116,7 +124,8 @@
         "website": "-",
         "email": "info@erlebacher.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 10,
         "companyLogo": "build/images/companies/img-5.png",
         "companyName": "iTest Factory",
@@ -129,7 +138,8 @@
         "website": "-",
         "email": "info@itest.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 11,
         "companyLogo": "build/images/companies/img-7.png",
         "companyName": "Zoetic Fashion",
@@ -142,7 +152,8 @@
         "website": "www.zoeticfashion.com",
         "email": "info@zoeticfashion.com",
         "since": "2015"
-    },{
+    },
+    {
         "id": 12,
         "companyLogo": "build/images/companies/img-3.png",
         "companyName": "Micro Design",
@@ -155,7 +166,8 @@
         "website": "www.microdesign.com",
         "email": "info@microdesign.com",
         "since": "2014"
-    },{
+    },
+    {
         "id": 13,
         "companyLogo": "build/images/companies/img-4.png",
         "companyName": "Syntyce Solutions",
@@ -168,7 +180,8 @@
         "website": "www.syntycesolutions.com",
         "email": "support@syntycesolutions.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 14,
         "companyLogo": "build/images/companies/img-1.png",
         "companyName": "Asiatic Solutions",
@@ -181,20 +194,22 @@
         "website": "www.asiaticsolution.com",
         "email": "info@asiaticsolution.com",
         "since": "2019"
-    },{
+    },
+    {
         "id": 15,
         "companyLogo": "build/images/companies/img-1.png",
         "companyName": "Great Clothes",
         "industryType": "Textiles: Clothing, Footwear",
         "vacancy": "60",
-        "companyDesc": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit.",
+        "companyDesc": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accuSantrium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit.",
         "location": "Phoenix, Arizona",
         "employee": "120-150",
         "rating": "4.0",
         "website": "-",
         "email": "-",
         "since": "2017"
-    },{
+    },
+    {
         "id": 16,
         "companyLogo": "build/images/companies/img-5.png",
         "companyName": "Kent's Solutions",
@@ -207,7 +222,8 @@
         "website": "www.kentssolution.com",
         "email": "info@kentssolution.com",
         "since": "2018"
-    },{
+    },
+    {
         "id": 17,
         "companyLogo": "build/images/companies/img-4.png",
         "companyName": "Syntyce Solutions",
@@ -220,7 +236,8 @@
         "website": "www.syntycesolutions.com",
         "email": "support@syntycesolutions.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 18,
         "companyLogo": "build/images/companies/img-4.png",
         "companyName": "Syntyce Solutions",
@@ -233,7 +250,8 @@
         "website": "www.syntycesolution.com",
         "email": "info@syntycesolution.com",
         "since": "2001"
-    },{
+    },
+    {
         "id": 19,
         "companyLogo": "build/images/companies/img-5.png",
         "companyName": "iTest Factory",
@@ -246,7 +264,8 @@
         "website": "-",
         "email": "info@itest.com",
         "since": "2016"
-    },{
+    },
+    {
         "id": 20,
         "companyLogo": "build/images/companies/img-6.png",
         "companyName": "Zoetic Fashion",

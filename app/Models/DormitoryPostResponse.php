@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class DormitoryPostResponse extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $table = 'dormitory_post_responses';
@@ -16,7 +17,7 @@ class DormitoryPostResponse extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -48,10 +49,10 @@ class DormitoryPostResponse extends Model
     public function getResponseTypeTextAttribute(): string
     {
         return match ($this->response_type) {
-            'ack'       => 'Konfirmasi',
-            'question'  => 'Pertanyaan',
+            'ack' => 'Konfirmasi',
+            'question' => 'Pertanyaan',
             'complaint' => 'Keluhan',
-            default     => ucfirst($this->response_type ?? ''),
+            default => ucfirst($this->response_type ?? ''),
         };
     }
 }

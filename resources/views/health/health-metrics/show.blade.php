@@ -54,7 +54,7 @@
 
                     <div class="table-responsive">
                         <table class="table table-sm table-borderless">
-                            <tr><td class="fw-semibold text-muted" style="width:180px">Nama Santi</td><td class="fw-semibold">{{ $metric->student?->name ?? '-' }}</td></tr>
+                            <tr><td class="fw-semibold text-muted" style="width:180px">Nama Santri</td><td class="fw-semibold">{{ $metric->student?->name ?? '-' }}</td></tr>
                             <tr><td class="fw-semibold text-muted">Tahun Ajaran</td><td>{{ $metric->academicYear?->name ?? '-' }}</td></tr>
                             <tr><td class="fw-semibold text-muted">Tanggal Ukur</td><td>{{ $metric->record_date?->format('d/m/Y') }}</td></tr>
                             <tr><td class="fw-semibold text-muted">Sesi</td><td>{{ $metric->measurement_session ? ucfirst(str_replace('_',' ',$metric->measurement_session)) : '-' }}</td></tr>

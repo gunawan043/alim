@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
-use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -24,15 +23,15 @@ class DormitoryReturnCalendarController extends Controller
         $stats = [
             'total' => $permits->count(),
             'on_time' => $permits->where('status', 'returned')->filter(
-                fn($p) => $p->actual_return_datetime && $p->actual_return_datetime <= $p->expected_return_datetime
+                fn ($p) => $p->actual_return_datetime && $p->actual_return_datetime <= $p->expected_return_datetime
             )->count(),
             'overdue' => $permits->where('status', 'overdue')->count(),
             'pending' => $permits->where('status', 'approved')->filter(
-                fn($p) => $p->expected_return_datetime->isPast()
+                fn ($p) => $p->expected_return_datetime->isPast()
             )->count(),
         ];
 
-        $grouped = $permits->groupBy(fn($p) => $p->expected_return_datetime->format('Y-m-d'));
+        $grouped = $permits->groupBy(fn ($p) => $p->expected_return_datetime->format('Y-m-d'));
 
         $dormitories = Dormitory::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
@@ -50,6 +49,7 @@ class DormitoryReturnCalendarController extends Controller
     {
         $permit = DormitoryPermit::with(['student', 'dormitory', 'room'])
             ->findOrFail($id);
+
         return view('dormitory.calendars.return-detail', compact('permit'));
     }
 
@@ -78,6 +78,7 @@ class DormitoryReturnCalendarController extends Controller
         $end = $request->query('end')
             ? Carbon::parse($request->query('end'))->endOfDay()
             : now()->endOfMonth()->addDays(14);
+
         return [$start, $end];
     }
 }

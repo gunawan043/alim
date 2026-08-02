@@ -24,12 +24,12 @@ class DormitoryVisitCalendarController extends Controller
             'total' => $visits->count(),
             'arrived' => $visits->whereIn('status', ['arrived', 'checked_out'])->count(),
             'upcoming' => $visits->where('status', 'approved')
-                ->filter(fn($v) => $v->expected_arrival_datetime->isFuture())
+                ->filter(fn ($v) => $v->expected_arrival_datetime->isFuture())
                 ->count(),
             'no_show' => $visits->where('status', 'no_show')->count(),
         ];
 
-        $grouped = $visits->groupBy(fn($v) => $v->expected_arrival_datetime->format('Y-m-d'));
+        $grouped = $visits->groupBy(fn ($v) => $v->expected_arrival_datetime->format('Y-m-d'));
 
         $dormitories = Dormitory::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
@@ -46,6 +46,7 @@ class DormitoryVisitCalendarController extends Controller
     public function show(string $id): View
     {
         $visit = DormitoryVisitLog::with(['student', 'dormitory', 'room'])->findOrFail($id);
+
         return view('dormitory.calendars.visit-detail', compact('visit'));
     }
 
@@ -56,6 +57,7 @@ class DormitoryVisitCalendarController extends Controller
             'check_in_at' => now(),
             'status' => 'arrived',
         ]);
+
         return back()->with('success', 'Check-in berhasil.');
     }
 
@@ -67,6 +69,7 @@ class DormitoryVisitCalendarController extends Controller
             'departure_datetime' => now(),
             'status' => 'checked_out',
         ]);
+
         return back()->with('success', 'Check-out berhasil.');
     }
 
@@ -78,6 +81,7 @@ class DormitoryVisitCalendarController extends Controller
         $end = $request->query('end')
             ? Carbon::parse($request->query('end'))->endOfDay()
             : now()->endOfWeek()->addDays(7);
+
         return [$start, $end];
     }
 }

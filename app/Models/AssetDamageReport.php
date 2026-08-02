@@ -31,11 +31,12 @@ class AssetDamageReport extends Model
     ];
 
     const STATUS_OPTIONS = ['pending', 'reviewed', 'scheduled', 'in_progress', 'completed', 'rejected'];
+
     const DAMAGE_LEVEL_OPTIONS = ['ringan', 'sedang', 'berat'];
 
     public static function generateReportNumber(): string
     {
-        return 'DMR-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+        return 'DMR-'.date('Ymd').'-'.strtoupper(Str::random(5));
     }
 
     public function asset(): BelongsTo

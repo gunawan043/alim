@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('dormitory_wings', function (Blueprint $table) {
@@ -20,15 +21,15 @@ return new class extends Migration {
             $table->tinyInteger('is_active')->default(1);
             $table->text('notes')->nullable();
             $table->timestamps();
- 
+
             $table->foreign('dormitory_id')->references('id')->on('dormitories')->cascadeOnDelete();
             $table->foreign('supervisor_id')->references('id')->on('users')->nullOnDelete();
- 
+
             $table->unique(['dormitory_id', 'code'], 'unique_wing_code_per_dormitory');
             $table->index('dormitory_id');
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('dormitory_wings');

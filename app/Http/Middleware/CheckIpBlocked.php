@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\FailedLoginAttempt;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\FailedLoginAttempt;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckIpBlocked
@@ -28,6 +28,7 @@ class CheckIpBlocked
         // IP hard-locked (attempt 9)
         if ($block && $block->isLockedByIp()) {
             $seconds = now()->diffInSeconds($block->locked_until, false);
+
             return redirect()
                 ->route('login')
                 ->withErrors(['ip_blocked' => "IP diblokir sementara. Silakan coba lagi setelah {$block->locked_until->diffForHumans()}."])
@@ -39,6 +40,7 @@ class CheckIpBlocked
             $cooldown = $block->last_attempt_at->addSeconds(self::IP_COOLDOWN_SECONDS);
             if ($cooldown->isFuture()) {
                 $seconds = now()->diffInSeconds($cooldown, false);
+
                 return redirect()
                     ->route('login')
                     ->withErrors(['cooldown' => "Terlalu banyak percobaan. Silakan tunggu {$seconds} detik sebelum mencoba lagi."])

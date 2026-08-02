@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,9 +14,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
+            SystemSuperAdminSeeder::class,  // permanent system admin — runs AFTER roles/permissions so it can be assigned the Super Admin role
             PermissionRoleSeeder::class,  // assign permissions to roles
             UserSeeder::class,
-            SidebarMenuSeeder::class,
             JenisGtkSeeder::class,
             WilayahSeeder::class,         // provinces/cities/districts/villages FK target
             SchoolSeeder::class,
@@ -31,8 +30,11 @@ class DatabaseSeeder extends Seeder
             DormitorySeeder::class,         // sample dormitories, wings, rooms, users
             DormitoryDataSeeder::class,     // penghuni, absensi, izin, pelanggaran, mutasi, inventaris
             DormitoryPostSeeder::class,     // informasi, kunjungan, template kegiatan, broadcast
+            PermitTypeSeeder::class,        // master jenis izin (pulang, sakit, dll.)
             DivisiSeeder::class,            // master divisi untuk dokumen ISO
             DokumenIsoSeeder::class,        // data dokumen ISO (~300 dokumen)
+            UksWorkUnitSeeder::class,       // UKS Putra & UKS Putri satker units
+            UksRolePermissionSeeder::class, // UKS Spatie roles + permissions
         ]);
     }
 }

@@ -1,12 +1,12 @@
 {{-- ============================================================
-  Email: Notifikasi wali bahwa Santi berhasil terhubung
+  Email: Notifikasi wali bahwa Santri berhasil terhubung
   ============================================================ --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Berhasil Terhubung dengan Santi</title>
+  <title>Berhasil Terhubung dengan Santri</title>
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fb; margin: 0; padding: 20px; }
     .container { max-width: 560px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
@@ -27,7 +27,7 @@
   <div class="container">
     <div class="header">
       <h1>Terhubung dengan {{ $studentName }}</h1>
-      <p>ALIM PUSTIK — Portal Wali Santri</p>
+      <p>ALIM Alim — Portal Wali Santri</p>
     </div>
 
     <div class="body">
@@ -54,7 +54,7 @@
     </div>
 
     <div class="footer">
-      &copy; {{ date('Y') }} ALIM PUSTIK — email ini dikirim otomatis, mohon nicht dibalas.
+      &copy; {{ date('Y') }} ALIM Alim — email ini dikirim otomatis, mohon nicht dibalas.
     </div>
   </div>
 </body>

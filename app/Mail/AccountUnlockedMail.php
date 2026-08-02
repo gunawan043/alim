@@ -10,6 +10,7 @@ class AccountUnlockedMail extends Mailable
     use SerializesModels;
 
     public string $userName;
+
     public string $email;
 
     public function __construct(string $userName, string $email)

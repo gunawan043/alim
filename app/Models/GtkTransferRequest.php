@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GtkTransferRequest extends Model
@@ -13,7 +14,9 @@ class GtkTransferRequest extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -127,24 +130,83 @@ class GtkTransferRequest extends Model
     public function scopeByWorkUnit($query, $workUnitId)
     {
         return $query->where('from_work_unit_id', $workUnitId)
-                    ->orWhere('to_work_unit_id', $workUnitId);
+            ->orWhere('to_work_unit_id', $workUnitId);
     }
 
     // STATUS MANAGEMENT
     public function approve($approverId, $note = null)
     {
-        $this->status = 'APPROVED';
-        $this->approved_by = $approverId;
-        $this->approved_at = now();
-        $this->approval_note = $note;
-        $this->save();
+        DB::transaction(function () use ($approverId, $note) {
+            $this->status = 'APPROVED';
+            $this->approved_by = $approverId;
+            $this->approved_at = now();
+            $this->approval_note = $note;
+            $this->save();
 
-        // Log the approval
-        AuditLog::create([
-            'user_id' => $approverId,
-            'action' => 'TRANSFER_REQUEST_APPROVED',
-            'table_name' => 'gtk_transfer_requests',
-            'record_id' => $this->id,
+            $this->applyTransferToUser($approverId);
+
+            AuditLog::create([
+                'user_id' => $approverId,
+                'action' => 'TRANSFER_REQUEST_APPROVED',
+                'table_name' => 'gtk_transfer_requests',
+                'record_id' => $this->id,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        });
+    }
+
+    /**
+     * Cascade the approved transfer into gtk_work_unit and history.
+     * Switches the GTK's primary work_unit assignment to to_work_unit_id
+     * and records the move in gtk_work_unit_histories.
+     */
+    protected function applyTransferToUser(string $approverId): void
+    {
+        if (empty($this->to_work_unit_id)) {
+            return;
+        }
+
+        $userId = $this->user_id;
+
+        $currentPrimary = GtkWorkUnit::where('user_id', $userId)
+            ->where('is_primary', true)
+            ->first();
+
+        $fromWorkUnitId = $currentPrimary?->work_unit_id ?: $this->from_work_unit_id;
+
+        // If GTK already has an assignment at the destination unit, just promote it
+        // to primary (and demote the existing primary). Otherwise create a new record.
+        $destination = GtkWorkUnit::where('user_id', $userId)
+            ->where('work_unit_id', $this->to_work_unit_id)
+            ->first();
+
+        if ($destination) {
+            $destination->is_primary = true;
+            $destination->jabatan = $this->jabatan ?: $destination->jabatan;
+            $destination->save();
+        } else {
+            GtkWorkUnit::create([
+                'user_id' => $userId,
+                'work_unit_id' => $this->to_work_unit_id,
+                'jabatan' => $this->jabatan,
+                'is_primary' => true,
+            ]);
+        }
+
+        if ($currentPrimary && $currentPrimary->work_unit_id !== $this->to_work_unit_id) {
+            $currentPrimary->is_primary = false;
+            $currentPrimary->save();
+        }
+
+        GtkWorkUnitHistory::create([
+            'user_id' => $userId,
+            'from_work_unit_id' => $fromWorkUnitId,
+            'to_work_unit_id' => $this->to_work_unit_id,
+            'jabatan' => $this->jabatan,
+            'action' => 'TRANSFER',
+            'reason' => $this->reason,
+            'performed_by' => $approverId,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);

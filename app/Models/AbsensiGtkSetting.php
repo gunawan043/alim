@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class AbsensiGtkSetting extends Model
 {
     use HasUuids;
+
     protected $table = 'absensi_gtk_settings';
 
     protected $fillable = ['key', 'value', 'type', 'description'];
@@ -18,6 +19,7 @@ class AbsensiGtkSetting extends Model
         if (! $row) {
             return $default;
         }
+
         return match ($row->type) {
             'int', 'integer' => (int) $row->value,
             'bool', 'boolean' => (bool) $row->value,

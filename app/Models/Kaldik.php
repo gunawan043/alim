@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class Kaldik extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'kaldik';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -42,10 +45,13 @@ class Kaldik extends Model
     ];
 
     const CATEGORY_KALDIK = 'kaldik';
+
     const CATEGORY_AGENDA = 'agenda';
 
     const TYPE_TAHUNAN = 'tahunan';
+
     const TYPE_MID_SEMESTER = 'mid_semester';
+
     const TYPE_LAINNYA = 'lainnya';
 
     const CATEGORY_OPTIONS = [
@@ -107,6 +113,7 @@ class Kaldik extends Model
         if ($workUnitId) {
             return $query->where('work_unit_id', $workUnitId);
         }
+
         return $query;
     }
 
@@ -115,6 +122,7 @@ class Kaldik extends Model
         if ($academicYearId) {
             return $query->where('academic_year_id', $academicYearId);
         }
+
         return $query;
     }
 
@@ -122,7 +130,7 @@ class Kaldik extends Model
     protected function name(): \Illuminate\Database\Eloquent\Casts\Attribute
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(
-            get: fn(string $value) => $value,
+            get: fn (string $value) => $value,
         );
     }
 }

@@ -18,21 +18,21 @@ class DokumenIsoSeeder extends Seeder
             $divisiId = $this->findDivisiId($doc['kode_dokumen'], $divisiMap);
 
             DB::table('dokumen_iso')->insert([
-                'id'                  => Str::uuid()->toString(),
-                'nama_dokumen'        => $doc['nama_dokumen'],
-                'prosedur_konsultan'  => null,
-                'pasal'               => null,
-                'kode_dokumen'        => $doc['kode_dokumen'],
-                'tanggal_berlaku'     => $doc['tanggal_berlaku'],
-                'revisi_ke'           => $doc['revisi_ke'],
-                'keterangan'          => null,
-                'kategori'            => $doc['kategori'],
-                'link_dokumen'        => null,
-                'divisi_id'           => $divisiId,
-                'is_active'           => 1,
-                'sort_order'          => $idx,
-                'created_at'          => now(),
-                'updated_at'          => now(),
+                'id' => Str::uuid()->toString(),
+                'nama_dokumen' => $doc['nama_dokumen'],
+                'prosedur_konsultan' => null,
+                'pasal' => null,
+                'kode_dokumen' => $doc['kode_dokumen'],
+                'tanggal_berlaku' => $doc['tanggal_berlaku'],
+                'revisi_ke' => $doc['revisi_ke'],
+                'keterangan' => null,
+                'kategori' => $doc['kategori'],
+                'link_dokumen' => null,
+                'divisi_id' => $divisiId,
+                'is_active' => 1,
+                'sort_order' => $idx,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
             $inserted++;
         }
@@ -48,6 +48,7 @@ class DokumenIsoSeeder extends Seeder
         foreach ($divisis as $d) {
             $map[$d->kode] = $d;
         }
+
         return $map;
     }
 
@@ -55,26 +56,26 @@ class DokumenIsoSeeder extends Seeder
     {
         $patterns = [
             'PAH-MANUAL MUTU' => 'PAH-MR',
-            'PAH-MR-PROS'     => 'PAH-MR',
-            'PAH-MR-FORM'     => 'PAH-MR',
-            'PAH-MR-'        => 'PAH-MR',
-            'PAH-MDR-'       => 'PAH-MDR',
-            'PAH-WADIR AK-'  => 'PAH-WADIR AK',
-            'PAH-WADIR PU-'  => 'PAH-WADIR PU',
-            'PAH-KSP-'       => 'PAH-KSP',
-            'PAH-KP-'        => 'PAH-KP',
-            'PAH-DEPT-TAH-'  => 'PAH-TAH',
-            'PAH-DEPT-BHS-'  => 'PAH-BHS',
-            'PAH-PERPUS-'    => 'PAH-PERPUS',
-            'PAH-LAB-'       => 'PAH-LAB',
-            'PAH-KUPT-'      => 'PAH-KUPT',
-            'PAH-SATPAM-'    => 'PAH-SATPAM',
-            'PAH-UGL-'       => 'PAH-UGL',
-            'PAH-KOOR-KE-'   => 'PAH-KOOR-KE',
-            'PAH-TIJ-'       => 'PAH-TIJ',
-            'PAH-KEU-'       => 'PAH-KEU',
-            'PAH-HUMAS-'     => 'PAH-HUMAS',
-            'PAH-HKS-'       => 'PAH-HUMAS',
+            'PAH-MR-PROS' => 'PAH-MR',
+            'PAH-MR-FORM' => 'PAH-MR',
+            'PAH-MR-' => 'PAH-MR',
+            'PAH-MDR-' => 'PAH-MDR',
+            'PAH-WADIR AK-' => 'PAH-WADIR AK',
+            'PAH-WADIR PU-' => 'PAH-WADIR PU',
+            'PAH-KSP-' => 'PAH-KSP',
+            'PAH-KP-' => 'PAH-KP',
+            'PAH-DEPT-TAH-' => 'PAH-TAH',
+            'PAH-DEPT-BHS-' => 'PAH-BHS',
+            'PAH-PERPUS-' => 'PAH-PERPUS',
+            'PAH-LAB-' => 'PAH-LAB',
+            'PAH-KUPT-' => 'PAH-KUPT',
+            'PAH-SATPAM-' => 'PAH-SATPAM',
+            'PAH-UGL-' => 'PAH-UGL',
+            'PAH-KOOR-KE-' => 'PAH-KOOR-KE',
+            'PAH-TIJ-' => 'PAH-TIJ',
+            'PAH-KEU-' => 'PAH-KEU',
+            'PAH-HUMAS-' => 'PAH-HUMAS',
+            'PAH-HKS-' => 'PAH-HUMAS',
         ];
 
         foreach ($patterns as $prefix => $divisiKode) {
@@ -113,6 +114,7 @@ class DokumenIsoSeeder extends Seeder
         $year = $parts[2] ?? date('Y');
 
         $month = $bulan[$monthName] ?? '01';
+
         return sprintf('%04d-%02d-%02d', $year, $month, $day);
     }
 

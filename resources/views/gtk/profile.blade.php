@@ -213,13 +213,21 @@
     <!-- Header Profile -->
     <div class="profile-foreground position-relative mx-n4 mt-n4">
         <div class="profile-wid-bg">
-            <img src="{{ URL::asset('build/images/auth-one-bg.jpg') }}" alt="Background Profile" class="profile-wid-img" />
+            <img src="{{ URL::asset('build/images/alim-one-bg.png') }}" alt="Background Profile" class="profile-wid-img" />
             <div class="overlay-content position-absolute bottom-0 start-0 p-4 text-white">
                 <h4 class="mb-1">{{ $gtk->name }}</h4>
                 <p class="mb-0 opacity-75">
                     {{ $gtk->employment?->jabatan ?? 'GTK' }}
                     @if ($gtk->employment?->workUnit) • {{ $gtk->employment->workUnit->name }} @endif
                 </p>
+                @php $gtkRoles = $gtk->getRoleNames(); @endphp
+                @if($gtkRoles->count())
+                    <div class="mt-2">
+                        @foreach($gtkRoles as $roleName)
+                            <span class="badge bg-light text-dark me-1">{{ $roleName }}</span>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -308,6 +316,11 @@
                             <li class="nav-item">
                                 <a class="nav-link fs-14" data-bs-toggle="tab" href="#keluarga" role="tab">
                                     <i class="ri-group-line me-1"></i> Keluarga
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fs-14" data-bs-toggle="tab" href="#data-kesehatan" role="tab">
+                                    <i class="ri-heart-pulse-line me-1"></i> Data Kesehatan
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -604,8 +617,8 @@
                                         <div class="row">
                                             <div class="col-lg-8">
                                                 <div class="row">
-                                                    <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">Jenis GTK</label><div class="detail-value"><span class="badge bg-info-subtle text-info"><i class="ri-user-line me-1"></i>{{ $gtk->employment->jenis_gtk ?? '-' }}</span></div></div></div>
-                                                    <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">Jabatan</label><div class="detail-value"><strong>{{ $gtk->employment->jabatan ?? '-' }}</strong></div></div></div>
+                                                    <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">Jenis GTK</label><div class="detail-value"><span class="badge bg-info-subtle text-info"><i class="ri-user-line me-1"></i>{{ $gtk->employment->jenisGtk?->nama ?? $gtk->employment->jenis_gtk ?? '-' }}</span></div></div></div>
+                                                    <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">Jabatan</label><div class="detail-value"><strong>{{ $gtk->employment->jabatanRel?->nama ?? $gtk->employment->jabatan ?? '-' }}</strong></div></div></div>
                                                     <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">Status Kepegawaian</label><div class="detail-value"><span class="badge bg-warning-subtle text-warning">{{ $gtk->employment->status_kepegawaian ?? '-' }}</span></div></div></div>
                                                     <div class="col-md-6"><div class="mb-4"><label class="form-label detail-label">NUPY</label><div class="detail-value"><code>{{ $gtk->employment->nupy ?? '-' }}</code></div></div></div>
                                                     <div class="col-md-6">
@@ -1075,6 +1088,24 @@
                         {{-- ============================================================
                              TAB 5: DOKUMEN
                         ============================================================ --}}
+                        <!-- Data Kesehatan Tab -->
+                        <div class="tab-pane fade" id="data-kesehatan" role="tabpanel">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <h5 class="card-title mb-0 d-flex align-items-center">
+                                            <i class="ri-heart-pulse-line text-danger me-2"></i>Data Kesehatan GTK
+                                        </h5>
+                                        <button type="button" class="btn btn-primary btn-sm" id="btnEditKesehatan" onclick="toggleHealthDataForm()">
+                                            <i class="ri-edit-line me-1"></i> Edit Data
+                                        </button>
+                                    </div>
+
+                                
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="tab-pane fade" id="dokumen" role="tabpanel">
                             <div class="card">
                                 <div class="card-body">
@@ -1517,6 +1548,81 @@
                     Swal.fire({ icon: 'error', title: 'Gagal', html: xhr.responseJSON?.message || 'Gagal menghapus data' });
                 }
             });
+        });
+    }
+
+    /* ==========================================================================
+       DATA KESEHATAN GTK
+       ========================================================================== */
+    let isHealthEditMode = false;
+
+    function toggleHealthDataForm() {
+        const display = document.getElementById('healthDataDisplay');
+        const form = document.getElementById('healthDataForm');
+
+        if (!isHealthEditMode) {
+            // Switch to edit mode — prefill form from display data
+            display.classList.add('d-none');
+            form.classList.remove('d-none');
+            document.getElementById('btnEditKesehatan').classList.add('d-none');
+            isHealthEditMode = true;
+        } else {
+            // Back to display mode
+            display.classList.remove('d-none');
+            form.classList.add('d-none');
+            document.getElementById('btnEditKesehatan').classList.remove('d-none');
+            isHealthEditMode = false;
+        }
+    }
+
+    function saveHealthData(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('healthDataFormElement');
+        const formData = new FormData(form);
+        const saveBtn = document.getElementById('btnSaveHealth');
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...';
+
+        // Determine method and URL
+        var healthUrl = '{!! route("user.gtk.health-data.store", ["userId" => $userId, "uuid" => $gtk->id]) !!}';
+        var method = 'POST';
+
+        $.ajax({
+            url: healthUrl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: response.message || 'Data kesehatan berhasil disimpan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    // Reload page to reflect changes
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: response.message || 'Gagal menyimpan data kesehatan' });
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="ri-save-line me-1"></i> Simpan Data';
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON?.message || 'Terjadi kesalahan saat menyimpan data kesehatan.';
+                Swal.fire({ icon: 'error', title: 'Gagal', html: msg });
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="ri-save-line me-1"></i> Simpan Data';
+            }
         });
     }
     </script>

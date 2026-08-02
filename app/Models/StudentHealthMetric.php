@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class StudentHealthMetric extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -76,7 +77,7 @@ class StudentHealthMetric extends Model
             $bmi < 18.5 => 'kurang',
             $bmi < 25.0 => 'normal',
             $bmi < 27.0 => 'lebih',
-            default     => 'gemuk',
+            default => 'gemuk',
         };
     }
 
@@ -86,11 +87,11 @@ class StudentHealthMetric extends Model
     {
         return match ($this->bmi_category) {
             'sangat_kurang' => 'Sangat Kurang',
-            'kurang'        => 'Kurang',
-            'normal'        => 'Normal',
-            'lebih'         => 'Lebih',
-            'gemuk'         => 'Gemuk',
-            default         => '-',
+            'kurang' => 'Kurang',
+            'normal' => 'Normal',
+            'lebih' => 'Lebih',
+            'gemuk' => 'Gemuk',
+            default => '-',
         };
     }
 

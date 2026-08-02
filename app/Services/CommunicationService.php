@@ -6,7 +6,6 @@ use App\Models\AuditTrail;
 use App\Models\Notification;
 use App\Models\VendorCommunication;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
 
 class CommunicationService
 {

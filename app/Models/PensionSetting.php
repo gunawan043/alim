@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class PensionSetting extends Model
 {
@@ -12,6 +11,7 @@ class PensionSetting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         $row = static::where('setting_key', $key)->first();
+
         return $row ? $row->setting_value : $default;
     }
 

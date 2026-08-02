@@ -21,7 +21,7 @@ class PengasuhDashboardController extends Controller
         $today = Carbon::today();
 
         $activeAsrama = Dormitory::where('is_active', true)->get();
-        $totalSantri = Student::whereNotNull('dormitory_id')->where('status', 'aktif')->count();
+        $totalSantri = Student::whereHas('activeDormitoryResident')->where('status', 'active')->count();
 
         $permitPending = DormitoryPermit::where('status', 'pending')->count();
         $permitsToday = DormitoryPermit::whereDate('departure_date', $today->toDateString())->count();

@@ -23,8 +23,8 @@ class CutiBalance extends Model
 
     protected $casts = [
         'jumlah_hari' => 'integer',
-        'digunakan'   => 'integer',
-        'tersisa'     => 'integer',
+        'digunakan' => 'integer',
+        'tersisa' => 'integer',
     ];
 
     public function user()

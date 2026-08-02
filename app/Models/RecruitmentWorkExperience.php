@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentWorkExperience extends Model
 {
     use HasFactory, HasUuids;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -20,7 +21,7 @@ class RecruitmentWorkExperience extends Model
         'jobdesc', 'kompetensi_utama', 'pencapaian', 'gaji_terakhir',
         'gaji_periode', 'nama_atasan', 'kontak_atasan', 'email_atasan',
         'sertifikat_kerja_path', 'referensi_path', 'paklaring_path',
-        'alasan_keluar', 'alasan_keluar_lainnya'
+        'alasan_keluar', 'alasan_keluar_lainnya',
     ];
 
     protected $casts = [

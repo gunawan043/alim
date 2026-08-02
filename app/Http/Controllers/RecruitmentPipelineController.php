@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RecruitmentPipeline;
-use App\Models\RecruitmentJob;
 use App\Models\RecruitmentApplication;
-use App\Models\RecruitmentPipelineStage;
 use App\Models\RecruitmentApplicationStage;
+use App\Models\RecruitmentJob;
+use App\Models\RecruitmentPipeline;
+use App\Models\RecruitmentPipelineStage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,7 +19,7 @@ class RecruitmentPipelineController extends Controller
     {
         $job = RecruitmentJob::with(['pipeline.stages', 'applications'])->findOrFail($jobId);
         $pipeline = $job->pipeline;
-        
+
         // Get applications grouped by stage
         $applicationsByStage = [];
         foreach ($pipeline->stages as $stage) {
@@ -28,10 +28,10 @@ class RecruitmentPipelineController extends Controller
                 'applications' => RecruitmentApplication::where('recruitment_job_id', $jobId)
                     ->where('current_stage_id', $stage->id)
                     ->with('recruitmentProfile.user')
-                    ->get()
+                    ->get(),
             ];
         }
-        
+
         return view('recruitment.pipeline.index', compact('job', 'pipeline', 'applicationsByStage'));
     }
 
@@ -42,21 +42,21 @@ class RecruitmentPipelineController extends Controller
     {
         $userId = request()->route('userId');
         $job = RecruitmentJob::with(['pipeline.stages'])->findOrFail($jobId);
-        
+
         // Get all applications with their stages
         $applications = RecruitmentApplication::where('recruitment_job_id', $jobId)
             ->with(['recruitmentProfile.user', 'currentStage'])
             ->get();
-        
+
         // Organize by stage for kanban board
         $boardData = [];
         foreach ($job->pipeline->stages->sortBy('urutan') as $stage) {
             $boardData[$stage->id] = [
                 'stage' => $stage,
-                'applications' => $applications->where('current_stage_id', $stage->id)
+                'applications' => $applications->where('current_stage_id', $stage->id),
             ];
         }
-        
+
         return view('recruitment.pipeline.board', compact('job', 'boardData', 'userId'));
     }
 
@@ -67,41 +67,41 @@ class RecruitmentPipelineController extends Controller
     {
         $application = RecruitmentApplication::findOrFail($applicationId);
         $currentStage = $application->currentStage;
-        
-        if (!$currentStage) {
+
+        if (! $currentStage) {
             return response()->json(['error' => 'No current stage found'], 400);
         }
-        
+
         // Get next stage
         $nextStage = RecruitmentPipelineStage::where('recruitment_pipeline_id', $currentStage->recruitment_pipeline_id)
             ->where('urutan', '>', $currentStage->urutan)
             ->orderBy('urutan')
             ->first();
-        
-        if (!$nextStage) {
+
+        if (! $nextStage) {
             // This is the final stage
             $application->update([
                 'status' => 'selesai',
-                'selesai_at' => now()
+                'selesai_at' => now(),
             ]);
         } else {
             // Move to next stage
             $application->update([
                 'current_stage_id' => $nextStage->id,
-                'status' => 'dalam_proses'
+                'status' => 'dalam_proses',
             ]);
-            
+
             // Create stage record
             $application->stages()->create([
                 'recruitment_pipeline_stage_id' => $nextStage->id,
                 'status' => 'menunggu',
-                'urutan' => $nextStage->urutan
+                'urutan' => $nextStage->urutan,
             ]);
         }
-        
+
         // Log activity
         $this->logPipelineActivity($application, $currentStage, $nextStage);
-        
+
         return response()->json(['success' => true, 'next_stage' => $nextStage]);
     }
 
@@ -111,7 +111,7 @@ class RecruitmentPipelineController extends Controller
     public function moveToStage(Request $request, string $userId, $applicationId)
     {
         $request->validate([
-            'stage_id' => 'required|exists:recruitment_pipeline_stages,id'
+            'stage_id' => 'required|exists:recruitment_pipeline_stages,id',
         ]);
 
         $application = RecruitmentApplication::findOrFail($applicationId);
@@ -120,13 +120,13 @@ class RecruitmentPipelineController extends Controller
 
         $application->update([
             'current_stage_id' => $request->stage_id,
-            'status' => 'dalam_proses'
+            'status' => 'dalam_proses',
         ]);
 
         $application->stages()->create([
             'recruitment_pipeline_stage_id' => $request->stage_id,
             'status' => 'menunggu',
-            'urutan' => $targetStage->urutan
+            'urutan' => $targetStage->urutan,
         ]);
 
         $this->logPipelineActivity($application, $currentStage, $targetStage);
@@ -143,25 +143,25 @@ class RecruitmentPipelineController extends Controller
             'nama_tahapan' => 'required|array',
             'nama_tahapan.*' => 'required|string',
             'durasi' => 'array',
-            'durasi.*' => 'nullable|integer|min:1'
+            'durasi.*' => 'nullable|integer|min:1',
         ]);
 
         $job = RecruitmentJob::findOrFail($jobId);
-        
+
         // Delete existing pipeline if any
         if ($job->pipeline) {
             $job->pipeline->stages()->delete();
             $job->pipeline->delete();
         }
-        
+
         // Create new pipeline
         $pipeline = RecruitmentPipeline::create([
             'recruitment_job_id' => $jobId,
-            'nama_tahapan' => 'Pipeline ' . $job->judul,
+            'nama_tahapan' => 'Pipeline '.$job->judul,
             'is_active' => true,
-            'created_by' => Auth::id()
+            'created_by' => Auth::id(),
         ]);
-        
+
         // Create stages
         foreach ($request->nama_tahapan as $index => $nama) {
             RecruitmentPipelineStage::create([
@@ -170,10 +170,10 @@ class RecruitmentPipelineController extends Controller
                 'urutan' => $index + 1,
                 'durasi_hari' => $request->durasi[$index] ?? 1,
                 'is_wajib' => true,
-                'warna' => $this->getStageColor($index)
+                'warna' => $this->getStageColor($index),
             ]);
         }
-        
+
         $userId = request()->route('userId');
 
         return redirect()->route('user.ats.pipeline.index', ['userId' => $userId, 'jobId' => $jobId])
@@ -186,30 +186,30 @@ class RecruitmentPipelineController extends Controller
     public function getStatistics(string $userId, $jobId)
     {
         $job = RecruitmentJob::with('pipeline.stages')->findOrFail($jobId);
-        
+
         $stats = [
             'total_applications' => RecruitmentApplication::where('recruitment_job_id', $jobId)->count(),
             'applications_by_stage' => [],
             'average_time_per_stage' => [],
-            'conversion_rate' => []
+            'conversion_rate' => [],
         ];
-        
+
         foreach ($job->pipeline->stages as $stage) {
             $count = RecruitmentApplication::where('recruitment_job_id', $jobId)
                 ->where('current_stage_id', $stage->id)
                 ->count();
-            
+
             $stats['applications_by_stage'][$stage->nama_tahapan] = $count;
-            
+
             // Calculate average time in this stage
             $avgTime = $this->calculateAverageStageTime($stage->id);
             $stats['average_time_per_stage'][$stage->nama_tahapan] = $avgTime;
-            
+
             // Calculate conversion rate to next stage
             $conversion = $this->calculateConversionRate($stage->id);
             $stats['conversion_rate'][$stage->nama_tahapan] = $conversion;
         }
-        
+
         return response()->json($stats);
     }
 
@@ -221,15 +221,15 @@ class RecruitmentPipelineController extends Controller
         $stages = RecruitmentApplicationStage::where('recruitment_pipeline_stage_id', $stageId)
             ->whereNotNull('selesai_at')
             ->get();
-        
+
         if ($stages->isEmpty()) {
             return 0;
         }
-        
+
         $totalDays = $stages->sum(function ($stage) {
             return $stage->created_at->diffInDays($stage->selesai_at);
         });
-        
+
         return round($totalDays / $stages->count());
     }
 
@@ -239,27 +239,27 @@ class RecruitmentPipelineController extends Controller
     private function calculateConversionRate($stageId)
     {
         $stage = RecruitmentPipelineStage::find($stageId);
-        if (!$stage) {
+        if (! $stage) {
             return 0;
         }
-        
+
         $totalInStage = RecruitmentApplication::where('current_stage_id', $stageId)->count();
-        
+
         $nextStage = RecruitmentPipelineStage::where('recruitment_pipeline_id', $stage->recruitment_pipeline_id)
             ->where('urutan', '>', $stage->urutan)
             ->first();
-        
-        if (!$nextStage) {
+
+        if (! $nextStage) {
             // Final stage - calculate acceptance rate
             $accepted = RecruitmentApplication::where('recruitment_job_id', $stage->recruitmentPipeline->recruitment_job_id)
                 ->where('status', 'diterima')
                 ->count();
-            
+
             return $totalInStage > 0 ? round(($accepted / $totalInStage) * 100) : 0;
         }
-        
+
         $movedToNext = RecruitmentApplication::where('current_stage_id', $nextStage->id)->count();
-        
+
         return $totalInStage > 0 ? round(($movedToNext / $totalInStage) * 100) : 0;
     }
 
@@ -276,9 +276,9 @@ class RecruitmentPipelineController extends Controller
             '#ED8936', // orange
             '#F56565', // red
             '#667EEA', // indigo
-            '#38B2AC'  // teal
+            '#38B2AC',  // teal
         ];
-        
+
         return $colors[$index % count($colors)];
     }
 
@@ -294,7 +294,7 @@ class RecruitmentPipelineController extends Controller
                 'from_stage' => $fromStage ? $fromStage->nama_tahapan : null,
                 'to_stage' => $toStage ? $toStage->nama_tahapan : 'Selesai',
                 'application_id' => $application->id,
-                'job_id' => $application->recruitment_job_id
+                'job_id' => $application->recruitment_job_id,
             ])
             ->log('Application moved in pipeline');
     }

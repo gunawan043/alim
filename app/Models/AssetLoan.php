@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Traits\LogsDeletion;
 
 class AssetLoan extends Model
 {
@@ -13,14 +13,17 @@ class AssetLoan extends Model
     use LogsDeletion;
 
     protected $table = 'asset_loans';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [

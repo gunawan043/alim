@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminCatatanGuru;
 use App\Models\AdminJurnalPembelajaran;
-use App\Models\AdminPresensiHarian;
 use App\Models\AdminPresensiMapel;
 use App\Models\AdminPresensiSiswa;
 use App\Models\NilaiFormatif;
@@ -15,7 +14,6 @@ use App\Models\TeacherAdminBook;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class NilaiGuruController extends Controller
 {
@@ -29,13 +27,13 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok'
+            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok',
         ]);
 
         // Daftar mapel yang diampu guru ini
         $baseQuery = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$isPrivileged, fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester');
 
@@ -43,7 +41,7 @@ class NilaiGuruController extends Controller
 
         $subjects = (clone $baseQuery)
             ->pluck('subject_id')->unique()
-            ->map(fn($id) => \App\Models\Subject::find($id))
+            ->map(fn ($id) => \App\Models\Subject::find($id))
             ->filter()->sortBy('name')->values();
 
         return view('nilai-guru.index', compact(
@@ -60,9 +58,9 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         // Auto-redirect to first book if no valid book selected
-        if ($adminBookId === 'none' || !is_string($adminBookId)) {
+        if ($adminBookId === 'none' || ! is_string($adminBookId)) {
             $firstBook = TeacherAdminBook::with(['subject', 'studyGroup'])
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('teacher_id', $userId)
                 ->where('is_active', true)
                 ->orderBy('semester')->first();
@@ -91,8 +89,8 @@ class NilaiGuruController extends Controller
 
         // Admin book selector (untuk switch mapel/kelas)
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -135,27 +133,27 @@ class NilaiGuruController extends Controller
         $recapPerMonth = AdminPresensiMapel::where('admin_book_id', $book['adminBook']->id)
             ->with(['presensiSiswa'])
             ->get()
-            ->groupBy(fn($m) => \Carbon\Carbon::parse($m->attendance_date)->format('Y-m'))
-            ->map(fn($group, $key) => [
+            ->groupBy(fn ($m) => \Carbon\Carbon::parse($m->attendance_date)->format('Y-m'))
+            ->map(fn ($group, $key) => [
                 'month' => $key,
-                'label' => \Carbon\Carbon::parse($key . '-01')->translatedFormat('F Y'),
+                'label' => \Carbon\Carbon::parse($key.'-01')->translatedFormat('F Y'),
                 'total_meetings' => $group->count(),
-                'hadir' => $group->flatMap(fn($m) => $m->presensiSiswa)->where('status', 'hadir')->count(),
-                'izin'  => $group->flatMap(fn($m) => $m->presensiSiswa)->where('status', 'izin')->count(),
-                'sakit' => $group->flatMap(fn($m) => $m->presensiSiswa)->where('status', 'sakit')->count(),
-                'alpa'  => $group->flatMap(fn($m) => $m->presensiSiswa)->where('status', 'alpa')->count(),
+                'hadir' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'hadir')->count(),
+                'izin' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'izin')->count(),
+                'sakit' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'sakit')->count(),
+                'alpa' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'alpa')->count(),
             ])
             ->sortByDesc('month')
             ->values();
 
         // ── Rekap per siswa per bulan (untuk tab rekap bulanan) ──────────────
         $rekapSelectedMonth = null;
-        $rekapStudentData   = collect();
+        $rekapStudentData = collect();
 
         $rekapMonth = $request->input('rekap_month', $recapPerMonth->first()['month'] ?? null);
 
         if ($rekapMonth) {
-            $rekapMonthObj = \Carbon\Carbon::parse($rekapMonth . '-01');
+            $rekapMonthObj = \Carbon\Carbon::parse($rekapMonth.'-01');
 
             // Semua meeting di bulan tsb, diurutkan berdasarkan tanggal
             $rekapMeetings = AdminPresensiMapel::where('admin_book_id', $book['adminBook']->id)
@@ -174,28 +172,36 @@ class NilaiGuruController extends Controller
             }
 
             // Bangun data per siswa
-            $rekapStudentData = $students->map(function ($s) use ($rekapMeetings, $statusMap, $rekapMonthObj) {
-                $hadir = 0; $izin = 0; $sakit = 0; $alpa = 0;
+            $rekapStudentData = $students->map(function ($s) use ($rekapMeetings, $statusMap) {
+                $hadir = 0;
+                $izin = 0;
+                $sakit = 0;
+                $alpa = 0;
                 $perMeeting = [];
 
                 foreach ($rekapMeetings as $meeting) {
                     $st = $statusMap[$meeting->id][$s->student_id] ?? null;
                     $short = match ($st) {
                         'hadir' => 'H',
-                        'izin'  => 'I',
+                        'izin' => 'I',
                         'sakit' => 'S',
-                        'alpa'  => 'A',
+                        'alpa' => 'A',
                         default => '–',
                     };
                     $perMeeting[] = [
-                        'label'  => 'P-' . $meeting->attendance_date->format('d'),
+                        'label' => 'P-'.$meeting->attendance_date->format('d'),
                         'status' => $short,
-                        'raw'    => $st,
+                        'raw' => $st,
                     ];
-                    if ($st === 'hadir') $hadir++;
-                    elseif ($st === 'izin')  $izin++;
-                    elseif ($st === 'sakit') $sakit++;
-                    elseif ($st === 'alpa')  $alpa++;
+                    if ($st === 'hadir') {
+                        $hadir++;
+                    } elseif ($st === 'izin') {
+                        $izin++;
+                    } elseif ($st === 'sakit') {
+                        $sakit++;
+                    } elseif ($st === 'alpa') {
+                        $alpa++;
+                    }
                 }
 
                 $totalMeetings = $rekapMeetings->count();
@@ -204,14 +210,14 @@ class NilaiGuruController extends Controller
                     : 0;
 
                 return (object) [
-                    'student'         => $s->student,
+                    'student' => $s->student,
                     'attendance_number' => $s->attendance_number,
-                    'per_meeting'     => $perMeeting,
-                    'total_meetings'  => $totalMeetings,
-                    'hadir'  => $hadir,
-                    'izin'   => $izin,
-                    'sakit'  => $sakit,
-                    'alpa'   => $alpa,
+                    'per_meeting' => $perMeeting,
+                    'total_meetings' => $totalMeetings,
+                    'hadir' => $hadir,
+                    'izin' => $izin,
+                    'sakit' => $sakit,
+                    'alpa' => $alpa,
                     'kehadiran' => $kehadiran,
                 ];
             });
@@ -244,13 +250,13 @@ class NilaiGuruController extends Controller
             // Create/update presensi_mapel (meeting header)
             $presensiMapel = AdminPresensiMapel::updateOrCreate(
                 [
-                    'admin_book_id'    => $book['adminBook']->id,
-                    'attendance_date'  => $request->attendance_date,
-                    'semester'         => $semester,
+                    'admin_book_id' => $book['adminBook']->id,
+                    'attendance_date' => $request->attendance_date,
+                    'semester' => $semester,
                 ],
                 [
                     'academic_year_id' => $book['adminBook']->academic_year_id,
-                    'status'           => 'hadir',
+                    'status' => 'hadir',
                 ]
             );
 
@@ -259,11 +265,11 @@ class NilaiGuruController extends Controller
                 AdminPresensiSiswa::updateOrCreate(
                     [
                         'presensi_mapel_id' => $presensiMapel->id,
-                        'student_id'       => $studentId,
+                        'student_id' => $studentId,
                     ],
                     [
                         'status' => $status,
-                        'notes'  => $request->notes[$studentId] ?? null,
+                        'notes' => $request->notes[$studentId] ?? null,
                     ]
                 );
             }
@@ -283,8 +289,8 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -299,23 +305,23 @@ class NilaiGuruController extends Controller
     {
         $request->validate([
             'meeting_number' => 'required|integer|min:1',
-            'meeting_date'   => 'required|date',
+            'meeting_date' => 'required|date',
         ]);
 
         $book = $this->loadAdminBook($userId, $adminBookId);
 
         AdminJurnalPembelajaran::updateOrCreate(
             [
-                'admin_book_id'  => $book['adminBook']->id,
+                'admin_book_id' => $book['adminBook']->id,
                 'meeting_number' => (int) $request->meeting_number,
-                'semester'       => $book['adminBook']->semester,
+                'semester' => $book['adminBook']->semester,
             ],
             [
                 'academic_year_id' => $book['adminBook']->academic_year_id,
-                'meeting_date'     => $request->meeting_date,
-                'time_in'          => $request->time_in ?? null,
-                'time_out'         => $request->time_out ?? null,
-                'material'         => $request->material ?? null,
+                'meeting_date' => $request->meeting_date,
+                'time_in' => $request->time_in ?? null,
+                'time_out' => $request->time_out ?? null,
+                'material' => $request->material ?? null,
             ]
         );
 
@@ -332,8 +338,8 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -356,7 +362,7 @@ class NilaiGuruController extends Controller
         $book = $this->loadAdminBook($userId, $adminBookId);
 
         $request->validate([
-            'sumatif'   => 'required|array',
+            'sumatif' => 'required|array',
             'sumatif.*.s1' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s2' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s3' => 'nullable|numeric|min:0|max:100',
@@ -368,15 +374,15 @@ class NilaiGuruController extends Controller
             'sumatif.*.raport_sts' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $wRs  = (float) ($book['adminBook']->nr_final_weight_rs  ?? 50.0);
+        $wRs = (float) ($book['adminBook']->nr_final_weight_rs ?? 50.0);
         $wSts = (float) ($book['adminBook']->nr_final_weight_sts ?? 25.0);
         $wSas = (float) ($book['adminBook']->nr_final_weight_sas ?? 25.0);
 
         foreach ($request->sumatif as $studentId => $data) {
-            $rs    = NilaiSumatif::calcRs($data);
+            $rs = NilaiSumatif::calcRs($data);
             $raportSts = $data['raport_sts'] !== '' && is_numeric($data['raport_sts'])
                 ? (float) $data['raport_sts'] : null;
-            $rsa   = NilaiSumatif::calcRsa(
+            $rsa = NilaiSumatif::calcRsa(
                 $data['sts'] !== '' && is_numeric($data['sts']) ? (float) $data['sts'] : null,
                 $data['sas'] !== '' && is_numeric($data['sas']) ? (float) $data['sas'] : null,
                 $raportSts
@@ -393,25 +399,25 @@ class NilaiGuruController extends Controller
             NilaiSumatif::updateOrCreate(
                 [
                     'admin_book_id' => $book['adminBook']->id,
-                    'student_id'   => $studentId,
-                    'semester'     => $book['adminBook']->semester,
+                    'student_id' => $studentId,
+                    'semester' => $book['adminBook']->semester,
                 ],
                 [
                     'academic_year_id' => $book['adminBook']->academic_year_id,
-                    's1'  => $data['s1'] ?? null,
-                    's2'  => $data['s2'] ?? null,
-                    's3'  => $data['s3'] ?? null,
-                    's4'  => $data['s4'] ?? null,
-                    's5'  => $data['s5'] ?? null,
-                    's6'  => $data['s6'] ?? null,
-                    'rs'  => $rs,
+                    's1' => $data['s1'] ?? null,
+                    's2' => $data['s2'] ?? null,
+                    's3' => $data['s3'] ?? null,
+                    's4' => $data['s4'] ?? null,
+                    's5' => $data['s5'] ?? null,
+                    's6' => $data['s6'] ?? null,
+                    'rs' => $rs,
                     'sts' => $data['sts'] !== '' && is_numeric($data['sts']) ? (float) $data['sts'] : null,
                     'raport_sts' => $raportSts,
                     'sas' => $data['sas'] !== '' && is_numeric($data['sas']) ? (float) $data['sas'] : null,
                     'rsa' => $rsa,
                     'nr_murni' => $nrMurni,
                     'nr_final' => $nrFinal,
-                    'ket'      => $data['ket'] ?? null,
+                    'ket' => $data['ket'] ?? null,
                 ]
             );
         }
@@ -424,7 +430,7 @@ class NilaiGuruController extends Controller
         $book = $this->loadAdminBook($userId, $adminBookId);
 
         $validated = $request->validate([
-            'nr_final_weight_rs'  => 'required|numeric|min:0|max:100',
+            'nr_final_weight_rs' => 'required|numeric|min:0|max:100',
             'nr_final_weight_sts' => 'required|numeric|min:0|max:100',
             'nr_final_weight_sas' => 'required|numeric|min:0|max:100',
         ]);
@@ -438,7 +444,7 @@ class NilaiGuruController extends Controller
         }
 
         $book['adminBook']->update([
-            'nr_final_weight_rs'  => (float) $validated['nr_final_weight_rs'],
+            'nr_final_weight_rs' => (float) $validated['nr_final_weight_rs'],
             'nr_final_weight_sts' => (float) $validated['nr_final_weight_sts'],
             'nr_final_weight_sas' => (float) $validated['nr_final_weight_sas'],
         ]);
@@ -456,7 +462,7 @@ class NilaiGuruController extends Controller
         return response()->json([
             'success' => true,
             'weights' => [
-                'rs'  => $validated['nr_final_weight_rs'],
+                'rs' => $validated['nr_final_weight_rs'],
                 'sts' => $validated['nr_final_weight_sts'],
                 'sas' => $validated['nr_final_weight_sas'],
             ],
@@ -474,8 +480,8 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -498,17 +504,17 @@ class NilaiGuruController extends Controller
         $book = $this->loadAdminBook($userId, $adminBookId);
 
         $request->validate([
-            'formatif'   => 'required|array',
-            'formatif.*.skor_lkpd'        => 'nullable|numeric|min:0|max:100',
-            'formatif.*.skor_diskusi'      => 'nullable|numeric|min:0|max:100',
-            'formatif.*.skor_kuis'         => 'nullable|numeric|min:0|max:100',
-            'formatif.*.skor_antarteman'   => 'nullable|numeric|min:0|max:100',
+            'formatif' => 'required|array',
+            'formatif.*.skor_lkpd' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.skor_diskusi' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.skor_kuis' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.skor_antarteman' => 'nullable|numeric|min:0|max:100',
         ]);
 
         foreach ($request->formatif as $studentId => $data) {
-            $scores = collect(['skor_lkpd','skor_diskusi','skor_kuis','skor_antarteman'])
-                ->map(fn($k) => $data[$k] ?? null)
-                ->filter(fn($v) => is_numeric($v))
+            $scores = collect(['skor_lkpd', 'skor_diskusi', 'skor_kuis', 'skor_antarteman'])
+                ->map(fn ($k) => $data[$k] ?? null)
+                ->filter(fn ($v) => is_numeric($v))
                 ->values()
                 ->toArray();
             $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
@@ -516,17 +522,17 @@ class NilaiGuruController extends Controller
             NilaiFormatif::updateOrCreate(
                 [
                     'admin_book_id' => $book['adminBook']->id,
-                    'student_id'   => $studentId,
-                    'semester'     => $book['adminBook']->semester,
+                    'student_id' => $studentId,
+                    'semester' => $book['adminBook']->semester,
                 ],
                 [
-                    'academic_year_id'  => $book['adminBook']->academic_year_id,
-                    'skor_lkpd'      => $data['skor_lkpd'] ?? null,
-                    'skor_diskusi'   => $data['skor_diskusi'] ?? null,
-                    'skor_kuis'      => $data['skor_kuis'] ?? null,
+                    'academic_year_id' => $book['adminBook']->academic_year_id,
+                    'skor_lkpd' => $data['skor_lkpd'] ?? null,
+                    'skor_diskusi' => $data['skor_diskusi'] ?? null,
+                    'skor_kuis' => $data['skor_kuis'] ?? null,
                     'skor_antarteman' => $data['skor_antarteman'] ?? null,
-                    'nr_final'       => $nrFinal,
-                    'ket'            => $data['ket'] ?? null,
+                    'nr_final' => $nrFinal,
+                    'ket' => $data['ket'] ?? null,
                 ]
             );
         }
@@ -544,8 +550,8 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -569,18 +575,18 @@ class NilaiGuruController extends Controller
 
         $request->validate([
             'penghargaan' => 'required|array',
-            'penghargaan.*.jujur'     => 'nullable|integer|min:0|max:100',
-            'penghargaan.*.disiplin'  => 'nullable|integer|min:0|max:100',
-            'penghargaan.*.peduli'    => 'nullable|integer|min:0|max:100',
-            'penghargaan.*.adab'      => 'nullable|integer|min:0|max:100',
+            'penghargaan.*.jujur' => 'nullable|integer|min:0|max:100',
+            'penghargaan.*.disiplin' => 'nullable|integer|min:0|max:100',
+            'penghargaan.*.peduli' => 'nullable|integer|min:0|max:100',
+            'penghargaan.*.adab' => 'nullable|integer|min:0|max:100',
             'penghargaan.*.kehadiran' => 'nullable|integer|min:0|max:100',
-            'penghargaan.*.keaktifan'  => 'nullable|integer|min:0|max:100',
+            'penghargaan.*.keaktifan' => 'nullable|integer|min:0|max:100',
         ]);
 
         foreach ($request->penghargaan as $studentId => $data) {
-            $scores = collect(['jujur','disiplin','peduli','adab','kehadiran','keaktifan'])
-                ->map(fn($k) => $data[$k] ?? null)
-                ->filter(fn($v) => is_numeric($v))
+            $scores = collect(['jujur', 'disiplin', 'peduli', 'adab', 'kehadiran', 'keaktifan'])
+                ->map(fn ($k) => $data[$k] ?? null)
+                ->filter(fn ($v) => is_numeric($v))
                 ->values()
                 ->toArray();
             $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
@@ -588,19 +594,19 @@ class NilaiGuruController extends Controller
             PenghargaanAkademik::updateOrCreate(
                 [
                     'admin_book_id' => $book['adminBook']->id,
-                    'student_id'   => $studentId,
-                    'semester'     => $book['adminBook']->semester,
+                    'student_id' => $studentId,
+                    'semester' => $book['adminBook']->semester,
                 ],
                 [
                     'academic_year_id' => $book['adminBook']->academic_year_id,
-                    'jujur'     => $data['jujur'] ?? null,
-                    'disiplin'  => $data['disiplin'] ?? null,
-                    'peduli'    => $data['peduli'] ?? null,
-                    'adab'      => $data['adab'] ?? null,
+                    'jujur' => $data['jujur'] ?? null,
+                    'disiplin' => $data['disiplin'] ?? null,
+                    'peduli' => $data['peduli'] ?? null,
+                    'adab' => $data['adab'] ?? null,
                     'kehadiran' => $data['kehadiran'] ?? null,
                     'keaktifan' => $data['keaktifan'] ?? null,
-                    'nr_final'  => $nrFinal,
-                    'ket'       => $data['ket'] ?? null,
+                    'nr_final' => $nrFinal,
+                    'ket' => $data['ket'] ?? null,
                 ]
             );
         }
@@ -618,8 +624,8 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$book['isPrivileged'], fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -644,13 +650,13 @@ class NilaiGuruController extends Controller
         AdminCatatanGuru::updateOrCreate(
             [
                 'admin_book_id' => $book['adminBook']->id,
-                'semester'      => $book['adminBook']->semester,
-                'note_date'     => $request->note_date,
+                'semester' => $book['adminBook']->semester,
+                'note_date' => $request->note_date,
             ],
             [
                 'academic_year_id' => $book['adminBook']->academic_year_id,
-                'student_note'     => $request->student_note ?? null,
-                'learning_note'    => $request->learning_note ?? null,
+                'student_note' => $request->student_note ?? null,
+                'learning_note' => $request->learning_note ?? null,
             ]
         );
 
@@ -676,27 +682,29 @@ class NilaiGuruController extends Controller
         switch ($request->input('type')) {
             case 'sumatif':
                 // Bobot NR Final dari admin_book (default: RS=50, STS=25, SAS=25)
-                $wRs  = (float) ($book['adminBook']->nr_final_weight_rs  ?? 50.0);
+                $wRs = (float) ($book['adminBook']->nr_final_weight_rs ?? 50.0);
                 $wSts = (float) ($book['adminBook']->nr_final_weight_sts ?? 25.0);
                 $wSas = (float) ($book['adminBook']->nr_final_weight_sas ?? 25.0);
 
                 $savedRows = [];
 
                 foreach ($data['sumatif'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
-                    if (!$hasAny) continue;
+                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                    if (! $hasAny) {
+                        continue;
+                    }
 
                     // RS = rata-rata S1-S6
-                    $shFilled = collect(['s1','s2','s3','s4','s5','s6'])
-                        ->map(fn($k) => $flds[$k] ?? null)
-                        ->filter(fn($v) => is_numeric($v))
+                    $shFilled = collect(['s1', 's2', 's3', 's4', 's5', 's6'])
+                        ->map(fn ($k) => $flds[$k] ?? null)
+                        ->filter(fn ($v) => is_numeric($v))
                         ->values()
                         ->toArray();
-                    $rs  = count($shFilled) > 0 ? round(array_sum($shFilled) / count($shFilled), 2) : null;
+                    $rs = count($shFilled) > 0 ? round(array_sum($shFilled) / count($shFilled), 2) : null;
 
-                    $stsVal       = is_numeric($flds['sts'] ?? null)         ? (float) $flds['sts']         : null;
-                    $sasVal       = is_numeric($flds['sas'] ?? null)         ? (float) $flds['sas']         : null;
-                    $raportStsVal = is_numeric($flds['raport_sts'] ?? null)   ? (float) $flds['raport_sts']  : null;
+                    $stsVal = is_numeric($flds['sts'] ?? null) ? (float) $flds['sts'] : null;
+                    $sasVal = is_numeric($flds['sas'] ?? null) ? (float) $flds['sas'] : null;
+                    $raportStsVal = is_numeric($flds['raport_sts'] ?? null) ? (float) $flds['raport_sts'] : null;
 
                     // RSA = (raport_sts|sts + SAS) / 2
                     $rsa = NilaiSumatif::calcRsa($stsVal, $sasVal, $raportStsVal);
@@ -730,6 +738,7 @@ class NilaiGuruController extends Controller
                 if (empty($savedRows)) {
                     return response()->json(['saved' => true, 'skipped' => true]);
                 }
+
                 return response()->json([
                     'saved' => true,
                     'saved_rows' => $savedRows,
@@ -738,13 +747,15 @@ class NilaiGuruController extends Controller
             case 'formatif':
                 $savedRows = [];
                 foreach ($data['formatif'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
-                    if (!$hasAny) continue;
+                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                    if (! $hasAny) {
+                        continue;
+                    }
 
                     // NR Final = rata-rata skor yang terisi
-                    $scores = collect(['skor_lkpd','skor_diskusi','skor_kuis','skor_antarteman'])
-                        ->map(fn($k) => $flds[$k] ?? null)
-                        ->filter(fn($v) => is_numeric($v))
+                    $scores = collect(['skor_lkpd', 'skor_diskusi', 'skor_kuis', 'skor_antarteman'])
+                        ->map(fn ($k) => $flds[$k] ?? null)
+                        ->filter(fn ($v) => is_numeric($v))
                         ->values()
                         ->toArray();
                     $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
@@ -766,18 +777,21 @@ class NilaiGuruController extends Controller
                 if (empty($savedRows)) {
                     return response()->json(['saved' => true, 'skipped' => true]);
                 }
+
                 return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
 
             case 'penghargaan':
                 $savedRows = [];
                 foreach ($data['penghargaan'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
-                    if (!$hasAny) continue;
+                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                    if (! $hasAny) {
+                        continue;
+                    }
 
                     // NR Final = rata-rata komponen yang terisi
-                    $scores = collect(['jujur','disiplin','peduli','adab','kehadiran','keaktifan'])
-                        ->map(fn($k) => $flds[$k] ?? null)
-                        ->filter(fn($v) => is_numeric($v))
+                    $scores = collect(['jujur', 'disiplin', 'peduli', 'adab', 'kehadiran', 'keaktifan'])
+                        ->map(fn ($k) => $flds[$k] ?? null)
+                        ->filter(fn ($v) => is_numeric($v))
                         ->values()
                         ->toArray();
                     $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
@@ -786,14 +800,14 @@ class NilaiGuruController extends Controller
                         ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
                         [
                             'academic_year_id' => $academicYearId,
-                            'jujur'     => $flds['jujur'] ?? null,
-                            'disiplin'  => $flds['disiplin'] ?? null,
-                            'peduli'    => $flds['peduli'] ?? null,
-                            'adab'      => $flds['adab'] ?? null,
+                            'jujur' => $flds['jujur'] ?? null,
+                            'disiplin' => $flds['disiplin'] ?? null,
+                            'peduli' => $flds['peduli'] ?? null,
+                            'adab' => $flds['adab'] ?? null,
                             'kehadiran' => $flds['kehadiran'] ?? null,
                             'keaktifan' => $flds['keaktifan'] ?? null,
-                            'nr_final'  => $nrFinal,
-                            'ket'       => $flds['ket'] ?? null,
+                            'nr_final' => $nrFinal,
+                            'ket' => $flds['ket'] ?? null,
                         ]
                     );
                     $savedRows[] = ['student_id' => $sid, 'nr_final' => $nrFinal];
@@ -801,6 +815,7 @@ class NilaiGuruController extends Controller
                 if (empty($savedRows)) {
                     return response()->json(['saved' => true, 'skipped' => true]);
                 }
+
                 return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
 
             default:
@@ -818,22 +833,22 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok'
+            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok',
         ]);
 
         // Cast integer adminBookId
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
 
         $adminBook = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel', 'academicYear', 'teacher'])
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->when(!$isPrivileged, fn($q) => $q->where('teacher_id', $userId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
             ->where('id', $bookId)
             ->firstOrFail();
 
         return [
-            'adminBook'    => $adminBook,
+            'adminBook' => $adminBook,
             'isPrivileged' => $isPrivileged,
-            'userId'       => $userId,
+            'userId' => $userId,
         ];
     }
 }

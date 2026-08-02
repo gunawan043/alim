@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_immunizations', function (Blueprint $table) {
@@ -26,11 +27,11 @@ return new class extends Migration {
             $table->string('vaccine_name')->nullable();
             $table->date('date_given');
             $table->integer('age_at_vaccination_days')->nullable()
-                  ->comment('Umur saat vaksin dalam hari');
+                ->comment('Umur saat vaksin dalam hari');
             $table->string('place', 191)->nullable();
             $table->string('batch_number', 50)->nullable();
             $table->text('side_effects')->nullable()
-                  ->comment('Efek samping yang muncul');
+                ->comment('Efek samping yang muncul');
             $table->string('medical_staff', 191)->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

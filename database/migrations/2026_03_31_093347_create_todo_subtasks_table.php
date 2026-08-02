@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('todo_subtasks', function (Blueprint $table) {
@@ -16,16 +17,16 @@ return new class extends Migration {
             $table->uuid('completed_by')->nullable();
             $table->integer('sort_order')->default(0);
             $table->timestamps();
- 
+
             $table->foreign('todo_id')
-                  ->references('id')->on('todos')->cascadeOnDelete();
+                ->references('id')->on('todos')->cascadeOnDelete();
             $table->foreign('completed_by')
-                  ->references('id')->on('users')->nullOnDelete();
- 
+                ->references('id')->on('users')->nullOnDelete();
+
             $table->index(['todo_id', 'is_completed', 'sort_order']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('todo_subtasks');

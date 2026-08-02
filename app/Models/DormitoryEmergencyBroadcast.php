@@ -2,24 +2,25 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class DormitoryEmergencyBroadcast extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -35,7 +36,7 @@ class DormitoryEmergencyBroadcast extends Model
 
     protected $casts = [
         'ack_required' => 'boolean',
-        'expires_at'   => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────
@@ -55,22 +56,22 @@ class DormitoryEmergencyBroadcast extends Model
     public function getSeverityTextAttribute(): string
     {
         return match ($this->severity) {
-            'info'       => 'Info',
-            'warning'    => 'Peringatan',
-            'urgent'     => 'Urgent',
-            'emergency'  => 'Darurat',
-            default      => ucfirst($this->severity ?? ''),
+            'info' => 'Info',
+            'warning' => 'Peringatan',
+            'urgent' => 'Urgent',
+            'emergency' => 'Darurat',
+            default => ucfirst($this->severity ?? ''),
         };
     }
 
     public function getSeverityColorAttribute(): string
     {
         return match ($this->severity) {
-            'info'       => 'secondary',
-            'warning'    => 'warning',
-            'urgent'     => 'danger',
-            'emergency'  => 'dark',
-            default      => 'secondary',
+            'info' => 'secondary',
+            'warning' => 'warning',
+            'urgent' => 'danger',
+            'emergency' => 'dark',
+            default => 'secondary',
         };
     }
 

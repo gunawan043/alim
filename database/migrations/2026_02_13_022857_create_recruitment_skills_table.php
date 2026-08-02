@@ -11,30 +11,30 @@ return new class extends Migration
         Schema::create('recruitment_skills', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('recruitment_profile_id')->constrained()->cascadeOnDelete();
-            
+
             // Kategori Skill
             $table->enum('kategori', [
-                'teknis', 'non_teknis', 'bahasa', 'sertifikasi', 'lainnya'
+                'teknis', 'non_teknis', 'bahasa', 'sertifikasi', 'lainnya',
             ]);
-            
+
             $table->string('nama_skill');
             $table->string('level', 50)->nullable(); // Pemula, Menengah, Ahli, dll
             $table->integer('tahun_pengalaman')->nullable();
             $table->enum('sumber', [
-                'pendidikan', 'kursus', 'otodidak', 'pengalaman_kerja', 'sertifikasi'
+                'pendidikan', 'kursus', 'otodidak', 'pengalaman_kerja', 'sertifikasi',
             ])->nullable();
-            
+
             // Untuk Skill Bahasa
             $table->enum('kemampuan_lisan', ['pasif', 'aktif', 'native'])->nullable();
             $table->enum('kemampuan_menulis', ['pasif', 'aktif', 'native'])->nullable();
-            
+
             // Sertifikasi terkait skill
             $table->string('sertifikasi_path')->nullable();
             $table->date('tanggal_sertifikasi')->nullable();
             $table->date('berlaku_sampai')->nullable();
-            
+
             $table->timestamps();
-            
+
             // Indexes
             $table->index('kategori');
             $table->index('nama_skill');

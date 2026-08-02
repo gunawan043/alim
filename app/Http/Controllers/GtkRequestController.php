@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
+use App\Models\GtkProfile;
 use App\Models\GtkRequest;
 use App\Models\GtkRequestItem;
 use App\Models\WorkUnit;
-use App\Models\AcademicYear;
-use App\Models\GtkProfile;
-use App\Models\User;
-use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,7 +20,7 @@ class GtkRequestController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('workUnit', fn($q) => $q->where('name', 'like', "%{$search}%"));
+            $query->whereHas('workUnit', fn ($q) => $q->where('name', 'like', "%{$search}%"));
         }
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -32,6 +30,7 @@ class GtkRequestController extends Controller
         }
 
         $requests = $query->paginate(15)->withQueryString();
+
         return view('gtk-requests.index', compact('requests', 'userId'));
     }
 
@@ -51,9 +50,9 @@ class GtkRequestController extends Controller
         $type = $request->type;
 
         $baseRules = [
-            'work_unit_id'  => 'required|exists:work_units,id',
-            'type'          => 'required|in:procurement,trial,status_increase',
-            'status'        => 'in:draft,submitted',
+            'work_unit_id' => 'required|exists:work_units,id',
+            'type' => 'required|in:procurement,trial,status_increase',
+            'status' => 'in:draft,submitted',
         ];
 
         if ($type === GtkRequest::TYPE_PROCUREMENT) {
@@ -61,8 +60,8 @@ class GtkRequestController extends Controller
             $baseRules['notes'] = 'nullable|string';
         }
         if ($type === GtkRequest::TYPE_TRIAL) {
-            $baseRules['letter_number']    = 'nullable|string|max:100';
-            $baseRules['letter_subject']  = 'nullable|string|max:255';
+            $baseRules['letter_number'] = 'nullable|string|max:100';
+            $baseRules['letter_subject'] = 'nullable|string|max:255';
             $baseRules['letter_attachment'] = 'nullable|string|max:100';
             $baseRules['established_city'] = 'nullable|string|max:100';
             $baseRules['established_date'] = 'nullable|date';
@@ -73,7 +72,7 @@ class GtkRequestController extends Controller
         $gtkRequest = GtkRequest::create([
             ...$validated,
             'requested_by' => Auth::id(),
-            'status'      => 'draft',
+            'status' => 'draft',
         ]);
 
         // Save items based on type
@@ -87,6 +86,7 @@ class GtkRequestController extends Controller
     {
         $userId = $request->route('userId');
         $gtkRequest = GtkRequest::with(['workUnit', 'academicYear', 'requestedBy', 'items'])->findOrFail($requestUuid);
+
         return view('gtk-requests.show', compact('gtkRequest', 'userId'));
     }
 
@@ -95,6 +95,7 @@ class GtkRequestController extends Controller
         $gtkRequest = GtkRequest::with('items')->findOrFail($id);
         $gtkRequest->status = 'submitted';
         $gtkRequest->save();
+
         return back()->with('success', 'Request GTK berhasil diajukan.');
     }
 
@@ -118,9 +119,9 @@ class GtkRequestController extends Controller
         $type = $request->input('type');
 
         $baseRules = [
-            'work_unit_id'  => 'required|exists:work_units,id',
-            'type'          => 'required|in:procurement,trial,status_increase',
-            'status'        => 'in:draft,submitted',
+            'work_unit_id' => 'required|exists:work_units,id',
+            'type' => 'required|in:procurement,trial,status_increase',
+            'status' => 'in:draft,submitted',
         ];
 
         if ($type === GtkRequest::TYPE_PROCUREMENT) {
@@ -128,8 +129,8 @@ class GtkRequestController extends Controller
             $baseRules['notes'] = 'nullable|string';
         }
         if ($type === GtkRequest::TYPE_TRIAL) {
-            $baseRules['letter_number']    = 'nullable|string|max:100';
-            $baseRules['letter_subject']  = 'nullable|string|max:255';
+            $baseRules['letter_number'] = 'nullable|string|max:100';
+            $baseRules['letter_subject'] = 'nullable|string|max:255';
             $baseRules['letter_attachment'] = 'nullable|string|max:100';
             $baseRules['established_city'] = 'nullable|string|max:100';
             $baseRules['established_date'] = 'nullable|date';
@@ -173,17 +174,19 @@ class GtkRequestController extends Controller
         if ($type === GtkRequest::TYPE_PROCUREMENT) {
             $items = $request->input('items', []);
             foreach ($items as $i => $item) {
-                if (empty($item['jabatan'])) continue;
+                if (empty($item['jabatan'])) {
+                    continue;
+                }
                 GtkRequestItem::create([
-                    'gtk_request_id'   => $gtkRequest->id,
-                    'item_type'         => $type,
-                    'jabatan'           => $item['jabatan'] ?? null,
-                    'kebutuhan_ideal'   => $item['kebutuhan_ideal'] ?? 0,
-                    'gtk_yang_ada'     => $item['gtk_yang_ada'] ?? 0,
+                    'gtk_request_id' => $gtkRequest->id,
+                    'item_type' => $type,
+                    'jabatan' => $item['jabatan'] ?? null,
+                    'kebutuhan_ideal' => $item['kebutuhan_ideal'] ?? 0,
+                    'gtk_yang_ada' => $item['gtk_yang_ada'] ?? 0,
                     'kualifikasi_minimal' => $item['kualifikasi_minimal'] ?? null,
                     'kebutuhan_tambahan' => $item['kebutuhan_tambahan'] ?? 0,
-                    'keterangan'        => $item['keterangan'] ?? null,
-                    'order'             => $i,
+                    'keterangan' => $item['keterangan'] ?? null,
+                    'order' => $i,
                 ]);
             }
         }
@@ -191,17 +194,19 @@ class GtkRequestController extends Controller
         if ($type === GtkRequest::TYPE_TRIAL) {
             $items = $request->input('items', []);
             foreach ($items as $i => $item) {
-                if (empty($item['nama'])) continue;
+                if (empty($item['nama'])) {
+                    continue;
+                }
                 GtkRequestItem::create([
                     'gtk_request_id' => $gtkRequest->id,
-                    'item_type'       => $type,
-                    'nupy'           => $item['nupy'] ?? null,
-                    'nama'           => $item['nama'] ?? null,
-                    'tugas'          => $item['tugas'] ?? null,
-                    'lembaga'        => $item['lembaga'] ?? null,
-                    'status_gtk'     => $item['status_gtk'] ?? null,
-                    'tmt'            => $item['tmt'] ?? null,
-                    'order'          => $i,
+                    'item_type' => $type,
+                    'nupy' => $item['nupy'] ?? null,
+                    'nama' => $item['nama'] ?? null,
+                    'tugas' => $item['tugas'] ?? null,
+                    'lembaga' => $item['lembaga'] ?? null,
+                    'status_gtk' => $item['status_gtk'] ?? null,
+                    'tmt' => $item['tmt'] ?? null,
+                    'order' => $i,
                 ]);
             }
         }
@@ -209,16 +214,18 @@ class GtkRequestController extends Controller
         if ($type === GtkRequest::TYPE_STATUS_INCREASE) {
             $items = $request->input('items', []);
             foreach ($items as $i => $item) {
-                if (empty($item['nama'])) continue;
+                if (empty($item['nama'])) {
+                    continue;
+                }
                 GtkRequestItem::create([
                     'gtk_request_id' => $gtkRequest->id,
-                    'item_type'       => $type,
-                    'nama'           => $item['nama'] ?? null,
-                    'tugas'          => $item['tugas'] ?? null,
-                    'lembaga'        => $item['lembaga'] ?? null,
-                    'status_gtk'     => $item['status_gtk'] ?? null,
-                    'tmt'            => $item['tmt'] ?? null,
-                    'order'          => $i,
+                    'item_type' => $type,
+                    'nama' => $item['nama'] ?? null,
+                    'tugas' => $item['tugas'] ?? null,
+                    'lembaga' => $item['lembaga'] ?? null,
+                    'status_gtk' => $item['status_gtk'] ?? null,
+                    'tmt' => $item['tmt'] ?? null,
+                    'order' => $i,
                 ]);
             }
         }

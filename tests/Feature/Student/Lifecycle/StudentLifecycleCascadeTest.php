@@ -3,16 +3,15 @@
 namespace Tests\Feature\Student\Lifecycle;
 
 use App\Events\StudentGraduated;
-use App\Events\StudentMutatedIn;
 use App\Events\StudentMutatedOut;
 use App\Events\StudentPromoted;
 use App\Events\StudentStatusChanged;
 use App\Jobs\RecordLifecycleAuditJob;
 use App\Jobs\SendLifecycleNotificationJob;
+use App\Listeners\AuditLifecycleChange;
+use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
 use App\Listeners\HandleManualStudentStatusUpdate;
 use App\Listeners\UpdateStudentStatusOnLifecycle;
-use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
-use App\Listeners\AuditLifecycleChange;
 use App\Models\AcademicYear;
 use App\Models\Alumni;
 use App\Models\GradeLevel;
@@ -111,9 +110,9 @@ class StudentLifecycleCascadeTest extends TestCase
         );
 
         // Run all lifecycle listeners for StudentGraduated
-        (new UpdateStudentStatusOnLifecycle())->handle($event);
-        (new ClosePreviousClassHistoryOnLifecycle())->handle($event);
-        (new AuditLifecycleChange())->handle($event);
+        (new UpdateStudentStatusOnLifecycle)->handle($event);
+        (new ClosePreviousClassHistoryOnLifecycle)->handle($event);
+        (new AuditLifecycleChange)->handle($event);
 
         $audit = DB::table('student_lifecycle_audits')
             ->where('student_id', $data['student']->id)
@@ -144,7 +143,7 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new AuditLifecycleChange())->handle($event);
+        (new AuditLifecycleChange)->handle($event);
 
         $row = DB::table('student_lifecycle_audits')
             ->where('student_id', $data['student']->id)
@@ -192,8 +191,8 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new UpdateStudentStatusOnLifecycle())->handle($event);
-        (new ClosePreviousClassHistoryOnLifecycle())->handle($event);
+        (new UpdateStudentStatusOnLifecycle)->handle($event);
+        (new ClosePreviousClassHistoryOnLifecycle)->handle($event);
 
         // 1. Student status mutated
         $student = $data['student']->fresh();
@@ -232,8 +231,8 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new UpdateStudentStatusOnLifecycle())->handle($event);
-        (new ClosePreviousClassHistoryOnLifecycle())->handle($event);
+        (new UpdateStudentStatusOnLifecycle)->handle($event);
+        (new ClosePreviousClassHistoryOnLifecycle)->handle($event);
         $studentAfter1 = $data['student']->fresh();
 
         // Re-dispatch same graduation event
@@ -244,8 +243,8 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationDate: $graduationDate,
             graduationYear: '2026',
         );
-        (new UpdateStudentStatusOnLifecycle())->handle($event2);
-        (new ClosePreviousClassHistoryOnLifecycle())->handle($event2);
+        (new UpdateStudentStatusOnLifecycle)->handle($event2);
+        (new ClosePreviousClassHistoryOnLifecycle)->handle($event2);
 
         // Rombel still closed, only one closed history row for the day
         $this->assertEquals(
@@ -333,10 +332,11 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new AuditLifecycleChange())->handle($event);
+        (new AuditLifecycleChange)->handle($event);
 
         Bus::assertDispatched(RecordLifecycleAuditJob::class, function ($job) use ($data) {
             $p = $job->payload;
+
             return $p['student_id'] === $data['student']->id
                 && $p['event'] === 'student.graduated';
         });
@@ -362,7 +362,7 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new \App\Listeners\NotifyGuardiansOnLifecycle())->handle($event);
+        (new \App\Listeners\NotifyGuardiansOnLifecycle)->handle($event);
 
         // May or may not dispatch depending on LifecycleMessage::forEvent existence
         // Notifications depend on whether Guardian/User exists for this student's school;

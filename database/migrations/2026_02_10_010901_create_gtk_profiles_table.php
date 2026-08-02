@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('golongan_darah', ['A', 'B', 'AB', 'O'])->nullable();
             $table->enum('jenis_kelamin', ['L', 'P'])->nullable();
             $table->enum('agama', ['islam', 'kristen', 'katolik', 'hindu', 'buddha', 'konghucu'])->nullable();
-            
+
             // MARITAL STATUS
             $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati'])->default('belum_kawin');
             $table->text('npwp')->nullable();
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->foreignUuid('work_unit_id')->nullable()->constrained()->nullOnDelete();
             $table->string('jabatan')->nullable();
             $table->date('tmt_kerja')->nullable();
-            
+
             // CONTACT
             $table->string('no_hp')->nullable();
             $table->string('no_whatsapp')->nullable();

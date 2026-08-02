@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Schema;
 // Kolom: Paket, Kelas/Semester, Bulan, Target Hafalan, Jumlah Halaman,
 //         Baris/Bulan, Baris/Hari, Hari Aktif.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_muqorrars', function (Blueprint $table) {
@@ -22,11 +23,11 @@ return new class extends Migration {
             $table->uuid('academic_year_id');
             $table->enum('semester', ['ganjil', 'genap']);
             $table->string('package_name', 100)->nullable()
-                  ->comment('Nama paket: Tahfidz Reguler, Intensif, dll');
+                ->comment('Nama paket: Tahfidz Reguler, Intensif, dll');
             $table->string('grade_class', 50)->nullable()
-                  ->comment('Kelas: 7A, 8B, Kelas Takhassus, dll');
+                ->comment('Kelas: 7A, 8B, Kelas Takhassus, dll');
             $table->tinyInteger('bulan_kbm')
-                  ->comment('Bulan ke-berapa dalam kalender: 1=Januari, 7=Juli, dst');
+                ->comment('Bulan ke-berapa dalam kalender: 1=Januari, 7=Juli, dst');
             $table->year('bulan_kbm_tahun');
             $table->integer('target_bulanan_halaman')->nullable();
             $table->integer('target_bulanan_baris')->nullable();
@@ -50,5 +51,9 @@ return new class extends Migration {
             $table->index(['academic_year_id', 'semester', 'bulan_kbm']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_muqorrars'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_muqorrars');
+    }
 };

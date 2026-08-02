@@ -28,8 +28,8 @@ class SuratMasukController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_surat', 'LIKE', "%{$search}%")
-                  ->orWhere('perihal', 'LIKE', "%{$search}%")
-                  ->orWhere('pengirim', 'LIKE', "%{$search}%");
+                    ->orWhere('perihal', 'LIKE', "%{$search}%")
+                    ->orWhere('pengirim', 'LIKE', "%{$search}%");
             });
         }
 
@@ -47,17 +47,17 @@ class SuratMasukController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nomor_surat'         => 'required|string|max:100',
-            'tanggal_surat'       => 'required|date',
-            'tanggal_diterima'    => 'required|date',
-            'pengirim'            => 'required|string|max:255',
-            'perihal'             => 'required|string|max:255',
-            'file_lampiran'       => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
-            'sifat'               => 'required|in:rahasia,biasa,penting',
-            'sifat_penyelesaian'  => 'required|in:segera,biasa',
-            'disposisi_to'        => 'nullable|string|max:255',
-            'disposisi_catatan'   => 'nullable|string',
-            'status'              => 'required|in:baru,didisposisi,selesai',
+            'nomor_surat' => 'required|string|max:100',
+            'tanggal_surat' => 'required|date',
+            'tanggal_diterima' => 'required|date',
+            'pengirim' => 'required|string|max:255',
+            'perihal' => 'required|string|max:255',
+            'file_lampiran' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
+            'sifat' => 'required|in:rahasia,biasa,penting',
+            'sifat_penyelesaian' => 'required|in:segera,biasa',
+            'disposisi_to' => 'nullable|string|max:255',
+            'disposisi_catatan' => 'nullable|string',
+            'status' => 'required|in:baru,didisposisi,selesai',
         ]);
 
         if ($request->hasFile('file_lampiran')) {
@@ -68,6 +68,7 @@ class SuratMasukController extends Controller
         $validated['school_id'] = $request->attributes->get('schoolContextId');
 
         SuratMasuk::create($validated);
+
         return redirect()->route('waka.surat-masuk.index')
             ->with('success', 'Surat masuk berhasil dicatat.');
     }
@@ -75,7 +76,7 @@ class SuratMasukController extends Controller
     public function show(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $query = SuratMasuk::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+        $query = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $surat = $query->findOrFail($id);
 
         return view('waka.surat-masuk.show', compact('surat'));
@@ -84,7 +85,7 @@ class SuratMasukController extends Controller
     public function edit(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $query = SuratMasuk::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+        $query = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $surat = $query->findOrFail($id);
 
         return view('waka.surat-masuk.edit', compact('surat'));
@@ -93,20 +94,20 @@ class SuratMasukController extends Controller
     public function update(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $surat = SuratMasuk::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $surat = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
-            'nomor_surat'         => 'required|string|max:100',
-            'tanggal_surat'       => 'required|date',
-            'tanggal_diterima'    => 'required|date',
-            'pengirim'            => 'required|string|max:255',
-            'perihal'             => 'required|string|max:255',
-            'file_lampiran'       => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
-            'sifat'               => 'required|in:rahasia,biasa,penting',
-            'sifat_penyelesaian'  => 'required|in:segera,biasa',
-            'disposisi_to'        => 'nullable|string|max:255',
-            'disposisi_catatan'   => 'nullable|string',
-            'status'              => 'required|in:baru,didisposisi,selesai',
+            'nomor_surat' => 'required|string|max:100',
+            'tanggal_surat' => 'required|date',
+            'tanggal_diterima' => 'required|date',
+            'pengirim' => 'required|string|max:255',
+            'perihal' => 'required|string|max:255',
+            'file_lampiran' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
+            'sifat' => 'required|in:rahasia,biasa,penting',
+            'sifat_penyelesaian' => 'required|in:segera,biasa',
+            'disposisi_to' => 'nullable|string|max:255',
+            'disposisi_catatan' => 'nullable|string',
+            'status' => 'required|in:baru,didisposisi,selesai',
         ]);
 
         if ($request->hasFile('file_lampiran')) {
@@ -119,6 +120,7 @@ class SuratMasukController extends Controller
         }
 
         $surat->update($validated);
+
         return redirect()->route('waka.surat-masuk.show', $surat->id)
             ->with('success', 'Surat masuk berhasil diperbarui.');
     }
@@ -126,7 +128,7 @@ class SuratMasukController extends Controller
     public function destroy(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $surat = SuratMasuk::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $surat = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         if ($surat->file_lampiran && Storage::disk('public')->exists($surat->file_lampiran)) {
             Storage::disk('public')->delete($surat->file_lampiran);

@@ -11,14 +11,17 @@ class AssetLocationHistory extends Model
     use HasFactory;
 
     protected $table = 'asset_location_histories';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [

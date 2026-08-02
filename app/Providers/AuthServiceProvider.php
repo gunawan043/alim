@@ -13,14 +13,22 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        \App\Models\GtkProfile::class  => \App\Policies\GtkProfilePolicy::class,
-        \App\Models\Dormitory::class   => \App\Policies\DormitoryPolicy::class,
-        \App\Models\Kaldik::class     => \App\Policies\KaldikPolicy::class,
+        \App\Models\GtkProfile::class => \App\Policies\GtkProfilePolicy::class,
+        \App\Models\Dormitory::class => \App\Policies\DormitoryPolicy::class,
+        \App\Models\Kaldik::class => \App\Policies\KaldikPolicy::class,
     ];
 
     public function boot()
     {
         $this->registerPolicies();
+
+        Gate::before(function ($user, string $ability) {
+            if ($user instanceof \App\Models\User && $user->isSystemAdmin()) {
+                return true;
+            }
+
+            return null;
+        });
 
         Gate::define('sarpras-access-building', [\App\Policies\SarprasWorkspacePolicy::class, 'view']);
         Gate::define('sarpras-access-room', [\App\Policies\SarprasWorkspacePolicy::class, 'view']);

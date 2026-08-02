@@ -7,11 +7,8 @@ use App\Models\DormitoryPermit;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
 use App\Services\Boarding\LeaveWorkflowService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class WaliSantriPortalController extends Controller
@@ -31,13 +28,13 @@ class WaliSantriPortalController extends Controller
 
         return Student::with(['dormitory', 'room'])
             ->where(function ($q) use ($user, $nikFilter) {
-                if (!empty($user->id)) {
+                if (! empty($user->id)) {
                     $q->orWhere('user_id', $user->id);
                 }
                 foreach ($nikFilter as $nik) {
                     $q->orWhere('father_nik', $nik)
-                      ->orWhere('mother_nik', $nik)
-                      ->orWhere('guardian_nik', $nik);
+                        ->orWhere('mother_nik', $nik)
+                        ->orWhere('guardian_nik', $nik);
                 }
             })
             ->get();
@@ -84,12 +81,12 @@ class WaliSantriPortalController extends Controller
     public function requestPermit(Request $request)
     {
         $data = $request->validate([
-            'student_id'    => ['required', 'string'],
+            'student_id' => ['required', 'string'],
             'departure_date' => ['required', 'date', 'after_or_equal:today'],
             'expected_return_date' => ['required', 'date', 'after_or_equal:departure_date'],
-            'destination'   => ['required', 'string', 'max:255'],
-            'reason'        => ['required', 'string', 'max:500'],
-            'companion'     => ['nullable', 'string', 'max:255'],
+            'destination' => ['required', 'string', 'max:255'],
+            'reason' => ['required', 'string', 'max:500'],
+            'companion' => ['nullable', 'string', 'max:255'],
         ]);
 
         $student = Student::where('user_id', auth()->id())
@@ -101,19 +98,20 @@ class WaliSantriPortalController extends Controller
         try {
             $permit = $this->leave->submit(
                 array_merge($data, [
-                    'permit_type'        => 'wali_request',
+                    'permit_type' => 'wali_request',
                     'departure_datetime' => $data['departure_date'],
                     'expected_return_at' => $data['expected_return_date'],
-                    'companion_name'     => $data['companion'] ?? null,
-                    'submitted_via'      => 'wali_portal',
-                    'created_by'         => auth()->id(),
+                    'companion_name' => $data['companion'] ?? null,
+                    'submitted_via' => 'wali_portal',
+                    'created_by' => auth()->id(),
                 ]),
                 $student->dormitory_id,
                 $student->academic_year_id ?? AcademicYear::active()?->id,
             );
         } catch (\Throwable $e) {
             Log::error('WaliSantri.request_permit_failed', ['error' => $e->getMessage()]);
-            return back()->withErrors(['error' => 'Gagal mengajukan izin: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Gagal mengajukan izin: '.$e->getMessage()]);
         }
 
         return back()->with('success', 'Pengajuan izin berhasil dikirim. Menunggu persetujuan.');

@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
-use App\Models\Traits\LogsDeletion;
 
 class StudyGroup extends Model
 {
     use LogsDeletion;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -29,7 +30,7 @@ class StudyGroup extends Model
     ];
 
     protected $casts = [
-        'capacity'  => 'integer',
+        'capacity' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -71,5 +72,8 @@ class StudyGroup extends Model
 
     // ── Scopes ─────────────────────────────────────────────────
 
-    public function scopeActive($q) { return $q->where('is_active', true); }
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
 }

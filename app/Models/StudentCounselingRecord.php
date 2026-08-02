@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class StudentCounselingRecord extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $table = 'student_counseling_records';
@@ -89,8 +90,8 @@ class StudentCounselingRecord extends Model
         return match ($this->session_type) {
             'individu' => 'Individu',
             'kelompok' => 'Kelompok',
-            'krisis'   => 'Krisis',
-            default    => $this->session_type,
+            'krisis' => 'Krisis',
+            default => $this->session_type,
         };
     }
 

@@ -24,13 +24,25 @@ return new class extends Migration
         });
 
         // Backfill from student (tokens always have student_id).
-        DB::statement('
-            UPDATE wali_registration_tokens wrt
-            JOIN students s ON s.id = wrt.student_id
-            SET wrt.school_id = s.school_id
-            WHERE wrt.school_id IS NULL
-              AND s.school_id IS NOT NULL
-        ');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('
+                UPDATE wali_registration_tokens wrt
+                JOIN students s ON s.id = wrt.student_id
+                SET wrt.school_id = s.school_id
+                WHERE wrt.school_id IS NULL
+                  AND s.school_id IS NOT NULL
+            ');
+        } else {
+            DB::statement('
+                UPDATE wali_registration_tokens
+                SET school_id = (
+                    SELECT s.school_id FROM students s
+                    WHERE s.id = wali_registration_tokens.student_id
+                )
+                WHERE school_id IS NULL
+                  AND EXISTS (SELECT 1 FROM students s WHERE s.id = wali_registration_tokens.student_id AND s.school_id IS NOT NULL)
+            ');
+        }
 
         // Abort if orphaned (should never happen because student_id is already
         // required and FK-constrained — but we enforce nil-proofing anyway).
@@ -58,8 +70,17 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'mysql') {
+            Schema::table('wali_registration_tokens', function (Blueprint $table) {
+                $table->dropForeign('wali_registration_tokens_school_id_foreign');
+            });
+        } else {
+            Schema::table('wali_registration_tokens', function (Blueprint $table) {
+                $table->dropForeign(['school_id']);
+            });
+        }
+
         Schema::table('wali_registration_tokens', function (Blueprint $table) {
-            $table->dropForeign('wali_registration_tokens_school_id_foreign');
             $table->dropIndex('wali_registration_tokens_school_student_index');
             $table->dropIndex('wali_registration_tokens_school_id_index');
             $table->dropColumn('school_id');

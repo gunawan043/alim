@@ -2,21 +2,19 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Str;
-
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected array $data;
 
@@ -44,7 +42,8 @@ class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyl
             $avgVal = $this->data['legerAggMap'][$sid] ?? null;
             $rankVal = $this->data['rankMap'][$sid] ?? null;
             $pres = $this->data['presensiMap'][$sid] ?? null;
-            $jumlah = 0; $count = 0;
+            $jumlah = 0;
+            $count = 0;
 
             $row = collect();
             $row->push($idx + 1);
@@ -56,7 +55,8 @@ class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyl
                 $n = $book ? ($this->data['nilaiMap'][$sid][$book->id] ?? null) : null;
                 if ($n && $n->sts !== null) {
                     $row->push($n->sts);
-                    $jumlah += $n->sts; $count++;
+                    $jumlah += $n->sts;
+                    $count++;
                 } else {
                     $row->push('—');
                 }
@@ -83,6 +83,7 @@ class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyl
             $headers[] = $subject->code ?? Str::limit($subject->name, 10);
         }
         $headers = array_merge($headers, ['Jumlah', 'Rata-rata', 'Rank', 'Predikat', 'S', 'I', 'A']);
+
         return $headers;
     }
 
@@ -99,13 +100,13 @@ class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyl
 
         // Header row
         $sheet->mergeCells("A1:{$colLetter}1");
-        $sheet->setCellValue('A1', 'LEGER NILAI STS — ' . strtoupper($this->data['studyGroup']->name) . ' — TA ' . ($this->data['selectedAy']?->name ?? '') . ' SEMESTER ' . strtoupper($this->data['selectedSem']));
+        $sheet->setCellValue('A1', 'LEGER NILAI STS — '.strtoupper($this->data['studyGroup']->name).' — TA '.($this->data['selectedAy']?->name ?? '').' SEMESTER '.strtoupper($this->data['selectedSem']));
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 12],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
         $sheet->mergeCells("A2:{$colLetter}2");
-        $sheet->setCellValue('A2', 'Dicetak: ' . now()->translatedFormat('d F Y, H:i'));
+        $sheet->setCellValue('A2', 'Dicetak: '.now()->translatedFormat('d F Y, H:i'));
         $sheet->getStyle('A2')->applyFromArray([
             'font' => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
         ]);
@@ -148,12 +149,25 @@ class LegerExport implements FromCollection, WithHeadings, WithMapping, WithStyl
 
     private function predikatText(?float $avg): string
     {
-        if ($avg === null) return '—';
-        if ($avg >= 95) return "Mumtaz Murtafi'";
-        if ($avg >= 90) return 'Mumtaz';
-        if ($avg >= 85) return 'Jayyid Jiddan';
-        if ($avg >= 80) return 'Jayyid';
-        if ($avg >= 75) return 'Maqbul';
+        if ($avg === null) {
+            return '—';
+        }
+        if ($avg >= 95) {
+            return "Mumtaz Murtafi'";
+        }
+        if ($avg >= 90) {
+            return 'Mumtaz';
+        }
+        if ($avg >= 85) {
+            return 'Jayyid Jiddan';
+        }
+        if ($avg >= 80) {
+            return 'Jayyid';
+        }
+        if ($avg >= 75) {
+            return 'Maqbul';
+        }
+
         return 'Roosib';
     }
 }

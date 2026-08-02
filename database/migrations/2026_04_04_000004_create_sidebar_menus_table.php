@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('sidebar_menus')) {
+        if (! Schema::hasTable('sidebar_menus')) {
             Schema::create('sidebar_menus', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->uuid('parent_id')->nullable();
@@ -28,7 +28,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('sidebar_menu_role')) {
+        if (! Schema::hasTable('sidebar_menu_role')) {
             Schema::create('sidebar_menu_role', function (Blueprint $table) {
                 $table->uuid('sidebar_menu_id');
                 $table->uuid('role_id');

@@ -10,17 +10,17 @@ return new class extends Migration
     {
         Schema::create('structural_positions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            
+
             $table->string('code', 50)->unique(); // Kode jabatan
             $table->string('name', 100); // Nama jabatan
             $table->string('level', 50); // Tingkat: yayasan, pondok, madrasah
             $table->integer('hierarchy_level'); // Level hierarki (1 tertinggi)
-            
+
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            
+
             $table->timestamps();
-            
+
             $table->index('level');
             $table->index('hierarchy_level');
         });

@@ -9,7 +9,6 @@ use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class DemoMatriksSeeder extends Seeder
 {
@@ -19,8 +18,9 @@ class DemoMatriksSeeder extends Seeder
         $schoolId = '0deb90a0-2325-42ce-b491-8d252f8cfd1d';
         $decree = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')->first();
 
-        if (!$decree) {
+        if (! $decree) {
             $this->command->warn('SK Pembagian Tugas tidak ditemukan. Lewati.');
+
             return;
         }
 
@@ -39,11 +39,12 @@ class DemoMatriksSeeder extends Seeder
 
         if ($studyGroups->isEmpty()) {
             $this->command->warn('Tidak ada study groups. Lewati.');
+
             return;
         }
 
         // Teachers
-        $teachers = User::role(['Guru Umum', 'Guru Agama', 'Guru Hadits', 'Guru Tahfidz', 'GTK', 'Coordinator Guru', 'Wakil Kepala Sekolah'])
+        $teachers = User::role(['Guru', 'Guru Tahfidz', 'Wakil Kepala Sekolah'])
             ->orderBy('name')->get();
 
         // Subjects
@@ -58,7 +59,7 @@ class DemoMatriksSeeder extends Seeder
         $pattern = [
             'Muhammad Sidik, M. Pd.' => [
                 'Pendidikan Agama Islam' => ['7' => 3, '8' => 3, '9' => 3],
-                'Akhlak / Tasamuh'       => ['7' => 1, '8' => 1, '9' => 1],
+                'Akhlak / Tasamuh' => ['7' => 1, '8' => 1, '9' => 1],
             ],
             'Guru8' => [
                 'Bahasa Arab' => ['7' => 3, '8' => 3, '9' => 3],
@@ -66,47 +67,50 @@ class DemoMatriksSeeder extends Seeder
             ],
             'Guru9' => [
                 'Tahfidz Al-Quran' => ['7' => 4, '8' => 4, '9' => 4],
-                'Hafalan Hadits'    => ['7' => 2, '8' => 2, '9' => 2],
+                'Hafalan Hadits' => ['7' => 2, '8' => 2, '9' => 2],
             ],
             'Muh. Husnul Fikri, M. Pd.' => [
                 'Bahasa Indonesia' => ['7' => 4, '8' => 4, '9' => 4],
-                'Sastra'           => ['8' => 2, '9' => 2],
+                'Sastra' => ['8' => 2, '9' => 2],
             ],
             'Gunawan Trianto, M. Pd.' => [
                 'Matematika' => ['7' => 4, '8' => 4, '9' => 4],
-                'IPA'        => ['7' => 3, '8' => 3, '9' => 3],
+                'IPA' => ['7' => 3, '8' => 3, '9' => 3],
             ],
         ];
 
         $created = 0;
         foreach ($pattern as $teacherName => $subjectsData) {
             $teacher = $teachers->firstWhere('name', $teacherName);
-            if (!$teacher) continue;
+            if (! $teacher) {
+                continue;
+            }
 
             foreach ($subjectsData as $subjectName => $gradeHours) {
                 $subject = $subjects->firstWhere('name', $subjectName);
-                if (!$subject) continue;
+                if (! $subject) {
+                    continue;
+                }
 
                 foreach ($gradeHours as $gradeLevel => $hours) {
                     // Find matching study groups
-                    $matchingGroups = $studyGroups->filter(fn($sg) =>
-                        ($sg->gradeLevel->level ?? 0) == $gradeLevel
+                    $matchingGroups = $studyGroups->filter(fn ($sg) => ($sg->gradeLevel->level ?? 0) == $gradeLevel
                     );
 
                     foreach ($matchingGroups as $sg) {
                         TeachingAssignment::updateOrCreate(
                             [
-                                'decree_id'      => $decree->id,
-                                'teacher_id'     => $teacher->id,
-                                'subject_id'     => $subject->id,
+                                'decree_id' => $decree->id,
+                                'teacher_id' => $teacher->id,
+                                'subject_id' => $subject->id,
                                 'study_group_id' => $sg->id,
                             ],
                             [
-                                'school_id'       => $schoolId,
+                                'school_id' => $schoolId,
                                 'academic_year_id' => $academicYearId,
-                                'weekly_hours'   => $hours,
-                                'role'           => 'guru_mapel',
-                                'status'         => 'active',
+                                'weekly_hours' => $hours,
+                                'role' => 'guru_mapel',
+                                'status' => 'active',
                             ]
                         );
                         $created++;
@@ -142,19 +146,21 @@ class DemoMatriksSeeder extends Seeder
         $createdTasks = 0;
         foreach ($additionalTasks as $teacherName => $tasks) {
             $teacher = $teachers->firstWhere('name', $teacherName);
-            if (!$teacher) continue;
+            if (! $teacher) {
+                continue;
+            }
 
             foreach ($tasks as $task) {
                 GtkAdditionalTask::updateOrCreate(
                     [
-                        'user_id'   => $teacher->id,
+                        'user_id' => $teacher->id,
                         'nama_tugas' => $task['nama_tugas'],
                         'decree_id' => $decree->id,
                     ],
                     [
                         'hours_per_week' => $task['hours_per_week'],
-                        'nomor_sk'       => $decree->decree_number,
-                        'tmt'            => $decree->effective_date,
+                        'nomor_sk' => $decree->decree_number,
+                        'tmt' => $decree->effective_date,
                     ]
                 );
                 $createdTasks++;
@@ -162,6 +168,6 @@ class DemoMatriksSeeder extends Seeder
         }
 
         $this->command->info("Created/updated {$createdTasks} GTK additional tasks.");
-        $this->command->info("Demo matriks seeding complete!");
+        $this->command->info('Demo matriks seeding complete!');
     }
 }

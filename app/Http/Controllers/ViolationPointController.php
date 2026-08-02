@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ViolationPoint;
 use App\Models\Student;
 use App\Models\StudyGroup;
-use App\Models\GradeLevel;
-use App\Models\AcademicYear;
+use App\Models\ViolationPoint;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class ViolationPointController extends Controller
 {
@@ -22,14 +20,14 @@ class ViolationPointController extends Controller
         // Filter by school context if available
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('student', fn($q) => $q->where('school_id', $schoolId));
+            $query->whereHas('student', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('violation_type', 'like', "%{$q}%")
-                ->orWhereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
@@ -155,13 +153,13 @@ class ViolationPointController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         // Overall stats
-        $totalViolations = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))->count();
-        $totalPoints     = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))->sum('points');
-        $uniqueStudents  = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))
+        $totalViolations = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))->count();
+        $totalPoints = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))->sum('points');
+        $uniqueStudents = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
             ->distinct('student_id')->count('student_id');
 
         // By study group
-        $byStudyGroup = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))
+        $byStudyGroup = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
             ->select('study_group_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(points) as total_points'))
             ->groupBy('study_group_id')
             ->orderByDesc('total')
@@ -171,10 +169,10 @@ class ViolationPointController extends Controller
         $studyGroupIds = $byStudyGroup->pluck('study_group_id');
         $loadedStudyGroups = StudyGroup::whereIn('id', $studyGroupIds)
             ->with('gradeLevel:id,name,level')->get()->keyBy('id');
-        $byStudyGroup->each(fn($row) => $row->setRelation('studyGroup', $loadedStudyGroups->get($row->study_group_id)));
+        $byStudyGroup->each(fn ($row) => $row->setRelation('studyGroup', $loadedStudyGroups->get($row->study_group_id)));
 
         // By grade level — using join + raw select (MySQL compatible)
-        $byGradeLevel = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))
+        $byGradeLevel = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
             ->join('study_groups', 'violation_points.study_group_id', '=', 'study_groups.id')
             ->join('grade_levels', 'study_groups.grade_level_id', '=', 'grade_levels.id')
             ->select(
@@ -188,7 +186,7 @@ class ViolationPointController extends Controller
             ->get();
 
         // Monthly trend (current year) — MySQL compatible
-        $monthlyTrend = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))
+        $monthlyTrend = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
             ->selectRaw("DATE_FORMAT(violation_date, '%m') as month, COUNT(*) as total, SUM(points) as total_points")
             ->whereRaw("DATE_FORMAT(violation_date, '%Y') = ?", [now()->year])
             ->groupBy('month')
@@ -197,7 +195,7 @@ class ViolationPointController extends Controller
             ->keyBy('month');
 
         // Fill missing months with 0
-        $months = collect(range(1, 12))->map(fn($m) => [
+        $months = collect(range(1, 12))->map(fn ($m) => [
             'month' => str_pad($m, 2, '0', STR_PAD_LEFT),
             'label' => now()->month($m)->translatedFormat('M'),
             'total' => $monthlyTrend->get(str_pad($m, 2, '0', STR_PAD_LEFT))?->total ?? 0,
@@ -205,7 +203,7 @@ class ViolationPointController extends Controller
         ]);
 
         // Top pelanggaran jenis
-        $topViolationTypes = ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))
+        $topViolationTypes = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
             ->select('violation_type', DB::raw('COUNT(*) as total'))
             ->groupBy('violation_type')
             ->orderByDesc('total')
@@ -228,15 +226,15 @@ class ViolationPointController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $query = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('status', 'active')
-            ->with(['studyGroups' => fn($q) => $q->limit(1)])
+            ->with(['studyGroups' => fn ($q) => $q->limit(1)])
             ->withSum('violationPoints', 'points')
             ->orderByDesc('violation_points_sum_points');
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('nisn', 'like', "%{$q}%")
             );
@@ -244,7 +242,7 @@ class ViolationPointController extends Controller
 
         if ($request->filled('study_group_id')) {
             $sg = $request->study_group_id;
-            $query->whereHas('studyGroups', fn($sq) => $sq->where('study_groups.id', $sg));
+            $query->whereHas('studyGroups', fn ($sq) => $sq->where('study_groups.id', $sg));
         }
 
         if ($request->filled('min_points')) {
@@ -259,10 +257,10 @@ class ViolationPointController extends Controller
 
         // Summary stats
         $summary = [
-            'total_students' => Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->where('status', 'active')->count(),
-            'total_violations' => ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))->count(),
-            'total_points' => ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))->sum('points'),
-            'students_with_violations' => ViolationPoint::when($schoolId, fn($q) => $q->whereHas('student', fn($s) => $s->where('school_id', $schoolId)))->distinct('student_id')->count('student_id'),
+            'total_students' => Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('status', 'active')->count(),
+            'total_violations' => ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))->count(),
+            'total_points' => ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))->sum('points'),
+            'students_with_violations' => ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))->distinct('student_id')->count('student_id'),
         ];
 
         return view('violation-points.recap', compact('userId', 'recaps', 'studyGroups', 'summary'));
@@ -270,7 +268,7 @@ class ViolationPointController extends Controller
 
     public function recapDetail(Request $request, string $userId, string $studentUuid)
     {
-        $student = Student::with(['studyGroups' => fn($q) => $q->limit(1)])->findOrFail($studentUuid);
+        $student = Student::with(['studyGroups' => fn ($q) => $q->limit(1)])->findOrFail($studentUuid);
 
         $violations = ViolationPoint::with(['studyGroup', 'recordedBy'])
             ->where('student_id', $studentUuid)
@@ -292,7 +290,7 @@ class ViolationPointController extends Controller
             ->orderByDesc('violation_date');
 
         if ($schoolId) {
-            $query->whereHas('student', fn($q) => $q->where('school_id', $schoolId));
+            $query->whereHas('student', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         if ($request->filled('study_group_id')) {
@@ -305,9 +303,9 @@ class ViolationPointController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('violation_type', 'like', "%{$q}%")
-                ->orWhereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
@@ -317,7 +315,8 @@ class ViolationPointController extends Controller
         $pdf = Pdf::loadView('violation-points.pdf.export', compact('violations', 'totalPoints', 'userId'));
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'poin-pelanggaran-' . now()->format('Ymd-His') . '.pdf';
+        $filename = 'poin-pelanggaran-'.now()->format('Ymd-His').'.pdf';
+
         return $pdf->download($filename);
     }
 
@@ -327,25 +326,27 @@ class ViolationPointController extends Controller
     public function findStudent(Request $request)
     {
         $q = $request->get('q', '');
-        if (strlen($q) < 2) return response()->json([]);
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
 
         $students = Student::where('status', 'active')
-            ->where(fn($sq) => $sq
+            ->where(fn ($sq) => $sq
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('nisn', 'like', "%{$q}%")
             )
             ->limit(20)
             ->get(['id', 'name', 'nisn', 'gender', 'birth_place', 'birth_date', 'address']);
 
-        return response()->json($students->map(fn($s) => [
-            'id'          => $s->id,
-            'name'        => $s->name,
-            'nisn'        => $s->nisn,
-            'gender'      => $s->gender,
+        return response()->json($students->map(fn ($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'nisn' => $s->nisn,
+            'gender' => $s->gender,
             'gender_text' => $s->gender_text,
             'birth_place' => $s->birth_place,
-            'birth_date'  => $s->birth_date?->format('d/m/Y'),
-            'address'     => $s->address,
+            'birth_date' => $s->birth_date?->format('d/m/Y'),
+            'address' => $s->address,
         ]));
     }
 }

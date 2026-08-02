@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('room_supervisors', function (Blueprint $table) {
@@ -20,13 +21,13 @@ return new class extends Migration {
             $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
- 
+
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('room_id')->references('id')->on('dormitory_rooms')->cascadeOnDelete();
             $table->foreign('dormitory_id')->references('id')->on('dormitories')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
             $table->foreign('decree_id')->references('id')->on('institution_decrees')->nullOnDelete();
- 
+
             // Satu kamar hanya boleh punya satu wali aktif per tahun ajaran
             $table->unique(
                 ['room_id', 'academic_year_id', 'status'],
@@ -35,7 +36,7 @@ return new class extends Migration {
             $table->index(['user_id', 'academic_year_id']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('room_supervisors');

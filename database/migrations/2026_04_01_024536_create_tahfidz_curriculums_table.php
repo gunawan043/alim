@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 // Kurikulum target hafalan per jenjang per semester.
 // Level: Ponpes → Paket → Kelas → Semester.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_curriculums', function (Blueprint $table) {
@@ -39,5 +40,9 @@ return new class extends Migration {
             $table->index(['academic_year_id', 'semester', 'is_active']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_curriculums'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_curriculums');
+    }
 };

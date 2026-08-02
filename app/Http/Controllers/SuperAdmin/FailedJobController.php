@@ -12,7 +12,7 @@ class FailedJobController extends Controller
     {
         $userId = $request->route('userId');
 
-        if (!config('queue..failed')) {
+        if (! config('queue.failed')) {
             return view('super-admin.failed-jobs.index', [
                 'jobs' => collect([]),
                 'hasTable' => false,
@@ -41,9 +41,9 @@ class FailedJobController extends Controller
             return view('super-admin.failed-jobs.index', compact('jobs', 'hasTable', 'userId'));
         } catch (\Exception $e) {
             return view('super-admin.failed-jobs.index', [
-                'jobs'    => collect([]),
+                'jobs' => collect([]),
                 'hasTable' => false,
-                'error'  => 'Tabel failed_jobs tidak ditemukan.',
+                'error' => 'Tabel failed_jobs tidak ditemukan.',
                 'userId' => $userId,
             ]);
         }
@@ -51,14 +51,14 @@ class FailedJobController extends Controller
 
     public function retry(string $id)
     {
-        if (!config('queue..failed')) {
+        if (! config('queue..failed')) {
             return back()->with('error', 'Failed job table tidak dikonfigurasi.');
         }
 
         try {
             $job = DB::table('failed_jobs')->where('id', $id)->first();
 
-            if (!$job) {
+            if (! $job) {
                 return back()->with('error', 'Job tidak ditemukan.');
             }
 
@@ -76,13 +76,13 @@ class FailedJobController extends Controller
             return redirect()->route('super-admin.failed-jobs.index')
                 ->with('success', 'Job berhasil di-retry dan dipindahkan ke queue.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal me-retry job: ' . $e->getMessage());
+            return back()->with('error', 'Gagal me-retry job: '.$e->getMessage());
         }
     }
 
     public function retryAll()
     {
-        if (!config('queue._failed')) {
+        if (! config('queue.failed')) {
             return back()->with('error', 'Failed job table tidak dikonfigurasi.');
         }
 
@@ -93,13 +93,13 @@ class FailedJobController extends Controller
             return redirect()->route('super-admin.failed-jobs.index')
                 ->with('success', "{$count} job berhasil di-retry semua.");
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal me-retry semua: ' . $e->getMessage());
+            return back()->with('error', 'Gagal me-retry semua: '.$e->getMessage());
         }
     }
 
     public function destroy(string $id)
     {
-        if (!config('queue.failed')) {
+        if (! config('queue.failed')) {
             return back()->with('error', 'Failed job table tidak dikonfigurasi.');
         }
 
@@ -111,7 +111,7 @@ class FailedJobController extends Controller
 
     public function flush()
     {
-        if (!config('queue.failed')) {
+        if (! config('queue.failed')) {
             return back()->with('error', 'Failed job table tidak dikonfigurasi.');
         }
 

@@ -9,8 +9,11 @@ use Illuminate\Support\Str;
 class PenghargaanAkademik extends Model
 {
     protected $table = 'admin_penghargaan_akademik';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected static function boot()

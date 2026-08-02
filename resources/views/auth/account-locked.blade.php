@@ -53,7 +53,7 @@
     <div class="bg-glow glow-1"></div>
     <div class="bg-glow glow-2"></div>
     <a href="{{ url('/') }}" class="logo-mark">
-        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png" alt="ALIM">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/alim-light-name.png" alt="ALIM">
         <span>ALIM</span>
     </a>
     <div class="container">

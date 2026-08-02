@@ -11,8 +11,11 @@ class TalentPool extends Model
     use HasFactory;
 
     protected $table = 'talent_pool';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -59,9 +62,9 @@ class TalentPool extends Model
     public function getKategoriLabelAttribute()
     {
         return [
-            'high_potential'  => 'High Potential',
-            'high_performer'  => 'High Performer',
-            'key_talent'      => 'Key Talent',
+            'high_potential' => 'High Potential',
+            'high_performer' => 'High Performer',
+            'key_talent' => 'Key Talent',
             'emerging_talent' => 'Emerging Talent',
         ][$this->kategori] ?? $this->kategori;
     }
@@ -69,9 +72,9 @@ class TalentPool extends Model
     public function getKategoriColorAttribute()
     {
         return [
-            'high_potential'  => 'primary',
-            'high_performer'  => 'success',
-            'key_talent'      => 'warning',
+            'high_potential' => 'primary',
+            'high_performer' => 'success',
+            'key_talent' => 'warning',
             'emerging_talent' => 'info',
         ][$this->kategori] ?? 'secondary';
     }
@@ -79,10 +82,10 @@ class TalentPool extends Model
     public function getStatusLabelAttribute()
     {
         return [
-            'aktif'         => 'Aktif',
-            'tidak_aktif'   => 'Tidak Aktif',
-            'dipromosikan'  => 'Dipromosikan',
-            'keluar'        => 'Keluar',
+            'aktif' => 'Aktif',
+            'tidak_aktif' => 'Tidak Aktif',
+            'dipromosikan' => 'Dipromosikan',
+            'keluar' => 'Keluar',
         ][$this->status] ?? $this->status;
     }
 

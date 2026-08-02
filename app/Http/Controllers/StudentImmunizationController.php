@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentImmunization;
 use App\Models\Student;
+use App\Models\StudentImmunization;
 use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 
@@ -23,20 +23,20 @@ class StudentImmunizationController extends Controller
         // Auto-filter by logged-in user's school gender (putra | putri)
         $schoolGender = $request->attributes->get('schoolGender');
         if ($schoolGender) {
-            $query->whereHas('student', fn($s) => $s->where('gender', $schoolGender === 'putra' ? 'L' : 'P'));
+            $query->whereHas('student', fn ($s) => $s->where('gender', $schoolGender === 'putra' ? 'L' : 'P'));
         }
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('immunization_type', 'like', "%{$q}%")
-                ->orWhereHas('student', fn($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
             );
         }
 
         if ($request->filled('study_group_id')) {
-            $query->whereHas('student', fn($st) => $st
-                ->whereHas('studyGroups', fn($sc) => $sc
+            $query->whereHas('student', fn ($st) => $st
+                ->whereHas('studyGroups', fn ($sc) => $sc
                     ->where('study_group_id', $request->study_group_id)
                     ->where('is_active', true)
                 )
@@ -80,7 +80,9 @@ class StudentImmunizationController extends Controller
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
-            if (!isset($groupedStudents[$label])) $groupedStudents[$label] = [];
+            if (! isset($groupedStudents[$label])) {
+                $groupedStudents[$label] = [];
+            }
             $groupedStudents[$label][] = $s;
         }
 
@@ -128,15 +130,21 @@ class StudentImmunizationController extends Controller
         $studentQuery = Student::with('studyGroups.studyGroup.gradeLevel')
             ->where('status', 'active');
 
-        if ($schoolId) $studentQuery->where('school_id', $schoolId);
-        if ($schoolGender) $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        if ($schoolId) {
+            $studentQuery->where('school_id', $schoolId);
+        }
+        if ($schoolGender) {
+            $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
+        }
 
         $students = $studentQuery->orderBy('name')->get();
         $groupedStudents = [];
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
-            if (!isset($groupedStudents[$label])) $groupedStudents[$label] = [];
+            if (! isset($groupedStudents[$label])) {
+                $groupedStudents[$label] = [];
+            }
             $groupedStudents[$label][] = $s;
         }
 

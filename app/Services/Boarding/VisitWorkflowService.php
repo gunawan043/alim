@@ -41,15 +41,36 @@ class VisitWorkflowService
         $student = ! empty($data['student_id']) ? Student::find($data['student_id']) : null;
 
         if ($student) {
-            $policy = BoardingPolicy::where('dormitory_id', $dormitoryId)
-                ->where('student_id', $student->id)
+            $policy = BoardingPolicy::query()
+                ->select('boarding_policies.*')
+                ->join('dormitory_policy_assignments', 'dormitory_policy_assignments.boarding_policy_id', '=', 'boarding_policies.id')
+                ->where('dormitory_policy_assignments.target_id', $dormitoryId)
+                ->where('dormitory_policy_assignments.policy_assignment_type', 'dormitory')
+                ->where('boarding_policies.is_active', true)
+                ->orderByDesc('dormitory_policy_assignments.priority')
+                ->orderByDesc('dormitory_policy_assignments.effective_from')
                 ->first();
 
             $context = DefaultBoardingContext::visitRequest($student, Dormitory::find($dormitoryId), $policy);
 
-            $this->engine->evaluate($context);
-            // Pre-flight policy check — controller decides whether to block the
-            // response; the visit is recorded so admin can override if needed.
+            $decision = $this->engine->evaluate($context);
+
+            // Blocking: if denied (e.g., quota exhausted) and cannot be bypassed, throw exception
+            if ($decision->isDenied()) {
+                // Can be bypassed? e.g., special permission exists but requires override.
+                if (! $decision->canBeBypassed()) {
+                    $denyReason = $decision->firstDenyReason();
+                    throw new \App\Domain\Exceptions\QuotaExceededException(
+                        $denyReason ?: 'Pengajuan tidak dapat diproses karena melebihi kuota.',
+                        [
+                            'policy_code' => $decision->toArray()['rule_results'][0]['policy_code'] ?? null,
+                            'strategy' => $decision->toArray()['rule_results'][0]['metadata']['strategy'] ?? null,
+                        ]
+                    );
+                }
+                // If can be bypassed (special permission needed), we still allow creation
+                // so admin can review later. The visit will be flagged for override.
+            }
         }
 
         $data['dormitory_id'] = $dormitoryId;
@@ -112,17 +133,18 @@ class VisitWorkflowService
         });
     }
 
-    public function checkIn(string $visitId, string $dormitoryId): DormitoryVisitLog
+    public function checkIn(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog
     {
         $visit = DormitoryVisitLog::where('dormitory_id', $dormitoryId)->findOrFail($visitId);
 
-        return DB::transaction(function () use ($visit) {
+        return DB::transaction(function () use ($visit, $note) {
             $visit->update([
                 'status' => 'arrived',
                 'actual_arrival_datetime' => now(),
+                'check_in_at' => now(),
             ]);
 
-            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_CHECK_IN);
+            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_CHECK_IN, $note);
 
             DB::afterCommit(fn () => Event::dispatch(new BoardingVisitCheckIn($visit)));
 
@@ -130,23 +152,24 @@ class VisitWorkflowService
         });
     }
 
-    public function checkOut(string $visitId, string $dormitoryId): DormitoryVisitLog
+    public function checkOut(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog
     {
         $visit = DormitoryVisitLog::where('dormitory_id', $dormitoryId)->findOrFail($visitId);
 
-        return DB::transaction(function () use ($visit) {
+        return DB::transaction(function () use ($visit, $note) {
             $visit->update([
                 'status' => 'checked_out',
                 'departure_datetime' => now(),
+                'check_out_at' => now(),
             ]);
 
-            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_CHECK_OUT);
+            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_CHECK_OUT, $note);
 
             return $visit;
         });
     }
 
-    private function recordTimeline(DormitoryVisitLog $visit, string $eventType): void
+    private function recordTimeline(DormitoryVisitLog $visit, string $eventType, ?string $note = null): void
     {
         $this->timeline->record(
             studentId: $visit->student_id,
@@ -163,6 +186,7 @@ class VisitWorkflowService
                 'visitor_name' => $visit->visitor_name,
                 'visitor_relationship' => $visit->visitor_relationship,
                 'purpose' => $visit->purpose,
+                'note' => $note,
             ],
             recordedBy: auth()->id(),
         );

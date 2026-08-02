@@ -25,13 +25,26 @@ return new class extends Migration
 
         // Backfill. The student's school_id is the canonical tenant — wali_santri
         // belongs to the same tenant as the student it links.
-        DB::statement('
-            UPDATE wali_santri ws
-            JOIN students s ON s.id = ws.student_id
-            SET ws.school_id = s.school_id
-            WHERE ws.school_id IS NULL
-              AND s.school_id IS NOT NULL
-        ');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('
+                UPDATE wali_santri ws
+                JOIN students s ON s.id = ws.student_id
+                SET ws.school_id = s.school_id
+                WHERE ws.school_id IS NULL
+                  AND s.school_id IS NOT NULL
+            ');
+        } else {
+            // SQLite uses UPDATE ... FROM syntax
+            DB::statement('
+                UPDATE wali_santri
+                SET school_id = (
+                    SELECT s.school_id FROM students s
+                    WHERE s.id = wali_santri.student_id
+                )
+                WHERE school_id IS NULL
+                  AND EXISTS (SELECT 1 FROM students s WHERE s.id = wali_santri.student_id AND s.school_id IS NOT NULL)
+            ');
+        }
 
         // Defense in depth: if any row remains NULL (orphaned student_id, missing
         // student.school_id), abort the migration. Silent defaults would create
@@ -63,8 +76,17 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'mysql') {
+            Schema::table('wali_santri', function (Blueprint $table) {
+                $table->dropForeign('wali_santri_school_id_foreign');
+            });
+        } else {
+            Schema::table('wali_santri', function (Blueprint $table) {
+                $table->dropForeign(['school_id']);
+            });
+        }
+
         Schema::table('wali_santri', function (Blueprint $table) {
-            $table->dropForeign('wali_santri_school_id_foreign');
             $table->dropIndex('wali_santri_school_student_index');
             $table->dropIndex('wali_santri_school_user_index');
             $table->dropIndex('wali_santri_school_id_index');

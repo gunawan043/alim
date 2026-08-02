@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::table('schools', function (Blueprint $table) {
             $table->enum('school_gender', ['putra', 'putri'])
-                  ->default('putra')
-                  ->after('school_level')
-                  ->comment('putra = sekolah laki-laki, putri = sekolah perempuan');
+                ->default('putra')
+                ->after('school_level')
+                ->comment('putra = sekolah laki-laki, putri = sekolah perempuan');
         });
     }
 

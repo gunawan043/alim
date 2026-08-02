@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\NotificationUniversal;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -23,7 +22,7 @@ class NotificationUniversalService
         'transfer',
         'education',
         'competency',
-        'training'
+        'training',
     ];
 
     /**
@@ -60,7 +59,7 @@ class NotificationUniversalService
     public function sendToMany($userIds, array $data)
     {
         $notifications = [];
-        $chunks = array_chunk((array)$userIds, 100); // Batch insert
+        $chunks = array_chunk((array) $userIds, 100); // Batch insert
 
         foreach ($chunks as $chunkUserIds) {
             $insertData = [];
@@ -112,8 +111,18 @@ class NotificationUniversalService
         $userIds = array_values(array_unique($userIds));
         if (empty($userIds)) {
             // FALLBACK: direct role lookup (legacy — deprecated, kept for fail-safe only)
-            $userIds = \App\Models\User::role($roleName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+            try {
+                $userIds = \App\Models\User::role($roleName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+            } catch (\Throwable $e) {
+                // Role tidak ditemukan — skip (contoh: role baru belum di-seed)
+                Log::debug("[NotificationUniversal] Role not found, skipping: {$roleName}", [
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return [];
+            }
         }
+
         return $this->sendToMany($userIds, $data);
     }
 
@@ -127,6 +136,7 @@ class NotificationUniversalService
             // Fallback to spatie permission table (legacy)
             $userIds = User::permission($permissionName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
         }
+
         return $this->sendToMany($userIds, $data);
     }
 
@@ -136,7 +146,9 @@ class NotificationUniversalService
     protected function handleDeliveryChannels($notification, $data)
     {
         $user = User::find($notification->user_id);
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         // Email
         if (($data['send_email'] ?? false) && $user->email) {
@@ -165,13 +177,13 @@ class NotificationUniversalService
         try {
             // Queue email job
             \App\Jobs\SendUniversalEmail::dispatch($user, $notification);
-            
+
             $notification->update([
                 'is_email_sent' => true,
-                'email_sent_at' => now()
+                'email_sent_at' => now(),
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send email notification: ' . $e->getMessage());
+            Log::error('Failed to send email notification: '.$e->getMessage());
         }
     }
 
@@ -183,13 +195,13 @@ class NotificationUniversalService
         try {
             // Queue WhatsApp job
             \App\Jobs\SendUniversalWhatsApp::dispatch($user, $notification, $phone);
-            
+
             $notification->update([
                 'is_whatsapp_sent' => true,
-                'whatsapp_sent_at' => now()
+                'whatsapp_sent_at' => now(),
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send WhatsApp notification: ' . $e->getMessage());
+            Log::error('Failed to send WhatsApp notification: '.$e->getMessage());
         }
     }
 
@@ -201,13 +213,13 @@ class NotificationUniversalService
         try {
             // Queue push notification job
             \App\Jobs\SendUniversalPush::dispatch($user, $notification);
-            
+
             $notification->update([
                 'is_push_sent' => true,
-                'push_sent_at' => now()
+                'push_sent_at' => now(),
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send push notification: ' . $e->getMessage());
+            Log::error('Failed to send push notification: '.$e->getMessage());
         }
     }
 
@@ -220,10 +232,10 @@ class NotificationUniversalService
             ->where('user_id', $userId)
             ->first();
 
-        if ($notification && !$notification->is_read) {
+        if ($notification && ! $notification->is_read) {
             $notification->update([
                 'is_read' => true,
-                'read_at' => now()
+                'read_at' => now(),
             ]);
         }
 
@@ -239,7 +251,7 @@ class NotificationUniversalService
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
-                'read_at' => now()
+                'read_at' => now(),
             ]);
     }
 
@@ -255,7 +267,7 @@ class NotificationUniversalService
         if ($notification) {
             $notification->update([
                 'is_archived' => true,
-                'archived_at' => now()
+                'archived_at' => now(),
             ]);
         }
 
@@ -283,19 +295,19 @@ class NotificationUniversalService
             ->notArchived()
             ->notExpired();
 
-        if (!empty($filters['module'])) {
+        if (! empty($filters['module'])) {
             $query->byModule($filters['module']);
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['is_read'])) {
+        if (! empty($filters['is_read'])) {
             $filters['is_read'] == 'true' ? $query->read() : $query->unread();
         }
 
-        if (!empty($filters['priority'])) {
+        if (! empty($filters['priority'])) {
             $query->byPriority($filters['priority']);
         }
 

@@ -7,7 +7,8 @@
         "status": "Disable",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "2",
         "name": "Streamlab",
         "createBy": "Zynthia Marrow",
@@ -15,15 +16,17 @@
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "3",
         "name": "Streamlab",
-        "createBy": "Philippa Santiago",
+        "createBy": "Philippa Santriago",
         "apikey": "0b53e8e2-e53d-4067-8be0-9cddea19e45e",
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "4",
         "name": "Streamlab",
         "createBy": "Elizabeth Allen",
@@ -31,7 +34,8 @@
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "5",
         "name": "Streamlab",
         "createBy": "Cassian Jenning",
@@ -39,7 +43,8 @@
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "6",
         "name": "Streamlab",
         "createBy": "Harley Watkins",
@@ -47,7 +52,8 @@
         "status": "Disable",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "7",
         "name": "Streamlab",
         "createBy": "Addison Black",
@@ -55,7 +61,8 @@
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "8",
         "name": "Streamlab",
         "createBy": "Nicki Butler",
@@ -63,7 +70,8 @@
         "status": "Active",
         "create_date": "24 Sep 2022",
         "expiry_date": "24 Jan 2023"
-    },{
+    },
+    {
         "id": "9",
         "name": "Streamlab",
         "createBy": "Tara Hawkins",

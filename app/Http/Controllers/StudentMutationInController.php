@@ -279,10 +279,10 @@ class StudentMutationInController extends Controller
         $keyword = $request->get('q', '');
         $query = Student::query();
         if ($keyword) {
-            $query->where(function($q) use ($keyword) {
+            $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")
-                  ->orWhere('nisn', 'like', "%{$keyword}%")
-                  ->orWhere('uuid', 'like', "%{$keyword}%");
+                    ->orWhere('nisn', 'like', "%{$keyword}%")
+                    ->orWhere('uuid', 'like', "%{$keyword}%");
             });
         }
         $query->orderBy('name')->take(15);

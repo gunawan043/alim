@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class EkstrakurikulerAnggota extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'ekstrakurikuler_anggota';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -32,7 +34,9 @@ class EkstrakurikulerAnggota extends Model
     ];
 
     const STATUS_AKTIF = 'aktif';
+
     const STATUS_KELUAR = 'keluar';
+
     const STATUS_LULUS = 'lulus';
 
     const STATUS_OPTIONS = [
@@ -66,6 +70,7 @@ class EkstrakurikulerAnggota extends Model
         if ($ekstrakurikulerId) {
             return $query->where('ekstrakurikuler_id', $ekstrakurikulerId);
         }
+
         return $query;
     }
 
@@ -79,6 +84,7 @@ class EkstrakurikulerAnggota extends Model
         if ($studentId) {
             return $query->where('student_id', $studentId);
         }
+
         return $query;
     }
 }

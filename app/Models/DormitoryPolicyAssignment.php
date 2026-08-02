@@ -47,7 +47,7 @@ class DormitoryPolicyAssignment extends Model
 
     public function getTargetAttribute()
     {
-        return match($this->policy_assignment_type) {
+        return match ($this->policy_assignment_type) {
             'dormitory' => $this->dormitory,
             'sekolah' => $this->sekolah,
             default => null,

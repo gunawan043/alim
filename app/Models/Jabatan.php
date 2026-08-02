@@ -12,11 +12,12 @@ class Jabatan extends Model
 
     protected $table = 'jabatan';
 
-    protected $fillable = ['jenis_gtk_id', 'nama', 'kategori', 'deskripsi', 'is_active', 'urutan'];
+    protected $fillable = ['jenis_gtk_id', 'nama', 'kategori', 'deskripsi', 'roles', 'is_active', 'urutan'];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'urutan'    => 'integer',
+        'urutan' => 'integer',
+        'roles' => 'array',
     ];
 
     public function jenisGtk(): BelongsTo

@@ -107,6 +107,7 @@ class Sparepart extends Model
         if ($this->lifetime_days && now()->diffInDays($this->stock_movements()->latest()->first()?->occurred_at ?? now()) > 365) {
             return true;
         }
+
         return false;
     }
 }

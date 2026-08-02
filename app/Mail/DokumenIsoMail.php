@@ -17,20 +17,21 @@ class DokumenIsoMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public DokumenIso $dokumen,
-        public User       $recipient,
-        public string     $aksi,
-        public ?string    $oldNama = null,
+        public User $recipient,
+        public string $aksi,
+        public ?string $oldNama = null,
     ) {}
 
     public function envelope(): Envelope
     {
         $aksiIcon = match ($this->aksi) {
-            'dibuat'   => '🆕',
+            'dibuat' => '🆕',
             'diperbarui' => '✏️',
-            'dihapus'  => '🗑️',
-            default    => '📄',
+            'dihapus' => '🗑️',
+            default => '📄',
         };
         $kode = $this->dokumen->kode_dokumen ?? '—';
+
         return new Envelope(
             subject: "$aksiIcon [ALIM] Dokumen ISO {$this->aksi} – $kode",
         );
@@ -41,10 +42,10 @@ class DokumenIsoMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.dokumen-iso-notification',
             with: [
-                'dokumen'   => $this->dokumen,
+                'dokumen' => $this->dokumen,
                 'recipient' => $this->recipient,
-                'aksi'      => $this->aksi,
-                'oldNama'   => $this->oldNama,
+                'aksi' => $this->aksi,
+                'oldNama' => $this->oldNama,
             ],
         );
     }

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
 class GtkPension extends Model
 {
@@ -24,8 +24,8 @@ class GtkPension extends Model
 
     protected $casts = [
         'planned_pension_date' => 'date',
-        'pension_letter_date'  => 'date',
-        'benefit_amount'       => 'decimal:2',
+        'pension_letter_date' => 'date',
+        'benefit_amount' => 'decimal:2',
     ];
 
     public function user()
@@ -48,12 +48,12 @@ class GtkPension extends Model
     public static function getStatusLabel(string $status): string
     {
         return match ($status) {
-            'draft'     => 'Draft',
-            'pending'   => 'Pending',
-            'approved'  => 'Disetujui',
+            'draft' => 'Draft',
+            'pending' => 'Pending',
+            'approved' => 'Disetujui',
             'completed' => 'Selesai',
             'cancelled' => 'Batal',
-            default     => ucfirst($status),
+            default => ucfirst($status),
         };
     }
 
@@ -61,10 +61,10 @@ class GtkPension extends Model
     {
         return match ($type) {
             'normal' => 'Pensi Normal',
-            'dini'   => 'Pensi Dini',
-            'cacat'  => 'Pensi Cacat',
-            'janda'  => 'Pensi Janda/Duda',
-            default  => ucfirst($type),
+            'dini' => 'Pensi Dini',
+            'cacat' => 'Pensi Cacat',
+            'janda' => 'Pensi Janda/Duda',
+            default => ucfirst($type),
         };
     }
 }

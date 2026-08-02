@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
-use App\Models\StudentMutationOut;
-use App\Models\StudentClassHistory;
-use App\Models\School;
-use App\Models\StudyGroup;
 use App\Models\AcademicYear;
 use App\Models\Alumni;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentClassHistory;
+use App\Models\StudentMutationOut;
+use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -40,7 +40,7 @@ class BulkGraduationController extends Controller
             $activeAcademicYear = AcademicYear::where('is_active', true)->first();
             $studentIds = StudentClassHistory::where('study_group_id', $studyGroup->id)
                 ->where('is_active', true)
-                ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                 ->pluck('student_id');
 
             $students = Student::whereIn('id', $studentIds)
@@ -51,7 +51,7 @@ class BulkGraduationController extends Controller
         } elseif ($selectedGrade && $selectedYear) {
             $query = Student::where('status', 'active')
                 ->where('entry_grade_level', $selectedGrade)
-                ->where('entry_date', 'like', $selectedYear . '%')
+                ->where('entry_date', 'like', $selectedYear.'%')
                 ->orderBy('name');
 
             if ($schoolContextId) {
@@ -87,14 +87,14 @@ class BulkGraduationController extends Controller
             'reason' => 'nullable|string',
         ]);
 
-        $graduationDate = $validated['graduation_date'] ?? $validated['graduation_year'] . '-06-01';
+        $graduationDate = $validated['graduation_date'] ?? $validated['graduation_year'].'-06-01';
 
         $processed = 0;
         foreach ($validated['student_ids'] as $studentId) {
             $student = Student::find($studentId);
 
             // Skip if student is not active
-            if (!$student || $student->status !== 'active') {
+            if (! $student || $student->status !== 'active') {
                 continue;
             }
 

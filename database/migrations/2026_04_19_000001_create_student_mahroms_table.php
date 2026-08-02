@@ -16,7 +16,8 @@ return new class extends Migration
             $table->enum('relationship', [
                 'ayah', 'ibu', 'kakak', 'adik',
                 'paman', 'bibi', 'kakek', 'nenek',
-                'suami', 'istri', 'sepupu', 'lainnya',
+                'suami', 'istri', 'sepupu', 'wali',
+                'anak', 'lainnya',
             ]);
             $table->string('phone', 20)->nullable();
             $table->text('address')->nullable();

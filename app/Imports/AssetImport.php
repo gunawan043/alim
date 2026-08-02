@@ -5,11 +5,9 @@ namespace App\Imports;
 use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetRoom;
-use App\Models\School;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -17,12 +15,19 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 class AssetImport implements ToCollection, WithHeadingRow, WithValidation
 {
     protected string $userId;
+
     protected ?string $schoolContextId;
+
     protected ?string $forcedRoomId;
+
     protected ?AssetRoom $forcedRoom = null;
+
     protected array $errors = [];
+
     protected array $successes = [];
+
     protected array $categoryMap = [];
+
     protected array $roomMap = [];
 
     public function __construct(string $userId, ?string $schoolContextId = null, ?string $forcedRoomId = null)
@@ -50,7 +55,7 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         foreach ($roomQuery->get() as $room) {
             $this->roomMap[strtolower($room->room_name)] = $room;
             if ($room->room_code) {
-                $this->roomMap['code:' . strtolower($room->room_code)] = $room;
+                $this->roomMap['code:'.strtolower($room->room_code)] = $room;
             }
         }
     }
@@ -89,30 +94,30 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             Log::info("AssetImport: {$created} created, {$skipped} skipped.");
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->errors[] = "Error fatal: " . $e->getMessage();
-            Log::error("AssetImport error: " . $e->getMessage());
+            $this->errors[] = 'Error fatal: '.$e->getMessage();
+            Log::error('AssetImport error: '.$e->getMessage());
         }
     }
 
     public function rules(): array
     {
         return [
-            'nama_aset'       => 'required|string|max:191',
-            'kode_aset'      => 'nullable|string|max:50',
-            'ruang'           => 'required|string|max:191',
-            'kategori'        => 'required|string|max:191',
-            'merk'            => 'nullable|string|max:100',
-            'model'           => 'nullable|string|max:100',
-            'nomor_seri'      => 'nullable|string|max:100',
-            'warna'           => 'nullable|string|max:50',
-            'kondisi'         => 'nullable|string|max:50',
-            'status'          => 'nullable|string|max:50',
+            'nama_aset' => 'required|string|max:191',
+            'kode_aset' => 'nullable|string|max:50',
+            'ruang' => 'required|string|max:191',
+            'kategori' => 'required|string|max:191',
+            'merk' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'nomor_seri' => 'nullable|string|max:100',
+            'warna' => 'nullable|string|max:50',
+            'kondisi' => 'nullable|string|max:50',
+            'status' => 'nullable|string|max:50',
             'tahun_perolehan' => 'nullable|integer|min:1900|max:2100',
             'harga_perolehan' => 'nullable|numeric|min:0',
-            'sumber_perolehan'=> 'nullable|string|max:100',
-            'sumber_dana'     => 'nullable|string|max:100',
-            'spesifikasi'     => 'nullable|string',
-            'catatan'         => 'nullable|string',
+            'sumber_perolehan' => 'nullable|string|max:100',
+            'sumber_dana' => 'nullable|string|max:100',
+            'spesifikasi' => 'nullable|string',
+            'catatan' => 'nullable|string',
         ];
     }
 
@@ -120,8 +125,8 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
     {
         return [
             'nama_aset.required' => 'Nama aset wajib diisi.',
-            'ruang.required'     => 'Nama/coded ruang wajib diisi.',
-            'kategori.required'  => 'Nama kategori wajib diisi.',
+            'ruang.required' => 'Nama/coded ruang wajib diisi.',
+            'kategori.required' => 'Nama kategori wajib diisi.',
         ];
     }
 
@@ -151,20 +156,20 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
 
         // Find room — use forced room if set, otherwise lookup from column
         $room = $this->forcedRoom;
-        if (!$room && blank($this->forcedRoomId)) {
+        if (! $room && blank($this->forcedRoomId)) {
             $roomRef = trim($row['ruang'] ?? '');
             $room = $this->findRoom($roomRef);
-            if (!$room) {
+            if (! $room) {
                 return "Baris {$rowNumber}: Ruang '{$roomRef}' tidak ditemukan.";
             }
         }
-        if (!$room) {
+        if (! $room) {
             return "Baris {$rowNumber}: Ruang tidak ditemukan.";
         }
 
         // Find category
         $category = $this->findCategory($categoryRef);
-        if (!$category) {
+        if (! $category) {
             return "Baris {$rowNumber}: Kategori '{$categoryRef}' tidak ditemukan.";
         }
 
@@ -177,36 +182,37 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         }
 
         $condition = $this->normalizeCondition($row['kondisi'] ?? 'baik');
-        $status    = $this->normalizeStatus($row['status'] ?? 'tersedia');
+        $status = $this->normalizeStatus($row['status'] ?? 'tersedia');
         $acqSource = $this->normalizeAcqSource($row['sumber_perolehan'] ?? '');
-        $acqYear   = !empty($row['tahun_perolehan']) ? (int) $row['tahun_perolehan'] : null;
-        $acqPrice  = !empty($row['harga_perolehan']) ? (float) $row['harga_perolehan'] : null;
+        $acqYear = ! empty($row['tahun_perolehan']) ? (int) $row['tahun_perolehan'] : null;
+        $acqPrice = ! empty($row['harga_perolehan']) ? (float) $row['harga_perolehan'] : null;
 
         Asset::create([
-            'school_id'           => $room->school_id,
-            'work_unit_id'        => $room->work_unit_id,
-            'room_id'             => $room->id,
-            'asset_category_id'   => $category->id,
-            'asset_code'          => $assetCode ?: null,
-            'asset_name'          => $assetName,
-            'brand'               => trim($row['merk'] ?? '') ?: null,
-            'model'               => trim($row['model'] ?? '') ?: null,
-            'serial_number'       => trim($row['nomor_seri'] ?? '') ?: null,
-            'color'               => trim($row['warna'] ?? '') ?: null,
-            'specification'       => trim($row['spesifikasi'] ?? '') ?: null,
-            'acquisition_year'    => $acqYear,
-            'acquisition_price'   => $acqPrice,
-            'acquisition_source'   => $acqSource ?: null,
-            'funding_source'      => trim($row['sumber_dana'] ?? '') ?: null,
-            'condition'           => $condition,
-            'status'              => $status,
-            'is_bookable'        => true,
-            'is_active'           => true,
-            'notes'               => trim($row['catatan'] ?? '') ?: null,
-            'created_by'          => $this->userId,
+            'school_id' => $room->school_id,
+            'work_unit_id' => $room->work_unit_id,
+            'room_id' => $room->id,
+            'asset_category_id' => $category->id,
+            'asset_code' => $assetCode ?: null,
+            'asset_name' => $assetName,
+            'brand' => trim($row['merk'] ?? '') ?: null,
+            'model' => trim($row['model'] ?? '') ?: null,
+            'serial_number' => trim($row['nomor_seri'] ?? '') ?: null,
+            'color' => trim($row['warna'] ?? '') ?: null,
+            'specification' => trim($row['spesifikasi'] ?? '') ?: null,
+            'acquisition_year' => $acqYear,
+            'acquisition_price' => $acqPrice,
+            'acquisition_source' => $acqSource ?: null,
+            'funding_source' => trim($row['sumber_dana'] ?? '') ?: null,
+            'condition' => $condition,
+            'status' => $status,
+            'is_bookable' => true,
+            'is_active' => true,
+            'notes' => trim($row['catatan'] ?? '') ?: null,
+            'created_by' => $this->userId,
         ]);
 
         $this->successes[] = $assetName;
+
         return true;
     }
 
@@ -222,8 +228,8 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         }
 
         // Check by code
-        if (isset($this->roomMap['code:' . $refLower])) {
-            return $this->roomMap['code:' . $refLower];
+        if (isset($this->roomMap['code:'.$refLower])) {
+            return $this->roomMap['code:'.$refLower];
         }
 
         // Fuzzy: partial match on room name
@@ -247,6 +253,7 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         // Fuzzy match
         $found = AssetCategory::whereRaw('LOWER(name) LIKE ?', ["%{$refLower}%"])
             ->where('is_active', true)->first();
+
         return $found;
     }
 
@@ -255,59 +262,64 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
     private function normalizeCondition(?string $val): string
     {
         $map = [
-            'baik'         => 'baik',
-            'bagus'        => 'baik',
-            'baik sekali'  => 'baik',
+            'baik' => 'baik',
+            'bagus' => 'baik',
+            'baik sekali' => 'baik',
             'rusak ringan' => 'rusak_ringan',
             'rusak_ringan' => 'rusak_ringan',
-            'ringan'       => 'rusak_ringan',
+            'ringan' => 'rusak_ringan',
             'rusak sedang' => 'rusak_sedang',
             'rusak_sedang' => 'rusak_sedang',
-            'sedang'       => 'rusak_sedang',
-            'rusak berat'  => 'rusak_berat',
-            'rusak_berat'  => 'rusak_berat',
-            'berat'        => 'rusak_berat',
-            'hilang'       => 'hilang',
-            'dihapus'      => 'dihapus',
+            'sedang' => 'rusak_sedang',
+            'rusak berat' => 'rusak_berat',
+            'rusak_berat' => 'rusak_berat',
+            'berat' => 'rusak_berat',
+            'hilang' => 'hilang',
+            'dihapus' => 'dihapus',
         ];
         $val = strtolower(trim($val ?? ''));
+
         return $map[$val] ?? 'baik';
     }
 
     private function normalizeStatus(?string $val): string
     {
         $map = [
-            'tersedia'         => 'tersedia',
-            'tersedia'         => 'tersedia',
-            'tersedia'        => 'tersedia',
-            'dipinjam'        => 'dipinjam',
-            'pinjam'          => 'dipinjam',
+            'tersedia' => 'tersedia',
+            'tersedia' => 'tersedia',
+            'tersedia' => 'tersedia',
+            'dipinjam' => 'dipinjam',
+            'pinjam' => 'dipinjam',
             'dalam perbaikan' => 'dalam_perbaikan',
             'dalam_perbaikan' => 'dalam_perbaikan',
-            'perbaikan'       => 'dalam_perbaikan',
-            'dihapus'         => 'dihapus',
+            'perbaikan' => 'dalam_perbaikan',
+            'dihapus' => 'dihapus',
         ];
         $val = strtolower(trim($val ?? ''));
+
         return $map[$val] ?? 'tersedia';
     }
 
     private function normalizeAcqSource(?string $val): ?string
     {
-        if (blank($val)) return null;
+        if (blank($val)) {
+            return null;
+        }
         $map = [
-            'pembelian'          => 'pembelian',
-            'hibah'             => 'hibah',
-            'sumbangan'         => 'sumbangan',
-            'pengadaan bos'     => 'pengadaan_bos',
-            'pengadaan_bos'     => 'pengadaan_bos',
-            'bos'               => 'pengadaan_bos',
-            'bantuan pemerintah'=> 'bantuan_pemerintah',
-            'bantuan_pemerintah'=> 'bantuan_pemerintah',
-            'pemerintah'        => 'bantuan_pemerintah',
-            'lainnya'           => 'lainnya',
-            'lain lain'         => 'lainnya',
+            'pembelian' => 'pembelian',
+            'hibah' => 'hibah',
+            'sumbangan' => 'sumbangan',
+            'pengadaan bos' => 'pengadaan_bos',
+            'pengadaan_bos' => 'pengadaan_bos',
+            'bos' => 'pengadaan_bos',
+            'bantuan pemerintah' => 'bantuan_pemerintah',
+            'bantuan_pemerintah' => 'bantuan_pemerintah',
+            'pemerintah' => 'bantuan_pemerintah',
+            'lainnya' => 'lainnya',
+            'lain lain' => 'lainnya',
         ];
         $val = strtolower(trim($val));
+
         return $map[$val] ?? 'lainnya';
     }
 }

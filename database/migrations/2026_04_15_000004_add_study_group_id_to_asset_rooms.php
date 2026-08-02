@@ -11,9 +11,9 @@ return new class extends Migration
         Schema::table('asset_rooms', function (Blueprint $table) {
             $table->uuid('study_group_id')->nullable()->after('responsible_user_id');
             $table->foreign('study_group_id')
-                  ->references('id')
-                  ->on('study_groups')
-                  ->nullOnDelete();
+                ->references('id')
+                ->on('study_groups')
+                ->nullOnDelete();
             $table->index('study_group_id');
         });
     }

@@ -1,7 +1,7 @@
 # ALIM — Implementation Plan: Menutup Gap Konsep Dapodik/EMIS
 
 **Tanggal**: 2026-06-17
-**Repository**: /Users/gunawan_wawan43/Movies/PUSTIK/alim
+**Repository**: /Users/gunawan_wawan43/Movies/Alim/alim
 **Tujuan**: Menutup gap antara konsep (sesuai dokumen user) dan implementasi aktual di codebase.
 **Pendekatan**: Setiap fase fokus pada SATU konsep flow; deploy per fase agar tidak menggangu produksi.
 

@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('user_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->enum('status_kepegawaian', ['GTT', 'GTY', 'KONTRAK']);
             $table->string('nupy', 50)->unique()->nullable();

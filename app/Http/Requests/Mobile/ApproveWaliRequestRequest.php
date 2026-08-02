@@ -14,8 +14,8 @@ class ApproveWaliRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action'  => 'required|string|in:approve,reject',
-            'note'    => 'nullable|string|max:500',
+            'action' => 'required|string|in:approve,reject',
+            'note' => 'nullable|string|max:500',
         ];
     }
 }

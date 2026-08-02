@@ -3,7 +3,7 @@
     Data Santri
 @endsection
 @php
-    $canViewAllSchools = auth()->check() && auth()->user()->role()->hasPermission('student-all-access');
+    $canViewAllSchools = auth()->check() && auth()->user()->hasPermissionTo('student-all-access');
 @endphp
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
@@ -345,7 +345,7 @@
                                     };
                                     $isFinalGrade = in_array($level, $finalLevels);
                                 @endphp
-                                @if ($studyGroup)
+                                @if ($studyGroup && !($isDormitoryUser ?? false))
                                     <button type="button" class="btn btn-outline-info" onclick="openBulkModal()">
                                         <i class="ri-user-add-line align-bottom me-1"></i>Tarik Santri
                                     </button>
@@ -365,14 +365,21 @@
                                         </a>
                                     @endif
                                 @endif
-                                <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
-                                    class="btn btn-success">
-                                    <i class="ri-add-line align-bottom me-1"></i> Tambah Santri
-                                </a>
-                                <a href="{{ route('user.students.import-form', ['userId' => $userId]) }}"
-                                    class="btn btn-outline-secondary">
-                                    <i class="ri-file-upload-line align-bottom me-1"></i> Import Excel
-                                </a>
+                                @unless($isDormitoryUser ?? false)
+                                    <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
+                                        class="btn btn-success">
+                                        <i class="ri-add-line align-bottom me-1"></i> Tambah Santri
+                                    </a>
+                                    <a href="{{ route('user.students.import-form', ['userId' => $userId]) }}"
+                                        class="btn btn-outline-secondary">
+                                        <i class="ri-file-upload-line align-bottom me-1"></i> Import Excel
+                                    </a>
+                                @else
+                                    <span class="badge bg-info-subtle text-info">
+                                        <i class="ri-information-line me-1"></i>
+                                        Anda hanya dapat melihat data Santri yang tinggal di asrama. Data Mahrom tetap dapat dikelola.
+                                    </span>
+                                @endunless
                             </div>
                         </div>
                     </div>
@@ -581,10 +588,12 @@
                                                     </a>
                                                 </li>
                                                 <li>
-                                                    <a class="dropdown-item"
-                                                        href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $s->id]) }}">
-                                                        <i class="ri-pencil-line me-2"></i>Edit
-                                                    </a>
+                                                    @unless($isDormitoryUser ?? false)
+                                                        <a class="dropdown-item"
+                                                            href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $s->id]) }}">
+                                                            <i class="ri-pencil-line me-2"></i>Edit
+                                                        </a>
+                                                    @endunless
                                                 </li>
                                                 @if ($studyGroup)
                                                     <li>
@@ -623,10 +632,12 @@
                                             </div>
                                         </div>
                                         <h5 class="text-muted">Belum ada data santri</h5>
-                                        <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
-                                            class="btn btn-success">
-                                            <i class="ri-add-line me-1"></i>Tambah Santri
-                                        </a>
+                                        @unless($isDormitoryUser ?? false)
+                                            <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
+                                                class="btn btn-success">
+                                                <i class="ri-add-line me-1"></i>Tambah Santri
+                                            </a>
+                                        @endunless
                                     </td>
                                 </tr>
                             @endforelse

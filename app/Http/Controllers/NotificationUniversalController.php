@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\NotificationUniversal;
 use App\Services\NotificationUniversalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\NotificationUniversal;
 
 class NotificationUniversalController extends Controller
 {
@@ -29,7 +29,7 @@ class NotificationUniversalController extends Controller
         return response()->json([
             'success' => true,
             'data' => $notifications,
-            'unread_count' => $this->notificationService->getUnreadCount(Auth::id())
+            'unread_count' => $this->notificationService->getUnreadCount(Auth::id()),
         ]);
     }
 
@@ -42,7 +42,7 @@ class NotificationUniversalController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $notification
+            'data' => $notification,
         ]);
     }
 
@@ -55,7 +55,7 @@ class NotificationUniversalController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "{$count} notifications marked as read"
+            'message' => "{$count} notifications marked as read",
         ]);
     }
 
@@ -68,7 +68,7 @@ class NotificationUniversalController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $notification
+            'data' => $notification,
         ]);
     }
 
@@ -81,7 +81,7 @@ class NotificationUniversalController extends Controller
 
         return response()->json([
             'success' => true,
-            'count' => $count
+            'count' => $count,
         ]);
     }
 
@@ -98,7 +98,7 @@ class NotificationUniversalController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notification deleted'
+            'message' => 'Notification deleted',
         ]);
     }
 }

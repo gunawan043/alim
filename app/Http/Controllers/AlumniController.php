@@ -3,13 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alumni;
-use App\Models\Student;
 use App\Models\School;
-use App\Models\AcademicYear;
+use App\Models\Student;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class AlumniController extends Controller
 {
@@ -45,7 +41,7 @@ class AlumniController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('student', fn($q) => $q
+            $query->whereHas('student', fn ($q) => $q
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('nisn', 'like', "%{$search}%")
                 ->orWhere('nik', 'like', "%{$search}%")
@@ -54,7 +50,7 @@ class AlumniController extends Controller
 
         // Available graduation years
         $graduationYears = Alumni::query()
-            ->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId))
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->selectRaw('DISTINCT graduation_year')
             ->orderByDesc('graduation_year')
             ->pluck('graduation_year');
@@ -91,7 +87,7 @@ class AlumniController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $alumni = Alumni::with(['student', 'school'])
-            ->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId))
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->findOrFail($alumniUuid);
 
         return view('alumni.show', compact('alumni', 'userId'));
@@ -105,7 +101,7 @@ class AlumniController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $alumni = Alumni::with(['student', 'school'])
-            ->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId))
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->findOrFail($alumniUuid);
 
         return view('alumni.edit', compact('alumni', 'userId'));
@@ -119,31 +115,31 @@ class AlumniController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $alumni = Alumni::with(['student', 'school'])
-            ->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId))
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->findOrFail($alumniUuid);
 
         $validated = $request->validate([
             // Continuer
-            'continuing_study_status'    => 'required|in:belum,sedang,sudah',
+            'continuing_study_status' => 'required|in:belum,sedang,sudah',
             'higher_education_institution' => 'nullable|string|max:255',
-            'study_program'               => 'nullable|string|max:255',
-            'higher_education_city'       => 'nullable|string|max:100',
+            'study_program' => 'nullable|string|max:255',
+            'higher_education_city' => 'nullable|string|max:100',
             'higher_education_year_start' => 'nullable|integer|min:1990|max:2100',
-            'further_study_institution'   => 'nullable|string|max:255',
-            'further_study_program'       => 'nullable|string|max:255',
+            'further_study_institution' => 'nullable|string|max:255',
+            'further_study_program' => 'nullable|string|max:255',
             // Working
-            'working_status'       => 'required|in:belum,sedang,sudah',
-            'occupation'          => 'nullable|string|max:255',
-            'company_name'        => 'nullable|string|max:255',
-            'company_address'    => 'nullable|string|max:500',
-            'company_phone'      => 'nullable|string|max:20',
-            'company_city'       => 'nullable|string|max:100',
-            'monthly_income'     => 'nullable|numeric|min:0',
+            'working_status' => 'required|in:belum,sedang,sudah',
+            'occupation' => 'nullable|string|max:255',
+            'company_name' => 'nullable|string|max:255',
+            'company_address' => 'nullable|string|max:500',
+            'company_phone' => 'nullable|string|max:20',
+            'company_city' => 'nullable|string|max:100',
+            'monthly_income' => 'nullable|numeric|min:0',
             'working_year_start' => 'nullable|integer|min:1990|max:2100',
             // Contact & Notes
-            'is_contactable'    => 'nullable|boolean',
-            'achievements'     => 'nullable|string|max:1000',
-            'tracer_notes'     => 'nullable|string|max:1000',
+            'is_contactable' => 'nullable|boolean',
+            'achievements' => 'nullable|string|max:1000',
+            'tracer_notes' => 'nullable|string|max:1000',
         ]);
 
         $validated['tracer_status'] = 'filled';
@@ -165,7 +161,7 @@ class AlumniController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $alumni = Alumni::with(['student', 'school'])
-            ->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId))
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->findOrFail($alumniUuid);
 
         if ($alumni->tracer_status !== 'filled') {
@@ -211,7 +207,7 @@ class AlumniController extends Controller
     {
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\AlumniExport($alumni),
-            'data-alumni-' . date('Y-m-d') . '.xlsx'
+            'data-alumni-'.date('Y-m-d').'.xlsx'
         );
     }
 
@@ -222,7 +218,7 @@ class AlumniController extends Controller
             'date' => now()->locale('id')->translatedFormat('d F Y'),
         ]);
 
-        return $pdf->download('data-alumni-' . date('Y-m-d') . '.pdf');
+        return $pdf->download('data-alumni-'.date('Y-m-d').'.pdf');
     }
 
     /**
@@ -233,7 +229,7 @@ class AlumniController extends Controller
         $userId = $request->route('userId') ?? auth()->id();
         $schoolContextId = $request->attributes->get('schoolContextId');
 
-        $baseQuery = Alumni::query()->when($schoolContextId, fn($q) => $q->where('school_id', $schoolContextId));
+        $baseQuery = Alumni::query()->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId));
 
         // Total per year
         $byYear = (clone $baseQuery)
@@ -242,7 +238,7 @@ class AlumniController extends Controller
             ->orderByDesc('graduation_year')
             ->limit(10)
             ->get()
-            ->map(fn($r) => [
+            ->map(fn ($r) => [
                 'year' => $r->graduation_year,
                 'total' => $r->total,
             ]);

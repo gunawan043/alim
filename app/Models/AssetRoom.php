@@ -11,8 +11,11 @@ class AssetRoom extends Model
     use HasFactory;
 
     protected $table = 'asset_rooms';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -20,16 +23,16 @@ class AssetRoom extends Model
         parent::boot();
         static::creating(function ($m) {
             $m->id = $m->id ?? (string) Str::uuid();
-            if (!$m->room_code) {
+            if (! $m->room_code) {
                 $prefix = strtoupper(substr($m->room_type ?? 'kelas', 0, 3));
                 $last = static::where('room_code', 'LIKE', "{$prefix}-%")
-                    -> orderBy('room_code', 'desc')
-                    -> value('room_code');
+                    ->orderBy('room_code', 'desc')
+                    ->value('room_code');
                 $number = 1;
                 if ($last && preg_match('/-(\d+)$/', $last, $match)) {
                     $number = intval($match[1]) + 1;
                 }
-                $m->room_code = $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+                $m->room_code = $prefix.'-'.str_pad($number, 4, '0', STR_PAD_LEFT);
             }
         });
     }

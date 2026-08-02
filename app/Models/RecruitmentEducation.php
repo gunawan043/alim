@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class RecruitmentEducation extends Model
 {
     use HasFactory, HasUuids;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     protected $table = 'recruitment_educations';
 
     protected $fillable = [
@@ -19,7 +21,7 @@ class RecruitmentEducation extends Model
         'fakultas', 'tahun_masuk', 'tahun_lulus', 'is_ijazah_ada',
         'no_ijazah', 'nilai_akhir', 'skala_nilai', 'ipk', 'predikat_kelulusan',
         'ijazah_path', 'transkrip_path', 'sertifikat_akreditasi_path',
-        'is_verified', 'verified_by', 'verified_at', 'catatan_verifikasi'
+        'is_verified', 'verified_by', 'verified_at', 'catatan_verifikasi',
     ];
 
     protected $casts = [

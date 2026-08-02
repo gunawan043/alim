@@ -10,7 +10,9 @@ use Illuminate\Support\Str;
 class StudentPromotion extends Model
 {
     protected $table = 'student_promotions';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -36,12 +38,12 @@ class StudentPromotion extends Model
     ];
 
     protected $casts = [
-        'promotion_date'  => 'date',
-        'executed_at'     => 'datetime',
-        'auto_enroll'     => 'boolean',
+        'promotion_date' => 'date',
+        'executed_at' => 'datetime',
+        'auto_enroll' => 'boolean',
         'include_inactive' => 'boolean',
-        'skip_graduate'   => 'boolean',
-        'grade_shift'     => 'integer',
+        'skip_graduate' => 'boolean',
+        'grade_shift' => 'integer',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -103,22 +105,22 @@ class StudentPromotion extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'Draft',
+            'draft' => 'Draft',
             'processed' => 'Diproses',
             'completed' => 'Selesai',
             'cancelled' => 'Dibatalkan',
-            default     => ucfirst($this->status ?? ''),
+            default => ucfirst($this->status ?? ''),
         };
     }
 
     public function getStatusBadgeColorAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'secondary',
+            'draft' => 'secondary',
             'processed' => 'info',
             'completed' => 'success',
             'cancelled' => 'danger',
-            default     => 'secondary',
+            default => 'secondary',
         };
     }
 }

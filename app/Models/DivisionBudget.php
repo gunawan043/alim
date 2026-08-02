@@ -11,8 +11,11 @@ class DivisionBudget extends Model
     use HasFactory;
 
     protected $table = 'division_budgets';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -43,6 +46,7 @@ class DivisionBudget extends Model
         if ((float) $this->allocated_amount <= 0) {
             return 0;
         }
+
         return round(((float) $this->used_amount / (float) $this->allocated_amount) * 100, 2);
     }
 }

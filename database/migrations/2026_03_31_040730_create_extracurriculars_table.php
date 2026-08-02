@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('extracurriculars', function (Blueprint $table) {
@@ -30,20 +31,20 @@ return new class extends Migration {
             $table->string('room', 100)->nullable();
             $table->integer('max_members')->nullable();
             $table->tinyInteger('is_mandatory')->default(0)
-                  ->comment('1 = wajib diikuti semua santri');
+                ->comment('1 = wajib diikuti semua santri');
             $table->tinyInteger('is_active')->default(1);
             $table->string('logo_path', 255)->nullable();
             $table->timestamps();
- 
+
             $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();
             $table->foreign('supervisor_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('instructor_id')->references('id')->on('users')->nullOnDelete();
- 
+
             $table->unique(['school_id', 'code'], 'unique_extracurricular_code_per_school');
             $table->index(['school_id', 'is_active']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('extracurriculars');

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
+use App\Models\GtkEmployment;
+use App\Models\GtkProfile;
+use App\Models\PensionSetting;
 use App\Models\User;
 use App\Models\WorkUnit;
-use App\Models\GtkProfile;
-use App\Models\GtkEmployment;
-use App\Models\PensionSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -67,21 +67,21 @@ class PersonaliaDashboardController extends Controller
             ->count();
 
         $guru = User::where('is_active', true)
-            ->whereHas('employment', fn($q) => $q->where('jenis_gtk', 'Guru'))
+            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'Guru'))
             ->count();
 
         $tendik = User::where('is_active', true)
-            ->whereHas('employment', fn($q) => $q->where('jenis_gtk', 'Tendik'))
+            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'Tendik'))
             ->count();
 
         $male = User::where('is_active', true)
             ->whereHas('employment')
-            ->whereHas('gtkProfile', fn($q) => $q->where('jenis_kelamin', 'Laki-laki'))
+            ->whereHas('gtkProfile', fn ($q) => $q->where('jenis_kelamin', 'Laki-laki'))
             ->count();
 
         $female = User::where('is_active', true)
             ->whereHas('employment')
-            ->whereHas('gtkProfile', fn($q) => $q->where('jenis_kelamin', 'Perempuan'))
+            ->whereHas('gtkProfile', fn ($q) => $q->where('jenis_kelamin', 'Perempuan'))
             ->count();
 
         return [
@@ -120,16 +120,16 @@ class PersonaliaDashboardController extends Controller
 
         return User::where('users.is_active', true)
             ->join('gtk_profiles', 'users.id', '=', 'gtk_profiles.user_id')
-            ->leftJoin('gtk_pensions', function($join) {
+            ->leftJoin('gtk_pensions', function ($join) {
                 $join->on('users.id', '=', 'gtk_pensions.user_id')
-                     ->whereIn('gtk_pensions.pension_status', ['completed', 'cancelled']);
+                    ->whereIn('gtk_pensions.pension_status', ['completed', 'cancelled']);
             })
             ->whereNull('gtk_pensions.id')
             ->whereNotNull('gtk_profiles.tanggal_lahir')
-            ->whereRaw("DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR) <= DATE_ADD(NOW(), INTERVAL ? MONTH)",
+            ->whereRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR) <= DATE_ADD(NOW(), INTERVAL ? MONTH)',
                 [$bupAge, $notifMonths])
             ->select('users.id', 'users.name', 'gtk_profiles.tanggal_lahir')
-            ->orderByRaw("DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR)", [$bupAge])
+            ->orderByRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR)', [$bupAge])
             ->limit(10)
             ->get();
     }

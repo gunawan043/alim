@@ -12,6 +12,7 @@ class WorkOrderPolicy
         if (canUserPermission($user, 'sarpras.administrator.accessible')) {
             return true;
         }
+
         return null;
     }
 

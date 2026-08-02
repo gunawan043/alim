@@ -11,14 +11,17 @@ class AssetLand extends Model
     use HasFactory;
 
     protected $table = 'asset_lands';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -37,8 +40,23 @@ class AssetLand extends Model
     ];
 
     // RELATIONSHIPS
-    public function school()    { return $this->belongsTo(School::class); }
-    public function workUnit() { return $this->belongsTo(WorkUnit::class); }
-    public function buildings() { return $this->hasMany(AssetBuilding::class, 'land_id'); }
-    public function creator()  { return $this->belongsTo(User::class, 'created_by'); }
+    public function school()
+    {
+        return $this->belongsTo(School::class);
+    }
+
+    public function workUnit()
+    {
+        return $this->belongsTo(WorkUnit::class);
+    }
+
+    public function buildings()
+    {
+        return $this->hasMany(AssetBuilding::class, 'land_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

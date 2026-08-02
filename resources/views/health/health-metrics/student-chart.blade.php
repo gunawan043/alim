@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Grafik Antropometri Santi @endsection
+@section('title') Grafik Antropometri Santri @endsection
 
 @section('content')
     @component('components.breadcrumb')
@@ -26,7 +26,7 @@
                     <div class="card-body text-center py-5">
                         <i class="ri-line-chart-line text-muted" style="font-size:4rem;"></i>
                         <h5 class="mt-3 text-muted">Belum Ada Data Pengukuran</h5>
-                        <p class="text-muted">Tambahkan data antropometri untuk Santi ini terlebih dahulu.</p>
+                        <p class="text-muted">Tambahkan data antropometri untuk Santri ini terlebih dahulu.</p>
                         <a href="{{ route('user.uks.health-metrics.index', ['userId' => $userId]) }}" class="btn btn-secondary mt-2">
                             <i class="ri-arrow-left-line me-1"></i> Kembali
                         </a>

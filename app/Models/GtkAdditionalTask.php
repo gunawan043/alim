@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
@@ -13,7 +13,9 @@ class GtkAdditionalTask extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -74,12 +76,16 @@ class GtkAdditionalTask extends Model
         if ($this->tmt && $this->tst) {
             return $this->tmt->diffInMonths($this->tst);
         }
+
         return null;
     }
 
     public function getIsActiveAttribute()
     {
-        if (!$this->tst) return true;
+        if (! $this->tst) {
+            return true;
+        }
+
         return now()->lessThanOrEqualTo($this->tst);
     }
 
@@ -87,6 +93,7 @@ class GtkAdditionalTask extends Model
     public function getMaskedNomorSkAttribute()
     {
         $nomorSk = $this->nomor_sk;
-        return $nomorSk ? substr($nomorSk, 0, 6) . '/****/' . substr($nomorSk, -4) : null;
+
+        return $nomorSk ? substr($nomorSk, 0, 6).'/****/'.substr($nomorSk, -4) : null;
     }
 }

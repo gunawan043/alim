@@ -17,11 +17,11 @@ return new class extends Migration
             $table->string('visitor_id_number', 30)->nullable()->comment('NIK / KTP visitor');
             $table->string('visitor_phone', 20)->nullable();
             $table->enum('visitor_relationship', [
-                'mahrom', 'wali', 'keluarga', 'Pihak pondok', ' Lainnya'
+                'mahrom', 'wali', 'keluarga', 'Pihak pondok', ' Lainnya',
             ])->default(' Lainnya');
             $table->enum('purpose', [
                 'menjenguk', 'bawa_bantuan', 'pertemuan_wali',
-                'antar_jemput', 'lainnya'
+                'antar_jemput', 'lainnya',
             ])->default('menjenguk');
             $table->dateTime('expected_arrival_datetime');
             $table->dateTime('actual_arrival_datetime')->nullable();
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->timestamp('check_out_at')->nullable();
             $table->enum('status', [
                 'pending', 'approved', 'rejected',
-                'arrived', 'checked_out', 'cancelled', 'no_show'
+                'arrived', 'checked_out', 'cancelled', 'no_show',
             ])->default('pending');
             $table->uuid('created_by');
             $table->timestamps();

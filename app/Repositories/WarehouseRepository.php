@@ -28,6 +28,7 @@ class WarehouseRepository implements WarehouseRepositoryInterface
     public function update(Warehouse $warehouse, array $data): Warehouse
     {
         $warehouse->update($data);
+
         return $warehouse->fresh();
     }
 

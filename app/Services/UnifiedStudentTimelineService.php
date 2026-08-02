@@ -175,7 +175,7 @@ class UnifiedStudentTimelineService
      */
     private function resolveEventSubtitle(BoardingTimelineEvent $event): ?string
     {
-        if (!$event->payload) {
+        if (! $event->payload) {
             return null;
         }
 

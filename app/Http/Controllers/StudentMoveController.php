@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
-use App\Models\AcademicYear;
-use App\Models\GradeLevel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -44,8 +43,9 @@ class StudentMoveController extends Controller
                 ->map(function ($sg) use ($activeAcademicYear) {
                     $sg->studentCount = StudentClassHistory::where('study_group_id', $sg->id)
                         ->where('is_active', true)
-                        ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                        ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                         ->count();
+
                     return $sg;
                 });
         }
@@ -55,7 +55,7 @@ class StudentMoveController extends Controller
         if ($sourceStudyGroup) {
             $studentIds = StudentClassHistory::where('study_group_id', $sourceStudyGroup->id)
                 ->where('is_active', true)
-                ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                 ->pluck('student_id');
 
             $students = Student::whereIn('id', $studentIds)
@@ -115,7 +115,7 @@ class StudentMoveController extends Controller
         $activeAcademicYear = AcademicYear::where('is_active', true)->first();
         $currentDestCount = StudentClassHistory::where('study_group_id', $destSg->id)
             ->where('is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
             ->count();
 
         $movingCount = count($validated['student_ids']);
@@ -123,6 +123,7 @@ class StudentMoveController extends Controller
 
         if ($movingCount > $availableSlots) {
             $sisa = $availableSlots;
+
             return back()->withInput()->with('error', "Rombel tujuan hanya memiliki {$sisa} slot tersisa.Anda mencoba memindahkan {$movingCount} santri. Kurangi jumlah yang dipilih atau pilih rombel lain.");
         }
 
@@ -139,11 +140,12 @@ class StudentMoveController extends Controller
                 $currentHistory = StudentClassHistory::where('student_id', $studentId)
                     ->where('study_group_id', $sourceSg->id)
                     ->where('is_active', true)
-                    ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                    ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                     ->first();
 
-                if (!$currentHistory) {
+                if (! $currentHistory) {
                     $results['skipped']++;
+
                     continue;
                 }
 

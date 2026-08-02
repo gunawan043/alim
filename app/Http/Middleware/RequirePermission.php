@@ -69,7 +69,7 @@ final class RequirePermission
     }
 
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      */
     private function anyAllowed(mixed $user, array $permissions, OrganizationContext $context): bool
     {
@@ -78,11 +78,12 @@ final class RequirePermission
                 return true;
             }
         }
+
         return false;
     }
 
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      */
     private function allAllowed(mixed $user, array $permissions, OrganizationContext $context): bool
     {
@@ -91,11 +92,12 @@ final class RequirePermission
                 return false;
             }
         }
+
         return true;
     }
 
     /**
-     * @param array<int, string> $args
+     * @param  array<int, string>  $args
      * @return array<int, string>
      */
     private function extractPermissions(array $args, string $mode): array

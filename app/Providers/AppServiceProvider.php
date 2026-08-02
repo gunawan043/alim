@@ -2,17 +2,19 @@
 
 namespace App\Providers;
 
-use App\Models\DokumenIso;
 use App\Models\BoardingPolicy;
+use App\Models\DokumenIso;
 use App\Models\GradeLevel;
+use App\Models\GtkEmployment;
 use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
+use App\Observers\BoardingPolicyObserver;
 use App\Observers\DokumenIsoObserver;
+use App\Observers\GtkEmploymentObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
-use App\Observers\BoardingPolicyObserver;
-use App\View\Composers\SidebarComposer;
+// use App\View\Composers\SidebarComposer; // REMOVED - Sidebar menu DB unused
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event as EventDispatcher;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(\App\Services\NotificationBroadcastService::class);
+        $this->app->singleton(\App\Services\WorkspaceActivationService::class);
 
         // Sarpras workflow services — singleton so the in-memory state machine
         // registry survives across requests in the same PHP process.
@@ -73,8 +76,19 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
 
+        // ── System Super Admin bootstrap ───────────────────────────
+        // Ensure the Power User (super.admin@alim.local) exists with
+        // full permissions on every boot, even after migrate:fresh.
+        // Idempotent — safe to call repeatedly.
+        \App\Bootstrap\SystemSuperAdminBootstrap::ensure();
+
         // Register sidebar composer globally
-        view()->composer(['layouts.sidebar', 'components.sidebar-menu'], SidebarComposer::class);
+        // view()->composer(['layouts.sidebar', 'components.sidebar-menu'], SidebarComposer::class); // REMOVED - Sidebar menu DB unused
+
+        // System Admin Menu (when current user is is_system_admin and not View-As)
+        // Bound to '*' so viewAsSwitcherVisible is shared to ALL views (needed because
+        // @include chains in master.blade.php don't trigger per-view composers).
+        view()->composer('*', \App\View\Composers\SystemAdminMenuComposer::class);
 
         // ── Active Sidebar Route Detection ───────────────────────────
         // Share $activeSidebarRoute to all views for sidebar active state
@@ -140,6 +154,7 @@ class AppServiceProvider extends ServiceProvider
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
+        GtkEmployment::observe(GtkEmploymentObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
         $engine = \App\Domain\Services\BoardingRulesEngine::getInstance();
@@ -164,6 +179,55 @@ class AppServiceProvider extends ServiceProvider
             ],
             \App\Domain\Events\BoardingVisitCheckIn::class => [
                 [\App\Domain\Listeners\RecordBoardingVisitTimeline::class, 'onCheckIn'],
+            ],
+            // Vendor Collaboration Platform
+            \App\Events\VendorAuditRecorded::class => [
+                [\App\Listeners\RecordVendorAuditListener::class, 'handle'],
+            ],
+            \App\Events\VendorNotificationDispatched::class => [
+                [\App\Listeners\SendVendorNotificationListener::class, 'handle'],
+            ],
+            \App\Events\RfqPublished::class => [
+                [\App\Listeners\NotifyVendorsOfRfq::class, 'handle'],
+            ],
+            \App\Events\QuotationSubmitted::class => [
+                [\App\Listeners\NotifySarprasOfQuotation::class, 'handle'],
+            ],
+            \App\Events\PoAccepted::class => [
+                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            ],
+            \App\Events\PoShipped::class => [
+                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            ],
+            \App\Events\PoDelivered::class => [
+                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            ],
+            \App\Events\PoQcCompleted::class => [
+                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            ],
+            \App\Events\DeliveryTrackingUpdated::class => [
+                [\App\Listeners\RecordDeliveryTransition::class, 'handle'],
+            ],
+            \App\Events\GoodsReceiptCreated::class => [
+                [\App\Listeners\RecordGoodsReceiptTransition::class, 'handle'],
+            ],
+            \App\Events\QualityCheckCompleted::class => [
+                [\App\Listeners\RecordQualityTransition::class, 'handle'],
+            ],
+            \App\Events\RmaSubmitted::class => [
+                [\App\Listeners\RecordRmaTransition::class, 'handle'],
+            ],
+            \App\Events\QuotationAccepted::class => [
+                [\App\Listeners\RecordQuotationTransition::class, 'handle'],
+            ],
+            \App\Events\InvoiceSubmissionApproved::class => [
+                [\App\Listeners\NotifyVendorOfInvoiceStatus::class, 'handle'],
+            ],
+            \App\Events\ContractExpiring::class => [
+                [\App\Listeners\NotifySarprasOfContractStatus::class, 'handle'],
+            ],
+            \App\Events\DocumentExpiring::class => [
+                [\App\Listeners\NotifySarprasOfDocumentStatus::class, 'handle'],
             ],
         ];
         foreach ($listeners as $event => $list) {

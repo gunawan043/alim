@@ -12,7 +12,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
 
-            $table->enum('status_kepegawaian', ['PTT','PTY','Percobaan','Magang','GTT','GTY','KONTRAK']);
+            $table->enum('status_kepegawaian', ['PTT', 'PTY', 'Percobaan', 'Magang', 'GTT', 'GTY', 'KONTRAK']);
             $table->string('nupy', 50)->unique()->nullable();
             $table->string('satuan_kerja', 100)->nullable();
             $table->string('jenis_gtk', 100)->nullable();

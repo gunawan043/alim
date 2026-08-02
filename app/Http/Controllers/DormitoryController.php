@@ -11,6 +11,64 @@ use Illuminate\Http\Request;
 class DormitoryController extends Controller
 {
     /**
+     * GET /{userId}/asrama/profil-saya
+     *
+     * Auto-resolve asrama yang dipimpin user login (Dormitory.head_id)
+     * dan redirect ke halaman profil/show asrama tersebut.
+     * Fallback ke asrama pertama di school context jika user bukan kepala asrama.
+     */
+    public function myProfile(Request $request, string $userId)
+    {
+        $authId = auth()->id();
+        $dormitory = Dormitory::with(['school', 'head'])
+            ->withCount([
+                'wings',
+                'rooms',
+                'residents as total_residents' => fn ($q) => $q->where('is_active', true),
+            ])
+            ->where('head_id', $authId)
+            ->first();
+
+        if (! $dormitory) {
+            $schoolId = $request->attributes->get('schoolContextId');
+            if ($schoolId) {
+                $dormitory = Dormitory::with(['school', 'head'])
+                    ->withCount([
+                        'wings',
+                        'rooms',
+                        'residents as total_residents' => fn ($q) => $q->where('is_active', true),
+                    ])
+                    ->where('school_id', $schoolId)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->first();
+            }
+
+            // Last fallback for unscoped Admin Asrama: show the first active dormitory.
+            // This mirrors the sidebar's behavior so the menu never dead-ends on 404.
+            if (! $dormitory) {
+                $dormitory = Dormitory::with(['school', 'head'])
+                    ->withCount([
+                        'wings',
+                        'rooms',
+                        'residents as total_residents' => fn ($q) => $q->where('is_active', true),
+                    ])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->first();
+            }
+        }
+
+        abort_if(
+            ! $dormitory,
+            404,
+            'Belum ada data asrama. Hubungi administrator untuk menambahkan asrama.'
+        );
+
+        return view('dormitory.my-profile', compact('dormitory', 'userId'));
+    }
+
+    /**
      * GET /{userId}/asrama
      */
     public function index(Request $request, string $userId)

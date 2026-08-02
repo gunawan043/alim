@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\PasswordOtp;
 use App\Models\AuditLog;
+use App\Models\PasswordOtp;
 use Illuminate\Http\Request;
 
 class PasswordResetLogController extends Controller
@@ -17,7 +17,7 @@ class PasswordResetLogController extends Controller
 
         if ($request->has('search') && $request->search) {
             $query->where(function ($q) use ($request) {
-                $q->whereHas('user', fn($u) => $u->where('name', 'like', "%{$request->search}%"))
+                $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%"))
                     ->orWhere('record_id', 'like', "%{$request->search}%");
             });
         }
@@ -41,7 +41,7 @@ class PasswordResetLogController extends Controller
 
         if ($request->has('search') && $request->search) {
             $otpQuery->where(function ($q) use ($request) {
-                $q->whereHas('user', fn($u) => $u->where('name', 'like', "%{$request->search}%"));
+                $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%"));
             });
         }
 

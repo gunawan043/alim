@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
-use App\Models\StudyGroup;
 use App\Models\AcademicYear;
+use App\Models\Student;
+use App\Models\StudentAchievement;
 use App\Models\StudentClassHistory;
-use App\Models\School;
-use App\Models\User;
 use App\Models\StudentMutationIn;
 use App\Models\StudentMutationOut;
-use App\Models\StudentAchievement;
+use App\Models\StudyGroup;
+use App\Models\User;
 use App\Models\ViolationPoint;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class WakaController extends Controller
 {
@@ -34,7 +32,7 @@ class WakaController extends Controller
         $rombelCapacity = $this->getRombelCapacity($schoolId, $activeAcademicYear);
 
         // ── 4. Over-capacity Warnings ─────────────────────────
-        $overCapacityRombels = $rombelCapacity->filter(fn($r) => $r['student_count'] > $r['capacity'])->values();
+        $overCapacityRombels = $rombelCapacity->filter(fn ($r) => $r['student_count'] > $r['capacity'])->values();
 
         // ── 5. GTK Stats ─────────────────────────────────────────
         $gtkStats = $this->getGtkStats($schoolId);
@@ -69,7 +67,7 @@ class WakaController extends Controller
 
         if ($schoolId) {
             $studentQuery->where('school_id', $schoolId);
-            $gtkQuery->whereHas('employment', fn($q) => $q->where('school_id', $schoolId));
+            $gtkQuery->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         $totalStudents = (clone $studentQuery)->count();
@@ -81,13 +79,13 @@ class WakaController extends Controller
             $inRombelQuery->where('academic_year_id', $activeAcademicYear->id);
         }
         if ($schoolId) {
-            $inRombelQuery->whereHas('studyGroup', fn($q) => $q->where('school_id', $schoolId));
+            $inRombelQuery->whereHas('studyGroup', fn ($q) => $q->where('school_id', $schoolId));
         }
         $inRombelCount = (clone $inRombelQuery)->count();
 
         // Unassigned
         $assignedStudentIds = StudentClassHistory::where('is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
             ->pluck('student_id');
         $unassignedCount = (clone $studentQuery)
             ->where('status', 'active')
@@ -96,7 +94,7 @@ class WakaController extends Controller
 
         // GTK count
         $totalGtk = (clone $gtkQuery)
-            ->whereHas('employment', fn($q) => $q->where('is_active', true))
+            ->whereHas('employment', fn ($q) => $q->where('is_active', true))
             ->count();
 
         // Total rombel
@@ -119,14 +117,14 @@ class WakaController extends Controller
             ->count();
 
         return [
-            'total_students'   => $totalStudents,
-            'active_students'  => $activeStudents,
-            'in_rombel'        => $inRombelCount,
-            'unassigned'       => $unassignedCount,
-            'total_gtk'         => $totalGtk,
-            'total_rombel'      => $totalRombel,
+            'total_students' => $totalStudents,
+            'active_students' => $activeStudents,
+            'in_rombel' => $inRombelCount,
+            'unassigned' => $unassignedCount,
+            'total_gtk' => $totalGtk,
+            'total_rombel' => $totalRombel,
             'mutation_in_month' => $mutationIn,
-            'mutation_out_month'=> $mutationOut,
+            'mutation_out_month' => $mutationOut,
         ];
     }
 
@@ -139,8 +137,8 @@ class WakaController extends Controller
             ->join('study_groups', 'study_groups.id', '=', 'student_class_histories.study_group_id')
             ->join('grade_levels', 'grade_levels.id', '=', 'study_groups.grade_level_id')
             ->where('student_class_histories.is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('student_class_histories.academic_year_id', $activeAcademicYear->id))
-            ->when($schoolId, fn($q) => $q->where('study_groups.school_id', $schoolId))
+            ->when($activeAcademicYear, fn ($q) => $q->where('student_class_histories.academic_year_id', $activeAcademicYear->id))
+            ->when($schoolId, fn ($q) => $q->where('study_groups.school_id', $schoolId))
             ->groupBy('grade_levels.id', 'grade_levels.name', 'grade_levels.level')
             ->orderByRaw('CAST(grade_levels.name AS INTEGER) ASC')
             ->get()
@@ -149,6 +147,7 @@ class WakaController extends Controller
                     ? min(100, round($row->student_count / $row->total_capacity * 100))
                     : 0;
                 $row->over_capacity = $row->student_count > $row->total_capacity;
+
                 return $row;
             });
     }
@@ -157,14 +156,14 @@ class WakaController extends Controller
     {
         // Ambil dulu ID rombel yang aktif
         $sgIds = StudyGroup::where('is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->pluck('id');
 
         // Hitung student count per rombel dalam 1 query
         $counts = StudentClassHistory::whereIn('study_group_id', $sgIds)
             ->where('is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
             ->groupBy('study_group_id')
             ->selectRaw('study_group_id, COUNT(*) as student_count')
             ->pluck('student_count', 'study_group_id');
@@ -175,17 +174,17 @@ class WakaController extends Controller
             ->orderBy('name')
             ->get();
 
-        return $studyGroups->map(fn($sg) => [
-            'id'            => $sg->id,
-            'full_name'     => $sg->full_name,
-            'capacity'      => $sg->capacity,
+        return $studyGroups->map(fn ($sg) => [
+            'id' => $sg->id,
+            'full_name' => $sg->full_name,
+            'capacity' => $sg->capacity,
             'student_count' => (int) ($counts[$sg->id] ?? 0),
-            'filled_pct'    => $sg->capacity > 0 ? min(100, round(($counts[$sg->id] ?? 0) / $sg->capacity * 100)) : 0,
-            'sisa'          => max(0, $sg->capacity - ($counts[$sg->id] ?? 0)),
-            'is_over'       => ($counts[$sg->id] ?? 0) > $sg->capacity,
-            'over_by'       => max(0, ($counts[$sg->id] ?? 0) - $sg->capacity),
-            'room'          => $sg->room,
-            'teacher'       => $sg->homeroomTeacher?->name,
+            'filled_pct' => $sg->capacity > 0 ? min(100, round(($counts[$sg->id] ?? 0) / $sg->capacity * 100)) : 0,
+            'sisa' => max(0, $sg->capacity - ($counts[$sg->id] ?? 0)),
+            'is_over' => ($counts[$sg->id] ?? 0) > $sg->capacity,
+            'over_by' => max(0, ($counts[$sg->id] ?? 0) - $sg->capacity),
+            'room' => $sg->room,
+            'teacher' => $sg->homeroomTeacher?->name,
         ]);
     }
 
@@ -193,19 +192,19 @@ class WakaController extends Controller
     {
         $query = User::query();
         if ($schoolId) {
-            $query->whereHas('employment', fn($q) => $q->where('school_id', $schoolId));
+            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         $total = (clone $query)
-            ->whereHas('employment', fn($q) => $q->where('is_active', true))
+            ->whereHas('employment', fn ($q) => $q->where('is_active', true))
             ->count();
 
         $guru = (clone $query)
-            ->whereHas('employment', fn($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'guru'))
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'guru'))
             ->count();
 
         $tendik = (clone $query)
-            ->whereHas('employment', fn($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'tendik'))
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'tendik'))
             ->count();
 
         return ['total' => $total, 'guru' => $guru, 'tendik' => $tendik];
@@ -264,16 +263,16 @@ class WakaController extends Controller
     {
         return StudyGroup::with(['gradeLevel', 'homeroomTeacher'])
             ->where('is_active', true)
-            ->when($activeAcademicYear, fn($q) => $q->where('academic_year_id', $activeAcademicYear->id))
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->limit(20)
             ->get()
-            ->map(fn($sg) => [
-                'id'        => $sg->id,
+            ->map(fn ($sg) => [
+                'id' => $sg->id,
                 'full_name' => $sg->full_name,
-                'room'      => $sg->room,
-                'teacher'   => $sg->homeroomTeacher?->name,
+                'room' => $sg->room,
+                'teacher' => $sg->homeroomTeacher?->name,
             ]);
     }
 }

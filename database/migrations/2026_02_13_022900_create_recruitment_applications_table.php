@@ -12,12 +12,12 @@ return new class extends Migration
             $table->uuid('id')->primary();
 
             $table->foreignUuid('recruitment_profile_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+                ->constrained()
+                ->cascadeOnDelete();
 
             $table->foreignUuid('recruitment_job_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+                ->constrained()
+                ->cascadeOnDelete();
 
             // ❌ HAPUS current_stage_id DARI SINI
 
@@ -51,7 +51,7 @@ return new class extends Migration
                 'diterima',
                 'ditolak',
                 'mengundurkan_diri',
-                'blacklist'
+                'blacklist',
             ])->default('draft');
 
             $table->integer('skor_administrasi')->nullable();
@@ -69,9 +69,9 @@ return new class extends Migration
             $table->json('feedback')->nullable();
 
             $table->foreignUuid('processed_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->timestamps();
             $table->softDeletes();

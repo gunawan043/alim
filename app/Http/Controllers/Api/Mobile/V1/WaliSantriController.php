@@ -27,9 +27,9 @@ class WaliSantriController extends Controller
 
     // ── POST /api/mobile/v1/wali-santri/start-registration ──────────────────
     // Unified dispatcher for the three wali-santri onboarding intents:
-    //   • link_santri      → wali yang sudah punya Santi → klaim Santi lain
-    //   • register_new     → daftarkan Santi baru + auto-link
-    //   • add_second_wali  → minta jadi wali kedua/ketiga untuk Santi yg ada
+    //   • link_santri      → wali yang sudah punya Santri → klaim Santri lain
+    //   • register_new     → daftarkan Santri baru + auto-link
+    //   • add_second_wali  → minta jadi wali kedua/ketiga untuk Santri yg ada
     //
     // Why a unified endpoint: mobile UX is a single funnel that branches by
     // intent, so consolidating dispatch keeps validation + response shape
@@ -183,6 +183,7 @@ class WaliSantriController extends Controller
             $student = Student::find($studentId);
             if ($student?->school_id !== null) {
                 $request->attributes->set('schoolContextId', $student->school_id);
+
                 return;
             }
         }
@@ -198,7 +199,7 @@ class WaliSantriController extends Controller
     }
 
     // ── POST /api/mobile/v1/wali-santri/link ────────────────────────────────
-    // Wali yang sudah punya Santi → klaim Santi lain
+    // Wali yang sudah punya Santri → klaim Santri lain
 
     public function link(LinkWaliSantriRequest $request): JsonResponse
     {
@@ -401,7 +402,7 @@ class WaliSantriController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Hubungan wali-Santi berhasil dilepas.',
+                'message' => 'Hubungan wali-Santri berhasil dilepas.',
             ]);
 
         } catch (\Exception $e) {
@@ -418,7 +419,7 @@ class WaliSantriController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Santi berhasil terhubung ke akun Anda.',
+                'message' => 'Santri berhasil terhubung ke akun Anda.',
                 'data' => [
                     'student' => ['id' => $result['student']->id, 'name' => $result['student']->name],
                     'wali_santri' => ['id' => $result['wali_santri']->id, 'role' => $result['wali_santri']->role],

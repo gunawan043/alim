@@ -20,7 +20,10 @@ class SidebarAccess extends Model
      */
     public function canAccess(string $roleName): bool
     {
-        if (empty($this->allowed_roles)) return true;
+        if (empty($this->allowed_roles)) {
+            return true;
+        }
+
         return in_array($roleName, $this->allowed_roles);
     }
 

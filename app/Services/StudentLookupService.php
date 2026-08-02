@@ -61,11 +61,12 @@ class StudentLookupService
                 $assignedRecords = DormitoryResident::whereIn('student_id', $studentIds)
                     ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
                     ->where('is_active', true)
-                    ->with(['room:id,code', 'dormitory:id,name'])
+                    ->with(['room:id,name,code', 'dormitory:id,name'])
                     ->get();
 
                 return $students->map(function ($student) use ($assignedRecords) {
                     $assignment = $assignedRecords->firstWhere('student_id', $student->id);
+                    $room = $assignment?->room;
 
                     return (object) [
                         'id' => $student->id,
@@ -80,8 +81,10 @@ class StudentLookupService
                         'school_id' => $student->school_id,
                         'is_assigned' => (bool) $assignment,
                         'assigned_dormitory' => $assignment?->dormitory?->name ?? null,
-                        'assigned_room' => $assignment?->room?->code ?? null,
+                        'assigned_room' => $room?->code ?? null,
                         'assigned_bed' => $assignment?->bed_number ?? null,
+                        'room_id' => $room?->id ?? null,
+                        'room_name' => $room?->name ?? null,
                     ];
                 });
             }
@@ -99,8 +102,7 @@ class StudentLookupService
             function () use ($studentId) {
                 $student = Student::with([
                     'school:id,name',
-                    'currentClassHistory.studyGroup.class',
-                    'currentClassHistory.studyGroup.studyGroupSubjects.subject',
+                    'currentClassHistory.studyGroup.gradeLevel',
                 ])
                     ->find($studentId);
 
@@ -161,7 +163,7 @@ class StudentLookupService
 
                     // Current school & class
                     'school' => $student->school?->name ?? null,
-                    'current_class' => $student->studyGroups->first()?->studyGroup?->class?->name ?? null,
+                    'current_class' => $student->currentClassHistory?->studyGroup?->full_name ?? $student->studyGroups->first()?->studyGroup?->name ?? null,
                     'current_section' => $student->studyGroups->first()?->studyGroup->name ?? null,
 
                     // Photo

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
-use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 
 class GradeLevelController extends Controller
@@ -42,6 +42,7 @@ class GradeLevelController extends Controller
             $schools = School::orderBy('name')->get();
         }
         $schoolContext = $schoolId ? School::find($schoolId) : null;
+
         return view('grade-levels.create', compact('schools', 'userId', 'schoolContext'));
     }
 
@@ -50,12 +51,12 @@ class GradeLevelController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $rules = [
-            'level'     => 'required|integer|min:1|max:15',
-            'name'      => 'required|string|max:50',
-            'code'      => 'nullable|string|max:20',
+            'level' => 'required|integer|min:1|max:15',
+            'name' => 'required|string|max:50',
+            'code' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -73,6 +74,7 @@ class GradeLevelController extends Controller
         }
 
         $gradeLevel = GradeLevel::create($data);
+
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $gradeLevel->id])
             ->with('success', 'Tingkat kelas berhasil disimpan.');
     }
@@ -91,7 +93,7 @@ class GradeLevelController extends Controller
             ->get();
 
         $availableSubjects = Subject::where('is_active', true)
-            ->when($gradeLevel->school_id, fn($q) => $q->where('school_id', $gradeLevel->school_id))
+            ->when($gradeLevel->school_id, fn ($q) => $q->where('school_id', $gradeLevel->school_id))
             ->orderBy('name')
             ->get();
 
@@ -100,7 +102,7 @@ class GradeLevelController extends Controller
 
         // Ambil KKTP per mapel untuk semester aktif
         $kktpMap = SubjectKktp::where('grade_level_id', $id)
-            ->when($activeAy, fn($q) => $q->where('academic_year_id', $activeAy->id))
+            ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
             ->where('semester', $semester)
             ->get()
             ->keyBy('subject_id');
@@ -170,26 +172,28 @@ class GradeLevelController extends Controller
 
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
-            'semester'         => 'required|in:ganjil,genap',
-            'kktp'             => 'nullable|array',
-            'kktp.*'           => 'nullable|numeric|min:0|max:100',
+            'semester' => 'required|in:ganjil,genap',
+            'kktp' => 'nullable|array',
+            'kktp.*' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $kktpData = $validated['kktp'] ?? [];
 
         foreach ($kktpData as $subjectId => $score) {
-            if ($score === null || $score === '') continue;
+            if ($score === null || $score === '') {
+                continue;
+            }
 
             SubjectKktp::updateOrCreate(
                 [
-                    'subject_id'       => $subjectId,
-                    'grade_level_id'    => $id,
-                    'academic_year_id'  => $validated['academic_year_id'],
-                    'semester'          => $validated['semester'],
+                    'subject_id' => $subjectId,
+                    'grade_level_id' => $id,
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'semester' => $validated['semester'],
                 ],
                 [
                     'kktp_score' => $score,
-                    'school_id'  => $gradeLevel->school_id,
+                    'school_id' => $gradeLevel->school_id,
                     'created_by' => $request->user()?->id,
                 ]
             );
@@ -207,6 +211,7 @@ class GradeLevelController extends Controller
         }
         $schools = School::orderBy('name')->get();
         $schoolContext = $schoolId ? School::find($schoolId) : null;
+
         return view('grade-levels.edit', compact('gradeLevel', 'schools', 'userId', 'schoolContext'));
     }
 
@@ -220,12 +225,12 @@ class GradeLevelController extends Controller
         }
 
         $rules = [
-            'level'     => 'required|integer|min:1|max:15',
-            'name'      => 'required|string|max:50',
-            'code'      => 'nullable|string|max:20',
+            'level' => 'required|integer|min:1|max:15',
+            'name' => 'required|string|max:50',
+            'code' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -244,6 +249,7 @@ class GradeLevelController extends Controller
         }
 
         $gradeLevel->update($data);
+
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $gradeLevel->id])
             ->with('success', 'Tingkat kelas berhasil diperbarui.');
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\StockOpnameItem;
 use App\Models\StockOpnameSession;
+use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\AssetStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

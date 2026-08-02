@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\GtkRecruitment;
+use App\Models\Jabatan;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class GtkRecruitmentController extends Controller
 {
@@ -13,7 +15,7 @@ class GtkRecruitmentController extends Controller
     {
         $data = $request->validate([
             'work_unit_id' => 'required|exists:work_units,id',
-            'jabatan' => 'required|string',
+            'jabatan' => ['required', 'string', 'max:150', Rule::exists('jabatan', 'nama')],
             'kebutuhan' => 'required|integer|min:1',
             'kualifikasi' => 'required|string',
             'tanggal_dibutuhkan' => 'required|date',
@@ -47,7 +49,7 @@ class GtkRecruitmentController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('jabatan', 'like', "%{$search}%")
-                  ->orWhere('kualifikasi', 'like', "%{$search}%");
+                    ->orWhere('kualifikasi', 'like', "%{$search}%");
             });
         }
 
@@ -71,7 +73,10 @@ class GtkRecruitmentController extends Controller
      */
     public function create(Request $request, string $userId)
     {
-        return view('gtk-recruitments.create', compact('userId'));
+        $jenisGtk = \App\Models\JenisGtk::where('is_active', true)->orderBy('urutan')->get();
+        $jabatan = Jabatan::where('is_active', true)->orderBy('urutan')->orderBy('nama')->get();
+
+        return view('gtk-recruitments.create', compact('userId', 'jenisGtk', 'jabatan'));
     }
 
     /**
@@ -91,8 +96,10 @@ class GtkRecruitmentController extends Controller
     public function edit(Request $request, string $userId, string $recruitmentUuid)
     {
         $recruitment = GtkRecruitment::findOrFail($recruitmentUuid);
+        $jenisGtk = \App\Models\JenisGtk::where('is_active', true)->orderBy('urutan')->get();
+        $jabatan = Jabatan::where('is_active', true)->orderBy('urutan')->orderBy('nama')->get();
 
-        return view('gtk-recruitments.edit', compact('recruitment', 'userId'));
+        return view('gtk-recruitments.edit', compact('recruitment', 'userId', 'jenisGtk', 'jabatan'));
     }
 
     /**
@@ -103,10 +110,10 @@ class GtkRecruitmentController extends Controller
         $recruitment = GtkRecruitment::findOrFail($recruitmentUuid);
 
         $validated = $request->validate([
-            'work_unit_id'       => 'sometimes|required|exists:work_units,id',
-            'jabatan'            => 'sometimes|required|string|max:255',
-            'kebutuhan'          => 'sometimes|required|integer|min:1',
-            'kualifikasi'        => 'sometimes|required|string',
+            'work_unit_id' => 'sometimes|required|exists:work_units,id',
+            'jabatan' => ['sometimes', 'required', 'string', 'max:150', Rule::exists('jabatan', 'nama')],
+            'kebutuhan' => 'sometimes|required|integer|min:1',
+            'kualifikasi' => 'sometimes|required|string',
             'tanggal_dibutuhkan' => 'sometimes|required|date',
         ]);
 

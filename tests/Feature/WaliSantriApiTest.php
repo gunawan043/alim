@@ -25,7 +25,7 @@ class WaliSantriApiTest extends TestCase
     {
         parent::setUp();
 
-        if (!static::$migrated) {
+        if (! static::$migrated) {
             Artisan::call('migrate:fresh', ['--force' => true]);
             static::$migrated = true;
         }
@@ -86,7 +86,7 @@ class WaliSantriApiTest extends TestCase
 
         return Student::create(array_merge([
             'school_id' => $school->id,
-            'name' => 'Ahmad Fauzi',
+            'name' => 'Fulan',
             'nik' => '710201'.$uniq,
             'nisn' => $uniq,
             'gender' => 'L',
@@ -321,7 +321,7 @@ class WaliSantriApiTest extends TestCase
         ]);
 
         $response->assertStatus(404)
-            ->assertJsonPath('error.message', 'Santi dengan NIK tersebut tidak ditemukan. Pastikan NIK yang Anda masukkan benar.');
+            ->assertJsonPath('error.message', 'Santri dengan NIK tersebut tidak ditemukan. Pastikan NIK yang Anda masukkan benar.');
     }
 
     // ── Dormitory Permits ──────────────────────────────────────────────────

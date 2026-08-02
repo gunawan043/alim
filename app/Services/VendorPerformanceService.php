@@ -96,6 +96,7 @@ class VendorPerformanceService
     private function currentRatingAverage(Vendor $vendor): float
     {
         $avg = VendorRating::where('vendor_id', $vendor->id)->avg('rating');
+
         return (float) ($avg ?? 0);
     }
 
@@ -164,7 +165,7 @@ class VendorPerformanceService
             ->orderByDesc('created_at')
             ->first();
 
-        if (!$lastComm || !$lastComm->created_at) {
+        if (! $lastComm || ! $lastComm->created_at) {
             return 999; // No response
         }
 

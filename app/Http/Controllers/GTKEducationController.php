@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\GtkEducation;
+use Illuminate\Http\Request;
 
 class GTKEducationController extends Controller
 {
@@ -14,14 +14,14 @@ class GTKEducationController extends Controller
             'jenjang_pendidikan' => 'required',
             'nama_satuan_pendidikan' => 'required',
             'tahun_lulus' => 'required|numeric',
-            'status' => 'required'
+            'status' => 'required',
         ]);
 
         $education = GtkEducation::create($request->all());
 
         return response()->json([
             'success' => true,
-            'data' => $education
+            'data' => $education,
         ]);
     }
 

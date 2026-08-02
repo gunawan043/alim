@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\WorkUnit;
 use App\Models\Divisi;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -34,7 +34,9 @@ class WorkUnitController extends Controller
 
         $workUnitsByParent = [];
         foreach ($parentOptions as $key => $value) {
-            if ($key === '') continue;
+            if ($key === '') {
+                continue;
+            }
             $count = WorkUnit::where('induk', $key)->count();
             $workUnitsByParent[$value] = $count;
         }
@@ -94,7 +96,7 @@ class WorkUnitController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membuat satuan kerja: ' . $e->getMessage(),
+                'message' => 'Gagal membuat satuan kerja: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -191,7 +193,7 @@ class WorkUnitController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus satuan kerja: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus satuan kerja: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -236,7 +238,7 @@ class WorkUnitController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus satuan kerja: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus satuan kerja: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -245,7 +247,7 @@ class WorkUnitController extends Controller
     {
         try {
             $workUnit = WorkUnit::findOrFail($id);
-            $workUnit->update(['is_active' => !$workUnit->is_active]);
+            $workUnit->update(['is_active' => ! $workUnit->is_active]);
 
             $status = $workUnit->is_active ? 'diaktifkan' : 'dinonaktifkan';
 

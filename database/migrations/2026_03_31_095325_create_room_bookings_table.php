@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('room_bookings', function (Blueprint $table) {
@@ -20,7 +21,7 @@ return new class extends Migration {
             $table->time('start_time');
             $table->time('end_time');
             $table->time('setup_time')->nullable()
-                  ->comment('Jam mulai persiapan sebelum acara');
+                ->comment('Jam mulai persiapan sebelum acara');
             $table->enum('status', [
                 'pending', 'approved', 'rejected', 'cancelled', 'completed',
             ])->default('pending');
@@ -48,5 +49,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('room_bookings'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('room_bookings');
+    }
 };

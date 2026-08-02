@@ -11,10 +11,13 @@ class AuditLog extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     public $timestamps = false;
-    
+
     protected static function boot()
     {
         parent::boot();
@@ -25,6 +28,7 @@ class AuditLog extends Model
             }
         });
     }
+
     protected $fillable = [
         'user_id',
         'action',
@@ -100,35 +104,51 @@ class AuditLog extends Model
     public function getMaskedIpAddressAttribute()
     {
         $ip = $this->ip_address;
-        if (!$ip) return null;
-        
+        if (! $ip) {
+            return null;
+        }
+
         $parts = explode('.', $ip);
         if (count($parts) == 4) {
-            return $parts[0] . '.' . $parts[1] . '.***.***';
+            return $parts[0].'.'.$parts[1].'.***.***';
         }
+
         return $ip;
     }
 
     public function getMaskedUserAgentAttribute()
     {
         $ua = $this->user_agent;
-        if (!$ua) return null;
-        
+        if (! $ua) {
+            return null;
+        }
+
         // Ambil hanya browser dan OS
         $browser = '';
         $os = '';
-        
-        if (strpos($ua, 'Chrome') !== false) $browser = 'Chrome';
-        elseif (strpos($ua, 'Firefox') !== false) $browser = 'Firefox';
-        elseif (strpos($ua, 'Safari') !== false) $browser = 'Safari';
-        elseif (strpos($ua, 'Edge') !== false) $browser = 'Edge';
-        
-        if (strpos($ua, 'Windows') !== false) $os = 'Windows';
-        elseif (strpos($ua, 'Mac') !== false) $os = 'macOS';
-        elseif (strpos($ua, 'Linux') !== false) $os = 'Linux';
-        elseif (strpos($ua, 'Android') !== false) $os = 'Android';
-        elseif (strpos($ua, 'iOS') !== false) $os = 'iOS';
-        
+
+        if (strpos($ua, 'Chrome') !== false) {
+            $browser = 'Chrome';
+        } elseif (strpos($ua, 'Firefox') !== false) {
+            $browser = 'Firefox';
+        } elseif (strpos($ua, 'Safari') !== false) {
+            $browser = 'Safari';
+        } elseif (strpos($ua, 'Edge') !== false) {
+            $browser = 'Edge';
+        }
+
+        if (strpos($ua, 'Windows') !== false) {
+            $os = 'Windows';
+        } elseif (strpos($ua, 'Mac') !== false) {
+            $os = 'macOS';
+        } elseif (strpos($ua, 'Linux') !== false) {
+            $os = 'Linux';
+        } elseif (strpos($ua, 'Android') !== false) {
+            $os = 'Android';
+        } elseif (strpos($ua, 'iOS') !== false) {
+            $os = 'iOS';
+        }
+
         return $browser ? ($os ? "$browser on $os" : $browser) : 'Unknown';
     }
 }

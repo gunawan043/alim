@@ -20,7 +20,7 @@ return new class extends Migration
                 'istri',
                 'anak',
                 'ayah',
-                'ibu'
+                'ibu',
             ]);
 
             $table->text('nama');

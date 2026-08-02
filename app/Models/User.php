@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
@@ -23,10 +24,13 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'avatar',
         'is_active',
+        'is_system_admin',
+        'is_permanent',
         'last_login_at',
         'google_id',
         'no_kk',
@@ -51,6 +55,8 @@ class User extends Authenticatable
         'locked_at' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
+        'is_system_admin' => 'boolean',
+        'is_permanent' => 'boolean',
         'is_wali' => 'boolean',
         'failed_login_attempts' => 'integer',
         'google_id' => 'string',
@@ -194,6 +200,21 @@ class User extends Authenticatable
         return $this->hasOne(GtkContact::class);
     }
 
+    public function roomSupervisors()
+    {
+        return $this->hasMany(RoomSupervisor::class, 'user_id');
+    }
+
+    public function activeRoomSupervisions()
+    {
+        return $this->hasMany(RoomSupervisor::class, 'user_id')
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+            })
+            ->where('start_date', '<=', now()->toDateString());
+    }
+
     // NOTE: 'password' is already hashed via the 'password' => 'hashed' cast.
     // Do NOT use Hash::make() in seeders — pass the plain password.
 
@@ -262,37 +283,39 @@ class User extends Authenticatable
         });
 
         static::created(function ($user) {
-            AuditLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'USER_CREATED',
-                'table_name' => 'users',
-                'record_id' => $user->id,
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+            static::writeAuditLog($user, 'USER_CREATED');
         });
 
         static::updated(function ($user) {
-            AuditLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'USER_UPDATED',
-                'table_name' => 'users',
-                'record_id' => $user->id,
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+            static::writeAuditLog($user, 'USER_UPDATED');
         });
 
         static::deleted(function ($user) {
-            AuditLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'USER_DELETED',
-                'table_name' => 'users',
-                'record_id' => $user->id,
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+            static::writeAuditLog($user, 'USER_DELETED');
         });
+    }
+
+    /**
+     * Write a USER_* audit log entry. If the authenticated user referenced by
+     * the request no longer exists (e.g. after migrate:fresh with a stale
+     * session), null is stored in user_id rather than crashing the FK.
+     */
+    private static function writeAuditLog(self $user, string $action): void
+    {
+        $actorId = auth()->id();
+
+        if ($actorId !== null && ! DB::table('users')->where('id', $actorId)->exists()) {
+            $actorId = null;
+        }
+
+        AuditLog::create([
+            'user_id' => $actorId,
+            'action' => $action,
+            'table_name' => 'users',
+            'record_id' => $user->id,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
     }
 
     public function gtkEmployment()
@@ -303,6 +326,11 @@ class User extends Authenticatable
     public function gtkContact()
     {
         return $this->hasOne(GtkContact::class);
+    }
+
+    public function gtkHealthData()
+    {
+        return $this->hasOne(GtkHealthData::class);
     }
 
     public function workUnits()
@@ -407,6 +435,16 @@ class User extends Authenticatable
     // (e.g. merge legacy DB roles with Spatie-cached roles) without
     // scattering that knowledge across controllers.
 
+    public function isSystemAdmin(): bool
+    {
+        return (bool) ($this->is_system_admin ?? false);
+    }
+
+    public function isPermanent(): bool
+    {
+        return (bool) ($this->is_permanent ?? false);
+    }
+
     /**
      * @return list<string> Sorted, unique role identifiers.
      */
@@ -428,5 +466,38 @@ class User extends Authenticatable
         sort($names);
 
         return $names;
+    }
+
+    /**
+     * Daftar role yang termasuk dalam kategori "user asrama"
+     * (termasuk admin asrama, kepala asrama, wali asrama, dsb.).
+     * Role-role ini tidak boleh CRUD data Santri tapi tetap bisa CRUD Mahrom
+     * dan hanya melihat Santri yang mondok (active DormitoryResident).
+     *
+     * @var string[]
+     */
+    public const DORMITORY_ROLES = [
+        'kepala asrama',
+        'admin asrama',
+        'admin pendidikan',
+        'kepala uks',
+        'admin uks putra',
+        'admin uks putri',
+        'admin kesehatan',
+        'wali asrama',
+        'asrama',
+    ];
+
+    /**
+     * Tentukan apakah user saat ini termasuk kategori user asrama.
+     */
+    public function isDormitoryUser(): bool
+    {
+        $roles = $this->effectiveRoles();
+        if (empty($roles)) {
+            return false;
+        }
+
+        return (bool) array_intersect($roles, self::DORMITORY_ROLES);
     }
 }

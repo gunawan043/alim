@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 26. create_tahfidz_mutabaah_table.php
 // Buku pantau ibadah harian santri. Dicatat musyrif per hari.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_mutabaah', function (Blueprint $table) {
@@ -35,9 +36,9 @@ return new class extends Migration {
 
             // --- TILAWAH & HAFALAN MANDIRI ---
             $table->integer('tilawah_halaman')->default(0)
-                  ->comment('Halaman tilawah mandiri hari ini');
+                ->comment('Halaman tilawah mandiri hari ini');
             $table->integer('tikror_mandiri_halaman')->default(0)
-                  ->comment('Halaman murajaah/tikror mandiri');
+                ->comment('Halaman murajaah/tikror mandiri');
             $table->tinyInteger('wirid_pagi')->default(0);
             $table->tinyInteger('wirid_sore')->default(0);
 
@@ -61,5 +62,9 @@ return new class extends Migration {
 
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_mutabaah'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_mutabaah');
+    }
 };

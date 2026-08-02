@@ -9,13 +9,15 @@ use Illuminate\Support\Str;
 class AdminJurnalPembelajaran extends Model
 {
     protected $table = 'admin_jurnal_pembelajaran';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -26,7 +28,7 @@ class AdminJurnalPembelajaran extends Model
 
     protected $casts = [
         'meeting_date' => 'date',
-        'time_in'  => 'datetime:H:i',
+        'time_in' => 'datetime:H:i',
         'time_out' => 'datetime:H:i',
     ];
 

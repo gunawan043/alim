@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 11. create_tahfidz_student_targets_table.php
 // Target hafalan per santri per bulan, mengacu ke muqorrar.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_student_targets', function (Blueprint $table) {
@@ -42,5 +43,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_student_targets'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_student_targets');
+    }
 };

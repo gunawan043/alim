@@ -30,16 +30,16 @@ class PermissionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:255|unique:permissions,name',
+            'name' => 'required|string|max:255|unique:permissions,name',
             'description' => 'nullable|string|max:500',
-            'group'       => 'nullable|string|max:100',
+            'group' => 'nullable|string|max:100',
         ]);
 
         Permission::create([
-            'name'        => $validated['name'],
+            'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'group'       => $validated['group'] ?? null,
-            'guard_name'  => 'web',
+            'group' => $validated['group'] ?? null,
+            'guard_name' => 'web',
         ]);
 
         return redirect()->route('super-admin.permissions.index')
@@ -51,15 +51,15 @@ class PermissionController extends Controller
         $permission = Permission::findOrFail($id);
 
         $validated = $request->validate([
-            'name'        => 'required|string|max:255|unique:permissions,name,' . $id,
+            'name' => 'required|string|max:255|unique:permissions,name,'.$id,
             'description' => 'nullable|string|max:500',
-            'group'       => 'nullable|string|max:100',
+            'group' => 'nullable|string|max:100',
         ]);
 
         $permission->update([
-            'name'        => $validated['name'],
+            'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'group'       => $validated['group'] ?? null,
+            'group' => $validated['group'] ?? null,
         ]);
 
         return redirect()->route('super-admin.permissions.index')
@@ -72,7 +72,7 @@ class PermissionController extends Controller
 
         // Cek apakah ada role yang pakai permission ini
         if ($permission->roles()->count() > 0) {
-            return back()->with('error', 'Permission digunakan oleh ' . $permission->roles()->count() . ' role. Lepaskan terlebih dahulu.');
+            return back()->with('error', 'Permission digunakan oleh '.$permission->roles()->count().' role. Lepaskan terlebih dahulu.');
         }
 
         $permission->delete();

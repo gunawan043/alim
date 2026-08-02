@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Peraturan;
-use App\Models\PeraturanReadLog;
-use App\Models\Pelanggaran;
 use App\Models\PelanggaranLog;
+use App\Models\PeraturanReadLog;
 use Illuminate\Support\Facades\DB;
 
 class PeraturanService
@@ -22,6 +20,7 @@ class PeraturanService
     {
         return DB::transaction(function () use ($data) {
             $log = PelanggaranLog::create($data);
+
             return $log;
         });
     }
@@ -29,14 +28,15 @@ class PeraturanService
     public function rekapPoinUser(string $userId): array
     {
         $logs = PelanggaranLog::with('pelanggaran')->where('user_id', $userId)->get();
-        $total = $logs->sum(fn($l) => $l->pelanggaran->poin);
+        $total = $logs->sum(fn ($l) => $l->pelanggaran->poin);
+
         return [
             'total_poin' => $total,
             'jumlah_pelanggaran' => $logs->count(),
             'per_jenis' => [
-                'ringan' => $logs->filter(fn($l) => $l->pelanggaran->jenis === 'ringan')->sum(fn($l) => $l->pelanggaran->poin),
-                'sedang' => $logs->filter(fn($l) => $l->pelanggaran->jenis === 'sedang')->sum(fn($l) => $l->pelanggaran->poin),
-                'berat' => $logs->filter(fn($l) => $l->pelanggaran->jenis === 'berat')->sum(fn($l) => $l->pelanggaran->poin),
+                'ringan' => $logs->filter(fn ($l) => $l->pelanggaran->jenis === 'ringan')->sum(fn ($l) => $l->pelanggaran->poin),
+                'sedang' => $logs->filter(fn ($l) => $l->pelanggaran->jenis === 'sedang')->sum(fn ($l) => $l->pelanggaran->poin),
+                'berat' => $logs->filter(fn ($l) => $l->pelanggaran->jenis === 'berat')->sum(fn ($l) => $l->pelanggaran->poin),
             ],
             'log' => $logs,
         ];

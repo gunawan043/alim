@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Waka;
 use App\Http\Controllers\Controller;
 use App\Models\Ekstrakurikuler;
 use App\Models\EkstrakurikulerAnggota;
-use App\Models\Student;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class EkstrakurikulerAnggotaController extends Controller
 {
@@ -39,6 +37,7 @@ class EkstrakurikulerAnggotaController extends Controller
         }
 
         EkstrakurikulerAnggota::create($validated);
+
         return back()->with('success', 'Anggota berhasil ditambahkan.');
     }
 
@@ -55,6 +54,7 @@ class EkstrakurikulerAnggotaController extends Controller
         ]);
 
         $anggota->update($validated);
+
         return back()->with('success', 'Data anggota berhasil diperbarui.');
     }
 
@@ -62,6 +62,7 @@ class EkstrakurikulerAnggotaController extends Controller
     {
         $anggota = EkstrakurikulerAnggota::findOrFail($id);
         $anggota->delete();
+
         return back()->with('success', 'Anggota berhasil dihapus.');
     }
 }

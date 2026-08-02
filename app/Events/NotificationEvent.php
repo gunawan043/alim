@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,6 +13,7 @@ class NotificationEvent implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public string $userId;
+
     public array $notification;
 
     public function __construct(string $userId, array $notification)
@@ -25,7 +25,7 @@ class NotificationEvent implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->userId),
+            new PrivateChannel('user.'.$this->userId),
         ];
     }
 
@@ -37,15 +37,15 @@ class NotificationEvent implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'id'           => $this->notification['id'] ?? null,
-            'module'       => $this->notification['module'] ?? 'system',
-            'type'         => $this->notification['type'] ?? 'info',
-            'priority'     => $this->notification['priority'] ?? 'medium',
-            'title'        => $this->notification['title'] ?? 'Notifikasi baru',
-            'message'      => $this->notification['message'] ?? '',
-            'action_url'   => $this->notification['action_url'] ?? null,
-            'action_text'  => $this->notification['action_text'] ?? 'Lihat Detail',
-            'created_at'   => now()->toIso8601String(),
+            'id' => $this->notification['id'] ?? null,
+            'module' => $this->notification['module'] ?? 'system',
+            'type' => $this->notification['type'] ?? 'info',
+            'priority' => $this->notification['priority'] ?? 'medium',
+            'title' => $this->notification['title'] ?? 'Notifikasi baru',
+            'message' => $this->notification['message'] ?? '',
+            'action_url' => $this->notification['action_url'] ?? null,
+            'action_text' => $this->notification['action_text'] ?? 'Lihat Detail',
+            'created_at' => now()->toIso8601String(),
         ];
     }
 }

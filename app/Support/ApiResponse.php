@@ -5,8 +5,6 @@ namespace App\Support;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Http\Resources\Json\ResourceCollection;
-use Illuminate\Support\MessageBag;
 use Illuminate\Validation\ValidationException;
 
 trait ApiResponse
@@ -89,7 +87,7 @@ trait ApiResponse
         return $this->fail($message, 500, $payload);
     }
 
-    protected function paginated(LengthAwarePaginator $paginator, string $resource = null, string $message = 'OK'): JsonResponse
+    protected function paginated(LengthAwarePaginator $paginator, ?string $resource = null, string $message = 'OK'): JsonResponse
     {
         $items = $paginator->items();
 

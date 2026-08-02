@@ -139,7 +139,7 @@ class StudentController extends Controller
                 'data' => [
                     'nik' => $nik,
                     'status' => 'available',
-                    'message' => 'NIK ini belum terdaftar. Bisa digunakan untuk registrasi Santi baru.',
+                    'message' => 'NIK ini belum terdaftar. Bisa digunakan untuk registrasi Santri baru.',
                 ],
             ]);
         }

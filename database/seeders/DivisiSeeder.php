@@ -13,8 +13,8 @@ class DivisiSeeder extends Seeder
         $divisis = [
             ['kode' => 'PAH-MR',      'nama' => 'Manual Mutu',                                              'deskripsi' => 'Manual Mutu PAH Mataram',          'is_active' => 1, 'sort_order' => 1],
             ['kode' => 'PAH-MDR',     'nama' => 'MUDIR PAH MATARAM',                                        'deskripsi' => 'Direksi Utama PAH Mataram',        'is_active' => 1, 'sort_order' => 2],
-            ['kode' => 'PAH-WADIR AK','nama' => 'WADIR AKADEMIK & PENGASUHAN PAH MATARAM',                 'deskripsi' => 'Wakil Diretor Akademik',          'is_active' => 1, 'sort_order' => 3],
-            ['kode' => 'PAH-WADIR PU','nama' => 'WADIR PELAYANAN UMUM PAH MATARAM',                       'deskripsi' => 'Wadir Pelayanan Umum',            'is_active' => 1, 'sort_order' => 4],
+            ['kode' => 'PAH-WADIR AK', 'nama' => 'WADIR AKADEMIK & PENGASUHAN PAH MATARAM',                 'deskripsi' => 'Wakil Diretor Akademik',          'is_active' => 1, 'sort_order' => 3],
+            ['kode' => 'PAH-WADIR PU', 'nama' => 'WADIR PELAYANAN UMUM PAH MATARAM',                       'deskripsi' => 'Wadir Pelayanan Umum',            'is_active' => 1, 'sort_order' => 4],
             ['kode' => 'PAH-KSP',     'nama' => 'KEPALA SATUAN PENDIDIKAN PAH MATARAM',                    'deskripsi' => 'Kepala Satuan Pendidikan',        'is_active' => 1, 'sort_order' => 5],
             ['kode' => 'PAH-KP',      'nama' => 'KEPALA PENGASUHAN',                                       'deskripsi' => 'Kepala Pengasuhan',               'is_active' => 1, 'sort_order' => 6],
             ['kode' => 'PAH-TAH',     'nama' => 'KEPALA DEPARTEMEN TAHFIZH',                               'deskripsi' => 'Departemen Tahfizh',              'is_active' => 1, 'sort_order' => 7],

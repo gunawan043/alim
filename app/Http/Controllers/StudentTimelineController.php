@@ -27,7 +27,7 @@ class StudentTimelineController extends Controller
             ->limit(200)
             ->get();
 
-        $grouped = $events->groupBy(fn($e) => $e->event_at->format('Y-m-d'));
+        $grouped = $events->groupBy(fn ($e) => $e->event_at->format('Y-m-d'));
 
         $counts = [
             'total' => $events->count(),

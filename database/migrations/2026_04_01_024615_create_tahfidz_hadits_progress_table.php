@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 28. create_tahfidz_hadits_progress_table.php
 // Progress hafalan Hadits Arbain per santri.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_hadits_progress', function (Blueprint $table) {
@@ -34,5 +35,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_hadits_progress'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_hadits_progress');
+    }
 };

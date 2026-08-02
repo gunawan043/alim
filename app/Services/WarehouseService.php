@@ -30,7 +30,7 @@ class WarehouseService
 
     public function update(Warehouse $warehouse, array $data): Warehouse
     {
-        $warehouse->update(array_filter(array_keys($data), fn ($key) => !empty($data[$key])));
+        $warehouse->update(array_filter(array_keys($data), fn ($key) => ! empty($data[$key])));
 
         $this->audit($warehouse, 'updated');
 

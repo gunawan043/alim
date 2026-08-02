@@ -24,10 +24,6 @@ class NotificationBroadcastService
 
     /**
      * Kirim notifikasi: DB + Broadcast
-     *
-     * @param string $userId
-     * @param array $data
-     * @return NotificationUniversal
      */
     public function send(string $userId, array $data): NotificationUniversal
     {
@@ -42,10 +38,6 @@ class NotificationBroadcastService
 
     /**
      * Kirim notifikasi ke banyak user
-     *
-     * @param array $userIds
-     * @param array $data
-     * @return array
      */
     public function sendToMany(array $userIds, array $data): array
     {
@@ -62,21 +54,24 @@ class NotificationBroadcastService
 
     /**
      * Kirim ke semua user dengan role tertentu
-     *
-     * @param string $roleName
-     * @param array $data
-     * @return array
      */
     public function sendToRole(string $roleName, array $data): array
     {
         $saved = $this->notificationService->sendToRole($roleName, $data);
 
-        $userIds = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
-        foreach ($userIds as $perm) {
-            $resolved = usersHavingPermission($perm);
-            foreach ($resolved as $userId) {
-                $this->broadcast((string) $userId, $data);
+        try {
+            $userIds = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
+            foreach ($userIds as $perm) {
+                $resolved = usersHavingPermission($perm);
+                foreach ($resolved as $userId) {
+                    $this->broadcast((string) $userId, $data);
+                }
             }
+        } catch (\Throwable $e) {
+            // Role/permission not found — skip broadcast, don't break approval flow
+            Log::debug("[NotificationBroadcast] Role resolution failed: {$roleName}", [
+                'exception' => $e->getMessage(),
+            ]);
         }
 
         return $saved;
@@ -84,9 +79,6 @@ class NotificationBroadcastService
 
     /**
      * Broadcast event ke Pusher channel
-     *
-     * @param string $userId
-     * @param array $notificationData
      */
     protected function broadcast(string $userId, array $notificationData): void
     {
@@ -94,7 +86,7 @@ class NotificationBroadcastService
             event(new NotificationEvent($userId, $notificationData));
         } catch (\Exception $e) {
             // Jangan fail-kan proses utama kalau broadcast error
-            Log::error('[Pusher] Broadcast failed: ' . $e->getMessage(), [
+            Log::error('[Pusher] Broadcast failed: '.$e->getMessage(), [
                 'user_id' => $userId,
                 'notification' => $notificationData,
             ]);
@@ -113,14 +105,14 @@ class NotificationBroadcastService
         string $actionUrl
     ): NotificationUniversal {
         return $this->send($userId, [
-            'module'       => 'approval',
-            'type'         => 'warning',
-            'priority'     => 'high',
-            'title'        => 'Persetujuan diperlukan',
-            'message'      => "{$approverName} membutuhkan persetujuan Anda untuk {$requestType}: {$gtkName}",
-            'action_url'   => $actionUrl,
+            'module' => 'approval',
+            'type' => 'warning',
+            'priority' => 'high',
+            'title' => 'Persetujuan diperlukan',
+            'message' => "{$approverName} membutuhkan persetujuan Anda untuk {$requestType}: {$gtkName}",
+            'action_url' => $actionUrl,
             'reference_id' => $requestId,
-            'action_text'  => 'Lihat Permintaan',
+            'action_text' => 'Lihat Permintaan',
         ]);
     }
 
@@ -135,14 +127,14 @@ class NotificationBroadcastService
         string $actionUrl
     ): NotificationUniversal {
         return $this->send($userId, [
-            'module'       => $module,
-            'type'         => 'success',
-            'priority'     => 'medium',
-            'title'        => 'Data berhasil diperbarui',
-            'message'      => "Data {$module} \"{$itemName}\" telah berhasil diperbarui.",
-            'action_url'   => $actionUrl,
+            'module' => $module,
+            'type' => 'success',
+            'priority' => 'medium',
+            'title' => 'Data berhasil diperbarui',
+            'message' => "Data {$module} \"{$itemName}\" telah berhasil diperbarui.",
+            'action_url' => $actionUrl,
             'reference_id' => $itemId,
-            'action_text'  => 'Lihat Detail',
+            'action_text' => 'Lihat Detail',
         ]);
     }
 
@@ -158,14 +150,14 @@ class NotificationBroadcastService
         string $actionUrl
     ): NotificationUniversal {
         return $this->send($userId, [
-            'module'       => 'approval',
-            'type'         => 'success',
-            'priority'     => 'medium',
-            'title'        => 'Disetujui',
-            'message'      => "{$approverName} telah menyetujui {$requestType} Anda: {$gtkName}",
-            'action_url'   => $actionUrl,
+            'module' => 'approval',
+            'type' => 'success',
+            'priority' => 'medium',
+            'title' => 'Disetujui',
+            'message' => "{$approverName} telah menyetujui {$requestType} Anda: {$gtkName}",
+            'action_url' => $actionUrl,
             'reference_id' => $requestId,
-            'action_text'  => 'Lihat Detail',
+            'action_text' => 'Lihat Detail',
         ]);
     }
 
@@ -182,14 +174,14 @@ class NotificationBroadcastService
         string $actionUrl
     ): NotificationUniversal {
         return $this->send($userId, [
-            'module'       => 'approval',
-            'type'         => 'error',
-            'priority'     => 'medium',
-            'title'        => 'Ditolak',
-            'message'      => "{$approverName} menolak {$requestType} Anda: {$gtkName}. Alasan: {$reason}",
-            'action_url'   => $actionUrl,
+            'module' => 'approval',
+            'type' => 'error',
+            'priority' => 'medium',
+            'title' => 'Ditolak',
+            'message' => "{$approverName} menolak {$requestType} Anda: {$gtkName}. Alasan: {$reason}",
+            'action_url' => $actionUrl,
             'reference_id' => $requestId,
-            'action_text'  => 'Lihat Detail',
+            'action_text' => 'Lihat Detail',
         ]);
     }
 
@@ -206,12 +198,12 @@ class NotificationBroadcastService
         string $priority = 'medium'
     ): NotificationUniversal {
         return $this->send($userId, [
-            'module'    => $module,
-            'type'      => $type,
-            'priority'  => $priority,
-            'title'     => $title,
-            'message'   => $message,
-            'action_url'=> $actionUrl,
+            'module' => $module,
+            'type' => $type,
+            'priority' => $priority,
+            'title' => $title,
+            'message' => $message,
+            'action_url' => $actionUrl,
         ]);
     }
 }

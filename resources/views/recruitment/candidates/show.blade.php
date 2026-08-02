@@ -118,7 +118,7 @@
     {{-- Profile Background --}}
     <div class="profile-foreground position-relative mx-n4 mt-n4">
         <div class="profile-wid-bg">
-            <img src="{{ URL::asset('build/images/auth-one-bg.jpg') }}" alt="Background Profile" class="profile-wid-img" />
+            <img src="{{ URL::asset('build/images/alim-one-bg.png') }}" alt="Background Profile" class="profile-wid-img" />
             <div class="overlay-content position-absolute bottom-0 start-0 p-4 text-white">
                 <h4 class="mb-1">{{ $candidate->user->name }}</h4>
                 <p class="mb-0 opacity-75">

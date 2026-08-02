@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class StudentMutationIn extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     protected $table = 'student_mutations_in';
 
     protected static function boot()
@@ -55,23 +57,23 @@ class StudentMutationIn extends Model
     ];
 
     protected $casts = [
-        'established_date'   => 'date',
+        'established_date' => 'date',
         'student_birth_date' => 'date',
-        'approved_at'        => 'datetime',
-        'entry_date'         => 'date',
-        'graduation_date'    => 'date',
-        'is_kps_receiver'    => 'boolean',
-        'is_kip_receiver'    => 'boolean',
-        'is_pip_eligible'    => 'boolean',
-        'height'             => 'integer',
-        'weight'             => 'integer',
+        'approved_at' => 'datetime',
+        'entry_date' => 'date',
+        'graduation_date' => 'date',
+        'is_kps_receiver' => 'boolean',
+        'is_kip_receiver' => 'boolean',
+        'is_pip_eligible' => 'boolean',
+        'height' => 'integer',
+        'weight' => 'integer',
         'head_circumference' => 'integer',
-        'sibling_count'      => 'integer',
-        'child_number'       => 'integer',
+        'sibling_count' => 'integer',
+        'child_number' => 'integer',
         'distance_to_school' => 'decimal:2',
-        'father_income'      => 'decimal:2',
-        'mother_income'      => 'decimal:2',
-        'guardian_income'    => 'decimal:2',
+        'father_income' => 'decimal:2',
+        'mother_income' => 'decimal:2',
+        'guardian_income' => 'decimal:2',
     ];
 
     protected $appends = ['status_text', 'status_color', 'gender_text'];
@@ -103,22 +105,22 @@ class StudentMutationIn extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'Draft',
+            'draft' => 'Draft',
             'submitted' => 'Tercadangkan',
-            'approved'  => 'Disetujui',
-            'rejected'  => 'Ditolak',
-            default     => ucfirst($this->status ?? ''),
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            default => ucfirst($this->status ?? ''),
         };
     }
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'secondary',
+            'draft' => 'secondary',
             'submitted' => 'warning',
-            'approved'  => 'success',
-            'rejected'  => 'danger',
-            default     => 'secondary',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            default => 'secondary',
         };
     }
 

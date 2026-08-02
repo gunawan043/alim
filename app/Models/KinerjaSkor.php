@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class KinerjaSkor extends Model
 {
     use HasUuids;
+
     protected $table = 'kinerja_skor';
 
     protected $fillable = ['kinerja_penilaian_id', 'kinerja_indikator_id', 'skor', 'catatan'];

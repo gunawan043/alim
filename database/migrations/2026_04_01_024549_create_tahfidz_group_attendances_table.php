@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 10. create_tahfidz_group_attendances_table.php
 // Absensi kehadiran per sesi halaqah.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_group_attendances', function (Blueprint $table) {
@@ -31,5 +32,9 @@ return new class extends Migration {
             $table->index(['student_id', 'attendance_date']);
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_group_attendances'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_group_attendances');
+    }
 };

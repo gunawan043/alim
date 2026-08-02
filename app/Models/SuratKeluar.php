@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class SuratKeluar extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $table = 'surat_keluar';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -37,7 +39,9 @@ class SuratKeluar extends Model
     ];
 
     const SIFAT_RAHASIA = 'rahasia';
+
     const SIFAT_BIASA = 'biasa';
+
     const SIFAT_PENTING = 'penting';
 
     const SIFAT_OPTIONS = [
@@ -47,7 +51,9 @@ class SuratKeluar extends Model
     ];
 
     const STATUS_DRAFT = 'draft';
+
     const STATUS_TERKIRIM = 'terkirim';
+
     const STATUS_DIBATALKAN = 'dibatalkan';
 
     const STATUS_OPTIONS = [
@@ -76,6 +82,7 @@ class SuratKeluar extends Model
         if ($schoolId) {
             return $query->where('school_id', $schoolId);
         }
+
         return $query;
     }
 
@@ -84,6 +91,7 @@ class SuratKeluar extends Model
         if ($status) {
             return $query->where('status', $status);
         }
+
         return $query;
     }
 
@@ -92,6 +100,7 @@ class SuratKeluar extends Model
         if ($sifat) {
             return $query->where('sifat', $sifat);
         }
+
         return $query;
     }
 }

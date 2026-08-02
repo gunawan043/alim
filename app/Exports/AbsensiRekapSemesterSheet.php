@@ -4,24 +4,32 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles, ShouldAutoSize
+class AbsensiRekapSemesterSheet implements FromCollection, ShouldAutoSize, WithStyles, WithTitle
 {
     protected Collection $studentRows;
+
     protected $groupedData;
+
     protected string $rombelName;
+
     protected string $homeroomName;
+
     protected string $schoolName;
+
     protected string $semester;
+
     protected string $academicYear;
+
     protected int $year;
+
     protected array $months;
 
     public function __construct(
@@ -34,15 +42,15 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
         string $academicYear,
         int $year,
     ) {
-        $this->studentRows   = $studentRows;
-        $this->groupedData  = $groupedData;
-        $this->rombelName   = $rombelName;
+        $this->studentRows = $studentRows;
+        $this->groupedData = $groupedData;
+        $this->rombelName = $rombelName;
         $this->homeroomName = $homeroomName;
-        $this->schoolName   = $schoolName;
-        $this->semester     = $semester;
+        $this->schoolName = $schoolName;
+        $this->semester = $semester;
         $this->academicYear = $academicYear;
-        $this->year         = $year;
-        $this->months       = $semester === 'ganjil' ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
+        $this->year = $year;
+        $this->months = $semester === 'ganjil' ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
     }
 
     public function title(): string
@@ -60,7 +68,7 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
         $rows->push(['Wali Kelas', ':', $this->homeroomName]);
         $rows->push(['Tahun Ajaran', ':', $this->academicYear]);
         $rows->push(['Semester', ':', ($this->semester === 'ganjil' ? 'Ganjil' : 'Genap')]);
-        $rows->push(['']);// row 6 = blank separator
+        $rows->push(['']); // row 6 = blank separator
 
         // ── Header (row 7) ──
         $header = ['No', 'NIS', 'Nama Lengkap', 'JK'];
@@ -95,11 +103,11 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
                 $s = $monthRecords->where('status', 'sakit')->count();
                 $i = $monthRecords->where('status', 'izin')->count();
                 $a = $monthRecords->where('status', 'alpa')->count();
-                $totHadir     += $h;
+                $totHadir += $h;
                 $totTerlambat += $t;
-                $totSakit     += $s;
-                $totIzin      += $i;
-                $totAlpa      += $a;
+                $totSakit += $s;
+                $totIzin += $i;
+                $totAlpa += $a;
                 $cells[] = $h + $t;
             }
 
@@ -111,7 +119,7 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
             $cells[] = $totSakit;
             $cells[] = $totIzin;
             $cells[] = $totAlpa;
-            $cells[] = $persen . '%';
+            $cells[] = $persen.'%';
             $rows->push($cells);
             $idx++;
         }
@@ -122,14 +130,14 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
             $sid = $student->id;
             foreach ($this->months as $month) {
                 $monthRecords = collect($this->groupedData[$month][$sid] ?? []);
-                $grandHadir     += $monthRecords->where('status', 'hadir')->count();
+                $grandHadir += $monthRecords->where('status', 'hadir')->count();
                 $grandTerlambat += $monthRecords->where('status', 'terlambat')->count();
-                $grandSakit     += $monthRecords->where('status', 'sakit')->count();
-                $grandIzin      += $monthRecords->where('status', 'izin')->count();
-                $grandAlpa      += $monthRecords->where('status', 'alpa')->count();
+                $grandSakit += $monthRecords->where('status', 'sakit')->count();
+                $grandIzin += $monthRecords->where('status', 'izin')->count();
+                $grandAlpa += $monthRecords->where('status', 'alpa')->count();
             }
         }
-        $rows->push(['']);// blank separator
+        $rows->push(['']); // blank separator
         $rows->push(['Total Keseluruhan', ':', '']);
         $rows->push(['Total Hadir', ':', $grandHadir]);
         $rows->push(['Total Terlambat', ':', $grandTerlambat]);
@@ -143,35 +151,35 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
     public function styles(Worksheet $sheet): array
     {
         $numStudents = $this->studentRows->count();
-        $totalCols   = 4 + count($this->months) + 6;
-        $lastCol     = $this->getColLetter($totalCols);
+        $totalCols = 4 + count($this->months) + 6;
+        $lastCol = $this->getColLetter($totalCols);
 
-        $headerRow   = 7;
-        $dataStart   = 8;
-        $dataEnd     = 8 + $numStudents - 1;
+        $headerRow = 7;
+        $dataStart = 8;
+        $dataEnd = 8 + $numStudents - 1;
         $footerStart = $dataEnd + 2;
-        $footerEnd   = $footerStart + 2;
+        $footerEnd = $footerStart + 2;
 
         $styles = [];
 
         // Info label (baris 1-5)
-        $styles["A1:B5"] = [
-            'font'   => ['bold' => true],
-            'fill'   => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E8F5E9']],
+        $styles['A1:B5'] = [
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E8F5E9']],
         ];
 
         // Header (baris 7)
         $styles["A{$headerRow}:{$lastCol}{$headerRow}"] = [
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '1565C0']],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '1565C0']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
         // Data siswa (baris 8+)
         $styles["A{$dataStart}:{$lastCol}{$dataEnd}"] = [
-            'font'      => ['size' => 9],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'font' => ['size' => 9],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
         ];
         $styles["A{$dataStart}:A{$dataEnd}"] = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]];
@@ -179,8 +187,8 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
 
         // Footer
         $styles["A{$footerStart}:B{$footerEnd}"] = [
-            'font'   => ['bold' => true],
-            'fill'   => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E3F2FD']],
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E3F2FD']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
 
@@ -192,9 +200,10 @@ class AbsensiRekapSemesterSheet implements FromCollection, WithTitle, WithStyles
         $letter = '';
         while ($col > 0) {
             $col--;
-            $letter = chr(65 + ($col % 26)) . $letter;
+            $letter = chr(65 + ($col % 26)).$letter;
             $col = intval($col / 26);
         }
+
         return $letter;
     }
 }

@@ -26,7 +26,7 @@ class GradeLevelApiController extends Controller
 
         // Super Admin global tanpa scoped school → tampilkan semua rombel
         // Super Admin scoped (sa_school_id) atau user biasa → filter sesuai sekolah
-        $shouldFilterBySchool = !($isGlobalView && !$schoolContextId);
+        $shouldFilterBySchool = ! ($isGlobalView && ! $schoolContextId);
 
         $query = StudyGroup::with(['gradeLevel'])
             ->where('academic_year_id', $academicYearId);
@@ -47,7 +47,7 @@ class GradeLevelApiController extends Controller
 
     public function teachersBySchool(string $schoolId)
     {
-        $teachers = User::whereHas('employment', fn($q) => $q->where('school_id', $schoolId))
+        $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get(['id', 'name']);
 

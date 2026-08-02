@@ -56,7 +56,7 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Nama Aplikasi</label>
                                     <input type="text" name="app_name" class="form-control"
-                                        value="{{ $settings['app_name'] ?? '' }}" placeholder="PUSTIK">
+                                        value="{{ $settings['app_name'] ?? '' }}" placeholder="Alim">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Tagline</label>
@@ -66,12 +66,12 @@
                                 <div class="col-md-6">
                                     <label class="form-label">URL Aplikasi</label>
                                     <input type="url" name="app_url" class="form-control"
-                                        value="{{ $settings['app_url'] ?? '' }}" placeholder="https://pustik.example.com">
+                                        value="{{ $settings['app_url'] ?? '' }}" placeholder="https://Alim.example.com">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Email resmi</label>
                                     <input type="email" name="app_email" class="form-control"
-                                        value="{{ $settings['app_email'] ?? '' }}" placeholder="admin@pustik.ac.id">
+                                        value="{{ $settings['app_email'] ?? '' }}" placeholder="admin@Alim.ac.id">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Telepon</label>

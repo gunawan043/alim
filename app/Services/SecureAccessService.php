@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Str;
 use App\Models\SecureAccessToken;
+use Illuminate\Support\Str;
 
 class SecureAccessService
 {
     public function generate()
     {
-        return hash('sha256', Str::random(40) . microtime(true));
+        return hash('sha256', Str::random(40).microtime(true));
     }
 
     public function createForUser($user, $role)

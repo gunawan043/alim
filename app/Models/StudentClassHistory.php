@@ -11,6 +11,7 @@ class StudentClassHistory extends Model
     protected $table = 'student_class_histories';
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -26,9 +27,9 @@ class StudentClassHistory extends Model
 
     protected $casts = [
         'attendance_number' => 'integer',
-        'is_active'         => 'boolean',
-        'join_date'         => 'date',
-        'leave_date'        => 'date',
+        'is_active' => 'boolean',
+        'join_date' => 'date',
+        'leave_date' => 'date',
     ];
 
     // ── Relationships ────────────────────────────────────────────

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
 
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->index(['table_name', 'record_id']);
             $table->index(['user_id', 'created_at']);
         });

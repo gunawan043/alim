@@ -60,7 +60,7 @@ return new class extends Migration
             $table->unique(['user_id', 'kinerja_periode_id'], 'penilaian_unique');
             $table->index('user_id');
             $table->index('kinerja_periode_id');
- });
+        });
 
         // Detail skor per indikator
         Schema::create('kinerja_skor', function (Blueprint $table) {

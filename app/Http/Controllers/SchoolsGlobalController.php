@@ -17,7 +17,7 @@ class SchoolsGlobalController extends Controller
      * Accessible only by Super Admin / global-view users (enforced by sidebar visibility).
      * userId param is used for route URL generation in views.
      */
-    public function index(Request $request, string $userId = null)
+    public function index(Request $request, ?string $userId = null)
     {
         $schools = School::active()
             ->with(['workUnit', 'principalUser', 'city'])

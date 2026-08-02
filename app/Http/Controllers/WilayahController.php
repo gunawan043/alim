@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\Province;
 use App\Models\City;
 use App\Models\District;
+use App\Models\Province;
 use App\Models\Village;
-use Illuminate\Http\Request;
 
 class WilayahController extends Controller
 {
@@ -17,10 +15,10 @@ class WilayahController extends Controller
     public function provinces()
     {
         $provinces = Province::orderBy('name')->get();
-        
+
         return response()->json([
             'success' => true,
-            'data' => $provinces
+            'data' => $provinces,
         ]);
     }
 
@@ -32,10 +30,10 @@ class WilayahController extends Controller
         $cities = City::where('province_code', $provinceCode)
             ->orderBy('name')
             ->get(['code', 'name', 'province_code']);
-            
+
         return response()->json([
             'success' => true,
-            'data' => $cities
+            'data' => $cities,
         ]);
     }
 
@@ -47,10 +45,10 @@ class WilayahController extends Controller
         $districts = District::where('city_code', $cityCode)
             ->orderBy('name')
             ->get();
-            
+
         return response()->json([
             'success' => true,
-            'data' => $districts
+            'data' => $districts,
         ]);
     }
 
@@ -68,15 +66,15 @@ class WilayahController extends Controller
                     : ($village->meta ?? []);
 
                 return [
-                    'code'        => $village->code,
-                    'name'        => $village->name,
+                    'code' => $village->code,
+                    'name' => $village->name,
                     'postal_code' => $meta['postal_code'] ?? $meta['pos'] ?? $meta['kode_pos'] ?? null,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data' => $villages
+            'data' => $villages,
         ]);
     }
 }

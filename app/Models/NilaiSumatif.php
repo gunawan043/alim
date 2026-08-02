@@ -15,8 +15,11 @@ class NilaiSumatif extends Model
     }
 
     protected $table = 'admin_nilai_sumatif';
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -42,11 +45,11 @@ class NilaiSumatif extends Model
         's4' => 'decimal:2',
         's5' => 'decimal:2',
         's6' => 'decimal:2',
-        'rs'   => 'decimal:2',
-        'sts'  => 'decimal:2',
+        'rs' => 'decimal:2',
+        'sts' => 'decimal:2',
         'raport_sts' => 'decimal:2',
-        'sas'  => 'decimal:2',
-        'rsa'  => 'decimal:2',
+        'sas' => 'decimal:2',
+        'rsa' => 'decimal:2',
         'nr_murni' => 'decimal:2',
         'nr_final' => 'decimal:2',
     ];
@@ -70,7 +73,8 @@ class NilaiSumatif extends Model
     public static function calcRs(array $s): ?float
     {
         $values = array_filter([$s['s1'] ?? null, $s['s2'] ?? null, $s['s3'] ?? null,
-                               $s['s4'] ?? null, $s['s5'] ?? null, $s['s6'] ?? null]);
+            $s['s4'] ?? null, $s['s5'] ?? null, $s['s6'] ?? null]);
+
         return count($values) ? round(array_sum($values) / count($values), 2) : null;
     }
 
@@ -79,14 +83,20 @@ class NilaiSumatif extends Model
     public static function calcRsa(?float $sts, ?float $sas, ?float $raportSts = null): ?float
     {
         $effectiveSts = $raportSts ?? $sts;
-        if ($effectiveSts === null || $sas === null) return null;
+        if ($effectiveSts === null || $sas === null) {
+            return null;
+        }
+
         return round(($effectiveSts + $sas) / 2, 2);
     }
 
     // Auto-calculate: NR Murni = (RS + RSA) / 2
     public static function calcNrMurni(?float $rs, ?float $rsa): ?float
     {
-        if ($rs === null || $rsa === null) return null;
+        if ($rs === null || $rsa === null) {
+            return null;
+        }
+
         return round(($rs + $rsa) / 2, 2);
     }
 
@@ -95,7 +105,10 @@ class NilaiSumatif extends Model
     public static function calcNrFinal(?float $rs, ?float $sts, ?float $sas, float $wRs, float $wSts, float $wSas, ?float $raportSts = null): ?float
     {
         $effectiveSts = $raportSts ?? $sts;
-        if ($rs === null || $effectiveSts === null || $sas === null) return null;
+        if ($rs === null || $effectiveSts === null || $sas === null) {
+            return null;
+        }
+
         return round(($rs * $wRs + $effectiveSts * $wSts + $sas * $wSas) / 100, 2);
     }
 
@@ -117,6 +130,7 @@ class NilaiSumatif extends Model
                 $updated++;
             }
         });
+
         return $updated;
     }
 }

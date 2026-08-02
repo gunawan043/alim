@@ -2,11 +2,9 @@
 
 namespace App\Services\Boarding;
 
-use App\Models\BoardingTimelineEvent;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryVisitLog;
 use App\Models\StudentHealthPermit;
-use Carbon\CarbonImmutable;
 
 /**
  * Boarding Approval Center — a unified inbox that aggregates pending
@@ -29,12 +27,12 @@ class BoardingApprovalService
     /**
      * Aggregate all pending approvals into a single list, sorted newest-first.
      */
-    public function pending(int $dormitoryId): array
+    public function pending(string $dormitoryId): array
     {
         $items = [];
 
         // ── Leave Requests ────────────────────────────────────────────
-        $permits = DormitoryPermit::with(['student:id,name', 'requestedBy:id,name', 'dormitory:id,name'])
+        $permits = DormitoryPermit::with(['student:id,name', 'creator:id,name', 'dormitory:id,name'])
             ->where('dormitory_id', $dormitoryId)
             ->where('status', 'pending')
             ->orderByDesc('created_at')
@@ -50,10 +48,10 @@ class BoardingApprovalService
                 'started_at' => $p->created_at?->toIso8601String(),
                 'student_id' => $p->student_id,
                 'student_name' => $p->student?->name,
-                'requested_by' => $p->requested_by,
-                'requester_name' => $p->requestedBy?->name ?? ($p->requested_by ?: '—'),
+                'requested_by' => $p->created_by,
+                'requester_name' => $p->creator?->name ?? ($p->created_by ?: '—'),
                 'extra' => [
-                    'return_at' => $p->expected_return_at?->toIso8601String(),
+                    'return_at' => $p->expected_return_datetime?->toIso8601String(),
                     'mahrom_required' => $p->requires_mahrom,
                 ],
             ];
@@ -121,7 +119,7 @@ class BoardingApprovalService
     /**
      * Count items by type for summary cards.
      */
-    public function counts(int $dormitoryId): array
+    public function counts(string $dormitoryId): array
     {
         return [
             'leave' => DormitoryPermit::where('dormitory_id', $dormitoryId)

@@ -6,6 +6,7 @@ use App\Http\Requests\Dormitory\CheckoutResidentRequest;
 use App\Http\Requests\Dormitory\StoreResidentRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Services\StudentLookupService;
 use Illuminate\Http\Request;
@@ -21,16 +22,28 @@ class DormitoryResidentController extends Controller
     }
 
     /**
-     * GET /{userId}/asrama/{asramaUuid}/penghuni
+     * GET /{userId}/asrama/{asramaUuid}/daftar-santri
+     *
+     * Hanya menampilkan santri yang MEMILIKI relasi aktif sebagai penghuni
+     * asrama ini. Akademik = SSOT; Asrama hanya mengelola penempatan.
      */
     public function index(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        $query = DormitoryResident::with(['student', 'room', 'room.wing'])
+        // Query dimulai dari DormitoryResident (penempatan aktif), lalu
+        // membaca identitas melalui relationship ke Student (SSOT).
+        $query = DormitoryResident::with([
+            'student:id,user_id,school_id,nisn,nis,name,gender,birth_place,birth_date,phone,mobile_phone,email,photo_path,status,entry_date',
+            'student.currentClassHistory.studyGroup.gradeLevel',
+            'student.primaryMahrom',
+            'room',
+            'room.wing',
+        ])
             ->where('dormitory_id', $asramaUuid)
-            ->where('academic_year_id', $activeYear?->id);
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true);
 
         if ($request->filled('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
@@ -53,19 +66,36 @@ class DormitoryResidentController extends Controller
         $residents = $query->orderByDesc('is_active')->orderBy('bed_number')->paginate(20)->withQueryString();
         $rooms = \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
+        $residentIds = $residents->pluck('student_id')->all();
+
+        $activePermits = DormitoryPermit::whereIn('student_id', $residentIds)
+            ->whereIn('status', ['approved', 'overdue'])
+            ->whereNull('actual_return_datetime')
+            ->get()
+            ->keyBy('student_id');
+
         $stats = [
-            'total' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->count(),
+            'total' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
             'active' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
-            'checked_out' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', false)->count(),
+            'on_permit' => $activePermits->count(),
+            'in_dormitory' => max(0, DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->whereNotIn('student_id', $activePermits->keys()->all())->count()),
+            'occupied_rooms' => \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->whereHas('residents', function ($q) use ($asramaUuid, $activeYear) {
+                $q->where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true);
+            })->count(),
+            'total_rooms' => \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->count(),
         ];
 
         return view('dormitory.residents.index', compact(
-            'dormitory', 'residents', 'rooms', 'userId', 'stats', 'activeYear'
+            'dormitory', 'residents', 'rooms', 'userId', 'stats', 'activeYear', 'activePermits'
         ));
     }
 
     /**
      * GET /{userId}/asrama/{asramaUuid}/penghuni/tambah
+     * Route name: user.asrama.residents.create
+     *
+     * Halaman "Tempatkan Santri" — bukan membuat Student baru.
+     * Petugas hanya mencari, memilih, dan menetapkan penempatan (DormitoryResident).
      */
     public function create(Request $request, string $userId, string $asramaUuid)
     {
@@ -80,7 +110,10 @@ class DormitoryResidentController extends Controller
     }
 
     /**
-     * POST /{userId}/asrama/{asramaUuid}/penghuni
+     * POST /{userId}/asrama/{asramaUuid}/tempatkan-santri
+     *
+     * Simpan data penempatan (DormitoryResident).
+     * TIDAK membuat/mengubah Student — Student adalah milik Modul Akademik.
      */
     public function store(StoreResidentRequest $request, string $userId, string $asramaUuid)
     {
@@ -126,7 +159,7 @@ class DormitoryResidentController extends Controller
         $this->lookup->invalidateCache($data['student_id']);
 
         return redirect()->route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            ->with('success', 'Penghuni berhasil ditambahkan.');
+            ->with('success', 'Penempatan Santri berhasil disimpan.');
     }
 
     /**
@@ -156,9 +189,34 @@ class DormitoryResidentController extends Controller
 
         $activeYear = AcademicYear::where('is_active', true)->first();
 
+        // Get violations for this student in the current academic year
+        $violations = $resident->student?->violationPoints()
+            ->where('academic_year_id', $activeYear?->id)
+            ->get();
+
+        // Get dormitory permits for this student in the current academic year
+        $permits = $resident->student
+            ? \App\Models\DormitoryPermit::where('student_id', $resident->student_id)
+                ->where('academic_year_id', $activeYear?->id)
+                ->where('dormitory_id', $asramaUuid)
+                ->orderByDesc('departure_datetime')
+                ->get()
+            : collect();
+
+        // Get other active residents in the same room (for show tab "Santri Lain di Kamar Ini")
+        $roomResidents = $resident->room_id
+            ? DormitoryResident::with(['student'])
+                ->where('dormitory_id', $asramaUuid)
+                ->where('room_id', $resident->room_id)
+                ->where('is_active', true)
+                ->where('academic_year_id', $activeYear?->id)
+                ->orderBy('bed_number')
+                ->get()
+            : collect();
+
         return view('dormitory.residents.show', compact(
             'resident', 'dormitory', 'userId', 'activeYear',
-            'academicProfile', 'otherAssignments'
+            'academicProfile', 'otherAssignments', 'violations', 'permits', 'roomResidents'
         ));
     }
 
@@ -180,7 +238,7 @@ class DormitoryResidentController extends Controller
 
         $this->lookup->invalidateCache($resident->student_id);
 
-        return back()->with('success', 'Penghuni berhasil di-check out.');
+        return back()->with('success', 'Penghuni berhasil dikeluarkan.');
     }
 
     /**
@@ -194,7 +252,9 @@ class DormitoryResidentController extends Controller
             return response()->json([]);
         }
 
-        $dormitoryId = $request->get('dormitory_id');
+        // Take dormitory ID from query param (sent by JS) or route parameter as fallback
+        $dormitoryId = $request->get('dormitory_id') ?? $request->route('asramaUuid');
+
         $academicYear = AcademicYear::where('is_active', true)->first();
 
         $students = $this->lookup->search(
@@ -218,6 +278,8 @@ class DormitoryResidentController extends Controller
                     'is_assigned' => $s->is_assigned,
                     'assigned_dormitory' => $s->assigned_dormitory,
                     'assigned_room' => $s->assigned_room,
+                    'room_id' => $s->room_id ?? null,
+                    'room_name' => $s->room_name ?? null,
                 ];
             }),
         ]);

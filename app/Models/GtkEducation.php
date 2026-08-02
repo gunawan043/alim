@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
@@ -14,8 +14,11 @@ class GtkEducation extends Model
     use HasFactory, SoftDeletes;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     protected $table = 'gtk_educations';
 
     protected static function boot()
@@ -60,19 +63,19 @@ class GtkEducation extends Model
     ];
 
     protected $casts = [
-        'id'          => 'string',
-        'user_id'     => 'string',
+        'id' => 'string',
+        'user_id' => 'string',
         'verified_by' => 'string',
         'tahun_masuk' => 'integer',
         'tahun_lulus' => 'integer',
         'nilai_akhir' => 'decimal:2',
-        'is_aktif'    => 'boolean',
+        'is_aktif' => 'boolean',
         'is_verified' => 'boolean',
         'verified_at' => 'datetime',
-        'urutan'      => 'integer',
-        'created_at'  => 'datetime',
-        'updated_at'  => 'datetime',
-        'deleted_at'  => 'datetime',
+        'urutan' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     /*
@@ -82,28 +85,28 @@ class GtkEducation extends Model
     */
 
     const JENJANG = [
-        'SD'       => 'Sekolah Dasar',
-        'SMP'      => 'Sekolah Menengah Pertama',
-        'SMA'      => 'Sekolah Menengah Atas',
-        'SMK'      => 'Sekolah Menengah Kejuruan',
-        'D1'       => 'Diploma 1',
-        'D2'       => 'Diploma 2',
-        'D3'       => 'Diploma 3',
-        'D4'       => 'Diploma 4',
-        'S1'       => 'Sarjana (S1)',
-        'S2'       => 'Magister (S2)',
-        'S3'       => 'Doktor (S3)',
-        'PAKET_B'  => 'Paket B (Setara SMP)',
-        'PAKET_C'  => 'Paket C (Setara SMA)',
-        'PROFESI'  => 'Pendidikan Profesi',
+        'SD' => 'Sekolah Dasar',
+        'SMP' => 'Sekolah Menengah Pertama',
+        'SMA' => 'Sekolah Menengah Atas',
+        'SMK' => 'Sekolah Menengah Kejuruan',
+        'D1' => 'Diploma 1',
+        'D2' => 'Diploma 2',
+        'D3' => 'Diploma 3',
+        'D4' => 'Diploma 4',
+        'S1' => 'Sarjana (S1)',
+        'S2' => 'Magister (S2)',
+        'S3' => 'Doktor (S3)',
+        'PAKET_B' => 'Paket B (Setara SMP)',
+        'PAKET_C' => 'Paket C (Setara SMA)',
+        'PROFESI' => 'Pendidikan Profesi',
         'SPESIALIS' => 'Spesialis',
     ];
 
     const STATUS = [
-        'LULUS'       => 'Lulus',
+        'LULUS' => 'Lulus',
         'BELUM_LULUS' => 'Belum Lulus',
-        'DROPOUT'     => 'Drop Out',
-        'PINDAH'      => 'Pindah Sekolah',
+        'DROPOUT' => 'Drop Out',
+        'PINDAH' => 'Pindah Sekolah',
     ];
 
     /*
@@ -145,7 +148,8 @@ class GtkEducation extends Model
     public function getMaskedNoIjazahAttribute(): ?string
     {
         $val = $this->no_ijazah;
-        return $val ? substr($val, 0, 6) . '/****/' . substr($val, -4) : null;
+
+        return $val ? substr($val, 0, 6).'/****/'.substr($val, -4) : null;
     }
 
     /*
@@ -173,7 +177,10 @@ class GtkEducation extends Model
 
     public function getNilaiAkhirFormattedAttribute(): ?string
     {
-        if (!$this->nilai_akhir) return null;
+        if (! $this->nilai_akhir) {
+            return null;
+        }
+
         return number_format($this->nilai_akhir, 2);
     }
 
@@ -182,6 +189,7 @@ class GtkEducation extends Model
         if ($this->skala_nilai == '100' && $this->nilai_akhir) {
             return round(($this->nilai_akhir / 100) * 4, 2);
         }
+
         return $this->nilai_akhir;
     }
 
@@ -214,8 +222,8 @@ class GtkEducation extends Model
     public function scopeHighestEducation($query)
     {
         return $query->orderByDesc('urutan')
-                     ->orderByDesc('tahun_lulus')
-                     ->limit(1);
+            ->orderByDesc('tahun_lulus')
+            ->limit(1);
     }
 
     /*
@@ -233,10 +241,10 @@ class GtkEducation extends Model
         ]);
 
         AuditLog::create([
-            'user_id'    => $userId,
-            'action'     => 'EDUCATION_VERIFIED',
+            'user_id' => $userId,
+            'action' => 'EDUCATION_VERIFIED',
             'table_name' => 'gtk_educations',
-            'record_id'  => $this->id,
+            'record_id' => $this->id,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
@@ -251,10 +259,10 @@ class GtkEducation extends Model
         ]);
 
         AuditLog::create([
-            'user_id'    => auth()->id(),
-            'action'     => 'EDUCATION_UNVERIFIED',
+            'user_id' => auth()->id(),
+            'action' => 'EDUCATION_UNVERIFIED',
             'table_name' => 'gtk_educations',
-            'record_id'  => $this->id,
+            'record_id' => $this->id,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);

@@ -5,17 +5,15 @@ namespace App\Services\Boarding;
 use App\Domain\Services\BoardingRulesEngine;
 use App\Domain\Services\BoardingTimelineService;
 use App\Domain\Types\DefaultBoardingContext;
-use App\Models\BoardingTimelineEvent;
 use App\Models\BoardingPolicy;
+use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
+use App\Models\NotificationUniversal;
 use App\Models\Student;
 use App\Models\StudentBoardingStatus;
 use App\Models\StudentHealthPermit;
 use App\Models\WaliSantri;
-use App\Models\NotificationUniversal;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -46,8 +44,14 @@ class HealthWorkflowService
     {
         $student = Student::find($data['student_id']);
         if ($student && ! empty($data['dormitory_id'])) {
-            $policy = BoardingPolicy::where('dormitory_id', $data['dormitory_id'])
-                ->where('student_id', $student->id)
+            $policy = BoardingPolicy::query()
+                ->select('boarding_policies.*')
+                ->join('dormitory_policy_assignments', 'dormitory_policy_assignments.boarding_policy_id', '=', 'boarding_policies.id')
+                ->where('dormitory_policy_assignments.target_id', $data['dormitory_id'])
+                ->where('dormitory_policy_assignments.policy_assignment_type', 'dormitory')
+                ->where('boarding_policies.is_active', true)
+                ->orderByDesc('dormitory_policy_assignments.priority')
+                ->orderByDesc('dormitory_policy_assignments.effective_from')
                 ->first();
             $context = DefaultBoardingContext::hospitalized(
                 $student,
@@ -240,23 +244,23 @@ class HealthWorkflowService
 
         foreach ($wals as $wali) {
             NotificationUniversal::create([
-                'user_id'         => $wali->user_id,
-                'module'          => 'boarding',
-                'type'            => 'health_decision',
-                'action'          => $decision,
-                'title'           => $isApproved ? 'Izin Sakit Diterima' : 'Izin Sakit Ditolak',
-                'message'         => $isApproved
+                'user_id' => $wali->user_id,
+                'module' => 'boarding',
+                'type' => 'health_decision',
+                'action' => $decision,
+                'title' => $isApproved ? 'Izin Sakit Diterima' : 'Izin Sakit Ditolak',
+                'message' => $isApproved
                     ? "Izin sakit '{$permit->permit_type}' untuk {$student->name} telah disetujui."
-                    : "Izin sakit '{$permit->permit_type}' untuk {$student->name} ditolak." . ($note ? " Alasan: {$note}" : ''),
-                'reference_type'  => StudentHealthPermit::class,
-                'reference_id'    => $permit->id,
-                'action_url'      => route('user.asrama.approval-center', [
-                    'userId'   => $wali->user_id,
+                    : "Izin sakit '{$permit->permit_type}' untuk {$student->name} ditolak.".($note ? " Alasan: {$note}" : ''),
+                'reference_type' => StudentHealthPermit::class,
+                'reference_id' => $permit->id,
+                'action_url' => route('user.asrama.approval-center', [
+                    'userId' => $wali->user_id,
                     'asramaUuid' => $permit->dormitory_id,
                 ]),
-                'action_text'     => 'Lihat Detail',
-                'is_read'         => false,
-                'priority'        => $isApproved ? 'medium' : 'high',
+                'action_text' => 'Lihat Detail',
+                'is_read' => false,
+                'priority' => $isApproved ? 'medium' : 'high',
             ]);
         }
     }

@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // 27. create_tahfidz_hadits_master_table.php
 // Master 42 Hadits Arbain An-Nawawi. Di-seed sekali.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_hadits_master', function (Blueprint $table) {
@@ -21,5 +22,9 @@ return new class extends Migration {
             $table->timestamps();
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_hadits_master'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_hadits_master');
+    }
 };

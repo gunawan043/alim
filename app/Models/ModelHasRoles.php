@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 class ModelHasRoles extends Pivot
 {
     protected $table = 'model_has_roles';
-    
+
     protected static function boot()
     {
         parent::boot();
@@ -25,6 +25,6 @@ class ModelHasRoles extends Pivot
         'model_type',
         'model_uuid',
     ];
-    
+
     public $timestamps = false;
 }

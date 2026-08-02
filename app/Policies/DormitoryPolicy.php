@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Dormitory;
+use App\Models\User;
 
 class DormitoryPolicy
 {

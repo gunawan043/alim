@@ -14,8 +14,9 @@ class VendorStoreRequest extends FormRequest
     public function rules(): array
     {
         $vendorId = $this->route('vendor')?->id;
+
         return [
-            'vendor_code' => 'nullable|string|max:50|unique:vendors,vendor_code' . ($vendorId ? ',' . $vendorId : ''),
+            'vendor_code' => 'nullable|string|max:50|unique:vendors,vendor_code'.($vendorId ? ','.$vendorId : ''),
             'name' => 'required|string|max:200',
             'legal_name' => 'nullable|string|max:200',
             'npwp' => 'nullable|string|max:30',
@@ -26,7 +27,7 @@ class VendorStoreRequest extends FormRequest
             'phone_alt' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:150',
             'website' => 'nullable|url|max:255',
-            'established_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'established_year' => 'nullable|integer|min:1900|max:'.(date('Y') + 1),
             'total_employees' => 'nullable|integer|min:0',
             'rating_avg' => 'nullable|numeric|min:0|max:5',
             'risk_classification' => 'nullable|in:low,medium,high,critical',

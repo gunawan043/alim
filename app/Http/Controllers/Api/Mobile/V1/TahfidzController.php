@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\TahfidzSetoran;
 use App\Models\TahfidzJuzProgress;
+use App\Models\TahfidzSetoran;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

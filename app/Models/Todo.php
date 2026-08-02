@@ -2,21 +2,21 @@
 
 namespace App\Models;
 
-use App\Models\AuditLog;
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\LogsDeletion;
 use Illuminate\Support\Str;
 
 class Todo extends Model
 {
-    use SoftDeletes;
     use LogsDeletion;
+    use SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -49,15 +49,15 @@ class Todo extends Model
     ];
 
     protected $casts = [
-        'due_date'          => 'date',
-        'reminder_at'       => 'datetime',
-        'started_at'        => 'datetime',
-        'completed_at'      => 'datetime',
-        'delegated_at'      => 'datetime',
-        'progress_percent'  => 'integer',
-        'is_pinned'         => 'integer',
-        'is_private'       => 'integer',
-        'sort_order'        => 'integer',
+        'due_date' => 'date',
+        'reminder_at' => 'datetime',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'delegated_at' => 'datetime',
+        'progress_percent' => 'integer',
+        'is_pinned' => 'integer',
+        'is_private' => 'integer',
+        'sort_order' => 'integer',
         'created_at_timezone' => 'string',
     ];
 
@@ -96,28 +96,28 @@ class Todo extends Model
 
         static::created(function ($todo) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'TODO_CREATED',
+                'user_id' => auth()->id(),
+                'action' => 'TODO_CREATED',
                 'table_name' => 'todos',
-                'record_id'  => $todo->id,
+                'record_id' => $todo->id,
             ]);
         });
 
         static::updated(function ($todo) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'TODO_UPDATED',
+                'user_id' => auth()->id(),
+                'action' => 'TODO_UPDATED',
                 'table_name' => 'todos',
-                'record_id'  => $todo->id,
+                'record_id' => $todo->id,
             ]);
         });
 
         static::deleted(function ($todo) {
             AuditLog::create([
-                'user_id'    => auth()->id(),
-                'action'     => 'TODO_DELETED',
+                'user_id' => auth()->id(),
+                'action' => 'TODO_DELETED',
                 'table_name' => 'todos',
-                'record_id'  => $todo->id,
+                'record_id' => $todo->id,
             ]);
         });
     }
@@ -127,46 +127,46 @@ class Todo extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {
-            'belum_mulai'     => 'bg-secondary-subtle text-secondary text-uppercase',
+            'belum_mulai' => 'bg-secondary-subtle text-secondary text-uppercase',
             'sedang_berjalan' => 'bg-primary-subtle text-primary text-uppercase',
-            'selesai'          => 'bg-success-subtle text-success text-uppercase',
-            'ditunda'          => 'bg-warning-subtle text-warning text-uppercase',
-            'dibatalkan'       => 'bg-dark-subtle text-dark text-uppercase',
-            default            => 'bg-secondary-subtle text-secondary text-uppercase',
+            'selesai' => 'bg-success-subtle text-success text-uppercase',
+            'ditunda' => 'bg-warning-subtle text-warning text-uppercase',
+            'dibatalkan' => 'bg-dark-subtle text-dark text-uppercase',
+            default => 'bg-secondary-subtle text-secondary text-uppercase',
         };
     }
 
     public function getPriorityBadgeClassAttribute(): string
     {
         return match ($this->priority) {
-            'rendah'  => 'bg-success-subtle text-success text-uppercase',
-            'sedang'  => 'bg-info-subtle text-info text-uppercase',
-            'tinggi'  => 'bg-warning-subtle text-warning text-uppercase',
-            'mendesak'=> 'bg-danger-subtle text-danger text-uppercase',
-            default   => 'bg-secondary-subtle text-secondary text-uppercase',
+            'rendah' => 'bg-success-subtle text-success text-uppercase',
+            'sedang' => 'bg-info-subtle text-info text-uppercase',
+            'tinggi' => 'bg-warning-subtle text-warning text-uppercase',
+            'mendesak' => 'bg-danger-subtle text-danger text-uppercase',
+            default => 'bg-secondary-subtle text-secondary text-uppercase',
         };
     }
 
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'belum_mulai'     => 'Belum Mulai',
+            'belum_mulai' => 'Belum Mulai',
             'sedang_berjalan' => 'Berjalan',
-            'selesai'         => 'Selesai',
-            'ditunda'         => 'Ditunda',
-            'dibatalkan'      => 'Dibatalkan',
-            default           => $this->status ?? '',
+            'selesai' => 'Selesai',
+            'ditunda' => 'Ditunda',
+            'dibatalkan' => 'Dibatalkan',
+            default => $this->status ?? '',
         };
     }
 
     public function getPriorityLabelAttribute(): string
     {
         return match ($this->priority) {
-            'rendah'  => 'Rendah',
-            'sedang'  => 'Sedang',
-            'tinggi'  => 'Tinggi',
-            'mendesak'=> 'Mendesak',
-            default   => $this->priority ?? '',
+            'rendah' => 'Rendah',
+            'sedang' => 'Sedang',
+            'tinggi' => 'Tinggi',
+            'mendesak' => 'Mendesak',
+            default => $this->priority ?? '',
         };
     }
 
@@ -264,6 +264,7 @@ class Todo extends Model
         if ($listId) {
             return $query->where('todo_list_id', $listId);
         }
+
         return $query;
     }
 
@@ -302,9 +303,9 @@ class Todo extends Model
     {
         return $query->where(function ($q) use ($userId) {
             $q->where('is_private', 0)
-              ->orWhere('owner_id', $userId)
-              ->orWhere('created_by', $userId)
-              ->orWhere('delegated_by', $userId);
+                ->orWhere('owner_id', $userId)
+                ->orWhere('created_by', $userId)
+                ->orWhere('delegated_by', $userId);
         });
     }
 
@@ -312,23 +313,23 @@ class Todo extends Model
     {
         $query = $query->with(['owner', 'delegatedByUser', 'subtasks']);
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->byStatus($filters['status']);
         }
 
-        if (!empty($filters['priority'])) {
+        if (! empty($filters['priority'])) {
             $query->byPriority($filters['priority']);
         }
 
-        if (!empty($filters['list_id'])) {
+        if (! empty($filters['list_id'])) {
             $query->byList($filters['list_id']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -342,10 +343,10 @@ class Todo extends Model
 
         if ($sortBy === 'due_date') {
             $query->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END ASC')
-                  ->orderBy('due_date', $sortDir);
+                ->orderBy('due_date', $sortDir);
         } else {
             $query->orderBy('is_pinned', 'desc')
-                  ->orderBy($sortBy, $sortDir);
+                ->orderBy($sortBy, $sortDir);
         }
 
         return $query;
@@ -355,22 +356,24 @@ class Todo extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        if (!$this->due_date) {
+        if (! $this->due_date) {
             return false;
         }
+
         return $this->due_date->lt(now()->toDateString())
-            && !in_array($this->status, ['selesai', 'dibatalkan']);
+            && ! in_array($this->status, ['selesai', 'dibatalkan']);
     }
 
     public function getIsDueSoonAttribute(): bool
     {
-        if (!$this->due_date) {
+        if (! $this->due_date) {
             return false;
         }
+
         return $this->due_date->between(
             now()->toDateString(),
             now()->addDays(3)->toDateString()
-        ) && !in_array($this->status, ['selesai', 'dibatalkan']);
+        ) && ! in_array($this->status, ['selesai', 'dibatalkan']);
     }
 
     public function getSubtaskProgressAttribute(): int
@@ -379,15 +382,17 @@ class Todo extends Model
             return $this->progress_percent ?? 0;
         }
         $total = $this->subtasks->count();
-        $done  = $this->subtasks->where('is_completed', 1)->count();
+        $done = $this->subtasks->where('is_completed', 1)->count();
+
         return $total > 0 ? (int) round(($done / $total) * 100) : 0;
     }
 
     public function getDelegationBadgeAttribute(): ?string
     {
-        if (!$this->delegated_by) {
+        if (! $this->delegated_by) {
             return null;
         }
+
         return $this->delegatedByUser?->name;
     }
 
@@ -402,7 +407,7 @@ class Todo extends Model
         }
 
         $total = $subtasks->count();
-        $done  = $subtasks->where('is_completed', 1)->count();
+        $done = $subtasks->where('is_completed', 1)->count();
         $percent = (int) round(($done / $total) * 100);
 
         $this->updateQuietly(['progress_percent' => $percent]);
@@ -411,7 +416,7 @@ class Todo extends Model
     public function markAsCompleted(): void
     {
         $this->update([
-            'status'       => 'selesai',
+            'status' => 'selesai',
             'completed_at' => now(),
             'progress_percent' => 100,
         ]);
@@ -419,13 +424,14 @@ class Todo extends Model
 
     public function assignWatcher(string $userId, ?string $addedBy = null): self
     {
-        if (!TodoWatcher::isWatching($this->id, $userId)) {
+        if (! TodoWatcher::isWatching($this->id, $userId)) {
             TodoWatcher::create([
                 'todo_id' => $this->id,
                 'user_id' => $userId,
                 'added_by' => $addedBy ?? auth()->id(),
             ]);
         }
+
         return $this;
     }
 }

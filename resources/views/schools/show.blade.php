@@ -74,7 +74,7 @@
                     </div>
                 </div>
                 <div class="col-auto d-flex gap-2">
-                    @if(auth()->user()->role()->hasPermission('school-update'))
+                    @if(auth()->user()->hasPermissionTo('school-update'))
                     <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $school->id]) }}" class="btn btn-soft-secondary">
                         <i class="ri-pencil-line me-1"></i> Edit
                     </a>
@@ -344,7 +344,7 @@
     </div>
 
     <div class="mt-3">
-        @if(auth()->user()->role()->hasPermission('school-update'))
+        @if(auth()->user()->hasPermissionTo('school-update'))
         <a href="{{ route('user.schools.index', ['userId' => $userId]) }}" class="btn btn-light">
             <i class="ri-arrow-left-line me-1"></i> Kembali ke Daftar
         </a>

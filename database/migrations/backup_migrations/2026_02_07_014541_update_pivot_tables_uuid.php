@@ -14,16 +14,16 @@ return new class extends Migration
             // Tambah kolom model_uuid untuk relasi ke user via UUID
             $table->uuid('model_uuid')->nullable()->after('model_id');
         });
-        
+
         // Update model_has_roles
         Schema::table('model_has_roles', function (Blueprint $table) {
             $table->uuid('model_uuid')->nullable()->after('model_id');
         });
-        
+
         // Copy UUID dari users table ke pivot tables
         $this->copyUuidToPivotTables();
     }
-    
+
     private function copyUuidToPivotTables()
     {
         // Copy UUID untuk model_has_permissions
@@ -38,7 +38,7 @@ return new class extends Migration
                     AND mhp.model_uuid IS NULL
                 ");
             }
-            
+
             // Untuk model_has_roles
             if (Schema::hasColumn('model_has_roles', 'model_uuid')) {
                 DB::statement("
@@ -49,12 +49,12 @@ return new class extends Migration
                     AND mhr.model_uuid IS NULL
                 ");
             }
-            
+
             // Untuk model_type lainnya (jika ada)
             $this->copyUuidForOtherModels();
         }
     }
-    
+
     private function copyUuidForOtherModels()
     {
         // Daftar model lain yang mungkin menggunakan UUID
@@ -62,7 +62,7 @@ return new class extends Migration
             'App\\Models\\GtkProfile' => 'gtk_profiles',
             // Tambahkan model lainnya jika diperlukan
         ];
-        
+
         foreach ($otherModels as $modelClass => $tableName) {
             if (Schema::hasTable($tableName) && Schema::hasColumn($tableName, 'uuid')) {
                 // Untuk model_has_permissions
@@ -75,7 +75,7 @@ return new class extends Migration
                         AND mhp.model_uuid IS NULL
                     ");
                 }
-                
+
                 // Untuk model_has_roles
                 if (Schema::hasColumn('model_has_roles', 'model_uuid')) {
                     DB::statement("
@@ -98,7 +98,7 @@ return new class extends Migration
                 $table->dropColumn('model_uuid');
             }
         });
-        
+
         Schema::table('model_has_roles', function (Blueprint $table) {
             if (Schema::hasColumn('model_has_roles', 'model_uuid')) {
                 $table->dropColumn('model_uuid');

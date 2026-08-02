@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         $tableNames = config('permission.table_names');
-        
+
         // PERMISSIONS
         Schema::create($tableNames['permissions'], function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->string('group')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['name', 'guard_name']);
         });
 
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('level')->default(0);
             $table->string('description')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['name', 'guard_name']);
         });
 
@@ -39,14 +39,14 @@ return new class extends Migration
             $table->uuid('permission_id');
             $table->string('model_type');
             $table->uuid('model_id');
-            
+
             $table->index(['model_id', 'model_type']);
-            
+
             $table->foreign('permission_id')
                 ->references('id')
                 ->on($tableNames['permissions'])
                 ->onDelete('cascade');
-                
+
             $table->primary(
                 ['permission_id', 'model_id', 'model_type'],
                 'model_has_permissions_permission_model_type_primary'
@@ -58,14 +58,14 @@ return new class extends Migration
             $table->uuid('role_id');
             $table->string('model_type');
             $table->uuid('model_id');
-            
+
             $table->index(['model_id', 'model_type']);
-            
+
             $table->foreign('role_id')
                 ->references('id')
                 ->on($tableNames['roles'])
                 ->onDelete('cascade');
-                
+
             $table->primary(
                 ['role_id', 'model_id', 'model_type'],
                 'model_has_roles_role_model_type_primary'
@@ -76,17 +76,17 @@ return new class extends Migration
         Schema::create($tableNames['role_has_permissions'], function (Blueprint $table) use ($tableNames) {
             $table->uuid('permission_id');
             $table->uuid('role_id');
-            
+
             $table->foreign('permission_id')
                 ->references('id')
                 ->on($tableNames['permissions'])
                 ->onDelete('cascade');
-                
+
             $table->foreign('role_id')
                 ->references('id')
                 ->on($tableNames['roles'])
                 ->onDelete('cascade');
-                
+
             $table->primary(['permission_id', 'role_id']);
         });
     }
@@ -94,7 +94,7 @@ return new class extends Migration
     public function down(): void
     {
         $tableNames = config('permission.table_names');
-        
+
         Schema::dropIfExists($tableNames['role_has_permissions']);
         Schema::dropIfExists($tableNames['model_has_roles']);
         Schema::dropIfExists($tableNames['model_has_permissions']);

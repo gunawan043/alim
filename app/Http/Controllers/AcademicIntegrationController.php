@@ -22,11 +22,14 @@ class AcademicIntegrationController extends Controller
 
         $filters = $request->only(['q', 'dormitory_id', 'status']);
 
-        $students = Student::with(['dormitory', 'room'])
-            ->whereNotNull('dormitory_id')
-            ->when($filters['q'] ?? null, fn($q, $v) => $q->where('name', 'like', "%{$v}%")->orWhere('nis', 'like', "%{$v}%"))
-            ->when($filters['dormitory_id'] ?? null, fn($q, $v) => $q->where('dormitory_id', $v))
-            ->when($filters['status'] ?? null, fn($q, $v) => $q->where('status', $v))
+        $students = Student::whereHas('activeDormitoryResident', function ($q) use ($filters) {
+            if (! empty($filters['dormitory_id'])) {
+                $q->where('dormitory_id', $filters['dormitory_id']);
+            }
+        })
+            ->with(['dormitoryResident.dormitory'])
+            ->when($filters['q'] ?? null, fn ($sq, $v) => $sq->where('name', 'like', "%{$v}%")->orWhere('nis', 'like', "%{$v}%"))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
@@ -54,7 +57,7 @@ class AcademicIntegrationController extends Controller
         $data = $request->validate([
             'student_id' => ['required', 'string'],
             'new_status' => ['required', Rule::in(['graduate', 'inactive', 'dropped', 'transfer_out', 'transfer'])],
-            'reason'     => ['nullable', 'string', 'max:500'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $activeYear = AcademicYear::where('is_active', true)->first();

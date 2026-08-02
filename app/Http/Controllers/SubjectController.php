@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Subject;
 use App\Models\School;
+use App\Models\Subject;
 use Illuminate\Http\Request;
 
 class SubjectController extends Controller
@@ -33,17 +33,24 @@ class SubjectController extends Controller
         // Group by kelompok mapel: Agama → Arab → Hadits → Umum
         $grouped = $subjects->groupBy(function ($s) {
             $name = strtolower($s->name);
-            if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan|pendidikan agama)/i', $name)) return 'agama';
-            if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'"]?bir|sharaf)/i', $name)) return 'arab';
-            if (preg_match('/(hadits|hadist)/i', $name)) return 'hadits';
+            if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan|pendidikan agama)/i', $name)) {
+                return 'agama';
+            }
+            if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'"]?bir|sharaf)/i', $name)) {
+                return 'arab';
+            }
+            if (preg_match('/(hadits|hadist)/i', $name)) {
+                return 'hadits';
+            }
+
             return 'umum';
         });
 
         $kelompokLabels = [
-            'agama'  => ['label' => 'Mapel Agama',            'icon' => 'ri-moon-line',       'color' => 'primary'],
-            'arab'   => ['label' => 'Mapel Bahasa Arab',       'icon' => 'ri-quill-pen-line', 'color' => 'success'],
+            'agama' => ['label' => 'Mapel Agama',            'icon' => 'ri-moon-line',       'color' => 'primary'],
+            'arab' => ['label' => 'Mapel Bahasa Arab',       'icon' => 'ri-quill-pen-line', 'color' => 'success'],
             'hadits' => ['label' => 'Mapel Hadits',             'icon' => 'ri-book-mark-line', 'color' => 'info'],
-            'umum'   => ['label' => 'Mapel Umum',               'icon' => 'ri-global-line',    'color' => 'warning'],
+            'umum' => ['label' => 'Mapel Umum',               'icon' => 'ri-global-line',    'color' => 'warning'],
         ];
 
         $schools = School::orderBy('name')->get();
@@ -60,6 +67,7 @@ class SubjectController extends Controller
             $schools = School::orderBy('name')->get();
         }
         $schoolContext = $schoolId ? School::find($schoolId) : null;
+
         return view('subjects.create', compact('schools', 'userId', 'schoolContext'));
     }
 
@@ -68,14 +76,14 @@ class SubjectController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $rules = [
-            'code'         => 'required|string|max:20',
-            'name'         => 'required|string|max:100',
-            'category'     => 'required|in:nasional,lokal,muatan_lokal',
+            'code' => 'required|string|max:20',
+            'name' => 'required|string|max:100',
+            'category' => 'required|in:nasional,lokal,muatan_lokal',
             'credit_hours' => 'required|integer|min:1|max:20',
-            'description'  => 'nullable|string|max:500',
-            'is_active'    => 'boolean',
+            'description' => 'nullable|string|max:500',
+            'is_active' => 'boolean',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -93,6 +101,7 @@ class SubjectController extends Controller
         }
 
         $subject = Subject::create($data);
+
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
             ->with('success', 'Mata pelajaran berhasil disimpan.');
     }
@@ -104,6 +113,7 @@ class SubjectController extends Controller
         if ($schoolId && $subject->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
+
         return view('subjects.show', compact('subject', 'userId'));
     }
 
@@ -116,6 +126,7 @@ class SubjectController extends Controller
         }
         $schools = School::orderBy('name')->get();
         $schoolContext = $schoolId ? School::find($schoolId) : null;
+
         return view('subjects.edit', compact('subject', 'schools', 'userId', 'schoolContext'));
     }
 
@@ -129,14 +140,14 @@ class SubjectController extends Controller
         }
 
         $rules = [
-            'code'         => 'required|string|max:20',
-            'name'         => 'required|string|max:100',
-            'category'     => 'required|in:nasional,lokal,muatan_lokal',
+            'code' => 'required|string|max:20',
+            'name' => 'required|string|max:100',
+            'category' => 'required|in:nasional,lokal,muatan_lokal',
             'credit_hours' => 'required|integer|min:1|max:20',
-            'description'  => 'nullable|string|max:500',
-            'is_active'    => 'boolean',
+            'description' => 'nullable|string|max:500',
+            'is_active' => 'boolean',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -155,6 +166,7 @@ class SubjectController extends Controller
         }
 
         $subject->update($data);
+
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
             ->with('success', 'Mata pelajaran berhasil diperbarui.');
     }

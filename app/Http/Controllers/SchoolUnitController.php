@@ -50,8 +50,8 @@ class SchoolUnitController extends Controller
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = \App\Models\Province::orderBy('name')->get();
         $principals = \App\Models\User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
+            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')
             ->get();
 

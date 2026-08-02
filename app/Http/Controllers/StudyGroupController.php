@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudyGroup;
-use App\Models\School;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
-use App\Models\User;
+use App\Models\School;
 use App\Models\StudentClassHistory;
+use App\Models\StudyGroup;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class StudyGroupController extends Controller
@@ -23,7 +23,7 @@ class StudyGroupController extends Controller
         if ($request->filled('academic_year_id')) {
             $query->where('academic_year_id', $request->academic_year_id);
         } else {
-            $query->whereHas('academicYear', fn($q) => $q->where('semester', $activeSemester));
+            $query->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
         }
 
         if ($schoolId) {
@@ -45,13 +45,14 @@ class StudyGroupController extends Controller
         $sgIds = $studyGroups->pluck('id');
         $counts = StudentClassHistory::whereIn('study_group_id', $sgIds)
             ->where('is_active', true)
-            ->when($activeYearId, fn($q) => $q->where('academic_year_id', $activeYearId))
+            ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
             ->groupBy('study_group_id')
             ->selectRaw('study_group_id, COUNT(*) as total')
             ->pluck('total', 'study_group_id');
 
         $studyGroups->getCollection()->transform(function ($sg) use ($counts) {
             $sg->studentCount = $counts[$sg->id] ?? 0;
+
             return $sg;
         });
 
@@ -70,7 +71,7 @@ class StudyGroupController extends Controller
             $schools = School::where('id', $schoolId)->get();
             $gradeLevels = GradeLevel::where('school_id', $schoolId)->orderBy('level')->get();
             $teachers = User::whereHas('employment')
-                ->whereHas('employment', fn($q) => $q->where('school_id', $schoolId))
+                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
                 ->orderBy('name')->get();
         } else {
             $schools = School::orderBy('name')->get();
@@ -91,19 +92,19 @@ class StudyGroupController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $rules = [
-            'academic_year_id'     => 'required|exists:academic_years,id',
-            'grade_level_id'       => 'required|exists:grade_levels,id',
-            'homeroom_teacher_id'  => 'nullable|exists:users,id',
-            'name'                 => 'required|string|max:50',
-            'code'                 => 'nullable|string|max:20',
-            'capacity'             => 'nullable|integer|min:1|max:200',
-            'room'                 => 'nullable|string|max:50',
-            'curriculum_type'      => 'nullable|in:merdeka,2013,ktsp',
-            'shift'                => 'nullable|in:pagi,siang',
-            'is_active'            => 'boolean',
-            'notes'                => 'nullable|string',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'grade_level_id' => 'required|exists:grade_levels,id',
+            'homeroom_teacher_id' => 'nullable|exists:users,id',
+            'name' => 'required|string|max:50',
+            'code' => 'nullable|string|max:20',
+            'capacity' => 'nullable|integer|min:1|max:200',
+            'room' => 'nullable|string|max:50',
+            'curriculum_type' => 'nullable|in:merdeka,2013,ktsp',
+            'shift' => 'nullable|in:pagi,siang',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -122,6 +123,7 @@ class StudyGroupController extends Controller
         }
 
         $studyGroup = StudyGroup::create($data);
+
         return redirect()->route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id])
             ->with('success', 'Rombel berhasil disimpan.');
     }
@@ -161,7 +163,7 @@ class StudyGroupController extends Controller
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $gradeLevels = GradeLevel::where('school_id', $studyGroup->school_id)->orderBy('level')->get();
         $teachers = User::whereHas('employment')
-            ->whereHas('employment', fn($q) => $q->where('school_id', $studyGroup->school_id))
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $studyGroup->school_id))
             ->orderBy('name')->get();
         $schoolContext = $schoolId ? School::find($schoolId) : null;
 
@@ -180,19 +182,19 @@ class StudyGroupController extends Controller
         }
 
         $rules = [
-            'academic_year_id'     => 'required|exists:academic_years,id',
-            'grade_level_id'      => 'required|exists:grade_levels,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'grade_level_id' => 'required|exists:grade_levels,id',
             'homeroom_teacher_id' => 'nullable|exists:users,id',
-            'name'                 => 'required|string|max:50',
-            'code'                 => 'nullable|string|max:20',
-            'capacity'             => 'nullable|integer|min:1|max:200',
-            'room'                 => 'nullable|string|max:50',
-            'curriculum_type'     => 'nullable|in:merdeka,2013,ktsp',
-            'shift'               => 'nullable|in:pagi,siang',
-            'is_active'           => 'boolean',
-            'notes'               => 'nullable|string',
+            'name' => 'required|string|max:50',
+            'code' => 'nullable|string|max:20',
+            'capacity' => 'nullable|integer|min:1|max:200',
+            'room' => 'nullable|string|max:50',
+            'curriculum_type' => 'nullable|in:merdeka,2013,ktsp',
+            'shift' => 'nullable|in:pagi,siang',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
@@ -212,6 +214,7 @@ class StudyGroupController extends Controller
         }
 
         $studyGroup->update($data);
+
         return redirect()->route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id])
             ->with('success', 'Rombel berhasil diperbarui.');
     }
@@ -226,6 +229,7 @@ class StudyGroupController extends Controller
         }
 
         $studyGroup->delete();
+
         return redirect()->route('user.study-groups.index', ['userId' => $userId])
             ->with('success', 'Rombel berhasil dihapus.');
     }

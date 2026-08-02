@@ -76,7 +76,7 @@
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Utama</p>
-                            <h3 class="fw-bold mb-0">{{ $mahroms->where('is_primary', true)->count() }}</h3>
+                            <h3 class="fw-bold mb-0">{{ $primaryCount ?? 0 }}</h3>
                         </div>
                     </div>
                 </div>
@@ -93,7 +93,7 @@
                         </div>
                         <div>
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Aktif</p>
-                            <h3 class="fw-bold mb-0">{{ $mahroms->where('is_active', true)->count() }}</h3>
+                            <h3 class="fw-bold mb-0">{{ $activeCount ?? 0 }}</h3>
                         </div>
                     </div>
                 </div>
@@ -230,9 +230,7 @@
                     </div>
 
                     @if($mahroms->hasPages())
-                        <div class="d-flex justify-content-center mt-3">
-                            {{ $mahroms->withQueryString()->links() }}
-                        </div>
+                        {{ $mahroms->withQueryString()->links() }}
                     @endif
 
                     <div class="mt-4 p-3 bg-light rounded">
@@ -242,8 +240,8 @@
                                 <strong>Catatan:</strong>
                                 <ul class="mb-0 ps-3 mt-1 small text-muted">
                                     <li>Mahrom adalah orang yang diperbolehkan menjengukdi dalam kamar.</li>
-                                    <li>Batas maksimal {{ $maxMahrom ?? 4 }} mahrom per Santi.</li>
-                                    <li>Mahrom utama akan menjadi kontak utama untuk informasi Santi.</li>
+                                    <li>Batas maksimal {{ $maxMahrom ?? 4 }} mahrom per Santri.</li>
+                                    <li>Mahrom utama akan menjadi kontak utama untuk informasi Santri.</li>
                                     <li>Mahrom nonaktif tidak dapat menjenguk.</li>
                                 </ul>
                             </div>

@@ -33,9 +33,9 @@
                     <div class="live-preview">
                         <nav id="navbar-example" class="navbar navbar-dark bg-light px-3">
                             <a class="navbar-brand" href="#">
-                                <img src="{{ URL::asset('build/images/logo-dark.png') }}" class="card-logo card-logo-dark" alt="logo dark"
+                                <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" class="card-logo card-logo-dark" alt="logo dark"
                                     height="14">
-                                <img src="{{ URL::asset('build/images/logo-light.png') }}" class="card-logo card-logo-light" alt="logo light"
+                                <img src="{{ URL::asset('build/images/alim-light-name.png') }}" class="card-logo card-logo-light" alt="logo light"
                                     height="14">
                             </a>
                             <ul class="nav nav-pills">
@@ -89,7 +89,7 @@
                                     ad minima veniam.</p>
                                 <h5 id="three">three</h5>
                                 <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem
-                                    accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab
+                                    accuSantrium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab
                                     illo inventore veritatis et quasi architecto beatae vitae dicta sunt
                                     explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut
                                     odit aut fugit</p>
@@ -174,9 +174,9 @@
                             <div class="col-xxl-3">
                                 <nav id="navbar-examplenested" class="navbar navbar-dark bg-light flex-column">
                                     <a class="navbar-brand mb-2" href="#">
-                                        <img src="{{ URL::asset('build/images/logo-dark.png') }}" class="card-logo card-logo-dark"
+                                        <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" class="card-logo card-logo-dark"
                                             alt="logo dark" height="15">
-                                        <img src="{{ URL::asset('build/images/logo-light.png') }}" class="card-logo card-logo-light"
+                                        <img src="{{ URL::asset('build/images/alim-light-name.png') }}" class="card-logo card-logo-light"
                                             alt="logo light" height="15">
                                     </a>
                                     <nav class="nav nav-pills flex-column p-3 w-100">

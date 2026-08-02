@@ -20,14 +20,14 @@ class RecruitmentReportController extends Controller
     public function dashboard(Request $request)
     {
         $period = $request->get('period', 'month');
-        
+
         $data = $this->reportService->getDashboardStats($period);
 
         return response()->json([
             'success' => true,
             'data' => $data,
             'period' => $period,
-            'generated_at' => now()
+            'generated_at' => now(),
         ]);
     }
 
@@ -39,20 +39,20 @@ class RecruitmentReportController extends Controller
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'job_type' => 'nullable|string'
+            'job_type' => 'nullable|string',
         ]);
 
         $dateRange = [
             'start' => $request->start_date ? Carbon::parse($request->start_date) : Carbon::now()->subMonth(),
             'end' => $request->end_date ? Carbon::parse($request->end_date) : Carbon::now(),
-            'days' => 30
+            'days' => 30,
         ];
 
         $data = $this->reportService->getJobPerformance($dateRange);
 
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
@@ -64,7 +64,7 @@ class RecruitmentReportController extends Controller
         $request->validate([
             'type' => 'required|in:overview,funnel,time-to-hire,jobs,demographics',
             'format' => 'required|in:pdf,excel,csv',
-            'period' => 'required|in:week,month,quarter,year'
+            'period' => 'required|in:week,month,quarter,year',
         ]);
 
         try {
@@ -75,11 +75,11 @@ class RecruitmentReportController extends Controller
             );
 
             return $file;
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal export report: ' . $e->getMessage()
+                'message' => 'Gagal export report: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -95,7 +95,7 @@ class RecruitmentReportController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $reports
+            'data' => $reports,
         ]);
     }
 
@@ -110,7 +110,7 @@ class RecruitmentReportController extends Controller
             'format' => 'required|in:pdf,excel,csv',
             'frequency' => 'required|in:daily,weekly,monthly',
             'recipients' => 'required|array',
-            'recipients.*' => 'email'
+            'recipients.*' => 'email',
         ]);
 
         $schedule = \App\Models\ScheduledReport::create([
@@ -122,12 +122,12 @@ class RecruitmentReportController extends Controller
             'recipients' => $request->recipients,
             'last_sent_at' => null,
             'next_send_at' => $this->calculateNextSend($request->frequency),
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $schedule
+            'data' => $schedule,
         ]);
     }
 

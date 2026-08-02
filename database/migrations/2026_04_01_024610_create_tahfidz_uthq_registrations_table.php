@@ -18,7 +18,7 @@ return new class extends Migration
             $table->uuid('student_id');
             $table->uuid('school_id')->nullable();
             $table->string('nomor_peserta', 30)->unique()
-                  ->comment('Generate otomatis, misal: UTHQ-2025-001');
+                ->comment('Generate otomatis, misal: UTHQ-2025-001');
             $table->json('juz_materi')->nullable();
             $table->date('registration_date');
             $table->enum('status', ['terdaftar', 'lolos_audisi', 'finalis', 'tidak_lolos', 'diskualifikasi'])->default('terdaftar');

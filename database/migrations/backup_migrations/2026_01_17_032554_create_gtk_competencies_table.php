@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('user_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->string('bidang_kompetensi', 150);
             $table->enum('status', ['AHLI', 'INTERMEDIET', 'BIASA']);

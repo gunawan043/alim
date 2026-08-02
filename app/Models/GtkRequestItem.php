@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class GtkRequestItem extends Model
 {
@@ -29,11 +28,11 @@ class GtkRequestItem extends Model
     ];
 
     protected $casts = [
-        'kebutuhan_ideal'   => 'integer',
-        'gtk_yang_ada'      => 'integer',
+        'kebutuhan_ideal' => 'integer',
+        'gtk_yang_ada' => 'integer',
         'kebutuhan_tambahan' => 'integer',
-        'tmt'               => 'date',
-        'order'             => 'integer',
+        'tmt' => 'date',
+        'order' => 'integer',
     ];
 
     public function gtkRequest()

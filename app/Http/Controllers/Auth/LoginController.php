@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Mail;
 class LoginController extends Controller
 {
     private const EMAIL_MAX_ATTEMPTS = 9;
+
     private const EMAIL_COMPROMISED_THRESHOLD = 6;
+
     private const IP_COOLDOWN_SECONDS = 60;
 
     public function __construct()
@@ -48,10 +50,11 @@ class LoginController extends Controller
         // ── Cek cooldowns ─────────────────────────────────────────────────
         $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
 
-        if ($ipRecord && $ipRecord->attempts >= 3 && $ipRecord->locked_until === null) {
+        if ($ipRecord && $ipRecord->attempts >= 5 && $ipRecord->locked_until === null) {
             $cooldown = $ipRecord->last_attempt_at->addSeconds(self::IP_COOLDOWN_SECONDS);
             if ($cooldown->isFuture()) {
                 $seconds = now()->diffInSeconds($cooldown, false);
+
                 return $this->showLoginWithError(
                     $request,
                     "Terlalu banyak percobaan. Silakan tunggu {$seconds} detik sebelum mencoba lagi.",
@@ -68,9 +71,10 @@ class LoginController extends Controller
             $user = User::where('email', $email)->first();
             if ($user->isLocked()) {
                 $seconds = now()->diffInSeconds($user->locked_until, false);
+
                 return $this->showLoginWithError(
                     $request,
-                    "Akun terkunci. Hubungi Super Admin untuk membuka akun.",
+                    'Akun terkunci. Hubungi Super Admin untuk membuka akun.',
                     max(0, $seconds),
                     'account_locked'
                 );
@@ -94,13 +98,14 @@ class LoginController extends Controller
             }
 
             Log::info('Login successful', ['user_id' => Auth::id()]);
+
             return $this->redirectBasedOnRole($user);
         }
 
         // ── Login Gagal ───────────────────────────────────────────────────
         Log::warning('Login failed', ['email' => $email, 'ip' => $ip]);
 
-        if (!$userFound) {
+        if (! $userFound) {
             // Email tidak ada di sistem → track per-IP saja (brute force)
             $this->trackIpAttempt($ip, null, $email);
 
@@ -116,21 +121,23 @@ class LoginController extends Controller
         $user->passwordOtps()->latest()->delete();
         $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
 
-        // A. Attemp 3: cooldown 60 detik baik email ada atau tidak
+        // A. Attemp 5: cooldown 60 detik baik email ada atau tidak
         $attempts = ($ipRecord ? $ipRecord->attempts : 0);
-        if ($attempts == 3) {
+        if ($attempts + 1 == 5) {
             if ($ipRecord) {
+                $ipRecord->attempts = 5;
                 $ipRecord->last_attempt_at = now();
                 $ipRecord->save();
             } else {
                 FailedLoginAttempt::create([
                     'ip_address' => $ip,
                     'email' => $email,
-                    'attempts' => 3,
+                    'attempts' => 5,
                     'last_attempt_at' => now(),
                 ]);
             }
             $seconds = self::IP_COOLDOWN_SECONDS;
+
             return $this->showLoginWithError(
                 $request,
                 "Terlalu banyak percobaan. Silakan tunggu {$seconds} detik sebelum mencoba lagi.",
@@ -264,10 +271,16 @@ class LoginController extends Controller
      */
     private function redirectBasedOnRole($user): \Illuminate\Http\RedirectResponse
     {
+        // Rule 0: System Administrator (is_system_admin=true) — bypass role check.
+        // They may legitimately have no Spatie role; route to dedicated /system dashboard.
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return redirect()->route('system.dashboard');
+        }
+
         $roles = $user->getRoleNames();
 
         // Rule 1: Applicant → external redirect
-        if ($roles->contains(fn($name) => stripos($name, 'applicant') !== false)) {
+        if ($roles->contains(fn ($name) => stripos($name, 'applicant') !== false)) {
             return redirect()->away(
                 config('app.recruitment_url', 'https://recruitment.abuhurairah.id')
             )->with('info', 'Anda akan diarahkan ke portal recruitment.');
@@ -282,6 +295,7 @@ class LoginController extends Controller
         // Rule 3: Wali Santri → hard block on login
         if ($roles->contains('Wali Santri')) {
             Auth::logout();
+
             return redirect('/access-denied')
                 ->with('error', 'Akun ini adalah Wali Santri dan tidak memiliki akses ke website ini.');
         }

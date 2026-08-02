@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\OtherTeacherTask;
-use App\Models\User;
-use App\Models\School;
 use App\Models\AcademicYear;
-use App\Models\InstitutionDecree;
-use App\Models\StudyGroup;
+use App\Models\OtherTeacherTask;
+use App\Models\School;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class OtherTeacherTaskController extends Controller
@@ -35,7 +33,7 @@ class OtherTeacherTaskController extends Controller
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
-            ->when(!empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
             ->orderBy('name')
             ->get();
 
@@ -49,20 +47,22 @@ class OtherTeacherTaskController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $rules = [
-            'teacher_id'     => 'required|exists:users,id',
+            'teacher_id' => 'required|exists:users,id',
             'academic_year_id' => 'required|exists:academic_years,id',
-            'task_name'      => 'required|string|max:100',
-            'task_code'      => 'nullable|string|max:50',
+            'task_name' => 'required|string|max:100',
+            'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
-            'weekly_hours'   => 'required|integer|min:0|max:40',
-            'notes'          => 'nullable|string|max:255',
+            'weekly_hours' => 'required|integer|min:0|max:40',
+            'notes' => 'nullable|string|max:255',
         ];
-        if (!$schoolId) {
+        if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
         }
 
         $data = $request->validate($rules);
-        if ($schoolId) $data['school_id'] = $schoolId;
+        if ($schoolId) {
+            $data['school_id'] = $schoolId;
+        }
 
         OtherTeacherTask::create($data);
 
@@ -73,14 +73,16 @@ class OtherTeacherTaskController extends Controller
     {
         $task = OtherTeacherTask::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
-        if ($schoolId && $task->school_id !== $schoolId) abort(403);
+        if ($schoolId && $task->school_id !== $schoolId) {
+            abort(403);
+        }
 
         $rules = [
-            'task_name'      => 'required|string|max:100',
-            'task_code'      => 'nullable|string|max:50',
+            'task_name' => 'required|string|max:100',
+            'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
-            'weekly_hours'   => 'required|integer|min:0|max:40',
-            'notes'          => 'nullable|string|max:255',
+            'weekly_hours' => 'required|integer|min:0|max:40',
+            'notes' => 'nullable|string|max:255',
         ];
 
         $data = $request->validate($rules);
@@ -93,9 +95,12 @@ class OtherTeacherTaskController extends Controller
     {
         $task = OtherTeacherTask::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
-        if ($schoolId && $task->school_id !== $schoolId) abort(403);
+        if ($schoolId && $task->school_id !== $schoolId) {
+            abort(403);
+        }
 
         $task->delete();
+
         return back()->with('success', 'Tugas lain berhasil dihapus.');
     }
 }

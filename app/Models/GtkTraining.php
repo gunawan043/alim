@@ -11,7 +11,9 @@ class GtkTraining extends Model
     use HasFactory;
 
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -59,6 +61,7 @@ class GtkTraining extends Model
     public function scopeRecent($query, $years = 5)
     {
         $currentYear = date('Y');
+
         return $query->where('tahun', '>=', $currentYear - $years);
     }
 

@@ -10,6 +10,7 @@ class UpdateWorkOrderProgressRequest extends FormRequest
     {
         $user = auth()->user();
         $wo = $this->route('workOrder');
+
         return $user->id == $wo->assignee_id
             || in_array($user->role ?? '', ['admin', 'sarpras_pic']);
     }

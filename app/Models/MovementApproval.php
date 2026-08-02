@@ -11,8 +11,11 @@ class MovementApproval extends Model
     use HasFactory;
 
     protected $table = 'movement_approvals';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

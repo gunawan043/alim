@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('sanitation_inspections', function (Blueprint $table) {
@@ -24,17 +25,17 @@ return new class extends Migration {
                 'dapur',
             ]);
             $table->uuid('location_id')->nullable()
-                  ->comment('FK ke dormitory_rooms / dormitories sesuai location_type');
+                ->comment('FK ke dormitory_rooms / dormitories sesuai location_type');
             $table->integer('score')
-                  ->comment('Skor 0-100');
+                ->comment('Skor 0-100');
             $table->text('findings')->nullable()
-                  ->comment('Temuan hasil inspeksi');
+                ->comment('Temuan hasil inspeksi');
             $table->string('photo_path', 255)->nullable();
             $table->text('recommendations')->nullable();
             $table->date('follow_up_deadline')->nullable();
             $table->timestamp('follow_up_completed_at')->nullable();
             $table->tinyInteger('is_passed')->nullable()
-                  ->comment('1 = lulus standar, 0 = perlu perbaikan');
+                ->comment('1 = lulus standar, 0 = perlu perbaikan');
             $table->uuid('created_by');
             $table->timestamps();
 

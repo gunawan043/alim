@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class ViolationPoint extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()

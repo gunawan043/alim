@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class ScheduledReport extends Model
 {
@@ -20,7 +20,7 @@ class ScheduledReport extends Model
         'last_sent_at',
         'next_send_at',
         'is_active',
-        'parameters'
+        'parameters',
     ];
 
     protected $casts = [
@@ -28,7 +28,7 @@ class ScheduledReport extends Model
         'parameters' => 'array',
         'last_sent_at' => 'datetime',
         'next_send_at' => 'datetime',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     public function user()

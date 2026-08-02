@@ -19,7 +19,7 @@ class FacilityReferralController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('facility_name', 'like', "%{$q}%")
                 ->orWhere('address', 'like', "%{$q}%")
             );

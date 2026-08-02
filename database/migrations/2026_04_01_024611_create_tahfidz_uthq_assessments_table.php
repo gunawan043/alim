@@ -18,7 +18,7 @@ return new class extends Migration
             $table->uuid('uthq_event_id');
             $table->uuid('uthq_category_id');
             $table->enum('round', ['audisi', 'final'])
-                  ->comment('Babak audisi atau final');
+                ->comment('Babak audisi atau final');
             $table->uuid('evaluator_id');
             $table->date('assessment_date');
             $table->string('materi_hafalan', 191)->nullable();

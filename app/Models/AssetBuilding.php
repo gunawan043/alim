@@ -11,14 +11,17 @@ class AssetBuilding extends Model
     use HasFactory;
 
     protected $table = 'asset_buildings';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -90,7 +93,7 @@ class AssetBuilding extends Model
     protected function buildingName(): \Illuminate\Database\Eloquent\Casts\Attribute
     {
         return \Illuminate\Database\Eloquent\Casts\Attribute::make(
-            get: fn($v) => $v ? ucwords(strtolower($v)) : $v,
+            get: fn ($v) => $v ? ucwords(strtolower($v)) : $v,
         );
     }
 }

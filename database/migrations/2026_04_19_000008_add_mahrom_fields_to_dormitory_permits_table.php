@@ -12,7 +12,7 @@ return new class extends Migration
             $table->boolean('companion_is_mahrom')->default(true)->after('companion_phone');
             $table->uuid('mahrom_id')->nullable()->after('companion_is_mahrom');
             $table->string('secondary_status', 50)->nullable()->after('status')
-                  ->comment('Contoh: keluarga|acara|dll untuk izin, tidak_berizin|kabur untuk alpa');
+                ->comment('Contoh: keluarga|acara|dll untuk izin, tidak_berizin|kabur untuk alpa');
             $table->integer('overdue_notified_count')->default(0)->after('approval_note');
             $table->timestamp('overdue_notified_at')->nullable()->after('overdue_notified_count');
             $table->timestamp('escalation_triggered_at')->nullable()->after('overdue_notified_at');
@@ -27,7 +27,7 @@ return new class extends Migration
             $table->dropForeign(['mahrom_id']);
             $table->dropColumn([
                 'companion_is_mahrom', 'mahrom_id', 'secondary_status',
-                'overdue_notified_count', 'overdue_notified_at', 'escalation_triggered_at'
+                'overdue_notified_count', 'overdue_notified_at', 'escalation_triggered_at',
             ]);
         });
     }

@@ -11,7 +11,7 @@
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
 <tr>
     <td style="background:#6c1010;padding:20px;text-align:center">
-        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/logo-light.png" alt="PUSTIK" height="70" style="display:block;margin:auto">
+        <img src="https://raw.githubusercontent.com/gunawan043/alim/main/public/build/images/alim-light-name.png" alt="Alim" height="70" style="display:block;margin:auto">
         <h2 style="margin:10px 0 0;color:#ffffff;font-size:20px;font-weight:600">🔒 Alamat IP Diblokir</h2>
     </td>
 </tr>

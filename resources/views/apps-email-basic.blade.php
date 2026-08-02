@@ -30,7 +30,7 @@
                                         <tr style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
                                             <td class="content-block" style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
                                                 <div style="margin-bottom: 15px;">
-                                                    <img src="{{URL::asset('build/images/logo-dark.png')}}" alt="" height="23">
+                                                    <img src="{{URL::asset('build/images/alim-dark-name.png')}}" alt="" height="23">
                                                 </div>
                                             </td>
                                         </tr>
@@ -114,7 +114,7 @@
                                         <tr style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
                                             <td class="content-block" style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
                                                 <div style="text-align: center;margin-bottom: 15px;">
-                                                    <img src="{{URL::asset('build/images/logo-dark.png')}}" alt="" height="23">
+                                                    <img src="{{URL::asset('build/images/alim-dark-name.png')}}" alt="" height="23">
                                                 </div>
                                             </td>
                                         </tr>
@@ -187,7 +187,7 @@
                                         <tr style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
                                             <td class="content-block" style="font-family: 'Roboto', sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
                                                 <div style="text-align: center;margin-bottom: 15px;">
-                                                    <img src="{{URL::asset('build/images/logo-dark.png')}}" alt="" height="23">
+                                                    <img src="{{URL::asset('build/images/alim-dark-name.png')}}" alt="" height="23">
                                                 </div>
                                             </td>
                                         </tr>

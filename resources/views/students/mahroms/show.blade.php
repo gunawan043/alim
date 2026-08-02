@@ -11,6 +11,8 @@
         background: var(--bs-tertiary-bg);
     }
     .photo-frame img { width: 100%; height: 200px; object-fit: cover; }
+    .hover-shadow { transition: all .15s ease; }
+    .hover-shadow:hover { background-color: var(--bs-tertiary-bg) !important; box-shadow: 0 .25rem .5rem rgba(0,0,0,.075); }
 </style>
 @endsection
 
@@ -206,6 +208,16 @@
                             <div class="fw-semibold">{{ $student->nisn ?? '—' }}</div>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label text-muted small">NIS</label>
+                            <div class="fw-semibold">{{ $student->nis ?? '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">NIK</label>
+                            <div class="fw-semibold">
+                                @if($student->nik)<code>{{ $student->nik }}</code>@else — @endif
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label text-muted small">Jenis Kelamin</label>
                             <div class="fw-semibold">
                                 <span class="badge bg-{{ $student->gender === 'L' ? 'primary' : 'danger' }}-subtle text-{{ $student->gender === 'L' ? 'primary' : 'danger' }}">
@@ -214,9 +226,50 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Asrama</label>
-                            <div class="fw-semibold">{{ $student->dormitory?->name ?? '—' }}</div>
+                            <label class="form-label text-muted small">Tempat, Tanggal Lahir</label>
+                            <div class="fw-semibold">
+                                {{ $student->birth_place ?? '—' }}{{ $student->birth_date ? ', ' . $student->birth_date->format('d M Y') : '' }}
+                            </div>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Agama</label>
+                            <div class="fw-semibold">{{ $student->religion ?? '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Sekolah</label>
+                            <div class="fw-semibold">{{ $student->school?->name ?? '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Kelas Aktif</label>
+                            <div class="fw-semibold">
+                                @php
+                                    $cls = $student->currentClassHistory?->studyGroup?->gradeLevel?->name
+                                        ?? $student->currentClassHistory?->studyGroup?->name;
+                                @endphp
+                                {{ $cls ? $cls . ' — ' . ($student->currentClassHistory->studyGroup->name ?? '') : '—' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Asrama / Kamar</label>
+                            <div class="fw-semibold">
+                                @php
+                                    $room = $student->activeDormitoryResident?->room;
+                                @endphp
+                                {{ $room ? ($room->dormitory?->name ?? 'Asrama') . ' — ' . $room->name : '—' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">No. KK</label>
+                            <div class="fw-semibold">
+                                @if($student->no_kk)<code>{{ $student->no_kk }}</code>@else — @endif
+                            </div>
+                        </div>
+                        @if($student->full_address && $student->full_address !== '—')
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Alamat Lengkap</label>
+                            <div class="fw-semibold">{{ $student->full_address }}</div>
+                        </div>
+                        @endif
                         @endif
 
                         {{-- Status Section --}}
@@ -232,7 +285,7 @@
                                     <span class="badge bg-warning-subtle text-warning">
                                         <i class="ri-star-line me-1"></i>Ya — Utama
                                     </span>
-                                    <div class="text-muted small mt-1">Mahrom utama menerima semua informasi seputar Santi.</div>
+                                    <div class="text-muted small mt-1">Mahrom utama menerima semua informasi seputar Santri.</div>
                                 @else
                                     <span class="badge bg-secondary-subtle text-secondary">Bukan</span>
                                 @endif
@@ -328,6 +381,77 @@
                         <div class="text-center py-4">
                             <i class="ri-user-location-line text-muted" style="font-size:3rem;"></i>
                             <p class="text-muted mt-2 mb-0">Belum ada riwayat kunjungan.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Other Mahroms Card --}}
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="ri-team-line me-2 text-primary"></i>Mahrom Lainnya
+                        <small class="text-muted ms-2">({{ $otherMahroms->count() }} orang)</small>
+                    </h5>
+                    <a href="{{ route('user.students.mahroms.index', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+                       class="btn btn-sm btn-soft-primary">
+                        <i class="ri-list-unordered me-1"></i>Kelola
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($otherMahroms->count() > 0)
+                        <div class="row g-3">
+                            @foreach($otherMahroms as $om)
+                                <div class="col-md-6">
+                                    <a href="{{ route('user.students.mahroms.show', ['userId' => $userId, 'santriUuid' => $student->id, 'mahromUuid' => $om->id]) }}"
+                                       class="text-decoration-none">
+                                        <div class="d-flex align-items-center p-2 border rounded bg-light-subtle hover-shadow">
+                                            <div class="flex-shrink-0 me-2">
+                                                @if($om->photo_path)
+                                                    <img src="{{ asset('storage/' . $om->photo_path) }}"
+                                                         alt="{{ $om->name }}"
+                                                         class="rounded-circle"
+                                                         style="width:42px;height:42px;object-fit:cover;">
+                                                @else
+                                                    <div class="avatar-sm">
+                                                        <span class="avatar-title rounded-circle bg-{{ $om->is_primary ? 'warning' : 'secondary' }}-subtle text-{{ $om->is_primary ? 'warning' : 'secondary' }} fw-semibold">
+                                                        {{ strtoupper(substr($om->name, 0, 2)) }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="flex-grow-1 min-w-0">
+                                                <div class="fw-semibold text-truncate text-body">
+                                                    {{ $om->name }}
+                                                    @if($om->is_primary)
+                                                        <i class="ri-star-fill text-warning ms-1" title="Mahrom Utama"></i>
+                                                    @endif
+                                                </div>
+                                                <div class="small text-muted text-truncate">
+                                                    {{ $om->relationship_text ?? ucfirst(str_replace('_', ' ', $om->relationship)) }}
+                                                    @if($om->phone) · {{ $om->phone }} @endif
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0 ms-2">
+                                                @if($om->is_active)
+                                                    <span class="badge bg-success-subtle text-success" title="Aktif">
+                                                        <i class="ri-checkbox-circle-line"></i>
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-secondary-subtle text-secondary" title="Nonaktif">
+                                                        <i class="ri-close-circle-line"></i>
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="ri-user-search-line text-muted" style="font-size:3rem;"></i>
+                            <p class="text-muted mt-2 mb-0">Mahrom ini adalah satu-satunya mahrom untuk {{ $student->name }}.</p>
                         </div>
                     @endif
                 </div>

@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_counseling', function (Blueprint $table) {
@@ -15,7 +16,7 @@ return new class extends Migration {
             $table->uuid('academic_year_id');
             $table->date('session_date');
             $table->integer('session_number')->default(1)
-                  ->comment('Pertemuan ke-N dengan santri yang sama terkait kasus ini');
+                ->comment('Pertemuan ke-N dengan santri yang sama terkait kasus ini');
             $table->enum('session_type', [
                 'akademik',
                 'pribadi',
@@ -44,23 +45,23 @@ return new class extends Migration {
                 'dirujuk_profesional',
             ])->default('perlu_tindak_lanjut');
             $table->tinyInteger('is_confidential')->default(0)
-                  ->comment('1 = rahasia, hanya bisa diakses BK dan Kepala Sekolah');
+                ->comment('1 = rahasia, hanya bisa diakses BK dan Kepala Sekolah');
             $table->tinyInteger('parent_informed')->default(0);
             $table->timestamp('parent_informed_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
- 
+
             $table->foreign('student_id')->references('id')->on('students')->cascadeOnDelete();
             $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();
             $table->foreign('counselor_id')->references('id')->on('users');
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();
- 
+
             $table->index(['student_id', 'academic_year_id']);
             $table->index(['counselor_id', 'session_date']);
             $table->index(['school_id', 'session_date']);
         });
     }
- 
+
     public function down(): void
     {
         Schema::dropIfExists('student_counseling');

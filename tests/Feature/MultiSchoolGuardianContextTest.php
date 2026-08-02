@@ -93,7 +93,7 @@ class MultiSchoolGuardianContextTest extends TestCase
 
         return Student::create(array_merge([
             'school_id' => $school->id,
-            'name' => 'Santi '.$school->name,
+            'name' => 'Santri '.$school->name,
             'nik' => '710201'.$uniq,
             'nisn' => $uniq,
             'gender' => 'L',

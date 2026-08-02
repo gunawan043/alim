@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
-use App\Models\Traits\LogsDeletion;
 
 class GradeLevel extends Model
 {
     use LogsDeletion;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -24,7 +25,7 @@ class GradeLevel extends Model
     protected $fillable = ['school_id', 'level', 'name', 'code', 'is_active'];
 
     protected $casts = [
-        'level'     => 'integer',
+        'level' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -47,6 +48,13 @@ class GradeLevel extends Model
 
     // ── Scopes ─────────────────────────────────────────────────
 
-    public function scopeActive($q)   { return $q->where('is_active', true); }
-    public function scopeForSchool($q, $sid) { return $q->where('school_id', $sid); }
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeForSchool($q, $sid)
+    {
+        return $q->where('school_id', $sid);
+    }
 }

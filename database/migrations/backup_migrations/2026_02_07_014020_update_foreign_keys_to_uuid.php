@@ -28,12 +28,12 @@ return new class extends Migration
             ['from' => 'approver_id', 'to' => 'users', 'ref' => 'id'],
             ['from' => 'model_id', 'to' => null, 'ref' => 'id'], // Polymorphic
         ],
-        
+
         // Audit Logs
         'audit_logs' => [
             ['from' => 'user_id', 'to' => 'users', 'ref' => 'id'],
         ],
-        
+
         // GTK Profiles & Related
         'gtk_profiles' => [
             ['from' => 'user_id', 'to' => 'users', 'ref' => 'id'],
@@ -91,7 +91,7 @@ return new class extends Migration
             ['from' => 'gtk_profile_id', 'to' => 'gtk_profiles', 'ref' => 'id'],
             ['from' => 'work_unit_id', 'to' => 'work_units', 'ref' => 'id'],
         ],
-        
+
         // Password OTP & Secure Access
         'password_otps' => [
             ['from' => 'user_id', 'to' => 'users', 'ref' => 'id'],
@@ -99,7 +99,7 @@ return new class extends Migration
         'secure_access_tokens' => [
             ['from' => 'user_id', 'to' => 'users', 'ref' => 'id'],
         ],
-        
+
         // Indonesia Regions (self-referencing)
         'indonesia_cities' => [
             ['from' => 'province_id', 'to' => 'indonesia_provinces', 'ref' => 'id'],
@@ -110,7 +110,7 @@ return new class extends Migration
         'indonesia_villages' => [
             ['from' => 'district_id', 'to' => 'indonesia_districts', 'ref' => 'id'],
         ],
-        
+
         // Permission System
         'model_has_permissions' => [
             ['from' => 'permission_id', 'to' => 'permissions', 'ref' => 'id'],
@@ -122,7 +122,7 @@ return new class extends Migration
             ['from' => 'permission_id', 'to' => 'permissions', 'ref' => 'id'],
             ['from' => 'role_id', 'to' => 'roles', 'ref' => 'id'],
         ],
-        
+
         // Personal Access Tokens
         'personal_access_tokens' => [
             ['from' => 'tokenable_id', 'to' => null, 'ref' => 'id'], // Polymorphic
@@ -132,49 +132,49 @@ return new class extends Migration
     public function up()
     {
         foreach ($this->foreignKeyMappings as $tableName => $foreignKeys) {
-            if (!Schema::hasTable($tableName)) {
+            if (! Schema::hasTable($tableName)) {
                 continue;
             }
-            
+
             foreach ($foreignKeys as $fk) {
                 $column = $fk['from'];
                 $referencedTable = $fk['to'];
                 $referencedColumn = $fk['ref'];
-                
+
                 // Skip jika kolom tidak ada atau tabel referensi tidak ada
-                if (!Schema::hasColumn($tableName, $column) || 
-                    ($referencedTable && !Schema::hasTable($referencedTable))) {
+                if (! Schema::hasColumn($tableName, $column) ||
+                    ($referencedTable && ! Schema::hasTable($referencedTable))) {
                     continue;
                 }
-                
+
                 // Untuk foreign key ke tabel dengan UUID
                 if ($referencedTable && $this->shouldUseUuid($referencedTable)) {
                     $this->convertToUuidForeignKey($tableName, $column, $referencedTable);
                 }
             }
         }
-        
+
         // Handle polymorphic relations
         $this->handlePolymorphicRelations();
-        
+
         // Add foreign key constraints
         $this->addForeignKeys();
     }
-    
+
     private function shouldUseUuid($tableName)
     {
         $uuidTables = [
             'users', 'approval_flows', 'approval_flow_steps', 'approval_requests',
             'gtk_profiles', 'work_units', 'permissions', 'roles',
-            'indonesia_provinces', 'indonesia_cities', 'indonesia_districts', 'indonesia_villages'
+            'indonesia_provinces', 'indonesia_cities', 'indonesia_districts', 'indonesia_villages',
         ];
-        
+
         return in_array($tableName, $uuidTables);
     }
-    
+
     private function convertToUuidForeignKey($tableName, $column, $referencedTable)
     {
-        Schema::table($tableName, function (Blueprint $blueprint) use ($tableName, $column, $referencedTable) {
+        Schema::table($tableName, function (Blueprint $blueprint) use ($tableName, $column) {
             // Cek jika foreign key constraint ada
             $foreignKeys = DB::select("
                 SELECT CONSTRAINT_NAME 
@@ -184,25 +184,25 @@ return new class extends Migration
                 AND COLUMN_NAME = '$column'
                 AND REFERENCED_TABLE_NAME IS NOT NULL
             ");
-            
+
             // Drop foreign key jika ada
             foreach ($foreignKeys as $fk) {
                 $blueprint->dropForeign([$column]);
             }
-            
+
             // Rename column ke _uuid
-            $newColumnName = $column . '_uuid';
-            if ($column !== 'tokenable_id' && !str_ends_with($column, '_uuid')) {
+            $newColumnName = $column.'_uuid';
+            if ($column !== 'tokenable_id' && ! str_ends_with($column, '_uuid')) {
                 $blueprint->renameColumn($column, $newColumnName);
             } else {
                 $newColumnName = $column;
             }
-            
+
             // Ubah tipe data ke UUID
             $blueprint->uuid($newColumnName)->nullable()->change();
         });
     }
-    
+
     private function handlePolymorphicRelations()
     {
         // Untuk approval_requests.model_id (polymorphic)
@@ -212,7 +212,7 @@ return new class extends Migration
                 $blueprint->uuid('model_uuid')->nullable()->change();
             });
         }
-        
+
         // Untuk personal_access_tokens.tokenable_id (polymorphic)
         if (Schema::hasColumn('personal_access_tokens', 'tokenable_id')) {
             Schema::table('personal_access_tokens', function (Blueprint $blueprint) {
@@ -221,19 +221,19 @@ return new class extends Migration
                 $blueprint->string('tokenable_type')->change();
             });
         }
-        
+
         // Untuk model_has_permissions dan model_has_roles
         // foreach (['model_has_permissions', 'model_has_roles'] as $pivotTable) {
         //     if (Schema::hasColumn($pivotTable, 'model_id')) {
         //         Schema::table($pivotTable, function (Blueprint $blueprint) use ($pivotTable) {
         //             // Tambah kolom model_uuid
         //             $blueprint->uuid('model_uuid')->nullable()->after('model_id');
-                    
+
         //             // Copy data dari users.uuid ke model_uuid untuk user models
         //             if (Schema::hasTable('users')) {
         //                 DB::statement("
         //                     UPDATE $pivotTable mhp
-        //                     JOIN users u ON mhp.model_id = u.id 
+        //                     JOIN users u ON mhp.model_id = u.id
         //                     SET mhp.model_uuid = u.uuid
         //                     WHERE mhp.model_type = 'App\\\\Models\\\\User'
         //                 ");
@@ -242,7 +242,7 @@ return new class extends Migration
         //     }
         // }
     }
-    
+
     private function addForeignKeys()
     {
         // Add foreign key constraints setelah semua kolom diubah
@@ -252,7 +252,7 @@ return new class extends Migration
             ['table' => 'password_otps', 'column' => 'user_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
             ['table' => 'secure_access_tokens', 'column' => 'user_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
             ['table' => 'gtk_profiles', 'column' => 'user_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
-            
+
             // Approval system
             ['table' => 'approval_actions', 'column' => 'approval_request_uuid', 'references' => 'approval_requests', 'refColumn' => 'uuid'],
             ['table' => 'approval_actions', 'column' => 'approver_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
@@ -265,7 +265,7 @@ return new class extends Migration
             ['table' => 'approval_requests', 'column' => 'flow_uuid', 'references' => 'approval_flows', 'refColumn' => 'uuid'],
             ['table' => 'approval_requests', 'column' => 'requester_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
             ['table' => 'approval_requests', 'column' => 'approver_uuid', 'references' => 'users', 'refColumn' => 'uuid'],
-            
+
             // GTK system
             ['table' => 'gtk_addresses', 'column' => 'gtk_profile_uuid', 'references' => 'gtk_profiles', 'refColumn' => 'uuid'],
             ['table' => 'gtk_contacts', 'column' => 'gtk_profile_uuid', 'references' => 'gtk_profiles', 'refColumn' => 'uuid'],
@@ -289,32 +289,32 @@ return new class extends Migration
             ['table' => 'gtk_work_unit', 'column' => 'work_unit_uuid', 'references' => 'work_units', 'refColumn' => 'uuid'],
             ['table' => 'gtk_work_unit_histories', 'column' => 'gtk_profile_uuid', 'references' => 'gtk_profiles', 'refColumn' => 'uuid'],
             ['table' => 'gtk_work_unit_histories', 'column' => 'work_unit_uuid', 'references' => 'work_units', 'refColumn' => 'uuid'],
-            
+
             // Indonesia regions
             ['table' => 'indonesia_cities', 'column' => 'province_uuid', 'references' => 'indonesia_provinces', 'refColumn' => 'uuid'],
             ['table' => 'indonesia_districts', 'column' => 'city_uuid', 'references' => 'indonesia_cities', 'refColumn' => 'uuid'],
             ['table' => 'indonesia_villages', 'column' => 'district_uuid', 'references' => 'indonesia_districts', 'refColumn' => 'uuid'],
-            
+
             // Permission system
             // ['table' => 'model_has_permissions', 'column' => 'permission_uuid', 'references' => 'permissions', 'refColumn' => 'uuid'],
             // ['table' => 'model_has_roles', 'column' => 'role_uuid', 'references' => 'roles', 'refColumn' => 'uuid'],
             ['table' => 'role_has_permissions', 'column' => 'permission_uuid', 'references' => 'permissions', 'refColumn' => 'uuid'],
             ['table' => 'role_has_permissions', 'column' => 'role_uuid', 'references' => 'roles', 'refColumn' => 'uuid'],
-            
+
             // GTK addresses references to indonesia regions
             ['table' => 'gtk_addresses', 'column' => 'province_uuid', 'references' => 'indonesia_provinces', 'refColumn' => 'uuid'],
             ['table' => 'gtk_addresses', 'column' => 'city_uuid', 'references' => 'indonesia_cities', 'refColumn' => 'uuid'],
             ['table' => 'gtk_addresses', 'column' => 'district_uuid', 'references' => 'indonesia_districts', 'refColumn' => 'uuid'],
             ['table' => 'gtk_addresses', 'column' => 'village_uuid', 'references' => 'indonesia_villages', 'refColumn' => 'uuid'],
         ];
-        
+
         foreach ($constraints as $constraint) {
             if (Schema::hasColumn($constraint['table'], $constraint['column'])) {
                 Schema::table($constraint['table'], function (Blueprint $blueprint) use ($constraint) {
                     $blueprint->foreign($constraint['column'])
-                          ->references($constraint['refColumn'])
-                          ->on($constraint['references'])
-                          ->onDelete('cascade');
+                        ->references($constraint['refColumn'])
+                        ->on($constraint['references'])
+                        ->onDelete('cascade');
                 });
             }
         }
@@ -330,7 +330,7 @@ return new class extends Migration
                 'uuid_column' => 'user_uuid',
                 'ref_table' => 'users',
                 'ref_id_column' => 'id',
-                'ref_uuid_column' => 'uuid'
+                'ref_uuid_column' => 'uuid',
             ],
             // Update gtk_profiles.user_uuid
             [
@@ -338,7 +338,7 @@ return new class extends Migration
                 'uuid_column' => 'user_uuid',
                 'ref_table' => 'users',
                 'ref_id_column' => 'id',
-                'ref_uuid_column' => 'uuid'
+                'ref_uuid_column' => 'uuid',
             ],
             // Update approval_requests.requester_uuid
             [
@@ -346,15 +346,15 @@ return new class extends Migration
                 'uuid_column' => 'requester_uuid',
                 'ref_table' => 'users',
                 'ref_id_column' => 'id',
-                'ref_uuid_column' => 'uuid'
+                'ref_uuid_column' => 'uuid',
             ],
             // Tambahkan mapping lainnya sesuai kebutuhan
         ];
-        
+
         foreach ($updateMappings as $mapping) {
             if (Schema::hasColumn($mapping['table'], $mapping['uuid_column']) &&
                 Schema::hasColumn($mapping['ref_table'], $mapping['ref_uuid_column'])) {
-                
+
                 DB::statement("
                     UPDATE {$mapping['table']} t
                     JOIN {$mapping['ref_table']} r ON t.{$mapping['uuid_column']} = r.{$mapping['ref_id_column']}
@@ -398,7 +398,7 @@ return new class extends Migration
             'model_has_roles' => ['role_uuid'],
             'role_has_permissions' => ['permission_uuid', 'role_uuid'],
         ];
-        
+
         foreach ($constraints as $table => $columns) {
             foreach ($columns as $column) {
                 if (Schema::hasColumn($table, $column)) {
@@ -412,7 +412,7 @@ return new class extends Migration
                 }
             }
         }
-        
+
         // Revert column names dan tipe data untuk semua tabel
         $revertMappings = [
             'audit_logs' => ['user_uuid'],
@@ -443,14 +443,14 @@ return new class extends Migration
             'model_has_roles' => ['role_uuid'],
             'role_has_permissions' => ['permission_uuid', 'role_uuid'],
         ];
-        
+
         foreach ($revertMappings as $table => $columns) {
             foreach ($columns as $column) {
                 if (Schema::hasColumn($table, $column)) {
                     Schema::table($table, function (Blueprint $blueprint) use ($column) {
                         $oldName = str_replace('_uuid', '_id', $column);
                         $blueprint->renameColumn($column, $oldName);
-                        
+
                         // Tentukan tipe data berdasarkan nama kolom
                         if (str_contains($oldName, 'id')) {
                             $blueprint->unsignedBigInteger($oldName)->change();
@@ -459,7 +459,7 @@ return new class extends Migration
                 }
             }
         }
-        
+
         // Revert polymorphic
         if (Schema::hasColumn('approval_requests', 'model_uuid')) {
             Schema::table('approval_requests', function (Blueprint $blueprint) {
@@ -467,14 +467,14 @@ return new class extends Migration
                 $blueprint->unsignedBigInteger('model_id')->change();
             });
         }
-        
+
         if (Schema::hasColumn('personal_access_tokens', 'tokenable_uuid')) {
             Schema::table('personal_access_tokens', function (Blueprint $blueprint) {
                 $blueprint->renameColumn('tokenable_uuid', 'tokenable_id');
                 $blueprint->unsignedBigInteger('tokenable_id')->change();
             });
         }
-        
+
         // Revert model_has_* tables
         foreach (['model_has_permissions', 'model_has_roles'] as $table) {
             if (Schema::hasColumn($table, 'model_uuid')) {

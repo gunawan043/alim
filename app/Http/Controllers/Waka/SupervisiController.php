@@ -42,8 +42,8 @@ class SupervisiController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('gtk_name', 'LIKE', "%{$search}%")
-                  ->orWhere('observer_name', 'LIKE', "%{$search}%")
-                  ->orWhere('mata_pelajaran', 'LIKE', "%{$search}%");
+                    ->orWhere('observer_name', 'LIKE', "%{$search}%")
+                    ->orWhere('mata_pelajaran', 'LIKE', "%{$search}%");
             });
         }
 
@@ -61,33 +61,35 @@ class SupervisiController extends Controller
             $gtks = GtkProfile::where('school_id', $schoolId)->orderBy('name')->get();
         }
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
+
         return view('waka.supervisi.create', compact('gtks', 'academicYears'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'gtk_id'             => 'nullable|exists:gtk_profiles,id',
-            'observer_id'        => 'nullable|exists:gtk_profiles,id',
-            'gtk_name'           => 'nullable|string|max:255',
-            'observer_name'      => 'nullable|string|max:255',
-            'academic_year_id'   => 'required|exists:academic_years,id',
-            'semester'           => 'required|in:1,2',
-            'mata_pelajaran'     => 'nullable|string|max:255',
-            'tanggal_supervisi'  => 'required|date',
-            'jam_mulai'          => 'nullable|date_format:H:i',
-            'jam_selesai'        => 'nullable|date_format:H:i|after:jam_mulai',
-            'jenis_supervisi'    => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
-            'tujuan'             => 'nullable|string',
-            'catatan_temuan'     => 'nullable|string',
-            'rekomendasi'        => 'nullable|string',
-            'tindak_lanjut'      => 'nullable|string',
-            'status'             => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
+            'gtk_id' => 'nullable|exists:gtk_profiles,id',
+            'observer_id' => 'nullable|exists:gtk_profiles,id',
+            'gtk_name' => 'nullable|string|max:255',
+            'observer_name' => 'nullable|string|max:255',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:1,2',
+            'mata_pelajaran' => 'nullable|string|max:255',
+            'tanggal_supervisi' => 'required|date',
+            'jam_mulai' => 'nullable|date_format:H:i',
+            'jam_selesai' => 'nullable|date_format:H:i|after:jam_mulai',
+            'jenis_supervisi' => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
+            'tujuan' => 'nullable|string',
+            'catatan_temuan' => 'nullable|string',
+            'rekomendasi' => 'nullable|string',
+            'tindak_lanjut' => 'nullable|string',
+            'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
         ]);
 
         $validated['school_id'] = $request->attributes->get('schoolContextId');
 
         Supervisi::create($validated);
+
         return redirect()->route('waka.supervisi.index')
             ->with('success', 'Data supervisi berhasil ditambahkan.');
     }
@@ -101,7 +103,7 @@ class SupervisiController extends Controller
             'observer:id,name',
             'observer.latestEmployment:id,nupy',
             'academicYear:id,name',
-        ])->when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+        ])->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $supervisi = $query->findOrFail($id);
 
         return view('waka.supervisi.show', compact('supervisi'));
@@ -110,7 +112,7 @@ class SupervisiController extends Controller
     public function edit(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $query = Supervisi::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
+        $query = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $supervisi = $query->findOrFail($id);
 
         $gtks = [];
@@ -125,28 +127,29 @@ class SupervisiController extends Controller
     public function update(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $supervisi = Supervisi::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $supervisi = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
-            'gtk_id'             => 'nullable|exists:gtk_profiles,id',
-            'observer_id'        => 'nullable|exists:gtk_profiles,id',
-            'gtk_name'           => 'nullable|string|max:255',
-            'observer_name'      => 'nullable|string|max:255',
-            'academic_year_id'   => 'required|exists:academic_years,id',
-            'semester'           => 'required|in:1,2',
-            'mata_pelajaran'     => 'nullable|string|max:255',
-            'tanggal_supervisi'  => 'required|date',
-            'jam_mulai'          => 'nullable|date_format:H:i',
-            'jam_selesai'        => 'nullable|date_format:H:i|after:jam_mulai',
-            'jenis_supervisi'    => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
-            'tujuan'             => 'nullable|string',
-            'catatan_temuan'     => 'nullable|string',
-            'rekomendasi'        => 'nullable|string',
-            'tindak_lanjut'      => 'nullable|string',
-            'status'             => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
+            'gtk_id' => 'nullable|exists:gtk_profiles,id',
+            'observer_id' => 'nullable|exists:gtk_profiles,id',
+            'gtk_name' => 'nullable|string|max:255',
+            'observer_name' => 'nullable|string|max:255',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:1,2',
+            'mata_pelajaran' => 'nullable|string|max:255',
+            'tanggal_supervisi' => 'required|date',
+            'jam_mulai' => 'nullable|date_format:H:i',
+            'jam_selesai' => 'nullable|date_format:H:i|after:jam_mulai',
+            'jenis_supervisi' => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
+            'tujuan' => 'nullable|string',
+            'catatan_temuan' => 'nullable|string',
+            'rekomendasi' => 'nullable|string',
+            'tindak_lanjut' => 'nullable|string',
+            'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
         ]);
 
         $supervisi->update($validated);
+
         return redirect()->route('waka.supervisi.show', $supervisi->id)
             ->with('success', 'Data supervisi berhasil diperbarui.');
     }
@@ -154,7 +157,7 @@ class SupervisiController extends Controller
     public function destroy(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $supervisi = Supervisi::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->findOrFail($id);
+        $supervisi = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
         $supervisi->delete();
 
         return redirect()->route('waka.supervisi.index')

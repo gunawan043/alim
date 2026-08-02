@@ -107,7 +107,7 @@ class WaliSantriService
         $schoolId = $this->currentSchoolId(true);
         if ($student->school_id === null || $student->school_id !== $schoolId) {
             throw new ServiceErrorCode(
-                'Santi tidak ditemukan.',
+                'Santri tidak ditemukan.',
                 404,
                 ['code' => 'STUDENT_NOT_FOUND']
             );
@@ -123,7 +123,7 @@ class WaliSantriService
         if ($link->school_id === null || $link->school_id !== $schoolId) {
             // Cross-tenant: return 404, never 403, to avoid confirming existence.
             throw new ServiceErrorCode(
-                'Hubungan wali-Santi tidak ditemukan.',
+                'Hubungan wali-Santri tidak ditemukan.',
                 404,
                 ['code' => 'LINK_NOT_FOUND']
             );
@@ -149,7 +149,7 @@ class WaliSantriService
     // ── Register Student + Link to Wali ─────────────────────────────────────
 
     /**
-     * Daftarkan Santi baru dan hubungkan ke akun wali.
+     * Daftarkan Santri baru dan hubungkan ke akun wali.
      *
      * @throws \Exception Error codes: NIK_ALREADY_EXISTS, KK_MISMATCH,
      *                    USER_HAS_NO_KK, MAX_WALI_EXCEEDED, DB_ERROR
@@ -187,7 +187,7 @@ class WaliSantriService
                     // Tenant guard for the linkage itself.
                     if ($existingLink->school_id !== $schoolId) {
                         throw new ServiceErrorCode(
-                            'Hubungan wali-Santi tidak ditemukan.',
+                            'Hubungan wali-Santri tidak ditemukan.',
                             404,
                             ['code' => 'LINK_NOT_FOUND']
                         );
@@ -252,18 +252,18 @@ class WaliSantriService
         });
     }
 
-    // ── Request Link: Wali已有 Santi → MintaJadi Wali Kedua ───────────────────
+    // ── Request Link: Wali已有 Santri → MintaJadi Wali Kedua ───────────────────
 
     /**
-     * Wali yang sudah punya Santi minta jadi wali Santi lain.
-     * Atau: wali baru minta jadi wali kedua/ketiga dari Santi yang sudah punya wali.
+     * Wali yang sudah punya Santri minta jadi wali Santri lain.
+     * Atau: wali baru minta jadi wali kedua/ketiga dari Santri yang sudah punya wali.
      *
      * Flow:
-     * 1. Cek NIK Santi ada
-     * 2. Cek wali ini belum terhubung ke Santi
+     * 1. Cek NIK Santri ada
+     * 2. Cek wali ini belum terhubung ke Santri
      * 3. Cek tidak ada pending request
-     * 4. Jika Santi belum punya wali → langsung link
-     * 5. Jika Santi sudah punya wali:
+     * 4. Jika Santri belum punya wali → langsung link
+     * 5. Jika Santri sudah punya wali:
      *    a. Ada approval_token → verifikasi → link
      *    b. Tanpa token → generate token → kirim email ke wali utama
      */
@@ -272,12 +272,12 @@ class WaliSantriService
         $schoolId = $this->currentSchoolId(true);
 
         return DB::transaction(function () use ($data, $wali, $schoolId) {
-            // ── STEP 1: Cek Santi ada ───────────────────────────────────────────
+            // ── STEP 1: Cek Santri ada ───────────────────────────────────────────
             $student = Student::where('nik', $data['nik_santri'])->first();
 
             if (! $student) {
                 throw new ServiceErrorCode(
-                    'Santi dengan NIK tersebut tidak ditemukan. '
+                    'Santri dengan NIK tersebut tidak ditemukan. '
                         .'Pastikan NIK yang Anda masukkan benar.',
                     404,
                     ['nik_santri' => $data['nik_santri']]
@@ -298,10 +298,10 @@ class WaliSantriService
             if ($existingLink) {
                 if ($existingLink->status === WaliSantri::STATUS_PENDING) {
                     throw new ServiceErrorCode(
-                        'Anda sudah memiliki permintaan tertunda untuk Santi ini.',
+                        'Anda sudah memiliki permintaan tertunda untuk Santri ini.',
                         422,
                         [
-                            'message' => 'Anda sudah memiliki permintaan tertunda untuk Santi ini.',
+                            'message' => 'Anda sudah memiliki permintaan tertunda untuk Santri ini.',
                             'link_id' => $existingLink->id,
                         ]
                     );
@@ -312,11 +312,11 @@ class WaliSantriService
                     'student' => $student,
                     'wali_santri' => $existingLink,
                     'already_linked' => true,
-                    'message' => 'Anda sudah terhubung dengan Santi ini.',
+                    'message' => 'Anda sudah terhubung dengan Santri ini.',
                 ];
             }
 
-            // ── STEP 3: Cek Santi sudah punya wali? (tenant-scoped) ────────────
+            // ── STEP 3: Cek Santri sudah punya wali? (tenant-scoped) ────────────
             $existingWali = WaliSantri::with('user')
                 ->where('student_id', $student->id)
                 ->where('school_id', $schoolId)
@@ -325,7 +325,7 @@ class WaliSantriService
 
             $role = $data['role'] ?? 'wali';
 
-            // Santi belum punya wali sama sekali → langsung link
+            // Santri belum punya wali sama sekali → langsung link
             if ($existingWali->isEmpty()) {
                 // ── Langsung buat link aktif (tenant-scoped) ─────────────────────
                 $waliSantri = WaliSantri::create([
@@ -343,11 +343,11 @@ class WaliSantriService
                     'student' => $student,
                     'wali_santri' => $waliSantri,
                     'new_link' => true,
-                    'message' => 'Santi berhasil terhubung ke akun Anda.',
+                    'message' => 'Santri berhasil terhubung ke akun Anda.',
                 ];
             }
 
-            // Santi sudah punya wali → proses otorisasi
+            // Santri sudah punya wali → proses otorisasi
             // ── STEP 4: Cek tidak ada pending request (tenant-scoped) ────────────
             $pending = WaliRegistrationToken::where('user_id', $wali->id)
                 ->where('nik_santri', $data['nik_santri'])
@@ -372,12 +372,12 @@ class WaliSantriService
             // ── STEP 5: Cek MAX wali tercapai ─────────────────────────────────
             if ($existingWali->count() >= self::MAX_WALI_PER_STUDENT) {
                 throw new ServiceErrorCode(
-                    'Santi ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
+                    'Santri ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
                     422,
                     [
                         'max_wali' => self::MAX_WALI_PER_STUDENT,
                         'current_count' => $existingWali->count(),
-                        'message' => 'Santi ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
+                        'message' => 'Santri ini sudah memiliki maksimum '.self::MAX_WALI_PER_STUDENT.' wali.',
                     ]
                 );
             }
@@ -451,7 +451,7 @@ class WaliSantriService
             // regardless of which wali's email receives the approval link.
             $this->assertTokenSameTenant($regToken);
 
-            // ── STEP 2: Cek apakah wali ini punya akses ke Santi tersebut ────────
+            // ── STEP 2: Cek apakah wali ini punya akses ke Santri tersebut ────────
             $primaryLink = WaliSantri::where('user_id', $wali->id)
                 ->where('student_id', $regToken->student_id)
                 ->where('school_id', $regToken->school_id)
@@ -485,7 +485,7 @@ class WaliSantriService
             $tokenSchoolId = $regToken->school_id;
             if ($student === null || $student->school_id !== $tokenSchoolId) {
                 throw new ServiceErrorCode(
-                    'Santi tidak ditemukan.',
+                    'Santri tidak ditemukan.',
                     404,
                     ['code' => 'STUDENT_NOT_FOUND']
                 );
@@ -500,9 +500,9 @@ class WaliSantriService
 
                 if ($currentCount >= self::MAX_WALI_PER_STUDENT) {
                     throw new ServiceErrorCode(
-                        'Santi ini sudah mencapai maksimum wali.',
+                        'Santri ini sudah mencapai maksimum wali.',
                         422,
-                        ['message' => 'Santi ini sudah mencapai maksimum wali.']
+                        ['message' => 'Santri ini sudah mencapai maksimum wali.']
                     );
                 }
 
@@ -556,7 +556,7 @@ class WaliSantriService
     // ── Remove Wali-Santri link ─────────────────────────────��─────────────────
 
     /**
-     * Lepas hubungan wali-Santi.
+     * Lepas hubungan wali-Santri.
      * Bisa dilakukan oleh: (1) wali sendiri, (2) admin, (3) wali utama
      *
      * @throws \Exception Error codes: LINK_NOT_FOUND, CANNOT_REMOVE_LAST_WALI
@@ -567,7 +567,7 @@ class WaliSantriService
 
         if (! $link) {
             throw new ServiceErrorCode(
-                'Hubungan wali-Santi tidak ditemukan.',
+                'Hubungan wali-Santri tidak ditemukan.',
                 404,
                 ['code' => 'LINK_NOT_FOUND']
             );
@@ -580,7 +580,7 @@ class WaliSantriService
         if ($link->school_id !== $schoolId) {
             // Cross-tenant: hide existence.
             throw new ServiceErrorCode(
-                'Hubungan wali-Santi tidak ditemukan.',
+                'Hubungan wali-Santri tidak ditemukan.',
                 404,
                 ['code' => 'LINK_NOT_FOUND']
             );

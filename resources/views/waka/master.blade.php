@@ -1,6 +1,6 @@
 <!doctype html >
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-layout="vertical" data-topbar="light" data-sidebar="light"
-    data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable" data-theme="default"
+    data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable" data-theme="galaxy"
     data-theme-colors="default">
 <head>
     <meta charset="utf-8" />
@@ -9,7 +9,7 @@
     <meta content="Alim - Academic Learning & Information Management" name="description" />
     <meta content="gunawan_wawan43" name="author" />
     <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ URL::asset('build/images/favicon.ico')}}">
+    <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
     @include('layouts.head-css')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Instead of document.write(), use: -->

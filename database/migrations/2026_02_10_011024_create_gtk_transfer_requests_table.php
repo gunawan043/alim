@@ -22,7 +22,7 @@ return new class extends Migration
                 'PENDING',
                 'APPROVED',
                 'REJECTED',
-                'CANCELLED'
+                'CANCELLED',
             ])->default('PENDING');
 
             // APPROVAL

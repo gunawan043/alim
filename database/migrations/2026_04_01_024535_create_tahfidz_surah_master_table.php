@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 // Master data 114 surah Al-Qur'an. Di-seed sekali, tidak berubah.
 // Dipakai sebagai referensi posisi hafalan (surah_start, surah_end).
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_surah_master', function (Blueprint $table) {
@@ -21,11 +22,15 @@ return new class extends Migration {
             $table->integer('total_ayat');
             $table->decimal('total_halaman', 4, 1)->nullable();
             $table->integer('halaman_start')->nullable()
-                  ->comment('Halaman mulai di mushaf standar 604 halaman');
+                ->comment('Halaman mulai di mushaf standar 604 halaman');
             $table->integer('halaman_end')->nullable();
             $table->enum('revelation_type', ['makkiyah', 'madaniyah'])->nullable();
             $table->timestamps();
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_surah_master'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_surah_master');
+    }
 };

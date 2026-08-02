@@ -2,28 +2,26 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\Student;
-use App\Models\WaliSantri;
-use App\Models\WaliRegistrationToken;
-use App\Models\Notification;
 use App\Models\AuditLog;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use App\Models\Notification;
+use App\Models\Student;
+use App\Models\User;
+use App\Models\WaliSantri;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class WaliSantriService
 {
     private const MAX_WALI_PER_SANTRI = 5;
+
     private const TOKEN_EXPIRY_HOURS = 48;
 
     /**
-     * Daftarkan NIK Santi baru dan langsung klaim ke wali yang login.
+     * Daftarkan NIK Santri baru dan langsung klaim ke wali yang login.
      *
-     * @param  User    $wali   User yang login (wali)
-     * @param  array  $data   { nik, name, gender, birth_place, birth_date, no_kk, role }
+     * @param  User  $wali  User yang login (wali)
+     * @param  array  $data  { nik, name, gender, birth_place, birth_date, no_kk, role }
      * @return array  { student, wali_santri, token }
+     *
      * @throws \Exception
      */
     public function registerStudentAndClaim(User $wali, array $data): array
@@ -57,22 +55,22 @@ class WaliSantriService
 
             if ($currentCount >= self::MAX_WALI_PER_SANTRI) {
                 throw new \Exception(
-                    "Santri ini sudah mencapai batas maksimum ({self::MAX_WALI_PER_SANTRI}) wali aktif. " .
-                    "Hubungi administrators jika ada situasi khusus.",
+                    'Santri ini sudah mencapai batas maksimum ({self::MAX_WALI_PER_SANTRI}) wali aktif. '.
+                    'Hubungi administrators jika ada situasi khusus.',
                     422
                 );
             }
 
-            // ── Santi sudah ada → proses: minta verifikasi dari wali pertama ───
+            // ── Santri sudah ada → proses: minta verifikasi dari wali pertama ───
             return $this->linkToExistingStudent($wali, $existingStudent, $role, $data);
         }
 
-        // ── Santi belum ada → daftarkan baru ──────────────────────────────────
+        // ── Santri belum ada → daftarkan baru ──────────────────────────────────
         return $this->createNewStudentAndClaim($wali, $data);
     }
 
     /**
-     * Minta jadi wali tambahan Santi yang sudah punya wali.
+     * Minta jadi wali tambahan Santri yang sudah punya wali.
      */
     public function requestAsWali(User $wali, string $nikSantri, string $role, ?string $noKk = null): array
     {
@@ -85,19 +83,19 @@ class WaliSantriService
             ->first();
 
         if ($existingLink) {
-            throw new \Exception("Hubungan wali-santri sudah ada.", 409);
+            throw new \Exception('Hubungan wali-santri sudah ada.', 409);
         }
 
         // Cek MAX
         $count = WaliSantri::where('student_id', $student->id)->where('status', 'active')->count();
         if ($count >= self::MAX_WALI_PER_SANTRI) {
-            throw new \Exception("Santri sudah mencapai batas maksimum wali aktif.", 422);
+            throw new \Exception('Santri sudah mencapai batas maksimum wali aktif.', 422);
         }
 
-        // Validasi No KK Santi (jika provided)
+        // Validasi No KK Santri (jika provided)
         if ($noKk && $student->no_kk && $noKk !== $student->no_kk) {
             throw new \Exception(
-                "No KK yang Anda masukkan tidak cocok dengan data KK Santi.",
+                'No KK yang Anda masukkan tidak cocok dengan data KK Santri.',
                 422
             );
         }
@@ -208,7 +206,7 @@ class WaliSantriService
      */
     private function linkToExistingStudent(User $wali, Student $student, string $role, array $data): array
     {
-        return DB::transaction(function () use ($wali, $student, $role, $data) {
+        return DB::transaction(function () use ($wali, $student, $role) {
             // Cek apakah ada wali utama yang aktif
             $primaryLink = WaliSantri::where('student_id', $student->id)
                 ->where('is_primary', true)
@@ -266,7 +264,7 @@ class WaliSantriService
             'type' => 'wali_approval_request',
             'title' => 'Permintaan Menjadi Wali',
             'message' => "{$requester->name} ingin menjadi {$newLink->role} dari {$student->name}. "
-                . "Jika ini benar, izinkan dari menu Santri > {$student->name}.",
+                ."Jika ini benar, izinkan dari menu Santri > {$student->name}.",
             'data' => json_encode([
                 'wali_santri_id' => $newLink->id,
                 'student_id' => $student->id,
@@ -286,7 +284,7 @@ class WaliSantriService
     {
         $errors = [];
 
-        if (!preg_match('/^\d{16}$/', $nik)) {
+        if (! preg_match('/^\d{16}$/', $nik)) {
             return ['valid' => false, 'errors' => ['NIK harus terdiri dari tepat 16 digit angka.']];
         }
 
@@ -310,7 +308,7 @@ class WaliSantriService
     {
         $student = Student::where('nik', $nik)->first();
 
-        if (!$student) {
+        if (! $student) {
             return ['available' => true, 'exists' => false];
         }
 

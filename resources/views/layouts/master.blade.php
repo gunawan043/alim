@@ -1,16 +1,16 @@
 <!doctype html >
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-layout="vertical" data-sidebar-size="lg" data-bs-theme="light"
     data-sidebar="light" data-topbar="light"
-    data-theme="default" data-theme-colors="default">
+    data-theme="galaxy" data-theme-colors="default">
 <head>
     <meta charset="utf-8" />
-    <title>@yield('title') | {{ config('app.name', 'ALIM PUSTIK') }}</title>
+    <title>@yield('title') | {{ config('app.name', 'ALIM Alim') }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta content="Alim - Academic Learning & Information Management" name="description" />
     <meta content="gunawan_wawan43" name="author" />
     <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ URL::asset('build/images/favicon.ico')}}">
+    <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
     <!-- jQuery — loaded early so inline scripts in page content/script sections can use $ -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <!-- Select2 -->
@@ -30,6 +30,7 @@
 @show
     <!-- Begin page -->
     <div id="layout-wrapper">
+        @include('components.impersonate-banner')
         @include('layouts.topbar')
         @include('layouts.sidebar')
         <!-- ============================================================== -->

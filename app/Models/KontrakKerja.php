@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\LogsDeletion;
 
 class KontrakKerja extends Model
 {
@@ -27,18 +26,37 @@ class KontrakKerja extends Model
         'gaji_pokok' => 'decimal:2', 'tunjangan_tetap' => 'decimal:2', 'tunjangan_tidak_tetap' => 'decimal:2',
     ];
 
-    public function gtk() { return $this->belongsTo(GtkProfile::class, 'gtk_uuid', 'uuid'); }
-    public function school() { return $this->belongsTo(School::class); }
-    public function pembuat() { return $this->belongsTo(User::class, 'dibuat_oleh'); }
+    public function gtk()
+    {
+        return $this->belongsTo(GtkProfile::class, 'gtk_uuid', 'uuid');
+    }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class);
+    }
+
+    public function pembuat()
+    {
+        return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
 
     public function getSisaHariAttribute(): int
     {
-        if ($this->tanggal_selesai < now()) return 0;
+        if ($this->tanggal_selesai < now()) {
+            return 0;
+        }
+
         return now()->diffInDays($this->tanggal_selesai);
     }
 
-    public function scopeAktif($q) { return $q->where('status', 'aktif'); }
-    public function scopeExpiring($q, int $days = 90) {
+    public function scopeAktif($q)
+    {
+        return $q->where('status', 'aktif');
+    }
+
+    public function scopeExpiring($q, int $days = 90)
+    {
         return $q->where('status', 'aktif')
             ->whereDate('tanggal_selesai', '>=', now())
             ->whereDate('tanggal_selesai', '<=', now()->addDays($days));

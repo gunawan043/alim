@@ -11,8 +11,11 @@ class GtkWorkUnitHistory extends Model
     use HasFactory;
 
     protected $table = 'gtk_work_unit_histories';
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
@@ -76,7 +79,7 @@ class GtkWorkUnitHistory extends Model
     public function scopeByWorkUnit($query, $workUnitId)
     {
         return $query->where('to_work_unit_id', $workUnitId)
-                    ->orWhere('from_work_unit_id', $workUnitId);
+            ->orWhere('from_work_unit_id', $workUnitId);
     }
 
     public function scopeRecent($query, $days = 30)

@@ -163,7 +163,7 @@ if (document.getElementById("sa-image"))
         Swal.fire({
             title: 'Sweet!',
             text: 'Modal with a custom image.',
-            imageUrl: 'assets/images/logo-sm.png',
+            imageUrl: 'assets/images/alim-sm-light.png',
             imageHeight: 40,
             customClass: {
                 confirmButton: 'btn btn-primary w-xs mt-2',
@@ -418,7 +418,7 @@ if (document.getElementById("custom-sa-community"))
                 '<label for="input-email" class="form-label fs-13">Email</label>' +
                 '<input type="email" class="form-control" id="input-email" placeholder="Enter Email Address">' +
                 '</div>',
-            imageUrl: 'assets/images/logo-sm.png',
+            imageUrl: 'assets/images/alim-sm-light.png',
             footer: '<p class="fs-13 text-muted mb-0">Already have an account ? <a href="#" class="fw-semibold text-decoration-underline"> Signin </a> </p>',
             imageHeight: 40,
             customClass: {

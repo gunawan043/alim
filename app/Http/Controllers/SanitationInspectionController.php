@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SanitationInspection;
 use App\Models\AcademicYear;
-use App\Models\StudyGroup;
+use App\Models\SanitationInspection;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +31,7 @@ class SanitationInspectionController extends Controller
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->where(fn($sq) => $sq
+            $query->where(fn ($sq) => $sq
                 ->where('findings', 'like', "%{$q}%")
                 ->orWhere('location_type', 'like', "%{$q}%")
             );
@@ -45,7 +44,7 @@ class SanitationInspectionController extends Controller
         if ($request->filled('month') && $request->month !== '') {
             [$year, $month] = explode('-', $request->month);
             $query->whereRaw('YEAR(inspection_date) = ?', [$year])
-                  ->whereRaw('MONTH(inspection_date) = ?', [$month]);
+                ->whereRaw('MONTH(inspection_date) = ?', [$month]);
         } elseif ($activeAy) {
             $query->where('academic_year_id', $activeAy->id);
         }

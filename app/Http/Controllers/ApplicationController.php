@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentJob;
-use App\Models\User;
 use App\Models\RecruitmentProfile;
+use App\Models\User;
 use App\Services\NotificationUniversalService;
-use App\Services\RecruitmentNotificationService;
-use App\Services\CandidateConversionService;
 use App\Services\RecruitmentDocumentService;
+use App\Services\RecruitmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +30,7 @@ class ApplicationController extends Controller
         $query = RecruitmentApplication::with([
             'recruitmentProfile.user',
             'recruitmentJob',
-            'stages'
+            'stages',
         ]);
 
         // Filter by job
@@ -72,7 +70,7 @@ class ApplicationController extends Controller
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('recruitmentProfile.user', function($q) use ($search) {
+            $query->whereHas('recruitmentProfile.user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
             })->orWhere('no_lamaran', 'like', "%{$search}%");
         }
@@ -105,7 +103,7 @@ class ApplicationController extends Controller
             'recruitmentProfile.documents',
             'recruitmentJob',
             'stages.recruitmentPipelineStage',
-            'stages.penilai'
+            'stages.penilai',
         ]);
 
         $interviewerIds = usersHavingPermission('personalia.recruitable');
@@ -129,22 +127,22 @@ class ApplicationController extends Controller
     public function updateNilai(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'skor_administrasi'   => 'nullable|numeric|min:0|max:100',
-            'nilai_tes'           => 'nullable|numeric|min:0|max:100',
-            'nilai_wawancara'     => 'nullable|numeric|min:0|max:100',
-            'nilai_praktikum'     => 'nullable|numeric|min:0|max:100',
-            'ranking'             => 'nullable|integer|min:0',
-            'status_akhir'        => 'nullable|string',
-            'detail_penilaian'    => 'nullable|array',
-            'detail_penilaian.komunikasi'     => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.attitude'       => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.teknis'         => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.leadership'     => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.teamwork'      => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.motivasi'      => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.appearance'    => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.pengalaman'    => 'nullable|numeric|min:0|max:100',
-            'catatan_penilaian'               => 'nullable|string|max:1000',
+            'skor_administrasi' => 'nullable|numeric|min:0|max:100',
+            'nilai_tes' => 'nullable|numeric|min:0|max:100',
+            'nilai_wawancara' => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum' => 'nullable|numeric|min:0|max:100',
+            'ranking' => 'nullable|integer|min:0',
+            'status_akhir' => 'nullable|string',
+            'detail_penilaian' => 'nullable|array',
+            'detail_penilaian.komunikasi' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.attitude' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teknis' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.leadership' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teamwork' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.motivasi' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.appearance' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.pengalaman' => 'nullable|numeric|min:0|max:100',
+            'catatan_penilaian' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -158,7 +156,7 @@ class ApplicationController extends Controller
                 array_merge($validated, ['detail_penilaian' => $validated['detail_penilaian'] ?? []])
             );
 
-            if (!$syncResult) {
+            if (! $syncResult) {
                 // Log warning tapi jangan fail request - data lokal sudah tersimpan
                 logger()->warning('Failed to push nilai to recruitment API, but local DB updated', [
                     'application_id' => $application->id,
@@ -167,7 +165,7 @@ class ApplicationController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Nilai berhasil diperbarui.' . ($syncResult ? '' : ' (Peringatan: sinkronisasi ke recruitment.abuhurairah.id gagal)'));
+                ->with('success', 'Nilai berhasil diperbarui.'.($syncResult ? '' : ' (Peringatan: sinkronisasi ke recruitment.abuhurairah.id gagal)'));
         } catch (\Exception $e) {
             logger()->error('Failed to update nilai', [
                 'application_id' => $application->id,
@@ -177,26 +175,26 @@ class ApplicationController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal memperbarui nilai: ' . $e->getMessage());
+                ->with('error', 'Gagal memperbarui nilai: '.$e->getMessage());
         }
     }
 
     public function updateStatus(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'status'              => 'required|string',
-            'catatan'             => 'nullable|string',
-            'skor_administrasi'   => 'nullable|numeric|min:0|max:100',
-            'nilai_tes'           => 'nullable|numeric|min:0|max:100',
-            'nilai_wawancara'     => 'nullable|numeric|min:0|max:100',
-            'nilai_praktikum'     => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian'    => 'nullable|array',
-            'detail_penilaian.komunikasi'     => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.attitude'       => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.teknis'         => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.leadership'     => 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.problem_solving'=> 'nullable|numeric|min:0|max:100',
-            'detail_penilaian.kerjasama_tim'  => 'nullable|numeric|min:0|max:100',
+            'status' => 'required|string',
+            'catatan' => 'nullable|string',
+            'skor_administrasi' => 'nullable|numeric|min:0|max:100',
+            'nilai_tes' => 'nullable|numeric|min:0|max:100',
+            'nilai_wawancara' => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian' => 'nullable|array',
+            'detail_penilaian.komunikasi' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.attitude' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.teknis' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.leadership' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.problem_solving' => 'nullable|numeric|min:0|max:100',
+            'detail_penilaian.kerjasama_tim' => 'nullable|numeric|min:0|max:100',
         ]);
 
         DB::beginTransaction();
@@ -217,7 +215,7 @@ class ApplicationController extends Controller
                     $request->detail_penilaian,
                     fn ($v) => $v !== null && $v !== ''
                 );
-                $application->detail_penilaian = !empty($detail) ? json_encode($detail) : null;
+                $application->detail_penilaian = ! empty($detail) ? json_encode($detail) : null;
             }
 
             // Hitung nilai_akhir (rata-rata dari nilai yang ada)
@@ -242,10 +240,10 @@ class ApplicationController extends Controller
 
             // Simpan ke tabel stages (riwayat)
             $application->stages()->create([
-                'status'       => $application->status,
-                'catatan'      => $validated['catatan'] ?? 'Status diupdate dari ' . $oldStatus,
-                'penilai_id'   => auth()->id(),
-                'nilai'        => $application->nilai_akhir,
+                'status' => $application->status,
+                'catatan' => $validated['catatan'] ?? 'Status diupdate dari '.$oldStatus,
+                'penilai_id' => auth()->id(),
+                'nilai' => $application->nilai_akhir,
             ]);
 
             // Kirim notifikasi ke pelamar via applicant app (EMAIL)
@@ -254,23 +252,23 @@ class ApplicationController extends Controller
 
             // 1. Kirim notifikasi internal (database notification)
             $this->notificationService->send($user->id, [
-                'module'        => 'recruitment',
+                'module' => 'recruitment',
                 'reference_type' => RecruitmentApplication::class,
-                'reference_id'   => $application->id,
+                'reference_id' => $application->id,
                 'reference_code' => $application->no_lamaran,
-                'type'          => 'info',
-                'action'        => 'status_updated',
-                'title'         => 'Update Status Lamaran',
-                'message'       => "Status lamaran Anda untuk posisi {$application->recruitmentJob->judul} telah berubah menjadi {$application->status}.",
-                'data'          => [
+                'type' => 'info',
+                'action' => 'status_updated',
+                'title' => 'Update Status Lamaran',
+                'message' => "Status lamaran Anda untuk posisi {$application->recruitmentJob->judul} telah berubah menjadi {$application->status}.",
+                'data' => [
                     'old_status' => $oldStatus,
                     'new_status' => $application->status,
-                    'job_title'  => $application->recruitmentJob->judul,
+                    'job_title' => $application->recruitmentJob->judul,
                     'detail_penilaian' => $application->detail_penilaian,
                 ],
-                'action_url'    => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
-                'priority'      => 'high',
-                'send_email'    => true
+                'action_url' => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
+                'priority' => 'high',
+                'send_email' => true,
             ]);
 
             // 2. Kirim notifikasi email ke applicant via recruitment app
@@ -288,7 +286,8 @@ class ApplicationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal update status: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal update status: '.$e->getMessage());
         }
     }
 
@@ -298,29 +297,29 @@ class ApplicationController extends Controller
     public function sendMessage(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'message' => 'required|string'
+            'message' => 'required|string',
         ]);
 
         $user = $application->recruitmentProfile->user;
 
         $this->notificationService->send($user->id, [
-            'module'        => 'recruitment',
+            'module' => 'recruitment',
             'reference_type' => RecruitmentApplication::class,
-            'reference_id'   => $application->id,
-            'type'          => 'info',
-            'action'        => 'message_from_recruiter',
-            'title'         => 'Pesan dari Rekruter',
-            'message'       => $validated['message'],
-            'action_url'    => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
-            'priority'      => 'high',
-            'send_email'    => true,
-            'send_whatsapp' => true
+            'reference_id' => $application->id,
+            'type' => 'info',
+            'action' => 'message_from_recruiter',
+            'title' => 'Pesan dari Rekruter',
+            'message' => $validated['message'],
+            'action_url' => route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id]),
+            'priority' => 'high',
+            'send_email' => true,
+            'send_whatsapp' => true,
         ]);
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Pesan berhasil dikirim'
+                'message' => 'Pesan berhasil dikirim',
             ]);
         }
 
@@ -333,15 +332,15 @@ class ApplicationController extends Controller
     public function addNote(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'note' => 'required|string'
+            'note' => 'required|string',
         ]);
 
-        $application->catatan_rekruter = $application->catatan_rekruter . "\n[" . now() . "] " . $validated['note'];
+        $application->catatan_rekruter = $application->catatan_rekruter."\n[".now().'] '.$validated['note'];
         $application->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Catatan berhasil ditambahkan'
+            'message' => 'Catatan berhasil ditambahkan',
         ]);
     }
 
@@ -354,7 +353,7 @@ class ApplicationController extends Controller
             'action' => 'required|in:delete,export,update_status',
             'ids' => 'required|array',
             'ids.*' => 'exists:recruitment_applications,id',
-            'status' => 'required_if:action,update_status|string'
+            'status' => 'required_if:action,update_status|string',
         ]);
 
         DB::beginTransaction();
@@ -383,14 +382,15 @@ class ApplicationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Aksi massal berhasil dilakukan'
+                'message' => 'Aksi massal berhasil dilakukan',
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal melakukan aksi massal: ' . $e->getMessage()
+                'message' => 'Gagal melakukan aksi massal: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -402,7 +402,7 @@ class ApplicationController extends Controller
     {
         $query = RecruitmentApplication::with([
             'recruitmentProfile.user',
-            'recruitmentJob'
+            'recruitmentJob',
         ]);
 
         if ($request->has('job_id')) {
@@ -421,7 +421,7 @@ class ApplicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Export berhasil',
-            'url' => route('user.ats.applications.export-excel', ['userId' => $userId])
+            'url' => route('user.ats.applications.export-excel', ['userId' => $userId]),
         ]);
     }
 
@@ -449,11 +449,11 @@ class ApplicationController extends Controller
     {
         $validated = $request->validate([
             'recruitment_profile_id' => 'required|exists:recruitment_profiles,id',
-            'recruitment_job_id'     => 'required|exists:recruitment_jobs,id',
-            'no_lamaran'             => 'nullable|string|max:50',
-            'status'                 => 'nullable|string|max:50',
-            'tanggal_melamar'        => 'nullable|date',
-            'catatan_pelamar'        => 'nullable|string',
+            'recruitment_job_id' => 'required|exists:recruitment_jobs,id',
+            'no_lamaran' => 'nullable|string|max:50',
+            'status' => 'nullable|string|max:50',
+            'tanggal_melamar' => 'nullable|date',
+            'catatan_pelamar' => 'nullable|string',
         ]);
 
         try {
@@ -463,7 +463,7 @@ class ApplicationController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Lamaran berhasil dibuat.',
-                    'data'    => $application->id,
+                    'data' => $application->id,
                 ], 201);
             }
 
@@ -482,7 +482,7 @@ class ApplicationController extends Controller
                 ], 500);
             }
 
-            return redirect()->back()->withInput()->with('error', 'Gagal membuat lamaran: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal membuat lamaran: '.$e->getMessage());
         }
     }
 
@@ -506,18 +506,18 @@ class ApplicationController extends Controller
     public function update(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'recruitment_job_id'     => 'required|exists:recruitment_jobs,id',
-            'no_lamaran'             => 'nullable|string|max:50',
-            'status'                 => 'nullable|string|max:50',
-            'tanggal_melamar'        => 'nullable|date',
-            'catatan_pelamar'        => 'nullable|string',
-            'catatan_rekruter'       => 'nullable|string',
-            'skor_administrasi'      => 'nullable|numeric|min:0|max:100',
-            'nilai_tes'              => 'nullable|numeric|min:0|max:100',
-            'nilai_wawancara'        => 'nullable|numeric|min:0|max:100',
-            'nilai_praktikum'        => 'nullable|numeric|min:0|max:100',
-            'ranking'                => 'nullable|integer|min:0',
-            'status_akhir'           => 'nullable|string|max:50',
+            'recruitment_job_id' => 'required|exists:recruitment_jobs,id',
+            'no_lamaran' => 'nullable|string|max:50',
+            'status' => 'nullable|string|max:50',
+            'tanggal_melamar' => 'nullable|date',
+            'catatan_pelamar' => 'nullable|string',
+            'catatan_rekruter' => 'nullable|string',
+            'skor_administrasi' => 'nullable|numeric|min:0|max:100',
+            'nilai_tes' => 'nullable|numeric|min:0|max:100',
+            'nilai_wawancara' => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum' => 'nullable|numeric|min:0|max:100',
+            'ranking' => 'nullable|integer|min:0',
+            'status_akhir' => 'nullable|string|max:50',
         ]);
 
         try {
@@ -536,7 +536,7 @@ class ApplicationController extends Controller
         } catch (\Exception $e) {
             Log::error('ApplicationController@update failed', [
                 'application_id' => $application->id,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             if ($request->wantsJson()) {
@@ -546,7 +546,7 @@ class ApplicationController extends Controller
                 ], 500);
             }
 
-            return redirect()->back()->withInput()->with('error', 'Gagal memperbarui lamaran: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal memperbarui lamaran: '.$e->getMessage());
         }
     }
 
@@ -571,7 +571,7 @@ class ApplicationController extends Controller
         } catch (\Exception $e) {
             Log::error('ApplicationController@destroy failed', [
                 'application_id' => $application->id,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             if ($request->wantsJson()) {
@@ -581,7 +581,7 @@ class ApplicationController extends Controller
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Gagal menghapus lamaran: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menghapus lamaran: '.$e->getMessage());
         }
     }
 
@@ -591,13 +591,13 @@ class ApplicationController extends Controller
     public function pushNilaiToRecruitment(Request $request, string $userId, RecruitmentApplication $application)
     {
         $validated = $request->validate([
-            'skor_administrasi'   => 'nullable|numeric|min:0|max:100',
-            'nilai_tes'           => 'nullable|numeric|min:0|max:100',
-            'nilai_wawancara'     => 'nullable|numeric|min:0|max:100',
-            'nilai_praktikum'     => 'nullable|numeric|min:0|max:100',
-            'ranking'             => 'nullable|integer|min:0',
-            'status_akhir'        => 'nullable|string',
-            'detail_penilaian'    => 'nullable|array',
+            'skor_administrasi' => 'nullable|numeric|min:0|max:100',
+            'nilai_tes' => 'nullable|numeric|min:0|max:100',
+            'nilai_wawancara' => 'nullable|numeric|min:0|max:100',
+            'nilai_praktikum' => 'nullable|numeric|min:0|max:100',
+            'ranking' => 'nullable|integer|min:0',
+            'status_akhir' => 'nullable|string',
+            'detail_penilaian' => 'nullable|array',
         ]);
 
         try {
@@ -614,17 +614,17 @@ class ApplicationController extends Controller
                 'message' => $syncResult
                     ? 'Nilai berhasil di-push ke recruitment.abuhurairah.id.'
                     : 'Nilai tersimpan lokal, namun sinkronisasi ke recruitment.abuhurairah.id gagal.',
-                'synced'  => $syncResult,
+                'synced' => $syncResult,
             ], $syncResult ? 200 : 502);
         } catch (\Exception $e) {
             Log::error('ApplicationController@pushNilaiToRecruitment failed', [
                 'application_id' => $application->id,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal push nilai: ' . $e->getMessage(),
+                'message' => 'Gagal push nilai: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -652,10 +652,10 @@ class ApplicationController extends Controller
         try {
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('recruitment.applications.pdf', [
                 'applications' => $applications,
-                'userId'       => $userId,
+                'userId' => $userId,
             ])->setPaper('a4', 'landscape');
 
-            return $pdf->download('recruitment-applications-' . now()->format('Ymd-His') . '.pdf');
+            return $pdf->download('recruitment-applications-'.now()->format('Ymd-His').'.pdf');
         } catch (\Throwable $e) {
             Log::warning('ApplicationController@exportPdf: PDF generation failed, returning JSON placeholder', [
                 'error' => $e->getMessage(),
@@ -664,7 +664,7 @@ class ApplicationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'PDF export queued',
-                'count'   => $applications->count(),
+                'count' => $applications->count(),
             ]);
         }
     }
@@ -719,13 +719,14 @@ class ApplicationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Pengumuman berhasil dikirim ke {$sent} kandidat"
+                'message' => "Pengumuman berhasil dikirim ke {$sent} kandidat",
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengirim pengumuman: ' . $e->getMessage()
+                'message' => 'Gagal mengirim pengumuman: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -738,23 +739,24 @@ class ApplicationController extends Controller
         if ($request->isMethod('get')) {
             $application->load(['recruitmentProfile.user', 'recruitmentJob']);
             $workUnits = \App\Models\WorkUnit::orderBy('name')->get();
+
             return view('recruitment.applications.convert', compact('application', 'userId', 'workUnits'));
         }
 
         $validated = $request->validate([
-            'jenis_gtk'        => 'required|in:guru,tendik,staf,kopf',
+            'jenis_gtk' => 'required|in:guru,tendik,staf,kopf',
             'status_kepegawaian' => 'required|in:tetap,kontrak,probation,magang,honor',
-            'unit_kerja'       => 'required|string|max:150',
-            'jabatan'          => 'required|string|max:100',
-            'tmt'              => 'required|date',
-            'penempatan'      => 'nullable|string|max:200',
-            'kontrak_jenis'    => 'nullable|string|max:50',
+            'unit_kerja' => 'required|string|max:150',
+            'jabatan' => 'required|string|max:100',
+            'tmt' => 'required|date',
+            'penempatan' => 'nullable|string|max:200',
+            'kontrak_jenis' => 'nullable|string|max:50',
             'kontrak_berakhir' => 'nullable|date',
-            'durasi_bulan'     => 'nullable|integer|min:1|max:60',
-            'gaji_pokok'       => 'nullable|numeric|min:0',
-            'tunjangan_tetap'  => 'nullable|numeric|min:0',
+            'durasi_bulan' => 'nullable|integer|min:1|max:60',
+            'gaji_pokok' => 'nullable|numeric|min:0',
+            'tunjangan_tetap' => 'nullable|numeric|min:0',
             'tunjangan_tidak_tetap' => 'nullable|numeric|min:0',
-            'catatan'          => 'nullable|string|max:500',
+            'catatan' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -769,8 +771,9 @@ class ApplicationController extends Controller
                 'application_id' => $application->id,
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()->back()
-                ->with('error', 'Gagal mengkonversi: ' . $e->getMessage())
+                ->with('error', 'Gagal mengkonversi: '.$e->getMessage())
                 ->withInput();
         }
     }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class JamKerja extends Model
 {
     use HasUuids;
+
     protected $table = 'jam_kerja';
 
     protected $fillable = [

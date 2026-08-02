@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_medicine_logs', function (Blueprint $table) {
@@ -17,9 +18,9 @@ return new class extends Migration {
             $table->time('time_given')->nullable();
             $table->decimal('quantity_given', 10, 2);
             $table->string('dosage', 191)->nullable()
-                  ->comment('Dosis yang diberikan, misal: 1 tablet, 5ml');
+                ->comment('Dosis yang diberikan, misal: 1 tablet, 5ml');
             $table->text('purpose')->nullable()
-                  ->comment('Indikasi/purpose pemberian obat');
+                ->comment('Indikasi/purpose pemberian obat');
             $table->uuid('administered_by');
             $table->date('follow_up_date')->nullable();
             $table->text('notes')->nullable();

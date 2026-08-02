@@ -4,21 +4,22 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AbsensiRecapExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class AbsensiRecapExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected Collection $data;
+
     protected string $rombelName;
+
     protected string $monthYear;
+
     protected string $semester;
 
     public function __construct(Collection $data, string $rombelName, string $monthYear, string $semester)
@@ -74,7 +75,7 @@ class AbsensiRecapExport implements FromCollection, WithHeadings, WithMapping, W
             $row['sakit'],
             $row['alpa'],
             $hariEfektif,
-            $persen . '%',
+            $persen.'%',
             '',
         ];
     }
@@ -99,7 +100,7 @@ class AbsensiRecapExport implements FromCollection, WithHeadings, WithMapping, W
                     'color' => ['rgb' => 'FFFFFF'],
                 ],
             ],
-            'A2:' . $lastCol . '2' => [
+            'A2:'.$lastCol.'2' => [
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'color' => ['rgb' => 'E8EAF6'],

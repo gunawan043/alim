@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class TodoList extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -74,12 +75,12 @@ class TodoList extends Model
     {
         $list = static::defaultList($userId)->first();
 
-        if (!$list) {
+        if (! $list) {
             $maxOrder = static::forUser($userId)->max('sort_order') ?? 0;
             $list = static::create([
-                'user_id'    => $userId,
-                'name'       => 'Todo Saya',
-                'color'      => '#0ab39c',
+                'user_id' => $userId,
+                'name' => 'Todo Saya',
+                'color' => '#0ab39c',
                 'is_default' => 1,
                 'sort_order' => $maxOrder + 1,
             ]);

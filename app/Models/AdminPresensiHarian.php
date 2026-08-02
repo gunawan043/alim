@@ -9,13 +9,15 @@ use Illuminate\Support\Str;
 class AdminPresensiHarian extends Model
 {
     protected $table = 'admin_presensi_harian';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
     protected $fillable = [
@@ -54,12 +56,12 @@ class AdminPresensiHarian extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'hadir'      => 'Hadir',
-            'terlambat'  => 'Terlambat',
-            'izin'       => 'Izin',
-            'sakit'      => 'Sakit',
-            'alpa'       => 'Alpa',
-            default      => ucfirst($this->status ?? ''),
+            'hadir' => 'Hadir',
+            'terlambat' => 'Terlambat',
+            'izin' => 'Izin',
+            'sakit' => 'Sakit',
+            'alpa' => 'Alpa',
+            default => ucfirst($this->status ?? ''),
         };
     }
 

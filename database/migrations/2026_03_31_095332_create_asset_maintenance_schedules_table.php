@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('asset_maintenance_schedules', function (Blueprint $table) {
@@ -16,7 +17,7 @@ return new class extends Migration {
             $table->uuid('building_id')->nullable();
             $table->uuid('room_id')->nullable();
             $table->string('maintenance_type', 100)
-                  ->comment('Misal: Servis AC, Kuras Bak Air, Cat Ulang, Kalibrasi Alat Lab');
+                ->comment('Misal: Servis AC, Kuras Bak Air, Cat Ulang, Kalibrasi Alat Lab');
             $table->enum('frequency', [
                 'harian', 'mingguan', 'bulanan',
                 'triwulan', 'semester', 'tahunan', 'sesuai_kebutuhan',
@@ -27,7 +28,7 @@ return new class extends Migration {
             $table->string('vendor_name', 191)->nullable();
             $table->decimal('estimated_cost', 15, 2)->nullable();
             $table->integer('reminder_days_before')->default(7)
-                  ->comment('Kirim notifikasi N hari sebelum jadwal');
+                ->comment('Kirim notifikasi N hari sebelum jadwal');
             $table->tinyInteger('is_active')->default(1);
             $table->text('notes')->nullable();
             $table->uuid('created_by');
@@ -53,5 +54,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('asset_maintenance_schedules'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('asset_maintenance_schedules');
+    }
 };

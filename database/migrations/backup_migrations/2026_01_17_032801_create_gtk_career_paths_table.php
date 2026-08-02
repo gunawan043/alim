@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('user_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             $table->string('jabatan_fungsi', 150);
             $table->string('nomor_sk', 100)->nullable();

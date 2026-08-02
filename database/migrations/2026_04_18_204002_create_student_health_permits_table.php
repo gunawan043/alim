@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('student_health_permits', function (Blueprint $table) {
@@ -13,7 +14,7 @@ return new class extends Migration {
             $table->uuid('school_id');
             $table->uuid('academic_year_id');
             $table->uuid('dormitory_id')->nullable()
-                  ->comment('Diisi jika santri saat itu menetap di asrama');
+                ->comment('Diisi jika santri saat itu menetap di asrama');
             $table->enum('permit_type', [
                 'sakit_ringan',
                 'sakit_sedang',
@@ -22,11 +23,11 @@ return new class extends Migration {
                 'isolasi',
             ]);
             $table->text('description')->nullable()
-                  ->comment('Deskripsi keluhan / diagnosis awal');
+                ->comment('Deskripsi keluhan / diagnosis awal');
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->integer('rest_days')->default(0)
-                  ->comment('Jumlah hari istirahat yang direkomendasikan');
+                ->comment('Jumlah hari istirahat yang direkomendasikan');
             $table->enum('status', [
                 'pending',
                 'approved',
@@ -38,7 +39,7 @@ return new class extends Migration {
             $table->timestamp('approved_at')->nullable();
             $table->text('approval_note')->nullable();
             $table->tinyInteger('parent_notified')->default(0)
-                  ->comment('1 = orang tua sudah diinformasikan');
+                ->comment('1 = orang tua sudah diinformasikan');
             $table->timestamp('parent_notified_at')->nullable();
             $table->uuid('parent_notified_by')->nullable();
             $table->string('attachment_path', 255)->nullable();

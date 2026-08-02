@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 // Penugasan tikror (kolom 1-10 pada Gambar 2).
 // Bukan nilai, melainkan penugasan pengulangan mandiri per setoran.
 // =============================================================================
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('tahfidz_tikror_assignments', function (Blueprint $table) {
@@ -17,7 +18,7 @@ return new class extends Migration {
             $table->uuid('setoran_id');
             $table->uuid('student_id');
             $table->tinyInteger('tikror_number')
-                  ->comment('Urutan tikror ke-1 s/d ke-10 sesuai kolom waraqat');
+                ->comment('Urutan tikror ke-1 s/d ke-10 sesuai kolom waraqat');
             $table->date('assigned_date');
             $table->date('due_date')->nullable();
             $table->tinyInteger('is_completed')->default(0);
@@ -35,5 +36,9 @@ return new class extends Migration {
             );
         });
     }
-    public function down(): void { Schema::dropIfExists('tahfidz_tikror_assignments'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tahfidz_tikror_assignments');
+    }
 };

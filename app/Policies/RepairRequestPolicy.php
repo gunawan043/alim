@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\RepairRequest;
+use App\Models\User;
 
 class RepairRequestPolicy
 {
@@ -13,6 +13,7 @@ class RepairRequestPolicy
         if (canUserPermission($user, 'sarpras.administrator.accessible')) {
             return true;
         }
+
         return null;
     }
 
