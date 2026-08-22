@@ -280,6 +280,9 @@ $sidebarStudyGroups = $sekolah
             @if(canPermission('teacher-attendance_view'))
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.waka-dashboard' ? ' active' : '' }}" href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" style="font-size:0.85rem">Dashboard Absensi QR</a></li>
             <li class="nav-item"><a class="nav-link{{ isActiveGTK($currentRoute, 'user.teacher-qr.history') ? ' active' : '' }}" href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" style="font-size:0.85rem">Riwayat Absensi QR</a></li>
+            @if(canPermission('teacher-attendance_manual'))
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.manual' ? ' active' : '' }}" href="{{ route('user.teacher-qr.manual', ['userId' => $userId]) }}" style="font-size:0.85rem"><i class="ri-keyboard-line me-1"></i>Absen Manual</a></li>
+            @endif
             @endif
         </ul>
     </div>
@@ -402,8 +405,8 @@ $sidebarStudyGroups = $sekolah
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.student-counseling.') ? ' active' : '' }}"
-       href="{{ route('user.student-counseling.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.uks.student-counseling.') ? ' active' : '' }}"
+       href="{{ route('user.uks.student-counseling.index', ['userId' => $userId]) }}">
         <i class="ri-user-follow-line"></i>
         <span>Bimbingan Siswa</span>
     </a>
@@ -416,13 +419,6 @@ $sidebarStudyGroups = $sekolah
 --}}
 @if($ws['koordinator_rumpun'])
 <li class="menu-title"><span>Koordinator Rumpun</span></li>
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.monitor-rumpun.') ? ' active' : '' }}"
-       href="{{ route('user.monitor-rumpun.index', ['userId' => $userId]) }}">
-        <i class="ri-dashboard-3-line"></i>
-        <span>Monitor Rumpun</span>
-    </a>
-</li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.jadwal-kbm.') ? ' active' : '' }}"
        href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}">

@@ -3,18 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Authorization\ValueObjects\OrganizationContext;
+use App\Events\TeacherCheckedOut;
+use App\Events\TeacherQrScanned;
+use App\Models\AbsensiGtkSetting;
 use App\Models\AcademicYear;
 use App\Models\JadwalKbm;
 use App\Models\QrClassToken;
-use App\Models\StudyGroup;
 use App\Models\TeacherClassAttendance;
+use App\Models\User;
 use App\Services\QrTokenService;
-use App\Events\TeacherQrScanned;
-use App\Events\TeacherCheckedOut;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class TeacherQrScanController extends Controller
@@ -37,33 +42,48 @@ class TeacherQrScanController extends Controller
         $today = today();
         $dayOfWeek = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
 
-        // Get today's scheduled classes for this teacher
         $schedules = JadwalKbm::where('teacher_id', $user->id)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
-            ->whereHas('academicYear', fn($q) => $q->where('id', $academicYear?->id))
-            ->with(['studyGroup' => fn($q) => $q->with('gradeLevel')])
+            ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
+            ->with(['studyGroup' => fn ($q) => $q->with('gradeLevel')])
             ->orderBy('slot_index')
             ->get();
 
-        // Get today's attendance records
         $attendances = TeacherClassAttendance::where('teacher_id', $user->id)
             ->where('attendance_date', $today)
             ->with(['jadwalKbm', 'studyGroup'])
             ->get()
-            ->keyBy(fn($a) => $a->jadwal_kbm_id);
+            ->keyBy(fn ($a) => $a->jadwal_kbm_id);
 
-        // Determine which schedules need check-in vs check-out
         $needsCheckout = $schedules->filter(function ($jadwal) use ($attendances) {
             $att = $attendances->get($jadwal->id);
-            return $att && $att->actual_time_in && !$att->actual_time_out;
+
+            return $att && $att->actual_time_in && ! $att->actual_time_out;
         });
+
+        $stats = [
+            'total' => $schedules->count(),
+            'checked_in' => $schedules->filter(fn ($s) => isset($attendances[$s->id]) && $attendances[$s->id]->actual_time_in)->count(),
+            'checked_out' => $schedules->filter(fn ($s) => isset($attendances[$s->id]) && $attendances[$s->id]->actual_time_out)->count(),
+            'late' => $schedules->filter(fn ($s) => isset($attendances[$s->id]) && $attendances[$s->id]->status_masuk === 'terlambat')->count(),
+            'pending' => $schedules->count() - $schedules->filter(fn ($s) => isset($attendances[$s->id]))->count(),
+        ];
+
+        $recentRecords = TeacherClassAttendance::where('teacher_id', $user->id)
+            ->where('attendance_date', '>=', $today->subDays(6))
+            ->with(['jadwalKbm.studyGroup', 'jadwalKbm.subject'])
+            ->orderByDesc('attendance_date')
+            ->limit(5)
+            ->get();
 
         return view('teacher.qr.scan.index', compact(
             'schedules',
             'attendances',
             'needsCheckout',
-            'academicYear'
+            'academicYear',
+            'stats',
+            'recentRecords'
         ));
     }
 
@@ -81,7 +101,7 @@ class TeacherQrScanController extends Controller
         $token = QrClassToken::where('study_group_id', $studyGroupId)
             ->where(function ($q) {
                 $q->whereNull('qr_url_expires_at')
-                  ->orWhere('qr_url_expires_at', '>', now());
+                    ->orWhere('qr_url_expires_at', '>', now());
             })
             ->first();
 
@@ -101,7 +121,7 @@ class TeacherQrScanController extends Controller
             ->where('study_group_id', $studyGroupId)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
-            ->whereHas('academicYear', fn($q) => $q->where('id', $academicYear?->id))
+            ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
             ->first();
 
         if (! $jadwalKbm) {
@@ -152,7 +172,7 @@ class TeacherQrScanController extends Controller
         JadwalKbm $jadwalKbm,
         QrClassToken $token,
         array $settings,
-        \App\Models\User $user
+        User $user
     ) {
         $now = now();
         $startTime = $jadwalKbm->start_time;
@@ -300,21 +320,22 @@ class TeacherQrScanController extends Controller
     /**
      * Return JSON response for AJAX scans, back() for HTML fallback.
      */
-    private function scanResponse(Request $request, array $data): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    private function scanResponse(Request $request, array $data): JsonResponse|RedirectResponse
     {
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($data);
         }
         $key = $data['success'] ? 'success' : 'error';
+
         return back()->with($key, $data['message'])->withInput();
     }
 
-    private function scanSuccess(Request $request, array $data): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    private function scanSuccess(Request $request, array $data): JsonResponse|RedirectResponse
     {
         return $this->scanResponse($request, array_merge(['success' => true], $data));
     }
 
-    private function scanFailure(Request $request, string $message, array $extra = []): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    private function scanFailure(Request $request, string $message, array $extra = []): JsonResponse|RedirectResponse
     {
         return $this->scanResponse($request, array_merge(['success' => false, 'message' => $message], $extra));
     }
@@ -326,7 +347,7 @@ class TeacherQrScanController extends Controller
     {
         $user = $request->user();
         $start = $request->input('start_date', now()->startOfWeek()->format('Y-m-d'));
-        $end   = $request->input('end_date',   now()->endOfWeek()->format('Y-m-d'));
+        $end = $request->input('end_date', now()->endOfWeek()->format('Y-m-d'));
         $statusFilter = $request->input('status');
 
         // Permission-based scoping — same logic as exportHistory()
@@ -341,11 +362,11 @@ class TeacherQrScanController extends Controller
 
         if ($statusFilter) {
             match ($statusFilter) {
-                'hadir'      => $query->where('status_masuk', 'hadir'),
-                'terlambat'  => $query->where('status_masuk', 'terlambat'),
+                'hadir' => $query->where('status_masuk', 'hadir'),
+                'terlambat' => $query->where('status_masuk', 'terlambat'),
                 'belum_keluar' => $query->where('status_keluar', 'belum_keluar'),
                 'keluar_cepat' => $query->where('status_keluar', 'keluar_cepat'),
-                default      => null,
+                default => null,
             };
         }
 
@@ -420,7 +441,7 @@ class TeacherQrScanController extends Controller
         ]);
 
         $jadwalKbm = JadwalKbm::findOrFail($request->jadwal_kbm_id);
-        $targetTeacher = \App\Models\User::findOrFail($request->teacher_id);
+        $targetTeacher = User::findOrFail($request->teacher_id);
 
         // School validation — only teachers from the same school
         $schoolContext = app(OrganizationContext::class);
@@ -440,7 +461,7 @@ class TeacherQrScanController extends Controller
             return back()->with('error', 'Guru ini sudah memiliki catatan absensi untuk jadwal ini hari ini.');
         }
 
-        $checkinTime = \Carbon\Carbon::parse($request->checkin_time . ':00');
+        $checkinTime = Carbon::parse($request->checkin_time.':00');
         $startTime = $jadwalKbm->start_time;
         $toleranceAfter = (int) ($this->getSettings()['qr_tolerance_after_minutes'] ?? 5);
         $lateThreshold = (int) ($this->getSettings()['qr_late_threshold_minutes'] ?? 15);
@@ -454,7 +475,7 @@ class TeacherQrScanController extends Controller
         $academicYear = AcademicYear::where('is_active', true)->first();
 
         $attendance = TeacherClassAttendance::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'school_id' => $jadwalKbm->school_id,
             'academic_year_id' => $academicYear?->id,
             'study_group_id' => $jadwalKbm->study_group_id,
@@ -487,7 +508,7 @@ class TeacherQrScanController extends Controller
 
         return back()->with('success',
             "Check-in manual berhasil untuk {$targetTeacher->name} ({$jadwalKbm->studyGroup->name})"
-            . ($isLate ? " — terlambat {$lateMinutes} menit" : '.')
+            .($isLate ? " — terlambat {$lateMinutes} menit" : '.')
         );
     }
 
@@ -505,7 +526,7 @@ class TeacherQrScanController extends Controller
         // All active jadwal for today
         $schedules = JadwalKbm::where('is_active', true)
             ->where('day_of_week', $dayOfWeek)
-            ->whereHas('academicYear', fn($q) => $q->where('id', $academicYear?->id))
+            ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
             ->with(['teacher:id,name', 'studyGroup:name,code', 'subject:name'])
             ->orderBy('slot_index')
             ->get();
@@ -514,7 +535,7 @@ class TeacherQrScanController extends Controller
         $attendances = TeacherClassAttendance::where('attendance_date', $today)
             ->with(['teacher:id,name', 'jadwalKbm.studyGroup:name,code'])
             ->get()
-            ->keyBy(fn($a) => $a->teacher_id . '|' . $a->jadwal_kbm_id);
+            ->keyBy(fn ($a) => $a->teacher_id.'|'.$a->jadwal_kbm_id);
 
         // Teachers who haven't checked out yet
         $notCheckedOut = TeacherClassAttendance::where('attendance_date', $today)
@@ -525,8 +546,9 @@ class TeacherQrScanController extends Controller
 
         // Not present today
         $notPresent = $schedules->filter(function ($jadwal) use ($attendances) {
-            $key = $jadwal->teacher_id . '|' . $jadwal->id;
-            return !isset($attendances[$key]);
+            $key = $jadwal->teacher_id.'|'.$jadwal->id;
+
+            return ! isset($attendances[$key]);
         });
 
         // School ID for broadcast channel — use first schedule's study group if available
@@ -548,7 +570,7 @@ class TeacherQrScanController extends Controller
     public function exportHistory(Request $request)
     {
         $start = $request->input('start_date', today()->startOfMonth()->format('Y-m-d'));
-        $end   = $request->input('end_date',   today()->format('Y-m-d'));
+        $end = $request->input('end_date', today()->format('Y-m-d'));
 
         $user = $request->user();
 
@@ -566,52 +588,178 @@ class TeacherQrScanController extends Controller
 
         $records = $query->orderBy('attendance_date', 'desc')->get();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Header style
         $headerStyle = [
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFF']],
-            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => '4F46E5']],
-            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => '4F46E5']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ];
 
         $headers = ['Tanggal', 'Nama Guru', 'NIS/NISN', 'Kelas', 'Mata Pelajaran',
-                     'Jadwal Masuk', 'Jadwal Keluar', 'Waktu Masuk', 'Status Masuk', 'Waktu Keluar',
-                     'Status Keluar', 'Terlambat (mnt)', 'Pulang Cepat (mnt)', 'Durasi (mnt)'];
+            'Jadwal Masuk', 'Jadwal Keluar', 'Waktu Masuk', 'Status Masuk', 'Waktu Keluar',
+            'Status Keluar', 'Terlambat (mnt)', 'Pulang Cepat (mnt)', 'Durasi (mnt)'];
         $sheet->fromArray($headers, null, 'A1');
         $sheet->getStyle('A1:N1')->applyFromArray($headerStyle);
 
         $row = 2;
         foreach ($records as $r) {
             $scheduledStart = $r->jadwalKbm ? ($r->jadwalKbm->start_time ?? '') : '';
-            $scheduledEnd   = $r->jadwalKbm ? ($r->jadwalKbm->end_time ?? '') : '';
-            $sheet->setCellValue('A' . $row, $r->attendance_date?->format('Y-m-d') ?? '');
-            $sheet->setCellValue('B' . $row, $r->teacher?->name ?? '-');
-            $sheet->setCellValue('C' . $row, $r->teacher?->nisn ?? '-');
-            $sheet->setCellValue('D' . $row, $r->jadwalKbm?->studyGroup?->name ?? '-');
-            $sheet->setCellValue('E' . $row, $r->jadwalKbm?->subject?->name ?? '-');
-            $sheet->setCellValue('F' . $row, $scheduledStart);
-            $sheet->setCellValue('G' . $row, $scheduledEnd);
-            $sheet->setCellValue('H' . $row, $r->actual_time_in ?? '-');
-            $sheet->setCellValue('I' . $row, $r->status_masuk === 'terlambat' ? 'Terlambat' : 'Hadir');
-            $sheet->setCellValue('J' . $row, $r->actual_time_out ?? '-');
-            $sheet->setCellValue('K' . $row, $r->status_keluar === 'keluar_cepat' ? 'Pulang Cepat' : ($r->actual_time_out ? 'Tuntas' : 'Belum'));
-            $sheet->setCellValue('L' . $row, $r->late_minutes ?? 0);
-            $sheet->setCellValue('M' . $row, $r->early_leave_minutes ?? 0);
-            $sheet->setCellValue('N' . $row, $r->duration_minutes ?? 0);
+            $scheduledEnd = $r->jadwalKbm ? ($r->jadwalKbm->end_time ?? '') : '';
+            $sheet->setCellValue('A'.$row, $r->attendance_date?->format('Y-m-d') ?? '');
+            $sheet->setCellValue('B'.$row, $r->teacher?->name ?? '-');
+            $sheet->setCellValue('C'.$row, $r->teacher?->nisn ?? '-');
+            $sheet->setCellValue('D'.$row, $r->jadwalKbm?->studyGroup?->name ?? '-');
+            $sheet->setCellValue('E'.$row, $r->jadwalKbm?->subject?->name ?? '-');
+            $sheet->setCellValue('F'.$row, $scheduledStart);
+            $sheet->setCellValue('G'.$row, $scheduledEnd);
+            $sheet->setCellValue('H'.$row, $r->actual_time_in ?? '-');
+            $sheet->setCellValue('I'.$row, $r->status_masuk === 'terlambat' ? 'Terlambat' : 'Hadir');
+            $sheet->setCellValue('J'.$row, $r->actual_time_out ?? '-');
+            $sheet->setCellValue('K'.$row, $r->status_keluar === 'keluar_cepat' ? 'Pulang Cepat' : ($r->actual_time_out ? 'Tuntas' : 'Belum'));
+            $sheet->setCellValue('L'.$row, $r->late_minutes ?? 0);
+            $sheet->setCellValue('M'.$row, $r->early_leave_minutes ?? 0);
+            $sheet->setCellValue('N'.$row, $r->duration_minutes ?? 0);
             $row++;
         }
 
-        foreach (range('A', 'N') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+        foreach (range('A', 'N') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
         $writer = new Xlsx($spreadsheet);
-        $filename = 'absensi-guru-' . $start . '-' . $end . '.xlsx';
+        $filename = 'absensi-guru-'.$start.'-'.$end.'.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Content-Disposition: attachment;filename="'.$filename.'"');
         header('Cache-Control: max-age=0');
         $writer->save('php://output');
         exit;
+    }
+
+    /**
+     * Manual check-in form for administrators.
+     * Accessible by roles with teacher-attendance_manual permission.
+     */
+    public function manualIndex(Request $request)
+    {
+        $user = $request->user();
+        $academicYear = AcademicYear::where('is_active', true)->first();
+        $today = today();
+        $dayOfWeek = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
+
+        $allTeachers = User::where('school_id', $user->school_id)
+            ->where('role_id', function ($q) {
+                $q->select('id')->from('roles')->whereIn('name', ['Guru', 'Guru Tahfidz', 'Coordinator Guru', 'Departemen Tahfidz']);
+            })
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get();
+
+        $schedules = JadwalKbm::where('is_active', true)
+            ->where('day_of_week', $dayOfWeek)
+            ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
+            ->with(['teacher:id,name', 'studyGroup:name,code', 'subject:name'])
+            ->orderBy('slot_index')
+            ->get();
+
+        $todayAttendances = TeacherClassAttendance::where('attendance_date', $today)
+            ->with(['teacher:id,name'])
+            ->get()
+            ->keyBy(fn ($a) => $a->teacher_id);
+
+        return view('teacher.qr.scan.manual', compact(
+            'allTeachers',
+            'schedules',
+            'todayAttendances',
+            'academicYear'
+        ));
+    }
+
+    /**
+     * Process manual check-in submission.
+     * Requires teacher-attendance_manual permission.
+     */
+    public function manualStore(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'teacher_id' => 'required|uuid|exists:users,id',
+            'jadwal_kbm_id' => 'required|uuid|exists:jadwal_kbms,id',
+            'checkin_time' => 'required|date_format:H:i',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $jadwalKbm = JadwalKbm::findOrFail($request->jadwal_kbm_id);
+        $targetTeacher = User::findOrFail($request->teacher_id);
+
+        $schoolContext = app(OrganizationContext::class);
+        if ($schoolContext->hasValidSchool() && $jadwalKbm->school_id !== $schoolContext->schoolId) {
+            return back()->with('error', 'Gagal: jadwal bukan milik sekolah Anda saat ini.');
+        }
+
+        $today = today();
+
+        $existing = TeacherClassAttendance::where('teacher_id', $targetTeacher->id)
+            ->where('jadwal_kbm_id', $jadwalKbm->id)
+            ->where('attendance_date', $today)
+            ->first();
+
+        if ($existing) {
+            return back()->with('error', 'Guru ini sudah memiliki catatan absensi untuk jadwal ini hari ini.');
+        }
+
+        $checkinTime = Carbon::parse($request->checkin_time.':00');
+        $startTime = $jadwalKbm->start_time;
+        $toleranceAfter = (int) ($this->getSettings()['qr_tolerance_after_minutes'] ?? 5);
+        $lateThreshold = (int) ($this->getSettings()['qr_late_threshold_minutes'] ?? 15);
+
+        $nowTs = strtotime($checkinTime);
+        $startTs = strtotime($startTime);
+        $diffMinutes = (int) round(($nowTs - $startTs) / 60);
+        $isLate = $diffMinutes >= $lateThreshold;
+        $lateMinutes = max(0, $diffMinutes);
+
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        $attendance = TeacherClassAttendance::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $jadwalKbm->school_id,
+            'academic_year_id' => $academicYear?->id,
+            'study_group_id' => $jadwalKbm->study_group_id,
+            'jadwal_kbm_id' => $jadwalKbm->id,
+            'teacher_id' => $targetTeacher->id,
+            'qr_token_id' => null,
+            'attendance_date' => $today,
+            'scheduled_start_time' => $startTime,
+            'scheduled_end_time' => $jadwalKbm->end_time,
+            'actual_time_in' => $checkinTime->format('H:i:s'),
+            'late_minutes' => $lateMinutes,
+            'status_masuk' => $isLate ? 'terlambat' : 'hadir',
+            'status_keluar' => 'belum_keluar',
+            'recorded_by' => $user->id,
+            'notes' => $request->notes,
+        ]);
+
+        event(new TeacherQrScanned(
+            schoolId: $jadwalKbm->school_id,
+            teacherId: $targetTeacher->id,
+            teacherName: $targetTeacher->name,
+            studyGroupCode: $jadwalKbm->studyGroup?->code ?? '',
+            studyGroupName: $jadwalKbm->studyGroup?->name ?? '',
+            status: $isLate ? 'terlambat' : 'hadir',
+            lateMinutes: $lateMinutes,
+            scheduledStartTime: $startTime,
+            scheduledEndTime: $jadwalKbm->end_time,
+            isSubstitute: $attendance->is_substituted,
+        ));
+
+        return back()->with('success',
+            "Check-in manual berhasil untuk {$targetTeacher->name} ({$jadwalKbm->studyGroup?->name})"
+            .($isLate ? " — terlambat {$lateMinutes} menit" : '.')
+        );
     }
 
     private function getSettings(): array
@@ -624,7 +772,8 @@ class TeacherQrScanController extends Controller
             'qr_checkout_window_after' => 30,
             'qr_early_leave_threshold_minutes' => 10,
         ];
-        $overrides = \App\Models\AbsensiGtkSetting::get('qr_settings', []) ?? [];
+        $overrides = AbsensiGtkSetting::get('qr_settings', []) ?? [];
+
         return array_merge($defaultSettings, is_array($overrides) ? $overrides : []);
     }
 }

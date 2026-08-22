@@ -43,16 +43,6 @@ function isActiveSarpras($routeName, $pattern) {
     </a>
 </li>
 
-@if($isAdmin)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSarpras($currentRoute, 'sarpras.konfigurasi.') ? ' active' : '' }}"
-       href="{{ route('sarpras.konfigurasi.index', ['userId' => $userId]) }}">
-        <i class="ri-settings-3-line"></i>
-        <span>Konfigurasi</span>
-    </a>
-</li>
-@endif
-
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveSarpras($currentRoute, 'sarpras.laporan.') ? ' active' : '' }}"
        href="{{ route('sarpras.laporan.index', ['userId' => $userId]) }}">

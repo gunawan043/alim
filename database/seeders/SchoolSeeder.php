@@ -25,15 +25,15 @@ class SchoolSeeder extends Seeder
 
         // ── 2. USER: Para Pimpinan (GTK) ─────────────────────────────────────
         $pimpinans = [
-            'muh_husnul_fikri' => ['name' => 'Muh. Husnul Fikri, M. Pd.',    'jabatan' => 'Mudir / Pimpinan'],
-            'budiman' => ['name' => 'Budiman, S. Pd.',               'jabatan' => 'Pimpinan'],
-            'muhammad_sidik' => ['name' => 'Muhammad Sidik, M. Pd.',       'jabatan' => 'Pimpinan'],
-            'munawar' => ['name' => 'Munawar, M. Pd.',               'jabatan' => 'Pimpinan'],
-            'gunawan_trianto' => ['name' => 'Gunawan Trianto, M. Pd.',       'jabatan' => 'Pimpinan'],
-            'muh_saleh_sukiman' => ['name' => 'Muhammad Saleh Sukiman, M. Pd.', 'jabatan' => 'Pimpinan'],
-            'muh_abdul_maad' => ['name' => "Muhammad Abdul Ma'ad, S. Pd.",  'jabatan' => 'Pimpinan'],
-            'ahmad_firdaus' => ['name' => 'Ahmad Firdaus, Lc.',            'jabatan' => 'Pimpinan'],
-            'lalu_wirabuana' => ['name' => 'Lalu Wirabuana, Lc, M.H.',      'jabatan' => 'Pimpinan'],
+            'muh_husnul_fikri' => ['name' => 'Muh. Husnul Fikri, M. Pd.', 'jabatan' => 'Mudir', 'role' => 'Mudir'],
+            'budiman' => ['name' => 'Budiman, S. Pd.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'muhammad_sidik' => ['name' => 'Muhammad Sidik, M. Pd.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'munawar' => ['name' => 'Munawar, M. Pd.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'gunawan_trianto' => ['name' => 'Gunawan Trianto, M. Pd.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'muh_saleh_sukiman' => ['name' => 'Muhammad Saleh Sukiman, M. Pd.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'muh_abdul_maad' => ['name' => "Muhammad Abdul Ma'ad, S. Pd.", 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'ahmad_firdaus' => ['name' => 'Ahmad Firdaus, Lc.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
+            'lalu_wirabuana' => ['name' => 'Lalu Wirabuana, Lc, M.H.', 'jabatan' => 'Kepala Satuan Pendidikan', 'role' => 'Satuan Pendidikan'],
         ];
 
         $userMap = [];
@@ -43,7 +43,7 @@ class SchoolSeeder extends Seeder
                 ['email' => $email],
                 ['name' => $data['name'], 'password' => bcrypt('password123'), 'is_active' => true]
             );
-            $user->syncRoles(['Guru']);
+            $user->syncRoles([$data['role'] ?? 'Satuan Pendidikan']);
             if (! GtkWorkUnit::where('user_id', $user->id)->where('work_unit_id', $pondok->id)->exists()) {
                 GtkWorkUnit::create([
                     'user_id' => $user->id,
