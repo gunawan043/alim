@@ -4,12 +4,13 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionRoleSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Clear existing assignments
         DB::table('role_has_permissions')->delete();
@@ -34,15 +35,15 @@ class PermissionRoleSeeder extends Seeder
         };
 
         // Helper: sync permissions for a role via direct DB insert
-        $sync = function (string $roleId, array $permNames) use ($permIds) {
-            if (empty($roleId)) {
+        $sync = function (string $roleUuid, array $permNames) use ($permIds) {
+            if (empty($roleUuid)) {
                 return;
             }
             $ids = $permIds($permNames);
             if (empty($ids)) {
                 return;
             }
-            $rows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $roleId], $ids);
+            $rows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $roleUuid], $ids);
             DB::table('role_has_permissions')->insert($rows);
         };
 
