@@ -165,6 +165,8 @@ $p_approaching = DB::table('users')
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.absensi-gtk.harian' ? ' active' : '' }}" href="{{ route('user.absensi-gtk.harian', ['userId' => $userId]) }}">Absensi Harian</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.absensi-gtk.rekap-bulanan' ? ' active' : '' }}" href="{{ route('user.absensi-gtk.rekap-bulanan', ['userId' => $userId]) }}">Rekap Bulanan</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.absensi-gtk.izin' ? ' active' : '' }}" href="{{ route('user.absensi-gtk.izin', ['userId' => $userId]) }}">Pengajuan Izin</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.waka-dashboard' ? ' active' : '' }}" href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" style="font-size:0.85rem">Dashboard Absensi QR</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.history' ? ' active' : '' }}" href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" style="font-size:0.85rem">Riwayat Absensi QR</a></li>
         </ul>
     </div>
 </li>

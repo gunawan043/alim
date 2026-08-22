@@ -106,7 +106,7 @@ class SchoolController extends Controller
 
         // Super Admin & Tata Usaha: buat sekolah
         $hasCreatePerm = canPermission('school-create') ||
-                         ($user && $user->roles()->where('name', 'Tata Usaha')->exists());
+                         ($user && $user->hasRole('Satuan Pendidikan'));
 
         abort_unless($hasCreatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat membuat sekolah baru.');
 
@@ -131,7 +131,7 @@ class SchoolController extends Controller
 
         // Tata Usaha juga bisa buat sekolah via role detection
         $hasCreatePerm = canPermission('school-create') ||
-                         ($user && $user->roles()->where('name', 'Tata Usaha')->exists());
+                         ($user && $user->hasRole('Satuan Pendidikan'));
 
         abort_unless($hasCreatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat membuat sekolah baru.');
 
@@ -221,7 +221,7 @@ class SchoolController extends Controller
 
         // Tata Usaha juga bisa mengedit sekolah
         $hasUpdatePerm = canPermission('school-update') ||
-                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+                         (auth()->user() && auth()->user()->hasRole('Satuan Pendidikan'));
 
         abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
 
@@ -241,7 +241,7 @@ class SchoolController extends Controller
     {
         // Tata Usaha juga bisa mengedit sekolah
         $hasUpdatePerm = canPermission('school-update') ||
-                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+                         (auth()->user() && auth()->user()->hasRole('Satuan Pendidikan'));
 
         abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
 
@@ -317,7 +317,7 @@ class SchoolController extends Controller
     {
         // Tata Usaha juga bisa menghapus sekolah
         $hasDeletePerm = canPermission('school-delete') ||
-                         (auth()->user() && auth()->user()->roles()->where('name', 'Tata Usaha')->exists());
+                         (auth()->user() && auth()->user()->hasRole('Satuan Pendidikan'));
 
         abort_unless($hasDeletePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat menghapus sekolah.');
 

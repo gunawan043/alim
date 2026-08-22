@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\AccessValidatorController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BoardingApprovalCenterController;
 use App\Http\Controllers\BoardingPolicyController;
+use App\Http\Controllers\BoardingRegulationController;
 use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\CandidateController;
@@ -134,7 +135,9 @@ use App\Http\Controllers\SuperAdmin\FailedJobController;
 use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
 use App\Http\Controllers\SuperAdmin\PasswordResetLogController;
 use App\Http\Controllers\SuperAdmin\PermissionController;
+use App\Http\Controllers\SuperAdmin\SchoolDormitoryController;
 use App\Http\Controllers\SuperAdmin\RoleController;
+use App\Http\Controllers\SuperAdmin\AdminSchoolController;
 use App\Http\Controllers\SuperAdmin\SchoolSwitchController;
 // use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
@@ -150,6 +153,8 @@ use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\WakaController;
+use App\Http\Controllers\ClassQrController;
+use App\Http\Controllers\TeacherQrScanController;
 use App\Http\Controllers\WorkUnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -622,6 +627,38 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{id}/update', [AbsensiGtkController::class, 'update'])->name('update');
                 Route::post('/datatable', [AbsensiGtkController::class, 'datatable'])->name('datatable');
             });
+
+            // ── ABSENSI GURU MAPEL VIA QR ─────────────────────────────
+            Route::prefix('absensi-guru-mapel-qr')->name('teacher-qr.')->group(function () {
+                Route::get('/scan', [TeacherQrScanController::class, 'scanIndex'])->name('scan');
+                Route::post('/scan/process/{study_group_id}', [TeacherQrScanController::class, 'scanProcess'])
+                    ->name('scan.process');
+                Route::post('/manual-checkin', [TeacherQrScanController::class, 'manualCheckin'])
+                    ->middleware('permission:teacher-attendance_manual')
+                    ->name('manual-checkin');
+                Route::get('/history', [TeacherQrScanController::class, 'history'])
+                    ->middleware('permission:teacher-attendance_view')
+                    ->name('history');
+                Route::get('/history/export', [TeacherQrScanController::class, 'exportHistory'])
+                    ->middleware('permission:teacher-attendance_view')
+                    ->name('history.export');
+                Route::post('/manual-checkout', [TeacherQrScanController::class, 'manualCheckout'])
+                    ->middleware('permission:teacher-attendance_view')
+                    ->name('manual-checkout');
+                Route::get('/waka-dashboard', [TeacherQrScanController::class, 'wakaDashboard'])
+                    ->middleware('permission:teacher-attendance_view')
+                    ->name('waka-dashboard');
+            });
+
+            // QR kelas (untuk cetak / bagi ke guru) — public signed URL
+            Route::get('/qr/{study_group_id}/image', [ClassQrController::class, 'qrImage'])
+                ->name('qr.image');
+            Route::get('/qr/{study_group_id}', [ClassQrController::class, 'show'])
+                ->name('qr.show');
+            Route::post('/qr/{study_group_id}/regenerate', [ClassQrController::class, 'regenerate'])
+                ->name('qr.regenerate');
+            Route::get('/qr/{study_group_id}/print', [ClassQrController::class, 'print'])
+                ->name('qr.print');
 
             // ── PAYROLL & GAJI ────────────────────────────────────────
             Route::prefix('payroll')->name('payroll.')->group(function () {
@@ -1258,14 +1295,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('asrama')->name('asrama.')->group(function () {
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
-                Route::get('/', [DormitoryController::class, 'index'])->name('index');
-                Route::get('/profil-saya', [DormitoryController::class, 'myProfile'])->name('my-profile');
-                Route::get('/create', [DormitoryController::class, 'create'])->name('create');
-                Route::post('/', [DormitoryController::class, 'store'])->name('store');
-                Route::get('/{asramaUuid}', [DormitoryController::class, 'show'])->name('show');
-                Route::get('/{asramaUuid}/edit', [DormitoryController::class, 'edit'])->name('edit');
-                Route::put('/{asramaUuid}', [DormitoryController::class, 'update'])->name('update');
-                Route::delete('/{asramaUuid}', [DormitoryController::class, 'destroy'])->name('destroy');
+                Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
+                Route::get('/profil-saya', [DormitoryMasterController::class, 'myProfile'])->name('my-profile');
+                Route::get('/create', [DormitoryMasterController::class, 'create'])->name('create');
+                Route::post('/', [DormitoryMasterController::class, 'store'])->name('store');
+                Route::get('/{asramaUuid}', [DormitoryMasterController::class, 'show'])->name('show');
+                Route::get('/{asramaUuid}/edit', [DormitoryMasterController::class, 'edit'])->name('edit');
+                Route::put('/{asramaUuid}', [DormitoryMasterController::class, 'update'])->name('update');
+                Route::delete('/{asramaUuid}', [DormitoryMasterController::class, 'destroy'])->name('destroy');
 
                 // ── STANDALONE WING CRUD ───────────────────────────────────
                 Route::get('/{asramaUuid}/gedung', [DormitoryWingController::class, 'index'])->name('wings.index');
@@ -1291,8 +1328,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kamar/{roomUuid}/penghuni-keluar', [DormitoryRoomApiController::class, 'removeResident'])->name('api.rooms.remove-resident');
 
                 // API Helpers
-                Route::get('/api/wings', [DormitoryController::class, 'apiWingsByDormitory'])->name('api.wings');
-                Route::get('/api/rooms', [DormitoryController::class, 'apiRoomsByWing'])->name('api.rooms');
+                Route::get('/api/wings', [DormitoryMasterController::class, 'apiWingsByDormitory'])->name('api.wings');
+                Route::get('/api/rooms', [DormitoryMasterController::class, 'apiRoomsByWing'])->name('api.rooms');
 
                 // ── MUTASI KAMAR ───────────────────────────────────────
                 Route::get('/{asramaUuid}/mutasi-kamar', [DormitoryRoomMoveController::class, 'index'])->name('room-moves.index');
@@ -1799,6 +1836,26 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])->name('users.unlock');
                 Route::post('/ip-unblock', [UserSecurityController::class, 'unblockIp'])->name('ip.unblock');
+
+                Route::prefix('schools')->name('schools.')->group(function () {
+                    Route::get('/', [SchoolController::class, 'index'])->name('index');
+                    Route::get('/create', [SchoolController::class, 'create'])->name('create');
+                    Route::post('/', [SchoolController::class, 'store'])->name('store');
+                    Route::get('/{id}/edit', [SchoolController::class, 'edit'])->name('edit');
+                    Route::put('/{id}', [SchoolController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [SchoolController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/toggle-status', [SchoolController::class, 'toggleStatus'])->name('toggle-status');
+                });
+
+                Route::prefix('dormitories')->name('dormitories.')->group(function () {
+                    Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
+                    Route::get('/create', [DormitoryMasterController::class, 'create'])->name('create');
+                    Route::post('/', [DormitoryMasterController::class, 'store'])->name('store');
+                    Route::get('/{id}/edit', [DormitoryMasterController::class, 'edit'])->name('edit');
+                    Route::put('/{id}', [DormitoryMasterController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [DormitoryMasterController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/toggle-status', [DormitoryMasterController::class, 'toggleStatus'])->name('toggle-status');
+                });
             });
 
             // ── SARANA PRASARANA (MANDIRI) ─────────────────────────

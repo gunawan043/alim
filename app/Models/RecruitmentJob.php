@@ -738,7 +738,7 @@ class RecruitmentJob extends Model
             return collect();
         }
 
-        return Jabatan::whereIn('uuid', $uuids)->orderBy('nama')->get();
+        return Position::whereIn('uuid', $uuids)->orderBy('nama')->get();
     }
 
     /**

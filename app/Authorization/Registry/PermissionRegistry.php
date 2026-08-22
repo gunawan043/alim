@@ -81,8 +81,8 @@ final class PermissionRegistry
 
         // GTK transfer approval chain (used by ApprovalController)
         'gtk.transfer.approve.kepalasekolah' => 'GTK transfer: approver Kepala Sekolah',
-        'gtk.transfer.approve.wadir1' => 'GTK transfer: approver Wadir 1',
-        'gtk.transfer.approve.wadir2' => 'GTK transfer: approver Wadir 2',
+        'gtk.transfer.approve.wadir1' => 'GTK transfer: approver Wakil Mudir I',
+        'gtk.transfer.approve.wadir2' => 'GTK transfer: approver Wakil Mudir II',
         'gtk.transfer.approve.mudir' => 'GTK transfer: approver Mudir',
         'gtk.transfer.approve.yayasan' => 'GTK transfer: approver Yayasan',
 

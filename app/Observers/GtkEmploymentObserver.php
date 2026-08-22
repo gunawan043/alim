@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\GtkEmployment;
-use App\Models\Jabatan;
+use App\Models\Position;
 use Illuminate\Support\Facades\Log;
 
 class GtkEmploymentObserver
@@ -29,8 +29,7 @@ class GtkEmploymentObserver
      * Sinkronkan Spatie role user berdasarkan jabatan GTK.
      *
      * Logika:
-     * - Ambil array `roles` dari Jabatan (JSON cast → array).
-     * - Selalu tambahkan `GTK` sebagai baseline agar user selalu punya role GTK.
+     * - Ambil array `roles` dari Position (JSON cast → array).
      * - syncRoles() REPLACE semua role user, sehingga role lama yang tidak relevan hilang.
      */
     protected function syncRoles(GtkEmployment $employment): void
@@ -42,11 +41,11 @@ class GtkEmploymentObserver
 
         $jabatanRoles = [];
         if ($employment->jabatan_id) {
-            $jabatan = Jabatan::find($employment->jabatan_id);
+            $jabatan = Position::find($employment->jabatan_id);
             $jabatanRoles = $jabatan?->roles ?? [];
         }
 
-        $finalRoles = array_values(array_unique(array_merge(['Guru'], $jabatanRoles)));
+        $finalRoles = array_values(array_unique($jabatanRoles));
 
         try {
             $user->syncRoles($finalRoles);
@@ -77,7 +76,7 @@ class GtkEmploymentObserver
 
         try {
             $currentRoles = $user->getRoleNames()->toArray();
-            $remaining = array_values(array_diff($currentRoles, ['Guru']));
+            $remaining = $currentRoles;
             $user->syncRoles($remaining);
         } catch (\Throwable $e) {
             Log::warning('GtkEmploymentObserver: removeGtkRoles gagal', [

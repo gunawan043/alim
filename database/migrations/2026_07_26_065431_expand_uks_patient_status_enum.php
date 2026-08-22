@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // SQLite does not support ENUM or MODIFY COLUMN syntax
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Only run if uks_patients table exists
         if (Schema::hasTable('uks_patients')) {
             // Expand status enum from ['aktif','selesai','dirujuk'] to include the full treatment pipeline
@@ -31,6 +36,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        // SQLite does not support ENUM or MODIFY COLUMN syntax
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Only run if uks_patients table exists
         if (Schema::hasTable('uks_patients')) {
             // Rollback to old enum format

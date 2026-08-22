@@ -42,7 +42,7 @@ final class StudentPermissionProvider implements PermissionProvider
 
         // Teachers and admins can write student data (grade input, attendance correction, etc.)
         if ($roleLevel !== null && (int) $roleLevel <= 13) {
-            // Guru Tahfidz, Coordinator Guru, etc.
+            // Departemen Tahfidz, Satuan Pendidikan, etc.
             $origins[] = new PermissionOrigin(
                 provider: 'students',
                 permission: 'students.write',

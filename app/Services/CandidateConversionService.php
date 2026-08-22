@@ -13,8 +13,8 @@ use App\Models\GtkTraining;
 use App\Models\GtkWorkExperience;
 use App\Models\GtkWorkUnit;
 use App\Models\GtkWorkUnitHistory;
-use App\Models\Jabatan;
 use App\Models\JenisGtk;
+use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -188,7 +188,7 @@ class CandidateConversionService
         $workUnitId = $gtkData['work_unit_id'] ?? $job?->work_unit_id;
 
         $jabatanName = $gtkData['jabatan'] ?? $job?->posisi;
-        $jabatan = $jabatanName ? Jabatan::where('nama', $jabatanName)->first() : null;
+        $jabatan = $jabatanName ? Position::where('nama', $jabatanName)->first() : null;
 
         $jenisGtkId = null;
         if (! empty($gtkData['jenis_gtk'])) {

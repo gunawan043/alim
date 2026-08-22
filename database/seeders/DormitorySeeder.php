@@ -19,21 +19,10 @@ class DormitorySeeder extends Seeder
             $role = \Spatie\Permission\Models\Role::create([
                 'name' => 'Asrama',
                 'guard_name' => 'web',
-                'level' => 19,
-                'description' => 'Pengelola Asrama',
+                'level' => 17,
+                'description' => 'Asrama (Kepala, Admin, Wali — divisi berdasarkan jabatan)',
             ]);
             $asramaRoleId = $role->id;
-        }
-
-        $adminRoleId = DB::table('roles')->where('name', 'Admin Asrama')->where('guard_name', 'web')->value('id');
-        if (! $adminRoleId) {
-            $role = \Spatie\Permission\Models\Role::create([
-                'name' => 'Admin Asrama',
-                'guard_name' => 'web',
-                'level' => 20,
-                'description' => 'Admin Asrama',
-            ]);
-            $adminRoleId = $role->id;
         }
 
         // ── User Kepala Asrama ─────────────────────────────────────────
@@ -61,10 +50,10 @@ class DormitorySeeder extends Seeder
             ]
         );
         DB::table('model_has_roles')->updateOrInsert(
-            ['model_type' => 'App\Models\User', 'model_id' => $adminAsrama->id, 'role_id' => $adminRoleId],
-            ['role_id' => $adminRoleId]
+            ['model_type' => 'App\Models\User', 'model_id' => $adminAsrama->id, 'role_id' => $asramaRoleId],
+            ['role_id' => $asramaRoleId]
         );
-        $this->command->info("  ✅ Admin Asrama: {$adminAsrama->name} <{$adminAsrama->email}> → Admin Asrama");
+        $this->command->info("  ✅ Admin Asrama: {$adminAsrama->name} <{$adminAsrama->email}> → Asrama");
 
         // ── Ambil work_unit & school default ───────────────────────────
         $workUnit = \App\Models\WorkUnit::first();

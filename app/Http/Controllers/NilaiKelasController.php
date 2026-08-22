@@ -22,6 +22,23 @@ use Maatwebsite\Excel\Facades\Excel;
 class NilaiKelasController extends Controller
 {
     /**
+     * Redirect ke STS rombel pertama user (Wali Kelas).
+     * Menangani kasus akses langsung dari menu tanpa studyGroupId.
+     */
+    public function index(string $userId)
+    {
+        $studyGroup = StudyGroup::where('homeroom_teacher_id', $userId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($studyGroup) {
+            return redirect()->route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $studyGroup->uuid]);
+        }
+
+        abort(404);
+    }
+
+    /**
      * Halaman STS per kelas — untuk Admin TU / Waka / Wali Kelas / Kepsek
      * Menampilkan wizard: [Leger] [Mapel 1] [Mapel 2] ...
      *

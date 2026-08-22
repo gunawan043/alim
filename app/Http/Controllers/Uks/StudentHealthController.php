@@ -20,7 +20,7 @@ class StudentHealthController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'role.access:Kepala UKS,Admin UKS,Admin UKS']);
+        $this->middleware(['auth', 'role.access:UKS']);
     }
 
     /**

@@ -23,6 +23,11 @@ return new class extends Migration
             $table->index('approved_by');
         });
 
+        // SQLite does not support ENUM or MODIFY COLUMN syntax
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         \Illuminate\Support\Facades\DB::statement(
             "ALTER TABLE institution_decrees MODIFY COLUMN status
              ENUM('draft', 'submitted', 'pending_review', 'reviewed', 'approved', 'rejected', 'active', 'archived')
@@ -32,6 +37,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         \Illuminate\Support\Facades\DB::statement(
             "ALTER TABLE institution_decrees MODIFY COLUMN status
              ENUM('draft', 'active', 'archived')

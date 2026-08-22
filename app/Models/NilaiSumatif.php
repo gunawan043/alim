@@ -79,7 +79,7 @@ class NilaiSumatif extends Model
     }
 
     // Auto-calculate: RSA = (STS + SAS) / 2
-    // Jika $raportSts diberikan (bukan null),用它替代 $sts untuk hitungan raport
+    // Jika $raportSts diberikan (bukan null), gunakan sebagai pengganti $sts untuk hitungan raport
     public static function calcRsa(?float $sts, ?float $sas, ?float $raportSts = null): ?float
     {
         $effectiveSts = $raportSts ?? $sts;

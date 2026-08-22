@@ -15,7 +15,7 @@ final class TahfidzPermissionProvider implements PermissionProvider
     /**
      * Tahfidz-program permissions derived from tahfidz role level.
      *
-     * Tahfidz teachers (Guru Tahfidz, Coordinator Tahfidz, Departemen Tahfidz,
+     * Tahfidz teachers (Departemen Tahfidz,
      * Admin Departemen Tahfidz) operate within the tahfidz department.
      */
     public function provide(int|string $userId): array
@@ -29,7 +29,7 @@ final class TahfidzPermissionProvider implements PermissionProvider
         $origins = [];
         $roleLevel = $user->roles()->min('level');
 
-        // Guru Tahfidz and above (level 16 admin departemen, 13 guru tahfidz)
+        // Departemen Tahfidz and above (level 16 admin departemen, 13 guru tahfidz)
         if ($roleLevel !== null && (int) $roleLevel <= 16) {
             $origins[] = new PermissionOrigin(
                 provider: 'tahfidz',

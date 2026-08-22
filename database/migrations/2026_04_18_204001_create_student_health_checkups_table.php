@@ -18,7 +18,7 @@ return new class extends Migration
                 'rutin',       // Check-up berkala
                 'akar',        // Pre-university screening
                 'masuk',       // Saat masuk sekolah
-                '闻言',       // Laporan dari asrama
+                'per_laporan',  // Laporan dari asrama
             ]);
             $table->integer('height_cm')->nullable();
             $table->integer('weight_kg')->nullable();

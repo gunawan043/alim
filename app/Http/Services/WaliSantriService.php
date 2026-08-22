@@ -252,7 +252,7 @@ class WaliSantriService
         });
     }
 
-    // ── Request Link: Wali已有 Santri → MintaJadi Wali Kedua ───────────────────
+    // ── Request Link: Wali yang sudah punya Santri → Minta Jadi Wali Kedua ──────────────────
 
     /**
      * Wali yang sudah punya Santri minta jadi wali Santri lain.

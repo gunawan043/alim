@@ -44,7 +44,7 @@ class DemoMatriksSeeder extends Seeder
         }
 
         // Teachers
-        $teachers = User::role(['Guru', 'Guru Tahfidz', 'Wakil Kepala Sekolah'])
+        $teachers = User::role(['Satuan Pendidikan', 'Departemen Tahfidz'])
             ->orderBy('name')->get();
 
         // Subjects
@@ -131,7 +131,7 @@ class DemoMatriksSeeder extends Seeder
                 ['nama_tugas' => 'Wali Kelas 7', 'hours_per_week' => 3],
             ],
             'Guru9' => [
-                ['nama_tugas' => 'Coordinator Guru Tahfidz', 'hours_per_week' => 4],
+                ['nama_tugas' => 'Koordinator Tahfidz', 'hours_per_week' => 4],
                 ['nama_tugas' => 'Wali Kelas 8', 'hours_per_week' => 3],
             ],
             'Muh. Husnul Fikri, M. Pd.' => [

@@ -64,7 +64,7 @@ class GtkDummySeeder extends Seeder
         }
 
         // ── Jabatan: Guru ───────────────────────────────────────────────────
-        $jabatanGuru = DB::table('jabatan')->where('nama', 'Guru')->value('id');
+        $jabatanGuru = DB::table('positions')->where('nama', 'Guru')->value('id');
 
         // ── Data dummy 10 guru ──────────────────────────────────────────────
         // Jenis kelamin alternating L/P agar representatif

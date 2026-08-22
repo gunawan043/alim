@@ -2,129 +2,157 @@
 
 namespace Database\Seeders;
 
-use App\Models\Jabatan;
 use App\Models\JenisGtk;
+use App\Models\Position;
 use Illuminate\Database\Seeder;
 
 class JenisGtkSeeder extends Seeder
 {
     public function run(): void
     {
-        $jenisGtkData = [
+        // Clear existing data to avoid stale entries
+        Position::query()->delete();
+        JenisGtk::query()->delete();
+
+        $data = [
             [
                 'nama' => 'Pimpinan Pondok',
                 'urutan' => 1,
                 'deskripsi' => 'Pimpinan dan pengelola pondok',
                 'jabatan' => [
                     ['nama' => 'Mudir', 'roles' => ['Mudir']],
-                    ['nama' => 'Wakil Mudir I', 'roles' => ['Wadir 1']],
-                    ['nama' => 'Wakil Mudir II', 'roles' => ['Wadir 2']],
+                    ['nama' => 'Wakil Mudir I', 'roles' => ['Wakil Mudir I']],
+                    ['nama' => 'Wakil Mudir II', 'roles' => ['Wakil Mudir II']],
                 ],
             ],
             [
-                'nama' => 'Tenaga Administrasi Pondok',
+                'nama' => 'Satuan Pendidikan',
                 'urutan' => 2,
-                'deskripsi' => 'Tenaga administrasi dan perkantoran',
+                'deskripsi' => 'Kepengurusan satuan pendidikan',
                 'jabatan' => [
-                    ['nama' => 'Kepala Hubungan Masyarakat dan Personalia', 'roles' => ['Personalia']],
-                    ['nama' => 'Staf Hubungan Masyarakat', 'roles' => ['Personalia']],
-                    ['nama' => 'Staf Personalia', 'roles' => ['Personalia']],
-                    ['nama' => 'Kepala Kesekretariatan', 'roles' => ['Administrator']],
-                    ['nama' => 'Staf Kesekretariatan', 'roles' => ['Tata Usaha']],
-                    ['nama' => 'Kepala Keuangan', 'roles' => ['Keuangan']],
-                    ['nama' => 'Staf Keuangan / Bendahara', 'roles' => ['Keuangan']],
+                    ['nama' => 'Kepala Satuan Pendidikan', 'roles' => ['Kepala Satuan Pendidikan']],
+                    ['nama' => 'Wakil Kepala Satuan Pendidikan', 'roles' => ['Wakil Kepala Satuan Pendidikan']],
+                    ['nama' => 'Kepala Tata Usaha', 'roles' => ['Kepala Tata Usaha']],
+                    ['nama' => 'Staf Tata Usaha', 'roles' => ['Staf Tata Usaha']],
                 ],
             ],
             [
-                'nama' => 'Tenaga Pendidik Pondok',
+                'nama' => 'Departemen Bahasa',
                 'urutan' => 3,
-                'deskripsi' => 'Guru and ustadz/ustadzah',
+                'deskripsi' => 'Kepengurusan departemen bahasa',
                 'jabatan' => [
-                    ['nama' => 'Kepala Lembaga Pendidikan', 'roles' => ['Guru']],
-                    ['nama' => 'Koordinator KSP', 'roles' => ['Coordinator Guru']],
-                    ['nama' => 'Guru', 'roles' => ['Guru']],
-                    ['nama' => 'Kepala Departemen Tahfidz', 'roles' => ['Departemen Tahfidz']],
-                    ['nama' => 'Ustadz/Ustadzah Tahfidz', 'roles' => ['Guru Tahfidz']],
-                    ['nama' => 'Kepala Departemen Bahasa', 'roles' => ['Guru']],
-                    ['nama' => 'Ustadz/Ustadzah Bahasa', 'roles' => ['Guru']],
+                    ['nama' => 'Kepala Departemen Bahasa', 'roles' => ['Kepala Departemen Bahasa']],
+                    ['nama' => 'Admin Departemen Bahasa', 'roles' => ['Admin Departemen Bahasa']],
+                    ['nama' => 'Guru Bahasa Arab', 'roles' => ['Guru Bahasa Arab']],
                 ],
             ],
             [
-                'nama' => 'Tenaga Kependidikan Pondok',
+                'nama' => 'Departemen Tahfidz',
                 'urutan' => 4,
-                'deskripsi' => 'Tenaga kependidikan non-guru',
+                'deskripsi' => 'Kepengurusan departemen tahfidz',
                 'jabatan' => [
-                    ['nama' => 'Staf Kependidikan', 'roles' => ['Guru']],
-                    ['nama' => 'Operator Akademik', 'roles' => ['Guru']],
-                    ['nama' => 'Administrasi Pendidikan', 'roles' => ['Guru']],
+                    ['nama' => 'Kepala Departemen Tahfidz', 'roles' => ['Kepala Departemen Tahfidz']],
+                    ['nama' => 'Admin Departemen Tahfidz', 'roles' => ['Admin Departemen Tahfidz']],
+                    ['nama' => 'Guru Tahfidz', 'roles' => ['Guru Tahfidz']],
                 ],
             ],
             [
-                'nama' => 'Tenaga Keamanan Pondok',
+                'nama' => 'Tenaga Pendidik',
                 'urutan' => 5,
+                'deskripsi' => 'Guru dan tenaga kependidikan akademik',
+                'jabatan' => [
+                    ['nama' => 'Guru Hadits', 'roles' => ['Guru Hadits']],
+                    ['nama' => 'Guru Umum', 'roles' => ['Guru Umum']],
+                    ['nama' => 'Guru Agama', 'roles' => ['Guru Agama']],
+                    ['nama' => 'Wali Kelas', 'roles' => ['Wali Kelas']],
+                    ['nama' => 'Koordinator Kurikulum', 'roles' => ['Koordinator Kurikulum']],
+                    ['nama' => 'Koordinator Kesiswaan', 'roles' => ['Koordinator Kesiswaan']],
+                    ['nama' => 'Koordinator Sarpras Sekolah', 'roles' => ['Koordinator Sarpras Sekolah']],
+                    ['nama' => 'Koordinator Ekstrakurikuler', 'roles' => ['Koordinator Ekstrakurikuler']],
+                    ['nama' => 'Koordinator Guru Bahasa Arab', 'roles' => ['Koordinator Guru Bahasa Arab']],
+                    ['nama' => 'Koordinator Guru Umum', 'roles' => ['Koordinator Guru Umum']],
+                    ['nama' => 'Koordinator Guru Agama', 'roles' => ['Koordinator Guru Agama']],
+                    ['nama' => 'Koordinator Guru Hadits', 'roles' => ['Koordinator Guru Hadits']],
+                    ['nama' => 'Koordinator Guru Tahfidz', 'roles' => ['Koordinator Guru Tahfidz']],
+                ],
+            ],
+            [
+                'nama' => 'Asrama',
+                'urutan' => 6,
+                'deskripsi' => 'Kepengurusan asrama santri',
+                'jabatan' => [
+                    ['nama' => 'Kepala Asrama', 'roles' => ['Asrama']],
+                    ['nama' => 'Wakil Kepala Asrama', 'roles' => ['Asrama']],
+                    ['nama' => 'Tata Usaha Asrama', 'roles' => ['Asrama']],
+                    ['nama' => 'Staf Asrama', 'roles' => ['Asrama']],
+                    ['nama' => 'Wali Kamar', 'roles' => ['Asrama']],
+                    ['nama' => 'Musyrif', 'roles' => ['Asrama']],
+                    ['nama' => 'Musyrifah', 'roles' => ['Asrama']],
+                    ['nama' => 'Pembina Asrama', 'roles' => ['Asrama']],
+                ],
+            ],
+            [
+                'nama' => 'UKS',
+                'urutan' => 7,
+                'deskripsi' => 'Unit Kesehatan Siswa',
+                'jabatan' => [
+                    ['nama' => 'Kepala UKS', 'roles' => ['Kepala UKS']],
+                    ['nama' => 'Staf UKS', 'roles' => ['Staf UKS']],
+                ],
+            ],
+            [
+                'nama' => 'Sarana dan Prasarana',
+                'urutan' => 8,
+                'deskripsi' => 'Kepengurusan sarana dan prasarana',
+                'jabatan' => [
+                    ['nama' => 'Kepala Unit Sarana dan Prasarana', 'roles' => ['Sarpras']],
+                    ['nama' => 'Koordinator Sarana dan Prasarana', 'roles' => ['Sarpras']],
+                    ['nama' => 'Staf Sarana dan Prasarana', 'roles' => ['Sarpras']],
+                ],
+            ],
+            [
+                'nama' => 'Keuangan',
+                'urutan' => 9,
+                'deskripsi' => 'Kepengurusan keuangan pondok',
+                'jabatan' => [
+                    ['nama' => 'Kepala Unit Keuangan', 'roles' => ['Kepala Keuangan']],
+                    ['nama' => 'Staf Keuangan', 'roles' => ['Staf Keuangan']],
+                ],
+            ],
+            [
+                'nama' => 'Keamanan',
+                'urutan' => 10,
                 'deskripsi' => 'Tenaga keamanan dan ketertiban',
                 'jabatan' => [
-                    ['nama' => 'Kepala Keamanan Pondok', 'roles' => ['Guru']],
-                    ['nama' => 'Koordinator Divisi Keamanan', 'roles' => ['Guru']],
-                    ['nama' => 'Anggota Keamanan Pondok', 'roles' => ['Guru']],
-                ],
-            ],
-            [
-                'nama' => 'Tenaga Sarana dan Prasarana Pondok',
-                'urutan' => 6,
-                'deskripsi' => 'Sarana, prasarana, gizi dan kebersihan',
-                'jabatan' => [
-                    ['nama' => 'Kepala Sarana dan Prasarana', 'roles' => ['Admin Sarpras']],
-                    ['nama' => 'Staf Sarana dan Prasarana', 'roles' => ['Sarpras']],
-                    ['nama' => 'Kepala Unit Gizi dan Logistik', 'roles' => ['Guru']],
-                    ['nama' => 'Staf Gizi dan Logistik', 'roles' => ['Guru']],
-                    ['nama' => 'Petugas Kebersihan Pondok', 'roles' => ['Sarpras']],
-                ],
-            ],
-            [
-                'nama' => 'Tenaga Kesehatan Pondok',
-                'urutan' => 7,
-                'deskripsi' => 'Petugas kesehatan pondok',
-                'jabatan' => [
-                    ['nama' => 'Kepala Unit Kesehatan', 'roles' => ['Admin Kesehatan']],
-                    ['nama' => 'Petugas Kesehatan Pondok', 'roles' => ['Admin Kesehatan']],
-                ],
-            ],
-            [
-                'nama' => 'Tenaga Usaha dan Kemandirian Pondok',
-                'urutan' => 8,
-                'deskripsi' => 'Unit usaha dan kemandirian',
-                'jabatan' => [
-                    ['nama' => 'Kepala Unit Usaha Pondok', 'roles' => ['Guru']],
-                    ['nama' => 'Staf Unit Usaha Pondok', 'roles' => ['Guru']],
+                    ['nama' => 'Kepala Satuan Keamanan', 'roles' => ['Kepala Keamanan']],
+                    ['nama' => 'Anggota Satuan Keamanan', 'roles' => ['Anggota Keamanan']],
                 ],
             ],
         ];
 
-        foreach ($jenisGtkData as $jData) {
-            $jenisGtk = JenisGtk::updateOrCreate(
-                ['nama' => $jData['nama']],
-                [
-                    'deskripsi' => $jData['deskripsi'],
-                    'urutan' => $jData['urutan'],
-                    'is_active' => true,
-                ]
-            );
+        foreach ($data as $jData) {
+            $jenisGtk = JenisGtk::create([
+                'id' => \Illuminate\Support\Str::uuid(),
+                'nama' => $jData['nama'],
+                'deskripsi' => $jData['deskripsi'],
+                'urutan' => $jData['urutan'],
+                'is_active' => true,
+            ]);
 
             foreach ($jData['jabatan'] as $order => $jabatanItem) {
-                Jabatan::updateOrCreate(
-                    [
-                        'jenis_gtk_id' => $jenisGtk->id,
-                        'nama' => $jabatanItem['nama'],
-                    ],
-                    [
-                        'kategori' => null,
-                        'roles' => $jabatanItem['roles'],
-                        'urutan' => $order + 1,
-                        'is_active' => true,
-                    ]
-                );
+                Position::create([
+                    'id' => \Illuminate\Support\Str::uuid(),
+                    'jenis_gtk_id' => $jenisGtk->id,
+                    'nama' => $jabatanItem['nama'],
+                    'kategori' => null,
+                    'deskripsi' => null,
+                    'roles' => $jabatanItem['roles'],
+                    'urutan' => $order + 1,
+                    'is_active' => true,
+                ]);
             }
         }
+
+        $this->command->info('✅ JenisGtkSeeder selesai. '.count($data).' jenis GTK, '.Position::count().' jabatan.');
     }
 }

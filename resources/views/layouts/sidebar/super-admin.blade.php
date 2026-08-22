@@ -283,6 +283,22 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ request()->routeIs('user.sa.schools.*') ? ' active' : '' }}"
+           href="{{ route('user.sa.schools.index', ['userId' => auth()->id()]) }}">
+            <i class="ri-government-line"></i>
+            <span>Manajemen Sekolah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ request()->routeIs('user.sa.dormitories.*') ? ' active' : '' }}"
+           href="{{ route('user.sa.dormitories.index', ['userId' => auth()->id()]) }}">
+            <i class="ri-hotel-line"></i>
+            <span>Manajemen Asrama</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ request()->routeIs('system.features') ? ' active' : '' }}"
            href="{{ route('system.features') }}">
             <i class="ri-toggle-line"></i>

@@ -27,7 +27,7 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok',
+            'Satuan Pendidikan',
         ]);
 
         // Daftar mapel yang diampu guru ini
@@ -833,7 +833,7 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Admin Tata Usaha', 'Wakil Kepala Sekolah', 'Kepala Sekolah Pondok',
+            'Satuan Pendidikan',
         ]);
 
         // Cast integer adminBookId

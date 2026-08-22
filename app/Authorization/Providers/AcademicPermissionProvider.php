@@ -47,7 +47,7 @@ final class AcademicPermissionProvider implements PermissionProvider
 
         // Teachers and higher can write/publish exam and schedule
         if ($roleLevel !== null && (int) $roleLevel <= 13) {
-            // Guru Tahfidz and above (lower level number = higher)
+            // Departemen Tahfidz and above (lower level number = higher)
             $origins[] = new PermissionOrigin(
                 provider: 'academic',
                 permission: 'exam.write',

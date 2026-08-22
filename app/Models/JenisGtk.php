@@ -21,12 +21,12 @@ class JenisGtk extends Model
 
     public function jabatans(): HasMany
     {
-        return $this->hasMany(Jabatan::class, 'jenis_gtk_id')->orderBy('urutan');
+        return $this->hasMany(Position::class, 'jenis_gtk_id')->orderBy('urutan');
     }
 
     public function activeJabatans(): HasMany
     {
-        return $this->hasMany(Jabatan::class, 'jenis_gtk_id')
+        return $this->hasMany(Position::class, 'jenis_gtk_id')
             ->where('is_active', true)
             ->orderBy('urutan');
     }

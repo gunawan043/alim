@@ -13,7 +13,10 @@ use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class DormitoryPermitController extends Controller
 {
@@ -403,6 +406,124 @@ class DormitoryPermitController extends Controller
         $now = now();
 
         return view('dormitory.permits.bulk-card', compact('dormitory', 'permits', 'userId', 'now'));
+    }
+
+    /**
+     * PDF version of a single permit card.
+     */
+    public function cardPdf(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        try {
+            $dormitory = Dormitory::findOrFail($asramaUuid);
+            $permit = DormitoryPermit::with([
+                'student',
+                'student.currentClassHistory.studyGroup.gradeLevel',
+                'room',
+            ])
+                ->where('dormitory_id', $asramaUuid)
+                ->findOrFail($permitUuid);
+
+            if (! in_array($permit->status, ['approved', 'picked_up', 'returned', 'overdue'])) {
+                return redirect()->route('user.asrama.permits.show', [
+                    'userId' => $userId,
+                    'asramaUuid' => $asramaUuid,
+                    'permitUuid' => $permit->id,
+                ])->with('warning', 'Kartu hanya dapat dicetak untuk izin yang telah aktif.');
+            }
+
+            $now = now();
+
+            $html = view('dormitory.permits.card-pdf', compact('dormitory', 'permit', 'userId', 'now'))->render();
+
+            $options = (new Options)
+                ->set('isRemoteEnabled', false)
+                ->set('isHtml5ParserEnabled', true)
+                ->set('defaultFont', 'Courier');
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper([0, 0, 175, 600]); // 58mm width (≈165pt) with variable height
+            $dompdf->render();
+
+            $output = $dompdf->output();
+            $filename = 'kartu-izin-'.($permit->student?->name ?? $permit->id).'-'.now()->format('Ymd-His').'.pdf';
+
+            return response($output, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Length' => strlen($output),
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating permit card PDF: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
+
+            return redirect()->back()->with('error', 'Gagal membuat PDF: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * PDF version of bulk permit cards.
+     */
+    public function bulkCardPdf(Request $request, string $userId, string $asramaUuid)
+    {
+        try {
+            $dormitory = Dormitory::findOrFail($asramaUuid);
+            $activeYear = AcademicYear::where('is_active', true)->first();
+
+            $query = DormitoryPermit::with([
+                'student',
+                'student.currentClassHistory.studyGroup.gradeLevel',
+                'room',
+            ])
+                ->where('dormitory_id', $asramaUuid)
+                ->where('academic_year_id', $activeYear?->id);
+
+            if ($request->filled('status')) {
+                $query->whereIn('status', $request->status === 'approved' ? ['approved', 'returned'] : [$request->status]);
+            }
+
+            if ($request->filled('permit_type')) {
+                $query->where('permit_type', $request->permit_type);
+            }
+
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('departure_datetime', [$request->start_date, $request->end_date]);
+            }
+
+            $query->whereIn('status', ['approved', 'picked_up', 'returned', 'overdue']);
+
+            $permits = $query->orderByDesc('departure_datetime')->get();
+
+            if ($permits->isEmpty()) {
+                return redirect()->back()->with('warning', 'Tidak ada izin yang memenuhi filter untuk dicetak.');
+            }
+
+            $now = now();
+
+            $html = view('dormitory.permits.bulk-card-pdf', compact('dormitory', 'permits', 'userId', 'now'))->render();
+
+            $options = (new Options)
+                ->set('isRemoteEnabled', false)
+                ->set('isHtml5ParserEnabled', true)
+                ->set('defaultFont', 'Courier');
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper([0, 0, 175, 600]);
+            $dompdf->render();
+
+            $output = $dompdf->output();
+            $filename = 'cetak-kartu-izin-'.now()->format('Ymd-His').'.pdf';
+
+            return response($output, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Length' => strlen($output),
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating bulk permit cards PDF: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
+
+            return redirect()->back()->with('error', 'Gagal membuat PDF: '.$e->getMessage());
+        }
     }
 
     // ── Scan & Verify ───────────────────────────────────────────

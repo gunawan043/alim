@@ -275,7 +275,7 @@ class GtkWizardController extends Controller
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $jenisGtk = \App\Models\JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
-        $jabatan = \App\Models\Jabatan::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatan = \App\Models\Position::active()->orderBy('urutan')->orderBy('nama')->get();
 
         return view('gtk.create', compact('provinces', 'workUnits', 'jenisGtk', 'jabatan'));
     }
@@ -373,7 +373,7 @@ class GtkWizardController extends Controller
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $jenisGtk = \App\Models\JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
-        $jabatan = \App\Models\Jabatan::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatan = \App\Models\Position::active()->orderBy('urutan')->orderBy('nama')->get();
 
         return view('gtk.edit', compact('gtk', 'userId', 'provinces', 'workUnits', 'jenisGtk', 'jabatan'));
     }
@@ -1201,7 +1201,7 @@ class GtkWizardController extends Controller
                 'required',
                 'string',
                 'max:150',
-                Rule::exists('jabatan', 'id'),
+                Rule::exists('positions', 'id'),
             ],
             'kepegawaian.status_kepegawaian' => 'required|in:PTT,PTY,Percobaan,Magang,GTT,GTY,KONTRAK',
             'kepegawaian.tmt' => 'required|date',
@@ -1586,14 +1586,14 @@ class GtkWizardController extends Controller
             return null;
         }
 
-        $query = \App\Models\Jabatan::query();
+        $query = \App\Models\Position::query();
 
         if ($jenisGtkId) {
             $query->where('jenis_gtk_id', $jenisGtkId);
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return $query->where('id', $value)->value('id') ?? \App\Models\Jabatan::where('id', $value)->value('id');
+            return $query->where('id', $value)->value('id') ?? \App\Models\Position::where('id', $value)->value('id');
         }
 
         return $query->where('nama', $value)->value('id');
@@ -1609,7 +1609,7 @@ class GtkWizardController extends Controller
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return \App\Models\Jabatan::find($value)?->nama;
+            return \App\Models\Position::find($value)?->nama;
         }
 
         return $value;

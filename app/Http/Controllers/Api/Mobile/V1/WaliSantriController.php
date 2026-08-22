@@ -292,7 +292,7 @@ class WaliSantriController extends Controller
             ]);
         }
 
-        // Ambil pending tokens yang指向 student miliknya
+        // Ambil pending tokens yang mengarah ke student miliknya
         $tokens = WaliRegistrationToken::with(['user:id,name,email,no_hp', 'student:id,name,nik'])
             ->whereIn('student_id', $studentIds)
             ->whereNull('used_at')

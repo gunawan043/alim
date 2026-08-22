@@ -51,28 +51,17 @@ class HomeController extends Controller
         $roles = $user->getRoleNames();
 
         // Boarding roles with dedicated dashboards
-        if ($roles->contains('Kepala Asrama')) {
-            return redirect()->route('dashboard.boarding-head');
+        // Asrama = single role: Kepala + Admin + Wali (divisi based on jabatan)
+        if ($roles->contains('Asrama')) {
+            return redirect()->route('dashboard.asrama');
         }
 
         if ($roles->contains('Admin Pendidikan')) {
             return redirect()->route('dashboard.boarding-education');
         }
 
-        if ($roles->contains('Admin Kesehatan')) {
+        if ($roles->contains('UKS')) {
             return redirect()->route('dashboard.boarding-health');
-        }
-
-        if ($roles->contains('Admin Asrama')) {
-            return redirect()->route('dashboard.admin-asrama');
-        }
-
-        if ($roles->contains('Wali Asrama')) {
-            return redirect()->route('dashboard.wali-asrama');
-        }
-
-        if ($roles->contains('Asrama')) {
-            return redirect()->route('dashboard.asrama');
         }
 
         // Existing dedicated dashboards for other roles
@@ -80,13 +69,13 @@ class HomeController extends Controller
             return redirect()->route('user.dashboard');
         }
 
-        if ($roles->contains('Admin Sarpras')) {
-            // No specific sarpras dashboard route defined; redirect to general dashboard
+        // Sarpras = single role: Admin + Staf (divisi based on jabatan)
+        if ($roles->contains('Sarpras')) {
             return redirect()->route('dashboard');
         }
 
-        if ($roles->contains('Admin TU')) {
-            return redirect()->route('dashboard.admin-tu');
+        if ($roles->contains('Administrator')) {
+            return redirect()->route('dashboard.administrator');
         }
 
         // Default → GTK dashboard for any remaining role (Guru/Tendik/GTK)

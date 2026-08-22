@@ -123,6 +123,9 @@ class PermissionRoleSeeder extends Seeder
             'kinerja_view', 'kinerja_create', 'kinerja_edit',
             'pelatihan_view', 'pelatihan_create', 'pelatihan_edit',
             'kesejahteraan_view', 'kesejahteraan_create', 'kesejahteraan_edit',
+            // Teacher attendance — needed for payroll reference
+            'teacher-attendance_view',
+            'teacher-attendance_report_export',
         ]);
 
         // ── ADMIN TATA USAHA — scoped: GTK edit + Santri CRUD ─────────
@@ -141,6 +144,9 @@ class PermissionRoleSeeder extends Seeder
             'data_master_view',
             'profile_view', 'profile_edit',
             'laporan_view', 'laporan_generate', 'laporan_export',
+            // Teacher attendance — admin TU needed for payroll process
+            'teacher-attendance_view',
+            'teacher-attendance_report_export',
         ]);
 
         // ── TATA USAHA — read-only scoped: GTK view + Santri view + mutasi ajukan ─
@@ -171,6 +177,9 @@ class PermissionRoleSeeder extends Seeder
             'profile_view', 'profile_edit',
             'laporan_view', 'laporan_export',
             'students.read',
+            // Teacher attendance — KSP needs full report export
+            'teacher-attendance_view',
+            'teacher-attendance_report_export',
         ]);
 
         // ── KEPALA ASRAMA — puncak asrama: approval semua modul, laporan seluruh asrama ─
@@ -431,6 +440,8 @@ class PermissionRoleSeeder extends Seeder
             'menu-waka-kurikulum-sidebar',
             'profile_view', 'profile_edit',
             'password_change',
+            'teacher-attendance_view',
+            'teacher-attendance_export',
             'students.read',
             'students.write',
             'exam.read',
@@ -517,6 +528,10 @@ class PermissionRoleSeeder extends Seeder
             'exam.read',
             'general_teacher.readable',
             'student_teacher.readable',
+            // Teacher attendance — Waka needs full report export
+            'teacher-attendance_view',
+            'teacher-attendance_report_export',
+            'teacher-attendance_manual',
         ]);
 
         // ── ADMIN SARPRAS — sidebar sarpras ───────────────────────────

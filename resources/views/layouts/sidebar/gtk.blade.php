@@ -93,3 +93,21 @@ function isActiveGTK($routeName, $pattern) {
         <span>Leger Nilai</span>
     </a>
 </li>
+
+<li class="menu-title"><span>Absensi QR Guru</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.teacher-qr.scan') ? ' active' : '' }}"
+       href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}">
+        <i class="ri-qr-scan-2-line"></i>
+        <span>Scan QR</span>
+    </a>
+</li>
+@if(canPermission('teacher-attendance_view'))
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveGTK($currentRoute, 'user.teacher-qr.history') ? ' active' : '' }}"
+       href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
+        <i class="ri-history-line"></i>
+        <span>Riwayat Absensi QR</span>
+    </a>
+</li>
+@endif

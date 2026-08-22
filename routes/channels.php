@@ -36,11 +36,17 @@ Broadcast::channel('approvals', function ($user) {
 
 // Work unit channel: channel per satuan kerja
 Broadcast::channel('workunit.{workUnitId}', function ($user, $workUnitId) {
-    // User bisa subscribe kalau punya akses ke satuan kerja tsb
-    // Bisa dicek via relasi user -> work_units
     if ($user->role()->hasPermission('approvals-channel') || $user->role()->hasPermission('super-admin-only')) {
         return true;
     }
-
     return $user->workUnits()->where('work_units.id', $workUnitId)->exists();
+});
+
+// Waka Teacher Attendance channel: per-school public broadcast
+// Teachers can subscribe to see real-time check-in/check-out events for their school
+Broadcast::channel('waka-teacher-absensi.{schoolId}', function ($user, $schoolId) {
+    if (!$user->id) return false;
+    $userSchoolId = (string) $user->school_id;
+    $targetSchoolId = (string) $schoolId;
+    return $userSchoolId === $targetSchoolId;
 });

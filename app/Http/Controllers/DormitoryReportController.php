@@ -300,7 +300,7 @@ class DormitoryReportController extends Controller
         ));
     }
 
-    // ── Rekap Santri (per房间) ────────────────────────────────────
+    // ── Rekap Santri (per Kamar) ─────────────────────────────────────
 
     public function occupancy(Request $request, string $userId, string $asramaUuid)
     {

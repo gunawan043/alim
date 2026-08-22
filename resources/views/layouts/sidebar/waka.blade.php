@@ -296,6 +296,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
                    href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">Absensi Peserta Didik</a>
             </li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.waka-dashboard' ? ' active' : '' }}" href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" style="font-size:0.85rem">Dashboard Absensi QR</a></li>
         </ul>
     </div>
 </li>

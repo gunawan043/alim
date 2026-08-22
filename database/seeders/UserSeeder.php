@@ -18,8 +18,8 @@ class UserSeeder extends Seeder
             ['name' => 'Administrator',          'email' => 'admin@example.com',        'password' => 'password123', 'role' => 'Administrator'],
             ['name' => 'Guru Contoh',           'email' => 'gtk@example.com',          'password' => 'password123', 'role' => 'Guru'],
             ['name' => 'Mudir',                  'email' => 'mudir@example.com',        'password' => 'password123', 'role' => 'Mudir'],
-            ['name' => 'Wakil Kepala Sekolah',  'email' => 'wakasek@example.com',     'password' => 'password123', 'role' => 'Wadir 1'],
-            ['name' => 'Kepala Sekolah',         'email' => 'kepsek@example.com',       'password' => 'password123', 'role' => 'Kepala Sekolah'],
+            ['name' => 'Wakil Kepala Sekolah',  'email' => 'wakasek@example.com',     'password' => 'password123', 'role' => 'Wakil Mudir I'],
+            ['name' => 'Kepala Sekolah',         'email' => 'kepsek@example.com',       'password' => 'password123', 'role' => 'Satuan Pendidikan'],
         ];
 
         foreach ($users as $u) {
@@ -34,42 +34,42 @@ class UserSeeder extends Seeder
                 'name' => 'Admin TU SD IT Putra',
                 'email' => 'tu.sdputra@example.com',
                 'password' => 'password123',
-                'role' => 'Admin Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SD IT Putri',
                 'email' => 'tu.sdputri@example.com',
                 'password' => 'password123',
-                'role' => 'Admin Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SD IT Putri Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMP IT Putra',
                 'email' => 'tu.smpputra@example.com',
                 'password' => 'password123',
-                'role' => 'Admin Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SMP IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMP IT Putri',
                 'email' => 'tu.smpputri@example.com',
                 'password' => 'password123',
-                'role' => 'Admin Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SMP IT Putri Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMA IT',
                 'email' => 'tu.sma@example.com',
                 'password' => 'password123',
-                'role' => 'Admin Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SMA IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'TU SD IT Putra (Read-Only)',
                 'email' => 'tu-readonly@example.com',
                 'password' => 'password123',
-                'role' => 'Tata Usaha',
+                'role' => 'Satuan Pendidikan',
                 'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
         ];
@@ -162,7 +162,7 @@ class UserSeeder extends Seeder
                     'user_id' => $user->id,
                     'school_id' => $school->id,
                     'status_kepegawaian' => 'PTY',
-                    'jabatan' => str_contains($roleName, 'Admin') ? 'Admin Tata Usaha' : 'Tata Usaha',
+                    'jabatan' => str_contains($roleName, 'Admin') ? 'Kepala Tata Usaha' : 'Staf Tata Usaha',
                 ]);
             }
 

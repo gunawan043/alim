@@ -12,6 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // SQLite does not support ENUM or MODIFY COLUMN syntax
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         if (Schema::hasTable('uks_patients')) {
             DB::statement("ALTER TABLE uks_patients MODIFY COLUMN status ENUM(
                 'menunggu_pemeriksaan',
@@ -32,6 +37,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        // SQLite does not support ENUM or MODIFY COLUMN syntax
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Rollback only if table exists - use the simpler enum from previous migration
         if (Schema::hasTable('uks_patients')) {
             DB::statement("ALTER TABLE uks_patients MODIFY COLUMN status ENUM(

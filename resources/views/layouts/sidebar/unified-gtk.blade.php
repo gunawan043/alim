@@ -276,6 +276,11 @@ $sidebarStudyGroups = $sekolah
         <ul class="nav nav-sm flex-column">
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'waka.absensi-gtk' ? ' active' : '' }}" href="{{ route('waka.absensi-gtk') }}" style="font-size:0.85rem">Absensi GTK</a></li>
             <li class="nav-item"><a class="nav-link{{ isActiveGTK($currentRoute, 'user.absensi.') ? ' active' : '' }}" href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Absensi Peserta Didik</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveGTK($currentRoute, 'user.teacher-qr') ? ' active' : '' }}" href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}" style="font-size:0.85rem">Scan QR Guru</a></li>
+            @if(canPermission('teacher-attendance_view'))
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.teacher-qr.waka-dashboard' ? ' active' : '' }}" href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" style="font-size:0.85rem">Dashboard Absensi QR</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveGTK($currentRoute, 'user.teacher-qr.history') ? ' active' : '' }}" href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" style="font-size:0.85rem">Riwayat Absensi QR</a></li>
+            @endif
         </ul>
     </div>
 </li>

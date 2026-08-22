@@ -309,7 +309,7 @@ class RepairVsReplaceService
                 $reasons[] = 'Disarankan perbaikan terjadwal untuk mengembalikan performa.';
                 break;
             case 'REPLACE':
-                $reasons[] = 'Biaya perbaikan sudah mendekati harga pengganti — pertimbangkan置换.';
+                $reasons[] = 'Biaya perbaikan sudah mendekati harga pengganti — pertimbangkan penggantian.';
                 break;
             case 'CRITICAL':
                 $reasons[] = 'Aset dalam kondisi kritis — tindakan segera diperlukan.';

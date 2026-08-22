@@ -923,11 +923,11 @@ class DormitoryDataSeeder extends Seeder
             $violationTypes = [
                 ['category' => 'ringan', 'type' => 'Terlambat shubuh', 'points' => 2, 'description' => 'Terlambat hadir dalam kegiatan shubuh lebih dari 10 menit'],
                 ['category' => 'ringan', 'type' => 'Membersihkan kamar tidak rapi', 'points' => 1, 'description' => 'Kamar tidak bersih dan tidak rapi saatinspection'],
-                ['category' => 'ringan', 'type' => 'Bermain HP setelah jam malam', 'points' => 2, 'description' => 'Ditemukan玩手机 setelah jam 21.30'],
+                ['category' => 'ringan', 'type' => 'Bermain HP setelah jam malam', 'points' => 2, 'description' => 'Ditemukan bermain HP setelah jam 21.30'],
                 ['category' => 'ringan', 'type' => 'Membuang sampah sembarangan', 'points' => 1, 'description' => 'Membuang sampah tidak pada tempatnya'],
                 ['category' => 'ringan', 'type' => 'Tidak mengikuti apel malam', 'points' => 2, 'description' => 'Tidak hadir tanpa izin pada apel malam'],
                 ['category' => 'sedang', 'type' => 'Keluar asrama tanpa izin', 'points' => 5, 'description' => 'Keluar area asrama tanpa izin dari musyrif'],
-                ['category' => 'sedang', 'type' => 'Membawa barang terlarang', 'points' => 5, 'description' => 'Ditemukan membawa物件 yang tidak diperbolehkan di asrama'],
+                ['category' => 'sedang', 'type' => 'Membawa barang terlarang', 'points' => 5, 'description' => 'Ditemukan membawa barang yang tidak diperbolehkan di asrama'],
                 ['category' => 'sedang', 'type' => 'Berkata kasar kepada teman', 'points' => 4, 'description' => 'Menggunakan kata-kata kasar dan menyakiti perasaan teman'],
                 ['category' => 'sedang', 'type' => 'Merusak fasilitas asrama', 'points' => 5, 'description' => 'Merusak meja belajar di kamar'],
                 ['category' => 'sedang', 'type' => 'Tidak mengikuti kegiatan wajib', 'points' => 4, 'description' => 'Tidak hadir dalam kegiatan mengaji bersama tanpa alasan'],
@@ -970,7 +970,7 @@ class DormitoryDataSeeder extends Seeder
                         'points' => $vtype['points'],
                         'action_taken' => match ($vtype['category']) {
                             'ringan' => 'Ditegur dan dibuat surat pernyataan',
-                            'sedang' => 'Diberi sanksi tugas tambahan dan通知 orang tua',
+                            'sedang' => 'Diberi sanksi tugas tambahan dan menghubungi orang tua',
                             'berat' => 'Diberi surat peringatan dan diskors sementara dari kegiatan asrama',
                         },
                         'follow_up' => 'Orang tua/wali telah дипаakkan через telepon',

@@ -15,7 +15,8 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             SystemSuperAdminSeeder::class,  // permanent system admin — runs AFTER roles/permissions so it can be assigned the Super Admin role
-            PermissionRoleSeeder::class,  // assign permissions to roles
+            UksRolesSeeder::class,         // UKS roles must exist before PermissionRoleSeeder assigns permissions
+            PermissionRoleSeeder::class,   // assign permissions to roles
             UserSeeder::class,
             JenisGtkSeeder::class,
             WilayahSeeder::class,         // provinces/cities/districts/villages FK target

@@ -16,6 +16,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // SQLite does not support information_schema queries or MySQL-specific syntax
+        if (DB::getDriverName() !== 'mysql') {
+            Schema::table('uks_bed_assignments', function (Blueprint $table) {
+                if (Schema::hasColumn('uks_bed_assignments', 'patient_id') && Schema::hasTable('uks_patients')) {
+                    $table->foreign('patient_id')
+                        ->references('id')
+                        ->on('uks_patients')
+                        ->onDelete('cascade');
+                }
+            });
+            return;
+        }
+
         // Check if the column and reference table exist before adding FK
         if (Schema::hasColumn('uks_bed_assignments', 'patient_id') && Schema::hasTable('uks_patients')) {
             // Check if foreign key already exists

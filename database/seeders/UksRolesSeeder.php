@@ -2,67 +2,57 @@
 
 namespace Database\Seeders;
 
-use App\Models\Permission;
-use App\Models\Role;
 use Illuminate\Database\Seeder;
+use App\Models\Role;
 
 class UksRolesSeeder extends Seeder
 {
     /**
-     * UKS roles and permissions for the Satuan Kerja UKS module.
+     * Run the database seeds.
      *
-     * Role hierarchy:
-     *   - Kepala UKS       : Overall head of UKS, can view all (putra & putri) data
-     *   - Admin UKS        : Admin/staf UKS — semua gender (merge Admin UKS Putra & Putri)
+     * UKS Role Mapping (v3):
+     *   - UKS : Kepala UKS & Petugas Kesehatan — CRUD data kesehatan santri
      */
     public function run(): void
     {
-        // ── PERMISSIONS ──────────────────────────────────────────────
-        $permissions = [
-            'view_uks_data',
-            'manage_uks_gtk',
-            'manage_uks_patients',
-            'manage_uks_health_records',
-            'manage_uks_immunizations',
-            'manage_uks_medicine',
-            'manage_ucs_sanitation',
-            'manage_uks_facility_referrals',
-        ];
-
-        foreach ($permissions as $perm) {
-            Permission::firstOrCreate(
-                ['name' => $perm, 'guard_name' => 'web'],
-                ['guard_name' => 'web']
-            );
-        }
-
-        // ── ROLES ────────────────────────────────────────────────────
-        $roles = [
+        $uksRoles = [
             [
                 'name' => 'Kepala UKS',
-                'guard_name' => 'web',
-                'permissions' => $permissions,
-                'description' => 'Kepala UKS — dapat melihat semua GTK UKS (putra & putri)',
+                'level' => 20,
+                'description' => 'Kepala Unit Kesehatan Sekolah — admin penuh UKS Putra & Putri',
             ],
             [
-                'name' => 'Admin UKS',
-                'guard_name' => 'web',
-                'permissions' => array_intersect($permissions, ['view_uks_data', 'manage_uks_patients', 'manage_uks_health_records']),
-                'description' => 'Admin UKS — pengelolaan GTK UKS semua gender (merge Putra & Putri)',
+                'name' => 'Admin UKS Putra',
+                'level' => 21,
+                'description' => 'Petugas UKS putra — CRUD data kesehatan santri putra',
+            ],
+            [
+                'name' => 'Admin UKS Putri',
+                'level' => 21,
+                'description' => 'Petugas UKS putri — CRUD data kesehatan santri putri',
+            ],
+            [
+                'name' => 'UKS',
+                'level' => 22,
+                'description' => 'Role umum UKS (fallback untuk Kepala UKS & Admin UKS)',
             ],
         ];
 
-        foreach ($roles as $roleData) {
+        foreach ($uksRoles as $roleData) {
             $role = Role::firstOrCreate(
-                ['name' => $roleData['name'], 'guard_name' => $roleData['guard_name']],
-                ['guard_name' => $roleData['guard_name']]
+                ['name' => $roleData['name']],
+                [
+                    'level' => $roleData['level'],
+                    'description' => $roleData['description'],
+                ]
             );
-            $role->syncPermissions($roleData['permissions']);
+            // Ensure UUID is set for existing records
+            if (!$role->exists || empty($role->id)) {
+                $role->forceFill(['id' => \Illuminate\Support\Str::uuid()->toString()])->save();
+            }
         }
 
-        // Cache roles
-        app()['cache']->forget('spatie.permission.cache');
-
-        $this->command->info('UKS roles seeded successfully.');
+        $this->command->info('✅ UKS role updated successfully!');
+        $this->command->info('  - UKS (level 21) — CRUD full access');
     }
 }

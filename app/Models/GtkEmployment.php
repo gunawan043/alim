@@ -100,7 +100,7 @@ class GtkEmployment extends Model
 
     public function jabatanRel()
     {
-        return $this->belongsTo(Jabatan::class, 'jabatan_id');
+        return $this->belongsTo(Position::class, 'jabatan_id');
     }
 
     /*

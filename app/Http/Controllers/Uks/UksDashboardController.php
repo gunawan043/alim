@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
- * UKS Dashboard — comprehensive dashboard for Kepala UKS / Admin UKS.
+ * UKS Dashboard — comprehensive dashboard for Kepala UKS / Admin Kesehatan.
  */
 class UksDashboardController extends Controller
 {
@@ -25,13 +25,17 @@ class UksDashboardController extends Controller
         $currentUser = auth()->user();
         $roles = $currentUser->getRoleNames();
 
-        // Gender filter based on role
+        // Gender filter: UKS Putra = 'L', UKS Putri = 'P'
         $genderFilter = null;
-        if ($roles->contains('Admin UKS')) {
-            $genderFilter = 'L';
-        } elseif ($roles->contains('Admin UKS')) {
-            $genderFilter = 'P';
+        $primaryWorkUnit = $currentUser->primaryWorkUnit;
+        if ($primaryWorkUnit) {
+            if (str_contains($primaryWorkUnit->name ?? '', 'Putra')) {
+                $genderFilter = 'L';
+            } elseif (str_contains($primaryWorkUnit->name ?? '', 'Putri')) {
+                $genderFilter = 'P';
+            }
         }
+        // Fallback: if role is UKS without work unit, allow all (no filter)
 
         // ── Card 1: Total Santri ────────────────────────────────
         $totalSantriQuery = Student::whereHas('activeDormitoryResident')

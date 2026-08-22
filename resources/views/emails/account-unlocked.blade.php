@@ -21,7 +21,7 @@
             Yth. <strong>{{ $userName }}</strong>,
         </p>
         <div style="background:#d1e7dd;border:1px solid #a3cfbb;border-radius:6px;padding:15px;margin:20px 0;font-size:14px;color:#0f5132">
-            <strong>✅好消息 — Selamat!</strong><br>
+            <strong>✅ Selamat!</strong><br>
             Akun Anda telah dibuka kembali oleh Super Admin dan siap digunakan.
         </div>
         <p style="font-size:14px;line-height:1.6;margin:0 0 20px">

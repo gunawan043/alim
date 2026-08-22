@@ -124,7 +124,7 @@ class SettingController extends Controller
             ],
             'ditolak' => [
                 'subject' => 'Pengumuman Hasil Rekrutmen Akhir',
-                'body' => "Yth. {{nama}},\n\nTerima kasih telah mengikuti seluruh proses rekrutmen untuk posisi {{posisi}}.\n\nMohon maaf, setelah mempertimbangkan seluruh aspek, kami belum dapat menerima Anda pada kesempatan ini.\n\nKami tetap menghargai kualifikasi Anda dan鼓励 Anda untuk melamar di posisi lain di masa depan.\n\nHormat kami,\nTim Rekrutmen",
+                'body' => "Yth. {{nama}},\n\nTerima kasih telah mengikuti seluruh proses rekrutmen untuk posisi {{posisi}}.\n\nMohon maaf, setelah mempertimbangkan seluruh aspek, kami belum dapat menerima Anda pada kesempatan ini.\n\nKami tetap menghargai kualifikasi Anda dan mendorong Anda untuk melamar di posisi lain di masa depan.\n\nHormat kami,\nTim Rekrutmen",
             ],
             'reminder' => [
                 'subject' => 'Reminder: Jadwal {{tahapan}} besok',

@@ -91,6 +91,12 @@ class PermissionSeeder extends Seeder
             'absensi_report',
             'absensi_approve',
 
+            // Teacher Attendance (absensi guru mapel via QR)
+            'teacher-attendance_view',
+            'teacher-attendance_export',
+            'teacher-attendance_report_export',
+            'teacher-attendance_manual',
+
             // Penggajian
             'penggajian_view',
             'penggajian_edit',
@@ -657,6 +663,10 @@ class PermissionSeeder extends Seeder
             'absensi_edit' => 'Can edit attendance data',
             'absensi_report' => 'Can view attendance reports',
             'absensi_approve' => 'Can approve attendance',
+            'teacher-attendance_view' => 'Can view teacher attendance (scan, history)',
+            'teacher-attendance_export' => 'Can export own teacher attendance history',
+            'teacher-attendance_report_export' => 'Can export teacher attendance report (all teachers — TU/Waka/KSP)',
+            'teacher-attendance_manual' => 'Can perform manual check-in for other teachers (Waka-only)',
             'penggajian_view' => 'Can view payroll data',
             'penggajian_edit' => 'Can edit payroll data',
             'penggajian_process' => 'Can process payroll',

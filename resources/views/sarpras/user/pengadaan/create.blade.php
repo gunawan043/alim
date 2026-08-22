@@ -43,7 +43,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Keperluan <span class="text-danger">*</span></label>
-                            <textarea name="purpose" class="form-control" rows="3" required placeholder="Jelaskan为什么要 pengadaan barang ini...">{{ old('purpose') }}</textarea>
+                            <textarea name="purpose" class="form-control" rows="3" required placeholder="Jelaskan keperluan pengadaan barang ini...">{{ old('purpose') }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Catatan Tambahan</label>

@@ -11,6 +11,9 @@
 |
 */
 
+// Suppress deprecation warnings (PHP 8.5+)
+error_reporting(error_reporting() & ~E_DEPRECATED);
+
 $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );

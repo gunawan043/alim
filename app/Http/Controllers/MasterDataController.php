@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Jabatan;
 use App\Models\JenisGtk;
+use App\Models\Position;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +78,7 @@ class MasterDataController extends Controller
     // ============================================================
     public function jabatanIndex(Request $request)
     {
-        $query = Jabatan::with('jenisGtk')
+        $query = Position::with('jenisGtk')
             ->orderBy('jenis_gtk_id')
             ->orderBy('urutan')
             ->orderBy('nama');
@@ -107,7 +107,7 @@ class MasterDataController extends Controller
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
             'nama' => [
                 'required', 'string', 'max:150',
-                Rule::unique('jabatan')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 ),
             ],
             'kategori' => 'nullable|string|max:50',
@@ -117,7 +117,7 @@ class MasterDataController extends Controller
         ]);
 
         $data['id'] = Str::uuid();
-        Jabatan::create($data);
+        Position::create($data);
 
         return redirect()->route('user.master-data.jabatan.index')
             ->with('success', 'Jabatan berhasil ditambahkan.');
@@ -125,13 +125,13 @@ class MasterDataController extends Controller
 
     public function jabatanUpdate(Request $request, string $id)
     {
-        $jabatan = Jabatan::findOrFail($id);
+        $jabatan = Position::findOrFail($id);
 
         $data = $request->validate([
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
             'nama' => [
                 'required', 'string', 'max:150',
-                Rule::unique('jabatan')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 )->ignore($id),
             ],
             'kategori' => 'nullable|string|max:50',
@@ -148,7 +148,7 @@ class MasterDataController extends Controller
 
     public function jabatanDestroy(string $id)
     {
-        Jabatan::findOrFail($id)->delete();
+        Position::findOrFail($id)->delete();
 
         return redirect()->route('user.master-data.jabatan.index')
             ->with('success', 'Jabatan berhasil dihapus.');
@@ -159,7 +159,7 @@ class MasterDataController extends Controller
     // ============================================================
     public function getJabatanByJenis(Request $request)
     {
-        $jabatan = Jabatan::active()
+        $jabatan = Position::active()
             ->where('jenis_gtk_id', $request->jenis_gtk_id)
             ->orderBy('urutan')
             ->orderBy('nama')

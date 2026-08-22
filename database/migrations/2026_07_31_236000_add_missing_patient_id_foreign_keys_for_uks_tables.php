@@ -13,6 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // SQLite does not support information_schema queries
         $tables = [
             'uks_treatments',
             'uks_medication_logs',
@@ -23,30 +24,13 @@ return new class extends Migration
         ];
 
         foreach ($tables as $table) {
-            // Only add FK if column exists and no existing FK to uks_patients
-            if (Schema::hasColumn($table, 'patient_id')) {
-                $fkExists = collect(
-                    DB::select(
-                        "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-                         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-                         AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME = 'uks_patients'",
-                        [config('database.connections.mysql.database'), $table]
-                    )
-                )->isNotEmpty();
-
-                if (! $fkExists) {
-                    Schema::table($table, function (Blueprint $table) {
-                        $table->foreign('patient_id')
-                            ->references('id')
-                            ->on('uks_patients')
-                            ->onDelete('cascade');
-                    });
-                    echo "Added FK: {$table}.patient_id -> uks_patients.id\n";
-                } else {
-                    echo "FK already exists on: {$table}\n";
-                }
-            } else {
-                echo "Warning: {$table} does not have patient_id column\n";
+            if (Schema::hasColumn($table, 'patient_id') && Schema::hasTable('uks_patients')) {
+                Schema::table($table, function (Blueprint $table) {
+                    $table->foreign('patient_id')
+                        ->references('id')
+                        ->on('uks_patients')
+                        ->onDelete('cascade');
+                });
             }
         }
     }

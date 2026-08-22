@@ -725,11 +725,14 @@ class PatientController extends Controller
 
     private function getGenderFilter($roles): ?string
     {
-        if ($roles->contains('Admin UKS')) {
-            return 'L';
-        }
-        if ($roles->contains('Admin UKS')) {
-            return 'P';
+        $currentUser = auth()->user();
+        $primaryWorkUnit = $currentUser->primaryWorkUnit;
+        if ($primaryWorkUnit) {
+            if (str_contains($primaryWorkUnit->name ?? '', 'Putra')) {
+                return 'L';
+            } elseif (str_contains($primaryWorkUnit->name ?? '', 'Putri')) {
+                return 'P';
+            }
         }
 
         return null;

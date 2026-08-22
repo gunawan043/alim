@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Jabatan extends Model
+class Position extends Model
 {
     use HasUuids;
 
-    protected $table = 'jabatan';
+    protected $table = 'positions';
 
     protected $fillable = ['jenis_gtk_id', 'nama', 'kategori', 'deskripsi', 'roles', 'is_active', 'urutan'];
 

@@ -12,8 +12,11 @@ use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
 use App\Services\Boarding\VisitWorkflowService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 
 class DormitoryVisitLogController extends Controller
@@ -355,6 +358,46 @@ class DormitoryVisitLogController extends Controller
             ->findOrFail($visitUuid);
 
         return view('dormitory.visits.card', compact('dormitory', 'visit', 'userId'));
+    }
+
+    /**
+     * PDF version of a single visit card.
+     */
+    public function cardPdf(string $userId, string $asramaUuid, string $visitUuid)
+    {
+        try {
+            $dormitory = Dormitory::findOrFail($asramaUuid);
+            $visit = DormitoryVisitLog::with(['student', 'room', 'approvedBy'])
+                ->where('dormitory_id', $asramaUuid)
+                ->findOrFail($visitUuid);
+
+            $now = now();
+
+            $html = view('dormitory.visits.card-pdf', compact('dormitory', 'visit', 'userId', 'now'))->render();
+
+            $options = (new Options)
+                ->set('isRemoteEnabled', false)
+                ->set('isHtml5ParserEnabled', true)
+                ->set('defaultFont', 'Courier');
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper([0, 0, 175, 600]); // ~58mm width
+            $dompdf->render();
+
+            $output = $dompdf->output();
+            $filename = 'kartu-kunjungan-'.($visit->visitor_name ?? $visit->id).'-'.now()->format('Ymd-His').'.pdf';
+
+            return response($output, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Length' => strlen($output),
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating visit card PDF: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
+
+            return redirect()->back()->with('error', 'Gagal membuat PDF: '.$e->getMessage());
+        }
     }
 
     public function verify(Request $request)

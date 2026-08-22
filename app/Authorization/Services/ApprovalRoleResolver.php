@@ -9,7 +9,7 @@ use App\Authorization\Providers\RoleGroupPermissionProvider;
  * to snapshot permission strings.
  *
  * Replaces the previous pattern where workflow code stored role names
- * ('Kepala Sekolah', 'Wali Santri', 'admin') and checked auth via
+ * ('Wali Santri', 'admin') and checked auth via
  * string-equality with permission names. Every workflow site now declares
  * its permission requirement explicitly through this resolver.
  *
@@ -26,9 +26,8 @@ final class ApprovalRoleResolver
      */
     public const ROLE_TO_PERMISSION = [
         // Approval workflow (GTK transfer)
-        'Kepala Sekolah' => 'gtk.transfer.approve.kepalasekolah',
-        'Wadir 1' => 'gtk.transfer.approve.wadir1',
-        'Wadir 2' => 'gtk.transfer.approve.wadir2',
+        'Wakil Mudir I' => 'gtk.transfer.approve.wadir1',
+        'Wakil Mudir II' => 'gtk.transfer.approve.wadir2',
         'Mudir' => 'gtk.transfer.approve.mudir',
         'Yayasan' => 'gtk.transfer.approve.yayasan',
 
@@ -36,7 +35,6 @@ final class ApprovalRoleResolver
         'admin' => 'general_admin.administrable',
         'Admin' => 'general_admin.administrable',
         'admin_tu' => 'admin.tu.assessable',
-        'Admin Tata Usaha' => 'admin.tu.assessable',
         'Wali Santri' => 'wali_santri.communicable',
     ];
 
