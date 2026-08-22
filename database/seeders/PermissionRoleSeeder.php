@@ -347,6 +347,39 @@ class PermissionRoleSeeder extends Seeder
             'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
         ]);
 
+        // ── ADMIN UKS PUTRA — GTK UKS putra only ──
+        $sync($roleId('Admin UKS Putra') ?? '', [
+            'dashboard_view',
+            'menu-uks-sidebar',
+            'profile_view', 'profile_edit',
+            'menu-asrama-sidebar', 'menu-uks-sidebar',
+            'student_view',
+            'gtk_view', 'gtk_detail_view',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
+        ]);
+
+        // ── ADMIN UKS PUTRI — GTK UKS putri only ──
+        $sync($roleId('Admin UKS Putri') ?? '', [
+            'dashboard_view',
+            'menu-uks-sidebar',
+            'profile_view', 'profile_edit',
+            'menu-asrama-sidebar', 'menu-uks-sidebar',
+            'student_view',
+            'gtk_view', 'gtk_detail_view',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
+        ]);
+
+        // ── UKS — Legacy/General UKS role ──
+        $sync($roleId('UKS') ?? '', [
+            'dashboard_view',
+            'menu-uks-sidebar',
+            'profile_view', 'profile_edit',
+            'menu-asrama-sidebar', 'menu-uks-sidebar',
+            'student_view',
+            'gtk_view', 'gtk_detail_view',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
+        ]);
+
         // ── ADMIN KESEHATAN (UKS fallback) — health checkup, obat, rujukan ─
         $sync($roleId('Admin Kesehatan') ?? '', [
             'dashboard_view',
