@@ -47,36 +47,6 @@ class PermissionRoleSeeder extends Seeder
             DB::table('role_has_permissions')->insert($rows);
         };
 
-        // ── ADMIN UKS PUTRA — GTK UKS putra only ──
-        // Note: Using direct DB query to avoid closure variable shadowing bug
-        $putraRoleId = DB::table('roles')
-            ->where('name', 'Admin UKS Putra')
-            ->where('guard_name', 'web')
-            ->value('id');
-        if (!empty($putraRoleId)) {
-            $putraPermIds = DB::table('permissions')
-                ->where('guard_name', 'web')
-                ->whereIn('name', [
-                    'dashboard_view',
-                    'menu-uks-sidebar',
-                    'profile_view',
-                    'profile_edit',
-                    'menu-asrama-sidebar',
-                    'student_view',
-                    'gtk_view',
-                    'gtk_detail_view',
-                    'uks_patient_view',
-                    'uks_patient_create',
-                    'uks_patient_edit',
-                ])
-                ->pluck('id')
-                ->toArray();
-            if (!empty($putraPermIds)) {
-                $putraRows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $putraRoleId], $putraPermIds);
-                DB::table('role_has_permissions')->insert($putraRows);
-            }
-        }
-
         // Super Admin role removed: System Admin bypasses all checks via is_system_admin flag
         // (handled by Gate::before + AuthorizationManager short-circuit).
         // Role-based Super Admin (no flag) needs impersonate_role to use View-As switcher
