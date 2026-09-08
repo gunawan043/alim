@@ -46,7 +46,7 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.perpindahan') ? ' active' : '' }}" href="{{ route('sarpras.perpindahan.index', ['userId' => $userId]) }}">Perpindahan</a></li>
             @endif
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.aset') ? ' active' : '' }}" href="{{ route('sarpras.user.aset.index', ['userId' => $userId]) }}">Aset Saya</a></li>
-            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.assets.passport') || $isAdminFn($currentRoute, 'sarpras.assets.scan') ? ' active' : '' }}" href="{{ route('sarpras.assets.scan', ['code' => '']) }}">Scan Passport</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.assets.passport') || $isAdminFn($currentRoute, 'sarpras.qr.scanner') ? ' active' : '' }}" href="{{ route('sarpras.qr.scanner', ['userId' => $userId]) }}">Scan Passport</a></li>
         </ul>
     </div>
 </li>
