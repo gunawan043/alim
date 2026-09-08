@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers\SuperAdmin;
 
-use App\Models\City;
-use App\Models\District;
 use App\Models\Province;
 use App\Models\School;
 use App\Models\User;
-use App\Models\Village;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 
@@ -71,7 +68,7 @@ class AdminSchoolController extends Controller
             'school_gender' => 'nullable|in:putra,putri',
             'school_status' => 'nullable|in:negeri,swasta',
             'accreditation' => 'nullable|in:A,B,C,SP,SUDAH_PERFORMA,BELUM_PERFORMA',
-            'accreditation_year' => 'nullable|integer|min:1900|max:' . date('Y'),
+            'accreditation_year' => 'nullable|integer|min:1900|max:'.date('Y'),
             'principal_name' => 'nullable|string|max:255',
             'principal_nip' => 'nullable|string|max:30',
             'principal_nupy' => 'nullable|string|max:50',
@@ -123,7 +120,7 @@ class AdminSchoolController extends Controller
 
         $validated = $request->validate([
             'work_unit_id' => 'required|exists:work_units,id',
-            'npsn' => 'required|string|max:20|unique:schools,npsn,' . $id,
+            'npsn' => 'required|string|max:20|unique:schools,npsn,'.$id,
             'school_code' => 'nullable|string|max:20',
             'name' => 'required|string|max:255',
             'address' => 'nullable|string',
@@ -139,7 +136,7 @@ class AdminSchoolController extends Controller
             'school_gender' => 'nullable|in:putra,putri',
             'school_status' => 'nullable|in:negeri,swasta',
             'accreditation' => 'nullable|in:A,B,C,SP,SUDAH_PERFORMA,BELUM_PERFORMA',
-            'accreditation_year' => 'nullable|integer|min:1900|max:' . date('Y'),
+            'accreditation_year' => 'nullable|integer|min:1900|max:'.date('Y'),
             'principal_name' => 'nullable|string|max:255',
             'principal_nip' => 'nullable|string|max:30',
             'principal_nupy' => 'nullable|string|max:50',
@@ -186,7 +183,7 @@ class AdminSchoolController extends Controller
     public function toggleStatus(Request $request, string $id)
     {
         $school = School::findOrFail($id);
-        $school->update(['is_active' => !$school->is_active]);
+        $school->update(['is_active' => ! $school->is_active]);
 
         return response()->json([
             'success' => true,

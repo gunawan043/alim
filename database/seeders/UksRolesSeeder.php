@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Role;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class UksRolesSeeder extends Seeder
 {
@@ -47,8 +48,8 @@ class UksRolesSeeder extends Seeder
                 ]
             );
             // Ensure UUID is set for existing records
-            if (!$role->exists || empty($role->id)) {
-                $role->forceFill(['id' => \Illuminate\Support\Str::uuid()->toString()])->save();
+            if (! $role->exists || empty($role->id)) {
+                $role->forceFill(['id' => Str::uuid()->toString()])->save();
             }
         }
 

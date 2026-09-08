@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\AssetCategory;
 use App\Models\AssetRoom;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -44,7 +45,7 @@ class AssetTemplateExport
             ->setFitToHeight(0);
 
         // Save to temp file and return as download
-        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
         $tempPath = storage_path("app/templates/{$filename}");
         if (! is_dir(dirname($tempPath))) {
             mkdir(dirname($tempPath), 0755, true);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Authorization;
 
+use App\Http\Middleware\RoleMiddleware;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -38,9 +39,9 @@ final class RoleMiddlewareTest extends TestCase
 
     public function test_middleware_class_is_loadable(): void
     {
-        $this->assertTrue(class_exists(\App\Http\Middleware\RoleMiddleware::class));
+        $this->assertTrue(class_exists(RoleMiddleware::class));
 
-        $ref = new ReflectionClass(\App\Http\Middleware\RoleMiddleware::class);
+        $ref = new ReflectionClass(RoleMiddleware::class);
         $this->assertTrue($ref->hasMethod('handle'));
 
         $method = $ref->getMethod('handle');

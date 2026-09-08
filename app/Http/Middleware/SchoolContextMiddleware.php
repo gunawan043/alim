@@ -2,7 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\School;
+use App\Models\User;
 use App\Services\SchoolGroupService;
+use App\Services\ViewAsService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,13 +48,12 @@ class SchoolContextMiddleware
         $request->attributes->set('isGlobalView', $isGlobalView);
 
         $isSystemAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
-        $isSuperAdmin = ! $isSystemAdmin
-            && method_exists($user, 'hasPermissionTo')
-            && $user->hasPermissionTo('impersonate_role');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
 
-        $viewAs = app(\App\Services\ViewAsService::class);
+        $viewAs = app(ViewAsService::class);
         $canUseViewAs = ($isSystemAdmin || $isSuperAdmin) && $viewAs->isViewingAs();
         $effectiveUserId = $viewAs->getCurrentViewUserId();
+        $isRoleOnly = $viewAs->isRoleOnly();
 
         // View-As context: when SA or Super Admin is Viewing-As a role/user, force a
         // scoped school context from the ViewAsService so the impersonated user
@@ -59,10 +61,10 @@ class SchoolContextMiddleware
         if ($canUseViewAs) {
             // If Login-As (specific user), resolve their school
             if ($effectiveUserId !== null) {
-                $targetUser = \App\Models\User::find($effectiveUserId);
+                $targetUser = User::find($effectiveUserId);
                 if ($targetUser) {
                     $viewAs->setCurrentViewRole($targetUser->getRoleNames()->first());
-                    $school = \App\Services\SchoolGroupService::getUserSchool($targetUser);
+                    $school = SchoolGroupService::getUserSchool($targetUser);
                     $request->attributes->set('schoolContextId', $school?->id);
                     $request->attributes->set('schoolContext', $school);
                     $request->attributes->set('schoolGender', $school?->school_gender);
@@ -76,10 +78,10 @@ class SchoolContextMiddleware
 
             $viewAsRole = $viewAs->getCurrentViewRole();
             if ($viewAsRole !== null) {
-                $ctx = app(\App\Services\ViewAsService::class)->getCurrentViewContext();
+                $ctx = $viewAs->getCurrentViewContext();
                 $ctxSchoolId = $ctx['school_id'] ?? null;
                 if ($ctxSchoolId) {
-                    $school = \App\Models\School::find($ctxSchoolId);
+                    $school = School::find($ctxSchoolId);
                     $request->attributes->set('schoolContextId', $school?->id);
                     $request->attributes->set('schoolContext', $school);
                     $request->attributes->set('schoolGender', $school?->school_gender);
@@ -90,12 +92,15 @@ class SchoolContextMiddleware
                     return $next($request);
                 }
 
+                // Role-only mode (View As without Login As): use the real user's own
+                // school — don't block global-view admins from switching roles.
+                if ($isRoleOnly && $isSystemAdmin) {
+                    return $next($request);
+                }
+
                 // View-as active but no explicit school picked — force scoped
                 // based on the real user's own school employment (so SA/Super
                 // Admin can preview data scoped to their own school).
-                if ($isSystemAdmin) {
-                    return $next($request);
-                }
                 $school = SchoolGroupService::getUserSchool($user);
                 $request->attributes->set('schoolContext', $school);
                 $request->attributes->set('schoolContextId', $school?->id);
@@ -114,7 +119,7 @@ class SchoolContextMiddleware
             $saSchoolId = $request->session()->get('sa_school_id');
 
             if ($saSchoolId) {
-                $school = \App\Models\School::find($saSchoolId);
+                $school = School::find($saSchoolId);
                 $request->attributes->set('schoolContextId', $school?->id);
                 $request->attributes->set('schoolContext', $school);
                 $request->attributes->set('schoolGender', $school?->school_gender);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\System;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\ViewAsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class ViewAsController extends Controller
     {
         $user = $request->user();
         $isSA = $user && method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
-        $isSuper = $user && method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('impersonate_role');
+        $isSuper = $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         if (! $isSA && ! $isSuper) {
             abort(403, 'System Administrator or Super Admin only.');
         }
@@ -64,7 +65,7 @@ class ViewAsController extends Controller
 
         // ── Login As flow (specific user) ──
         if ($userId) {
-            $target = \App\Models\User::find($userId);
+            $target = User::find($userId);
             if (! $target) {
                 return back()->withErrors(['user_id' => 'User not found.']);
             }
@@ -89,8 +90,8 @@ class ViewAsController extends Controller
         // If a role was picked, also bind a target user (first user with role) so
         // routes grouped by {userId} resolve to a valid dashboard.
         if ($roleName !== null && $roleName !== '') {
-            $target = \App\Models\User::role($roleName)->first()
-                ?? \App\Models\User::whereHas('roles', fn ($r) => $r->where('name', $roleName))->first();
+            $target = User::role($roleName)->first()
+                ?? User::whereHas('roles', fn ($r) => $r->where('name', $roleName))->first();
             if ($target) {
                 $this->viewAs->loginAs($target->id, $request->user());
             } else {
@@ -118,7 +119,7 @@ class ViewAsController extends Controller
             'user_id' => ['required', 'string', 'max:64'],
         ]);
 
-        $target = \App\Models\User::find($payload['user_id']);
+        $target = User::find($payload['user_id']);
         if (! $target) {
             return back()->withErrors(['user_id' => 'User not found.']);
         }
@@ -147,7 +148,7 @@ class ViewAsController extends Controller
             'role' => ['nullable', 'string', 'max:191'],
         ]);
 
-        $query = \App\Models\User::query()
+        $query = User::query()
             ->whereNull('users.deleted_at')
             ->select('users.id', 'users.name', 'users.email');
 

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AlumniExport;
 use App\Models\Alumni;
 use App\Models\School;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AlumniController extends Controller
 {
@@ -205,8 +207,8 @@ class AlumniController extends Controller
 
     private function exportExcel($alumni)
     {
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\AlumniExport($alumni),
+        return Excel::download(
+            new AlumniExport($alumni),
             'data-alumni-'.date('Y-m-d').'.xlsx'
         );
     }

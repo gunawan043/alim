@@ -9,6 +9,7 @@ use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -155,7 +156,7 @@ class StudentAssignedToRombelEventTest extends TestCase
 
         // Listener implements ShouldQueue → Laravel pushes a CallQueuedListener
         // straight onto the connection (Dispatcher::queueHandler) — captured by Queue::fake().
-        Queue::assertPushed(\Illuminate\Events\CallQueuedListener::class, function ($queuedListener) use ($student, $history) {
+        Queue::assertPushed(CallQueuedListener::class, function ($queuedListener) use ($student, $history) {
             return $queuedListener->class === ProvisionStudentAcademicDataListener::class
                 && $queuedListener->data[0]->studentId === $student->id
                 && $queuedListener->data[0]->classHistoryId === $history->id;

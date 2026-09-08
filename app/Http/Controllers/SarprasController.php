@@ -12,8 +12,10 @@ use App\Models\GtkWorkUnit;
 use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 class SarprasController extends Controller
 {
@@ -71,7 +73,7 @@ class SarprasController extends Controller
 
     public function gedungIndex(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $query = AssetBuilding::with('school');
 
@@ -101,7 +103,7 @@ class SarprasController extends Controller
 
     public function gedungCreate(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $schoolId = $request->attributes->get('schoolContextId');
         $schools = $schoolId ? School::where('id', $schoolId)->get() : School::orderBy('name')->get();
@@ -111,7 +113,7 @@ class SarprasController extends Controller
 
     public function gedungStore(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $validated = $request->validate([
             'school_id' => 'required|exists:schools,id',
@@ -142,7 +144,7 @@ class SarprasController extends Controller
 
     public function gedungShow(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $gedung = AssetBuilding::with(['school', 'rooms'])->findOrFail($id);
         $this->authorizeBuildingAccess($gedung, request());
@@ -152,7 +154,7 @@ class SarprasController extends Controller
 
     public function gedungEdit(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $gedung = AssetBuilding::findOrFail($id);
         $this->authorizeBuildingAccess($gedung, request());
@@ -165,7 +167,7 @@ class SarprasController extends Controller
 
     public function gedungUpdate(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $gedung = AssetBuilding::findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
@@ -194,7 +196,7 @@ class SarprasController extends Controller
 
     public function gedungDestroy(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $gedung = AssetBuilding::with('rooms')->findOrFail($id);
         $this->authorizeBuildingAccess($gedung, request());
@@ -227,7 +229,7 @@ class SarprasController extends Controller
 
     public function ruangIndex(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $query = AssetRoom::with(['school', 'building']);
 
@@ -257,7 +259,7 @@ class SarprasController extends Controller
 
     public function ruangCreate(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $schoolId = $request->attributes->get('schoolContextId');
         $schools = $schoolId ? School::where('id', $schoolId)->get() : School::orderBy('name')->get();
@@ -270,7 +272,7 @@ class SarprasController extends Controller
 
     public function ruangStore(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $validated = $request->validate([
             'school_id' => 'required|exists:schools,id',
@@ -306,7 +308,7 @@ class SarprasController extends Controller
 
     public function ruangShow(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $ruang = AssetRoom::with(['school', 'building', 'assets'])->findOrFail($id);
         $this->authorizeRoomAccess($ruang, request());
@@ -316,7 +318,7 @@ class SarprasController extends Controller
 
     public function ruangEdit(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $ruang = AssetRoom::findOrFail($id);
         $this->authorizeRoomAccess($ruang, request());
@@ -332,7 +334,7 @@ class SarprasController extends Controller
 
     public function ruangUpdate(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $ruang = AssetRoom::findOrFail($id);
         $this->authorizeRoomAccess($ruang, $request);
@@ -367,7 +369,7 @@ class SarprasController extends Controller
 
     public function ruangDestroy(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $ruang = AssetRoom::with('assets')->findOrFail($id);
         $this->authorizeRoomAccess($ruang, request());
@@ -389,7 +391,7 @@ class SarprasController extends Controller
 
     public function asetIndex(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $query = Asset::with(['room', 'room.school', 'category']);
 
@@ -420,7 +422,7 @@ class SarprasController extends Controller
 
     public function asetCreate(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $schoolId = $request->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
@@ -433,7 +435,7 @@ class SarprasController extends Controller
 
     public function asetStore(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $validated = $request->validate([
             'room_id' => 'nullable|exists:asset_rooms,id',
@@ -477,7 +479,7 @@ class SarprasController extends Controller
 
     public function asetShow(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $aset = Asset::with(['room', 'room.school', 'category', 'creator'])->findOrFail($id);
         $this->authorizeAsetAccess($aset, request());
@@ -487,7 +489,7 @@ class SarprasController extends Controller
 
     public function asetEdit(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $aset = Asset::findOrFail($id);
         $this->authorizeAsetAccess($aset, request());
@@ -503,7 +505,7 @@ class SarprasController extends Controller
 
     public function asetUpdate(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $aset = Asset::findOrFail($id);
         $this->authorizeAsetAccess($aset, $request);
@@ -548,7 +550,7 @@ class SarprasController extends Controller
 
     public function asetDestroy(string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $aset = Asset::findOrFail($id);
         $this->authorizeAsetAccess($aset, request());
@@ -564,7 +566,7 @@ class SarprasController extends Controller
 
     public function asetImportForm(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $schoolId = $request->attributes->get('schoolContextId');
         $rooms = AssetRoom::where('is_active', true)
@@ -585,7 +587,7 @@ class SarprasController extends Controller
 
     public function asetImportProcess(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
@@ -625,7 +627,7 @@ class SarprasController extends Controller
                 ->with('error', 'Gagal mengimport. Silakan perbaiki file sesuai panduan.')
                 ->with('import_errors', $errors);
 
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $failures = $e->failures();
             $errMsgs = [];
             foreach ($failures as $failure) {
@@ -648,7 +650,7 @@ class SarprasController extends Controller
 
     public function asetTemplate(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $roomName = null;
         if ($request->filled('room_id')) {
@@ -658,7 +660,7 @@ class SarprasController extends Controller
 
         $exporter = new AssetTemplateExport($roomName);
         $filename = $roomName
-            ? 'template_import_'.\Illuminate\Support\Str::slug($roomName, '_').'.xlsx'
+            ? 'template_import_'.Str::slug($roomName, '_').'.xlsx'
             : 'template_import_aset.xlsx';
 
         return $exporter->download($filename);
@@ -668,7 +670,7 @@ class SarprasController extends Controller
 
     public function kategoriStore(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
 
         $validated = $request->validate([
             'name' => 'required|string|max:191|unique:asset_categories,name',

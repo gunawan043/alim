@@ -2,6 +2,9 @@
 
 namespace App\Services\Sarpras\Automation;
 
+use App\Events\Sarpras\SlATrackerEscalated;
+use App\Events\Sarpras\SlATrackerOverdue;
+use App\Events\Sarpras\SlATrackerWarned;
 use App\Models\SlADefinition;
 use App\Models\SlaTracker;
 use App\Models\WorkOrder;
@@ -56,12 +59,12 @@ class SlAService
             $tracker->status = 'overdue';
             $tracker->save();
 
-            event(new \App\Events\Sarpras\SlATrackerOverdue($tracker, $overdue));
+            event(new SlATrackerOverdue($tracker, $overdue));
         } elseif ($remaining > 0 && $remaining <= 60) {
             $tracker->status = 'warning';
             $tracker->save();
 
-            event(new \App\Events\Sarpras\SlATrackerWarned($tracker, $remaining));
+            event(new SlATrackerWarned($tracker, $remaining));
         } else {
             $tracker->status = 'on_track';
             $tracker->save();
@@ -113,7 +116,7 @@ class SlAService
         $newLevel = $tracker->escalation_level + 1;
         $tracker->escalate($newLevel);
 
-        event(new \App\Events\Sarpras\SlATrackerEscalated($tracker, $newLevel));
+        event(new SlATrackerEscalated($tracker, $newLevel));
 
         return $tracker;
     }

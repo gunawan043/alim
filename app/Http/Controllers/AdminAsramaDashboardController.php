@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryRoom;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
 
@@ -15,13 +16,13 @@ class AdminAsramaDashboardController extends Controller
 
         // Total asrama
         $totalDormitories = Dormitory::where('is_active', true)->count();
-        $totalRooms = \App\Models\DormitoryRoom::whereHas('dormitory', fn ($q) => $q->where('is_active', true))->count();
+        $totalRooms = DormitoryRoom::whereHas('dormitory', fn ($q) => $q->where('is_active', true))->count();
 
         // Total santri
         $totalSantri = Student::whereHas('activeDormitoryResident')->where('status', 'active')->count();
 
         // Occupancy rate
-        $occupiedRooms = \App\Models\DormitoryRoom::whereHas('dormitory', fn ($q) => $q->where('is_active', true))
+        $occupiedRooms = DormitoryRoom::whereHas('dormitory', fn ($q) => $q->where('is_active', true))
             // ->where('room_status', 'occupied')
             ->count();
 

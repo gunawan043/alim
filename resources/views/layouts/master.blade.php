@@ -45,14 +45,16 @@
                 <!-- container-fluid -->
                 @yield('modal')
             </div>
-                <!-- container-fluid -->
-            </div>
             <!-- End Page-content -->
             @include('layouts.footer')
         </div>
         <!-- end main content-->
     </div>
     <!-- END layout-wrapper -->
+
+    {{-- Dummy Elements untuk Mencegah Error app.js Velzon --}}
+    <div id="two-column-menu" style="display: none;"></div>
+    <div id="scrollbar" style="display: none;"></div>
 
     {{-- @include('layouts.customizer') --}}
 

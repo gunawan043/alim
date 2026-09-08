@@ -50,4 +50,13 @@ final class GlobalHelpersTest extends TestCase
 
         $this->assertIsArray($config['rebuild_queue']);
     }
+
+    public function test_can_access_user_function_exists(): void
+    {
+        $source = file_get_contents(__DIR__.'/../../../app/Authorization/helpers.php');
+
+        $this->assertStringContainsString('function canAccessUser', $source);
+        $this->assertStringContainsString('isRoleOnly', $source);
+        $this->assertStringContainsString('isSystemAdmin', $source);
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\RaportRegistration;
 use App\Models\StudentAbsence;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -183,7 +184,7 @@ class AcademicProvisionService
 
             if (! $exists) {
                 DB::table('admin_nilai_sumatif')->insert([
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'admin_book_id' => $bookId,
                     'student_id' => $this->studentId,
                     'academic_year_id' => $this->academicYearId,

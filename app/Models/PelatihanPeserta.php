@@ -16,7 +16,7 @@ class PelatihanPeserta extends Model
     protected $fillable = ['pelatihan_id', 'user_id', 'status_kehadiran', 'catatan'];
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Pelatihan, PelatihanPeserta>
+     * @return BelongsTo<Pelatihan, PelatihanPeserta>
      */
     public function pelatihan(): BelongsTo
     {
@@ -24,7 +24,7 @@ class PelatihanPeserta extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, PelatihanPeserta>
+     * @return BelongsTo<User, PelatihanPeserta>
      */
     public function user(): BelongsTo
     {
@@ -32,7 +32,7 @@ class PelatihanPeserta extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne<PelatihanSertifikat>
+     * @return HasOne<PelatihanSertifikat>
      */
     public function sertifikat(): HasOne
     {

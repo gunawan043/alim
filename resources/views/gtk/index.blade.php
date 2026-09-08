@@ -475,7 +475,7 @@
                                     </div>
                                 </div>
 
-                                @if (Auth::user()->hasPermissionTo('gtk-create'))
+                                @if (canPermission('super-admin-only') || canPermission('gtk-create'))
                                     <a href="{{ route('user.gtk.import', ['userId' => $userId]) }}" class="btn btn-success">
                                         <i class="bx bx-add-to-queue ri-upload-2-line align-bottom me-1"></i> Import
                                     </a>
@@ -552,6 +552,17 @@
                     <div class="alert alert-danger m-3">{{ session('error') }}</div>
                 @endif
 
+                <div id="bulkActionBar" class="px-3 py-2 bg-light border-bottom d-none align-items-center gap-3">
+                    <span class="badge bg-primary" id="bulkSelectedCount">0</span>
+                    <span class="text-muted small">GTK terpilih</span>
+                    <div class="vr"></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#massUpdateModal">
+                        <i class="ri-edit-fill me-1"></i>Update Massal
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="bulkClearBtn">
+                        <i class="ri-close-circle-line me-1"></i>Hapus Pilihan
+                    </button>
+                </div>
                 <div class="card-body">
                     <div class="table-container">
                         <table class="table table-hover align-middle table-freeze" id="gtkTable">
@@ -564,6 +575,11 @@
                                          Kolom DEFAULT (8): nama, email, no_hp, jabatan,
                                          status_kepegawaian, tmt, satuan_kerja, status_aktif
                                     ============================================================ --}}
+
+                                    {{-- BULK SELECT --}}
+                                    <th style="width:36px;min-width:36px;" class="text-center">
+                                        <input type="checkbox" id="bulkSelectAll" class="form-check-input" style="cursor:pointer;">
+                                    </th>
 
                                     {{-- DEFAULT --}}
                                     <th data-column="nama">Nama GTK</th>
@@ -621,7 +637,10 @@
                             </thead>
                             <tbody class="list">
                                 @forelse($gtkList as $gtk)
-                                    <tr>
+                                    <tr data-gtk-id="{{ $gtk->id }}">
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input bulk-gtk-select" value="{{ $gtk->id }}" data-name="{{ $gtk->name }}" style="cursor:pointer;">
+                                        </td>
                                         {{-- DEFAULT --}}
                                         <td data-column="nama">
                                             <div class="d-flex align-items-center">
@@ -800,7 +819,7 @@
                                                             <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
                                                         </button>
                                                     </li>
-                                                    @if (Auth::user()->hasPermissionTo('gtk-update'))
+                                                    @if (canPermission('super-admin-only') || canPermission('gtk-update'))
                                                         <li>
                                                             <button class="dropdown-item toggle-status" data-id="{{ $gtk->id }}" data-status="{{ $gtk->is_active }}">
                                                                 <i class="ri-toggle-{{ $gtk->is_active ? 'fill' : 'line' }} text-warning me-2"></i>
@@ -825,7 +844,7 @@
                                                 colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                                             <h5 class="mt-2">Belum ada data GTK</h5>
                                             <p class="text-muted mb-0">Tambahkan GTK untuk memulai</p>
-                                            @if (Auth::user()->hasPermissionTo('gtk-create'))
+                                            @if (canPermission('super-admin-only') || canPermission('gtk-create'))
                                                 <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-primary mt-3">
                                                     <i class="ri-add-line me-1"></i> Tambah GTK
                                                 </a>
@@ -1083,6 +1102,87 @@
             </div>
         </div>
     </div>
+
+    <!-- MASS UPDATE MODAL -->
+    <div class="modal fade" id="massUpdateModal" tabindex="-1" aria-labelledby="massUpdateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="massUpdateModalLabel">
+                        <i class="ri-edit-fill me-2 text-primary"></i>Update Massal GTK
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        <i class="ri-information-line me-1"></i>
+                        Field yang tidak diisi tidak akan mengubah data yang sudah ada.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Status Kepegawaian</label>
+                            <select class="form-select" id="massStatusKepegawaian">
+                                <option value="">— Biarkan —</option>
+                                <option value="PTT">PTT</option>
+                                <option value="PTY">PTY</option>
+                                <option value="GTT">GTT</option>
+                                <option value="GTY">GTY</option>
+                                <option value="KONTRAK">Kontrak</option>
+                                <option value="Percobaan">Percobaan</option>
+                                <option value="Magang">Magang</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jenis GTK</label>
+                            <select class="form-select" id="massJenisGtk">
+                                <option value="">— Biarkan —</option>
+                                @foreach($jenisGtk as $j)
+                                    <option value="{{ $j->id }}">{{ $j->nama }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">TMT (Tanggal Mulai Tugas)</label>
+                            <input type="date" class="form-control" id="massTmt">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nomor SK</label>
+                            <input type="text" class="form-control" id="massNomorSk">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tanggal SK</label>
+                            <input type="date" class="form-control" id="massTanggalSk">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pangkat/Golongan</label>
+                            <input type="text" class="form-control" id="massPangkat" placeholder="III/a, dst">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jabatan</label>
+                            <select class="form-select" id="massJabatan">
+                                <option value="">— Biarkan —</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Satuan Kerja</label>
+                            <select class="form-select" id="massWorkUnit">
+                                <option value="">— Biarkan —</option>
+                                @foreach($workUnits as $wu)
+                                    <option value="{{ $wu->id }}">{{ $wu->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="confirmMassUpdate">
+                        <i class="ri-save-fill me-1"></i> Terapkan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('script')
@@ -1097,6 +1197,8 @@
     // Tidak ada lagi ketergantungan pada localStorage untuk
     // menentukan tampilan awal — sudah pasti 8 kolom default.
     // ============================================================
+
+    function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     let currentDeleteUuid  = null;
     let currentResetUserId = null;
@@ -1425,6 +1527,139 @@
         // Checkbox kolom: toggle real-time langsung tanpa tombol Terapkan
         document.querySelectorAll('.column-toggle').forEach(cb => {
             cb.addEventListener('change', function () { toggleColumnVisibility(this); });
+        });
+
+        // ── BULK SELECT ─────────────────────────────────────────────
+        const bulkSelectAll = document.getElementById('bulkSelectAll');
+        const bulkRows      = document.querySelectorAll('.bulk-gtk-select');
+        const actionBar     = document.getElementById('bulkActionBar');
+        const countEl       = document.getElementById('bulkSelectedCount');
+
+        function refreshBulkBar() {
+            const checked = document.querySelectorAll('.bulk-gtk-select:checked');
+            countEl.textContent = checked.length;
+            if (checked.length > 0) {
+                actionBar.classList.remove('d-none');
+                actionBar.classList.add('d-flex');
+            } else {
+                actionBar.classList.add('d-none');
+                actionBar.classList.remove('d-flex');
+            }
+            // Sync "select all" checkbox
+            if (bulkSelectAll) {
+                bulkSelectAll.checked = checked.length === bulkRows.length && bulkRows.length > 0;
+            }
+            // Highlight selected rows
+            bulkRows.forEach(cb => {
+                const tr = cb.closest('tr');
+                if (tr) tr.classList.toggle('table-primary', cb.checked);
+            });
+        }
+
+        if (bulkSelectAll) {
+            bulkSelectAll.addEventListener('change', function () {
+                bulkRows.forEach(cb => {
+                    cb.checked = this.checked;
+                    const tr = cb.closest('tr');
+                    if (tr) tr.classList.toggle('table-primary', this.checked);
+                });
+                refreshBulkBar();
+            });
+        }
+        bulkRows.forEach(cb => {
+            cb.addEventListener('change', refreshBulkBar);
+        });
+
+        const bulkClearBtn = document.getElementById('bulkClearBtn');
+        if (bulkClearBtn) {
+            bulkClearBtn.addEventListener('click', function () {
+                bulkRows.forEach(cb => {
+                    cb.checked = false;
+                    const tr = cb.closest('tr');
+                    if (tr) tr.classList.remove('table-primary');
+                });
+                if (bulkSelectAll) bulkSelectAll.checked = false;
+                refreshBulkBar();
+            });
+        }
+
+        // ── MASS UPDATE ─────────────────────────────────────────────
+        const massJenisSelect = document.getElementById('massJenisGtk');
+        const massJabatanSelect = document.getElementById('massJabatan');
+        if (massJenisSelect && massJabatanSelect) {
+            massJenisSelect.addEventListener('change', async function () {
+                const val = this.value;
+                massJabatanSelect.innerHTML = '<option value="">— Biarkan —</option>';
+                if (!val) return;
+                try {
+                    const res = await fetch('{{ "/$userId" }}/master-data/jabatan-by-jenis?jenis_gtk_id=' + val);
+                    const data = await res.json();
+                    (data.data || []).forEach(j => {
+                        massJabatanSelect.innerHTML += `<option value="${escHtml(j.id)}">${escHtml(j.name)}</option>`;
+                    });
+                } catch(e) { console.error(e); }
+            });
+        }
+
+        document.getElementById('confirmMassUpdate').addEventListener('click', async function () {
+            const checked = document.querySelectorAll('.bulk-gtk-select:checked');
+            if (!checked.length) {
+                Swal.fire('Perhatian', 'Pilih GTK terlebih dahulu', 'warning');
+                return;
+            }
+            const ids = Array.from(checked).map(cb => cb.value);
+            const statusKepegawaian = document.getElementById('massStatusKepegawaian').value || null;
+            const jenisGtkId = document.getElementById('massJenisGtk').value || null;
+            const jabatanId = document.getElementById('massJabatan').value || null;
+            const tmt = document.getElementById('massTmt').value || null;
+            const nomorSk = document.getElementById('massNomorSk').value || null;
+            const tanggalSk = document.getElementById('massTanggalSk').value || null;
+            const pangkat = document.getElementById('massPangkat').value || null;
+            const workUnitId = document.getElementById('massWorkUnit').value || null;
+
+            const hasChanges = statusKepegawaian || jenisGtkId || jabatanId || tmt || nomorSk || tanggalSk || pangkat || workUnitId;
+            if (!hasChanges) {
+                Swal.fire('Perhatian', 'Pilih minimal satu field untuk diupdate', 'warning');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="ri-loader-4-line ri-spin me-1"></i> Memproses...';
+
+            try {
+                const res = await fetch('{{ route("user.gtk.mass-update", ["userId" => $userId]) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ids,
+                        status_kepegawaian: statusKepegawaian,
+                        jenis_gtk_id: jenisGtkId,
+                        jabatan_id: jabatanId,
+                        tmt,
+                        nomor_sk: nomorSk,
+                        tanggal_sk: tanggalSk,
+                        pangkat_golongan: pangkat,
+                        work_unit_id: workUnitId,
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 1500, showConfirmButton: false });
+                    bootstrap.Modal.getInstance(document.getElementById('massUpdateModal')).hide();
+                    setTimeout(() => window.location.reload(), 1600);
+                } else {
+                    Swal.fire('Error', data.message || 'Terjadi kesalahan', 'error');
+                }
+            } catch(e) {
+                Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="ri-save-fill me-1"></i> Terapkan';
+            }
         });
     }
     </script>

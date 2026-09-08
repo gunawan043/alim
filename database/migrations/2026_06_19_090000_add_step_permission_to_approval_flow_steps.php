@@ -1,5 +1,7 @@
 <?php
 
+use App\Authorization\Services\ApprovalRoleResolver;
+use App\Models\ApprovalFlowStep;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,13 +15,13 @@ return new class extends Migration
         });
 
         // Backfill existing rows from ApprovalRoleResolver registry
-        \App\Models\ApprovalFlowStep::query()
+        ApprovalFlowStep::query()
             ->whereNull('step_permission')
             ->orderBy('approval_flow_id')
             ->orderBy('step_order')
             ->chunk(100, function ($steps) {
                 foreach ($steps as $step) {
-                    $permissions = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($step->role_name);
+                    $permissions = ApprovalRoleResolver::resolvePermission($step->role_name);
                     $step->step_permission = $permissions[0] ?? $step->role_name;
                     $step->save();
                 }

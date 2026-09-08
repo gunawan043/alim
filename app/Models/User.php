@@ -440,6 +440,19 @@ class User extends Authenticatable
         return (bool) ($this->is_system_admin ?? false);
     }
 
+    public function isSuperAdmin(): bool
+    {
+        if ($this->isSystemAdmin()) {
+            return true;
+        }
+
+        try {
+            return $this->hasRole('Super Admin');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function isPermanent(): bool
     {
         return (bool) ($this->is_permanent ?? false);

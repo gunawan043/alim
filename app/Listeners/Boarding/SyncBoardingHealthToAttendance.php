@@ -5,6 +5,7 @@ namespace App\Listeners\Boarding;
 use App\Events\Boarding\HealthDischarged;
 use App\Events\Boarding\HealthPermitApproved;
 use App\Models\IntegrationEventLog;
+use App\Services\AcademicAttendanceSyncService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 class SyncBoardingHealthToAttendance
 {
     public function __construct(
-        private readonly \App\Services\AcademicAttendanceSyncService $sync,
+        private readonly AcademicAttendanceSyncService $sync,
     ) {}
 
     public function handle(HealthPermitApproved $event): void

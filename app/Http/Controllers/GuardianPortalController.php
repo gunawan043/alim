@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
+use App\Models\DormitoryPermit;
+use App\Models\DormitoryVisitLog;
+use App\Models\NotificationUniversal;
 use App\Models\Student;
+use App\Models\StudentHealthPermit;
 use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
 use App\Services\Boarding\HealthWorkflowService;
@@ -55,15 +60,15 @@ class GuardianPortalController extends Controller
 
         // Recent permits across all children (latest 10)
         $recentLeaveIds = $students->pluck('student_id');
-        $recentLeave = \App\Models\DormitoryPermit::whereIn('student_id', $recentLeaveIds)
+        $recentLeave = DormitoryPermit::whereIn('student_id', $recentLeaveIds)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
-        $recentVisits = \App\Models\DormitoryVisitLog::whereIn('student_id', $recentLeaveIds)
+        $recentVisits = DormitoryVisitLog::whereIn('student_id', $recentLeaveIds)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
-        $recentHealth = \App\Models\StudentHealthPermit::whereIn('student_id', $recentLeaveIds)
+        $recentHealth = StudentHealthPermit::whereIn('student_id', $recentLeaveIds)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -89,7 +94,7 @@ class GuardianPortalController extends Controller
             return view('portal.token-expired');
         }
 
-        $notifications = \App\Models\NotificationUniversal::where('user_id', $wali->user_id)
+        $notifications = NotificationUniversal::where('user_id', $wali->user_id)
             ->where('is_archived', false)
             ->where(function ($q) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>=', now());
@@ -97,7 +102,7 @@ class GuardianPortalController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $unreadCount = \App\Models\NotificationUniversal::where('user_id', $wali->user_id)
+        $unreadCount = NotificationUniversal::where('user_id', $wali->user_id)
             ->where('is_read', false)
             ->where('is_archived', false)
             ->count();
@@ -121,7 +126,7 @@ class GuardianPortalController extends Controller
             return view('portal.token-expired');
         }
 
-        \App\Models\NotificationUniversal::where('user_id', $wali->user_id)
+        NotificationUniversal::where('user_id', $wali->user_id)
             ->where('id', $id)
             ->update(['is_read' => true, 'read_at' => now()]);
 
@@ -140,7 +145,7 @@ class GuardianPortalController extends Controller
             return view('portal.token-expired');
         }
 
-        \App\Models\NotificationUniversal::where('user_id', $wali->user_id)
+        NotificationUniversal::where('user_id', $wali->user_id)
             ->where('is_read', false)
             ->update(['is_read' => true, 'read_at' => now()]);
 
@@ -182,7 +187,7 @@ class GuardianPortalController extends Controller
             $selectedStudent = $waliStudents->where('student_id', (int) $studentId)->first()?->student;
 
             // Aggregate three workflows into chronological timeline
-            $permits = \App\Models\DormitoryPermit::where('student_id', $studentId)->get()->map(fn ($p) => [
+            $permits = DormitoryPermit::where('student_id', $studentId)->get()->map(fn ($p) => [
                 'kind' => 'leave',
                 'date' => $p->created_at,
                 'title' => "Izin Pulang #{$p->permit_code}",
@@ -191,7 +196,7 @@ class GuardianPortalController extends Controller
                 'note' => $p->notes,
             ]);
 
-            $visits = \App\Models\DormitoryVisitLog::where('student_id', $studentId)->get()->map(fn ($v) => [
+            $visits = DormitoryVisitLog::where('student_id', $studentId)->get()->map(fn ($v) => [
                 'kind' => 'visit',
                 'date' => $v->created_at,
                 'title' => 'Penjengukan',
@@ -200,7 +205,7 @@ class GuardianPortalController extends Controller
                 'note' => $v->purpose,
             ]);
 
-            $health = \App\Models\StudentHealthPermit::where('student_id', $studentId)->get()->map(fn ($h) => [
+            $health = StudentHealthPermit::where('student_id', $studentId)->get()->map(fn ($h) => [
                 'kind' => 'health',
                 'date' => $h->created_at,
                 'title' => "Izin Sakit ({$h->permit_type})",
@@ -253,7 +258,7 @@ class GuardianPortalController extends Controller
         $this->authorizeWaliAccess($wali, $data['student_id']);
 
         $student = Student::findOrFail($data['student_id']);
-        $activeYear = $student->academic_year_id ?? \App\Models\AcademicYear::active()?->id;
+        $activeYear = $student->academic_year_id ?? AcademicYear::active()?->id;
 
         $permit = $this->leave->submit($data, $student->dormitory_id, $activeYear);
 

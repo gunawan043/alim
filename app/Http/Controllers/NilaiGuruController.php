@@ -10,10 +10,13 @@ use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
 use App\Models\PenghargaanAkademik;
 use App\Models\StudentClassHistory;
+use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class NilaiGuruController extends Controller
 {
@@ -27,7 +30,7 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Satuan Pendidikan',
+            'Kepala Sekolah',
         ]);
 
         // Daftar mapel yang diampu guru ini
@@ -41,7 +44,7 @@ class NilaiGuruController extends Controller
 
         $subjects = (clone $baseQuery)
             ->pluck('subject_id')->unique()
-            ->map(fn ($id) => \App\Models\Subject::find($id))
+            ->map(fn ($id) => Subject::find($id))
             ->filter()->sortBy('name')->values();
 
         return view('nilai-guru.index', compact(
@@ -133,10 +136,10 @@ class NilaiGuruController extends Controller
         $recapPerMonth = AdminPresensiMapel::where('admin_book_id', $book['adminBook']->id)
             ->with(['presensiSiswa'])
             ->get()
-            ->groupBy(fn ($m) => \Carbon\Carbon::parse($m->attendance_date)->format('Y-m'))
+            ->groupBy(fn ($m) => Carbon::parse($m->attendance_date)->format('Y-m'))
             ->map(fn ($group, $key) => [
                 'month' => $key,
-                'label' => \Carbon\Carbon::parse($key.'-01')->translatedFormat('F Y'),
+                'label' => Carbon::parse($key.'-01')->translatedFormat('F Y'),
                 'total_meetings' => $group->count(),
                 'hadir' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'hadir')->count(),
                 'izin' => $group->flatMap(fn ($m) => $m->presensiSiswa)->where('status', 'izin')->count(),
@@ -153,7 +156,7 @@ class NilaiGuruController extends Controller
         $rekapMonth = $request->input('rekap_month', $recapPerMonth->first()['month'] ?? null);
 
         if ($rekapMonth) {
-            $rekapMonthObj = \Carbon\Carbon::parse($rekapMonth.'-01');
+            $rekapMonthObj = Carbon::parse($rekapMonth.'-01');
 
             // Semua meeting di bulan tsb, diurutkan berdasarkan tanggal
             $rekapMeetings = AdminPresensiMapel::where('admin_book_id', $book['adminBook']->id)
@@ -674,7 +677,7 @@ class NilaiGuruController extends Controller
         $academicYearId = $book['adminBook']->academic_year_id;
         $data = $request->all();
 
-        \Illuminate\Support\Facades\Log::info('autoSave called', [
+        Log::info('autoSave called', [
             'type' => $request->input('type'),
             'sumatif' => $data['sumatif'] ?? null,
         ]);
@@ -833,7 +836,7 @@ class NilaiGuruController extends Controller
         $user = User::findOrFail($userId);
 
         $isPrivileged = $user->hasAnyRole([
-            'Satuan Pendidikan',
+            'Kepala Sekolah',
         ]);
 
         // Cast integer adminBookId

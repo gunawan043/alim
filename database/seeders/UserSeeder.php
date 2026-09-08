@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
             ['name' => 'Guru Contoh',           'email' => 'gtk@example.com',          'password' => 'password123', 'role' => 'Guru'],
             ['name' => 'Mudir',                  'email' => 'mudir@example.com',        'password' => 'password123', 'role' => 'Mudir'],
             ['name' => 'Wakil Kepala Sekolah',  'email' => 'wakasek@example.com',     'password' => 'password123', 'role' => 'Wakil Mudir I'],
-            ['name' => 'Kepala Sekolah',         'email' => 'kepsek@example.com',       'password' => 'password123', 'role' => 'Satuan Pendidikan'],
+            ['name' => 'Kepala Sekolah',         'email' => 'kepsek@example.com',       'password' => 'password123', 'role' => 'Kepala Sekolah'],
         ];
 
         foreach ($users as $u) {
@@ -34,42 +34,42 @@ class UserSeeder extends Seeder
                 'name' => 'Admin TU SD IT Putra',
                 'email' => 'tu.sdputra@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SD IT Putri',
                 'email' => 'tu.sdputri@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SD IT Putri Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMP IT Putra',
                 'email' => 'tu.smpputra@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SMP IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMP IT Putri',
                 'email' => 'tu.smpputri@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SMP IT Putri Abu Hurairah Mataram',
             ],
             [
                 'name' => 'Admin TU SMA IT',
                 'email' => 'tu.sma@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SMA IT Putra Abu Hurairah Mataram',
             ],
             [
                 'name' => 'TU SD IT Putra (Read-Only)',
                 'email' => 'tu-readonly@example.com',
                 'password' => 'password123',
-                'role' => 'Satuan Pendidikan',
+                'role' => 'Kepala Sekolah',
                 'school' => 'SD IT Putra Abu Hurairah Mataram',
             ],
         ];

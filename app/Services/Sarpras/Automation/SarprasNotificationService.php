@@ -2,6 +2,8 @@
 
 namespace App\Services\Sarpras\Automation;
 
+use App\Jobs\Sarpras\SendSarprasNotificationJob;
+use App\Models\NotificationUniversal;
 use Illuminate\Support\Facades\Log;
 
 class SarprasNotificationService
@@ -38,7 +40,7 @@ class SarprasNotificationService
             'action_text' => $context['action_text'] ?? 'Lihat Detail',
         ];
 
-        \App\Jobs\Sarpras\SendSarprasNotificationJob::dispatch(
+        SendSarprasNotificationJob::dispatch(
             array_map('intval', $recipientUserIds),
             $payload,
         );
@@ -50,7 +52,7 @@ class SarprasNotificationService
     public function deliver(int $userId, array $payload): void
     {
         try {
-            \App\Models\NotificationUniversal::create([
+            NotificationUniversal::create([
                 'user_id' => $userId,
                 'module' => $payload['module'] ?? 'sarpras',
                 'reference_type' => $payload['reference_type'] ?? null,

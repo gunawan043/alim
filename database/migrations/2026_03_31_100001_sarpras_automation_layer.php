@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -92,7 +93,7 @@ return new class extends Migration
         ];
 
         foreach ($defaults as $d) {
-            \Illuminate\Support\Facades\DB::table('sarpras_sla_definitions')->insert([
+            DB::table('sarpras_sla_definitions')->insert([
                 'workflow_type' => $d[0],
                 'priority' => $d[1],
                 'response_minutes' => $d[2] ?? null,

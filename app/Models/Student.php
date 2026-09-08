@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
+use App\Services\UnifiedStudentTimelineService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -82,7 +83,7 @@ class Student extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function school(): BelongsTo
@@ -105,22 +106,22 @@ class Student extends Model
 
     public function province()
     {
-        return $this->belongsTo(\App\Models\Province::class, 'province_code', 'code');
+        return $this->belongsTo(Province::class, 'province_code', 'code');
     }
 
     public function city()
     {
-        return $this->belongsTo(\App\Models\City::class, 'city_code', 'code');
+        return $this->belongsTo(City::class, 'city_code', 'code');
     }
 
     public function district()
     {
-        return $this->belongsTo(\App\Models\District::class, 'district_code', 'code');
+        return $this->belongsTo(District::class, 'district_code', 'code');
     }
 
     public function village()
     {
-        return $this->belongsTo(\App\Models\Village::class, 'village_code', 'code');
+        return $this->belongsTo(Village::class, 'village_code', 'code');
     }
 
     public function classHistories(): HasMany
@@ -248,8 +249,8 @@ class Student extends Model
     /**
      * Convenience accessor for the unified timeline service.
      */
-    public function unifiedTimeline(): \App\Services\UnifiedStudentTimelineService
+    public function unifiedTimeline(): UnifiedStudentTimelineService
     {
-        return new \App\Services\UnifiedStudentTimelineService($this);
+        return new UnifiedStudentTimelineService($this);
     }
 }

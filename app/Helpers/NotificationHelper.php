@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\NotificationUniversalService;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 if (! function_exists('notify')) {
     function notify()
@@ -56,13 +58,13 @@ if (! function_exists('format_currency')) {
 if (! function_exists('format_date')) {
     function format_date($date, $format = 'd F Y')
     {
-        return $date ? \Carbon\Carbon::parse($date)->translatedFormat($format) : '-';
+        return $date ? Carbon::parse($date)->translatedFormat($format) : '-';
     }
 }
 
 if (! function_exists('generate_uuid')) {
     function generate_uuid()
     {
-        return (string) \Illuminate\Support\Str::uuid();
+        return (string) Str::uuid();
     }
 }

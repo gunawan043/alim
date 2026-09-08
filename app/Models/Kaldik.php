@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -127,9 +128,9 @@ class Kaldik extends Model
     }
 
     // ACCESSORS
-    protected function name(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function name(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: fn (string $value) => $value,
         );
     }

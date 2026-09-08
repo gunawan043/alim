@@ -5,10 +5,13 @@
 
 require __DIR__.'/vendor/autoload.php';
 $app = require __DIR__.'/bootstrap/app.php';
-$kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
+use App\Events\GtkProfileUpdated;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 echo "=== GTK Workload Smoke Test ===\n";
 
@@ -18,8 +21,8 @@ DB::table('gtk_analysis_runs')->delete();
 
 // Test 1: Dispatch single GtkProfileUpdated event
 echo "\nTest 1: Single GtkProfileUpdated event\n";
-\App\Events\GtkProfileUpdated::dispatch(
-    (string) \Illuminate\Support\Str::uuid(),
+GtkProfileUpdated::dispatch(
+    (string) Str::uuid(),
     'test_change',
     'manual_trigger',
     'test_ref_1'
@@ -33,14 +36,14 @@ echo 'Result: '.($count1 === 1 ? 'PASS' : 'FAIL')."\n";
 
 // Test 2: Dispatch 2 simultaneous events (should dedup)
 echo "\nTest 2: Two burst GtkProfileUpdated events (dedup)\n";
-\App\Events\GtkProfileUpdated::dispatch(
-    (string) \Illuminate\Support\Str::uuid(),
+GtkProfileUpdated::dispatch(
+    (string) Str::uuid(),
     'test_change',
     'manual_trigger',
     'test_ref_2a'
 );
-\App\Events\GtkProfileUpdated::dispatch(
-    (string) \Illuminate\Support\Str::uuid(),
+GtkProfileUpdated::dispatch(
+    (string) Str::uuid(),
     'test_change',
     'manual_trigger',
     'test_ref_2b'

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Mobile;
 
+use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMahrom;
 use App\Models\User;
@@ -16,7 +17,7 @@ class MobileMahromApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createSchool(): \App\Models\School
+    private function createSchool(): School
     {
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -37,7 +38,7 @@ class MobileMahromApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return \App\Models\School::find($schoolId);
+        return School::find($schoolId);
     }
 
     private function createWali(array $attrs = []): User

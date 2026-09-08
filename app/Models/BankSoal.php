@@ -6,6 +6,7 @@ use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -54,7 +55,7 @@ class BankSoal extends Model
 
     public function school(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\School::class);
+        return $this->belongsTo(School::class);
     }
 
     public function subject(): BelongsTo
@@ -82,7 +83,7 @@ class BankSoal extends Model
         return $this->hasMany(Soal::class)->where('status', 'approved');
     }
 
-    public function tujuanPembelajaran(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function tujuanPembelajaran(): BelongsToMany
     {
         return $this->belongsToMany(TujuanPembelajaran::class, 'bank_soal_tp', 'bank_soal_id', 'tp_id')
             ->withTimestamps();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Models\Asset;
+use App\Services\Sarpras\AssetEventLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,7 +53,7 @@ class SarprasDisposalController extends SarprasBaseController
             ]);
 
             // Log to asset events
-            $logger = app(\App\Services\Sarpras\AssetEventLogger::class);
+            $logger = app(AssetEventLogger::class);
             $logger->logAssetStatusChanged(
                 $asset,
                 $previousCondition ?: 'active',
@@ -81,7 +82,7 @@ class SarprasDisposalController extends SarprasBaseController
             'disposal_date' => null,
         ]);
 
-        $logger = app(\App\Services\Sarpras\AssetEventLogger::class);
+        $logger = app(AssetEventLogger::class);
         $logger->logAssetStatusChanged(
             $asset,
             'disposal_proposed',
@@ -121,7 +122,7 @@ class SarprasDisposalController extends SarprasBaseController
                 'condition' => 'dihapus',
             ]);
 
-            $logger = app(\App\Services\Sarpras\AssetEventLogger::class);
+            $logger = app(AssetEventLogger::class);
             $logger->logAssetStatusChanged(
                 $asset,
                 'disposed',

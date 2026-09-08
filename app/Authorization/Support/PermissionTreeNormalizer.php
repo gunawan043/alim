@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace App\Authorization\Support;
 
+use App\Authorization\DTO\PermissionOrigin;
+
 final class PermissionTreeNormalizer
 {
     public static function normalize(array $origins): array
     {
         $filtered = array_filter(
             $origins,
-            static fn ($origin): bool => $origin instanceof \App\Authorization\DTO\PermissionOrigin
+            static fn ($origin): bool => $origin instanceof PermissionOrigin
         );
 
         $indexed = array_values($filtered);
 
         usort(
             $indexed,
-            static function (\App\Authorization\DTO\PermissionOrigin $a, \App\Authorization\DTO\PermissionOrigin $b): int {
+            static function (PermissionOrigin $a, PermissionOrigin $b): int {
                 $cmp = strcmp((string) $a->scope, (string) $b->scope);
                 if ($cmp !== 0) {
                     return $cmp;

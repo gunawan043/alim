@@ -82,7 +82,7 @@
                             @forelse($jabatanList as $i => $j)
                             <tr>
                                 <td>{{ $jabatanList->firstItem() + $i }}</td>
-                                <td><strong>{{ $j->nama }}</strong></td>
+                                <td><strong>{{ $j->name }}</strong></td>
                                 <td>
                                     <span class="badge bg-primary-subtle text-primary">
                                         {{ $j->jenisGtk->nama ?? '-' }}
@@ -102,7 +102,7 @@
                                     <button class="btn btn-soft-warning btn-sm btn-edit"
                                         data-id="{{ $j->id }}"
                                         data-jenis_gtk_id="{{ $j->jenis_gtk_id }}"
-                                        data-nama="{{ $j->nama }}"
+                                        data-name="{{ $j->name }}"
                                         data-kategori="{{ $j->kategori }}"
                                         data-deskripsi="{{ $j->deskripsi }}"
                                         data-is_active="{{ $j->is_active ? '1' : '0' }}"
@@ -152,7 +152,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Nama Jabatan <span class="text-danger">*</span></label>
-                        <input type="text" name="nama" class="form-control" required maxlength="150" placeholder="Contoh: Guru Matematika">
+                        <input type="text" name="name" class="form-control" required maxlength="150" placeholder="Contoh: Guru Matematika">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -207,7 +207,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Nama Jabatan <span class="text-danger">*</span></label>
-                        <input type="text" name="nama" id="edit_nama" class="form-control" required maxlength="150">
+                        <input type="text" name="name" id="edit_name" class="form-control" required maxlength="150">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -246,9 +246,12 @@
 <script>
 document.querySelectorAll('.btn-edit').forEach(btn => {
     btn.addEventListener('click', function () {
-        document.getElementById('formEdit').action = '/personalia/master-data/jabatan/' + this.dataset.id;
+        // Menggunakan URL Route bawaan Laravel
+        let updateUrl = "{{ route('user.master-data.jabatan.update', ['userId' => $userId, 'id' => ':id']) }}";
+        
+        document.getElementById('formEdit').action = updateUrl.replace(':id', this.dataset.id);
         document.getElementById('edit_jenis_gtk_id').value = this.dataset.jenis_gtk_id;
-        document.getElementById('edit_nama').value = this.dataset.nama;
+        document.getElementById('edit_name').value = this.dataset.name;
         document.getElementById('edit_kategori').value = this.dataset.kategori || '';
         document.getElementById('edit_deskripsi').value = this.dataset.deskripsi || '';
         document.getElementById('edit_urutan').value = this.dataset.urutan || 0;
@@ -259,9 +262,16 @@ document.querySelectorAll('.btn-edit').forEach(btn => {
 document.querySelectorAll('.form-delete').forEach(form => {
     form.addEventListener('submit', function (e) {
         e.preventDefault();
-        Swal.fire({ title: 'Hapus jabatan ini?', icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Ya, hapus', cancelButtonText: 'Batal', confirmButtonColor: '#d33'
-        }).then(result => { if (result.isConfirmed) form.submit(); });
+        Swal.fire({
+            title: 'Hapus jabatan ini?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#d33'
+        }).then(result => { 
+            if (result.isConfirmed) form.submit(); 
+        });
     });
 });
 </script>

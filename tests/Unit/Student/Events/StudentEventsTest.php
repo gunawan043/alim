@@ -8,6 +8,8 @@ use App\Models\StudentMutationOut;
 use App\Models\StudentPromotion;
 use App\Models\StudentPromotionDetail;
 use App\Support\LifecycleMessage;
+use Faker\Factory;
+use Illuminate\Support\Str;
 use Tests\Concerns\SafeRefreshDatabase;
 use Tests\TestCase;
 
@@ -30,7 +32,7 @@ class StudentEventsTest extends TestCase
     protected function seedSafeFixtures(): void
     {
         // Minimal fixtures needed for student FKs
-        $workUnitId = (string) \Illuminate\Support\Str::uuid();
+        $workUnitId = (string) Str::uuid();
         \DB::table('work_units')->insert([
             'id' => $workUnitId,
             'name' => 'PONTREN Test',
@@ -57,7 +59,7 @@ class StudentEventsTest extends TestCase
     {
         return Student::create([
             'school_id' => '11111111-1111-1111-1111-111111111111',
-            'nisn' => (string) \Faker\Factory::create()->unique()->numerify('##########'),
+            'nisn' => (string) Factory::create()->unique()->numerify('##########'),
             'nis' => '99001',
             'name' => 'Fulan',
             'status' => 'active',

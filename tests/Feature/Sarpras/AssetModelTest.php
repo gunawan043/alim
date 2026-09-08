@@ -4,6 +4,7 @@ namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
@@ -50,11 +51,11 @@ class AssetModelTest extends TestCase
     /** @test */
     public function version_bump_increments_dashboard_version()
     {
-        \Illuminate\Support\Facades\Cache::forever('sarpras_dashboard_version', 5);
+        Cache::forever('sarpras_dashboard_version', 5);
         $asset = $this->createAsset();
         $asset->update(['condition' => 'rusak_ringan']);
 
-        $this->assertGreaterThan(5, \Illuminate\Support\Facades\Cache::get('sarpras_dashboard_version'));
+        $this->assertGreaterThan(5, Cache::get('sarpras_dashboard_version'));
     }
 
     /** @test */

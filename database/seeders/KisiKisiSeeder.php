@@ -2,10 +2,19 @@
 
 namespace Database\Seeders;
 
+use App\Models\AcademicYear;
 use App\Models\BankSoal;
+use App\Models\GradeLevel;
+use App\Models\KisiKisiItem;
+use App\Models\KisiKisiSoal;
+use App\Models\School;
+use App\Models\Soal;
+use App\Models\SoalOption;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
+use App\Models\WorkUnit;
+use App\Services\Evaluasi\ContentHashEngine;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -62,13 +71,13 @@ class KisiKisiSeeder extends Seeder
 
     private function createSchool(): object
     {
-        $wu = \App\Models\WorkUnit::where('code', 'PAH-UAK-003')->first();
+        $wu = WorkUnit::where('code', 'PAH-UAK-003')->first();
         if (! $wu) {
-            $wu = \App\Models\WorkUnit::where('code', 'PAH-UAK-TEST')->first();
+            $wu = WorkUnit::where('code', 'PAH-UAK-TEST')->first();
         }
         if (! $wu) {
-            $pondok = \App\Models\WorkUnit::where('code', 'PAH-UPI-001')->first();
-            $wu = \App\Models\WorkUnit::create([
+            $pondok = WorkUnit::where('code', 'PAH-UPI-001')->first();
+            $wu = WorkUnit::create([
                 'code' => 'PAH-UAK-TEST',
                 'name' => 'Testing SMP IT',
                 'type' => 'Unit Akademik',
@@ -77,7 +86,7 @@ class KisiKisiSeeder extends Seeder
             ]);
         }
 
-        $school = \App\Models\School::firstOrCreate(
+        $school = School::firstOrCreate(
             ['work_unit_id' => $wu->id],
             [
                 'name' => 'Testing SMP IT',
@@ -123,11 +132,11 @@ class KisiKisiSeeder extends Seeder
 
     private function createGradeLevels(object $school): array
     {
-        $vii = \App\Models\GradeLevel::firstOrCreate(
+        $vii = GradeLevel::firstOrCreate(
             ['school_id' => $school->id, 'name' => 'VII'],
             ['level' => 7]
         );
-        $viii = \App\Models\GradeLevel::firstOrCreate(
+        $viii = GradeLevel::firstOrCreate(
             ['school_id' => $school->id, 'name' => 'VIII'],
             ['level' => 8]
         );
@@ -137,7 +146,7 @@ class KisiKisiSeeder extends Seeder
 
     private function createAcademicYear(object $school): ?object
     {
-        $ay = \App\Models\AcademicYear::firstOrCreate(
+        $ay = AcademicYear::firstOrCreate(
             ['name' => '2026/2027'],
             ['semester' => 'ganjil', 'is_active' => true]
         );
@@ -253,19 +262,19 @@ class KisiKisiSeeder extends Seeder
                 continue;
             }
 
-            $existing = \App\Models\Soal::where('pertanyaan', $q['pertanyaan'])
+            $existing = Soal::where('pertanyaan', $q['pertanyaan'])
                 ->where('tp_id', $tp->id)
                 ->first();
             if ($existing) {
                 continue;
             }
 
-            $hash = app(\App\Services\Evaluasi\ContentHashEngine::class)->hashFromSoal(
+            $hash = app(ContentHashEngine::class)->hashFromSoal(
                 $q['pertanyaan'],
                 array_filter(array_column($q['options'], 'is_correct'))
             );
 
-            $soal = \App\Models\Soal::create([
+            $soal = Soal::create([
                 'bank_soal_id' => $bank->id,
                 'tp_id' => $tp->id,
                 'tipe_soal' => $q['tipe'],
@@ -278,7 +287,7 @@ class KisiKisiSeeder extends Seeder
             ]);
 
             foreach ($q['options'] as $i => $o) {
-                \App\Models\SoalOption::create([
+                SoalOption::create([
                     'soal_id' => $soal->id,
                     'label' => $o[0],
                     'teks_opsi' => $o[1],
@@ -292,7 +301,7 @@ class KisiKisiSeeder extends Seeder
     private function createKisiKisi(object $school, object $mtk, object $bin, $gVIII, object $ay, User $owner): void
     {
         // Kisi-kisi Matematika
-        $kisiMTK = \App\Models\KisiKisiSoal::firstOrCreate(
+        $kisiMTK = KisiKisiSoal::firstOrCreate(
             ['judul' => 'Kisi-kisi STS Matematika Fase E Kelas VIII Semester Ganjil'],
             [
                 'school_id' => $school->id,
@@ -310,7 +319,7 @@ class KisiKisiSeeder extends Seeder
         );
 
         if ($kisiMTK->wasRecentlyCreated || $kisiMTK->items->count() === 0) {
-            $tps = \App\Models\TujuanPembelajaran::where('subject_id', $mtk->id)->get();
+            $tps = TujuanPembelajaran::where('subject_id', $mtk->id)->get();
             foreach ($tps as $tp) {
                 $levelKognitif = match ($tp->kode_tp) {
                     'TP.MTK.7.01' => 'C1_mengingat',
@@ -318,7 +327,7 @@ class KisiKisiSeeder extends Seeder
                     'TP.MTK.8.01' => 'C3_menerapkan',
                     default => 'C4_menganalisis',
                 };
-                \App\Models\KisiKisiItem::firstOrCreate(
+                KisiKisiItem::firstOrCreate(
                     ['kisi_kisi_soal_id' => $kisiMTK->id, 'tp_id' => $tp->id],
                     [
                         'level_kognitif' => $levelKognitif,
@@ -330,7 +339,7 @@ class KisiKisiSeeder extends Seeder
         }
 
         // Kisi-kisi B. Indonesia
-        $kisiBin = \App\Models\KisiKisiSoal::firstOrCreate(
+        $kisiBin = KisiKisiSoal::firstOrCreate(
             ['judul' => 'Kisi-kisi SAKE Bahasa Indonesia Fase E Kelas VIII'],
             [
                 'school_id' => $school->id,
@@ -347,9 +356,9 @@ class KisiKisiSeeder extends Seeder
             ]
         );
 
-        $tpsBin = \App\Models\TujuanPembelajaran::where('subject_id', $bin->id)->get();
+        $tpsBin = TujuanPembelajaran::where('subject_id', $bin->id)->get();
         foreach ($tpsBin as $tp) {
-            \App\Models\KisiKisiItem::firstOrCreate(
+            KisiKisiItem::firstOrCreate(
                 ['kisi_kisi_soal_id' => $kisiBin->id, 'tp_id' => $tp->id],
                 [
                     'level_kognitif' => 'C2_memahami',
@@ -361,8 +370,8 @@ class KisiKisiSeeder extends Seeder
 
         $this->command->info(sprintf(
             '[KisiKisiSeeder] kisi_kisi=%d, kisi_items=%d',
-            \App\Models\KisiKisiSoal::count(),
-            \App\Models\KisiKisiItem::count()
+            KisiKisiSoal::count(),
+            KisiKisiItem::count()
         ));
     }
 }

@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SarprasQRController extends SarprasBaseController
 {
@@ -113,7 +114,7 @@ class SarprasQRController extends SarprasBaseController
         $qrData = [];
         foreach ($assets as $asset) {
             $url = url('/sarpras/aset/'.$asset->id);
-            $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+            $qrImage = QrCode::format('png')
                 ->size(150)
                 ->margin(1)
                 ->generate($url);
@@ -148,7 +149,7 @@ class SarprasQRController extends SarprasBaseController
         $qrData = [];
         foreach ($assets as $asset) {
             $url = url('/sarpras/aset/'.$asset->id);
-            $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+            $qrImage = QrCode::format('png')
                 ->size(120)
                 ->margin(1)
                 ->generate($url);

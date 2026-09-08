@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Role;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,9 +13,12 @@ class MinRoleLevel
     public function handle(Request $request, Closure $next, int $level): Response
     {
         $user = $request->user();
-        $roleNames = $user->effectiveRoles();
 
-        if (! $roleNames) {
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return $next($request);
+        }
+
+        if (! $roleNames = $user->effectiveRoles()) {
             Log::warning('MinRoleLevel: no roles resolved', [
                 'user_id' => $user?->id,
                 'min_level' => $level,
@@ -24,7 +28,7 @@ class MinRoleLevel
             abort(403, 'Akses ditolak');
         }
 
-        $userLevel = \App\Models\Role::whereIn('name', $roleNames)
+        $userLevel = Role::whereIn('name', $roleNames)
             ->min('level');
 
         if ($userLevel === null || $userLevel > $level) {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Support\AbilityRegistry;
 use App\Support\TokenExpiration;
@@ -69,7 +70,7 @@ class MobileAuthSprint2Test extends TestCase
             'is_active' => true,
         ], $attrs));
 
-        $role = \App\Models\Role::firstOrCreate(
+        $role = Role::firstOrCreate(
             ['name' => 'wali', 'guard_name' => 'web']
         );
 

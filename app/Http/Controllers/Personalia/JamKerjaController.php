@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Personalia;
 use App\Http\Controllers\Controller;
 use App\Models\JamKerja;
 use App\Models\Shift;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -131,8 +132,8 @@ class JamKerjaController extends Controller
         return datatables()->of($query)
             ->addColumn('durasi', function ($r) {
                 try {
-                    $start = \Carbon\Carbon::parse($r->jam_masuk);
-                    $end = \Carbon\Carbon::parse($r->jam_pulang);
+                    $start = Carbon::parse($r->jam_masuk);
+                    $end = Carbon::parse($r->jam_pulang);
                     $minutes = $end->diffInMinutes($start);
                     $hours = intdiv($minutes, 60);
                     $mins = $minutes % 60;

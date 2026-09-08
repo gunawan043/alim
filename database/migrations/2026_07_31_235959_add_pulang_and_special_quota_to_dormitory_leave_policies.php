@@ -28,7 +28,7 @@ return new class extends Migration
 
         // Backfill pulang_quota dari quota_per_month untuk policy pulang existing
         // supaya migrasi in-place tidak langsung kehilangan aturan lama.
-        \DB::statement("
+        DB::statement("
             UPDATE dormitory_leave_policies
             SET pulang_quota = quota_per_month,
                 pulang_quota_period = 'monthly'

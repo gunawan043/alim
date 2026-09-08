@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\JenisGtk;
-use App\Models\Position;
 use App\Models\RecruitmentJob;
+use App\Models\StructuralPosition;
 use App\Models\WorkUnit;
 use App\Services\NotificationUniversalService;
 use Illuminate\Http\Request;
@@ -80,9 +80,9 @@ class JobController extends Controller
     public function create(string $userId)
     {
         $workUnits = WorkUnit::all();
-        $jabatanList = Position::with('jenisGtk')->active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatanList = StructuralPosition::with('jenisGtk')->active()->orderBy('urutan')->orderBy('name')->get();
         $jenisGtkList = JenisGtk::orderBy('nama')->get();
-        $kategoriList = Position::active()
+        $kategoriList = StructuralPosition::active()
             ->whereNotNull('kategori')
             ->distinct()
             ->orderBy('kategori')
@@ -97,7 +97,7 @@ class JobController extends Controller
             'judul' => 'required|string|max:255',
             'posisi' => 'required|string|max:255',
             'kategori' => 'nullable|array',
-            'kategori.*' => 'nullable|uuid|exists:positions,uuid',
+            'kategori.*' => 'nullable|uuid|exists:structural_positions,id',
             'work_unit_id' => 'nullable|exists:work_units,uuid',
             'status_pegawai' => 'nullable|in:tetap,kontrak,probation',
             'deskripsi_pekerjaan' => 'required|string',
@@ -173,7 +173,7 @@ class JobController extends Controller
             'judul' => 'required|string|max:255',
             'posisi' => 'required|string|max:255',
             'kategori' => 'nullable|array',
-            'kategori.*' => 'nullable|uuid|exists:positions,uuid',
+            'kategori.*' => 'nullable|uuid|exists:structural_positions,id',
             'work_unit_id' => 'nullable|exists:work_units,uuid',
             'jenis_pegawai' => 'nullable|in:pns,pppk,honor,kontrak,magang',
             'status_pegawai' => 'nullable|in:tetap,kontrak,probation',
@@ -315,7 +315,7 @@ class JobController extends Controller
     public function edit(string $userId, RecruitmentJob $job)
     {
         $workUnits = WorkUnit::all();
-        $jabatanList = Position::with('jenisGtk')->active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatanList = StructuralPosition::with('jenisGtk')->active()->orderBy('urutan')->orderBy('name')->get();
         $jenisGtkList = JenisGtk::orderBy('nama')->get();
 
         return view('recruitment.jobs.edit', compact('job', 'workUnits', 'jabatanList', 'jenisGtkList', 'userId'));

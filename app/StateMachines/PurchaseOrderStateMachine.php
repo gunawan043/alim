@@ -8,6 +8,7 @@ use App\Events\PoQcCompleted;
 use App\Events\PoShipped;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\PurchaseOrder;
+use App\Models\Vendor;
 use App\Services\Vendor\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
@@ -64,7 +65,7 @@ class PurchaseOrderStateMachine
                     break;
 
                 case PurchaseOrder::STATUS_ACCEPTED:
-                    $po->accepted_by = $actor instanceof \App\Models\Vendor ? $actor->id : null;
+                    $po->accepted_by = $actor instanceof Vendor ? $actor->id : null;
                     $po->accepted_at = now();
                     break;
 

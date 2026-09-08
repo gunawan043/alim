@@ -19,12 +19,33 @@ class StructuralPosition extends Model
         'hierarchy_level',
         'description',
         'is_active',
+        'jenis_gtk_id',
+        'role_id',
+        'kategori',
+        'urutan',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'hierarchy_level' => 'integer',
+        'urutan' => 'integer',
     ];
+
+    /**
+     * Jenis GTK relationship.
+     */
+    public function jenisGtk()
+    {
+        return $this->belongsTo(JenisGtk::class, 'jenis_gtk_id');
+    }
+
+    /**
+     * Role relationship.
+     */
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
 
     /**
      * Active structural positions scope.

@@ -54,8 +54,8 @@ return new class extends Migration
         // works on both MySQL and SQLite. SQLite doesn't support named
         // unique indexes the same way MySQL does, so we skip the named
         // index there and rely on the implicit unique constraint name.
-        if (! \Illuminate\Support\Facades\Schema::hasIndex('soal', 'soal_content_hash_unique')) {
-            \Illuminate\Support\Facades\Schema::table('soal', function ($table) {
+        if (! Schema::hasIndex('soal', 'soal_content_hash_unique')) {
+            Schema::table('soal', function ($table) {
                 if (DB::connection()->getDriverName() === 'sqlite') {
                     $table->unique('content_hash');
                 } else {

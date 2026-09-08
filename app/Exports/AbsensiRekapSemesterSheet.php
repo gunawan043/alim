@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -73,7 +74,7 @@ class AbsensiRekapSemesterSheet implements FromCollection, ShouldAutoSize, WithS
         // ── Header (row 7) ──
         $header = ['No', 'NIS', 'Nama Lengkap', 'JK'];
         foreach ($this->months as $month) {
-            $label = \Carbon\Carbon::create($this->year, $month, 1)->locale('id')->monthName;
+            $label = Carbon::create($this->year, $month, 1)->locale('id')->monthName;
             $header[] = substr($label, 0, 3);
         }
         $header[] = 'Total Hadir';

@@ -7,6 +7,7 @@ use App\Jobs\RecordLifecycleAuditJob;
 use App\Jobs\SendLifecycleNotificationJob;
 use App\Models\Alumni;
 use App\Models\StudentClassHistory;
+use App\Support\LifecycleMessage;
 use Illuminate\Support\Facades\DB;
 
 final class HandleManualStudentStatusUpdate
@@ -85,7 +86,7 @@ final class HandleManualStudentStatusUpdate
         if ($recipientUserId !== null) {
             SendLifecycleNotificationJob::dispatch(
                 userId: $recipientUserId,
-                message: new \App\Support\LifecycleMessage(
+                message: new LifecycleMessage(
                     event: 'student.status_changed',
                     student: $student,
                     previousStatus: $previousStatus ?? ($student->getOriginal('status') ?? 'unknown'),

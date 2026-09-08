@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
 use Spatie\Permission\Models\Role;
@@ -48,14 +49,14 @@ class ViewAsService
      * Switch identity to a specific user (Login-As flow).
      * Stores original authenticated user for restore.
      */
-    public function loginAs(string $userId, ?\App\Models\User $adminActor = null): void
+    public function loginAs(string $userId, ?User $adminActor = null): void
     {
         if ($adminActor && ! Session::has(self::SESSION_ORIGINAL_USER_ID)) {
             Session::put(self::SESSION_ORIGINAL_USER_ID, $adminActor->id);
         }
         Session::put(self::SESSION_USER_ID, $userId);
         // Backwards-compat: still track role name for sidebar/menu rendering
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
         if ($user) {
             $this->setCurrentViewRole($user->getRoleNames()->first());
         }
@@ -73,9 +74,20 @@ class ViewAsService
     }
 
     /**
-     * Resolve the effective user id for the current request:
-     * - If viewing as user X → return X
-     * - Else, return the currently authenticated id
+     * Check if we're in "View As Role" mode: a role is set but no specific
+     * user identity has been switched to (i.e., NOT Login-As).
+     */
+    public function isRoleOnly(): bool
+    {
+        return $this->getCurrentViewRole() !== null
+            && $this->getCurrentViewUserId() === null;
+    }
+
+    /**
+     * Resolve effective user id for the current request:
+     * - Login-As (specific user) → return that user's id
+     * - Role-only simulation → return the authenticated user's id
+     * - Normal → return the authenticated user's id
      */
     public function effectiveUserId(?object $user): ?string
     {
@@ -151,7 +163,10 @@ class ViewAsService
      */
     public function effectiveRenderRole(?object $user): ?string
     {
-        if (! $user || ! method_exists($user, 'isSystemAdmin') || ! $user->isSystemAdmin()) {
+        if (! $user
+            || (! method_exists($user, 'isSystemAdmin') || ! $user->isSystemAdmin())
+            && (! method_exists($user, 'isSuperAdmin') || ! $user->isSuperAdmin())
+        ) {
             return null;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\SendTodoReminderJob;
 use App\Models\Todo;
 use App\Services\NotificationUniversalService;
 use Illuminate\Console\Command;
@@ -107,7 +108,7 @@ class SendTodoReminderCommand extends Command
                 ]);
 
                 // Dispatch email job if queue is configured
-                dispatch(new \App\Jobs\SendTodoReminderJob($todo));
+                dispatch(new SendTodoReminderJob($todo));
 
                 $stats['sent']++;
             } catch (\Exception $e) {

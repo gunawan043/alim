@@ -1,5 +1,7 @@
 <?php
 
+use App\Authorization\Services\ApprovalRoleResolver;
+use App\Models\ApprovalAction;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,11 +15,11 @@ return new class extends Migration
         });
 
         // Backfill existing actions from the role_name registry
-        \App\Models\ApprovalAction::query()
+        ApprovalAction::query()
             ->whereNull('step_permission')
             ->chunk(100, function ($actions) {
                 foreach ($actions as $action) {
-                    $permissions = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($action->role_name);
+                    $permissions = ApprovalRoleResolver::resolvePermission($action->role_name);
                     $action->step_permission = $permissions[0] ?? $action->role_name;
                     $action->save();
                 }

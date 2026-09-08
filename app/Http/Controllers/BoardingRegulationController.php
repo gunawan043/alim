@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BoardingRegulation;
+use App\Models\RegulationCategory;
 use Illuminate\Http\Request;
 
 class BoardingRegulationController extends Controller
@@ -16,7 +17,7 @@ class BoardingRegulationController extends Controller
 
     public function create(Request $request)
     {
-        $categories = \App\Models\RegulationCategory::all();
+        $categories = RegulationCategory::all();
         $userId = $request->route('userId');
 
         return view('dormitory.regulations.create', compact('categories', 'userId'));
@@ -49,7 +50,7 @@ class BoardingRegulationController extends Controller
     public function edit(Request $request, string $id)
     {
         $regulation = BoardingRegulation::findOrFail($id);
-        $categories = \App\Models\RegulationCategory::all();
+        $categories = RegulationCategory::all();
         $userId = $request->route('userId');
 
         return view('dormitory.regulations.edit', compact('regulation', 'categories', 'userId'));

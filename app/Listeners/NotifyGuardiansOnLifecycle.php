@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Jobs\SendLifecycleNotificationJob;
 use App\Models\WaliSantri;
 use App\Support\LifecycleMessage;
+use Illuminate\Support\Facades\DB;
 
 class NotifyGuardiansOnLifecycle
 {
@@ -30,7 +31,7 @@ class NotifyGuardiansOnLifecycle
             ->pluck('user_id');
 
         foreach ($waliIds as $userId) {
-            \Illuminate\Support\Facades\DB::afterCommit(function () use ($userId, $message, $event, $student) {
+            DB::afterCommit(function () use ($userId, $message, $event, $student) {
                 SendLifecycleNotificationJob::dispatch($userId, $message, [
                     'event' => $event::class,
                     'student_id' => $student->id,

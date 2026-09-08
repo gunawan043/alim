@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\School;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -190,7 +191,7 @@ class SchoolGroupService
      * Get the school that a user is currently associated with via gtk_employments.
      * Returns null if user has no school assignment.
      */
-    public static function getUserSchool(\App\Models\User $user): ?School
+    public static function getUserSchool(User $user): ?School
     {
         // Try gtk_employments first (most specific)
         $employment = $user->employment;
@@ -213,7 +214,7 @@ class SchoolGroupService
     /**
      * Check if user can view global (cross-school) data.
      */
-    public static function userCanGlobalView(\App\Models\User $user): bool
+    public static function userCanGlobalView(User $user): bool
     {
         return canUserPermission($user, 'view_global_school_data');
     }

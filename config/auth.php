@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use App\Models\VendorPortalUser;
+
 return [
 
     /*
@@ -67,12 +70,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
 
         'vendors' => [
             'driver' => 'eloquent',
-            'model' => App\Models\VendorPortalUser::class,
+            'model' => VendorPortalUser::class,
         ],
 
         // 'users' => [

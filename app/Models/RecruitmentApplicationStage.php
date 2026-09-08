@@ -38,7 +38,7 @@ class RecruitmentApplicationStage extends Model
 
     public function recruitmentPipelineStage()
     {
-        return $this->belongsTo(\App\Models\RecruitmentPipelineStage::class, 'recruitment_pipeline_stage_id');
+        return $this->belongsTo(RecruitmentPipelineStage::class, 'recruitment_pipeline_stage_id');
     }
 
     public function penilai()

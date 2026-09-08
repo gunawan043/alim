@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class DormitoryLeavePolicy extends Model
 {
@@ -18,7 +19,7 @@ class DormitoryLeavePolicy extends Model
         parent::boot();
         static::creating(function ($m) {
             if (! $m->id) {
-                $m->id = (string) \Illuminate\Support\Str::uuid();
+                $m->id = (string) Str::uuid();
             }
         });
     }

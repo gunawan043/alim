@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Sarpras;
 
+use App\Models\Asset;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class QrAuditSubmitRequest extends FormRequest
@@ -9,12 +11,12 @@ class QrAuditSubmitRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'condition' => 'required|in:'.implode(',', \App\Models\Asset::CONDITION_OPTIONS),
+            'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
             'last_condition_update' => 'nullable|date',
             'last_audit_by' => 'nullable|exists:users,id',
             'last_audit_date' => 'nullable|date',

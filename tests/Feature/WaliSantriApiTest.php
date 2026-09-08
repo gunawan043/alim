@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\WaliSantri;
@@ -47,7 +48,7 @@ class WaliSantriApiTest extends TestCase
 
     // ── Factories ──────────────────────────────────────────────────────────
 
-    private function createSchool(): \App\Models\School
+    private function createSchool(): School
     {
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -68,7 +69,7 @@ class WaliSantriApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return \App\Models\School::find($schoolId);
+        return School::find($schoolId);
     }
 
     private function createWali(array $attrs = []): User

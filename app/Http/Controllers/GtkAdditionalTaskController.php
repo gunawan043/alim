@@ -170,10 +170,9 @@ class GtkAdditionalTaskController extends Controller
     private function canManage(): bool
     {
         $user = auth()->user();
-        $roles = $user->roles->pluck('name')->toArray();
 
-        return in_array('Personalia', $roles)
-            || in_array('Administrator', $roles)
-            || in_array('Super Admin', $roles);
+        return $user->hasRole('Personalia')
+            || $user->hasRole('Administrator')
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
     }
 }

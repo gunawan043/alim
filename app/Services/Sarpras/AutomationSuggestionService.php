@@ -4,6 +4,8 @@ namespace App\Services\Sarpras;
 
 use App\Models\Sparepart;
 use App\Models\User;
+use App\Models\VendorWarranty;
+use App\Models\WorkOrder;
 
 class AutomationSuggestionService
 {
@@ -73,7 +75,7 @@ class AutomationSuggestionService
      */
     public function detectWarrantyClaims(): array
     {
-        $claims = \App\Models\VendorWarranty::where('status', 'active')
+        $claims = VendorWarranty::where('status', 'active')
             ->where('end_date', '>=', now()->subDays(30))
             ->where('end_date', '<=', now()->addDays(90))
             ->with(['vendor', 'asset'])
@@ -120,7 +122,7 @@ class AutomationSuggestionService
      */
     public function autoReserveForWorkOrder(string $woId, User $actor): array
     {
-        $wo = \App\Models\WorkOrder::with('sparePartUsages.sparePart')->find($woId);
+        $wo = WorkOrder::with('sparePartUsages.sparePart')->find($woId);
         if (! $wo) {
             return ['success' => false, 'error' => 'Work Order not found'];
         }

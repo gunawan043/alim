@@ -27,7 +27,7 @@ return new class extends Migration
         // Add patient_id foreign key only if uks_patients exists
         if (Schema::hasTable('uks_patients') && Schema::hasColumn('uks_medication_administrations', 'patient_id')) {
             $fkExists = collect(
-                \DB::select(
+                DB::select(
                     "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
                      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'uks_medication_administrations'
                      AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME IS NOT NULL",

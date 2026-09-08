@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\DormitoryPost;
+use App\Models\DormitoryResident;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class AnnouncementController extends Controller
             ->active()
             ->pluck('student_id');
 
-        $dormitoryIds = \App\Models\DormitoryResident::whereIn('student_id', $studentIds)
+        $dormitoryIds = DormitoryResident::whereIn('student_id', $studentIds)
             ->where('is_active', true)
             ->pluck('dormitory_id')
             ->unique();

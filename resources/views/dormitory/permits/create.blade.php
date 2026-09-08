@@ -389,29 +389,27 @@
         </div>
     </form>
 
-    <!-- Modal Peringatan Kuota Pulang -->
+    <!-- ====== MODAL PERINGATAN KUOTA (hanya tombol tutup) ====== -->
     <div class="modal fade" id="quotaWarningModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-warning-subtle">
                     <h5 class="modal-title">
-                        <i class="ri-error-warning-line me-2"></i>Peringatan Kuota Pulang
+                        <i class="ri-error-warning-line me-2"></i>Peringatan Kuota
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p id="quotaWarningText" class="mb-2">
-                        Kuota izin pulang untuk periode ini sudah terpakai penuh.
+                        Kuota izin untuk periode ini sudah terpakai penuh.
                     </p>
                     <p class="small text-muted mb-0">
-                        Anda tetap dapat melanjutkan dengan mengganti jenis izin (misal “Darurat”) atau membatalkan pengajuan.
+                        Silakan ubah jenis izin atau tanggal keberangkatan.
                     </p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-warning" id="forceContinueBtn">
-                        <i class="ri-arrow-right-line me-1"></i>Lanjutkan
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <!-- Tombol "Lanjutkan" DILANGSUNG -->
                 </div>
             </div>
         </div>
@@ -646,96 +644,98 @@
 
 })();
 
-// ── Tambah script penanganan peringatan kuota ────────────────────────────────────────
-
+// ================================================================
+//  PENANGANAN SUBMIT FORM + PENGECEKAN KUOTA (SEMUA JENIS IZIN)
+// ================================================================
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('permitCreateForm');
     if (!form) return;
 
     const modal = document.getElementById('quotaWarningModal');
-    const forceBtn = document.getElementById('forceContinueBtn');
     const warningText = document.getElementById('quotaWarningText');
-
-    // URL endpoint pengecekkan kuota - di-set via Blade
     const quotaCheckUrl = "{{ route('user.asrama.permits.quota.check', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
 
+    let quotaCheckPassed = false; // flag agar tidak looping
+
     form.addEventListener('submit', async function (e) {
-        // Jika form sudah dikonfirmasi melewati peringatan, lewati pengecekan
-        if (form.getAttribute('data-quota-confirmed') === 'true') {
-            form.removeAttribute('data-quota-confirmed');
+        // Jika sudah lolos pengecekan, lanjutkan submit
+        if (quotaCheckPassed) {
+            quotaCheckPassed = false; // reset untuk submit berikutnya
             return;
         }
 
+        // Cegah submit default
+        e.preventDefault();
+
         const permitTypeSelect = document.querySelector('select[name="permit_type"]');
         const departureInput = document.querySelector('input[name="departure_datetime"]');
-        const permitType = permitTypeSelect.value;
-        const departureDatetime = departureInput?.value.trim();
+        const studentIdInput = document.querySelector('input[name="student_id"]');
 
-        // Hanya lakukan cek kuota untuk izin jenis 'pulang'
-        if (permitType === 'pulang' && departureDatetime) {
-            const studentId = document.querySelector('input[name="student_id"]').value;
-            if (!studentId) {
-                alert('Belum memilih siswa.');
-                e.preventDefault();
+        const permitType = permitTypeSelect?.value;
+        const departureDatetime = departureInput?.value?.trim();
+        const studentId = studentIdInput?.value;
+
+        // Validasi dasar
+        if (!permitType || !departureDatetime || !studentId) {
+            // Biarkan error validasi bawaan Laravel
+            form.submit();
+            return;
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+        try {
+            const response = await fetch(quotaCheckUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    permit_type: permitType,
+                    departure_datetime: departureDatetime
+                })
+            });
+
+            if (!response.ok) {
+                // Jika error, submit saja (biarkan server menangani)
+                form.submit();
                 return;
             }
 
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+            const data = await response.json();
 
-            try {
-                const response = await fetch(quotaCheckUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    body: JSON.stringify({
-                        student_id: studentId,
-                        permit_type: permitType,
-                        departure_datetime: departureDatetime
-                    })
-                });
+            if (data.over) {
+                // Kuota habis → tampilkan modal peringatan, blokir submit
+                const periodLabel = data.period_label_id || 'periode ini';
+                const used = data.used ?? 0;
+                const quota = data.quota ?? 0;
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.over) {
-                        // Bangun pesan peringatan
-                        const periodLabel = data.period_label_id || 'periode ini';
-                        const used = data.used ?? 0;
-                        const quota = data.quota ?? 0;
-                        const remaining = data.remaining !== null ? data.remaining : 'tak terbatas';
+                let pesan = `Kuota izin <strong>${permitType}</strong> untuk <strong>${periodLabel}</strong> telah terpakai <strong>${used}/${quota}</strong>.<br>`;
+                pesan += 'Anda tidak dapat mengajukan izin ini. Silakan pilih jenis izin lain atau tanggal yang berbeda.';
 
-                        let html = `Kuota izin pulang telah terpakai <strong>${used}/${quota}</strong> pada <strong>${periodLabel}</strong>.<br>`;
-                        if (remaining !== 'tak terbatas' && remaining !== null && remaining !== undefined) {
-                            html += `Hanya tersisa <strong>${remaining}</strong> slot.`;
-                        } else {
-                            html += `Sisa kuota tidak tersedia.`;
-                        }
-                        html += '<br><br>Apakah Anda tetap ingin melanjutkan? Anda bisa ubah jenis izin (misal “Darurat”) di dropdown di atas.';
+                warningText.innerHTML = pesan;
 
-                        warningText.innerHTML = html;
-                        new bootstrap.Modal(modal).show();
-                        e.preventDefault(); // blokir submit sampai user klik Lanjutkan
-                        return;
-                    }
-                } else {
-                    console.warn('Quota check returned non-OK status:', response.status);
-                }
-            } catch (err) {
-                console.error('Quota check error:', err);
-                // Lanjutkan submit normal jika terjadi error
+                // Tampilkan modal (tanpa tombol lanjutkan)
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+
+                // Jangan submit
+                return;
+            } else {
+                // Kuota tersedia → lanjutkan submit
+                quotaCheckPassed = true;
+                form.submit();
             }
-        }
-        // Jika tidak over atau bukan 'pulang', submit berjalan normal
-    });
 
-    forceBtn.addEventListener('click', function () {
-        bootstrap.Modal.getInstance(modal).hide();
-        form.setAttribute('data-quota-confirmed', 'true');
-        form.submit();
+        } catch (err) {
+            console.error('Quota check error:', err);
+            // Jika error, tetap submit (server akan menangani)
+            form.submit();
+        }
     });
 });
-
 </script>
 @endsection

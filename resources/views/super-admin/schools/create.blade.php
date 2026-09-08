@@ -1,27 +1,27 @@
 @extends('layouts.master')
-@section('title') 添加学校 @endsection
+@section('title') Tambah Sekolah @endsection
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Super Admin @endslot
-        @slot('li_2') <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="text-muted">学校管理</a> @endslot
-        @slot('title') 添加学校 @endslot
+        @slot('li_2') <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="text-muted">Manajemen Sekolah</a> @endslot
+        @slot('title') Tambah Sekolah @endslot
     @endcomponent
 
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-header border-bottom-dashed">
-                    <h5 class="card-title mb-0">添加新学校</h5>
+                    <h5 class="card-title mb-0">Tambah Sekolah Baru</h5>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('user.sa.schools.store', ['userId' => $userId]) }}" enctype="multipart/form-data">
                         @csrf
 
-                        <h6 class="mb-3">基本信息</h6>
+                        <h6 class="mb-3">Informasi Dasar</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
-                                <label class="form-label">学校名称 <span class="text-danger">*</span></label>
+                                <label class="form-label">Nama Sekolah <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control" required>
                             </div>
                             <div class="col-md-4">
@@ -29,113 +29,113 @@
                                 <input type="text" name="npsn" class="form-control" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">学校代码</label>
+                                <label class="form-label">Kode Sekolah</label>
                                 <input type="text" name="school_code" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">所属单位 <span class="text-danger">*</span></label>
+                                <label class="form-label">Unit Kerja <span class="text-danger">*</span></label>
                                 <select name="work_unit_id" class="form-select" required>
-                                    <option value="">选择单位...</option>
+                                    <option value="">Pilih unit...</option>
                                     @foreach($workUnits as $wu)
                                         <option value="{{ $wu->id }}">{{ $wu->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">学校级别</label>
+                                <label class="form-label">Jenjang</label>
                                 <select name="school_level" class="form-select">
-                                    <option value="">选择级别...</option>
-                                    <option value="sd">小学</option>
-                                    <option value="smp">初中</option>
-                                    <option value="sma">高中</option>
-                                    <option value="smk">职校</option>
+                                    <option value="">Pilih jenjang...</option>
+                                    <option value="sd">SD</option>
+                                    <option value="smp">SMP</option>
+                                    <option value="sma">SMA</option>
+                                    <option value="smk">SMK</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">学校性质</label>
+                                <label class="form-label">Status</label>
                                 <select name="school_status" class="form-select">
-                                    <option value="negeri">公立</option>
-                                    <option value="swasta">私立</option>
+                                    <option value="negeri">Negeri</option>
+                                    <option value="swasta">Swasta</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">办学方向</label>
+                                <label class="form-label">Jenis Kelamin</label>
                                 <select name="school_gender" class="form-select">
-                                    <option value="putra">男校</option>
-                                    <option value="putri">女校</option>
+                                    <option value="putra">Putra</option>
+                                    <option value="putri">Putri</option>
                                 </select>
                             </div>
                         </div>
 
-                        <h6 class="mb-3">地址信息</h6>
+                        <h6 class="mb-3">Alamat</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-12">
-                                <label class="form-label">详细地址</label>
+                                <label class="form-label">Alamat Lengkap</label>
                                 <textarea name="address" class="form-control" rows="2"></textarea>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">省份</label>
+                                <label class="form-label">Provinsi</label>
                                 <select name="province_code" class="form-select" onchange="loadCities(this.value, 'city_code')">
-                                    <option value="">选择省份...</option>
+                                    <option value="">Pilih provinsi...</option>
                                     @foreach($provinces as $prov)
                                         <option value="{{ $prov->code }}">{{ $prov->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">城市</label>
+                                <label class="form-label">Kota</label>
                                 <select name="city_code" class="form-select">
-                                    <option value="">选择城市...</option>
+                                    <option value="">Pilih kota...</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">区县</label>
+                                <label class="form-label">Kecamatan</label>
                                 <select name="district_code" class="form-select">
-                                    <option value="">选择区县...</option>
+                                    <option value="">Pilih kecamatan...</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">村庄</label>
+                                <label class="form-label">Desa</label>
                                 <select name="village_code" class="form-select">
-                                    <option value="">选择村庄...</option>
+                                    <option value="">Pilih desa...</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">邮政编码</label>
+                                <label class="form-label">Kode Pos</label>
                                 <input type="text" name="postal_code" class="form-control">
                             </div>
                         </div>
 
-                        <h6 class="mb-3">联系方式</h6>
+                        <h6 class="mb-3">Kontak</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-3">
-                                <label class="form-label">电话</label>
+                                <label class="form-label">Telepon</label>
                                 <input type="text" name="phone" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">邮箱</label>
+                                <label class="form-label">Email</label>
                                 <input type="email" name="email" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">网站</label>
+                                <label class="form-label">Website</label>
                                 <input type="url" name="website" class="form-control">
                             </div>
                         </div>
 
-                        <h6 class="mb-3">校长信息</h6>
+                        <h6 class="mb-3">Data Kepala Sekolah</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-3">
-                                <label class="form-label">校长姓名</label>
+                                <label class="form-label">Nama Kepala Sekolah</label>
                                 <input type="text" name="principal_name" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">校长工号</label>
+                                <label class="form-label">NIP</label>
                                 <input type="text" name="principal_nip" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">校长用户</label>
+                                <label class="form-label">Akun Pengguna</label>
                                 <select name="principal_user_id" class="form-select">
-                                    <option value="">不关联</option>
+                                    <option value="">Tidak dihubungkan</option>
                                     @foreach($users as $user)
                                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                                     @endforeach
@@ -143,55 +143,55 @@
                             </div>
                         </div>
 
-                        <h6 class="mb-3">其他信息</h6>
+                        <h6 class="mb-3">Informasi Lainnya</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-3">
-                                <label class="form-label">成立时间</label>
+                                <label class="form-label">Tanggal Berdiri</label>
                                 <input type="date" name="established_date" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">批准文号</label>
+                                <label class="form-label">Nomor SK</label>
                                 <input type="text" name="established_decree" class="form-control">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label"> Accreditation</label>
+                                <label class="form-label">Akreditasi</label>
                                 <select name="accreditation" class="form-select">
-                                    <option value="">未评定</option>
+                                    <option value="">Belum dinilai</option>
                                     <option value="A">A</option>
                                     <option value="B">B</option>
                                     <option value="C">C</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">运营时间</label>
+                                <label class="form-label">Jam Operasional</label>
                                 <select name="operational_hours" class="form-select">
-                                    <option value="pagi">上午</option>
-                                    <option value="siang">下午</option>
-                                    <option value="full_day">全天</option>
+                                    <option value="pagi">Pagi</option>
+                                    <option value="siang">Siang</option>
+                                    <option value="full_day">Sepanjang Hari</option>
                                 </select>
                             </div>
                         </div>
 
-                        <h6 class="mb-3">文件上传</h6>
+                        <h6 class="mb-3">Dokumen</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label class="form-label">学校Logo</label>
+                                <label class="form-label">Logo Sekolah</label>
                                 <input type="file" name="logo_path" class="form-control" accept="image/*">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">信头文件(KOP)</label>
+                                <label class="form-label">Kop Surat</label>
                                 <input type="file" name="kop_path" class="form-control" accept="image/*">
                             </div>
                         </div>
 
                         <div class="form-check form-switch mb-4">
                             <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
-                            <label class="form-check-label" for="is_active">启用</label>
+                            <label class="form-check-label" for="is_active">Aktif</label>
                         </div>
 
                         <div class="float-end gap-2">
-                            <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="btn btn-light">取消</a>
-                            <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> 保存</button>
+                            <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+                            <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> Simpan</button>
                         </div>
                     </form>
                 </div>
@@ -203,9 +203,9 @@
 @section('script')
     <script>
     function loadCities(provinceCode, selectId) {
-        // Simple implementation - in production would use AJAX
+        // Implementation - in production would use AJAX
         const select = document.getElementById(selectId);
-        select.innerHTML = '<option value="">选择城市...</option>';
+        select.innerHTML = '<option value="">Pilih kota...</option>';
     }
     </script>
 @endsection

@@ -3,6 +3,11 @@
 namespace App\Providers;
 
 use App\Events\AssetLifecycleEvent;
+use App\Events\Boarding\HealthDischarged;
+use App\Events\Boarding\HealthPermitApproved;
+use App\Events\Boarding\LeaveApproved;
+use App\Events\Boarding\LeaveReturned;
+use App\Events\Boarding\RoomDamageReported;
 use App\Events\GoodsReceived;
 use App\Events\GtkProfileUpdated;
 use App\Events\InvoiceApproved;
@@ -16,6 +21,30 @@ use App\Events\QuotationAccepted;
 use App\Events\QuotationAwarded;
 use App\Events\QuotationSubmitted;
 use App\Events\RfqPublished;
+use App\Events\Sarpras\AssetMoved;
+use App\Events\Sarpras\AssetQrScanned;
+use App\Events\Sarpras\LoanOverdue;
+use App\Events\Sarpras\LowStockDetected;
+use App\Events\Sarpras\MaintenanceDue;
+use App\Events\Sarpras\MaintenanceOverdue;
+use App\Events\Sarpras\RepairApproved;
+use App\Events\Sarpras\RepairCostRecorded;
+use App\Events\Sarpras\RepairRejected;
+use App\Events\Sarpras\RepairRequestSubmitted;
+use App\Events\Sarpras\SlATrackerEscalated;
+use App\Events\Sarpras\SlATrackerOverdue;
+use App\Events\Sarpras\SlATrackerWarned;
+use App\Events\Sarpras\SparepartAdjusted;
+use App\Events\Sarpras\SparepartReceived;
+use App\Events\Sarpras\StockOpnameCompleted;
+use App\Events\Sarpras\StockOpnameStarted;
+use App\Events\Sarpras\VendorEvaluationCompleted;
+use App\Events\Sarpras\WarrantyClaimOpportunity;
+use App\Events\Sarpras\WarrantyExpired;
+use App\Events\Sarpras\WorkOrderAssigned;
+use App\Events\Sarpras\WorkOrderCompleted;
+use App\Events\Sarpras\WorkOrderProgressAdded;
+use App\Events\Sarpras\WorkOrderStarted;
 use App\Events\StudentAssignedToRombel;
 use App\Events\StudentGraduated;
 use App\Events\StudentMutatedIn;
@@ -26,6 +55,7 @@ use App\Events\SubjectAssignedToStudyGroup;
 use App\Events\TeachingAssignmentChanged;
 use App\Events\VendorRated;
 use App\Listeners\AuditLifecycleChange;
+use App\Listeners\Boarding\BroadcastBoardingNotificationToBus;
 use App\Listeners\Boarding\ConvertRoomDamageToMaintenance;
 use App\Listeners\Boarding\RecordHospitalizedOnTimeline;
 use App\Listeners\Boarding\RecordLeaveApprovedOnTimeline;
@@ -47,6 +77,20 @@ use App\Listeners\RecordPoTransition;
 use App\Listeners\RecordQualityCheckTransition;
 use App\Listeners\RecordQuotationTransition;
 use App\Listeners\RecordVendorRatingTransition;
+use App\Listeners\Sarpras\HandleLowStockEvent;
+use App\Listeners\Sarpras\NotifyAssetMoved;
+use App\Listeners\Sarpras\NotifyMaintenanceLifecycle;
+use App\Listeners\Sarpras\NotifyRepairLifecycle;
+use App\Listeners\Sarpras\NotifyRepairRequestSubmitted;
+use App\Listeners\Sarpras\NotifySlAEscalation;
+use App\Listeners\Sarpras\NotifySparepartReceived;
+use App\Listeners\Sarpras\NotifyStockOpnameLifecycle;
+use App\Listeners\Sarpras\NotifyTechnicianAssignment;
+use App\Listeners\Sarpras\NotifyWarrantyClaimOpportunity;
+use App\Listeners\Sarpras\NotifyWarrantyExpired;
+use App\Listeners\Sarpras\NotifyWorkOrderLifecycle;
+use App\Listeners\Sarpras\PersistVendorEvaluationSnapshot;
+use App\Listeners\Sarpras\RecordAssetScanAnalytics;
 use App\Listeners\SyncStudentRombelAfterLifecycle;
 use App\Listeners\TriggerGtkWorkloadRecalculation;
 use App\Listeners\UpdateAssetCondition;
@@ -131,132 +175,132 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         // Boarding Integration Events — fired into the integration layer
-        \App\Events\Boarding\LeaveApproved::class => [
+        LeaveApproved::class => [
             [SyncBoardingLeaveToAttendance::class, 'handle'],
             [RecordLeaveApprovedOnTimeline::class, 'record'],
-            [\App\Listeners\Boarding\BroadcastBoardingNotificationToBus::class, 'handleLeaveApproved'],
+            [BroadcastBoardingNotificationToBus::class, 'handleLeaveApproved'],
         ],
 
-        \App\Events\Boarding\LeaveReturned::class => [
+        LeaveReturned::class => [
             [SyncBoardingLeaveToAttendance::class, 'handleReturn'],
             [RecordLeaveReturnedOnTimeline::class, 'record'],
-            [\App\Listeners\Boarding\BroadcastBoardingNotificationToBus::class, 'handleLeaveReturned'],
+            [BroadcastBoardingNotificationToBus::class, 'handleLeaveReturned'],
         ],
 
-        \App\Events\Boarding\HealthPermitApproved::class => [
+        HealthPermitApproved::class => [
             [SyncBoardingHealthToAttendance::class, 'handle'],
             [SyncHealthToClinic::class, 'handle'],
             [RecordHospitalizedOnTimeline::class, 'record'],
-            [\App\Listeners\Boarding\BroadcastBoardingNotificationToBus::class, 'handleHealthApproved'],
+            [BroadcastBoardingNotificationToBus::class, 'handleHealthApproved'],
         ],
 
-        \App\Events\Boarding\HealthDischarged::class => [
+        HealthDischarged::class => [
             [SyncBoardingHealthToAttendance::class, 'handleDischarge'],
             [SyncHealthToClinic::class, 'handleDischarge'],
             [RecordRecoveredOnTimeline::class, 'record'],
-            [\App\Listeners\Boarding\BroadcastBoardingNotificationToBus::class, 'handleHealthDischarged'],
+            [BroadcastBoardingNotificationToBus::class, 'handleHealthDischarged'],
         ],
 
-        \App\Events\Boarding\RoomDamageReported::class => [
+        RoomDamageReported::class => [
             [ConvertRoomDamageToMaintenance::class, 'handle'],
-            [\App\Listeners\Boarding\BroadcastBoardingNotificationToBus::class, 'handleRoomDamage'],
+            [BroadcastBoardingNotificationToBus::class, 'handleRoomDamage'],
         ],
 
         // Sarpras automation events — notification listeners.
-        \App\Events\Sarpras\WorkOrderAssigned::class => [
-            \App\Listeners\Sarpras\NotifyTechnicianAssignment::class,
+        WorkOrderAssigned::class => [
+            NotifyTechnicianAssignment::class,
         ],
 
-        \App\Events\Sarpras\WorkOrderStarted::class => [
-            \App\Listeners\Sarpras\NotifyWorkOrderLifecycle::class,
+        WorkOrderStarted::class => [
+            NotifyWorkOrderLifecycle::class,
         ],
 
-        \App\Events\Sarpras\WorkOrderCompleted::class => [
-            \App\Listeners\Sarpras\NotifyWorkOrderLifecycle::class,
+        WorkOrderCompleted::class => [
+            NotifyWorkOrderLifecycle::class,
         ],
 
-        \App\Events\Sarpras\RepairRequestSubmitted::class => [
-            \App\Listeners\Sarpras\NotifyRepairRequestSubmitted::class,
+        RepairRequestSubmitted::class => [
+            NotifyRepairRequestSubmitted::class,
         ],
 
-        \App\Events\Sarpras\RepairApproved::class => [
-            \App\Listeners\Sarpras\NotifyRepairLifecycle::class,
+        RepairApproved::class => [
+            NotifyRepairLifecycle::class,
         ],
 
-        \App\Events\Sarpras\RepairRejected::class => [
-            \App\Listeners\Sarpras\NotifyRepairLifecycle::class,
+        RepairRejected::class => [
+            NotifyRepairLifecycle::class,
         ],
 
-        \App\Events\Sarpras\MaintenanceDue::class => [
-            \App\Listeners\Sarpras\NotifyMaintenanceLifecycle::class,
+        MaintenanceDue::class => [
+            NotifyMaintenanceLifecycle::class,
         ],
 
-        \App\Events\Sarpras\MaintenanceOverdue::class => [
-            \App\Listeners\Sarpras\NotifyMaintenanceLifecycle::class,
+        MaintenanceOverdue::class => [
+            NotifyMaintenanceLifecycle::class,
         ],
 
-        \App\Events\Sarpras\WarrantyExpired::class => [
-            \App\Listeners\Sarpras\NotifyWarrantyExpired::class,
+        WarrantyExpired::class => [
+            NotifyWarrantyExpired::class,
         ],
 
-        \App\Events\Sarpras\StockOpnameStarted::class => [
-            \App\Listeners\Sarpras\NotifyStockOpnameLifecycle::class,
+        StockOpnameStarted::class => [
+            NotifyStockOpnameLifecycle::class,
         ],
 
-        \App\Events\Sarpras\StockOpnameCompleted::class => [
-            \App\Listeners\Sarpras\NotifyStockOpnameLifecycle::class,
+        StockOpnameCompleted::class => [
+            NotifyStockOpnameLifecycle::class,
         ],
 
-        \App\Events\Sarpras\SlATrackerWarned::class => [
-            \App\Listeners\Sarpras\NotifySlAEscalation::class,
+        SlATrackerWarned::class => [
+            NotifySlAEscalation::class,
         ],
 
-        \App\Events\Sarpras\SlATrackerOverdue::class => [
-            \App\Listeners\Sarpras\NotifySlAEscalation::class,
+        SlATrackerOverdue::class => [
+            NotifySlAEscalation::class,
         ],
 
-        \App\Events\Sarpras\SlATrackerEscalated::class => [
-            \App\Listeners\Sarpras\NotifySlAEscalation::class,
+        SlATrackerEscalated::class => [
+            NotifySlAEscalation::class,
         ],
 
-        \App\Events\Sarpras\AssetMoved::class => [
-            \App\Listeners\Sarpras\NotifyAssetMoved::class,
+        AssetMoved::class => [
+            NotifyAssetMoved::class,
         ],
 
-        \App\Events\Sarpras\AssetQrScanned::class => [
-            \App\Listeners\Sarpras\RecordAssetScanAnalytics::class,
+        AssetQrScanned::class => [
+            RecordAssetScanAnalytics::class,
         ],
 
-        \App\Events\Sarpras\LoanOverdue::class => [
-            \App\Listeners\Sarpras\NotifyAssetMoved::class,
+        LoanOverdue::class => [
+            NotifyAssetMoved::class,
         ],
 
-        \App\Events\Sarpras\LowStockDetected::class => [
-            \App\Listeners\Sarpras\HandleLowStockEvent::class,
+        LowStockDetected::class => [
+            HandleLowStockEvent::class,
         ],
 
-        \App\Events\Sarpras\RepairCostRecorded::class => [
-            \App\Listeners\Sarpras\NotifyRepairLifecycle::class,
+        RepairCostRecorded::class => [
+            NotifyRepairLifecycle::class,
         ],
 
-        \App\Events\Sarpras\SparepartReceived::class => [
-            \App\Listeners\Sarpras\NotifySparepartReceived::class,
+        SparepartReceived::class => [
+            NotifySparepartReceived::class,
         ],
 
-        \App\Events\Sarpras\SparepartAdjusted::class => [
-            \App\Listeners\Sarpras\NotifySparepartReceived::class,
+        SparepartAdjusted::class => [
+            NotifySparepartReceived::class,
         ],
 
-        \App\Events\Sarpras\VendorEvaluationCompleted::class => [
-            \App\Listeners\Sarpras\PersistVendorEvaluationSnapshot::class,
+        VendorEvaluationCompleted::class => [
+            PersistVendorEvaluationSnapshot::class,
         ],
 
-        \App\Events\Sarpras\WarrantyClaimOpportunity::class => [
-            \App\Listeners\Sarpras\NotifyWarrantyClaimOpportunity::class,
+        WarrantyClaimOpportunity::class => [
+            NotifyWarrantyClaimOpportunity::class,
         ],
 
-        \App\Events\Sarpras\WorkOrderProgressAdded::class => [
-            \App\Listeners\Sarpras\NotifyWorkOrderLifecycle::class,
+        WorkOrderProgressAdded::class => [
+            NotifyWorkOrderLifecycle::class,
         ],
 
         // Vendor procurement workflow events.

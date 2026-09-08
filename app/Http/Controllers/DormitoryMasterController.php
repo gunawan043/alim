@@ -13,8 +13,7 @@ class DormitoryMasterController extends Controller
 {
     private function validateAccess(string $userId): void
     {
-        $user = auth()->user();
-        abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
         abort_unless(
             canPermission('dormitory-master-all-access') || canPermission('view_global_school_data'),
             403,
@@ -24,8 +23,7 @@ class DormitoryMasterController extends Controller
 
     private function validateWriteAccess(string $userId): void
     {
-        $user = auth()->user();
-        abort_unless($user && $user->id === $userId, 403, 'Akses ditolak.');
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
         abort_unless(
             canPermission('dormitory-master-admin-access'),
             403,

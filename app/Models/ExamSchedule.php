@@ -69,7 +69,7 @@ class ExamSchedule extends Model
         static::creating(function ($m) {
             $m->id = $m->id ?: (string) Str::uuid();
             if (empty($m->token_ujian) && $m->tipe_pelaksanaan === 'token') {
-                $m->token_ujian = strtoupper(\Illuminate\Support\Str::random(6));
+                $m->token_ujian = strtoupper(Str::random(6));
             }
         });
     }

@@ -13,6 +13,7 @@ use App\Models\DormitoryPermit;
 use App\Models\DormitoryVisitLog;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -154,9 +155,9 @@ class BoardingDomainEventsTest extends TestCase
         return Student::where('id', $studentId)->firstOrFail();
     }
 
-    private function setUpAdmin(): \App\Models\User
+    private function setUpAdmin(): User
     {
-        return \App\Models\User::firstOrCreate(
+        return User::firstOrCreate(
             ['email' => 'domain-test-'.Str::random(6).'@test.com'],
             [
                 'name' => 'Domain Admin',

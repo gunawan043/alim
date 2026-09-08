@@ -48,7 +48,7 @@ return new class extends Migration
         // required and FK-constrained — but we enforce nil-proofing anyway).
         $unfilled = DB::table('wali_registration_tokens')->whereNull('school_id')->count();
         if ($unfilled > 0) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "wali_registration_tokens backfill left {$unfilled} rows without school_id. "
                 .'Investigate orphaned student_id references before retrying.'
             );

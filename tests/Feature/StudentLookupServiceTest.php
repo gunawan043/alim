@@ -218,7 +218,7 @@ class StudentLookupServiceTest extends TestCase
         $school = $this->setUpSchool();
         $student = $this->setUpStudent($school);
         $dormitory = $this->setUpDormitory($school);
-        $room = \App\Models\DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
+        $room = DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
         $year = $this->setUpAcademicYear();
 
         DormitoryResident::create([
@@ -257,7 +257,7 @@ class StudentLookupServiceTest extends TestCase
         $school = $this->setUpSchool();
         $student = $this->setUpStudent($school);
         $dormitory = $this->setUpDormitory($school);
-        $room = \App\Models\DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
+        $room = DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
         $year = $this->setUpAcademicYear();
 
         DormitoryResident::create([
@@ -295,7 +295,7 @@ class StudentLookupServiceTest extends TestCase
     {
         $school = $this->setUpSchool();
         $dormitory = $this->setUpDormitory($school);
-        $room = \App\Models\DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
+        $room = DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
 
         $this->assertTrue($this->getService()->roomBelongsToDormitory($room->id, $dormitory->id));
         $this->assertFalse($this->getService()->roomBelongsToDormitory($room->id, (string) Str::uuid()));
@@ -307,7 +307,7 @@ class StudentLookupServiceTest extends TestCase
         $school = $this->setUpSchool();
         $dormitory = $this->setUpDormitory($school);
         $student = $this->setUpStudent($school);
-        $room = \App\Models\DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
+        $room = DormitoryRoom::where('dormitory_id', $dormitory->id)->first();
         $year = $this->setUpAcademicYear();
 
         // Fill the room to capacity (4)

@@ -4,6 +4,7 @@ namespace App\Listeners\Boarding;
 
 use App\Events\Boarding\HealthPermitApproved;
 use App\Services\TimelineWriter;
+use Carbon\CarbonImmutable;
 
 class RecordHospitalizedOnTimeline
 {
@@ -27,7 +28,7 @@ class RecordHospitalizedOnTimeline
             ],
             module: 'boarding',
             category: 'health',
-            eventAt: \Carbon\CarbonImmutable::now(),
+            eventAt: CarbonImmutable::now(),
             sourceActorId: null,
         );
     }

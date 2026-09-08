@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Role;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,11 @@ class RoleLevelMiddleware
     public function handle(Request $request, Closure $next, int $maxLevel)
     {
         $user = $request->user();
+
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return $next($request);
+        }
+
         $roleNames = $user->effectiveRoles();
 
         if (! $roleNames) {
@@ -23,7 +29,7 @@ class RoleLevelMiddleware
             abort(403);
         }
 
-        $userLevel = \App\Models\Role::whereIn('name', $roleNames)
+        $userLevel = Role::whereIn('name', $roleNames)
             ->min('level');
 
         // no role row with level → fail closed

@@ -5,13 +5,14 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
 {
     public function run(): void
     {
         // Clear cache
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissions = [
             // Dashboard permissions
@@ -143,6 +144,16 @@ class PermissionSeeder extends Seeder
             'menu-sarpras-sidebar',
             'menu-personalia-sidebar',
             'menu-wakil-kepala-sekolah-sidebar',
+            'menu-satuan-pendidikan-sidebar',
+            'menu-departemen-tahfidz-sidebar',
+            'menu-departemen-bahasa-sidebar',
+            'menu-perpustakaan-sidebar',
+            'menu-satuan-keamanan-sidebar',
+            'menu-humas-personalia-sidebar',
+            'menu-unit-rumah-tangga-sidebar',
+            'menu-keuangan-sidebar',
+            'menu-teknologi-informasi-sidebar',
+            'menu-unit-pelayanan-gizi-sidebar',
             'sa-sidebar-menus-all-access',
 
             // Workspace menu permissions (dynamic — granted by assignment, not role)

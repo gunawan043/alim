@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('division_budgets', function (Blueprint $table) {
             $table->string('id', 36)->primary();
-            $table->string('division_id', 36);
+            $table->foreignUuid('division_id')->constrained('divisis')->cascadeOnDelete();
             $table->unsignedInteger('fiscal_year');
             $table->decimal('allocated_amount', 14, 2)->default(0);
             $table->decimal('used_amount', 14, 2)->default(0);

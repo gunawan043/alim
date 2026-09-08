@@ -3,7 +3,12 @@
 namespace App\Services\Sarpras;
 
 use App\Models\Asset;
+use App\Models\AssetAudit;
 use App\Models\AssetMovement;
+use App\Models\AssetPhoto;
+use App\Models\ChecklistInstance;
+use App\Models\MaintenanceLog;
+use App\Models\RepairRequest;
 use App\Models\WorkOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -234,10 +239,10 @@ class OfflineSyncService
         $photoType = $payload['photo_type'] ?? 'documentation';
 
         $model = match ($payload['parent_type'] ?? '') {
-            'repair_request' => \App\Models\RepairRequest::class,
-            'maintenance' => \App\Models\MaintenanceLog::class,
+            'repair_request' => RepairRequest::class,
+            'maintenance' => MaintenanceLog::class,
             'movement' => AssetMovement::class,
-            'audit' => \App\Models\AssetAudit::class,
+            'audit' => AssetAudit::class,
             'work_order' => WorkOrder::class,
             default => null,
         };
@@ -245,7 +250,7 @@ class OfflineSyncService
         if ($model) {
             $context = $model::where('id', $contextId)->first();
             if ($context) {
-                $photo = new \App\Models\AssetPhoto;
+                $photo = new AssetPhoto;
                 $photo->attributes = [
                     'id' => (string) Str::uuid(),
                     'asset_id' => $assetId,
@@ -280,7 +285,7 @@ class OfflineSyncService
     protected function handleBatchChecklist(array $item, int $uploaderId): void
     {
         // Defer to checklist engine
-        $instance = \App\Models\ChecklistInstance::where('id', $item['payload']['instance_id'])->first();
+        $instance = ChecklistInstance::where('id', $item['payload']['instance_id'])->first();
         if ($instance) {
             app(ChecklistEngine::class)->record(
                 $instance,
@@ -301,7 +306,7 @@ class OfflineSyncService
         $payload = $item['payload'];
         $movement = AssetMovement::where('id', $payload['context_id'])->first();
         if ($movement) {
-            $photo = new \App\Models\AssetPhoto;
+            $photo = new AssetPhoto;
             $photo->attributes = [
                 'id' => (string) Str::uuid(),
                 'asset_id' => $movement->asset_id,

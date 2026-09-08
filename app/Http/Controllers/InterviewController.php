@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\GenericExport;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentApplicationStage;
 use App\Models\RecruitmentJob;
+use App\Models\RecruitmentPipelineStage;
 use App\Models\User;
 use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentNotificationService;
@@ -141,7 +143,7 @@ class InterviewController extends Controller
             $application = RecruitmentApplication::find($validated['application_id']);
 
             // Look up the pipeline stage by name
-            $pipelineStage = \App\Models\RecruitmentPipelineStage::where('nama_tahapan', $validated['stage_name'])->firstOrFail();
+            $pipelineStage = RecruitmentPipelineStage::where('nama_tahapan', $validated['stage_name'])->firstOrFail();
 
             // Get next order
             $lastOrder = $application->stages()->max('urutan') ?? 0;
@@ -249,7 +251,7 @@ class InterviewController extends Controller
             ->orderBy('tanggal_melamar', 'desc')
             ->get();
 
-        $stages = \App\Models\RecruitmentPipelineStage::orderBy('urutan')->get();
+        $stages = RecruitmentPipelineStage::orderBy('urutan')->get();
 
         $interviewers = User::orderBy('name')->get(['id', 'name', 'email']);
 
@@ -270,7 +272,7 @@ class InterviewController extends Controller
             'penilai',
         ]);
 
-        $stages = \App\Models\RecruitmentPipelineStage::orderBy('urutan')->get();
+        $stages = RecruitmentPipelineStage::orderBy('urutan')->get();
 
         $interviewers = User::orderBy('name')->get(['id', 'name', 'email']);
 
@@ -685,7 +687,7 @@ class InterviewController extends Controller
         ]);
 
         return Excel::download(
-            new \App\Exports\GenericExport($data->toArray()),
+            new GenericExport($data->toArray()),
             'hasil-seleksi-'.now()->format('Y-m-d').'.xlsx'
         );
     }
@@ -696,20 +698,20 @@ class InterviewController extends Controller
 
     public function dataNilai(Request $request, string $userId)
     {
-        $jobs = \App\Models\RecruitmentJob::orderBy('judul')->get();
-        $stages = \App\Models\RecruitmentPipelineStage::orderBy('urutan')->get();
+        $jobs = RecruitmentJob::orderBy('judul')->get();
+        $stages = RecruitmentPipelineStage::orderBy('urutan')->get();
 
         $stats = [
-            'total_pelamar' => \App\Models\RecruitmentApplication::whereNull('deleted_at')->count(),
-            'pelamar_aktif' => \App\Models\RecruitmentApplication::whereNull('deleted_at')
+            'total_pelamar' => RecruitmentApplication::whereNull('deleted_at')->count(),
+            'pelamar_aktif' => RecruitmentApplication::whereNull('deleted_at')
                 ->whereHas('recruitmentJob', fn ($q) => $q->where('status', 'aktif'))->count(),
-            'pelamar_arsip' => \App\Models\RecruitmentApplication::whereNull('deleted_at')
+            'pelamar_arsip' => RecruitmentApplication::whereNull('deleted_at')
                 ->whereHas('recruitmentJob', fn ($q) => $q->whereIn('status', ['ditutup', 'dibatalkan']))->count(),
-            'sudah_dinilai' => \App\Models\RecruitmentApplication::whereNull('deleted_at')
+            'sudah_dinilai' => RecruitmentApplication::whereNull('deleted_at')
                 ->whereNotNull('nilai_akhir')->count(),
-            'belum_dinilai' => \App\Models\RecruitmentApplication::whereNull('deleted_at')
+            'belum_dinilai' => RecruitmentApplication::whereNull('deleted_at')
                 ->whereNull('nilai_akhir')->count(),
-            'lulus_seleksi' => \App\Models\RecruitmentApplication::whereNull('deleted_at')
+            'lulus_seleksi' => RecruitmentApplication::whereNull('deleted_at')
                 ->where('status_akhir', 'lulus')->count(),
         ];
 
@@ -718,7 +720,7 @@ class InterviewController extends Controller
 
     public function dataNilaiDatatable(Request $request, string $userId)
     {
-        $query = \App\Models\RecruitmentApplication::with(['profile', 'recruitmentJob', 'stages.stage'])
+        $query = RecruitmentApplication::with(['profile', 'recruitmentJob', 'stages.stage'])
             ->whereNull('deleted_at')
             ->when($request->job_id, fn ($q, $v) => $q->where('recruitment_job_id', $v))
             ->when($request->status, fn ($q, $v) => $q->where('status', $v))
@@ -812,7 +814,7 @@ class InterviewController extends Controller
 
     public function dataNilaiExport(Request $request, string $userId)
     {
-        $query = \App\Models\RecruitmentApplication::with(['profile', 'recruitmentJob'])
+        $query = RecruitmentApplication::with(['profile', 'recruitmentJob'])
             ->whereNull('deleted_at')
             ->when($request->job_id, fn ($q, $v) => $q->where('recruitment_job_id', $v))
             ->when($request->status, fn ($q, $v) => $q->where('status', $v))

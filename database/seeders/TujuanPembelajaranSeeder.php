@@ -9,6 +9,7 @@ use App\Models\TujuanPembelajaran;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class TujuanPembelajaranSeeder extends Seeder
 {
@@ -56,7 +57,7 @@ class TujuanPembelajaranSeeder extends Seeder
                     'kode_tp' => $row['kode_tp'],
                 ],
                 [
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'school_id' => $subject->school_id,
                     'semester' => $row['semester'],
                     'fase' => $row['fase'],

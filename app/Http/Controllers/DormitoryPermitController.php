@@ -10,13 +10,20 @@ use App\Http\Requests\Dormitory\RejectPermitRequest;
 use App\Http\Requests\Dormitory\StorePermitRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryResident;
+use App\Models\StudentHealthPermit;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Symfony\Component\HttpFoundation\Response;
 
 class DormitoryPermitController extends Controller
 {
@@ -87,7 +94,7 @@ class DormitoryPermitController extends Controller
         ];
 
         // Residents for dropdown & quota view
-        $residents = \App\Models\DormitoryResident::with('student.mahroms')
+        $residents = DormitoryResident::with('student.mahroms')
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
             ->where('is_active', true)
@@ -104,7 +111,7 @@ class DormitoryPermitController extends Controller
         }
 
         // Ringkasan policy per permit type (untuk badge di header index)
-        $policies = \App\Models\DormitoryLeavePolicy::where('dormitory_id', $asramaUuid)
+        $policies = DormitoryLeavePolicy::where('dormitory_id', $asramaUuid)
             ->get()
             ->keyBy('permit_type');
 
@@ -120,7 +127,7 @@ class DormitoryPermitController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         // Ambil resident aktif
-        $residents = \App\Models\DormitoryResident::with('student.mahroms')
+        $residents = DormitoryResident::with('student.mahroms')
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
             ->where('is_active', true)
@@ -154,7 +161,7 @@ class DormitoryPermitController extends Controller
 
         // Jika permit_type = sakit, wajib ada StudentHealthPermit yg sudah approved
         if ($data['permit_type'] === 'sakit') {
-            $healthPermit = \App\Models\StudentHealthPermit::where('student_id', $data['student_id'])
+            $healthPermit = StudentHealthPermit::where('student_id', $data['student_id'])
                 ->where('status', 'approved')
                 ->where('dormitory_id', $asramaUuid)
                 ->whereDate('start_date', '<=', $data['departure_datetime'])
@@ -227,7 +234,7 @@ class DormitoryPermitController extends Controller
     }
 
     /** Generate QR image for a permit (public, no auth required). */
-    public function qrImage(string $asramaUuid, string $permitUuid): \Symfony\Component\HttpFoundation\Response
+    public function qrImage(string $asramaUuid, string $permitUuid): Response
     {
         $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)
             ->findOrFail($permitUuid);
@@ -238,7 +245,7 @@ class DormitoryPermitController extends Controller
         }
 
         $qrPayload = json_encode($permit->qrPayload());
-        $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+        $qrImage = QrCode::format('png')
             ->size(280)
             ->margin(2)
             ->generate($qrPayload);
@@ -943,7 +950,7 @@ class DormitoryPermitController extends Controller
     /**
      * Return JSON for AJAX scans, redirect for HTML form fallback.
      */
-    private function scanResponse(Request $request, string $message, bool $success, array $data = [], ?\Illuminate\Http\RedirectResponse $redirect = null)
+    private function scanResponse(Request $request, string $message, bool $success, array $data = [], ?RedirectResponse $redirect = null)
     {
         if ($request->wantsJson() || $request->ajax()) {
             $payload = array_merge([
@@ -1088,6 +1095,56 @@ class DormitoryPermitController extends Controller
         // Halaman publik hanya untuk informasi — pemindaian hanya boleh dilakukan oleh staf asrama.
         return view('dormitory.permits.verify', compact('permit'), [
             'success' => 'Tunjukkan halaman ini kepada staf asrama untuk dipindai.',
+        ]);
+    }
+
+    /**
+     * Global list — system-wide permits for the dashboard "Lihat Semua" link.
+     */
+    public function allPermits(Request $request)
+    {
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        $query = DormitoryPermit::with(['student', 'room', 'dormitory', 'approvedBy', 'mahrom'])
+            ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id));
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $q = $request->search;
+            $query->where(fn ($sq) => $sq
+                ->whereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('dormitory', fn ($dm) => $dm->where('name', 'like', "%{$q}%"))
+                ->orWhere('purpose', 'like', "%{$q}%")
+            );
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($request->start_date)->startOfDay(),
+                Carbon::parse($request->end_date)->endOfDay(),
+            ]);
+        }
+
+        $permits = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        $baseQuery = fn () => DormitoryPermit::when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id));
+
+        return view('system.permits.index', [
+            'permits' => $permits,
+            'activeYear' => $activeYear,
+            'dormitories' => Dormitory::select('id', 'name')->orderBy('name')->get(),
+            'stats' => [
+                'total' => $baseQuery()->count(),
+                'pending' => $baseQuery()->where('status', 'pending')->count(),
+                'approved' => $baseQuery()->where('status', 'approved')->count(),
+                'picked_up' => $baseQuery()->where('status', 'picked_up')->count(),
+                'overdue' => $baseQuery()->where('status', 'overdue')->count(),
+                'rejected' => $baseQuery()->where('status', 'rejected')->count(),
+                'returned' => $baseQuery()->where('status', 'returned')->count(),
+            ],
         ]);
     }
 }

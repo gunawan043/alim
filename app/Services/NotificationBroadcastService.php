@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Authorization\Services\ApprovalRoleResolver;
 use App\Events\NotificationEvent;
 use App\Models\NotificationUniversal;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +61,7 @@ class NotificationBroadcastService
         $saved = $this->notificationService->sendToRole($roleName, $data);
 
         try {
-            $userIds = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
+            $userIds = ApprovalRoleResolver::resolvePermission($roleName);
             foreach ($userIds as $perm) {
                 $resolved = usersHavingPermission($perm);
                 foreach ($resolved as $userId) {

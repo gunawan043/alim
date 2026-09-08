@@ -7,9 +7,11 @@ use App\Exports\AbsensiSemesterFullExport;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -85,7 +87,7 @@ class AbsensiHarianController extends Controller
         // Stats per rombel untuk tanggal terpilih
         $rombelStats = [];
         foreach ($studyGroups as $sg) {
-            $totalSiswa = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
+            $totalSiswa = StudentClassHistory::withoutGlobalScope('school_context')
                 ->where('study_group_id', $sg->id)
                 ->where('academic_year_id', $activeYear?->id)
                 ->where('is_active', true)
@@ -164,7 +166,7 @@ class AbsensiHarianController extends Controller
         );
 
         // Query StudyGroup langsung — bypass global scope
-        $studyGroupQuery = \App\Models\StudyGroup::withoutGlobalScope('school_context')
+        $studyGroupQuery = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
@@ -185,7 +187,7 @@ class AbsensiHarianController extends Controller
         $existingRecords = collect();
 
         if ($selectedStudyGroupId && $activeYear) {
-            $histories = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
+            $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
@@ -195,7 +197,7 @@ class AbsensiHarianController extends Controller
 
             $students = $histories->pluck('student');
 
-            $existingRecords = \App\Models\AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
+            $existingRecords = AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
                 ->where('semester', $selectedSemester)
                 ->whereDate('attendance_date', $selectedDate)
@@ -314,7 +316,7 @@ class AbsensiHarianController extends Controller
         $dateMap = []; // [student_id][date_string] => status
 
         if ($selectedStudyGroupId && $activeYear) {
-            $histories = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
+            $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
@@ -394,7 +396,7 @@ class AbsensiHarianController extends Controller
     /**
      * Build data untuk export detail (kolom tanggal).
      */
-    protected function buildRecapDetailData($studentRows, $dateMap, Carbon $startDate, int $daysInMonth): \Illuminate\Support\Collection
+    protected function buildRecapDetailData($studentRows, $dateMap, Carbon $startDate, int $daysInMonth): Collection
     {
         $rows = collect();
         foreach ($studentRows as $student) {
@@ -480,7 +482,7 @@ class AbsensiHarianController extends Controller
             $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
             $endDate = $startDate->copy()->endOfMonth();
 
-            $histories = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
+            $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
@@ -576,7 +578,7 @@ class AbsensiHarianController extends Controller
         if ($selectedStudyGroupId && $selectedAyId) {
             $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
 
-            $histories = \App\Models\StudentClassHistory::withoutGlobalScope('school_context')
+            $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $selectedAyId)

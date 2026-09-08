@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Sarpras;
 
+use App\Events\Sarpras\AssetQrScanned;
 use App\Models\Asset;
+use App\Models\QrScanHistory;
 use App\Services\Sarpras\AssetPassportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -80,7 +82,7 @@ class AssetPassportController extends SarprasBaseController
         $user = $request->user();
 
         try {
-            $scanHistory = \App\Models\QrScanHistory::create([
+            $scanHistory = QrScanHistory::create([
                 'asset_id' => null,
                 'scanned_by' => $user?->id,
                 'scanned_at' => now(),
@@ -109,7 +111,7 @@ class AssetPassportController extends SarprasBaseController
 
         // Dispatch the existing event for analytics/audit pipelines
         try {
-            \App\Events\Sarpras\AssetQrScanned::dispatch($asset, $scanHistory, $user);
+            AssetQrScanned::dispatch($asset, $scanHistory, $user);
         } catch (\Throwable $e) {
             Log::warning('AssetQrScanned event dispatch failed', ['asset' => $asset->id, 'error' => $e->getMessage()]);
         }

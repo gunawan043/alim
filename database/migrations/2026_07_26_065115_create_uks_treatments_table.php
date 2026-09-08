@@ -35,7 +35,7 @@ return new class extends Migration
         // (otherwise it will be added by a later migration once patients table is created)
         if (Schema::hasTable('uks_patients') && Schema::hasColumn('uks_treatments', 'patient_id')) {
             $fkExists = collect(
-                \DB::select(
+                DB::select(
                     "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
                      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'uks_treatments'
                      AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME IS NOT NULL",

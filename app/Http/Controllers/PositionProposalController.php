@@ -4,18 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\GtkEmployment;
 use App\Models\GtkPositionProposal;
-use App\Models\Position;
 use App\Models\School;
+use App\Models\StructuralPosition;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
 class PositionProposalController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, string $userId)
     {
         $currentUser = auth()->user();
         $isPersonalia = $currentUser->roles->pluck('name')->contains('Personalia');
-        $isSuperAdmin = $currentUser->roles->pluck('name')->contains('Super Admin');
+        $isSuperAdmin = method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin();
 
         $query = GtkPositionProposal::with(['user', 'proposer', 'proposedPosition', 'proposedSchool', 'reviewer']);
 
@@ -42,17 +43,16 @@ class PositionProposalController extends Controller
         $canViewAll = $isPersonalia || $isSuperAdmin;
         $canApprove = $isPersonalia || $isSuperAdmin;
 
-        return view('gtk-position-proposals.index', compact('proposals', 'canViewAll', 'canApprove'));
+        return view('gtk-position-proposals.index', compact('proposals', 'canViewAll', 'canApprove', 'userId'));
     }
 
-    public function create(Request $request)
+    public function create(Request $request, string $userId)
     {
         $currentUser = auth()->user();
         $currentUserJob = $currentUser->gtkEmployment?->jabatan;
 
         // Kepala roles only
         $isKepalaSP = in_array($currentUserJob, [
-            'Kepala Satuan Pendidikan',
             'Kepala Sekolah',
         ]);
         $isKepalaDept = in_array($currentUserJob, [
@@ -62,22 +62,22 @@ class PositionProposalController extends Controller
             'Kepala Asrama',
         ]);
 
-        abort_unless($isKepalaSP || $isKepalaDept, 403, 'Hanya Kepala Departemen/Satuan Pendidikan yang dapat mengajukan kenaikan jabatan.');
+        abort_unless($isKepalaSP || $isKepalaDept, 403, 'Hanya Kepala Departemen/Kepala Sekolah yang dapat mengajukan kenaikan jabatan.');
 
         $proposers = $this->getProposableUsers($request);
-        $positions = Position::active()->orderBy('jenis_gtk_id')->orderBy('nama')->get();
+        $positions = StructuralPosition::active()->orderBy('jenis_gtk_id')->orderBy('name')->get();
         $proposalTypes = GtkPositionProposal::TYPE_LABELS;
         $schools = School::orderBy('name')->get();
 
-        return view('gtk-position-proposals.create', compact('proposers', 'positions', 'proposalTypes', 'currentUserJob', 'schools'));
+        return view('gtk-position-proposals.create', compact('proposers', 'positions', 'proposalTypes', 'currentUserJob', 'schools', 'userId'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, string $userId)
     {
         $currentUser = auth()->user();
         $currentUserJob = $currentUser->gtkEmployment?->jabatan;
 
-        $isKepalaSP = in_array($currentUserJob, ['Kepala Satuan Pendidikan', 'Kepala Sekolah']);
+        $isKepalaSP = in_array($currentUserJob, ['Kepala Sekolah']);
         $isKepalaDept = in_array($currentUserJob, [
             'Kepala Departemen Tahfidz',
             'Kepala Departemen Bahasa',
@@ -85,7 +85,7 @@ class PositionProposalController extends Controller
             'Kepala Asrama',
         ]);
 
-        abort_unless($isKepalaSP || $isKepalaDept, 403, 'Hanya Kepala Departemen/Satuan Pendidikan yang dapat mengajukan kenaikan jabatan.');
+        abort_unless($isKepalaSP || $isKepalaDept, 403, 'Hanya Kepala Departemen/Kepala Sekolah yang dapat mengajukan kenaikan jabatan.');
 
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -116,11 +116,11 @@ class PositionProposalController extends Controller
             'tmt' => $data['tmt'] ?? null,
         ]);
 
-        return redirect()->route('user.gtk-position-proposals.index')
+        return redirect()->route('user.gtk-position-proposals.index', ['userId' => $userId])
             ->with('success', 'Pengajuan kenaikan jabatan berhasil dikirim.');
     }
 
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $proposal = GtkPositionProposal::with([
             'user',
@@ -133,7 +133,7 @@ class PositionProposalController extends Controller
 
         $currentUser = auth()->user();
         $isPersonalia = $currentUser->roles->pluck('name')->contains('Personalia');
-        $isSuperAdmin = $currentUser->roles->pluck('name')->contains('Super Admin');
+        $isSuperAdmin = method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin();
         $isProposer = $proposal->proposed_by === $currentUser->id;
 
         $canView = $isPersonalia || $isSuperAdmin || $isProposer;
@@ -143,14 +143,14 @@ class PositionProposalController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        return view('gtk-position-proposals.show', compact('proposal', 'canApprove'));
+        return view('gtk-position-proposals.show', compact('proposal', 'canApprove', 'userId'));
     }
 
-    public function approve(Request $request, string $id)
+    public function approve(Request $request, string $userId, string $id)
     {
         $currentUser = auth()->user();
         $isPersonalia = $currentUser->roles->pluck('name')->contains('Personalia');
-        $isSuperAdmin = $currentUser->roles->pluck('name')->contains('Super Admin');
+        $isSuperAdmin = method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin();
 
         abort_unless($isPersonalia || $isSuperAdmin, 403, 'Hanya Personalia atau Super Admin yang dapat menyetujui pengajuan.');
 
@@ -182,15 +182,15 @@ class PositionProposalController extends Controller
                 ]);
         }
 
-        return redirect()->route('user.gtk-position-proposals.index')
+        return redirect()->route('user.gtk-position-proposals.index', ['userId' => $userId])
             ->with('success', 'Pengajuan jabatan berhasil disetujui.');
     }
 
-    public function reject(Request $request, string $id)
+    public function reject(Request $request, string $userId, string $id)
     {
         $currentUser = auth()->user();
         $isPersonalia = $currentUser->roles->pluck('name')->contains('Personalia');
-        $isSuperAdmin = $currentUser->roles->pluck('name')->contains('Super Admin');
+        $isSuperAdmin = method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin();
 
         abort_unless($isPersonalia || $isSuperAdmin, 403, 'Hanya Personalia atau Super Admin yang dapat menolak pengajuan.');
 
@@ -209,11 +209,11 @@ class PositionProposalController extends Controller
             'review_notes' => $data['review_notes'],
         ]);
 
-        return redirect()->route('user.gtk-position-proposals.index')
+        return redirect()->route('user.gtk-position-proposals.index', ['userId' => $userId])
             ->with('success', 'Pengajuan jabatan berhasil ditolak.');
     }
 
-    public function cancel(string $id)
+    public function cancel(string $userId, string $id)
     {
         $currentUser = auth()->user();
         $proposal = GtkPositionProposal::where('id', $id)
@@ -223,11 +223,11 @@ class PositionProposalController extends Controller
 
         $proposal->update(['status' => 'cancelled']);
 
-        return redirect()->route('user.gtk-position-proposals.index')
+        return redirect()->route('user.gtk-position-proposals.index', ['userId' => $userId])
             ->with('success', 'Pengajuan jabatan berhasil dibatalkan.');
     }
 
-    private function getProposableUsers(Request $request): \Illuminate\Database\Eloquent\Collection
+    private function getProposableUsers(Request $request): Collection
     {
         $currentUser = auth()->user();
         $currentUserJob = $currentUser->gtkEmployment?->jabatan;

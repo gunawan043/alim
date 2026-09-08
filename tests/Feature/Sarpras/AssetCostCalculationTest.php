@@ -3,9 +3,11 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
+use App\Models\AssetCategory;
 use App\Models\AssetCostSnapshot;
 use App\Models\MaintenanceHistory;
 use App\Models\RepairCostHistory;
+use App\Models\School;
 use App\Services\Sarpras\TcoService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -177,7 +179,7 @@ class AssetCostCalculationTest extends TestCase
         ], $overrides));
     }
 
-    protected function makeSchool(): \App\Models\School
+    protected function makeSchool(): School
     {
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -198,12 +200,12 @@ class AssetCostCalculationTest extends TestCase
             'is_active' => true,
         ]);
 
-        return \App\Models\School::find($schoolId);
+        return School::find($schoolId);
     }
 
-    protected function makeCategory(string $name): \App\Models\AssetCategory
+    protected function makeCategory(string $name): AssetCategory
     {
-        return \App\Models\AssetCategory::create([
+        return AssetCategory::create([
             'name' => $name,
             'code' => 'C-'.Str::random(4),
             'is_active' => true,

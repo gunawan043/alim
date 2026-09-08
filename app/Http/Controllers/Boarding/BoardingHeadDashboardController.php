@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Boarding;
 use App\Http\Controllers\Controller;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryRoomMove;
 use App\Models\DormitoryViolation;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
@@ -24,7 +25,7 @@ class BoardingHeadDashboardController extends Controller
         $pendingApprovals = [
             'permits' => DormitoryPermit::where('status', 'pending')->count(),
             'visits' => DormitoryVisitLog::where('status', 'pending')->count(),
-            'room_moves' => \App\Models\DormitoryRoomMove::where('status', 'pending')->count(),
+            'room_moves' => DormitoryRoomMove::where('status', 'pending')->count(),
         ];
 
         $pendingTotal = array_sum($pendingApprovals);

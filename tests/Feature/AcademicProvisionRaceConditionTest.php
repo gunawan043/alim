@@ -2,6 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\AcademicYear;
+use App\Models\RaportRegistration;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentAbsence;
+use App\Models\StudentClassHistory;
+use App\Models\StudyGroup;
 use App\Services\AcademicProvisionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +30,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return \App\Models\School::create([
+        return School::create([
             'id' => (string) Str::uuid(),
             'work_unit_id' => $workUnitId,
             'npsn' => '1234567890',
@@ -34,7 +41,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
 
     private function student($school)
     {
-        return \App\Models\Student::create([
+        return Student::create([
             'id' => (string) Str::uuid(),
             'school_id' => $school->id,
             'name' => 'Test Student',
@@ -46,7 +53,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
 
     private function academicYear()
     {
-        return \App\Models\AcademicYear::create([
+        return AcademicYear::create([
             'id' => (string) Str::uuid(),
             'name' => '2025/2026',
             'semester' => 'ganjil',
@@ -68,7 +75,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return \App\Models\StudyGroup::create([
+        return StudyGroup::create([
             'id' => (string) Str::uuid(),
             'school_id' => $school->id,
             'academic_year_id' => $ay->id,
@@ -80,7 +87,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
 
     private function enrollment($student, $sg, $ay)
     {
-        return \App\Models\StudentClassHistory::create([
+        return StudentClassHistory::create([
             'id' => (string) Str::uuid(),
             'student_id' => $student->id,
             'study_group_id' => $sg->id,
@@ -119,7 +126,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
         $service2->provision();
 
         // Idempotency: only one student_absence record should exist
-        $absenceCount = \App\Models\StudentAbsence::where('student_id', $student->id)
+        $absenceCount = StudentAbsence::where('student_id', $student->id)
             ->where('study_group_id', $sg->id)
             ->count();
 
@@ -156,7 +163,7 @@ class AcademicProvisionRaceConditionTest extends TestCase
         );
         $service2->provision();
 
-        $raportCount = \App\Models\RaportRegistration::where('student_id', $student->id)
+        $raportCount = RaportRegistration::where('student_id', $student->id)
             ->where('study_group_id', $sg->id)
             ->count();
 

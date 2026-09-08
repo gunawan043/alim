@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Province;
 use App\Models\School;
+use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 
@@ -48,8 +50,8 @@ class SchoolUnitController extends Controller
 
         $userId = $request->route('userId');
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
-        $provinces = \App\Models\Province::orderBy('name')->get();
-        $principals = \App\Models\User::whereHas('employment')
+        $provinces = Province::orderBy('name')->get();
+        $principals = User::whereHas('employment')
             ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
             ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
             ->orderBy('name')

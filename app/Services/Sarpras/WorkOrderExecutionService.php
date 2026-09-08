@@ -2,6 +2,7 @@
 
 namespace App\Services\Sarpras;
 
+use App\Models\ChecklistInstance;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderPauseEvent;
@@ -177,7 +178,7 @@ class WorkOrderExecutionService
 
     protected function latestChecklistFor(WorkOrder $order): ?array
     {
-        $instance = \App\Models\ChecklistInstance::where('context_type', $order->getMorphClass())
+        $instance = ChecklistInstance::where('context_type', $order->getMorphClass())
             ->where('context_id', $order->id)
             ->latest()
             ->first();

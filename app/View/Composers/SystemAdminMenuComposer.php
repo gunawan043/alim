@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View\Composers;
 
+use App\Models\Role;
 use App\Models\School;
 use App\Services\ViewAsService;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +19,7 @@ class SystemAdminMenuComposer
         // Only share view-as data when a system admin or super admin is viewing
         $user = Auth::user();
         $isSystemAdmin = $user && method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
-        $isSuperAdmin = $user && method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('impersonate_role');
+        $isSuperAdmin = $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
 
         if ($isSystemAdmin || $isSuperAdmin) {
             $viewAsService = app(ViewAsService::class);
@@ -31,7 +32,7 @@ class SystemAdminMenuComposer
             $view->with('viewAsUserId', $viewAsUserId);
             $view->with('originalUserId', $originalUserId);
             $view->with('isViewingAs', $viewAsService->isViewingAs());
-            $view->with('systemRoles', \App\Models\Role::where('guard_name', 'web')
+            $view->with('systemRoles', Role::where('guard_name', 'web')
                 ->whereNotIn('name', ['Super Admin', 'System Admin'])
                 ->orderBy('name')
                 ->get());

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Models\Dormitory;
 use App\Models\School;
-use App\Models\WorkUnit;
 use App\Models\User;
+use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 
 class DormitoryController extends Controller
@@ -94,7 +94,7 @@ class DormitoryController extends Controller
         $validated = $request->validate([
             'work_unit_id' => 'required|exists:work_units,id',
             'school_id' => 'required|exists:schools,id',
-            'code' => 'required|string|max:20|unique:dormitories,code,' . $id,
+            'code' => 'required|string|max:20|unique:dormitories,code,'.$id,
             'name' => 'required|string|max:191',
             'gender' => 'required|in:putra,putri,campuran',
             'address' => 'nullable|string',
@@ -130,7 +130,7 @@ class DormitoryController extends Controller
     public function toggleStatus(Request $request, string $id)
     {
         $dormitory = Dormitory::findOrFail($id);
-        $dormitory->update(['is_active' => !$dormitory->is_active]);
+        $dormitory->update(['is_active' => ! $dormitory->is_active]);
 
         return response()->json([
             'success' => true,

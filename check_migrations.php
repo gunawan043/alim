@@ -1,8 +1,10 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
+
 require __DIR__.'/vendor/autoload.php';
 $app = require __DIR__.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 // 1. Cek isi tabel migrations
 echo "=== Isi tabel migrations (terakhir 10) ===\n";

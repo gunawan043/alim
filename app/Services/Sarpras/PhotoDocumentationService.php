@@ -2,6 +2,7 @@
 
 namespace App\Services\Sarpras;
 
+use App\Models\Asset;
 use App\Models\AssetPhoto;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
@@ -89,7 +90,7 @@ class PhotoDocumentationService
 
     protected function resolveAssetId(Model $context): ?string
     {
-        if ($context instanceof \App\Models\Asset) {
+        if ($context instanceof Asset) {
             return $context->getKey();
         }
         if (isset($context->asset_id)) {

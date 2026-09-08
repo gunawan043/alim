@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryWing;
@@ -162,7 +163,7 @@ class DormitoryController extends Controller
             'rooms.residents.student',
         ])->findOrFail($asramaUuid);
 
-        $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $activeYear = AcademicYear::where('is_active', true)->first();
 
         // Stats per asrama
         $stats = [

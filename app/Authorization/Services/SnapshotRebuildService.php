@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Authorization\Services;
 
 use App\Authorization\Contracts\PermissionBuilder;
+use App\Authorization\Contracts\PermissionCacheManager;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\DTO\PermissionBag;
 use App\Authorization\Enums\SnapshotStatus;
@@ -13,6 +14,7 @@ use App\Authorization\Events\SnapshotArchived;
 use App\Authorization\Events\SnapshotCreated;
 use App\Authorization\Exceptions\AuthorizationException;
 use App\Authorization\Models\PermissionSnapshot;
+use App\Authorization\Models\SnapshotAuditLog;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Models\User;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -24,7 +26,7 @@ final class SnapshotRebuildService
         private readonly PermissionBuilder $builder,
         private readonly SnapshotRepository $repository,
         private readonly Dispatcher $events,
-        private readonly ?\App\Authorization\Contracts\PermissionCacheManager $cache = null,
+        private readonly ?PermissionCacheManager $cache = null,
     ) {}
 
     public function rebuild(User $user, OrganizationContext $context, string $trigger = 'manual'): PermissionBag
@@ -100,7 +102,7 @@ final class SnapshotRebuildService
         Throwable $e,
     ): void {
         try {
-            \App\Authorization\Models\SnapshotAuditLog::query()->create([
+            SnapshotAuditLog::query()->create([
                 'user_id' => $userId,
                 'scope_key' => $scopeKey,
                 'event' => $trigger,

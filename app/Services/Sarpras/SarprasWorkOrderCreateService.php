@@ -3,6 +3,7 @@
 namespace App\Services\Sarpras;
 
 use App\Models\IntegrationEventLog;
+use App\Models\Sarpras\WorkOrder;
 use Illuminate\Support\Str;
 
 /**
@@ -40,8 +41,8 @@ class SarprasWorkOrderCreateService
 
         // Concrete Sarpras models (if present) handle persistence.
         // We keep this loose to avoid hard dependency.
-        if (class_exists(\App\Models\Sarpras\WorkOrder::class)) {
-            \App\Models\Sarpras\WorkOrder::create([
+        if (class_exists(WorkOrder::class)) {
+            WorkOrder::create([
                 'id' => $workOrderId,
                 'source' => 'boarding',
                 'source_id' => $moduleId,

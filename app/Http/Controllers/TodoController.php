@@ -11,6 +11,7 @@ use App\Models\TodoSubtask;
 use App\Models\TodoWatcher;
 use App\Models\User;
 use App\Services\NotificationUniversalService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,7 @@ class TodoController extends Controller
     {
         try {
             return Todo::findOrFail($id);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return null;
         }
     }
@@ -111,7 +112,7 @@ class TodoController extends Controller
                 'watchers.user',
                 'todoList',
             ])->findOrFail($id);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Tugas tidak ditemukan.'], 404);
         }
 

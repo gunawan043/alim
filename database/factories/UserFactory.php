@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -31,7 +32,7 @@ class UserFactory extends Factory
             // Use App\Models\Role (not \Spatie\Permission\Models\Role) so
             // the UUID-backed id column type is preserved.
             if (method_exists($user, 'roles') && $user->roles()->count() === 0) {
-                $role = \App\Models\Role::firstOrCreate(
+                $role = Role::firstOrCreate(
                     ['name' => 'Staff'],
                     ['guard_name' => 'web']
                 );
@@ -43,7 +44,7 @@ class UserFactory extends Factory
     /**
      * Indicate that the model's email address should be unverified.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return Factory
      */
     public function unverified()
     {

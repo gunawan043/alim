@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Authorization\Services;
 
+use App\Authorization\Models\PermissionSnapshot;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -33,7 +35,7 @@ final class UserFilterService
      */
     public function userIdsWithPermission(string $permission, OrganizationContext $context): array
     {
-        $snapshotModel = new \App\Authorization\Models\PermissionSnapshot;
+        $snapshotModel = new PermissionSnapshot;
         $snapshotTable = $snapshotModel->getTable();
 
         // The permissions column is JSON-cast array, so we can use whereJsonContains
@@ -78,7 +80,7 @@ final class UserFilterService
      * Apply the permission filter to an existing Eloquent query.
      * Returns the same builder with a whereIn applied.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      */
     public function applyToQuery($query, string $permission, OrganizationContext $context): void
     {
@@ -111,7 +113,7 @@ final class UserFilterService
     /**
      * Apply the inverse permission filter to a query.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      */
     public function applyInverseToQuery($query, string $permission, OrganizationContext $context): void
     {

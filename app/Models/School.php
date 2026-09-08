@@ -88,27 +88,27 @@ class School extends Model
 
     public function principalUser(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'principal_user_id');
+        return $this->belongsTo(User::class, 'principal_user_id');
     }
 
     public function province()
     {
-        return $this->belongsTo(\App\Models\Province::class, 'province_code', 'code');
+        return $this->belongsTo(Province::class, 'province_code', 'code');
     }
 
     public function city()
     {
-        return $this->belongsTo(\App\Models\City::class, 'city_code', 'code');
+        return $this->belongsTo(City::class, 'city_code', 'code');
     }
 
     public function district()
     {
-        return $this->belongsTo(\App\Models\District::class, 'district_code', 'code');
+        return $this->belongsTo(District::class, 'district_code', 'code');
     }
 
     public function village()
     {
-        return $this->belongsTo(\App\Models\Village::class, 'village_code', 'code');
+        return $this->belongsTo(Village::class, 'village_code', 'code');
     }
 
     // ── Accessors ─────────────────────────────────────────────────

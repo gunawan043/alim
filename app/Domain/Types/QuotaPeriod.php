@@ -2,6 +2,7 @@
 
 namespace App\Domain\Types;
 
+use App\Models\AcademicYear;
 use Carbon\CarbonImmutable;
 
 final class QuotaPeriod
@@ -21,7 +22,7 @@ final class QuotaPeriod
         return match ($period) {
             self::WEEKLY => now()->startOfWeek(),
             self::MONTHLY => now()->firstOfMonth(),
-            self::SEMESTER => \App\Models\AcademicYear::where('is_active', true)->first()
+            self::SEMESTER => AcademicYear::where('is_active', true)->first()
                 ?->semester_starts
                 ?? now()->startOfYear(),
             self::YEARLY => now()->startOfYear(),

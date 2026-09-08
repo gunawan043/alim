@@ -7,11 +7,15 @@ use App\Jobs\ProvisionStudyGroupSubjectAcademicStructureJob;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
+use App\Models\User;
 use App\Observers\StudyGroupSubjectObserver;
+use App\Services\StudyGroupSubjectProvisioner;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -210,7 +214,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a teacher user first (FK requires existing user)
-        $teacher = \App\Models\User::create([
+        $teacher = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Test Teacher',
             'email' => 'teacher2@test.local',
@@ -253,7 +257,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a teacher user (FK requires existing user for admin_book)
-        $teacher = \App\Models\User::create([
+        $teacher = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Teacher KKTP',
             'email' => 'teacherkktp@test.local',
@@ -274,7 +278,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
             'is_active' => true,
         ]);
 
-        $provisioner = new \App\Services\StudyGroupSubjectProvisioner(
+        $provisioner = new StudyGroupSubjectProvisioner(
             $sgs->id,
             $ctx['sg']->id,
             $ctx['subj']->id,
@@ -298,7 +302,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a user for created_by FK constraint
-        $creator = \App\Models\User::create([
+        $creator = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Creator',
             'email' => 'creator@test.local',
@@ -328,7 +332,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
             'is_active' => true,
         ]);
 
-        $provisioner = new \App\Services\StudyGroupSubjectProvisioner(
+        $provisioner = new StudyGroupSubjectProvisioner(
             $sgs->id,
             $ctx['sg']->id,
             $ctx['subj']->id,
@@ -351,7 +355,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a teacher user (FK requires existing user for admin_book)
-        $teacher = \App\Models\User::create([
+        $teacher = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Teacher Updated',
             'email' => 'teacherupdated@test.local',
@@ -379,7 +383,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
 
         // Now manually trigger with 'updated' change type
         // and verify no KKTP is created for updates
-        $provisioner = new \App\Services\StudyGroupSubjectProvisioner(
+        $provisioner = new StudyGroupSubjectProvisioner(
             $sgs->id,
             $ctx['sg']->id,
             $ctx['subj']->id,
@@ -401,9 +405,9 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
     public function observer_is_registered_on_study_group_subject_model(): void
     {
         // Verify the observer class exists and has the expected methods
-        $this->assertTrue(method_exists(\App\Observers\StudyGroupSubjectObserver::class, 'created'));
-        $this->assertTrue(method_exists(\App\Observers\StudyGroupSubjectObserver::class, 'updated'));
-        $this->assertTrue(method_exists(\App\Observers\StudyGroupSubjectObserver::class, 'deleted'));
+        $this->assertTrue(method_exists(StudyGroupSubjectObserver::class, 'created'));
+        $this->assertTrue(method_exists(StudyGroupSubjectObserver::class, 'updated'));
+        $this->assertTrue(method_exists(StudyGroupSubjectObserver::class, 'deleted'));
     }
 
     /** @test */
@@ -412,7 +416,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a teacher user
-        $teacher = \App\Models\User::create([
+        $teacher = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Teacher Cascade',
             'email' => 'teachercascade@test.local',
@@ -422,7 +426,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Create a real student so FK constraints pass
-        $student = \App\Models\Student::create([
+        $student = Student::create([
             'id' => (string) Str::uuid(),
             'user_id' => (string) Str::uuid(),
             'school_id' => $ctx['school']->id,
@@ -432,7 +436,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Create an active student in the study group
-        \App\Models\StudentClassHistory::create([
+        StudentClassHistory::create([
             'id' => (string) Str::uuid(),
             'study_group_id' => $ctx['sg']->id,
             'academic_year_id' => $ctx['ay']->id,
@@ -485,7 +489,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         $ctx = $this->bootstrap();
 
         // Create a teacher user
-        $teacher = \App\Models\User::create([
+        $teacher = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Teacher Idempotent',
             'email' => 'teacheridempotent@test.local',
@@ -495,7 +499,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Create a real student so FK constraints pass
-        $student2 = \App\Models\Student::create([
+        $student2 = Student::create([
             'id' => (string) Str::uuid(),
             'user_id' => (string) Str::uuid(),
             'school_id' => $ctx['school']->id,
@@ -505,7 +509,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Create an active student in the study group
-        \App\Models\StudentClassHistory::create([
+        StudentClassHistory::create([
             'id' => (string) Str::uuid(),
             'study_group_id' => $ctx['sg']->id,
             'academic_year_id' => $ctx['ay']->id,
@@ -528,7 +532,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Manually provision the academic structure
-        $provisioner = new \App\Services\StudyGroupSubjectProvisioner(
+        $provisioner = new StudyGroupSubjectProvisioner(
             $sgs->id,
             $ctx['sg']->id,
             $ctx['subj']->id,
@@ -563,7 +567,7 @@ class StudyGroupSubjectAssignmentCascadeTest extends TestCase
         ]);
 
         // Manually provision again with same params
-        $provisioner2 = new \App\Services\StudyGroupSubjectProvisioner(
+        $provisioner2 = new StudyGroupSubjectProvisioner(
             $sgs2->id,
             $ctx['sg']->id,
             $ctx['subj']->id,

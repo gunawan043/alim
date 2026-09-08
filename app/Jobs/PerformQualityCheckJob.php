@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\QualityCheck;
+use App\Services\QualityCheckService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,13 +31,13 @@ class PerformQualityCheckJob implements ShouldQueue
         }
 
         // Auto-run additional QC checks
-        $service = app(\App\Services\QualityCheckService::class);
+        $service = app(QualityCheckService::class);
 
         // Trigger any pending chemical / physical lab tests
         foreach ($qc->items as $item) {
             if ($item->requires_lab_test ?? false) {
                 // Defer to lab queue
-                \App\Jobs\LabTestJob::dispatch($item->id);
+                LabTestJob::dispatch($item->id);
             }
         }
     }

@@ -6,9 +6,12 @@ use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentJob;
 use App\Models\RecruitmentProfile;
 use App\Models\User;
+use App\Models\WorkUnit;
+use App\Services\CandidateConversionService;
 use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentDocumentService;
 use App\Services\RecruitmentNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -650,7 +653,7 @@ class ApplicationController extends Controller
         $applications = $query->orderBy('created_at', 'desc')->get();
 
         try {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('recruitment.applications.pdf', [
+            $pdf = Pdf::loadView('recruitment.applications.pdf', [
                 'applications' => $applications,
                 'userId' => $userId,
             ])->setPaper('a4', 'landscape');
@@ -738,7 +741,7 @@ class ApplicationController extends Controller
     {
         if ($request->isMethod('get')) {
             $application->load(['recruitmentProfile.user', 'recruitmentJob']);
-            $workUnits = \App\Models\WorkUnit::orderBy('name')->get();
+            $workUnits = WorkUnit::orderBy('name')->get();
 
             return view('recruitment.applications.convert', compact('application', 'userId', 'workUnits'));
         }
@@ -760,7 +763,7 @@ class ApplicationController extends Controller
         ]);
 
         try {
-            (new \App\Services\CandidateConversionService)->convert($application, $validated);
+            (new CandidateConversionService)->convert($application, $validated);
 
             return redirect()
                 ->route('user.ats.applications.show', ['userId' => $userId, 'application' => $application->id])

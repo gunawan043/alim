@@ -20,7 +20,7 @@ class QrClassToken extends Model
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
         static::creating(function ($token) {
             if (empty($token->token_hash)) {
-                $token->token_hash = hash('sha256', $token->id . time() . Str::random(32));
+                $token->token_hash = hash('sha256', $token->id.time().Str::random(32));
             }
         });
     }
@@ -65,7 +65,7 @@ class QrClassToken extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('qr_url_expires_at')
-              ->orWhere('qr_url_expires_at', '>', now());
+                ->orWhere('qr_url_expires_at', '>', now());
         });
     }
 

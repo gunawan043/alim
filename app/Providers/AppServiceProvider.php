@@ -2,6 +2,51 @@
 
 namespace App\Providers;
 
+use App\Bootstrap\SystemSuperAdminBootstrap;
+use App\Domain\Events\BoardingPermitDecided;
+use App\Domain\Events\BoardingPermitSubmitted;
+use App\Domain\Events\BoardingVisitCheckIn;
+use App\Domain\Events\BoardingVisitDecided;
+use App\Domain\Listeners\NotifyMahromOnPermitDecision;
+use App\Domain\Listeners\RecordBoardingPermitTimeline;
+use App\Domain\Listeners\RecordBoardingVisitTimeline;
+use App\Domain\Listeners\SendWaliNotificationOnPermitDecision;
+use App\Domain\Listeners\SendWaliNotificationOnVisitDecision;
+use App\Domain\Services\AttendanceSyncRuleEvaluator;
+use App\Domain\Services\BoardingRulesEngine;
+// use App\View\Composers\SidebarComposer; // REMOVED - Sidebar menu DB unused
+use App\Domain\Services\HospitalizationRuleEvaluator;
+use App\Domain\Services\LeaveRuleEvaluator;
+use App\Domain\Services\VisitRuleEvaluator;
+use App\Events\ContractExpiring;
+use App\Events\DeliveryTrackingUpdated;
+use App\Events\DocumentExpiring;
+use App\Events\GoodsReceiptCreated;
+use App\Events\InvoiceSubmissionApproved;
+use App\Events\PoAccepted;
+use App\Events\PoDelivered;
+use App\Events\PoQcCompleted;
+use App\Events\PoShipped;
+use App\Events\QualityCheckCompleted;
+use App\Events\QuotationAccepted;
+use App\Events\QuotationSubmitted;
+use App\Events\RfqPublished;
+use App\Events\RmaSubmitted;
+use App\Events\VendorAuditRecorded;
+use App\Events\VendorNotificationDispatched;
+use App\Listeners\NotifySarprasOfContractStatus;
+use App\Listeners\NotifySarprasOfDocumentStatus;
+use App\Listeners\NotifySarprasOfQuotation;
+use App\Listeners\NotifyVendorOfInvoiceStatus;
+use App\Listeners\NotifyVendorsOfRfq;
+use App\Listeners\RecordDeliveryTransition;
+use App\Listeners\RecordGoodsReceiptTransition;
+use App\Listeners\RecordPoTransition;
+use App\Listeners\RecordQualityTransition;
+use App\Listeners\RecordQuotationTransition;
+use App\Listeners\RecordRmaTransition;
+use App\Listeners\RecordVendorAuditListener;
+use App\Listeners\SendVendorNotificationListener;
 use App\Models\BoardingPolicy;
 use App\Models\DokumenIso;
 use App\Models\GradeLevel;
@@ -14,13 +59,40 @@ use App\Observers\DokumenIsoObserver;
 use App\Observers\GtkEmploymentObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
-// use App\View\Composers\SidebarComposer; // REMOVED - Sidebar menu DB unused
+use App\Services\Boarding\BoardingApprovalService;
+use App\Services\Boarding\HealthWorkflowService;
+use App\Services\Boarding\LeaveWorkflowService;
+use App\Services\Boarding\StudentStatusService;
+use App\Services\Boarding\VisitWorkflowService;
+use App\Services\NotificationBroadcastService;
+use App\Services\Sarpras\AssetEventLogger;
+use App\Services\Sarpras\AssetPassportService;
+use App\Services\Sarpras\AssetRegistrationService;
+use App\Services\Sarpras\AssetStatusTransitionService;
+use App\Services\Sarpras\AuditorWorkspaceService;
+use App\Services\Sarpras\ChecklistEngine;
+use App\Services\Sarpras\DivisionPortalService;
+use App\Services\Sarpras\MaintenanceWorkflow;
+use App\Services\Sarpras\MovementWorkflow;
+use App\Services\Sarpras\OfflineSyncService;
+use App\Services\Sarpras\PhotoDocumentationService;
+use App\Services\Sarpras\RepairRequestWorkflow;
+use App\Services\Sarpras\StateMachine;
+use App\Services\Sarpras\StateMachineRegistry;
+use App\Services\Sarpras\StockOpnameWorkflow;
+use App\Services\Sarpras\TechnicianWorkspaceService;
+use App\Services\Sarpras\WorkOrderExecutionService;
+use App\Services\SarprasCacheInvalidator;
+use App\Services\WorkspaceActivationService;
+use App\View\Composers\SidebarAccessComposer;
+use App\View\Composers\SystemAdminMenuComposer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event as EventDispatcher;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,42 +102,42 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(\App\Services\NotificationBroadcastService::class);
-        $this->app->singleton(\App\Services\WorkspaceActivationService::class);
+        $this->app->singleton(NotificationBroadcastService::class);
+        $this->app->singleton(WorkspaceActivationService::class);
 
         // Sarpras workflow services — singleton so the in-memory state machine
         // registry survives across requests in the same PHP process.
-        $this->app->singleton(\App\Services\Sarpras\StateMachine::class);
-        $this->app->singleton(\App\Services\Sarpras\StateMachineRegistry::class);
-        $this->app->singleton(\App\Services\Sarpras\AssetEventLogger::class);
-        $this->app->singleton(\App\Services\Sarpras\AssetPassportService::class);
-        $this->app->singleton(\App\Services\Sarpras\AssetRegistrationService::class);
-        $this->app->singleton(\App\Services\Sarpras\RepairRequestWorkflow::class);
-        $this->app->singleton(\App\Services\Sarpras\MaintenanceWorkflow::class);
-        $this->app->singleton(\App\Services\Sarpras\StockOpnameWorkflow::class);
-        $this->app->singleton(\App\Services\Sarpras\MovementWorkflow::class);
-        $this->app->singleton(\App\Services\Sarpras\ChecklistEngine::class);
-        $this->app->singleton(\App\Services\Sarpras\PhotoDocumentationService::class);
-        $this->app->singleton(\App\Services\Sarpras\TechnicianWorkspaceService::class);
-        $this->app->singleton(\App\Services\Sarpras\AuditorWorkspaceService::class);
-        $this->app->singleton(\App\Services\Sarpras\DivisionPortalService::class);
-        $this->app->singleton(\App\Services\Sarpras\OfflineSyncService::class);
-        $this->app->singleton(\App\Services\Sarpras\WorkOrderExecutionService::class);
-        $this->app->singleton(\App\Services\SarprasCacheInvalidator::class);
-        $this->app->singleton(\App\Services\Sarpras\AssetStatusTransitionService::class);
+        $this->app->singleton(StateMachine::class);
+        $this->app->singleton(StateMachineRegistry::class);
+        $this->app->singleton(AssetEventLogger::class);
+        $this->app->singleton(AssetPassportService::class);
+        $this->app->singleton(AssetRegistrationService::class);
+        $this->app->singleton(RepairRequestWorkflow::class);
+        $this->app->singleton(MaintenanceWorkflow::class);
+        $this->app->singleton(StockOpnameWorkflow::class);
+        $this->app->singleton(MovementWorkflow::class);
+        $this->app->singleton(ChecklistEngine::class);
+        $this->app->singleton(PhotoDocumentationService::class);
+        $this->app->singleton(TechnicianWorkspaceService::class);
+        $this->app->singleton(AuditorWorkspaceService::class);
+        $this->app->singleton(DivisionPortalService::class);
+        $this->app->singleton(OfflineSyncService::class);
+        $this->app->singleton(WorkOrderExecutionService::class);
+        $this->app->singleton(SarprasCacheInvalidator::class);
+        $this->app->singleton(AssetStatusTransitionService::class);
 
         // Boarding operations
-        $this->app->singleton(\App\Services\Boarding\StudentStatusService::class);
-        $this->app->singleton(\App\Services\Boarding\LeaveWorkflowService::class);
-        $this->app->singleton(\App\Services\Boarding\VisitWorkflowService::class);
-        $this->app->singleton(\App\Services\Boarding\HealthWorkflowService::class);
-        $this->app->singleton(\App\Services\Boarding\BoardingApprovalService::class);
+        $this->app->singleton(StudentStatusService::class);
+        $this->app->singleton(LeaveWorkflowService::class);
+        $this->app->singleton(VisitWorkflowService::class);
+        $this->app->singleton(HealthWorkflowService::class);
+        $this->app->singleton(BoardingApprovalService::class);
 
         // Bind BoardingRulesEngine as a singleton so DI can resolve it.
         // The class uses a private-constructor + getInstance() pattern, so we
         // use makeWith with a custom factory to satisfy the DI container.
-        $this->app->singleton(\App\Domain\Services\BoardingRulesEngine::class, function () {
-            return \App\Domain\Services\BoardingRulesEngine::getInstance();
+        $this->app->singleton(BoardingRulesEngine::class, function () {
+            return BoardingRulesEngine::getInstance();
         });
     }
 
@@ -80,15 +152,15 @@ class AppServiceProvider extends ServiceProvider
         // Ensure the Power User (super.admin@alim.local) exists with
         // full permissions on every boot, even after migrate:fresh.
         // Idempotent — safe to call repeatedly.
-        \App\Bootstrap\SystemSuperAdminBootstrap::ensure();
+        SystemSuperAdminBootstrap::ensure();
 
-        // Register sidebar composer globally
-        // view()->composer(['layouts.sidebar', 'components.sidebar-menu'], SidebarComposer::class); // REMOVED - Sidebar menu DB unused
+        // Register sidebar access composer globally
+        view()->composer(['layouts.sidebar'], SidebarAccessComposer::class);
 
         // System Admin Menu (when current user is is_system_admin and not View-As)
         // Bound to '*' so viewAsSwitcherVisible is shared to ALL views (needed because
         // @include chains in master.blade.php don't trigger per-view composers).
-        view()->composer('*', \App\View\Composers\SystemAdminMenuComposer::class);
+        view()->composer('*', SystemAdminMenuComposer::class);
 
         // ── Active Sidebar Route Detection ───────────────────────────
         // Share $activeSidebarRoute to all views for sidebar active state
@@ -118,7 +190,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Share $errors to all views (fallback if ShareErrorsFromSession didn't run)
-        view()->share('errors', app('session')->get('errors', new \Illuminate\Support\ViewErrorBag));
+        view()->share('errors', app('session')->get('errors', new ViewErrorBag));
 
         // ── School Context Global Scope ──────────────────────────────
         // Automatically filters school-scoped models when NOT in global view.
@@ -157,77 +229,77 @@ class AppServiceProvider extends ServiceProvider
         GtkEmployment::observe(GtkEmploymentObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
-        $engine = \App\Domain\Services\BoardingRulesEngine::getInstance();
-        $engine->registerEvaluator(new \App\Domain\Services\LeaveRuleEvaluator);
-        $engine->registerEvaluator(new \App\Domain\Services\VisitRuleEvaluator);
-        $engine->registerEvaluator(new \App\Domain\Services\HospitalizationRuleEvaluator);
-        $engine->registerEvaluator(new \App\Domain\Services\AttendanceSyncRuleEvaluator);
+        $engine = BoardingRulesEngine::getInstance();
+        $engine->registerEvaluator(new LeaveRuleEvaluator);
+        $engine->registerEvaluator(new VisitRuleEvaluator);
+        $engine->registerEvaluator(new HospitalizationRuleEvaluator);
+        $engine->registerEvaluator(new AttendanceSyncRuleEvaluator);
 
         // ── Event → Listener Mapping ────────────────────────────
         $listeners = [
-            \App\Domain\Events\BoardingPermitSubmitted::class => [
-                [\App\Domain\Listeners\RecordBoardingPermitTimeline::class, 'onSubmitted'],
+            BoardingPermitSubmitted::class => [
+                [RecordBoardingPermitTimeline::class, 'onSubmitted'],
             ],
-            \App\Domain\Events\BoardingPermitDecided::class => [
-                [\App\Domain\Listeners\RecordBoardingPermitTimeline::class, 'onDecided'],
-                [\App\Domain\Listeners\NotifyMahromOnPermitDecision::class, 'handle'],
-                [\App\Domain\Listeners\SendWaliNotificationOnPermitDecision::class, 'handle'],
+            BoardingPermitDecided::class => [
+                [RecordBoardingPermitTimeline::class, 'onDecided'],
+                [NotifyMahromOnPermitDecision::class, 'handle'],
+                [SendWaliNotificationOnPermitDecision::class, 'handle'],
             ],
-            \App\Domain\Events\BoardingVisitDecided::class => [
-                [\App\Domain\Listeners\RecordBoardingVisitTimeline::class, 'onDecided'],
-                [\App\Domain\Listeners\SendWaliNotificationOnVisitDecision::class, 'handle'],
+            BoardingVisitDecided::class => [
+                [RecordBoardingVisitTimeline::class, 'onDecided'],
+                [SendWaliNotificationOnVisitDecision::class, 'handle'],
             ],
-            \App\Domain\Events\BoardingVisitCheckIn::class => [
-                [\App\Domain\Listeners\RecordBoardingVisitTimeline::class, 'onCheckIn'],
+            BoardingVisitCheckIn::class => [
+                [RecordBoardingVisitTimeline::class, 'onCheckIn'],
             ],
             // Vendor Collaboration Platform
-            \App\Events\VendorAuditRecorded::class => [
-                [\App\Listeners\RecordVendorAuditListener::class, 'handle'],
+            VendorAuditRecorded::class => [
+                [RecordVendorAuditListener::class, 'handle'],
             ],
-            \App\Events\VendorNotificationDispatched::class => [
-                [\App\Listeners\SendVendorNotificationListener::class, 'handle'],
+            VendorNotificationDispatched::class => [
+                [SendVendorNotificationListener::class, 'handle'],
             ],
-            \App\Events\RfqPublished::class => [
-                [\App\Listeners\NotifyVendorsOfRfq::class, 'handle'],
+            RfqPublished::class => [
+                [NotifyVendorsOfRfq::class, 'handle'],
             ],
-            \App\Events\QuotationSubmitted::class => [
-                [\App\Listeners\NotifySarprasOfQuotation::class, 'handle'],
+            QuotationSubmitted::class => [
+                [NotifySarprasOfQuotation::class, 'handle'],
             ],
-            \App\Events\PoAccepted::class => [
-                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            PoAccepted::class => [
+                [RecordPoTransition::class, 'handle'],
             ],
-            \App\Events\PoShipped::class => [
-                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            PoShipped::class => [
+                [RecordPoTransition::class, 'handle'],
             ],
-            \App\Events\PoDelivered::class => [
-                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            PoDelivered::class => [
+                [RecordPoTransition::class, 'handle'],
             ],
-            \App\Events\PoQcCompleted::class => [
-                [\App\Listeners\RecordPoTransition::class, 'handle'],
+            PoQcCompleted::class => [
+                [RecordPoTransition::class, 'handle'],
             ],
-            \App\Events\DeliveryTrackingUpdated::class => [
-                [\App\Listeners\RecordDeliveryTransition::class, 'handle'],
+            DeliveryTrackingUpdated::class => [
+                [RecordDeliveryTransition::class, 'handle'],
             ],
-            \App\Events\GoodsReceiptCreated::class => [
-                [\App\Listeners\RecordGoodsReceiptTransition::class, 'handle'],
+            GoodsReceiptCreated::class => [
+                [RecordGoodsReceiptTransition::class, 'handle'],
             ],
-            \App\Events\QualityCheckCompleted::class => [
-                [\App\Listeners\RecordQualityTransition::class, 'handle'],
+            QualityCheckCompleted::class => [
+                [RecordQualityTransition::class, 'handle'],
             ],
-            \App\Events\RmaSubmitted::class => [
-                [\App\Listeners\RecordRmaTransition::class, 'handle'],
+            RmaSubmitted::class => [
+                [RecordRmaTransition::class, 'handle'],
             ],
-            \App\Events\QuotationAccepted::class => [
-                [\App\Listeners\RecordQuotationTransition::class, 'handle'],
+            QuotationAccepted::class => [
+                [RecordQuotationTransition::class, 'handle'],
             ],
-            \App\Events\InvoiceSubmissionApproved::class => [
-                [\App\Listeners\NotifyVendorOfInvoiceStatus::class, 'handle'],
+            InvoiceSubmissionApproved::class => [
+                [NotifyVendorOfInvoiceStatus::class, 'handle'],
             ],
-            \App\Events\ContractExpiring::class => [
-                [\App\Listeners\NotifySarprasOfContractStatus::class, 'handle'],
+            ContractExpiring::class => [
+                [NotifySarprasOfContractStatus::class, 'handle'],
             ],
-            \App\Events\DocumentExpiring::class => [
-                [\App\Listeners\NotifySarprasOfDocumentStatus::class, 'handle'],
+            DocumentExpiring::class => [
+                [NotifySarprasOfDocumentStatus::class, 'handle'],
             ],
         ];
         foreach ($listeners as $event => $list) {

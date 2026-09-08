@@ -7,7 +7,7 @@ use App\Models\QrClassToken;
 use App\Models\StudyGroup;
 use App\Services\QrTokenService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ClassQrController extends Controller
 {
@@ -33,7 +33,7 @@ class ClassQrController extends Controller
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
         $payload = $this->qrTokenService->buildQrPayload($token);
 
-        $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+        $qrImage = QrCode::format('png')
             ->size(320)
             ->margin(2)
             ->generate(json_encode($payload));
@@ -113,7 +113,8 @@ class ClassQrController extends Controller
     public function download(Request $request, string $study_group_id)
     {
         $imageResponse = $this->qrImage($request, $study_group_id);
-        $filename = 'qr-kelas-' . $study_group_id . '.png';
+        $filename = 'qr-kelas-'.$study_group_id.'.png';
+
         return $imageResponse;
     }
 }

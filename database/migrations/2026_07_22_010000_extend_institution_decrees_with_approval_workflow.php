@@ -28,7 +28,7 @@ return new class extends Migration
             return;
         }
 
-        \Illuminate\Support\Facades\DB::statement(
+        Illuminate\Support\Facades\DB::statement(
             "ALTER TABLE institution_decrees MODIFY COLUMN status
              ENUM('draft', 'submitted', 'pending_review', 'reviewed', 'approved', 'rejected', 'active', 'archived')
              NOT NULL DEFAULT 'draft'"
@@ -41,7 +41,7 @@ return new class extends Migration
             return;
         }
 
-        \Illuminate\Support\Facades\DB::statement(
+        Illuminate\Support\Facades\DB::statement(
             "ALTER TABLE institution_decrees MODIFY COLUMN status
              ENUM('draft', 'active', 'archived')
              NOT NULL DEFAULT 'draft'"

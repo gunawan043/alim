@@ -4,6 +4,7 @@ namespace App\Services\Boarding;
 
 use App\Domain\Services\BoardingTimelineService;
 use App\Models\BoardingTimelineEvent;
+use App\Models\DormitoryResident;
 use App\Models\Student;
 use App\Models\StudentBoardingStatus;
 use Carbon\CarbonImmutable;
@@ -102,7 +103,7 @@ class StudentStatusService
             // Resolve dorm/room fallback: when going IN_DORM we copy from the
             // resident assignment; when leaving we let the caller pass them.
             if ($toStatus === StudentBoardingStatus::IN_DORM && (! $dormitoryId || ! $roomId)) {
-                $resident = \App\Models\DormitoryResident::where('student_id', $studentId)
+                $resident = DormitoryResident::where('student_id', $studentId)
                     ->where('is_active', true)
                     ->first();
                 if ($resident) {

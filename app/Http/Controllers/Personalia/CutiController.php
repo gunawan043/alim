@@ -105,7 +105,7 @@ class CutiController extends Controller
             ->where('id', $id)->firstOrFail();
         $sisaKuota = null;
         if ($cuti->cuti_period_id) {
-            $sisaKuota = \App\Models\CutiBalance::where('user_id', $cuti->user_id)
+            $sisaKuota = CutiBalance::where('user_id', $cuti->user_id)
                 ->where('cuti_period_id', $cuti->cuti_period_id)
                 ->where('cuti_template_id', $cuti->cuti_template_id)
                 ->value('tersisa');

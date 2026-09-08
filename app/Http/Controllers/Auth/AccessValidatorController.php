@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WaliSantri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -85,7 +86,7 @@ class AccessValidatorController extends Controller
                     return true;
                 }
                 // Also check wali_santri table
-                $waliSantri = \App\Models\WaliSantri::where('user_id', $user->id)
+                $waliSantri = WaliSantri::where('user_id', $user->id)
                     ->where('nik_wali', $value)
                     ->exists();
 
@@ -106,7 +107,7 @@ class AccessValidatorController extends Controller
                 if ($phone && preg_match('/'.preg_quote($value, '/').'$/', $phone)) {
                     return true;
                 }
-                $waliSantri = \App\Models\WaliSantri::where('user_id', $user->id)
+                $waliSantri = WaliSantri::where('user_id', $user->id)
                     ->where('no_hp', 'like', '%'.$value)
                     ->exists();
 

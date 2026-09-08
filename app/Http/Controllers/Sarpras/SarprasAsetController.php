@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 class SarprasAsetController extends SarprasBaseController
 {
@@ -292,7 +293,7 @@ class SarprasAsetController extends SarprasBaseController
                 ->with('error', 'Gagal mengimport. Silakan perbaiki file sesuai panduan.')
                 ->with('import_errors', $errors);
 
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $failures = $e->failures();
             $errMsgs = [];
             foreach ($failures as $failure) {

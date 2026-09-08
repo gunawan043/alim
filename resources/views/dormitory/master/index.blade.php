@@ -21,69 +21,6 @@
         </div>
     @endif
 
-    {{-- Stats Cards --}}
-    <div class="row g-3 mb-2">
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100 border-start border-primary border-3">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary rounded fs-2"><i class="ri-hotel-line text-white"></i></span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Asrama</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total']) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100 border-start border-success border-3">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success rounded fs-2"><i class="ri-checkbox-circle-line text-white"></i></span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Aktif</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['active']) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100 border-start border-info border-3">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info rounded fs-2"><i class="ri-user-location-line text-white"></i></span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Putra</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['putra']) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100 border-start border-warning border-3">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning rounded fs-2"><i class="ri-user-heart-line text-white"></i></span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Asrama Putri</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['putri']) }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="row">
         <div class="col-lg-12">
@@ -95,7 +32,7 @@
                             <p class="text-muted mb-0">Pengelolaan asrama pondok pesantren.</p>
                         </div>
                         <div class="col-sm-auto">
-                            @if(auth()->user()->hasPermissionTo('dormitory-master-create'))
+                            @if(canPermission('dormitory-master-admin-access'))
                             <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Asrama
                             </a>
@@ -187,7 +124,7 @@
                                             <a href="{{ route('user.dormitory-master.show', ['userId' => $userId, 'asramaUuid' => $d->id]) }}" class="btn btn-sm btn-soft-primary flex-grow-1">
                                                 <i class="ri-eye-line me-1"></i> Detail
                                             </a>
-                                            @if(auth()->user()->hasPermissionTo('dormitory-master-update'))
+                                            @if(canPermission('dormitory-master-admin-access'))
                                             <a href="{{ route('user.dormitory-master.edit', ['userId' => $userId, 'asramaUuid' => $d->id]) }}" class="btn btn-sm btn-soft-secondary" aria-label="Edit" title="Edit">
                                                 <i class="ri-pencil-line"></i>
                                             </a>
@@ -208,7 +145,7 @@
                                     <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                                     <h5 class="text-muted mt-3">Belum ada data asrama</h5>
                                     <p class="text-muted mb-3">Tambah asrama pertama Anda.</p>
-                                    @if(auth()->user()->hasPermissionTo('dormitory-master-create'))
+                                    @if(canPermission('dormitory-master-admin-access'))
                                     <a href="{{ route('user.dormitory-master.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                         <i class="ri-add-line me-1"></i>Tambah Asrama
                                     </a>

@@ -30,7 +30,7 @@ return new class extends Migration
             // Drop FK jika ada
             try {
                 $table->dropForeign(['category_id']);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // ignore
             }
             // Drop column jika ada

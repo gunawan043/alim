@@ -4,6 +4,7 @@ namespace App\Listeners\Boarding;
 
 use App\Events\Boarding\LeaveApproved;
 use App\Services\TimelineWriter;
+use Carbon\CarbonImmutable;
 
 /**
  * Records a "leave approved" event to the unified student timeline.
@@ -30,7 +31,7 @@ class RecordLeaveApprovedOnTimeline
             ],
             module: 'boarding',
             category: 'leave',
-            eventAt: \Carbon\CarbonImmutable::now(),
+            eventAt: CarbonImmutable::now(),
             sourceActorId: null,
         );
     }

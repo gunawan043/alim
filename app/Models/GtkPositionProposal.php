@@ -90,7 +90,7 @@ class GtkPositionProposal extends Model
 
     public function proposedPosition(): BelongsTo
     {
-        return $this->belongsTo(Position::class, 'proposed_position_id');
+        return $this->belongsTo(StructuralPosition::class, 'proposed_position_id');
     }
 
     public function proposedSchool(): BelongsTo

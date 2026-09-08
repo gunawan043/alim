@@ -47,10 +47,20 @@ See `app/Events/` (16 events), `app/Listeners/` (10 listeners), `app/Jobs/` (9 j
 
 ### Middleware
 Custom middleware in `app/Http/Middleware/`:
-- `SchoolContextMiddleware` — sets school scope
-- `EnsureEmployeeAccess` — validates GTK existence
-- `RoleMiddleware`, `RoleLevelMiddleware`, `EnsureRoleAccess`, `MinRoleLevel` — Spatie Permission extensions
+- `SchoolContextMiddleware` — sets school scope on request attributes; reads `ViewAsService` to resolve target user's school during impersonation
+- `BindOrganizationContext` — binds `OrganizationContext` into DI container from request attributes; reads `request()->attributes->get('schoolContextId')` as canonical source
+- `EnsureRoleAccess` — validates `{userId}` URL param against effective user (supports Login-As via `ViewAsService`)
+- `RequirePermission` — gates routes against snapshot permissions via middleware string (`permission:students.view`)
+- `RoleMiddleware`, `RoleLevelMiddleware`, `EnsureEmployeeAccess`, `MinRoleLevel` — Spatie Permission extensions
 - `CheckIpBlocked`, `Localization`, `VerifySecureToken`
+
+### View-As / Impersonation System
+- `App\Services\ViewAsService` is the single authority for session-based identity switching. Store in 4 keys: `view_as_role`, `view_as_user_id`, `view_as_original_user_id`, `view_as_context`.
+- Two flows: **Login-As** (full identity swap, `view_as_user_id` set) vs **View-As Role** (role-only simulation, only `view_as_role` set). Controller `ViewAsController` handles both.
+- When active, `SchoolContextMiddleware` resolves the impersonated user's school (not the SA's global scope), and `EnsureRoleAccess` skips `{userId}` validation in role-only mode.
+- In Blade, detect View-As state via `session('view_as_role')` + `session('view_as_user_id')` with `method_exists($user, 'isSystemAdmin')` guard — never assume `isSystemAdmin()` is callable.
+- **Never** bypass View-As session keys directly; use `ViewAsService::getCurrentViewRole()` / `loginAs()` / `clearAll()`.
+- Admin bar components (`_view_as_badge.blade.php`, `components/breadcrumb.blade.php`) render a persistent alert showing impersonation state with restore/reset buttons.
 
 ### Authorization Module (v1 — FREEZEN)
 - Located in `app/Authorization/`. Snapshot-based permission system layered on top of Spatie Laravel Permission. **No architecture rework without explicit request.**
@@ -58,22 +68,46 @@ Custom middleware in `app/Http/Middleware/`:
 - Resolver chain: `SnapshotResolver` → `EffectivePermissionBuilder` → `PermissionMergeResolver` → `PermissionCacheManager` (per-org/per-period cache).
 - Providers: `GtkPermissionProvider`, `StudentPermissionProvider`, registered through `AuthorizationGateRegistrar` (gates) + `AuthorizationServiceProvider` (binding).
 - Helpers in `app/Authorization/helpers.php` — **use these in code, not `hasPermissionTo()`**:
-  - `canPermission(string $permission): bool` — current auth user
+  - `canPermission(string $permission): bool` — current auth user (auto-short-circuits for System Admin/Super Admin when NOT in View-As)
   - `cannotPermission(string $permission): bool` — inverse
   - `canUserPermission(User $user, string $permission): bool`
   - `getUserPermissionBag(): PermissionBag` — full bag for UI menus
+  - `super-admin-only` — special permission returning true only for System Admins/Super Admins outside View-As mode
 - Bound via `Authorization\ValueObjects\OrganizationContext` (DI in request lifecycle). Fails closed when context missing or user unauthenticated.
 - Jobs: `BuildSnapshotJob`, rebuild via `SnapshotRebuildService`. Audit trail: `SnapshotAuditLog`, `RevokedPermission`.
 - Deferred issues: AUTH-101..106 — all LOW priority, none security risks.
 
+**Authorization pattern for controllers:** Use `canPermission()` directly; do NOT call `$user->isSystemAdmin()` or `$user->isSuperAdmin()` in business logic.
+```php
+// ✅ Correct
+if (canPermission('super-admin-only')) { /* admin action */ }
+if (canPermission('dormitory-master-admin-access')) { /* write action */ }
+
+// ❌ Wrong — bypasses snapshot system and View-As safeguards
+if ($user->isSystemAdmin()) { /* admin action */ }
+```
+
+**Authorization pattern for Blade:** Use `canPermission()` directly. For system-admin UI gates, use `canPermission('super-admin-only')`. For feature-specific access, use granular permission.
+```blade
+{{-- ✅ Correct --}}
+@if(canPermission('dormitory-master-admin-access'))
+@if(canPermission('super-admin-only'))
+@if(canPermission('gtk-create') || canPermission('super-admin-only'))
+
+{{-- ❌ Wrong --}}
+@if(auth()->user()->isSystemAdmin())
+```
+
 ### Views
-- Layouts in `resources/views/layouts/`.
+- Layouts in `resources/views/layouts/`. Sidebar has 17 role-specific partials under `layouts/sidebar/{role}/sidebar.blade.php`.
 - Feature view directories named in Indonesian/Bahasa (e.g. `akademik/`, `dormitory/`, `gtk/`, `sarpras/`, `personalia/`, `evalusi/`).
 - `Blade::if('isActiveRoute', ...)` custom conditional registered in `AppServiceProvider`.
+- `SidebarAccessComposer` injects `SidebarAccess::listAll()` as `$sidebarAccesses` for dynamic role-based menu filtering.
 
 ### Auth
 - **Web**: Session-based via `User` model. Guards through custom middleware stack.
 - **API**: Laravel Sanctum for mobile apps.
+- **User model**: `isSystemAdmin()` checks `is_system_admin` boolean column; `isSuperAdmin()` is an alias that also covers `Super Admin` Spatie role. Use `canPermission('super-admin-only')` in controllers instead of calling either method directly.
 
 ### Console Commands
 Commands in `app/Console/Commands/`. Notable: `BackfillAcademicCascade`, `CreateRombel`, `RecalculateGtkWorkload`, etc.
@@ -180,6 +214,11 @@ resources/
 - All models use UUID primary keys (char(36)).
 - `Student::find(...)` may return unexpected results if school scope isn't set up in tests.
 - Views/routes/controllers use Bahasa Indonesia naming conventions.
+- **Authorization**: Never use `$user->isSystemAdmin()` or `$user->isSuperAdmin()` in new code — use `canPermission('super-admin-only')` instead. The snapshot system must be the single source of truth.
+- **Blade**: Never use `auth()->user()->isSystemAdmin()` in views — use `canPermission()` helpers directly. They handle View-As state correctly.
+- **View-As**: When testing impersonation flows, always clear session state (`Session::forget(['view_as_role', 'view_as_user_id', 'view_as_original_user_id', 'view_as_context'])`) between tests.
+- `method_exists($user, 'isSystemAdmin')` guard is still needed in Blade for backward compatibility during migration; in PHP code, `canPermission('super-admin-only')` is the canonical check.
+- School context must be explicitly set on the request in tests (`$request->attributes->set('schoolContextId', $schoolId)`) or models with global scopes return zero results.
 - Prefer `search-docs` MCP tool for Laravel ecosystem documentation before other approaches.
 - Prefer `database-query` for read-only DB access; `tinker` for PHP debugging.
 - Use `php artisan make:` commands to create new files.

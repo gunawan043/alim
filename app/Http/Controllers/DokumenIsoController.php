@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Divisi;
 use App\Models\DokumenIso;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -104,10 +105,10 @@ class DokumenIsoController extends Controller
 
     public function subscriptions(string $userId)
     {
-        $user = \App\Models\User::with('divisiSubscriptions')->findOrFail($userId);
+        $user = User::with('divisiSubscriptions')->findOrFail($userId);
         $isSuperAdmin = canPermission('super-admin-only');
 
-        $allDivisis = \App\Models\Divisi::orderBy('sort_order')->get();
+        $allDivisis = Divisi::orderBy('sort_order')->get();
         $subscribedIds = $user->divisiSubscriptions->pluck('id')->toArray();
 
         $divisiList = $allDivisis->map(function ($d) use ($subscribedIds) {
@@ -126,8 +127,8 @@ class DokumenIsoController extends Controller
 
     public function subscribe(string $userId, string $divisiId)
     {
-        $user = \App\Models\User::findOrFail($userId);
-        $divisi = \App\Models\Divisi::findOrFail($divisiId);
+        $user = User::findOrFail($userId);
+        $divisi = Divisi::findOrFail($divisiId);
         $user->divisiSubscriptions()->syncWithoutDetaching([$divisi->id]);
 
         return redirect()->back()->with('success', "Berhasil subscribe ke {$divisi->nama}.");
@@ -135,8 +136,8 @@ class DokumenIsoController extends Controller
 
     public function unsubscribe(string $userId, string $divisiId)
     {
-        $user = \App\Models\User::findOrFail($userId);
-        $divisi = \App\Models\Divisi::findOrFail($divisiId);
+        $user = User::findOrFail($userId);
+        $divisi = Divisi::findOrFail($divisiId);
         $user->divisiSubscriptions()->detach($divisi->id);
 
         return redirect()->back()->with('success', "Berhasil unsubscribe dari {$divisi->nama}.");

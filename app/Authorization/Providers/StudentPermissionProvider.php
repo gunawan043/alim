@@ -8,6 +8,7 @@ use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\DTO\PermissionOrigin;
 use App\Authorization\Enums\PermissionSource;
 use App\Authorization\ValueObjects\ScopeKey;
+use App\Models\TeachingAssignment;
 use App\Models\User;
 
 final class StudentPermissionProvider implements PermissionProvider
@@ -64,7 +65,7 @@ final class StudentPermissionProvider implements PermissionProvider
         }
 
         // Teaching assignment → write access per subject per class
-        foreach ($user->hasMany(\App\Models\TeachingAssignment::class, 'teacher_id')->get() as $ta) {
+        foreach ($user->hasMany(TeachingAssignment::class, 'teacher_id')->get() as $ta) {
             if ($ta->status === 'active') {
                 $origins[] = new PermissionOrigin(
                     provider: 'students',

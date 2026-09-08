@@ -4,7 +4,9 @@ namespace App\Services\Sarpras;
 
 use App\Events\AssetLifecycleEvent;
 use App\Models\Asset;
+use App\Models\AssetMovement;
 use App\Models\QrScanHistory;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AssetEventLogger
@@ -57,7 +59,7 @@ class AssetEventLogger
         $this->log($asset, $eventType, array_filter(array_merge([
             'detail' => $eventDetail,
             'actor_name' => $actor?->name ?? null,
-            'actor_id' => $actor instanceof \App\Models\User ? $actor->id : null,
+            'actor_id' => $actor instanceof User ? $actor->id : null,
         ], $metadata)));
     }
 
@@ -65,10 +67,10 @@ class AssetEventLogger
         Asset $asset,
         ?object $user,
         array $payload = [],
-    ): \App\Models\QrScanHistory {
+    ): QrScanHistory {
         return QrScanHistory::create([
             'asset_id' => $asset->id,
-            'scanned_by' => $user instanceof \App\Models\User ? $user->id : null,
+            'scanned_by' => $user instanceof User ? $user->id : null,
             'scan_type' => $payload['scan_type'] ?? 'lookup',
             'lookup_value' => $payload['lookup_value'] ?? $asset->asset_code,
             'source' => $payload['source'] ?? 'web_scanner',
@@ -204,7 +206,7 @@ class AssetEventLogger
 
     /* ---------- Movement lifecycle events ---------- */
 
-    public function logMovementRequested(\App\Models\AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementRequested(AssetMovement $movement, ?int $actorId = null): void
     {
         $this->log($movement->asset, 'movement_requested', [
             'movement_number' => $movement->movement_number,
@@ -214,14 +216,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementApproved(\App\Models\AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementApproved(AssetMovement $movement, ?int $actorId = null): void
     {
         $this->log($movement->asset, 'movement_approved', [
             'movement_number' => $movement->movement_number,
         ], $actorId);
     }
 
-    public function logMovementRejected(\App\Models\AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
+    public function logMovementRejected(AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
     {
         $this->log($movement->asset, 'movement_rejected', [
             'movement_number' => $movement->movement_number,
@@ -229,7 +231,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementInTransit(\App\Models\AssetMovement $movement, ?int $actorId = null, array $photos = []): void
+    public function logMovementInTransit(AssetMovement $movement, ?int $actorId = null, array $photos = []): void
     {
         $this->log($movement->asset, 'movement_in_transit', [
             'movement_number' => $movement->movement_number,
@@ -238,7 +240,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementReceived(\App\Models\AssetMovement $movement, ?int $actorId = null, array $payload = []): void
+    public function logMovementReceived(AssetMovement $movement, ?int $actorId = null, array $payload = []): void
     {
         $this->log($movement->asset, 'movement_received', [
             'movement_number' => $movement->movement_number,
@@ -247,7 +249,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementVerified(\App\Models\AssetMovement $movement, ?int $actorId = null, array $payload = []): void
+    public function logMovementVerified(AssetMovement $movement, ?int $actorId = null, array $payload = []): void
     {
         $this->log($movement->asset, 'movement_verified', [
             'movement_number' => $movement->movement_number,
@@ -255,14 +257,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementCompleted(\App\Models\AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementCompleted(AssetMovement $movement, ?int $actorId = null): void
     {
         $this->log($movement->asset, 'movement_completed', [
             'movement_number' => $movement->movement_number,
         ], $actorId);
     }
 
-    public function logMovementCancelled(\App\Models\AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
+    public function logMovementCancelled(AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
     {
         $this->log($movement->asset, 'movement_cancelled', [
             'movement_number' => $movement->movement_number,

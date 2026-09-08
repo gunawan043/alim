@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sarpras;
 
+use App\Models\AssetRoom;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserRoomStoreRequest extends FormRequest
@@ -17,10 +18,10 @@ class UserRoomStoreRequest extends FormRequest
             'building_id' => 'nullable|exists:asset_buildings,id',
             'room_name' => 'required|string|max:191',
             'room_code' => 'nullable|string|max:30|unique:asset_rooms,room_code',
-            'room_type' => 'required|in:'.implode(',', \App\Models\AssetRoom::ROOM_TYPE_OPTIONS),
+            'room_type' => 'required|in:'.implode(',', AssetRoom::ROOM_TYPE_OPTIONS),
             'floor' => 'nullable|integer|min:0|max:20',
             'capacity' => 'nullable|integer|min:0',
-            'condition' => 'required|in:'.implode(',', \App\Models\AssetRoom::CONDITION_OPTIONS),
+            'condition' => 'required|in:'.implode(',', AssetRoom::CONDITION_OPTIONS),
             'notes' => 'nullable|string',
         ];
 

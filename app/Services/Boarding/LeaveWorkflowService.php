@@ -11,11 +11,15 @@ use App\Domain\Services\BoardingTimelineService;
 use App\Domain\Types\DefaultBoardingContext;
 use App\Events\Boarding\LeaveApproved;
 use App\Events\Boarding\LeaveReturned;
+use App\Models\BoardingPolicy;
+use App\Models\Dormitory;
 use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
+use App\Models\GtkProfile;
 use App\Models\PermitType;
 use App\Models\Student;
 use App\Models\StudentMahrom;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -59,10 +63,10 @@ class LeaveWorkflowService
         if (! $userId) {
             return false;
         }
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
         $roleNames = $user ? $user->getRoleNames()->map(fn ($n) => strtolower($n)) : collect();
         // GTK typically has a role containing 'gtk' or the user has a GTK profile
-        $hasGtkProfile = \App\Models\GtkProfile::where('user_id', $userId)->exists();
+        $hasGtkProfile = GtkProfile::where('user_id', $userId)->exists();
         if ($hasGtkProfile) {
             return true;
         }
@@ -85,7 +89,7 @@ class LeaveWorkflowService
             return false;
         }
         try {
-            $user = \App\Models\User::find($userId);
+            $user = User::find($userId);
             if (! $user) {
                 return false;
             }
@@ -121,7 +125,7 @@ class LeaveWorkflowService
         //    but never block submission here — the controller layer may choose to).
         $policy = $this->resolvePolicy($student, $dormitoryId);
         $departure = CarbonImmutable::parse($data['departure_datetime']);
-        $dorm = \App\Models\Dormitory::find($dormitoryId);
+        $dorm = Dormitory::find($dormitoryId);
         $context = new DefaultBoardingContext(
             $student,
             $dorm,
@@ -743,7 +747,7 @@ class LeaveWorkflowService
             $policy = $this->resolvePolicy($student, $dormitoryId);
             $context = new DefaultBoardingContext(
                 $student,
-                $student->dormitory ?? \App\Models\Dormitory::find($dormitoryId),
+                $student->dormitory ?? Dormitory::find($dormitoryId),
                 $policy,
                 'leave_approval',
                 CarbonImmutable::now(),
@@ -873,9 +877,9 @@ class LeaveWorkflowService
 
     // ── Helpers ─────────────────────────────────────────────────
 
-    private function resolvePolicy(?Student $student, string $dormitoryId): ?\App\Models\BoardingPolicy
+    private function resolvePolicy(?Student $student, string $dormitoryId): ?BoardingPolicy
     {
-        return \App\Models\BoardingPolicy::query()
+        return BoardingPolicy::query()
             ->select('boarding_policies.*')
             ->join('dormitory_policy_assignments', 'dormitory_policy_assignments.boarding_policy_id', '=', 'boarding_policies.id')
             ->where('dormitory_policy_assignments.target_id', $dormitoryId)

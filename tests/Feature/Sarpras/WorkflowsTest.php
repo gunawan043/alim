@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
+use App\Models\AssetEventLog;
 use App\Models\AssetMaintenanceLog;
 use App\Models\AssetMaintenanceSchedule;
 use App\Models\RepairRequest;
@@ -284,7 +285,7 @@ class WorkflowsTest extends TestCase
             'Deskripsi timeline'
         );
 
-        $events = \App\Models\AssetEventLog::where('asset_id', $this->asset->id)->get();
+        $events = AssetEventLog::where('asset_id', $this->asset->id)->get();
         $this->assertGreaterThan(0, $events->count());
         $this->assertContains('damage_report_submitted', $events->pluck('event_type')->toArray());
     }

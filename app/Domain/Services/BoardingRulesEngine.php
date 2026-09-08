@@ -7,8 +7,12 @@ use App\Domain\Contracts\BoardingRuleEvaluator;
 use App\Domain\Types\QuotaPeriod;
 use App\Domain\Types\RuleDecision;
 use App\Models\BoardingPolicy;
+use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
 use App\Models\DormitoryPolicyAssignment;
+use App\Models\DormitoryResident;
+use App\Models\Student;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -191,12 +195,12 @@ final class BoardingRulesEngine
         $cacheKey = sprintf('policy_%s_%s', $studentId, $dormitoryId);
 
         return Cache::remember($cacheKey, 600, function () use ($studentId, $dormitoryId): ?BoardingPolicy {
-            $student = \App\Models\Student::find($studentId);
+            $student = Student::find($studentId);
             if (! $student) {
                 return null;
             }
 
-            $resident = \App\Models\DormitoryResident::with('dormitory')
+            $resident = DormitoryResident::with('dormitory')
                 ->where('student_id', $studentId)
                 ->where('dormitory_id', $dormitoryId)
                 ->where('is_active', true)
@@ -242,7 +246,7 @@ final class BoardingRulesEngine
         $cacheKey = sprintf('usage_%s_%s_%s_%s_%s', $studentId, $eventType, $dormitoryId, $period, now()->format($period === QuotaPeriod::WEEKLY ? 'Y-W' : 'Y-m'));
 
         return Cache::remember($cacheKey, 60, function () use ($studentId, $eventType, $period): int {
-            $student = \App\Models\Student::find($studentId);
+            $student = Student::find($studentId);
             if (! $student) {
                 return 0;
             }
@@ -250,12 +254,12 @@ final class BoardingRulesEngine
             // Determine which models to count for timeline events
             $allowedTypes = match ($eventType) {
                 'leave' => [
-                    \App\Models\BoardingTimelineEvent::TYPE_LEAVE_STARTED,
-                    \App\Models\BoardingTimelineEvent::TYPE_LEAVE_APPROVED,
+                    BoardingTimelineEvent::TYPE_LEAVE_STARTED,
+                    BoardingTimelineEvent::TYPE_LEAVE_APPROVED,
                 ],
                 'visit' => [
-                    \App\Models\BoardingTimelineEvent::TYPE_VISIT_APPROVED,
-                    \App\Models\BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
+                    BoardingTimelineEvent::TYPE_VISIT_APPROVED,
+                    BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
                 ],
                 default => [],
             };
@@ -264,10 +268,10 @@ final class BoardingRulesEngine
                 return 0;
             }
 
-            $rangeStart = \App\Domain\Types\QuotaPeriod::rangeBound($period);
+            $rangeStart = QuotaPeriod::rangeBound($period);
             $rangeEnd = $rangeStart->copy()->addDay(); // first day of next range unit
 
-            return \App\Models\BoardingTimelineEvent::where('student_id', $studentId)
+            return BoardingTimelineEvent::where('student_id', $studentId)
                 ->whereIn('event_type', $allowedTypes)
                 ->where('event_at', '>=', $rangeStart)
                 ->where('event_at', '<', $rangeEnd)
@@ -286,7 +290,7 @@ final class BoardingRulesEngine
         bool $isSpecial = false
     ): RuleDecision {
         $dormitory = Dormitory::with('policyAssignments.policy')->findOrFail($dormitoryId);
-        $student = \App\Models\Student::find($studentId);
+        $student = Student::find($studentId);
         $policy = $this->getApplicablePolicy($studentId, $dormitoryId);
 
         $context = new DefaultBoardingContext(
@@ -294,7 +298,7 @@ final class BoardingRulesEngine
             $dormitory,
             $policy,
             $eventType,
-            \Carbon\CarbonImmutable::now(),
+            CarbonImmutable::now(),
             $payload,
             [],
             $isSpecial

@@ -5,6 +5,7 @@ namespace App\Listeners\Boarding;
 use App\Events\Boarding\LeaveApproved;
 use App\Events\Boarding\LeaveReturned;
 use App\Models\IntegrationEventLog;
+use App\Services\AcademicAttendanceSyncService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Log;
 class SyncBoardingLeaveToAttendance
 {
     public function __construct(
-        private readonly \App\Services\AcademicAttendanceSyncService $sync,
+        private readonly AcademicAttendanceSyncService $sync,
     ) {}
 
     public function handle(LeaveApproved $event): void

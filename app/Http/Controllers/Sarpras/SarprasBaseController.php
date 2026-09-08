@@ -3,9 +3,20 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
+use App\Models\AssetBuilding;
+use App\Models\AssetLoan;
+use App\Models\AssetMaintenanceSchedule;
+use App\Models\AssetRoom;
+use App\Models\ProcurementRequest;
+use App\Models\RoomBooking;
+use App\Models\School;
+use App\Services\SarprasCacheInvalidator;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Base controller for all Sarpras modules.
@@ -52,8 +63,8 @@ abstract class SarprasBaseController extends Controller
      * Scope query ke school berdasarkan schoolContextId
      * User tanpa akses all hanya bisa melihat data sekolahnya sendiri
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     protected function scopeToSchool(Request $request, $query)
     {
@@ -72,9 +83,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses gedung tertentu
      *
-     * @param  \App\Models\AssetBuilding  $building
+     * @param  AssetBuilding  $building
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeBuildingAccess($building, Request $request): void
     {
@@ -86,9 +97,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses ruang tertentu
      *
-     * @param  \App\Models\AssetRoom  $room
+     * @param  AssetRoom  $room
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeRoomAccess($room, Request $request): void
     {
@@ -100,9 +111,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses aset tertentu
      *
-     * @param  \App\Models\Asset  $asset
+     * @param  Asset  $asset
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeAssetAccess($asset, Request $request): void
     {
@@ -114,9 +125,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses peminjaman tertentu
      *
-     * @param  \App\Models\AssetLoan  $loan
+     * @param  AssetLoan  $loan
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeLoanAccess($loan, Request $request): void
     {
@@ -128,9 +139,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses pengadaan tertentu
      *
-     * @param  \App\Models\ProcurementRequest  $procurement
+     * @param  ProcurementRequest  $procurement
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeProcurementAccess($procurement, Request $request): void
     {
@@ -142,9 +153,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses booking ruangan tertentu
      *
-     * @param  \App\Models\RoomBooking  $booking
+     * @param  RoomBooking  $booking
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeBookingAccess($booking, Request $request): void
     {
@@ -162,9 +173,9 @@ abstract class SarprasBaseController extends Controller
     /**
      * Cek apakah user bisa mengakses jadwal pemeliharaan tertentu
      *
-     * @param  \App\Models\AssetMaintenanceSchedule  $schedule
+     * @param  AssetMaintenanceSchedule  $schedule
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     * @throws AccessDeniedHttpException
      */
     protected function authorizeMaintenanceAccess($schedule, Request $request): void
     {
@@ -178,7 +189,7 @@ abstract class SarprasBaseController extends Controller
      */
     protected function getWorkUnitIdFromSchool(string $schoolId): ?string
     {
-        $school = \App\Models\School::find($schoolId);
+        $school = School::find($schoolId);
 
         return $school?->work_unit_id;
     }
@@ -189,6 +200,6 @@ abstract class SarprasBaseController extends Controller
      */
     protected function bumpDashboardCache(int $schoolId = 0): void
     {
-        app(\App\Services\SarprasCacheInvalidator::class)->invalidateAll();
+        app(SarprasCacheInvalidator::class)->invalidateAll();
     }
 }

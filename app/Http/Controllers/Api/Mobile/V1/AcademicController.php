@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\PembiasaanPagi;
+use App\Models\PenghargaanAkademik;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +23,7 @@ class AcademicController extends Controller
         $studentIds = WaliSantri::where('user_id', $user->id)->active()->pluck('student_id');
 
         // Pembiasaan score
-        $pembiasaan = \App\Models\PembiasaanPagi::whereIn('student_id', $studentIds);
+        $pembiasaan = PembiasaanPagi::whereIn('student_id', $studentIds);
 
         if ($schoolId) {
             $pembiasaan->whereHas('academicYear', fn ($q) => $q->where('school_id', $schoolId));
@@ -31,7 +33,7 @@ class AcademicController extends Controller
             ->first();
 
         // Penghargaan counts
-        $penghargaan = \App\Models\PenghargaanAkademik::whereIn('student_id', $studentIds)
+        $penghargaan = PenghargaanAkademik::whereIn('student_id', $studentIds)
             ->where('is_active', true);
 
         if ($schoolId) {
@@ -97,7 +99,7 @@ class AcademicController extends Controller
 
         $studentIds = WaliSantri::where('user_id', $user->id)->active()->pluck('student_id');
 
-        $query = \App\Models\PenghargaanAkademik::whereIn('student_id', $studentIds)
+        $query = PenghargaanAkademik::whereIn('student_id', $studentIds)
             ->where('is_active', true);
 
         if ($schoolId) {

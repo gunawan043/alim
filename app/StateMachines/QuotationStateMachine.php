@@ -6,6 +6,8 @@ use App\Events\QuotationAccepted;
 use App\Events\QuotationSubmitted;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Quotation;
+use App\Models\User;
+use App\Models\Vendor;
 use App\Services\Vendor\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
@@ -49,17 +51,17 @@ class QuotationStateMachine
 
             switch ($toState) {
                 case Quotation::STATUS_SUBMITTED:
-                    $quotation->submitted_by = $actor instanceof \App\Models\Vendor ? $actor->id : null;
+                    $quotation->submitted_by = $actor instanceof Vendor ? $actor->id : null;
                     $quotation->submitted_at = now();
                     break;
 
                 case Quotation::STATUS_UNDER_REVIEW:
-                    $quotation->reviewed_by = $actor instanceof \App\Models\User ? $actor->id : null;
+                    $quotation->reviewed_by = $actor instanceof User ? $actor->id : null;
                     $quotation->reviewed_at = now();
                     break;
 
                 case Quotation::STATUS_REJECTED:
-                    $quotation->reviewed_by = $actor instanceof \App\Models\User ? $actor->id : null;
+                    $quotation->reviewed_by = $actor instanceof User ? $actor->id : null;
                     $quotation->reviewed_at = now();
                     $quotation->rejection_reason = $payload['reason'] ?? $quotation->rejection_reason;
                     break;

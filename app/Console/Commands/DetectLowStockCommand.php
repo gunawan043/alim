@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Events\Sarpras\LowStockDetected;
+use App\Models\Sparepart;
 use App\Services\Sarpras\AutomationSuggestionService;
 use Illuminate\Console\Command;
 
@@ -22,7 +23,7 @@ class DetectLowStockCommand extends Command
             if ($count >= $this->option('limit')) {
                 break;
             }
-            event(new LowStockDetected(\App\Models\Sparepart::find($rec['sparepart_id']), $rec['reorder_qty']));
+            event(new LowStockDetected(Sparepart::find($rec['sparepart_id']), $rec['reorder_qty']));
             $count++;
         }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\WaliSantriService;
 use App\Models\StudentAttendance;
 use App\Models\WaliSantri;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -139,7 +140,7 @@ class DashboardController extends Controller
             ->map(fn ($v) => [
                 'type' => $v->violation_type ?? '-',
                 'points' => $v->points ?? 0,
-                'date' => $v->violation_date ? \Carbon\Carbon::parse($v->violation_date)->format('d M Y') : '-',
+                'date' => $v->violation_date ? Carbon::parse($v->violation_date)->format('d M Y') : '-',
                 'action' => $v->action_taken ?? '-',
             ])
             ->toArray();
@@ -154,7 +155,7 @@ class DashboardController extends Controller
             ->map(fn ($r) => [
                 'title' => $r->title ?? '-',
                 'category' => $r->category ?? '-',
-                'date' => $r->awarded_date ? \Carbon\Carbon::parse($r->awarded_date)->format('d M Y') : '-',
+                'date' => $r->awarded_date ? Carbon::parse($r->awarded_date)->format('d M Y') : '-',
             ])
             ->toArray();
 

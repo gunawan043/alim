@@ -5,6 +5,8 @@ namespace App\Services\Sarpras;
 use App\Events\Sarpras\VendorEvaluationCompleted;
 use App\Models\PurchaseOrder;
 use App\Models\Vendor;
+use App\Models\VendorEvaluation;
+use App\Models\VendorPerformanceHistory;
 use App\Models\WorkOrder;
 
 class VendorPerformanceService
@@ -84,11 +86,11 @@ class VendorPerformanceService
     /**
      * Recompute and persist evaluation.
      */
-    public function saveEvaluation(Vendor $vendor, string $startDate, string $endDate): \App\Models\VendorEvaluation
+    public function saveEvaluation(Vendor $vendor, string $startDate, string $endDate): VendorEvaluation
     {
         $metrics = $this->computeMetrics($vendor, $startDate, $endDate);
 
-        $evaluation = \App\Models\VendorEvaluation::updateOrCreate(
+        $evaluation = VendorEvaluation::updateOrCreate(
             [
                 'vendor_id' => $vendor->id,
                 'period_start' => $startDate,
@@ -115,7 +117,7 @@ class VendorPerformanceService
     {
         $count = 0;
         Vendor::where('status', 'active')->each(function ($vendor) use (&$count) {
-            \App\Models\VendorPerformanceHistory::create([
+            VendorPerformanceHistory::create([
                 'vendor_id' => $vendor->id,
                 'snapshot_date' => now()->toDateString(),
                 'rating_avg' => $vendor->rating_avg,

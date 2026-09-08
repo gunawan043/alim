@@ -1,9 +1,11 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
+
 // Run via: php -r "$(cat f9_verify.php)"
 require __DIR__.'/vendor/autoload.php';
 $app = require __DIR__.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 $all = DB::select('SHOW TABLES');
 $f9 = [];

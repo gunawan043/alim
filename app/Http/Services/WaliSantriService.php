@@ -2,6 +2,7 @@
 
 namespace App\Http\Services;
 
+use App\Authorization\ValueObjects\OrganizationContext;
 use App\Exceptions\ServiceErrorCode;
 use App\Mail\WaliAccessRequestMail;
 use App\Mail\WaliRequestApprovedMail;
@@ -84,9 +85,9 @@ class WaliSantriService
      */
     private function resolveSchoolIdFromFallback(): ?string
     {
-        if (app()->bound(\App\Authorization\ValueObjects\OrganizationContext::class)) {
-            $ctx = app(\App\Authorization\ValueObjects\OrganizationContext::class);
-            if ($ctx instanceof \App\Authorization\ValueObjects\OrganizationContext) {
+        if (app()->bound(OrganizationContext::class)) {
+            $ctx = app(OrganizationContext::class);
+            if ($ctx instanceof OrganizationContext) {
                 $sid = $ctx->schoolId;
                 if (is_string($sid) && $sid !== '' && ! $this->isSentinel($sid)) {
                     return $sid;

@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\QrClassToken;
 use App\Models\StudyGroup;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Cache;
 
 class QrTokenService
 {
@@ -65,7 +65,7 @@ class QrTokenService
     /**
      * Verify that a request has a valid signature and belongs to this token.
      */
-    public function verifyRequest(\Illuminate\Http\Request $request, string $studyGroupId): bool
+    public function verifyRequest(Request $request, string $studyGroupId): bool
     {
         if (! $request->hasValidSignature()) {
             return false;
@@ -74,7 +74,7 @@ class QrTokenService
         $token = QrClassToken::where('study_group_id', $studyGroupId)
             ->where(function ($q) {
                 $q->whereNull('qr_url_expires_at')
-                  ->orWhere('qr_url_expires_at', '>', now());
+                    ->orWhere('qr_url_expires_at', '>', now());
             })
             ->first();
 

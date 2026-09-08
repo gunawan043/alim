@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Uks;
 use App\Http\Controllers\Controller;
 use App\Models\Uks\UkShiftAssignment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -32,7 +33,7 @@ class SchedulingController extends Controller
     {
         $currentUser = Auth::user();
         $schoolId = $request->attributes->get('schoolContextId');
-        $viewDate = $request->filled('date') ? \Carbon\Carbon::parse($request->date) : \Carbon\Carbon::today();
+        $viewDate = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
 
         $query = UkShiftAssignment::where('shift_date', $viewDate->format('Y-m-d'))
             ->with('assignedTo')
@@ -186,8 +187,8 @@ class SchedulingController extends Controller
      */
     public function export(Request $request)
     {
-        $fromDate = $request->filled('from') ? \Carbon\Carbon::parse($request->from)->startOfDay() : \Carbon\Carbon::create(2024, 1, 1)->startOfDay();
-        $toDate = $request->filled('to') ? \Carbon\Carbon::parse($request->to)->endOfDay() : \Carbon\Carbon::now()->endOfDay();
+        $fromDate = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : Carbon::create(2024, 1, 1)->startOfDay();
+        $toDate = $request->filled('to') ? Carbon::parse($request->to)->endOfDay() : Carbon::now()->endOfDay();
 
         $assignments = UkShiftAssignment::where('shift_date', '>=', $fromDate->format('Y-m-d'))
             ->where('shift_date', '<=', $toDate->format('Y-m-d'))

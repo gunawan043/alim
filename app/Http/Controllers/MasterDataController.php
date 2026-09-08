@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Divisi;
 use App\Models\JenisGtk;
-use App\Models\Position;
+use App\Models\StructuralPosition;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,15 +77,15 @@ class MasterDataController extends Controller
     // ============================================================
     // JABATAN
     // ============================================================
-    public function jabatanIndex(Request $request)
+    public function jabatanIndex(Request $request, string $userId)
     {
-        $query = Position::with('jenisGtk')
+        $query = StructuralPosition::with('jenisGtk')
             ->orderBy('jenis_gtk_id')
             ->orderBy('urutan')
-            ->orderBy('nama');
+            ->orderBy('name');
 
         if ($request->filled('search')) {
-            $query->where('nama', 'like', "%{$request->search}%");
+            $query->where('name', 'like', "%{$request->search}%");
         }
 
         if ($request->filled('jenis_gtk_id')) {
@@ -98,16 +99,16 @@ class MasterDataController extends Controller
         $jabatanList = $query->paginate(20);
         $jenisGtkList = JenisGtk::active()->orderBy('nama')->get();
 
-        return view('master-data.jabatan-index', compact('jabatanList', 'jenisGtkList'));
+        return view('master-data.jabatan-index', compact('jabatanList', 'jenisGtkList', 'userId'));
     }
 
-    public function jabatanStore(Request $request)
+    public function jabatanStore(Request $request, string $userId)
     {
         $data = $request->validate([
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
-            'nama' => [
+            'name' => [
                 'required', 'string', 'max:150',
-                Rule::unique('positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('structural_positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 ),
             ],
             'kategori' => 'nullable|string|max:50',
@@ -117,21 +118,23 @@ class MasterDataController extends Controller
         ]);
 
         $data['id'] = Str::uuid();
-        Position::create($data);
+        $data['code'] = Str::slug($data['name'], '_');
 
-        return redirect()->route('user.master-data.jabatan.index')
+        StructuralPosition::create($data);
+
+        return redirect()->route('user.master-data.jabatan.index', ['userId' => $userId])
             ->with('success', 'Jabatan berhasil ditambahkan.');
     }
 
-    public function jabatanUpdate(Request $request, string $id)
+    public function jabatanUpdate(Request $request, string $userId, string $id)
     {
-        $jabatan = Position::findOrFail($id);
+        $jabatan = StructuralPosition::findOrFail($id);
 
         $data = $request->validate([
             'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
-            'nama' => [
+            'name' => [
                 'required', 'string', 'max:150',
-                Rule::unique('positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
+                Rule::unique('structural_positions')->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)
                 )->ignore($id),
             ],
             'kategori' => 'nullable|string|max:50',
@@ -140,17 +143,19 @@ class MasterDataController extends Controller
             'urutan' => 'nullable|integer|min:0',
         ]);
 
+        $data['code'] = Str::slug($data['name'], '_');
+
         $jabatan->update($data);
 
-        return redirect()->route('user.master-data.jabatan.index')
+        return redirect()->route('user.master-data.jabatan.index', ['userId' => $userId])
             ->with('success', 'Jabatan berhasil diperbarui.');
     }
 
-    public function jabatanDestroy(string $id)
+    public function jabatanDestroy(string $userId, string $id)
     {
-        Position::findOrFail($id)->delete();
+        StructuralPosition::findOrFail($id)->delete();
 
-        return redirect()->route('user.master-data.jabatan.index')
+        return redirect()->route('user.master-data.jabatan.index', ['userId' => $userId])
             ->with('success', 'Jabatan berhasil dihapus.');
     }
 
@@ -159,11 +164,11 @@ class MasterDataController extends Controller
     // ============================================================
     public function getJabatanByJenis(Request $request)
     {
-        $jabatan = Position::active()
+        $jabatan = StructuralPosition::active()
             ->where('jenis_gtk_id', $request->jenis_gtk_id)
             ->orderBy('urutan')
-            ->orderBy('nama')
-            ->get(['id', 'nama', 'kategori']);
+            ->orderBy('name')
+            ->get(['id', 'name', 'kategori']);
 
         return response()->json(['success' => true, 'data' => $jabatan]);
     }
@@ -189,13 +194,13 @@ class MasterDataController extends Controller
 
         $workUnits = $query->withCount(['gtkWorkUnits'])->paginate(20);
 
-        $divisiOptions = \App\Models\Divisi::active()->orderBy('nama')->pluck('nama', 'id')->toArray();
+        $divisiOptions = Divisi::active()->orderBy('nama')->pluck('nama', 'id')->toArray();
         $parentOptions = WorkUnit::getParentOptions();
 
         $totalWorkUnits = WorkUnit::count();
         $activeWorkUnits = WorkUnit::active()->count();
         $inactiveWorkUnits = WorkUnit::inactive()->count();
-        $totalDivisi = \App\Models\Divisi::count();
+        $totalDivisi = Divisi::count();
 
         return view('master-data.satuan-kerja-index', compact(
             'workUnits', 'divisiOptions', 'parentOptions',

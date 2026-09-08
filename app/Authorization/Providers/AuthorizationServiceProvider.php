@@ -8,6 +8,7 @@ use App\Authorization\Contracts\PermissionBuilder;
 use App\Authorization\Contracts\PermissionProvider;
 use App\Authorization\Contracts\SnapshotRepository;
 use App\Authorization\Repositories\EloquentSnapshotRepository;
+use App\Authorization\Services\UserFilterService;
 use App\Authorization\Support\EffectivePermissionBuilder;
 use App\Authorization\Support\PermissionConflictResolver;
 use App\Authorization\Support\PermissionMergeResolver;
@@ -54,7 +55,7 @@ class AuthorizationServiceProvider extends ServiceProvider
 
         $this->app->bind(SnapshotRepository::class, EloquentSnapshotRepository::class);
 
-        $this->app->singleton(\App\Authorization\Services\UserFilterService::class);
+        $this->app->singleton(UserFilterService::class);
     }
 
     public function boot(): void

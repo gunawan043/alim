@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Events\StudentAssignedToRombel;
+use App\Events\StudentGraduated;
+use App\Events\StudentMutatedOut;
+use App\Events\StudentPromoted;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
@@ -274,7 +277,7 @@ class StudentPromotionController extends Controller
                     };
 
                     if (in_array($fromLevel, $finalLevels)) {
-                        \App\Events\StudentGraduated::dispatch(
+                        StudentGraduated::dispatch(
                             student: $student,
                             fromStudyGroup: $promotion->fromStudyGroup,
                             fromAcademicYear: $promotion->fromAcademicYear,
@@ -290,10 +293,10 @@ class StudentPromotionController extends Controller
 
                 // Mutasi keluar
                 if ($detail->action === 'mutate_out') {
-                    \App\Events\StudentMutatedOut::dispatch(
+                    StudentMutatedOut::dispatch(
                         student: $student,
                         mutation: $promotion,
-                        outType: \App\Events\StudentMutatedOut::TYPE_MUTATION,
+                        outType: StudentMutatedOut::TYPE_MUTATION,
                         leaveDate: $promotionDate->toDateString(),
                         actorId: auth()->id(),
                     );
@@ -395,7 +398,7 @@ class StudentPromotionController extends Controller
                                 $toStudyGroup = StudyGroup::find($targetStudyGroupId);
                                 $toAcademicYear = AcademicYear::find($promotion->to_academic_year_id);
 
-                                \App\Events\StudentPromoted::dispatch(
+                                StudentPromoted::dispatch(
                                     student: $student,
                                     fromStudyGroup: $promotion->fromStudyGroup,
                                     toStudyGroup: $toStudyGroup,

@@ -1,13 +1,21 @@
 <?php
 
+use App\Http\Controllers\AbsensiHarianController;
+use App\Http\Controllers\AcademicIntegrationController;
 use App\Http\Controllers\AcademicYearController;
+use App\Http\Controllers\AdminAsramaDashboardController;
+use App\Http\Controllers\AdminTUDashboardController;
 use App\Http\Controllers\Akademik\KktpController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\AsramaDashboardController;
 use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\Auth\AccessValidatorController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
+use App\Http\Controllers\Boarding\BoardingHeadDashboardController;
+use App\Http\Controllers\Boarding\BoardingHealthDashboardController;
 use App\Http\Controllers\BoardingApprovalCenterController;
 use App\Http\Controllers\BoardingPolicyController;
 use App\Http\Controllers\BoardingRegulationController;
@@ -20,16 +28,20 @@ use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
 use App\Http\Controllers\DormitoryAttendanceController;
 use App\Http\Controllers\DormitoryInventoryController;
+use App\Http\Controllers\DormitoryLeavePolicyController;
 use App\Http\Controllers\DormitoryMasterController;
 use App\Http\Controllers\DormitoryPermitController;
 use App\Http\Controllers\DormitoryPostController;
 use App\Http\Controllers\DormitoryReportController;
 use App\Http\Controllers\DormitoryResidentController;
+use App\Http\Controllers\DormitoryReturnCalendarController;
+use App\Http\Controllers\DormitoryReturnController;
 use App\Http\Controllers\DormitoryRewardController;
 use App\Http\Controllers\DormitoryRoomApiController;
 use App\Http\Controllers\DormitoryRoomController;
 use App\Http\Controllers\DormitoryRoomMoveController;
 use App\Http\Controllers\DormitoryViolationController;
+use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
 use App\Http\Controllers\DormitoryWingController;
 use App\Http\Controllers\Evaluasi\BankSoalController;
@@ -40,7 +52,9 @@ use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\GtkAdditionalTaskController;
 use App\Http\Controllers\GTKEducationController;
+use App\Http\Controllers\GtkPositionController;
 use App\Http\Controllers\GtkRecruitmentController;
 use App\Http\Controllers\GtkRequestController;
 use App\Http\Controllers\GtkWizardController;
@@ -59,6 +73,7 @@ use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\OtherTeacherTaskController;
+use App\Http\Controllers\PengasuhDashboardController;
 use App\Http\Controllers\PensionController;
 use App\Http\Controllers\PermitTypeController;
 use App\Http\Controllers\Personalia\AbsensiGtkController;
@@ -75,6 +90,7 @@ use App\Http\Controllers\Personalia\PelatihanController;
 use App\Http\Controllers\Personalia\PeraturanController;
 use App\Http\Controllers\Personalia\PersonaliaDashboardController;
 use App\Http\Controllers\Personalia\RaporGtkController;
+use App\Http\Controllers\PositionProposalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecruitmentPipelineController;
 use App\Http\Controllers\ReportController;
@@ -97,19 +113,22 @@ use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
 use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
+// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
+use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairVsReplaceController;
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
+use App\Http\Controllers\Sarpras\SarprasSparepartController;
 use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
+use App\Http\Controllers\Sarpras\SarprasVendorController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
 use App\Http\Controllers\SchoolUnitController;
-// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\SecureAccessController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StudentAchievementController;
@@ -121,11 +140,15 @@ use App\Http\Controllers\StudentHealthPermitController;
 use App\Http\Controllers\StudentImmunizationController;
 use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentMedicineInventoryController;
+// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
 use App\Http\Controllers\StudentMutationInController;
 use App\Http\Controllers\StudentMutationOutController;
 use App\Http\Controllers\StudentPromotionController;
+use App\Http\Controllers\StudentRoomHistoryController;
+use App\Http\Controllers\StudentTimelineController;
+use App\Http\Controllers\StudentViolationController;
 use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
@@ -136,14 +159,30 @@ use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
 use App\Http\Controllers\SuperAdmin\PasswordResetLogController;
 use App\Http\Controllers\SuperAdmin\PermissionController;
 use App\Http\Controllers\SuperAdmin\RoleController;
-// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\SuperAdmin\SchoolSwitchController;
+use App\Http\Controllers\SuperAdmin\SidebarAccessController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
+use App\Http\Controllers\System\SystemDashboardController;
+use App\Http\Controllers\System\ViewAsController;
 use App\Http\Controllers\TeacherQrScanController;
 use App\Http\Controllers\TeachingAssignmentController;
+use App\Http\Controllers\TodoController;
+use App\Http\Controllers\TodoListController;
+use App\Http\Controllers\Uks\BedManagementController;
+use App\Http\Controllers\Uks\GtkHealthController;
+use App\Http\Controllers\Uks\MedicationAdministrationController;
+use App\Http\Controllers\Uks\PatientController;
+use App\Http\Controllers\Uks\SchedulingController;
+use App\Http\Controllers\Uks\StudentHealthController;
+use App\Http\Controllers\Uks\TreatmentStatusController;
+use App\Http\Controllers\Uks\UksDashboardController;
+use App\Http\Controllers\UserKalkulasiNilaiController;
+use App\Http\Controllers\UserLaporanController;
 use App\Http\Controllers\UserSecurityController;
+use App\Http\Controllers\Vendor\ProcurementController;
+use App\Http\Controllers\Vendor\VendorPortalController;
 use App\Http\Controllers\ViolationPointController;
 use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
@@ -152,7 +191,14 @@ use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\WakaController;
+use App\Http\Controllers\WaliAsramaDashboardController;
+use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
+use App\Http\Middleware\EnsurePermission;
+use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
+use App\Models\User;
+use App\Models\WorkUnit;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -390,6 +436,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/export', [GtkWizardController::class, 'export'])->name('export');
                 Route::post('/verify-password', [GtkWizardController::class, 'verifyPassword'])->name('verify-password');
                 Route::get('/satuan-kerja/{satuanKerja}', [GtkWizardController::class, 'indexByWorkUnit'])->name('by-work-unit');
+                Route::post('/mass-update', [GtkWizardController::class, 'massUpdate'])->name('mass-update');
+                Route::get('/massal', [GtkWizardController::class, 'massal'])->name('massal');
 
                 // Education standalone (sebelum {uuid} wildcard)
                 Route::prefix('educations')->name('educations.')->group(function () {
@@ -975,14 +1023,22 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{uuid}', [PositionProposalController::class, 'show'])->name('show');
                 Route::post('/{uuid}/approve', [PositionProposalController::class, 'approve'])->name('approve');
                 Route::post('/{uuid}/reject', [PositionProposalController::class, 'reject'])->name('reject');
+                Route::post('/{uuid}/cancel', [PositionProposalController::class, 'cancel'])->name('cancel');
+            });
+
+            // ── GTK POSITION MANAGEMENT ────────────────────────────
+            Route::prefix('gtk-positions')->name('gtk-positions.')->group(function () {
+                Route::get('/', [GtkPositionController::class, 'index'])->name('index');
+                Route::post('/{id}/update', [GtkPositionController::class, 'update'])->name('update');
+                Route::post('/mass-update', [GtkPositionController::class, 'massUpdate'])->name('mass-update');
             });
 
             // ── KALKULASI NILAI ───────────────────────────────────
-            Route::prefix('kalkulasi-nilai')->name('kalkulasi-nilai.')->group(function () {
-                Route::get('/', [UserKalkulasiNilaiController::class, 'index'])->name('index');
-                Route::get('/{id}', [UserKalkulasiNilaiController::class, 'show'])->name('show');
-                Route::post('/calculate', [UserKalkulasiNilaiController::class, 'calculate'])->name('calculate');
-            });
+            // Route::prefix('kalkulasi-nilai')->name('kalkulasi-nilai.')->group(function () {
+            //     Route::get('/', [UserKalkulasiNilaiController::class, 'index'])->name('index');
+            //     Route::get('/{id}', [UserKalkulasiNilaiController::class, 'show'])->name('show');
+            //     Route::post('/calculate', [UserKalkulasiNilaiController::class, 'calculate'])->name('calculate');
+            // });
 
             // ── STUDY GROUPS ───────────────────────────────────────
             Route::prefix('study-groups')->name('study-groups.')->group(function () {
@@ -1811,6 +1867,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 Route::prefix('roles')->name('roles.')->group(function () {
                     Route::get('/', [RoleController::class, 'index'])->name('index');
+                    Route::get('/{id}', [RoleController::class, 'show'])->name('show');
                     Route::post('/', [RoleController::class, 'store'])->name('store');
                     Route::put('/{id}', [RoleController::class, 'update'])->name('update');
                     Route::delete('/{id}', [RoleController::class, 'destroy'])->name('destroy');
@@ -1821,6 +1878,20 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/', [PermissionController::class, 'store'])->name('store');
                     Route::put('/{id}', [PermissionController::class, 'update'])->name('update');
                     Route::delete('/{id}', [PermissionController::class, 'destroy'])->name('destroy');
+                });
+
+                Route::prefix('divisi')->name('divisi.')->group(function () {
+                    Route::get('/', [App\Http\Controllers\SuperAdmin\DivisiController::class, 'index'])->name('index');
+                    Route::post('/', [App\Http\Controllers\SuperAdmin\DivisiController::class, 'store'])->name('store');
+                    Route::put('/{id}', [App\Http\Controllers\SuperAdmin\DivisiController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [App\Http\Controllers\SuperAdmin\DivisiController::class, 'destroy'])->name('destroy');
+                });
+
+                Route::prefix('sidebar-access')->name('sidebar-access.')->group(function () {
+                    Route::get('/', [SidebarAccessController::class, 'index'])->name('index');
+                    Route::put('/{menuKey}', [SidebarAccessController::class, 'update'])->name('update');
+                    Route::post('/', [SidebarAccessController::class, 'store'])->name('store');
+                    Route::delete('/{menuKey}', [SidebarAccessController::class, 'destroy'])->name('destroy');
                 });
 
                 Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
@@ -1976,49 +2047,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
         });
 });
 
-use App\Http\Controllers\AbsensiHarianController;
-use App\Http\Controllers\AcademicIntegrationController;
-use App\Http\Controllers\AdminAsramaDashboardController;
-use App\Http\Controllers\AdminTUDashboardController;
-use App\Http\Controllers\AsramaDashboardController;
-use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
-use App\Http\Controllers\Boarding\BoardingHeadDashboardController;
-use App\Http\Controllers\Boarding\BoardingHealthDashboardController;
-use App\Http\Controllers\DormitoryLeavePolicyController;
-use App\Http\Controllers\DormitoryReturnCalendarController;
-use App\Http\Controllers\DormitoryReturnController;
-use App\Http\Controllers\DormitoryVisitCalendarController;
-use App\Http\Controllers\GtkAdditionalTaskController;
-use App\Http\Controllers\PengasuhDashboardController;
-use App\Http\Controllers\PositionProposalController;
-use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
-use App\Http\Controllers\Sarpras\SarprasSparepartController;
-use App\Http\Controllers\Sarpras\SarprasVendorController;
-use App\Http\Controllers\StudentRoomHistoryController;
-use App\Http\Controllers\StudentTimelineController;
-use App\Http\Controllers\StudentViolationController;
-use App\Http\Controllers\System\SystemDashboardController;
-use App\Http\Controllers\System\ViewAsController;
-use App\Http\Controllers\TodoController;
-use App\Http\Controllers\TodoListController;
-use App\Http\Controllers\Uks\BedManagementController;
-use App\Http\Controllers\Uks\GtkHealthController;
-use App\Http\Controllers\Uks\MedicationAdministrationController;
-use App\Http\Controllers\Uks\PatientController;
-use App\Http\Controllers\Uks\SchedulingController;
-use App\Http\Controllers\Uks\StudentHealthController;
-use App\Http\Controllers\Uks\TreatmentStatusController;
-use App\Http\Controllers\Uks\UksDashboardController;
-use App\Http\Controllers\UserKalkulasiNilaiController;
-use App\Http\Controllers\UserLaporanController;
-use App\Http\Controllers\Vendor\ProcurementController;
-use App\Http\Controllers\Vendor\VendorPortalController;
-use App\Http\Controllers\WaliAsramaDashboardController;
-use App\Http\Controllers\WaliSantriPortalController;
-use App\Http\Middleware\EnsurePermission;
-use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
-use App\Models\User;
-use App\Models\WorkUnit;
+// Scattered controller/model/middleware imports relocated to top of file (PHP requires all `use` at the top).
+// import list: AbsensiHarianController, AcademicIntegrationController, AdminAsramaDashboardController, AdminTUDashboardController,
+//   AsramaDashboardController, Boarding\BoardingEducationDashboardController, Boarding\BoardingHeadDashboardController,
+//   Boarding\BoardingHealthDashboardController, DormitoryLeavePolicyController, DormitoryReturnCalendarController,
+//   DormitoryReturnController, DormitoryVisitCalendarController, PengasuhDashboardController, PositionProposalController,
+//   Sarpras\SarprasPurchaseOrderController, Sarpras\SarprasSparepartController, Sarpras\SarprasVendorController,
+//   StudentRoomHistoryController, StudentTimelineController, StudentViolationController, SuperAdmin\SidebarAccessController,
+//   System\SystemDashboardController, System\ViewAsController, TodoController, TodoListController, Uks\BedManagementController,
+//   Uks\GtkHealthController, Uks\MedicationAdministrationController, Uks\PatientController, Uks\SchedulingController,
+//   Uks\StudentHealthController, Uks\TreatmentStatusController, Uks\UksDashboardController, UserKalkulasiNilaiController,
+//   UserLaporanController, Vendor\ProcurementController, Vendor\VendorPortalController, WaliAsramaDashboardController,
+//   WaliSantriPortalController, EnsurePermission, EnsureSuperAdminOrSystemAdmin, User, WorkUnit
 
 /*
 |--------------------------------------------------------------------------
@@ -2474,6 +2514,10 @@ Route::middleware(['auth', EnsureSuperAdminOrSystemAdmin::class])
         Route::get('/config', [SystemDashboardController::class, 'config'])->name('config');
         Route::get('/devtools', [SystemDashboardController::class, 'devtools'])->name('devtools');
 
+        // ── SYSTEM-WIDE VIOLATIONS & PERMITS (for dashboard "Lihat Semua") ─
+        Route::get('/violations', [DormitoryViolationController::class, 'allViolations'])->name('violations.index');
+        Route::get('/permits', [DormitoryPermitController::class, 'allPermits'])->name('permits.index');
+
         // View As (both System Admin and Super Admin can use)
         Route::post('/view-as/role', [ViewAsController::class, 'setRole'])->name('view-as.role');
         Route::post('/view-as/login-as', [ViewAsController::class, 'loginAs'])->name('view-as.login-as');
@@ -2490,3 +2534,13 @@ Route::fallback([HomeController::class, 'index']);
 // Lihat: app/Http/Controllers/DeployController.php
 Route::post('/webhook/deploy', [DeployController::class, 'handle']);
 Route::get('/health', [DeployController::class, 'health']);
+
+Route::get('send-wa', function () {
+    $responnya = Http::withHeaders([
+        'Authorization' => '2Tv7cQpqayjL2TRQ1GWP',
+    ])->post('https://api.fonnte.com/send', [
+        'target' => '082146898982',
+        'message' => 'Halo, ini pesan WhatsApp dari server.',
+    ]);
+    dd($responnya->json());
+});

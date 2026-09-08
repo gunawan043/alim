@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Authorization\Models;
 
+use App\Models\User;
+use App\Models\WorkUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,10 +18,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $fingerprint
  * @property array<int|string, mixed>|null $permissions
  * @property array<int|string, mixed>|null $revoked
- * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property Carbon|null $expires_at
  * @property bool $is_current
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon|null $archived_at
+ * @property Carbon $created_at
+ * @property Carbon|null $archived_at
  */
 final class PermissionSnapshot extends Model
 {
@@ -35,11 +38,11 @@ final class PermissionSnapshot extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function scopeSchool(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\WorkUnit::class, 'scope_school_id');
+        return $this->belongsTo(WorkUnit::class, 'scope_school_id');
     }
 }

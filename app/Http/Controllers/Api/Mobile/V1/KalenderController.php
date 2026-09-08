@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Kaldik;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +34,7 @@ class KalenderController extends Controller
             ->where('is_active', true);
 
         // Filter by academic year with school context
-        $academicYearId = \App\Models\AcademicYear::where(function ($q) use ($schoolId) {
+        $academicYearId = AcademicYear::where(function ($q) use ($schoolId) {
             $q->where('is_active', true);
             if ($schoolId) {
                 $q->orWhereHas('workUnit.school', fn ($sq) => $sq->where('id', $schoolId));

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\GoodsReceipt;
 use App\Models\Notification;
+use App\Services\WarehouseService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -31,7 +32,7 @@ class ProcessGoodsReceiptJob implements ShouldQueue
         }
 
         // Process stock entries
-        $warehouseService = app(\App\Services\WarehouseService::class);
+        $warehouseService = app(WarehouseService::class);
         foreach ($gr->items as $item) {
             if ($item->quality_check_passed ?? true) {
                 $warehouseService->addStock(

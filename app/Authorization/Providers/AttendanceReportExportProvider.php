@@ -23,9 +23,8 @@ use App\Models\User;
 final class AttendanceReportExportProvider implements PermissionProvider
 {
     private const ALLOWED_JABATAN = [
-        'Kepala Satuan Pendidikan',
         'Kepala Sekolah',
-        'Wakil Kepala Satuan Pendidikan',
+        'Wakil Kepala Sekolah',
         'Wakil Kepala Sekolah',
         'Kepala Tata Usaha',
         'Staf Tata Usaha',

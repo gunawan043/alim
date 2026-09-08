@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Uks;
 
+use App\Http\Controllers\Uks\TreatmentStatusController;
 use App\Models\Uks\UksMedicationAdministration;
 use App\Models\Uks\UksPatient;
 use App\Models\Uks\UksStatusHistory;
@@ -11,6 +12,7 @@ use App\Models\Uks\UksTreatmentNote;
 use App\Models\UksBed;
 use App\Models\UksCareEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -28,8 +30,8 @@ final class UksTreatmentStatusTest extends TestCase
     private function makePatient(array $attrs = []): UksPatient
     {
         return UksPatient::create(array_merge([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
-            'student_id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
+            'student_id' => (string) Str::uuid(),
             'status' => UksPatient::STATUS_INPATIENT,
             'patient_type' => 'rawat',
             'admitted_at' => now()->subHour(),
@@ -41,7 +43,7 @@ final class UksTreatmentStatusTest extends TestCase
         $patient = $this->makePatient();
 
         UksTreatmentNote::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'patient_id' => $patient->id,
             'recorded_at' => now(),
             'note' => 'Suhu tubuh 37.8°C',
@@ -56,7 +58,7 @@ final class UksTreatmentStatusTest extends TestCase
         $patient = $this->makePatient();
 
         $admin = UksMedicationAdministration::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'patient_id' => $patient->id,
             'medicine_name' => 'Paracetamol',
             'dosage' => '500 mg',
@@ -74,7 +76,7 @@ final class UksTreatmentStatusTest extends TestCase
         $patient = $this->makePatient(['status' => UksPatient::STATUS_OBSERVATION]);
 
         $hist = UksStatusHistory::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'patient_id' => $patient->id,
             'from_status' => UksPatient::STATUS_TREATED,
             'to_status' => UksPatient::STATUS_OBSERVATION,
@@ -92,7 +94,7 @@ final class UksTreatmentStatusTest extends TestCase
 
         foreach (['08:00', '09:00', '10:30'] as $idx => $hour) {
             UksTreatmentNote::create([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'patient_id' => $patient->id,
                 'recorded_at' => now()->setTime((int) explode(':', $hour)[0], (int) explode(':', $hour)[1]),
                 'note' => "Catatan jam $hour",
@@ -107,7 +109,7 @@ final class UksTreatmentStatusTest extends TestCase
         $patient = $this->makePatient();
 
         $admin = UksMedicationAdministration::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'patient_id' => $patient->id,
             'medicine_name' => 'Vitamin C',
             'given_at' => now(),
@@ -139,7 +141,7 @@ final class UksTreatmentStatusTest extends TestCase
 
     public function test_controller_status_labels_match_patient_status(): void
     {
-        $ref = new \ReflectionClass(\App\Http\Controllers\Uks\TreatmentStatusController::class);
+        $ref = new \ReflectionClass(TreatmentStatusController::class);
         $constants = $ref->getConstants();
 
         // Ensure STATUS_LABELS map exists & has labels for the patient statuses
@@ -191,7 +193,7 @@ final class UksTreatmentStatusTest extends TestCase
         $patient = $this->makePatient();
 
         UksCareEvent::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'patient_id' => $patient->id,
             'happened_at' => now(),
             'event_type' => UksCareEvent::TYPE_PEMBERIAN_OBAT,

@@ -2,157 +2,249 @@
 
 namespace Database\Seeders;
 
+use App\Models\AdditionalAssignment;
 use App\Models\JenisGtk;
-use App\Models\Position;
+use App\Models\StructuralPosition; // Adjust to your actual model name for Tugas Tambahan
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class JenisGtkSeeder extends Seeder
 {
     public function run(): void
     {
         // Clear existing data to avoid stale entries
-        Position::query()->delete();
+        StructuralPosition::query()->delete();
+        if (class_exists(AdditionalAssignment::class)) {
+            AdditionalAssignment::query()->delete();
+        }
         JenisGtk::query()->delete();
 
         $data = [
             [
-                'nama' => 'Pimpinan Pondok',
+                'nama' => 'Pendidik / Guru',
                 'urutan' => 1,
-                'deskripsi' => 'Pimpinan dan pengelola pondok',
+                'deskripsi' => 'Tenaga pengajar/pendidik di satuan pendidikan',
+                'role' => 'Satuan Pendidikan',
                 'jabatan' => [
-                    ['nama' => 'Mudir', 'roles' => ['Mudir']],
-                    ['nama' => 'Wakil Mudir I', 'roles' => ['Wakil Mudir I']],
-                    ['nama' => 'Wakil Mudir II', 'roles' => ['Wakil Mudir II']],
+                    'Guru Umum',
+                    'Guru Agama',
+                    'Guru Hadits',
+                    'Guru Bahasa Arab',
+                    'Guru Tahfidz',
+                ],
+                'tugas_tambahan' => [
+                    'Wali Kelas',
+                    'Koordinator Guru Umum',
+                    'Koordinator Guru Agama',
+                    'Koordinator Guru Hadits',
+                    'Koordinator Guru Bahasa Arab',
+                    'Koordinator Guru Tahfidz',
+                    'Koordinator Ekstrakurikuler',
+                    'Koordinator Kurikulum',
+                    'Koordinator Kesiswaan',
+                    'Koordinator Laboratorium',
+                    'Pembina Ekstrakurikuler',
+                    'Tim Kurikulum',
+                    'Tim Kesiswaan',
                 ],
             ],
             [
-                'nama' => 'Satuan Pendidikan',
+                'nama' => 'Pimpinan & Struktural Pendidikan',
                 'urutan' => 2,
-                'deskripsi' => 'Kepengurusan satuan pendidikan',
+                'deskripsi' => 'Pimpinan pondok dan manajemen satuan pendidikan',
+                'role' => 'Pimpinan',
                 'jabatan' => [
-                    ['nama' => 'Kepala Satuan Pendidikan', 'roles' => ['Kepala Satuan Pendidikan']],
-                    ['nama' => 'Wakil Kepala Satuan Pendidikan', 'roles' => ['Wakil Kepala Satuan Pendidikan']],
-                    ['nama' => 'Kepala Tata Usaha', 'roles' => ['Kepala Tata Usaha']],
-                    ['nama' => 'Staf Tata Usaha', 'roles' => ['Staf Tata Usaha']],
+                    'Mudir',
+                    'Wakil Mudir I',
+                    'Wakil Mudir II',
+                    'Kepala Satuan Pendidikan',
+                    'Wakil Kepala Satuan Pendidikan',
+                    'Kepala Departemen Tahfidz',
+                    'Wakil Kepala Departemen Tahfidz',
+                    'Kepala Departemen Bahasa',
+                    'Wakil Kepala Departemen Bahasa',
                 ],
+                'tugas_tambahan' => [],
             ],
             [
-                'nama' => 'Departemen Bahasa',
+                'nama' => 'Tenaga Administrasi & Keuangan',
                 'urutan' => 3,
-                'deskripsi' => 'Kepengurusan departemen bahasa',
+                'deskripsi' => 'Tenaga ketatausahaan, keuangan, dan personalia',
+                'role' => 'Keuangan',
                 'jabatan' => [
-                    ['nama' => 'Kepala Departemen Bahasa', 'roles' => ['Kepala Departemen Bahasa']],
-                    ['nama' => 'Admin Departemen Bahasa', 'roles' => ['Admin Departemen Bahasa']],
-                    ['nama' => 'Guru Bahasa Arab', 'roles' => ['Guru Bahasa Arab']],
+                    'Kepala Tata Usaha',
+                    'Tata Usaha',
+                    'Bendahara Sekolah',
+                    'Kepala Keuangan',
+                    'Staf Keuangan',
+                    'Bendahara',
+                    'Kepala Humas & Personalia',
+                    'Kepala Humas',
+                    'Kepala Personalia',
+                    'Staf Humas',
+                    'Staf Personalia',
+                    'Tata Usaha Departemen Tahfidz',
+                    'Tata Usaha Departemen Bahasa',
+                ],
+                'tugas_tambahan' => [
+                    'Koordinator Alumni',
                 ],
             ],
             [
-                'nama' => 'Departemen Tahfidz',
+                'nama' => 'Tenaga Pengasuhan & Keasramaan',
                 'urutan' => 4,
-                'deskripsi' => 'Kepengurusan departemen tahfidz',
+                'deskripsi' => 'Pengelola dan pembina asrama santri',
+                'role' => 'Asrama',
                 'jabatan' => [
-                    ['nama' => 'Kepala Departemen Tahfidz', 'roles' => ['Kepala Departemen Tahfidz']],
-                    ['nama' => 'Admin Departemen Tahfidz', 'roles' => ['Admin Departemen Tahfidz']],
-                    ['nama' => 'Guru Tahfidz', 'roles' => ['Guru Tahfidz']],
+                    'Kepala Asrama',
+                    'Wakil Kepala Asrama',
+                    'Musyrif',
+                    'Musyrifah',
+                    'Tata Usaha Asrama',
+                    'Perizinan',
+                ],
+                'tugas_tambahan' => [
+                    'Wali Kamar',
+                    'Wali Asrama',
+                    'Staf Asrama',
+                    'Staf Penitipan Barang',
                 ],
             ],
             [
-                'nama' => 'Tenaga Pendidik',
+                'nama' => 'Tenaga Kesehatan',
                 'urutan' => 5,
-                'deskripsi' => 'Guru dan tenaga kependidikan akademik',
+                'deskripsi' => 'Petugas layanan kesehatan dan UKS',
+                'role' => 'UKS',
                 'jabatan' => [
-                    ['nama' => 'Guru Hadits', 'roles' => ['Guru Hadits']],
-                    ['nama' => 'Guru Umum', 'roles' => ['Guru Umum']],
-                    ['nama' => 'Guru Agama', 'roles' => ['Guru Agama']],
-                    ['nama' => 'Wali Kelas', 'roles' => ['Wali Kelas']],
-                    ['nama' => 'Koordinator Kurikulum', 'roles' => ['Koordinator Kurikulum']],
-                    ['nama' => 'Koordinator Kesiswaan', 'roles' => ['Koordinator Kesiswaan']],
-                    ['nama' => 'Koordinator Sarpras Sekolah', 'roles' => ['Koordinator Sarpras Sekolah']],
-                    ['nama' => 'Koordinator Ekstrakurikuler', 'roles' => ['Koordinator Ekstrakurikuler']],
-                    ['nama' => 'Koordinator Guru Bahasa Arab', 'roles' => ['Koordinator Guru Bahasa Arab']],
-                    ['nama' => 'Koordinator Guru Umum', 'roles' => ['Koordinator Guru Umum']],
-                    ['nama' => 'Koordinator Guru Agama', 'roles' => ['Koordinator Guru Agama']],
-                    ['nama' => 'Koordinator Guru Hadits', 'roles' => ['Koordinator Guru Hadits']],
-                    ['nama' => 'Koordinator Guru Tahfidz', 'roles' => ['Koordinator Guru Tahfidz']],
+                    'Kepala UKS',
+                    'Staf UKS Putra',
+                    'Staf UKS Putri',
+                ],
+                'tugas_tambahan' => [
+                    'Admin UKS Putra',
+                    'Admin UKS Putri',
                 ],
             ],
             [
-                'nama' => 'Asrama',
+                'nama' => 'Tenaga Perpustakaan',
                 'urutan' => 6,
-                'deskripsi' => 'Kepengurusan asrama santri',
+                'deskripsi' => 'Pengelola unit perpustakaan',
+                'role' => 'Perpustakaan',
                 'jabatan' => [
-                    ['nama' => 'Kepala Asrama', 'roles' => ['Asrama']],
-                    ['nama' => 'Wakil Kepala Asrama', 'roles' => ['Asrama']],
-                    ['nama' => 'Tata Usaha Asrama', 'roles' => ['Asrama']],
-                    ['nama' => 'Staf Asrama', 'roles' => ['Asrama']],
-                    ['nama' => 'Wali Kamar', 'roles' => ['Asrama']],
-                    ['nama' => 'Musyrif', 'roles' => ['Asrama']],
-                    ['nama' => 'Musyrifah', 'roles' => ['Asrama']],
-                    ['nama' => 'Pembina Asrama', 'roles' => ['Asrama']],
+                    'Koordinator Perpustakaan',
+                    'Staf Perpustakaan',
                 ],
+                'tugas_tambahan' => [],
             ],
             [
-                'nama' => 'UKS',
+                'nama' => 'Tenaga IT & Laboratorium',
                 'urutan' => 7,
-                'deskripsi' => 'Unit Kesehatan Siswa',
+                'deskripsi' => 'Teknisi dan pengelola teknologi informasi',
+                'role' => 'Teknologi Informasi',
                 'jabatan' => [
-                    ['nama' => 'Kepala UKS', 'roles' => ['Kepala UKS']],
-                    ['nama' => 'Staf UKS', 'roles' => ['Staf UKS']],
+                    'Kepala Unit Teknologi Informasi',
+                    'Staf Teknologi Informasi',
+                    'Teknisi Jaringan',
                 ],
+                'tugas_tambahan' => [],
             ],
             [
-                'nama' => 'Sarana dan Prasarana',
+                'nama' => 'Tenaga Keamanan & Ketertiban',
                 'urutan' => 8,
-                'deskripsi' => 'Kepengurusan sarana dan prasarana',
+                'deskripsi' => 'Petugas keamanan dan ketertiban lingkungan',
+                'role' => 'Satuan Keamanan',
                 'jabatan' => [
-                    ['nama' => 'Kepala Unit Sarana dan Prasarana', 'roles' => ['Sarpras']],
-                    ['nama' => 'Koordinator Sarana dan Prasarana', 'roles' => ['Sarpras']],
-                    ['nama' => 'Staf Sarana dan Prasarana', 'roles' => ['Sarpras']],
+                    'Kepala Satuan Keamanan',
+                    'Koordinator Satuan Keamanan',
+                    'Anggota Satuan Keamanan',
                 ],
+                'tugas_tambahan' => [],
             ],
             [
-                'nama' => 'Keuangan',
+                'nama' => 'Tenaga Layanan Umum, URT & Logistik',
                 'urutan' => 9,
-                'deskripsi' => 'Kepengurusan keuangan pondok',
+                'deskripsi' => 'Petugas rumah tangga, sarpras, gizi, dan logistik',
+                'role' => 'Unit Rumah Tangga',
                 'jabatan' => [
-                    ['nama' => 'Kepala Unit Keuangan', 'roles' => ['Kepala Keuangan']],
-                    ['nama' => 'Staf Keuangan', 'roles' => ['Staf Keuangan']],
+                    'Kepala Unit Rumah Tangga',
+                    'Koordinator Sarpras',
+                    'Tata Usaha URT',
+                    'Staf URT',
+                    'Koordinator Kebersihan',
+                    'Staf Kebersihan',
+                    'Kepala Unit Gizi & Logistik',
+                    'Koordinator Logistik',
+                    'Staf Gizi',
+                    'Staf Logistik',
                 ],
-            ],
-            [
-                'nama' => 'Keamanan',
-                'urutan' => 10,
-                'deskripsi' => 'Tenaga keamanan dan ketertiban',
-                'jabatan' => [
-                    ['nama' => 'Kepala Satuan Keamanan', 'roles' => ['Kepala Keamanan']],
-                    ['nama' => 'Anggota Satuan Keamanan', 'roles' => ['Anggota Keamanan']],
+                'tugas_tambahan' => [
+                    'Koordinator Sarpras Satuan Pendidikan',
                 ],
             ],
         ];
 
+        // Helper lokal pembuat code unik max 50 karakter
+        $generateCode = function (string $text): string {
+            $slug = Str::slug($text, '_');
+            if (strlen($slug) <= 50) {
+                return $slug;
+            }
+            $hash = substr(md5($slug), 0, 5);
+
+            return substr($slug, 0, 44).'_'.$hash;
+        };
+
         foreach ($data as $jData) {
             $jenisGtk = JenisGtk::create([
-                'id' => \Illuminate\Support\Str::uuid(),
+                'id' => Str::uuid(),
                 'nama' => $jData['nama'],
                 'deskripsi' => $jData['deskripsi'],
                 'urutan' => $jData['urutan'],
                 'is_active' => true,
             ]);
 
+            $roleId = DB::table('roles')->where('name', $jData['role'])->value('id');
+
+            // 1. Simpan ke Tabel StructuralPosition (Khusus Jabatan)
             foreach ($jData['jabatan'] as $order => $jabatanItem) {
-                Position::create([
-                    'id' => \Illuminate\Support\Str::uuid(),
-                    'jenis_gtk_id' => $jenisGtk->id,
-                    'nama' => $jabatanItem['nama'],
-                    'kategori' => null,
-                    'deskripsi' => null,
-                    'roles' => $jabatanItem['roles'],
-                    'urutan' => $order + 1,
-                    'is_active' => true,
-                ]);
+                $code = $generateCode($jData['nama'].' '.$jabatanItem);
+
+                StructuralPosition::updateOrCreate(
+                    ['code' => $code],
+                    [
+                        'name' => $jabatanItem,
+                        'level' => 'pondok',
+                        'hierarchy_level' => 5,
+                        'jenis_gtk_id' => $jenisGtk->id,
+                        'kategori' => 'Jabatan',
+                        'description' => null,
+                        'role_id' => $roleId,
+                        'urutan' => $order + 1,
+                        'is_active' => true,
+                    ]
+                );
+            }
+
+            // 2. Simpan ke Tabel Tugas Tambahan (Jika ada model/tabel terpisah)
+            foreach ($jData['tugas_tambahan'] as $order => $tugasItem) {
+                $code = $generateCode($jData['nama'].' tt '.$tugasItem);
+
+                // Sesuaikan 'AdditionalAssignment' dengan nama Model tabel tugas tambahan Anda
+                if (class_exists(AdditionalAssignment::class)) {
+                    AdditionalAssignment::updateOrCreate(
+                        ['code' => $code],
+                        [
+                            'name' => $tugasItem,
+                            'jenis_gtk_id' => $jenisGtk->id,
+                            'urutan' => $order + 1,
+                            'is_active' => true,
+                        ]
+                    );
+                }
             }
         }
 
-        $this->command->info('✅ JenisGtkSeeder selesai. '.count($data).' jenis GTK, '.Position::count().' jabatan.');
+        $this->command->info('✅ JenisGtkSeeder selesai dipisah.');
     }
 }

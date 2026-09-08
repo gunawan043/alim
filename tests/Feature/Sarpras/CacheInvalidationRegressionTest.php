@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Http\Controllers\Sarpras\SarprasAsetController;
+use App\Http\Controllers\Sarpras\SarprasBaseController;
 use App\Http\Controllers\Sarpras\SarprasBookingController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
@@ -35,7 +36,7 @@ class CacheInvalidationRegressionTest extends TestCase
     {
         $controller = app($class);
         $this->assertContains(
-            \App\Http\Controllers\Sarpras\SarprasBaseController::class,
+            SarprasBaseController::class,
             class_parents($controller) ?: []
         );
 

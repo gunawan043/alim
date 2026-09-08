@@ -22,7 +22,7 @@ final class AuthorizationManager
 
     public function allows(User $user, string $permission, OrganizationContext $context): bool
     {
-        if ($user->isSystemAdmin()) {
+        if ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
             return $this->succeedAndDispatch($user, $permission, $context);
         }
 
@@ -49,7 +49,7 @@ final class AuthorizationManager
      */
     public function checkMany(User $user, array $permissions, OrganizationContext $context): array
     {
-        if ($user->isSystemAdmin()) {
+        if ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
             $result = [];
             foreach ($permissions as $permission) {
                 $result[$permission] = true;

@@ -5,17 +5,19 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
-use App\Models\GtkEmployment;
 use App\Models\GradeLevel;
+use App\Models\GtkEmployment;
 use App\Models\JadwalKbm;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeacherClassAttendance;
 use App\Models\User;
-use App\Models\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -137,8 +139,8 @@ final class TeacherQrScanControllerTest extends TestCase
         ]);
 
         // Create roles required by EnsureRoleAccess middleware
-        $wakaRole = \App\Models\Role::firstOrCreate(['name' => 'wakasek', 'guard_name' => 'web']);
-        $teacherRole = \App\Models\Role::firstOrCreate(['name' => 'guru_mapel', 'guard_name' => 'web']);
+        $wakaRole = Role::firstOrCreate(['name' => 'wakasek', 'guard_name' => 'web']);
+        $teacherRole = Role::firstOrCreate(['name' => 'guru_mapel', 'guard_name' => 'web']);
 
         if (method_exists($this->wakaUser, 'assignRole')) {
             $this->wakaUser->assignRole($wakaRole);
@@ -287,7 +289,7 @@ final class TeacherQrScanControllerTest extends TestCase
     /** @test */
     public function manual_checkout_route_name_is_registered(): void
     {
-        $routes = collect(\Illuminate\Support\Facades\Route::getRoutes())
+        $routes = collect(Route::getRoutes())
             ->map(fn ($r) => $r->getName())
             ->filter()
             ->values()
@@ -303,7 +305,7 @@ final class TeacherQrScanControllerTest extends TestCase
     {
         // The route has middleware permission:teacher-attendance_manual
         // Verify the route's middleware includes that permission
-        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName('user.teacher-qr.manual-checkin');
+        $route = Route::getRoutes()->getByName('user.teacher-qr.manual-checkin');
 
         $this->assertNotNull($route);
         $middleware = $route->gatherMiddleware();
@@ -316,7 +318,7 @@ final class TeacherQrScanControllerTest extends TestCase
     /** @test */
     public function waka_dashboard_route_requires_view_permission_only(): void
     {
-        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName('user.teacher-qr.waka-dashboard');
+        $route = Route::getRoutes()->getByName('user.teacher-qr.waka-dashboard');
 
         $this->assertNotNull($route);
         $middleware = $route->gatherMiddleware();

@@ -27,8 +27,8 @@
                             <p class="text-muted mb-0">Kelola data sekolah/unit kerja.</p>
                         </div>
                         <div class="col-sm-auto">
-                            @if(auth()->user()->hasPermissionTo('school-create'))
-                            <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            @if(auth()->check() && (auth()->user()->is_system_admin == 1 || auth()->user()->hasPermissionTo('school-create')))
+                            <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Sekolah
                             </a>
                             @endif
@@ -67,7 +67,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-1">
-                            <a href="{{ route('user.schools.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
+                            <a href="{{ request()->routeIs('user.schools-global.*') ? route('user.schools-global.index', ['userId' => $userId]) : route('user.schools.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 
@@ -83,7 +83,7 @@
                                                 @if($school->logo_path && file_exists(public_path($school->logo_path)))
                                                     <img src="{{ asset($school->logo_path) }}" alt="{{ $school->name }}" class="rounded-circle" width="52" height="52" style="object-fit:cover;border:2px solid white">
                                                 @elseif($school->logo_path)
-                                                    <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" class="rounded-circle" width="52" height="52" style="object-fit:cover;border:3px solid #dee2e6">
+                                                    <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" class="rounded-circle" width="52" height="52" style="object-fit:cover;border:2px solid white">
                                                 @else
                                                     <div class="avatar-xl bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center" style="width:52px;height:52px;border:2px solid white">
                                                         <span class="fs-4 fw-bold text-primary">{{ strtoupper(substr($school->name,0,1)) }}</span>
@@ -142,22 +142,16 @@
                         @empty
                             <div class="col-12">
                                 <div class="text-center py-5">
-                                    <div class="avatar-lg mx-auto mb-3">
-                                        <div class="avatar-title bg-light rounded-circle"><i class="ri-school-line fs-1 text-muted"></i></div>
-                                    </div>
-                                    <h5 class="text-muted">Belum ada data sekolah</h5>
-                                    <p class="text-muted">Tambah sekolah pertama Anda.</p>
-                                    <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                        <i class="ri-add-line me-1"></i>Tambah Sekolah
-                                    </a>
+                                     <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                    <h6 class="text-muted mb-1 mt-3">Belum Ada Data Sekolah</h6>
+                                    <p class="text-muted mb-3 small">
+                                        Tambahkan sekolah pertama Anda untuk memulai mengelola sistem asrama.
+                                        <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="fw-bold">Tambah sekolah baru</a>
+                                    </p>
                                 </div>
                             </div>
                         @endforelse
                     </div>
-
-                    @if($schools->hasPages())
-                        @include('shared._pagination', ['paginator' => $schools])
-                    @endif
                 </div>
             </div>
         </div>
@@ -192,7 +186,7 @@
         document.querySelectorAll('.delete-school').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 document.getElementById('deleteSchoolName').textContent = this.dataset.name;
-                document.getElementById('deleteSchoolForm').action = '{{ url('/' . $userId . '/schools/' ) }}' + this.dataset.id;
+                document.getElementById('deleteSchoolForm').action = '/schools/' + this.dataset.id;
                 new bootstrap.Modal(document.getElementById('deleteModal')).show();
             });
         });

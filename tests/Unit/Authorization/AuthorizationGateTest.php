@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Authorization;
 
+use App\Authorization\Services\AuthorizationManager;
 use App\Authorization\ValueObjects\OrganizationContext;
+use Illuminate\Contracts\Auth\Access\Gate;
 use Tests\TestCase;
 
 /**
@@ -14,21 +16,21 @@ final class AuthorizationGateTest extends TestCase
 {
     public function test_authorization_manager_class_exists(): void
     {
-        $this->assertTrue(class_exists(\App\Authorization\Services\AuthorizationManager::class));
+        $this->assertTrue(class_exists(AuthorizationManager::class));
     }
 
     public function test_authorization_manager_can_method_exists(): void
     {
-        $managerClass = \App\Authorization\Services\AuthorizationManager::class;
+        $managerClass = AuthorizationManager::class;
 
         $this->assertTrue(method_exists($managerClass, 'allows'));
     }
 
     public function test_gate_facade_is_registered(): void
     {
-        $gate = $this->app->make(\Illuminate\Contracts\Auth\Access\Gate::class);
+        $gate = $this->app->make(Gate::class);
 
-        $this->assertInstanceOf(\Illuminate\Contracts\Auth\Access\Gate::class, $gate);
+        $this->assertInstanceOf(Gate::class, $gate);
     }
 
     public function test_organization_context_properties(): void

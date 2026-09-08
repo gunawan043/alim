@@ -51,7 +51,7 @@ return new class extends Migration
         // cross-tenant records we cannot reason about.
         $unfilled = DB::table('wali_santri')->whereNull('school_id')->count();
         if ($unfilled > 0) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "wali_santri backfill left {$unfilled} rows without school_id. "
                 .'Investigate orphaned student_id references before retrying.'
             );

@@ -21,8 +21,11 @@ class RoleMiddleware
             abort(403, 'Unauthorized.');
         }
 
-        // System Admin bypasses role checks entirely
+        // System Admin & Super Admin bypass role checks entirely
         if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return $next($request);
+        }
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
         }
 

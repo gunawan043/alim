@@ -41,7 +41,7 @@ class StudentAchievementController extends Controller
 
     public function index(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
         $achievementType = $this->getTypeFromRequest($request);
@@ -113,7 +113,7 @@ class StudentAchievementController extends Controller
 
     public function create(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
         $achievementType = $this->getTypeFromRequest($request);
@@ -155,7 +155,7 @@ class StudentAchievementController extends Controller
 
     public function store(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
         $achievementType = $this->getTypeFromRequest($request);
@@ -218,7 +218,7 @@ class StudentAchievementController extends Controller
 
     public function show(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
 
@@ -233,7 +233,7 @@ class StudentAchievementController extends Controller
 
     public function edit(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
 
@@ -253,7 +253,7 @@ class StudentAchievementController extends Controller
 
     public function update(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
 
@@ -299,7 +299,7 @@ class StudentAchievementController extends Controller
 
     public function destroy(Request $request, string $userId, string $id)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
 
@@ -323,7 +323,7 @@ class StudentAchievementController extends Controller
 
     public function importForm(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
         $achievementType = $this->getTypeFromRequest($request);
@@ -350,7 +350,7 @@ class StudentAchievementController extends Controller
 
     public function importProcess(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $schoolId = $this->getSchoolContextId($request);
         if (! $schoolId) {
@@ -428,7 +428,7 @@ class StudentAchievementController extends Controller
 
     public function downloadTemplate(Request $request, string $userId)
     {
-        abort_unless(auth()->user() && auth()->user()->id === $userId, 403);
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
 
         $achievementType = $this->getTypeFromRequest($request);
 

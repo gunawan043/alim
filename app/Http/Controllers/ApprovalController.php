@@ -100,7 +100,7 @@ class ApprovalController extends Controller
         $flow = ApprovalFlow::create(['name' => 'Transfer GTK']);
 
         $steps = [
-            ['order' => 1, 'role_identifier' => 'Satuan Pendidikan', 'level' => 6],
+            ['order' => 1, 'role_identifier' => 'Kepala Sekolah', 'level' => 6],
             ['order' => 2, 'role_identifier' => 'Wakil Mudir I', 'level' => 3],
             ['order' => 3, 'role_identifier' => 'Mudir', 'level' => 2],
         ];

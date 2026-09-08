@@ -13,6 +13,7 @@ use App\Models\AssetRoom;
 use App\Models\School;
 use App\Models\User;
 use App\Services\Sarpras\AssetEventLogger;
+use App\Services\Sarpras\StateMachineRegistry;
 use App\Services\SarprasCacheInvalidator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -279,8 +280,8 @@ class SarprasMaintenanceController extends SarprasBaseController
                 $asset = Asset::find($validated['asset_id']);
                 $currentCondition = $asset->condition;
                 if ($currentCondition !== $validated['condition_after']) {
-                    \App\Services\Sarpras\StateMachineRegistry::assertValidTransition(
-                        \App\Services\Sarpras\StateMachineRegistry::ASSET_CONDITION,
+                    StateMachineRegistry::assertValidTransition(
+                        StateMachineRegistry::ASSET_CONDITION,
                         (string) $currentCondition,
                         (string) $validated['condition_after'],
                     );

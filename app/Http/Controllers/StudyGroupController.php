@@ -130,7 +130,7 @@ class StudyGroupController extends Controller
 
     public function show(string $userId, string $id)
     {
-        $activeAcademicYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
 
         $studyGroup = StudyGroup::with([
             'school', 'academicYear', 'gradeLevel', 'homeroomTeacher',

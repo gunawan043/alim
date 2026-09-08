@@ -4,6 +4,7 @@ namespace App\Console\Commands\Uks;
 
 use App\Models\Student;
 use App\Models\StudentImmunization;
+use App\Services\SchoolContextService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -82,7 +83,7 @@ class AutoGenerateImunisasiSchedule extends Command
             ->whereIn('status', $activeStatuses)
             ->orderBy('birth_date');
 
-        if ($schoolId = \App\Services\SchoolContextService::getCurrentSchoolId()) {
+        if ($schoolId = SchoolContextService::getCurrentSchoolId()) {
             $query->where('school_id', $schoolId);
         }
 

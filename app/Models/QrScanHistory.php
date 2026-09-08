@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class QrScanHistory extends Model
@@ -54,7 +55,7 @@ class QrScanHistory extends Model
 
     public $timestamps = false;
 
-    public function getScannedAtAttribute(): ?\Illuminate\Support\Carbon
+    public function getScannedAtAttribute(): ?Carbon
     {
         return $this->created_at;
     }

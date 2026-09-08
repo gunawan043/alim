@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -9,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Skip on SQLite: anonymous char(36) columns. Not needed for academic tests.
-        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite') {
+        if (DB::connection()->getDriverName() === 'sqlite') {
             return;
         }
 

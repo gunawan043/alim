@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class SkillCategoryMapping extends Model
 {
-    use \Illuminate\Database\Eloquent\SoftDeletes;
+    use SoftDeletes;
 
     protected $table = 'skill_category_mappings';
 
@@ -19,7 +21,7 @@ class SkillCategoryMapping extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?? \Illuminate\Support\Str::uuid());
+        static::creating(fn ($m) => $m->id = $m->id ?? Str::uuid());
     }
 
     protected $fillable = [

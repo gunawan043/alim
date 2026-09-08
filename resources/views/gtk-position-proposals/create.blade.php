@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') GTK @endslot
-        @slot('li_2') <a href="{{ route('user.gtk-position-proposals.index') }}">Pengajuan Jabatan</a> @endslot
+        @slot('li_2') <a href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">Pengajuan Jabatan</a> @endslot
         @slot('title') Ajukan Jabatan Baru @endslot
     @endcomponent
 
@@ -15,7 +15,7 @@
                     <h5 class="card-title mb-0">Form Pengajuan Kenaikan Jabatan</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('user.gtk-position-proposals.store') }}" method="POST">
+                    <form action="{{ route('user.gtk-position-proposals.store', ['userId' => $userId]) }}" method="POST">
                         @csrf
 
                         <div class="row g-4">
@@ -99,7 +99,7 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="ri-send-plane-line me-1"></i> Kirim Pengajuan
                             </button>
-                            <a href="{{ route('user.gtk-position-proposals.index') }}" class="btn btn-light">
+                            <a href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}" class="btn btn-light">
                                 <i class="ri-arrow-left-line me-1"></i> Batal
                             </a>
                         </div>

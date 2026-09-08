@@ -226,7 +226,7 @@
 <script>
 document.querySelectorAll('.btn-edit').forEach(btn => {
     btn.addEventListener('click', function () {
-        document.getElementById('formEdit').action = '/personalia/' + window.userId + '/divisi/' + this.dataset.id;
+        document.getElementById('formEdit').action = '/' + window.userId + '/divisi/' + this.dataset.id;
         document.getElementById('edit_nama').value = this.dataset.nama || '';
         document.getElementById('edit_kode').value = (this.dataset.kode || '').toUpperCase();
         document.getElementById('edit_deskripsi').value = this.dataset.deskripsi || '';

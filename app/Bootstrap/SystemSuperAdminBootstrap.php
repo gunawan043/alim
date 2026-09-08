@@ -2,12 +2,13 @@
 
 namespace App\Bootstrap;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Ensures a single "Power User" / Super Admin account exists and is fully
@@ -77,7 +78,7 @@ class SystemSuperAdminBootstrap
             // ── 3. grant Super Admin ALL permissions ─────────────
             // Use the spatie helper to sync all perms → role.
             // (clear cache so re-sync picks up newly-created perms)
-            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
             $allPerms = Permission::where('guard_name', 'web')->get();
             if (! $allPerms->isEmpty()) {
                 DB::table('role_has_permissions')->where('role_id', $role->id)->delete();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Dormitory;
 
+use App\Models\AcademicYear;
 use App\Services\StudentLookupService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
@@ -80,7 +81,7 @@ class StoreResidentRequest extends FormRequest
      */
     private function getAcademicYearId(): ?string
     {
-        return \App\Models\AcademicYear::where('is_active', true)->value('id');
+        return AcademicYear::where('is_active', true)->value('id');
     }
 
     /**

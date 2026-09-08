@@ -127,7 +127,7 @@ class TeacherClassAttendance extends Model
     public function scopeNotCheckedOut($query)
     {
         return $query->where('status_keluar', 'belum_keluar')
-                     ->whereNull('actual_time_out');
+            ->whereNull('actual_time_out');
     }
 
     // ── Accessors ─────────────────────────────────────────────────
@@ -163,8 +163,10 @@ class TeacherClassAttendance extends Model
             $in = strtotime($this->actual_time_in);
             $start = strtotime($this->scheduled_start_time);
             $diff = max(0, $in - $start);
+
             return (int) round($diff / 60);
         }
+
         return $value ?? 0;
     }
 
@@ -174,8 +176,10 @@ class TeacherClassAttendance extends Model
             $out = strtotime($this->actual_time_out);
             $end = strtotime($this->scheduled_end_time);
             $diff = max(0, $end - $out);
+
             return (int) round($diff / 60);
         }
+
         return $value ?? 0;
     }
 
@@ -184,8 +188,10 @@ class TeacherClassAttendance extends Model
         if ($this->actual_time_in && $this->actual_time_out) {
             $in = strtotime($this->actual_time_in);
             $out = strtotime($this->actual_time_out);
+
             return max(0, (int) round(($out - $in) / 60));
         }
+
         return $value ?? 0;
     }
 }

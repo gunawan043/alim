@@ -3,6 +3,8 @@
 namespace App\Observers;
 
 use App\Models\BoardingPolicy;
+use Illuminate\Cache\RedisTaggedCache;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -22,7 +24,7 @@ final class BoardingPolicyObserver
      * Only effective when using a cache store that supports keys()
      * (currently Redis via predis/predis or illuminate/redis).
      *
-     * @see \Illuminate\Cache\RedisTaggedCache::tags() for Redis-only tagged
+     * @see RedisTaggedCache::tags() for Redis-only tagged
      *      cache which would be even safer but requires explicit tag wiring
      *      in app/Providers/CacheServiceProvider.php — added later if
      *      needed.
@@ -34,7 +36,7 @@ final class BoardingPolicyObserver
         foreach (['rules_engine_*', 'usage_*', 'policy_*'] as $pattern) {
             try {
                 $keys = Cache::store($store)->keys($pattern);
-                if ($keys instanceof \Illuminate\Support\Collection) {
+                if ($keys instanceof Collection) {
                     foreach ($keys as $key) {
                         Cache::store($store)->forget($key);
                     }

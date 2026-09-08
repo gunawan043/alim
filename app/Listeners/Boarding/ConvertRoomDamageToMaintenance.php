@@ -4,6 +4,7 @@ namespace App\Listeners\Boarding;
 
 use App\Events\Boarding\RoomDamageReported;
 use App\Models\IntegrationEventLog;
+use App\Services\Sarpras\SarprasWorkOrderCreateService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 class ConvertRoomDamageToMaintenance
 {
     public function __construct(
-        private readonly \App\Services\Sarpras\SarprasWorkOrderCreateService $workOrderService,
+        private readonly SarprasWorkOrderCreateService $workOrderService,
     ) {}
 
     public function handle(RoomDamageReported $event): void
@@ -30,7 +31,7 @@ class ConvertRoomDamageToMaintenance
             // Sarpras Work Order Service handles all maintenance logic
             // This is a generic interface — the service lives in the
             // Sarpras module, ensuring no cross-module data leakage.
-            if (class_exists(\App\Services\Sarpras\SarprasWorkOrderCreateService::class)) {
+            if (class_exists(SarprasWorkOrderCreateService::class)) {
                 $this->workOrderService->createFromBoardingEvent(
                     moduleId: $event->room->id,
                     payload: [

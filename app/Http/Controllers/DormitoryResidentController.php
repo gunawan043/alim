@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
+use App\Models\DormitoryRoom;
 use App\Services\StudentLookupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,7 +65,7 @@ class DormitoryResidentController extends Controller
         }
 
         $residents = $query->orderByDesc('is_active')->orderBy('bed_number')->paginate(20)->withQueryString();
-        $rooms = \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
+        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
         $residentIds = $residents->pluck('student_id')->all();
 
@@ -79,10 +80,10 @@ class DormitoryResidentController extends Controller
             'active' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
             'on_permit' => $activePermits->count(),
             'in_dormitory' => max(0, DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->whereNotIn('student_id', $activePermits->keys()->all())->count()),
-            'occupied_rooms' => \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->whereHas('residents', function ($q) use ($asramaUuid, $activeYear) {
+            'occupied_rooms' => DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->whereHas('residents', function ($q) use ($asramaUuid, $activeYear) {
                 $q->where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true);
             })->count(),
-            'total_rooms' => \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->count(),
+            'total_rooms' => DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->count(),
         ];
 
         return view('dormitory.residents.index', compact(
@@ -101,7 +102,7 @@ class DormitoryResidentController extends Controller
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
-        $rooms = \App\Models\DormitoryRoom::where('dormitory_id', $asramaUuid)
+        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)
             ->where('is_active', true)
             ->withCount(['residents as current_occupancy' => fn ($q) => $q->where('is_active', true)])
             ->orderBy('code')->get();
@@ -134,7 +135,7 @@ class DormitoryResidentController extends Controller
             ]);
         }
 
-        $room = \App\Models\DormitoryRoom::find($data['room_id']);
+        $room = DormitoryRoom::find($data['room_id']);
 
         if ($room) {
             $currentOccupancy = DormitoryResident::where('room_id', $data['room_id'])
@@ -196,7 +197,7 @@ class DormitoryResidentController extends Controller
 
         // Get dormitory permits for this student in the current academic year
         $permits = $resident->student
-            ? \App\Models\DormitoryPermit::where('student_id', $resident->student_id)
+            ? DormitoryPermit::where('student_id', $resident->student_id)
                 ->where('academic_year_id', $activeYear?->id)
                 ->where('dormitory_id', $asramaUuid)
                 ->orderByDesc('departure_datetime')

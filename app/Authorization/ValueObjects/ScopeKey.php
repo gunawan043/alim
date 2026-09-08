@@ -16,7 +16,7 @@ final readonly class ScopeKey
 
     public static function forUser(mixed $userId, ?string $schoolId = null, ?string $academicYearId = null): self
     {
-        $appContext = app()->make(\App\Authorization\ValueObjects\OrganizationContext::class);
+        $appContext = app()->make(OrganizationContext::class);
 
         // Fall through to null when no school context is available.
         // null is deliberately kept as-is here; fromComponents() will

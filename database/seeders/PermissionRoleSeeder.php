@@ -47,13 +47,18 @@ class PermissionRoleSeeder extends Seeder
             DB::table('role_has_permissions')->insert($rows);
         };
 
-        // Super Admin role removed: System Admin bypasses all checks via is_system_admin flag
-        // (handled by Gate::before + AuthorizationManager short-circuit).
-        // Role-based Super Admin (no flag) needs impersonate_role to use View-As switcher
-        // for non-destructive role preview (one account, multiple role previews).
-        $sync($roleId('Super Admin') ?? '', [
-            'impersonate_role',
-        ]);
+        // Super Admin — seluruh permission sistem
+        $superRoleId = $roleId('Super Admin');
+        if (! empty($superRoleId)) {
+            $allPermIds = DB::table('permissions')
+                ->where('guard_name', 'web')
+                ->pluck('id')
+                ->toArray();
+            if (! empty($allPermIds)) {
+                $rows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $superRoleId], $allPermIds);
+                DB::table('role_has_permissions')->insert($rows);
+            }
+        }
 
         // ── MUDIR — puncak pimpinan: lihat semua GTK, Santri, laporan ──
         $sync($roleId('Mudir') ?? '', [
@@ -71,37 +76,7 @@ class PermissionRoleSeeder extends Seeder
             'view_global_school_data',
         ]);
 
-        // ── WADIR 1 — puncak pimpinan: lihat semua GTK + laporan ─────
-        $sync($roleId('Wadir 1') ?? '', [
-            'dashboard_view',
-            'menu-wakil-kepala-sekolah-sidebar',
-            'gtk_view', 'gtk_export', 'gtk_detail_view', 'gtk_employment_view',
-            'satpen_view',
-            'school_view',
-            'grade_level_view',
-            'study_group_view',
-            'profile_view', 'profile_edit',
-            'laporan_view', 'laporan_generate', 'laporan_export',
-            'view_global_school_data',
-        ]);
-
-        // ── WADIR 2 — puncak pimpinan: lihat GTK + Santri + mutasi ────
-        $sync($roleId('Wadir 2') ?? '', [
-            'dashboard_view',
-            'menu-wakil-kepala-sekolah-sidebar',
-            'gtk_view', 'gtk_detail_view', 'gtk_employment_view',
-            'satpen_view',
-            'school_view',
-            'grade_level_view',
-            'study_group_view',
-            'student_view', 'student_export',
-            'student_mutation_view', 'student_mutation_create',
-            'profile_view', 'profile_edit',
-            'laporan_view', 'laporan_export',
-            'view_global_school_data',
-        ]);
-
-        // ── PERSONDALIA — urus data GTK (global access) ─────────────────
+        // ── KEPALA SEKOLAH — scoped: lihat GTK + Santri + laporan ─────
         $sync($roleId('Personalia') ?? '', [
             'dashboard_view',
             'menu-personalia-sidebar',
@@ -162,6 +137,27 @@ class PermissionRoleSeeder extends Seeder
             'student_view',
             'student_mutation_view', 'student_mutation_create', 'student_mutation_edit',
             'profile_view', 'profile_edit',
+        ]);
+
+        // ── SATUAN PENDIDIKAN — GTK, Sekolah, Laporan + akses lengkap muatan ajar ─
+        $sync($roleId('Satuan Pendidikan') ?? '', [
+            'dashboard_view',
+            'menu-satuan-pendidikan-sidebar',
+            'menu-gtk-sidebar',
+            'menu-wali-kelas-sidebar',
+            'menu-coordinator-rumpun-sidebar',
+            'menu-waka-kurikulum-sidebar',
+            'gtk_view', 'gtk_detail_view', 'gtk_employment_view',
+            'satpen_view',
+            'school_view',
+            'grade_level_view',
+            'study_group_view',
+            'student_view', 'student_export',
+            'students.read',
+            'students.write',
+            'exam.read',
+            'general_teacher.readable',
+            'student_teacher.readable',
         ]);
 
         // ── KEPALA SEKOLAH — scoped: lihat GTK + Santri + laporan ─────
@@ -354,7 +350,7 @@ class PermissionRoleSeeder extends Seeder
             ->where('name', 'Admin UKS Putra')
             ->where('guard_name', 'web')
             ->value('id');
-        if (!empty($putraRoleId)) {
+        if (! empty($putraRoleId)) {
             $putraPermIds = DB::table('permissions')
                 ->where('guard_name', 'web')
                 ->whereIn('name', [
@@ -372,7 +368,7 @@ class PermissionRoleSeeder extends Seeder
                 ])
                 ->pluck('id')
                 ->toArray();
-            if (!empty($putraPermIds)) {
+            if (! empty($putraPermIds)) {
                 // Check existing to avoid duplicate
                 $existing = DB::table('role_has_permissions')
                     ->where('role_id', $putraRoleId)
@@ -525,27 +521,8 @@ class PermissionRoleSeeder extends Seeder
             'student_teacher.readable',
         ]);
 
-        // ── COORDINATOR GURU — Guru + akses ekstra (data GTK lingkup KSP) ─
-        $sync($roleId('Coordinator Guru') ?? '', [
-            'dashboard_view',
-            'menu-gtk-sidebar',
-            'menu-wali-kelas-sidebar',
-            'menu-coordinator-rumpun-sidebar',
-            'menu-waka-kurikulum-sidebar',
-            'gtk_view', 'gtk_detail_view',
-            'school_view', 'grade_level_view', 'study_group_view',
-            'profile_view', 'profile_edit',
-            'password_change',
-            'students.read',
-            'students.write',
-            'exam.read',
-            'exam.write',
-            'general_teacher.readable',
-            'student_teacher.readable',
-        ]);
-
-        // ── DEPARTEMEN TAHFIDZ — Guru Tahfidz + akses tahfidz manajemen ─
-        $sync($roleId('Departemen Tahfidz') ?? '', [
+        // ── KEPALA DEPARTEMEN TAHFIDZ — Guru + tahfidz full access ──
+        $sync($roleId('Kepala Departemen Tahfidz') ?? '', [
             'dashboard_view',
             'menu-gtk-sidebar',
             'menu-wali-kelas-sidebar',
@@ -624,6 +601,200 @@ class PermissionRoleSeeder extends Seeder
             'dashboard_view',
             'menu-admin-tu-sidebar',
             'profile_view', 'profile_edit',
+        ]);
+
+        // ── ATS — Recruitment / Applicant Tracking System ────────
+        $sync($roleId('ATS') ?? '', [
+            'dashboard_view',
+            'menu-ats-sidebar',
+            'profile_view', 'profile_edit',
+        ]);
+
+        // ── PIMPINAN — puncak pimpinan (Mudir & Wakil) ───────────
+        $sync($roleId('Pimpinan') ?? '', [
+            'dashboard_view',
+            'menu-wakil-kepala-sekolah-sidebar',
+            'gtk_view', 'gtk_export', 'gtk_detail_view', 'gtk_employment_view',
+            'satpen_view',
+            'school_view',
+            'grade_level_view',
+            'study_group_view',
+            'student_view', 'student_export',
+            'data_master_view',
+            'profile_view', 'profile_edit',
+            'laporan_view', 'laporan_generate', 'laporan_export',
+            'view_global_school_data',
+        ]);
+
+        // ── SATUAN PENDIDIKAN — GTK, Sekolah, Laporan ────────────
+        $sync($roleId('Satuan Pendidikan') ?? '', [
+            'dashboard_view',
+            'menu-satuan-pendidikan-sidebar',
+            'menu-gtk-sidebar',
+            'menu-wali-kelas-sidebar',
+            'menu-coordinator-rumpun-sidebar',
+            'menu-waka-kurikulum-sidebar',
+            'gtk_view', 'gtk_detail_view', 'gtk_employment_view',
+            'satpen_view',
+            'school_view',
+            'grade_level_view',
+            'study_group_view',
+            'student_view', 'student_export',
+            'students.read',
+            'students.write',
+            'exam.read',
+            'general_teacher.readable',
+            'student_teacher.readable',
+        ]);
+
+        // ── ASRAMA — read-only monitoring asrama ─────────────────
+        $sync($roleId('Asrama') ?? '', [
+            'dashboard_view',
+            'menu-asrama-sidebar',
+            'menu-uks-sidebar',
+            'profile_view', 'profile_edit',
+            'dormitory_view', 'wing_view', 'room_view',
+            'resident_view', 'attendance_view',
+            'permit_view', 'violation_view', 'reward_view',
+            'visit_view', 'room_move_view',
+            'dormitory_inventory_view', 'activity_view',
+            'template_view', 'post_view', 'broadcast_view',
+            'report_view', 'boarding_policy_view',
+            'calendar_return_view', 'calendar_visit_view',
+            'student_view', 'mahrom_view',
+            'approval_center_view', 'pengasuh_dashboard_view',
+        ]);
+
+        // ── UKS — legacy/general UKS role ────────────────────────
+        $sync($roleId('UKS') ?? '', [
+            'dashboard_view',
+            'menu-uks-sidebar',
+            'menu-asrama-sidebar',
+            'profile_view', 'profile_edit',
+            'student_view',
+            'gtk_view', 'gtk_detail_view',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
+        ]);
+
+        // ── DEPARTEMEN TAHFIDZ — GTK + tahfidz ───────────────────
+        $sync($roleId('Departemen Tahfidz') ?? '', [
+            'dashboard_view',
+            'menu-departemen-tahfidz-sidebar',
+            'menu-gtk-sidebar',
+            'menu-wali-kelas-sidebar',
+            'menu-coordinator-rumpun-sidebar',
+            'menu-waka-kurikulum-sidebar',
+            'profile_view', 'profile_edit',
+            'students.read',
+            'students.write',
+            'exam.read',
+            'general_teacher.readable',
+            'student_teacher.readable',
+        ]);
+
+        // ── DEPARTEMEN BAHASA — GTK + bahasa ───────���────────────
+        $sync($roleId('Departemen Bahasa') ?? '', [
+            'dashboard_view',
+            'menu-departemen-bahasa-sidebar',
+            'menu-gtk-sidebar',
+            'menu-wali-kelas-sidebar',
+            'menu-coordinator-rumpun-sidebar',
+            'menu-waka-kurikulum-sidebar',
+            'profile_view', 'profile_edit',
+            'students.read',
+            'students.write',
+            'exam.read',
+            'general_teacher.readable',
+            'student_teacher.readable',
+        ]);
+
+        // ── PERPUSTAKAAN — data peminjam & GTK ───────────────────
+        $sync($roleId('Perpustakaan') ?? '', [
+            'dashboard_view',
+            'menu-perpustakaan-sidebar',
+            'profile_view', 'profile_edit',
+            'student_view',
+            'gtk_view',
+            'laporan_view',
+        ]);
+
+        // ── SATUAN KEAMANAN (SATPAM) ─────────────────────────────
+        $sync($roleId('Satuan Keamanan') ?? '', [
+            'dashboard_view',
+            'menu-satuan-keamanan-sidebar',
+            'menu-uks-sidebar',
+            'menu-asrama-sidebar',
+            'profile_view', 'profile_edit',
+            'student_view',
+            'gtk_view',
+            'uks_patient_view', 'uks_patient_create', 'uks_patient_edit',
+        ]);
+
+        // ── HUMAS PERSONALIA — GTK, absensi, cuti, rekrutmen ─────
+        $sync($roleId('Humas Personalia') ?? '', [
+            'dashboard_view',
+            'menu-humas-personalia-sidebar',
+            'menu-personalia-sidebar',
+            'gtk_view', 'gtk_create', 'gtk_edit', 'gtk_delete',
+            'gtk_export', 'gtk_import',
+            'gtk_detail_view',
+            'gtk_family_view', 'gtk_family_edit',
+            'gtk_employment_view', 'gtk_employment_edit',
+            'gtk_contact_view', 'gtk_contact_edit',
+            'gtk_address_view', 'gtk_address_edit',
+            'profile_view', 'profile_edit',
+            'laporan_view', 'laporan_export',
+            'payroll_view', 'payroll_create', 'payroll_edit',
+            'cuti_view', 'cuti_approve',
+            'kontrak_view', 'kontrak_create', 'kontrak_edit',
+            'kinerja_view', 'kinerja_create', 'kinerja_edit',
+            'pelatihan_view', 'pelatihan_create', 'pelatihan_edit',
+            'kesejahteraan_view', 'kesejahteraan_create', 'kesejahteraan_edit',
+            'teacher-attendance_view',
+            'teacher-attendance_report_export',
+        ]);
+
+        // ── UNIT RUMAH TANGGA — sarpras, inventaris ───────────────
+        $sync($roleId('Unit Rumah Tangga') ?? '', [
+            'dashboard_view',
+            'menu-unit-rumah-tangga-sidebar',
+            'menu-admin-sarpras-sidebar',
+            'menu-sarpras-sidebar',
+            'profile_view', 'profile_edit',
+            'inventory_view', 'inventory_create', 'inventory_edit',
+            'sarpras_all_access',
+        ]);
+
+        // ── KEUANGAN — penggajian & laporan ──────────────────────
+        $sync($roleId('Keuangan') ?? '', [
+            'dashboard_view',
+            'menu-keuangan-sidebar',
+            'menu-personalia-sidebar',
+            'profile_view', 'profile_edit',
+            'payroll_view', 'payroll_create', 'payroll_edit',
+            'laporan_view', 'laporan_generate', 'laporan_export',
+        ]);
+
+        // ── TEKNOLOGI INFORMASI — sistem, jaringan, user ──────────
+        $sync($roleId('Teknologi Informasi') ?? '', [
+            'dashboard_view',
+            'menu-teknologi-informasi-sidebar',
+            'menu-admin-tu-sidebar',
+            'profile_view', 'profile_edit',
+            'user_view', 'user_create', 'user_edit',
+            'gtk_view',
+            'absensi_view',
+            'master-data_view',
+        ]);
+
+        // ── UNIT PELAYANAN GIZI — data santri & laporan ──────────
+        $sync($roleId('Unit Pelayanan Gizi') ?? '', [
+            'dashboard_view',
+            'menu-unit-pelayanan-gizi-sidebar',
+            'profile_view', 'profile_edit',
+            'student_view',
+            'gtk_view',
+            'laporan_view',
         ]);
 
         $this->command->info('Permission-role assignments complete.');

@@ -29,7 +29,7 @@ return new class extends Migration
         // (it will be added later by 2026_07_31_235959_add_patient_id_foreign_to_uks_bed_assignments_table)
         if (Schema::hasTable('uks_patients') && Schema::hasColumn('uks_bed_assignments', 'patient_id')) {
             $fkExists = collect(
-                \DB::select(
+                DB::select(
                     "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
                      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'uks_bed_assignments'
                      AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME IS NOT NULL",

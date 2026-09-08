@@ -6,6 +6,7 @@ namespace App\Authorization\Support;
 
 use App\Authorization\Services\AuthorizationManager;
 use App\Authorization\ValueObjects\OrganizationContext;
+use App\Models\User;
 use Illuminate\Auth\Access\Gate;
 use Illuminate\Contracts\Container\BindingResolutionException;
 
@@ -35,7 +36,7 @@ final readonly class AuthorizationGateRegistrar
      */
     private function resolveViaSnapshot(mixed $user, string $ability): ?bool
     {
-        if (! $user instanceof \App\Models\User) {
+        if (! $user instanceof User) {
             return null;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\AcademicYear;
 use App\Models\StudentClassHistory;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -90,7 +91,7 @@ class StudentAssignedToRombel
     {
         static $cache = [];
         if (! isset($cache[$academicYearId])) {
-            $cache[$academicYearId] = \App\Models\AcademicYear::whereKey($academicYearId)->value('semester');
+            $cache[$academicYearId] = AcademicYear::whereKey($academicYearId)->value('semester');
         }
 
         return $cache[$academicYearId] ?? 'ganjil';

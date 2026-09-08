@@ -13,6 +13,7 @@ use App\Authorization\Events\SnapshotCacheMiss;
 use App\Authorization\Events\SnapshotExpired;
 use App\Authorization\Events\SnapshotLoaded;
 use App\Authorization\ValueObjects\OrganizationContext;
+use App\Models\User;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
@@ -127,6 +128,6 @@ final class SnapshotResolver implements SnapshotResolverContract
 
     private function subjectIsUser(Model $subject): bool
     {
-        return $subject instanceof \App\Models\User;
+        return $subject instanceof User;
     }
 }

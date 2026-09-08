@@ -9,6 +9,7 @@ use App\Models\Asset;
 use App\Models\RepairRequest;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\RepairRequestWorkflow;
+use App\Services\Sarpras\StateMachineRegistry;
 use App\Services\SarprasCacheInvalidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -127,8 +128,8 @@ class RepairRequestController extends Controller
             'success' => true,
             'data' => [
                 'repair' => $repair,
-                'available_transitions' => \App\Services\Sarpras\StateMachineRegistry::getNextStates(
-                    \App\Services\Sarpras\StateMachineRegistry::REPAIR_REQUEST,
+                'available_transitions' => StateMachineRegistry::getNextStates(
+                    StateMachineRegistry::REPAIR_REQUEST,
                     $repair->status,
                 ),
                 'cost_summary' => [

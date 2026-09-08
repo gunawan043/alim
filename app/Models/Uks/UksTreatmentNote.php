@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Uks;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -48,6 +49,6 @@ class UksTreatmentNote extends Model
 
     public function recordedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'recorded_by');
+        return $this->belongsTo(User::class, 'recorded_by');
     }
 }

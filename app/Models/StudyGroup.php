@@ -53,7 +53,7 @@ class StudyGroup extends Model
 
     public function homeroomTeacher(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'homeroom_teacher_id');
+        return $this->belongsTo(User::class, 'homeroom_teacher_id');
     }
 
     public function studentClassHistories(): HasMany

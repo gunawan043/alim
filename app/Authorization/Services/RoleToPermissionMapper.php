@@ -13,7 +13,7 @@ namespace App\Authorization\Services;
  * User::role([...]) or whereHas('roles').
  *
  * Example:
- *   Role: ['Satuan Pendidikan', 'Departemen Tahfidz', 'GTK']
+ *   Role: ['Kepala Sekolah', 'Kepala Departemen Tahfidz', 'GTK']
  *   Permission: 'gtk.teacher.assignable'
  */
 final class RoleToPermissionMapper
@@ -31,8 +31,8 @@ final class RoleToPermissionMapper
         'general_teacher' => [
             'permissions' => ['general_teacher.readable'],
             'roles' => [
-                'Satuan Pendidikan',
-                'Departemen Tahfidz',
+                'Kepala Sekolah',
+                'Kepala Departemen Tahfidz',
                 'Departemen Bahasa',
             ],
         ],
@@ -40,21 +40,21 @@ final class RoleToPermissionMapper
         'student_teacher' => [
             'permissions' => ['student_teacher.readable'],
             'roles' => [
-                'Satuan Pendidikan',
-                'Departemen Tahfidz',
+                'Kepala Sekolah',
+                'Kepala Departemen Tahfidz',
                 'Departemen Bahasa',
             ],
         ],
 
         'admin_staff' => [
             'permissions' => ['admin.tu.assessable'],
-            'roles' => ['Satuan Pendidikan'],
+            'roles' => ['Kepala Sekolah'],
         ],
 
-        // TU handled in Satuan Pendidikan (jabatan-level scoping)
+        // TU handled in Kepala Sekolah (jabatan-level scoping)
         'admin_tu_school' => [
             'permissions' => ['school_view'],
-            'roles' => ['Satuan Pendidikan'],
+            'roles' => ['Kepala Sekolah'],
         ],
 
         'general_admin' => [
@@ -105,7 +105,7 @@ final class RoleToPermissionMapper
             'roles' => [
                 'Personalia',
                 'Super Admin',
-                'Satuan Pendidikan',
+                'Kepala Sekolah',
             ],
         ],
 
@@ -115,7 +115,7 @@ final class RoleToPermissionMapper
                 'Super Admin',
                 'Mudir',
                 'Wakil Mudir I',
-                'Satuan Pendidikan',
+                'Kepala Sekolah',
                 'Administrator',
             ],
         ],
@@ -136,7 +136,7 @@ final class RoleToPermissionMapper
                 'gtk.transfer.approve.yayasan',
             ],
             'roles' => [
-                'Satuan Pendidikan',
+                'Kepala Sekolah',
                 'Wakil Mudir I',
                 'Wakil Mudir II',
                 'Mudir',

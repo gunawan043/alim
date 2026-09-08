@@ -7,6 +7,8 @@ use App\Models\RecruitmentProfile;
 use App\Models\RecruitmentSkill;
 use App\Models\User;
 use App\Services\RecruitmentDocumentService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -478,7 +480,7 @@ class CandidateController extends Controller
      * Sync dokumen kandidat dari recruitment.abuhurairah.id
      * Fetch data dokumen & foto via API lalu simpan/upsert ke recruitment_documents.
      */
-    public function syncDocuments(string $candidate): \Illuminate\Http\RedirectResponse
+    public function syncDocuments(string $candidate): RedirectResponse
     {
         try {
             $profile = RecruitmentProfile::with('documents')->where('id', $candidate)->firstOrFail();
@@ -487,14 +489,14 @@ class CandidateController extends Controller
                 return back()->with('error', 'Kandidat ini belum terhubung ke recruitment.abuhurairah.id (external_id kosong).');
             }
 
-            $service = app(\App\Services\RecruitmentDocumentService::class);
+            $service = app(RecruitmentDocumentService::class);
             $result = $service->syncDocumentsForProfile($profile);
 
             return back()->with(
                 $result['success'] ? 'success' : 'error',
                 $result['message']
             );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return back()->with('error', 'Kandidat tidak ditemukan.');
         } catch (\Exception $e) {
             \Log::error('syncDocuments failed', ['candidate' => $candidate, 'error' => $e->getMessage()]);

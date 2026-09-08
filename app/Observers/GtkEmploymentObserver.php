@@ -3,8 +3,9 @@
 namespace App\Observers;
 
 use App\Models\GtkEmployment;
-use App\Models\Position;
+use App\Models\StructuralPosition;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
 
 class GtkEmploymentObserver
 {
@@ -39,13 +40,23 @@ class GtkEmploymentObserver
             return;
         }
 
-        $jabatanRoles = [];
+        $finalRoles = [];
+
         if ($employment->jabatan_id) {
-            $jabatan = Position::find($employment->jabatan_id);
-            $jabatanRoles = $jabatan?->roles ?? [];
+            $jabatan = StructuralPosition::with('role')->find($employment->jabatan_id);
+            // Parent role dari posisi (Satuan Pendidikan, Asrama, UKS, dll.)
+            if ($jabatan?->role) {
+                $finalRoles[] = $jabatan->role->name;
+            }
+            // Sub-role dari posisi jika ada (contoh: admin, kepala unit)
+            foreach (($jabatan?->roles ?? []) as $r) {
+                if (! in_array($r, $finalRoles)) {
+                    $finalRoles[] = $r;
+                }
+            }
         }
 
-        $finalRoles = array_values(array_unique($jabatanRoles));
+        $finalRoles = array_values(array_unique($finalRoles));
 
         try {
             $user->syncRoles($finalRoles);

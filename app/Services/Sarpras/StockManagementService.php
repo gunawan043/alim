@@ -2,6 +2,8 @@
 
 namespace App\Services\Sarpras;
 
+use App\Events\Sarpras\SparepartAdjusted;
+use App\Events\Sarpras\SparepartReceived;
 use App\Models\Sparepart;
 use App\Models\SparepartReservation;
 use App\Models\SparepartStockMovement;
@@ -128,7 +130,7 @@ class StockManagementService
                 'reason' => $reason,
             ]);
 
-            event(new \App\Events\Sarpras\SparepartReceived($part, $movement, $actor));
+            event(new SparepartReceived($part, $movement, $actor));
 
             return $movement;
         });
@@ -215,7 +217,7 @@ class StockManagementService
                 'reason' => $reason ?: 'Stock adjustment: '.$part->stock.' → '.$newStock,
             ]);
 
-            event(new \App\Events\Sarpras\SparepartAdjusted($part, $movement, $actor));
+            event(new SparepartAdjusted($part, $movement, $actor));
 
             return $movement;
         });

@@ -6,6 +6,7 @@ use App\Http\Requests\Dormitory\RecordReturnRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
+use App\Models\Student;
 use App\Services\Boarding\LeaveWorkflowService;
 use Illuminate\Http\Request;
 
@@ -82,7 +83,7 @@ class DormitoryReturnController extends Controller
             actualReturnDatetime: $data['actual_return_datetime'],
         );
 
-        return back()->with('success', 'Kepulangan ' . ($data['student_name'] ?? 'santri') . ' berhasil dicatat.');
+        return back()->with('success', 'Kepulangan '.($data['student_name'] ?? 'santri').' berhasil dicatat.');
     }
 
     /**
@@ -91,7 +92,7 @@ class DormitoryReturnController extends Controller
     public function history(Request $request, string $userId, string $asramaUuid, string $studentUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
-        $student = \App\Models\Student::with('mahroms')->findOrFail($studentUuid);
+        $student = Student::with('mahroms')->findOrFail($studentUuid);
 
         $permits = DormitoryPermit::with(['room', 'approvedBy'])
             ->where('student_id', $studentUuid)

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,7 +12,7 @@ return new class extends Migration
         // Skip on SQLite: this migration uses anonymous char(36) columns
         // that produce duplicate column names in SQLite (kisi_kisi_soal_*_id
         // would need explicit names). Not required for academic-provision tests.
-        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite') {
+        if (DB::connection()->getDriverName() === 'sqlite') {
             return;
         }
 

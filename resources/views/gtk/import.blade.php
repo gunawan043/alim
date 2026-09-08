@@ -86,14 +86,16 @@
     @if(count($result['errors'] ?? []))
         <div class="card border-danger mb-4">
             <div class="card-header bg-danger text-white py-2">
-                <h6 class="mb-0"><i class="ri-error-line me-1"></i> {{ count($result['errors']) }} Error — Perbaiki lalu import ulang</h6>
+                <h6 class="mb-0"><i class="ri-error-warning-line me-1"></i> {{ count($result['errors']) }} Error — Perbaiki lalu import ulang</h6>
             </div>
             <div class="card-body p-0" style="max-height:250px;overflow-y:auto;">
                 <table class="table table-sm table-hover mb-0">
-                    <thead class="table-light"><tr><th style="width:40px">#</th><th>Pesan Error</th></tr></thead>
+                    <thead class="table-light"><tr><th style="width:40px">#</th><th>Baris</th><th>Alasan</th></tr></thead>
                     <tbody>
                         @foreach($result['errors'] as $i => $e)
-                            <tr><td class="text-center text-muted">{{ $i+1 }}</td><td class="text-danger small">{{ $e }}</td></tr>
+                            <tr><td class="text-muted text-center">{{ $i+1 }}</td>
+                                <td><code>{{ $e['row'] ?? '-' }}</code></td>
+                                <td class="text-danger small">{{ is_array($e) ? ($e['reason'] ?? $e['message'] ?? json_encode($e)) : $e }}</td></tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -151,6 +153,19 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="mb-2">
+                                    <select id="jenisGtkSelect" class="form-select form-select-sm" disabled>
+                                        <option value="">— Pilih Jenis GTK (untuk filter jabatan) —</option>
+                                        @foreach($jenisGtk as $j)
+                                            <option value="{{ $j->id }}" data-name="{{ $j->nama }}">{{ $j->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mb-2" id="jabatanWrap" style="display:none">
+                                    <select id="jabatanSelect" class="form-select form-select-sm">
+                                        <option value="">— Pilih Jabatan —</option>
+                                    </select>
+                                </div>
                                 <div id="unitInfoBox" class="unit-info-box d-none mb-2">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="ri-building-2-line text-primary"></i>
@@ -158,6 +173,12 @@
                                             <strong class="text-primary" id="selUnitName">-</strong>
                                             <span class="badge bg-primary-subtle text-primary ms-1" id="selUnitCode">-</span>
                                         </div>
+                                    </div>
+                                    <div class="mt-2 small text-muted" id="selectedJenisInfo" style="display:none">
+                                        <i class="ri-checkbox-circle-line text-success me-1"></i>
+                                        Jenis: <strong id="selJenisName">-</strong>
+                                        &nbsp;|&nbsp;
+                                        Jabatan: <strong id="selJabatanName">-</strong>
                                     </div>
                                 </div>
                                 <a id="btnTemplate" href="#" class="btn btn-sm btn-success disabled" onclick="return false;">
@@ -175,7 +196,8 @@
                                 <p class="text-muted small mb-0">
                                     Baris 1 = header kolom.<br>
                                     Baris 2+ = data GTK.<br>
-                                    <strong>Nama</strong>, <strong>Email</strong>, <strong>NIK</strong>, <strong>No HP</strong>, <strong>NUPY</strong>, <strong>Jenis GTK</strong>, <strong>Jabatan</strong>, <strong>Status Kepegawaian</strong>, <strong>SK</strong> wajib diisi.
+                                    <strong>Nama</strong>, <strong>Email</strong>, <strong>NIK</strong>, <strong>No HP</strong>, <strong>NUPY</strong> wajib diisi.<br>
+                                    <em>Pilih Jenis GTK dan Jabatan di dropdown atas sebelum download template untuk panduan.</em>
                                 </p>
                             </div>
                         </div>
@@ -359,6 +381,12 @@
             <div class="card-body">
                 <div class="row g-3 text-center" id="importResultStats"></div>
                 <div id="importResultDetail" class="mt-3"></div>
+                <div id="importResultWarnings" class="mt-3 d-none">
+                    <div class="alert alert-warning py-2 mb-0 small">
+                        <strong><i class="ri-information-line me-1"></i>Perhatian:</strong>
+                        <ul class="mb-0 mt-1" id="warningList"></ul>
+                    </div>
+                </div>
                 <div class="d-flex gap-2 mt-3">
                     <a href="{{ route('user.gtk.index', ['userId' => $userId]) }}" class="btn btn-primary">
                         <i class="ri-list-check me-1"></i> Lihat Daftar GTK
@@ -397,7 +425,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="{{ URL::asset('build/js/app.js') }}"></script>
 <script>
-const REQUIRED = ['name','email','nik','tempat_lahir','tanggal_lahir','jenis_kelamin','no_hp','nupy','jenis_gtk','jabatan','status_kepegawaian','tmt','nomor_sk','tanggal_sk'];
+const REQUIRED = ['name','email','nik','nupy','no_hp'];
 const COL_MAP = {
     'name':'name','nama':'name','nama_lengkap':'name','email':'email','nik':'nik',
     'no_kk':'no_kk','tempat_lahir':'tempat_lahir','tanggal_lahir':'tanggal_lahir',
@@ -433,6 +461,43 @@ $('#workUnitSelect').select2({ placeholder: '— Ketik nama unit kerja —', all
         $('#btnTemplate').addClass('disabled').attr('onclick','return false;').css('pointer-events','none');
         $('#importBtn').prop('disabled', true);
     }
+});
+
+// Select2 jenis GTK — trigger jabatan fetch
+let allJabatanData = @json($jenisGtk->map(fn($j) => ['id' => $j->id, 'nama' => $j->nama]));
+$('#jenisGtkSelect').select2({
+    placeholder: '— Pilih Jenis GTK (opsional, untuk validasi) —',
+    allowClear: true,
+    width: '100%',
+})
+.on('change', async function () {
+    const val = $(this).val();
+    if (!val) {
+        $('#jabatanWrap').hide();
+        $('#selectedJenisInfo').hide();
+        return;
+    }
+    $('#jabatanWrap').show();
+    $('#selJenisName').text(allJabatanData.find(j => j.id === val)?.nama || val);
+    // Fetch jabatan for this jenis_gtk
+    try {
+        const res = await fetch('{{ "/$userId" }}/master-data/jabatan-by-jenis?jenis_gtk_id=' + val);
+        const data = await res.json();
+        const sel = document.getElementById('jabatanSelect');
+        sel.innerHTML = '<option value="">— Pilih Jabatan —</option>';
+        (data.data || []).forEach(j => {
+            sel.innerHTML += `<option value="${escHtml(j.name)}" data-id="${escHtml(j.id)}">${escHtml(j.name)}</option>`;
+        });
+        $('#selJabatanName').text(sel.options[sel.selectedIndex]?.textContent || '-');
+        $('#selectedJenisInfo').show();
+    } catch(e) {
+        console.error(e);
+    }
+}).trigger('change');
+
+$('#jabatanSelect').on('change', function() {
+    const opt = $(this).find(':selected');
+    $('#selJabatanName').text(opt.val() || '-');
 });
 
 // File handling
@@ -488,20 +553,50 @@ function previewFile() {
             const ws = wb.Sheets[wb.SheetNames[0]];
             const raw = XLSX.utils.sheet_to_json(ws, {raw:false,defval:''});
             if (!raw.length) { Swal.fire({icon:'warning',title:'File Kosong'}); return; }
+            // Excel numeric cells >15 digits become scientific notation; convert to clean digit string.
+            const toCleanDigitStr = (v) => {
+                if (v == null || v === '') return '';
+                if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(0);
+                const s = String(v).trim();
+                if (/^[0-9]+\.?[0-9]*[eE][+-]?[0-9]+$/.test(s)) return Number(s).toFixed(0);
+                return /^\d+$/.test(s) ? s : s;
+            };
             parsedRows = raw.map((row,i) => {
                 const m = {_rowNum:i+2};
                 Object.keys(row).forEach(k => {
                     const nk = k.toLowerCase().trim().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-                    const fn = COL_MAP[nk]; if (fn) m[fn] = String(row[k]).trim();
+                    const fn = COL_MAP[nk];
+                    if (fn && ['nik','nupy','no_kk','npwp'].includes(fn)) {
+                        m[fn] = toCleanDigitStr(row[k]);
+                    } else if (fn) {
+                        m[fn] = String(row[k]).trim();
+                    }
                 });
                 return m;
             });
+            // Status normalization map for frontend validation hints.
+            const statusKawinMap = { 'kawin':'kawin', 'menikah':'kawin', 'belum kawin':'belum_kawin', 'belum menikah':'belum_kawin', 'cerai hidup':'cerai_hidup', 'cerai mati':'cerai_mati' };
+            const statusKepegawaianMap = { 'ptt':'PTT', 'pty':'PTY', 'percobaan':'Percobaan', 'magang':'Magang', 'gtt':'GTT', 'gty':'GTY', 'kontrak':'KONTRAK', 'tetap':'PTY' };
+            const jkMap = { 'l':'L', 'laki-laki':'L', 'laki laki':'L', 'p':'P', 'perempuan':'P' };
+
             parsedRows.forEach(r => {
                 r._errors = [];
-                REQUIRED.forEach(c => { if (!r[c]) r._errors.push(`"${c}" wajib`); });
-                if (r.nik && !/^\d{16}$/.test(r.nik)) r._errors.push('NIK 16 digit');
-                if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) r._errors.push('Email tidak valid');
-                if (r.jenis_kelamin && !['L','P'].includes(r.jenis_kelamin.toUpperCase())) r._errors.push('JK harus L/P');
+                REQUIRED.forEach(c => { if (!r[c]) r._errors.push(`${c}: wajib diisi`); });
+                if (r.nik && !/^\d{16}$/.test(r.nik)) r._errors.push('NIK: harus 16 digit angka');
+                if (r.nupy && !/^\d{10,20}$/.test(r.nupy)) r._errors.push('NUPY: harus 10-20 digit angka');
+                if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) r._errors.push('Email: tidak valid');
+                if (r.jenis_kelamin) {
+                    const upper = r.jenis_kelamin.toUpperCase().trim();
+                    if (upper !== 'L' && upper !== 'P') r._errors.push('JK: harus L atau P');
+                }
+                if (r.status_kepegawaian) {
+                    const lower = r.status_kepegawaian.toLowerCase().trim();
+                    if (statusKepegawaianMap[lower] === undefined) r._errors.push('Status Kepegawaian: tidak valid (PTT/PTY/GTT/GTY/KONTRAK/Magang/Percobaan)');
+                }
+                if (r.status_perkawinan) {
+                    const lower = r.status_perkawinan.toLowerCase().trim();
+                    if (statusKawinMap[lower] === undefined) r._errors.push('Status Perkawinan: tidak valid (Kawin/Belum Kawin/Cerai Hidup/Cerai Mati)');
+                }
                 r._status = r._errors.length ? 'error' : 'ok';
             });
             validRows = parsedRows.filter(r => r._status !== 'error');
@@ -533,9 +628,21 @@ function renderTable(rows) {
         cols.forEach(c => {
             if (c.k === '_status') {
                 if (r._status === 'error') {
-                    html += `<td><span class="badge bg-danger">Error</span><ul class="mb-0 ps-2 small text-danger">${r._errors.map(e=>`<li>${escHtml(e)}</li>`).join('')}</ul></td>`;
+                    html += `<td><div class="d-flex flex-column align-items-start gap-1">`;
+                    r._errors.forEach(e => {
+                        const [field, ...rest] = e.split(':');
+                        const msg = rest.join(':').trim();
+                        html += `<span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-normal" style="font-size:11px;padding:2px 6px;">`;
+                        if (msg) {
+                            html += `<strong>${escHtml(field)}:</strong> ${escHtml(msg)}`;
+                        } else {
+                            html += escHtml(e);
+                        }
+                        html += `</span>`;
+                    });
+                    html += `</div></td>`;
                 } else {
-                    html += `<td><span class="badge bg-success"><i class="ri-checkbox-circle-line me-1"></i>Valid</span></td>`;
+                    html += `<td><span class="badge bg-success-subtle text-success border border-success-subtle"><i class="ri-checkbox-circle-line me-1"></i>Valid</span></td>`;
                 }
             } else if (c.k === '_rowNum') {
                 html += `<td class="text-muted">${r[c.k]||''}</td>`;
@@ -558,7 +665,7 @@ async function startImport() {
     const bar = document.getElementById('importProgressBar');
     const txt = document.getElementById('importProgressText');
     ov.classList.add('show');
-    let imp = 0, fail = 0, failRows = [];
+    let imp = 0, fail = 0, failRows = [], warnings = [];
     const BATCH = 10, total = validRows.length;
     for (let i = 0; i < total; i += BATCH) {
         const batch = validRows.slice(i, i + BATCH);
@@ -573,23 +680,63 @@ async function startImport() {
             const d = await res.json();
             if (d.success) {
                 imp += d.imported ?? batch.length;
-                if (d.failed?.length) { fail += d.failed.length; failRows = failRows.concat(d.failed); }
-            } else { fail += batch.length; batch.forEach(r => failRows.push({row:r._rowNum, reason:d.message||'Gagal'})); }
+                if (d.failed?.length) {
+                    fail += d.failed.length;
+                    failRows = failRows.concat(d.failed.map(f => ({row: f.row, reason: f.reason})));
+                }
+                if (d.skipped?.length) {
+                    d.skipped.forEach(s => warnings.push(`Baris ${s.row}: ${s.reason}`));
+                }
+            } else {
+                if (d.failed?.length) {
+                    fail += d.failed.length;
+                    failRows = failRows.concat(d.failed.map(f => ({row: f.row, reason: f.reason})));
+                } else {
+                    fail += batch.length;
+                    batch.forEach(r => failRows.push({row:r._rowNum, reason:d.message||'Gagal'}));
+                }
+                if (d.skipped?.length) {
+                    d.skipped.forEach(s => warnings.push(`Baris ${s.row}: ${s.reason}`));
+                }
+            }
         } catch(e) { fail += batch.length; batch.forEach(r => failRows.push({row:r._rowNum, reason:'Network error'})); }
     }
     bar.style.width = '100%';
-    setTimeout(() => { ov.classList.remove('show'); showResult(total, imp, fail, failRows); }, 400);
+    setTimeout(() => { ov.classList.remove('show'); showResult(total, imp, fail, failRows, warnings); }, 400);
 }
-function showResult(total, imp, fail, failRows) {
+function showResult(total, imp, fail, failRows, warnings) {
     document.getElementById('importResultStats').innerHTML = `
         <div class="col-4"><div class="card border-0 bg-primary-subtle p-3"><div class="fs-3 fw-bold text-primary">${total}</div><div class="small text-muted">Total</div></div></div>
         <div class="col-4"><div class="card border-0 bg-success-subtle p-3"><div class="fs-3 fw-bold text-success">${imp}</div><div class="small text-muted">Berhasil</div></div></div>
         <div class="col-4"><div class="card border-0 bg-danger-subtle p-3"><div class="fs-3 fw-bold text-danger">${fail}</div><div class="small text-muted">Gagal</div></div></div>`;
     let detail = '';
     if (failRows.length) {
-        detail = `<div class="alert alert-warning mb-0"><strong>Baris Gagal:</strong><ul class="mb-0 mt-1">${failRows.slice(0,15).map(f=>`<li>Baris ${f.row}: ${escHtml(f.reason)}</li>`).join('')}${failRows.length>15?`<li>...dan ${failRows.length-15} lainnya</li>`:''}</ul></div>`;
+        detail = `<div class="alert alert-danger mb-0"><strong><i class="ri-error-warning-line me-1"></i>${failRows.length} Baris Gagal:</strong>
+            <div class="mt-2" style="max-height:200px;overflow-y:auto;">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light"><tr><th>#</th><th>Baris</th><th>Alasan</th></tr></thead>
+                    <tbody>
+                        ${failRows.slice(0,20).map((f,i)=>`<tr><td class="text-muted">${i+1}</td><td><code>${f.row}</code></td><td class="text-danger small">${escHtml(f.reason)}</td></tr>`).join('')}
+                        ${failRows.length>20?`<tr><td colspan="3" class="text-muted text-center small">...dan ${failRows.length-20} baris lainnya</td></tr>`:''}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    } else {
+        detail = `<div class="alert alert-success mb-0 py-2"><i class="ri-checkbox-circle-line me-1"></i>Semua <strong>${imp}</strong> baris berhasil diimport.</div>`;
     }
     document.getElementById('importResultDetail').innerHTML = detail;
+
+    // Warnings (skipped rows)
+    const warnContainer = document.getElementById('importResultWarnings');
+    if (warnings && warnings.length) {
+        document.getElementById('warningList').innerHTML = warnings.slice(0,10).map(w=>`<li class="text-warning-emphasis">${w}</li>`).join('') +
+            (warnings.length>10?`<li class="text-muted small">...dan ${warnings.length-10} lainnya</li>`:'');
+        warnContainer.classList.remove('d-none');
+    } else {
+        warnContainer.classList.add('d-none');
+    }
+
     document.getElementById('importResultCard').style.display = 'block';
     document.getElementById('previewCard').style.display = 'none';
     document.getElementById('previewPlaceholder').style.display = 'none';

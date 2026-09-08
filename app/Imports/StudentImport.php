@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -362,10 +363,10 @@ class StudentImport implements ToCollection
             return null;
         }
         try {
-            return \Carbon\Carbon::parse($v)->format('Y-m-d');
+            return Carbon::parse($v)->format('Y-m-d');
         } catch (\Throwable) {
             try {
-                return \Carbon\Carbon::createFromFormat('d/m/Y', $v)->format('Y-m-d');
+                return Carbon::createFromFormat('d/m/Y', $v)->format('Y-m-d');
             } catch (\Throwable) {
                 return null;
             }

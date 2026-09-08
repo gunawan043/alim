@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Dormitory\StoreInventoryRequest;
+use App\Models\AcademicYear;
 use App\Models\AssetCategory;
 use App\Models\Dormitory;
 use App\Models\DormitoryInventory;
@@ -99,7 +100,7 @@ class DormitoryInventoryController extends Controller
     public function create(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
-        $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $activeYear = AcademicYear::where('is_active', true)->first();
 
         $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)
             ->where('is_active', true)

@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class AlumniExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
@@ -38,7 +39,7 @@ class AlumniExport implements FromCollection, ShouldAutoSize, WithHeadings, With
             'Alamat',
             'No. HP',
             'Email',
-            'Satuan Pendidikan',
+            'Sekolah',
             'Tahun Lulus',
             'No. Ijazah',
             'Status Tracer',
@@ -105,7 +106,7 @@ class AlumniExport implements FromCollection, ShouldAutoSize, WithHeadings, With
             1 => [
                 'font' => ['bold' => true],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E9ECEF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'E9ECEF']],
             ],
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -33,7 +34,7 @@ class RequestIdMiddleware
             $response->header('X-Request-ID', $requestId);
         }
 
-        if ($response instanceof \Illuminate\Http\JsonResponse) {
+        if ($response instanceof JsonResponse) {
             $data = $response->getData(true);
             if (is_array($data) && ! array_key_exists('request_id', $data)) {
                 $data['request_id'] = $requestId;

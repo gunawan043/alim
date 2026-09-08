@@ -2,6 +2,10 @@
 
 namespace App\Services;
 
+use App\Authorization\Services\ApprovalRoleResolver;
+use App\Jobs\SendUniversalEmail;
+use App\Jobs\SendUniversalPush;
+use App\Jobs\SendUniversalWhatsApp;
 use App\Models\NotificationUniversal;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -100,7 +104,7 @@ class NotificationUniversalService
      */
     public function sendToRole($roleName, array $data)
     {
-        $permissions = \App\Authorization\Services\ApprovalRoleResolver::resolvePermission($roleName);
+        $permissions = ApprovalRoleResolver::resolvePermission($roleName);
         $userIds = [];
         foreach ($permissions as $permission) {
             $userIds = array_merge(
@@ -112,7 +116,7 @@ class NotificationUniversalService
         if (empty($userIds)) {
             // FALLBACK: direct role lookup (legacy — deprecated, kept for fail-safe only)
             try {
-                $userIds = \App\Models\User::role($roleName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+                $userIds = User::role($roleName)->pluck('id')->map(fn ($id) => (string) $id)->toArray();
             } catch (\Throwable $e) {
                 // Role tidak ditemukan — skip (contoh: role baru belum di-seed)
                 Log::debug("[NotificationUniversal] Role not found, skipping: {$roleName}", [
@@ -176,7 +180,7 @@ class NotificationUniversalService
     {
         try {
             // Queue email job
-            \App\Jobs\SendUniversalEmail::dispatch($user, $notification);
+            SendUniversalEmail::dispatch($user, $notification);
 
             $notification->update([
                 'is_email_sent' => true,
@@ -194,7 +198,7 @@ class NotificationUniversalService
     {
         try {
             // Queue WhatsApp job
-            \App\Jobs\SendUniversalWhatsApp::dispatch($user, $notification, $phone);
+            SendUniversalWhatsApp::dispatch($user, $notification, $phone);
 
             $notification->update([
                 'is_whatsapp_sent' => true,
@@ -212,7 +216,7 @@ class NotificationUniversalService
     {
         try {
             // Queue push notification job
-            \App\Jobs\SendUniversalPush::dispatch($user, $notification);
+            SendUniversalPush::dispatch($user, $notification);
 
             $notification->update([
                 'is_push_sent' => true,

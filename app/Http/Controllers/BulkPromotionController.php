@@ -258,7 +258,7 @@ class BulkPromotionController extends Controller
                     ->where('is_active', true)
                     ->update(['is_active' => false, 'leave_date' => $promotionDate]);
 
-                $student = \App\Models\Student::find($studentId);
+                $student = Student::find($studentId);
 
                 // Mutasi keluar
                 if ($action === 'mutate_out') {

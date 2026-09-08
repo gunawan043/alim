@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Uks\UksPatient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -45,7 +46,7 @@ class UksStatusHistory extends Model
 
     public function patient(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Uks\UksPatient::class, 'patient_id');
+        return $this->belongsTo(UksPatient::class, 'patient_id');
     }
 
     public function changedBy(): BelongsTo

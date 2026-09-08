@@ -255,7 +255,7 @@ return new class extends Migration
             DB::unprepared($simpleGuruUpdate);
             DB::unprepared($simpleRomelInsert);
             DB::unprepared($simpleRomelUpdate);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Triggers may fail on non-MySQL connections — continue silently
             DB::rollback();
         }
@@ -271,7 +271,7 @@ return new class extends Migration
             DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_guru_check_upd');
             DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_ins');
             DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_upd');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Ignore
         }
 

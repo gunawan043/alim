@@ -10,6 +10,7 @@ use App\Authorization\DTO\SnapshotFingerprint;
 use App\Authorization\DTO\SnapshotMetadata;
 use App\Authorization\Enums\PermissionSource;
 use App\Authorization\Enums\SnapshotStatus;
+use App\Authorization\Exceptions\InvalidScopeException;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
 use DateTimeImmutable;
@@ -154,7 +155,7 @@ final class AuthorizationUnitTest extends TestCase
 
     public function test_scope_key_invalid_hash_throws(): void
     {
-        $this->expectException(\App\Authorization\Exceptions\InvalidScopeException::class);
+        $this->expectException(InvalidScopeException::class);
         ScopeKey::fromHash('not-a-valid-hash!!!');
     }
 

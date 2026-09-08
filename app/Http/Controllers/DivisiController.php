@@ -43,7 +43,7 @@ class DivisiController extends Controller
         return redirect()->back()->with('success', 'Divisi berhasil ditambahkan.');
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $userId, string $id)
     {
         $divisi = Divisi::findOrFail($id);
 
@@ -60,7 +60,7 @@ class DivisiController extends Controller
         return redirect()->back()->with('success', 'Divisi berhasil diperbarui.');
     }
 
-    public function destroy(string $id)
+    public function destroy(string $userId, string $id)
     {
         $divisi = Divisi::findOrFail($id);
 

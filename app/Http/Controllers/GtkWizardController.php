@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Exports\GtkExport;
+use App\Exports\GtkImportTemplateExport;
+use App\Models\City;
+use App\Models\District;
 use App\Models\GtkAddress;
 use App\Models\GtkContact;
 use App\Models\GtkEducation;
@@ -14,8 +17,11 @@ use App\Models\GtkWorkUnit;
 use App\Models\JenisGtk;
 use App\Models\Province;
 use App\Models\School;
+use App\Models\StructuralPosition;
 use App\Models\User;
+use App\Models\Village;
 use App\Models\WorkUnit;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +29,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class GtkWizardController extends Controller
 {
@@ -99,8 +107,10 @@ class GtkWizardController extends Controller
             ? WorkUnit::find($request->satuan_kerja)
             : null;
 
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+
         return view('gtk.index', compact(
-            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja'
+            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja', 'jenisGtk'
         ));
     }
 
@@ -182,8 +192,10 @@ class GtkWizardController extends Controller
             ? WorkUnit::find($request->satuan_kerja)
             : null;
 
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+
         return view('gtk.index', compact(
-            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja'
+            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja', 'jenisGtk'
         ));
     }
 
@@ -265,8 +277,10 @@ class GtkWizardController extends Controller
             ? WorkUnit::find($request->satuan_kerja)
             : null;
 
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+
         return view('gtk.index', compact(
-            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja'
+            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja', 'jenisGtk'
         ));
     }
 
@@ -274,8 +288,8 @@ class GtkWizardController extends Controller
     {
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
-        $jenisGtk = \App\Models\JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
-        $jabatan = \App\Models\Position::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatan = StructuralPosition::active()->orderBy('urutan')->orderBy('name')->get();
 
         return view('gtk.create', compact('provinces', 'workUnits', 'jenisGtk', 'jabatan'));
     }
@@ -317,7 +331,7 @@ class GtkWizardController extends Controller
                 ],
             ], 201);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
 
             return response()->json([
@@ -372,8 +386,8 @@ class GtkWizardController extends Controller
 
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
-        $jenisGtk = \App\Models\JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
-        $jabatan = \App\Models\Position::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
+        $jabatan = StructuralPosition::active()->orderBy('urutan')->orderBy('name')->get();
 
         return view('gtk.edit', compact('gtk', 'userId', 'provinces', 'workUnits', 'jenisGtk', 'jabatan'));
     }
@@ -415,7 +429,7 @@ class GtkWizardController extends Controller
                 'message' => 'Data GTK berhasil diperbarui',
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
 
             return response()->json([
@@ -492,7 +506,7 @@ class GtkWizardController extends Controller
                 'success' => true,
                 'message' => 'Data kesehatan berhasil disimpan',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal',
@@ -1099,7 +1113,7 @@ class GtkWizardController extends Controller
             ->groupBy('work_unit_id')
             ->pluck('total', 'work_unit_id')
             ->toArray();
-        $satkerNames = \App\Models\WorkUnit::whereIn('id', array_keys($perSatker))
+        $satkerNames = WorkUnit::whereIn('id', array_keys($perSatker))
             ->pluck('name', 'id')->toArray();
         $distSatker = [];
         foreach ($perSatker as $id => $count) {
@@ -1129,7 +1143,7 @@ class GtkWizardController extends Controller
         $completeNik = GtkProfile::whereIn('user_id', $gtkUserIds)->whereNotNull('nik')->count();
         $completeAddr = GtkProfile::whereIn('user_id', $gtkUserIds)
             ->whereHas('addresses', fn ($q) => $q->where('type', 'domisili'))->count();
-        $completeEdu = \App\Models\User::whereIn('id', $gtkUserIds)->whereHas('educations')->count();
+        $completeEdu = User::whereIn('id', $gtkUserIds)->whereHas('educations')->count();
         $completeTmt = GtkEmployment::whereIn('user_id', $gtkUserIds)->whereNotNull('tmt')->count();
 
         // GTK baru 30 hari terakhir
@@ -1527,9 +1541,9 @@ class GtkWizardController extends Controller
             'rt_rw' => $raw['rt_rw'] ?? null,
             'dusun' => $raw['dusun'] ?? null,
             'kode_pos' => $raw['kode_pos'] ?? null,
-            'desa' => $this->lookupName(\App\Models\Village::class, $raw['village_code']),
-            'kecamatan' => $this->lookupName(\App\Models\District::class, $raw['district_code']),
-            'kab_kota' => $this->lookupName(\App\Models\City::class, $raw['city_code']),
+            'desa' => $this->lookupName(Village::class, $raw['village_code']),
+            'kecamatan' => $this->lookupName(District::class, $raw['district_code']),
+            'kab_kota' => $this->lookupName(City::class, $raw['city_code']),
             'provinsi' => $this->lookupName(Province::class, $raw['province_code']),
         ];
     }
@@ -1554,10 +1568,10 @@ class GtkWizardController extends Controller
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return \App\Models\JenisGtk::find($value)?->id;
+            return JenisGtk::find($value)?->id;
         }
 
-        return \App\Models\JenisGtk::where('nama', $value)->value('id');
+        return JenisGtk::whereRaw('LOWER(nama) = LOWER(?)', [$value])->value('id');
     }
 
     /**
@@ -1570,7 +1584,7 @@ class GtkWizardController extends Controller
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return \App\Models\JenisGtk::find($value)?->nama;
+            return JenisGtk::find($value)?->nama;
         }
 
         return $value;
@@ -1586,17 +1600,17 @@ class GtkWizardController extends Controller
             return null;
         }
 
-        $query = \App\Models\Position::query();
+        $query = StructuralPosition::query();
 
         if ($jenisGtkId) {
             $query->where('jenis_gtk_id', $jenisGtkId);
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return $query->where('id', $value)->value('id') ?? \App\Models\Position::where('id', $value)->value('id');
+            return $query->where('id', $value)->value('id') ?? StructuralPosition::where('id', $value)->value('id');
         }
 
-        return $query->where('nama', $value)->value('id');
+        return $query->whereRaw('LOWER(name) = LOWER(?)', [$value])->value('id');
     }
 
     /**
@@ -1609,7 +1623,7 @@ class GtkWizardController extends Controller
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return \App\Models\Position::find($value)?->nama;
+            return StructuralPosition::find($value)?->name;
         }
 
         return $value;
@@ -1636,59 +1650,33 @@ class GtkWizardController extends Controller
         return view('gtk.import', compact('workUnits', 'jenisGtk'));
     }
 
-    public function importTemplate(string $workUnitId)
+    public function importTemplate(string $userId, string $workUnitId)
     {
         $workUnit = WorkUnit::findOrFail($workUnitId);
 
-        $headers = [
-            'name', 'email', 'nik', 'no_kk', 'tempat_lahir', 'tanggal_lahir',
-            'jenis_kelamin', 'golongan_darah', 'agama', 'status_perkawinan', 'npwp',
-            'no_hp', 'no_whatsapp',
-            'nupy', 'jenis_gtk', 'jabatan', 'status_kepegawaian', 'tmt', 'nomor_sk',
-            'tanggal_sk', 'pangkat_golongan',
-            'jenjang_pendidikan', 'nama_sekolah', 'jurusan', 'tahun_lulus',
-            'alamat_jalan', 'alamat_rt_rw', 'alamat_desa', 'alamat_kecamatan',
-            'alamat_kota', 'alamat_provinsi', 'kode_pos',
-        ];
-
-        $exampleRow = [
-            'Fulan', 'ahmad.fauzi@example.com', '3201234567890123', '3201234567890001',
-            'Mataram', '1990-01-15', 'Laki-laki', 'A', 'Islam', 'Menikah', '123456789012345',
-            '081234567890', '081234567890',
-            'GTK2024001', 'Tenaga Pendidik Pondok', 'Guru', 'Tetap', '2020-01-01',
-            'SK/001/2020', '2020-01-01', 'III/a',
-            'S1', 'Universitas Indonesia', 'Pendidikan Agama Islam', '2015',
-            'Jl. Contoh No. 123', '001/002', 'Kelurahan Contoh', 'Kecamatan Contoh',
-            'Kota Contoh', 'Provinsi Contoh', '12345',
-        ];
-
-        $data = [$headers, $exampleRow];
-
         $filename = 'template-import-gtk-'.Str::slug($workUnit->name).'-'.now()->format('Ymd').'.xlsx';
 
-        return Excel::download(new class($data) implements \Maatwebsite\Excel\Concerns\FromArray
-        {
-            private $data;
-
-            public function __construct($data)
-            {
-                $this->data = $data;
-            }
-
-            public function array(): array
-            {
-                return $this->data;
-            }
-        }, $filename);
+        return Excel::download(
+            new GtkImportTemplateExport($workUnit->name),
+            $filename
+        );
     }
 
-    public function importStore(Request $request): JsonResponse
+    public function importStore(Request $request, string $userId): JsonResponse
     {
-        $request->validate([
-            'work_unit_id' => 'required|exists:work_units,id',
-            'rows' => 'required|array|min:1',
-            'rows.*' => 'array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'work_unit_id' => 'required|exists:work_units,id',
+                'rows' => 'required|array|min:1',
+                'rows.*' => 'array',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: '.json_encode($e->errors()),
+                'failed' => [],
+            ], 422);
+        }
 
         $workUnitId = $request->input('work_unit_id');
         $rows = $request->input('rows');
@@ -1696,20 +1684,35 @@ class GtkWizardController extends Controller
         $imported = 0;
         $failed = [];
 
-        foreach ($rows as $row) {
-            $rowNum = $row['_rowNum'] ?? '?';
+        foreach ($rows as $index => $row) {
+            $rowNum = $row['_rowNum'] ?? ($index + 2);
+
+            $norm = $this->normalizeImportRow($row);
+            if ($norm['error']) {
+                $failed[] = ['row' => $rowNum, 'reason' => $norm['error']];
+
+                continue;
+            }
+            $row = $norm['row'];
 
             DB::beginTransaction();
             try {
-                $required = ['name', 'email', 'nik', 'nupy'];
+                $required = ['name', 'email', 'nik', 'nupy', 'no_hp'];
+                $missing = [];
                 foreach ($required as $field) {
                     if (empty($row[$field])) {
-                        throw new \InvalidArgumentException("Field '{$field}' wajib diisi.");
+                        $missing[] = $field;
                     }
+                }
+                if (! empty($missing)) {
+                    throw new \InvalidArgumentException('Field wajib kosong: '.implode(', ', $missing));
                 }
 
                 if (User::where('email', $row['email'])->exists()) {
                     throw new \InvalidArgumentException("Email '{$row['email']}' sudah terdaftar.");
+                }
+                if (GtkProfile::where('nik', $row['nik'])->exists()) {
+                    throw new \InvalidArgumentException("NIK '{$row['nik']}' sudah terdaftar.");
                 }
                 if (GtkEmployment::where('nupy', $row['nupy'])->exists()) {
                     throw new \InvalidArgumentException("NUPY '{$row['nupy']}' sudah terdaftar.");
@@ -1733,7 +1736,7 @@ class GtkWizardController extends Controller
                     'jenis_kelamin' => $row['jenis_kelamin'] ?? null,
                     'golongan_darah' => $row['golongan_darah'] ?? null,
                     'agama' => $row['agama'] ?? null,
-                    'status_perkawinan' => $row['status_perkawinan'] ?? null,
+                    'status_perkawinan' => $row['status_perkawinan'] ?? 'belum_kawin',
                     'npwp' => $row['npwp'] ?? null,
                 ]);
 
@@ -1749,10 +1752,27 @@ class GtkWizardController extends Controller
                     ]);
                 }
 
+                $jenisGtk = $row['jenis_gtk'] ?? null;
+                $jabatan = $row['jabatan'] ?? null;
+
+                // Resolve to UUIDs for stable references (handles rename-safe FK)
+                $jenisGtkId = $jenisGtk ? $this->resolveJenisGtkId($jenisGtk) : null;
+                $jabatanId = ($jenisGtk && $jabatan) ? $this->resolveJabatanId($jabatan, $jenisGtkId) : null;
+
+                // Validate that resolved IDs exist
+                if ($jenisGtk && ! $jenisGtkId) {
+                    throw new \InvalidArgumentException("Jenis GTK '{$jenisGtk}' tidak ditemukan di master data.");
+                }
+                if ($jabatan && ! $jabatanId) {
+                    throw new \InvalidArgumentException("Jabatan '{$jabatan}' tidak ditemukan. Pastikan jabatan sesuai dengan Jenis GTK yang dipilih.");
+                }
+
                 $this->createEmployment($user->id, [
                     'nupy' => $nupy,
-                    'jenis_gtk' => $row['jenis_gtk'] ?? null,
-                    'jabatan' => $row['jabatan'] ?? null,
+                    'jenis_gtk' => $jenisGtk,
+                    'jenis_gtk_id' => $jenisGtkId,
+                    'jabatan' => $jabatan,
+                    'jabatan_id' => $jabatanId,
                     'status_kepegawaian' => $row['status_kepegawaian'] ?? null,
                     'tmt' => $row['tmt'] ?? null,
                     'nomor_sk' => $row['nomor_sk'] ?? null,
@@ -1770,27 +1790,155 @@ class GtkWizardController extends Controller
                     ]]);
                 }
 
-                $this->assignWorkUnit($user->id, $workUnitId, $row['jabatan'] ?? null);
+                $this->assignWorkUnit($user->id, $workUnitId, $jabatan);
 
                 DB::commit();
                 $imported++;
             } catch (\Exception $e) {
                 DB::rollBack();
+                \Log::error('Import GTK gagal baris '.$rowNum, [
+                    'message' => $e->getMessage(),
+                    'row_data' => $row,
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 $failed[] = [
                     'row' => $rowNum,
-                    'reason' => $e->getMessage(),
+                    'reason' => $this->parseDatabaseError($e),
+                    'data' => $row,
                 ];
             }
         }
-
-        $failedCount = count($failed);
 
         return response()->json([
             'success' => $imported > 0,
             'imported' => $imported,
             'failed' => $failed,
-            'message' => "Berhasil mengimport {$imported} data GTK".($failedCount > 0 ? ", {$failedCount} gagal." : '.'),
+            'message' => $this->buildImportMessage($imported, count($failed)),
         ]);
+    }
+
+    private function parseDatabaseError(\Exception $e): string
+    {
+        $msg = $e->getMessage();
+
+        // Extract MySQL SQLSTATE and column info from truncation/hydra exceptions.
+        if (preg_match('/SQLSTATE\\[(\\w+)\\].*?Data truncated for column \'(?<col>\w+)\'/', $msg, $m)) {
+            return "Kolom '{$m['col']}' tidak sesuai format (enum/value).";
+        }
+        if (preg_match('/SQLSTATE.*?Duplicate entry \'(?<val>[^\']+)\' for key/', $msg, $m)) {
+            $label = str_starts_with($m['val'], 'email_') ? 'Email'
+                : (str_starts_with($m['val'], 'nupy_') ? 'NUPY'
+                : 'NIK');
+
+            return "{$label} '{$m['val']}' sudah terdaftar.";
+        }
+        if (preg_match('/Column \'(?<col>\w+)\' cannot be null/', $msg, $m)) {
+            return "Kolom '{$m['col']}' wajib diisi.";
+        }
+
+        // Fallback: strip SQL boilerplate, keep human-readable part.
+        $clean = preg_replace('/^SQLSTATE\[[\w]+]: \w+: \d+ /', '', $msg);
+        $clean = preg_replace('/ \(Connection: mysql\)$/', '', $clean);
+        $clean = preg_replace('/ \([\w\s\.]+\)$/', '', $clean);
+
+        return $clean ?: $msg;
+    }
+
+    private function buildImportMessage(int $imported, int $failed): string
+    {
+        if ($imported === 0 && $failed === 0) {
+            return 'Tidak ada data untuk diimport.';
+        }
+        if ($imported === 0) {
+            return 'Gagal mengimport semua data. Periksa pesan error pada setiap baris.';
+        }
+        if ($failed === 0) {
+            return "Berhasil mengimport {$imported} data GTK.";
+        }
+
+        return "Berhasil mengimport {$imported} data GTK, {$failed} gagal. Periksa detail error di bawah.";
+    }
+
+    private function normalizeImportRow(array $row): array
+    {
+        // Numeric ID fields from Excel may come as scientific notation floats — coerce to clean digit strings.
+        // Use number_format() to avoid PHP float precision loss on large integers (> 15 digits).
+        foreach (['nik', 'no_kk', 'nupy', 'npwp'] as $field) {
+            if (isset($row[$field]) && $row[$field] !== null && $row[$field] !== '') {
+                $row[$field] = preg_replace('/[^\d]/', '', number_format((float) $row[$field], 0, '.', ''));
+            }
+        }
+
+        // Normalize jenis_kelamin to uppercase single letter.
+        if (! empty($row['jenis_kelamin'])) {
+            $row['jenis_kelamin'] = strtoupper(trim($row['jenis_kelamin']));
+            if ($row['jenis_kelamin'] === 'LAKI-LAKI') {
+                $row['jenis_kelamin'] = 'L';
+            } elseif ($row['jenis_kelamin'] === 'PEREMPUAN') {
+                $row['jenis_kelamin'] = 'P';
+            } elseif (! in_array($row['jenis_kelamin'], ['L', 'P'])) {
+                $row['jenis_kelamin'] = null;
+            }
+        }
+
+        // Normalize status_perkawinan to DB enum values.
+        if (! empty($row['status_perkawinan'])) {
+            $s = strtolower(trim($row['status_perkawinan']));
+            $map = [
+                'kawin' => 'kawin',
+                'menikah' => 'kawin',
+                'belum kawin' => 'belum_kawin',
+                'belum menikah' => 'belum_kawin',
+                'cerai hidup' => 'cerai_hidup',
+                'cerai mati' => 'cerai_mati',
+            ];
+            $row['status_perkawinan'] = $map[$s] ?? null;
+        }
+
+        // Normalize status_kepegawaian to DB enum values.
+        if (! empty($row['status_kepegawaian'])) {
+            $s = trim($row['status_kepegawaian']);
+            $known = ['ptt', 'pty', 'percobaan', 'magang', 'gtt', 'gty', 'kontrak', 'tetap'];
+            $sLower = strtolower($s);
+            if ($sLower === 'tetap') {
+                $sLower = 'pty';
+            }
+            if (in_array($sLower, $known)) {
+                $row['status_kepegawaian'] = strtoupper($sLower);
+            } else {
+                $row['status_kepegawaian'] = null;
+            }
+        }
+
+        // Ensure no_hp is a clean digit string.
+        if (! empty($row['no_hp'])) {
+            $row['no_hp'] = preg_replace('/[^\d]/', '', (string) $row['no_hp']);
+        }
+        if (! empty($row['no_whatsapp'])) {
+            $row['no_whatsapp'] = preg_replace('/[^\d]/', '', (string) $row['no_whatsapp']);
+        }
+
+        // Normalize date fields that may arrive as Excel serial numbers or non-standard strings.
+        foreach (['tanggal_lahir', 'tmt', 'tanggal_sk'] as $dateField) {
+            if (isset($row[$dateField]) && $row[$dateField] !== null && $row[$dateField] !== '') {
+                $val = $row[$dateField];
+                if (is_object($val) && method_exists($val, 'format')) {
+                    $row[$dateField] = $val->format('Y-m-d');
+                } elseif (is_numeric($val)) {
+                    $row[$dateField] = Carbon::instance(Date::excelToDateTimeObject((float) $val))->format('Y-m-d');
+                } else {
+                    $decoded = Carbon::parse((string) $val);
+                    $row[$dateField] = $decoded->format('Y-m-d');
+                }
+            }
+        }
+
+        // Normalize tahun_lulus to integer.
+        if (isset($row['tahun_lulus']) && $row['tahun_lulus'] !== null && $row['tahun_lulus'] !== '') {
+            $row['tahun_lulus'] = (int) preg_replace('/[^\d]/', '', (string) $row['tahun_lulus']);
+        }
+
+        return ['row' => $row, 'error' => null];
     }
 
     private function resolveAddressFromNames(array $row): array
@@ -1806,21 +1954,21 @@ class GtkWizardController extends Controller
         }
 
         if ($provinceCode && ! empty($row['alamat_kota'])) {
-            $city = \App\Models\City::where('province_code', $provinceCode)
+            $city = City::where('province_code', $provinceCode)
                 ->where('name', 'LIKE', '%'.$row['alamat_kota'].'%')
                 ->first();
             $cityCode = $city?->code;
         }
 
         if ($cityCode && ! empty($row['alamat_kecamatan'])) {
-            $district = \App\Models\District::where('city_code', $cityCode)
+            $district = District::where('city_code', $cityCode)
                 ->where('name', 'LIKE', '%'.$row['alamat_kecamatan'].'%')
                 ->first();
             $districtCode = $district?->code;
         }
 
         if ($districtCode && ! empty($row['alamat_desa'])) {
-            $village = \App\Models\Village::where('district_code', $districtCode)
+            $village = Village::where('district_code', $districtCode)
                 ->where('name', 'LIKE', '%'.$row['alamat_desa'].'%')
                 ->first();
             $villageCode = $village?->code;
@@ -1901,7 +2049,9 @@ class GtkWizardController extends Controller
 
         $workUnits = WorkUnit::active()->get();
 
-        return view('gtk.index', compact('gtkList', 'workUnits', 'satuanKerja', 'statistics'));
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+
+        return view('gtk.index', compact('gtkList', 'workUnits', 'satuanKerja', 'statistics', 'jenisGtk'));
     }
 
     /**
@@ -1970,6 +2120,145 @@ class GtkWizardController extends Controller
 
         $workUnits = WorkUnit::active()->get();
 
-        return view('gtk.index', compact('gtkList', 'workUnits'));
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+
+        return view('gtk.index', compact('gtkList', 'workUnits', 'jenisGtk'));
+    }
+
+    public function massUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:users,id',
+            'status_kepegawaian' => 'nullable|in:PTT,PTY,GTT,GTY,KONTRAK,Percobaan,Magang',
+            'jenis_gtk_id' => 'nullable|exists:jenis_gtk,id',
+            'jabatan_id' => 'nullable|exists:structural_positions,id',
+            'tmt' => 'nullable|date',
+            'nomor_sk' => 'nullable|string|max:255',
+            'tanggal_sk' => 'nullable|date',
+            'pangkat_golongan' => 'nullable|string|max:50',
+            'work_unit_id' => 'nullable|exists:work_units,id',
+        ]);
+
+        $userId = auth()->id();
+        DB::beginTransaction();
+        try {
+            $updated = 0;
+            foreach ($validated['ids'] as $id) {
+                $user = User::where('id', $id)->where('is_active', true)->first();
+                if (! $user) {
+                    continue;
+                }
+
+                // Scope check — only allow update if user's school matches context
+                $schoolId = $request->attributes->get('schoolContextId');
+                if ($schoolId) {
+                    $hasSchoolScope = $user->employment?->school_id === $schoolId
+                        || $user->gtkWorkUnits()->where('work_unit_id', $schoolId)->exists();
+                    if (! $hasSchoolScope) {
+                        continue;
+                    }
+                }
+
+                DB::transaction(function () use ($user, $validated) {
+                    // Employment fields
+                    $employmentUpdates = [];
+                    if ($validated['status_kepegawaian'] !== null) {
+                        $employmentUpdates['status_kepegawaian'] = $validated['status_kepegawaian'];
+                    }
+                    if ($validated['jenis_gtk_id'] !== null) {
+                        $employmentUpdates['jenis_gtk_id'] = $validated['jenis_gtk_id'];
+                        $employmentUpdates['jenis_gtk'] = JenisGtk::find($validated['jenis_gtk_id'])?->nama;
+                    }
+                    if ($validated['jabatan_id'] !== null) {
+                        $employmentUpdates['jabatan_id'] = $validated['jabatan_id'];
+                        $employmentUpdates['jabatan'] = StructuralPosition::find($validated['jabatan_id'])?->name;
+                    }
+                    if ($validated['tmt'] !== null) {
+                        $employmentUpdates['tmt'] = $validated['tmt'];
+                    }
+                    if ($validated['nomor_sk'] !== null) {
+                        $employmentUpdates['nomor_sk'] = $validated['nomor_sk'];
+                        $employmentUpdates['decree_number'] = $validated['nomor_sk'];
+                    }
+                    if ($validated['tanggal_sk'] !== null) {
+                        $employmentUpdates['tanggal_sk'] = $validated['tanggal_sk'];
+                        $employmentUpdates['decree_date'] = $validated['tanggal_sk'];
+                    }
+                    if ($validated['pangkat_golongan'] !== null) {
+                        $employmentUpdates['pangkat_golongan'] = $validated['pangkat_golongan'];
+                    }
+                    if (! empty($employmentUpdates)) {
+                        $user->employment?->update($employmentUpdates);
+                    }
+
+                    // Work unit change
+                    if ($validated['work_unit_id'] !== null) {
+                        $wu = WorkUnit::find($validated['work_unit_id']);
+                        $existing = GtkWorkUnit::where('user_id', $user->id)->first();
+                        if ($existing) {
+                            $existing->update([
+                                'work_unit_id' => $validated['work_unit_id'],
+                                'jabatan' => $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id'])?->name : $existing->jabatan,
+                            ]);
+                        } else {
+                            GtkWorkUnit::create([
+                                'user_id' => $user->id,
+                                'work_unit_id' => $validated['work_unit_id'],
+                                'is_primary' => true,
+                                'jabatan' => $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id'])?->name : null,
+                            ]);
+                        }
+                    }
+
+                    $updated++;
+                });
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil memperbarui {$updated} GTK",
+                'updated' => $updated,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('massUpdate failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem.',
+            ], 500);
+        }
+    }
+
+    public function massal(Request $request)
+    {
+        abort_unless(canPermission('gtk-update'), 403, 'Anda tidak memiliki izin untuk update massal GTK.');
+
+        $query = User::with(['gtkProfile', 'employment', 'gtkContact', 'gtkWorkUnits.workUnit', 'gtkProfile.addresses', 'educations'])
+            ->whereHas('employment');
+
+        $this->applyFilters($query, $request);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId) {
+            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+        }
+
+        $orderBy = $request->get('order_by', 'created_at');
+        $orderDir = $request->get('order_dir', 'desc');
+        $query->orderBy($orderBy, $orderDir);
+
+        $perPage = $request->get('per_page', 20);
+        $gtkList = $query->paginate($perPage)->withQueryString();
+
+        $workUnits = WorkUnit::active()->get();
+        $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
+        $jabatan = StructuralPosition::active()->orderBy('urutan')->orderBy('name')->get();
+        $userId = auth()->id();
+
+        return view('gtk.massal.index', compact('gtkList', 'workUnits', 'jenisGtk', 'jabatan', 'userId'));
     }
 }

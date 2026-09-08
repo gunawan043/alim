@@ -50,7 +50,7 @@ class GtkHealthData extends Model
      */
     public function latestRecord()
     {
-        return $this->hasOne(\App\Models\GtkHealthRecord::class)
+        return $this->hasOne(GtkHealthRecord::class)
             ->where('user_id', $this->user_id)
             ->orderByDesc('check_date')
             ->first();
@@ -61,7 +61,7 @@ class GtkHealthData extends Model
      */
     public function healthRecords()
     {
-        return $this->hasMany(\App\Models\GtkHealthRecord::class, 'user_id', 'user_id');
+        return $this->hasMany(GtkHealthRecord::class, 'user_id', 'user_id');
     }
 
     /**

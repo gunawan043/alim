@@ -125,4 +125,43 @@ class DormitoryViolationController extends Controller
 
         return back()->with('success', 'Notifikasi ke wali berhasil dikirim.');
     }
+
+    /**
+     * Global list — system-wide violations for the dashboard "Lihat Semua" link.
+     */
+    public function allViolations(Request $request)
+    {
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        $query = DormitoryViolation::with(['student', 'room', 'dormitory', 'recordedBy'])
+            ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))
+            ->orderByDesc('violation_date');
+
+        if ($request->filled('search')) {
+            $q = $request->search;
+            $query->where(fn ($sq) => $sq
+                ->where('violation_type', 'like', "%{$q}%")
+                ->orWhereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('dormitory', fn ($dm) => $dm->where('name', 'like', "%{$q}%"))
+            );
+        }
+
+        if ($request->filled('violation_category')) {
+            $query->where('violation_category', $request->violation_category);
+        }
+
+        $violations = $query->paginate(20)->withQueryString();
+
+        return view('system.violations.index', [
+            'violations' => $violations,
+            'activeYear' => $activeYear,
+            'dormitories' => Dormitory::select('id', 'name')->orderBy('name')->get(),
+            'stats' => [
+                'total' => DormitoryViolation::when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))->count(),
+                'ringan' => DormitoryViolation::when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))->where('violation_category', 'ringan')->count(),
+                'sedang' => DormitoryViolation::when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))->where('violation_category', 'sedang')->count(),
+                'berat' => DormitoryViolation::when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))->where('violation_category', 'berat')->count(),
+            ],
+        ]);
+    }
 }

@@ -314,9 +314,9 @@ class TeachingAssignmentController extends Controller
                             $existing->update(['weekly_hours' => $h, 'status' => 'active']);
 
                             // Sync TeacherAdminBook (jika teacher berubah)
-                            $sg = \App\Models\StudyGroup::with('gradeLevel')->find($studyGroupId);
+                            $sg = StudyGroup::with('gradeLevel')->find($studyGroupId);
                             $gradeLevel = $sg?->gradeLevel;
-                            $activeAy = \App\Models\AcademicYear::find($decree->academic_year_id);
+                            $activeAy = AcademicYear::find($decree->academic_year_id);
                             $semester = $activeAy?->semester ?? 'ganjil';
 
                             $kktp = null;
@@ -361,9 +361,9 @@ class TeachingAssignmentController extends Controller
                         ]);
 
                         // Auto-create TeacherAdminBook untuk setiap rombel
-                        $sg = \App\Models\StudyGroup::with('gradeLevel')->find($studyGroupId);
+                        $sg = StudyGroup::with('gradeLevel')->find($studyGroupId);
                         $gradeLevel = $sg?->gradeLevel;
-                        $activeAy = \App\Models\AcademicYear::find($decree->academic_year_id);
+                        $activeAy = AcademicYear::find($decree->academic_year_id);
                         $semester = $activeAy?->semester ?? 'ganjil';
 
                         $kktp = null;

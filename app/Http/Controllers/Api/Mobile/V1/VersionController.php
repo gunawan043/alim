@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Container\Container;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +141,7 @@ class VersionController extends Controller
 
     private function getApp()
     {
-        return function_exists('app') ? app() : \Illuminate\Container\Container::getInstance();
+        return function_exists('app') ? app() : Container::getInstance();
     }
 
     private function checkDatabase(): array

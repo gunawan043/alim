@@ -8,30 +8,29 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * Hanya berisi seeders struktural/ketenagakerjaan untuk production.
+     * Data dummy operasional (siswa, kelas, rombel, sarpras, dll) tidak disertakan.
      */
     public function run(): void
     {
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
-            SystemSuperAdminSeeder::class,  // permanent system admin — runs AFTER roles/permissions so it can be assigned the Super Admin role
-            UksRolesSeeder::class,         // UKS roles must exist before PermissionRoleSeeder assigns permissions
+            SystemSuperAdminSeeder::class,  // permanent system admin — runs AFTER roles/permissions
             PermissionRoleSeeder::class,   // assign permissions to roles
-            UserSeeder::class,
-            JenisGtkSeeder::class,
-            WilayahSeeder::class,         // provinces/cities/districts/villages FK target
-            SchoolSeeder::class,
-            AcademicYearSeeder::class,
-            GradeLevelSeeder::class,
-            StudyGroupSeeder::class,
-            AssetCategorySeeder::class,    // kategori aset untuk import sarpras
-            SarprasSeeder::class,          // sync Ruang Kelas → asset_rooms
-            DormitorySeeder::class,        // sample dormitories, wings, rooms, users
-            PermitTypeSeeder::class,       // master jenis izin (pulang, sakit, dll.)
-            DivisiSeeder::class,           // master divisi untuk dokumen ISO
-            DokumenIsoSeeder::class,       // data dokumen ISO (~300 dokumen)
+
+            WilayahSeeder::class,          // provinces/cities/districts/villages (FK target for GTK)
+            DivisiSeeder::class,           // master divisi — harus duluan sebelum WorkUnitSeeder
+            WorkUnitSeeder::class,         // satuan kerja (linked to divisi) — harus duluan sebelum SchoolSeeder
+            JenisGtkSeeder::class,         // master jenis GTK & jabatan
+            AdditionalTaskTypeSeeder::class, // master tugas tambahan (FK ke jenis_gtk)
             UksWorkUnitSeeder::class,      // UKS Putra & UKS Putri satker units
-            UksRolePermissionSeeder::class, // UKS Spatie roles + permissions
+            PermitTypeSeeder::class,       // master jenis izin (pulang, sakit, dll.)
+            SchoolSeeder::class,       // master jenis izin (pulang, sakit, dll.)
+            DormitorySeeder::class,       // master jenis izin (pulang, sakit, dll.)
+            AcademicYearSeeder::class,       // master jenis izin (pulang, sakit, dll.)
+            DokumenIsoSeeder::class,       // master jenis izin (pulang, sakit, dll.)
         ]);
     }
 }

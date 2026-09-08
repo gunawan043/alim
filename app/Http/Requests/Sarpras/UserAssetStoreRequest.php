@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sarpras;
 
+use App\Models\Asset;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserAssetStoreRequest extends FormRequest
@@ -22,7 +23,7 @@ class UserAssetStoreRequest extends FormRequest
             'model' => 'nullable|string|max:100',
             'acquisition_date' => 'nullable|date',
             'acquisition_price' => 'nullable|numeric|min:0',
-            'condition' => 'required|in:'.implode(',', \App\Models\Asset::CONDITION_OPTIONS),
+            'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
             'notes' => 'nullable|string',
         ];
     }

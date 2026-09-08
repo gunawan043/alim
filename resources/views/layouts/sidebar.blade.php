@@ -1,11 +1,11 @@
 <!-- ========== App Menu ========== -->
 <style>
-.app-menu .scrollbar-sidebar {
+.app-menu .scrollbar_sidebar {
     height: calc(110vh - 70px - 80px) !important;
     overflow-y: auto !important;
 }
-.app-menu .scrollbar-sidebar .simplebar-content-wrapper,
-.app-menu .scrollbar-sidebar .simplebar-content {
+.app-menu .scrollbar_sidebar .simplebar-content-wrapper,
+.app-menu .scrollbar_sidebar .simplebar-content {
     overflow: unset !important;
     overflow-y: auto !important;
 }
@@ -74,9 +74,26 @@
                         $viewAsRole = app(\App\Services\ViewAsService::class)->getCurrentViewRole();
                     }
                     $isViewingAs = $viewAsRole !== null;
+
+                    // SidebarAccess logic
+                    $showSidebar = true;
+
+                    if (!$isSystemAdmin && !$isViewingAs && !empty($sidebarAccesses)) {
+                        $userRoleNames = method_exists($user, 'roles')
+                            ? $user->roles->pluck('name')->toArray()
+                            : [];
+                        $roleHasAccess = false;
+                        foreach ($sidebarAccesses as $access) {
+                            if ($access->canAccessByRoles($userRoleNames)) {
+                                $roleHasAccess = true;
+                                break;
+                            }
+                        }
+                        $showSidebar = $roleHasAccess;
+                    }
                 @endphp
 
-                {{-- When viewing-as, render the sidebar for the impersonated role so SA/SuperAdmin can preview that role's nav --}}
+                {{-- When viewing-as, render the sidebar for the impersonated role --}}
                 @if($isViewingAs)
                     @php
                         $viewAsRoleModel = \App\Models\Role::where('name', $viewAsRole)->first();
@@ -85,86 +102,54 @@
                             : [];
                         $has = fn ($p) => in_array($p, $viewAsPerms);
                     @endphp
-                    {{-- Asrama: role-name disambiguation first (Kepala Asrama & Admin Asrama
-                         share most permissions) --}}
-                    @if($viewAsRole === 'Kepala Asrama')
-                        @include('layouts.sidebar.kepala-asrama')
-                    @elseif($viewAsRole === 'Admin Asrama')
-                        @include('layouts.sidebar.admin-asrama')
-                    @elseif($viewAsRole === 'Admin Pendidikan')
-                        @include('layouts.sidebar.admin-pendidikan')
-                    {{-- UKS Roles --}}
-                    @elseif($viewAsRole === 'Kepala UKS')
-                        @include('layouts.sidebar.kepala-uks')
-                    @elseif($viewAsRole === 'Admin UKS')
-                        @include('layouts.sidebar.admin-uks')
-                    @elseif($viewAsRole === 'Admin UKS Putra')
-                        @include('layouts.sidebar.admin-uks-putra')
-                    @elseif($viewAsRole === 'Admin UKS Putri')
-                        @include('layouts.sidebar.admin-uks-putri')
-                    @elseif($viewAsRole === 'UKS')
-                        @include('layouts.sidebar.uks')
-                    {{-- Existing Admin Kesehatan retains priority --}}
-                    @elseif($viewAsRole === 'Admin Kesehatan')
-                        @include('layouts.sidebar.admin-kesehatan')
-                    @elseif($viewAsRole === 'Wali Asrama')
-                        @include('layouts.sidebar.wali-asrama')
-                    @elseif($has('menu-super-admin-sidebar'))
-                        @include('layouts.sidebar.super-admin')
-                    @elseif($has('menu-admin-tu-sidebar'))
-                        @include('layouts.sidebar.admin-tu')
-                    @elseif($has('menu-gtk-sidebar'))
-                        @include('layouts.sidebar.gtk')
-                    @elseif($has('menu-admin-sarpras-sidebar') || $has('menu-sarpras-sidebar'))
-                        @include('layouts.sidebar.gtk-sarpras')
-                    @elseif($has('menu-personalia-sidebar'))
-                        @include('layouts.sidebar.personalia')
-                    @elseif($has('menu-wakil-kepala-sekolah-sidebar'))
-                        @include('layouts.sidebar.waka')
-                    @elseif($has('menu-asrama-sidebar'))
-                        @include('layouts.sidebar.asrama-ro')
+                    @if($viewAsRole === 'Pimpinan' || $has('menu-wakil-kepala-sekolah-sidebar'))
+                        @include('layouts.sidebar.pimpinan.sidebar')
+                    @elseif($viewAsRole === 'Satuan Pendidikan' || $viewAsRole === 'Administrator' || $viewAsRole === 'Admin Tata Usaha' || $viewAsRole === 'Tata Usaha' || $has('menu-gtk-sidebar') || $has('menu-satuan-pendidikan-sidebar') || $has('menu-admin-tu-sidebar'))
+                        @include('layouts.sidebar.satuan-pendidikan.sidebar')
+                    @elseif($viewAsRole === 'Asrama' || $viewAsRole === 'Kepala Asrama' || $viewAsRole === 'Admin Asrama' || $viewAsRole === 'Wali Asrama' || $has('menu-asrama-sidebar'))
+                        @include('layouts.sidebar.asrama.sidebar')
+                    @elseif($viewAsRole === 'UKS' || $viewAsRole === 'Kepala UKS' || $viewAsRole === 'Admin UKS' || $viewAsRole === 'Admin Kesehatan' || $viewAsRole === 'Admin UKS Putra' || $viewAsRole === 'Admin UKS Putri' || $has('menu-uks-sidebar'))
+                        @include('layouts.sidebar.portal.sidebar')
+                    @elseif($viewAsRole === 'Wali Santri' || $has('menu-wali-asrama-sidebar'))
+                        @include('layouts.sidebar.portal.sidebar')
                     @else
                         <li class="nav-item"><span class="nav-link text-muted px-3">Role '{{ $viewAsRole }}' belum punya menu sidebar.</span></li>
                     @endif
-                @elseif($isSystemAdmin || $user->hasPermissionTo('menu-super-admin-sidebar'))
-                    @include('layouts.sidebar.super-admin')
-                @elseif($user->hasRole('Kepala Asrama'))
-                    @include('layouts.sidebar.kepala-asrama')
-                @elseif($user->hasRole('Admin Asrama'))
-                    @include('layouts.sidebar.admin-asrama')
-                @elseif($user->hasRole('Admin Pendidikan'))
-                    @include('layouts.sidebar.admin-pendidikan')
-                {{-- UKS Roles --}}
-                @elseif($user->hasRole('Kepala UKS'))
-                    @include('layouts.sidebar.kepala-uks')
-                @elseif($user->hasRole('Admin UKS'))
-                    @include('layouts.sidebar.admin-uks')
-                @elseif($user->hasRole('Admin UKS Putra'))
-                    @include('layouts.sidebar.admin-uks-putra')
-                @elseif($user->hasRole('Admin UKS Putri'))
-                    @include('layouts.sidebar.admin-uks-putri')
-                @elseif($user->hasRole('UKS'))
-                    @include('layouts.sidebar.uks')
-                {{-- Existing Admin Kesehatan retains priority --}}
-                @elseif($user->hasRole('Admin Kesehatan'))
-                    @include('layouts.sidebar.admin-kesehatan')
-                @elseif($user->hasRole('Wali Asrama'))
-                    @include('layouts.sidebar.wali-asrama')
-                @elseif($user->hasPermissionTo('menu-admin-tu-sidebar'))
-                    @include('layouts.sidebar.admin-tu')
-                {{-- GTK: unified sidebar for all teacher roles (Guru, Guru Tahfidz, Coordinator, Waka) --}}
-                @elseif($user->hasPermissionTo('menu-gtk-sidebar'))
-                    @include('layouts.sidebar.unified-gtk')
-                @elseif($user->hasPermissionTo('menu-admin-sarpras-sidebar') || $user->hasPermissionTo('menu-sarpras-sidebar'))
-                    @include('layouts.sidebar.gtk-sarpras')
-                @elseif($user->hasPermissionTo('menu-personalia-sidebar'))
-                    @include('layouts.sidebar.personalia')
-                @elseif($user->hasPermissionTo('menu-wakil-kepala-sekolah-sidebar'))
-                    @include('layouts.sidebar.waka')
-                @elseif($user->hasPermissionTo('menu-asrama-sidebar'))
-                    @include('layouts.sidebar.asrama-ro')
-                @else
-                    <li class="nav-item"><span class="nav-link text-muted px-3">Tidak ada menu untuk role ini</span></li>
+                @elseif($showSidebar && $isSystemAdmin)
+                    @include('layouts.sidebar.super-admin.sidebar')
+                {{-- ── ROLE-BASED SIDEBAR (14 role resmi dari RoleSeeder) ──────────────── --}}
+                @elseif($showSidebar)
+                    @if($user->hasRole('Super Admin'))
+                        @include('layouts.sidebar.super-admin.sidebar')
+                    @elseif($user->hasRole('Pimpinan'))
+                        @include('layouts.sidebar.pimpinan.sidebar')
+                    @elseif($user->hasRole('Satuan Pendidikan'))
+                        @include('layouts.sidebar.satuan-pendidikan.sidebar')
+                    @elseif($user->hasRole('Asrama'))
+                        @include('layouts.sidebar.asrama.sidebar')
+                    @elseif($user->hasRole('UKS'))
+                        @include('layouts.sidebar.portal.sidebar')
+                    @elseif($user->hasRole('Departemen Tahfidz'))
+                        @include('layouts.sidebar.departemen-tahfidz.sidebar')
+                    @elseif($user->hasRole('Departemen Bahasa'))
+                        @include('layouts.sidebar.departemen-bahasa.sidebar')
+                    @elseif($user->hasRole('Perpustakaan'))
+                        @include('layouts.sidebar.perpustakaan.sidebar')
+                    @elseif($user->hasRole('Satuan Keamanan'))
+                        @include('layouts.sidebar.satpam.sidebar')
+                    @elseif($user->hasRole('Humas Personalia'))
+                        @include('layouts.sidebar.humas-personalia.sidebar')
+                    @elseif($user->hasRole('Unit Rumah Tangga'))
+                        @include('layouts.sidebar.unit-rumah-tangga.sidebar')
+                    @elseif($user->hasRole('Keuangan'))
+                        @include('layouts.sidebar.keuangan.sidebar')
+                    @elseif($user->hasRole('Teknologi Informasi'))
+                        @include('layouts.sidebar.teknologi-informasi.sidebar')
+                    @elseif($user->hasRole('Unit Pelayanan Gizi'))
+                        @include('layouts.sidebar.unit-pelayanan-gizi.sidebar')
+                    @else
+                        <li class="nav-item"><span class="nav-link text-muted px-3">Tidak ada menu untuk role ini</span></li>
+                    @endif
                 @endif
             </ul>
         </div>

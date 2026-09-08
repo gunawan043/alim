@@ -7,6 +7,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Quotation;
 use App\Models\Vendor;
 use App\Services\Sarpras\StateMachine;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderService
@@ -242,7 +243,7 @@ class PurchaseOrderService
         return $po;
     }
 
-    public function markDelivered(PurchaseOrder $po, ?\Illuminate\Http\UploadedFile $bastFile = null): PurchaseOrder
+    public function markDelivered(PurchaseOrder $po, ?UploadedFile $bastFile = null): PurchaseOrder
     {
         $this->machine->assert('po', $po->status, PurchaseOrder::STATUS_DELIVERED);
 

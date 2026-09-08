@@ -4,6 +4,7 @@ namespace App\Listeners\Boarding;
 
 use App\Events\Boarding\LeaveReturned;
 use App\Services\TimelineWriter;
+use Carbon\CarbonImmutable;
 
 class RecordLeaveReturnedOnTimeline
 {
@@ -24,7 +25,7 @@ class RecordLeaveReturnedOnTimeline
             ],
             module: 'boarding',
             category: 'leave',
-            eventAt: \Carbon\CarbonImmutable::now(),
+            eventAt: CarbonImmutable::now(),
             sourceActorId: null,
         );
     }

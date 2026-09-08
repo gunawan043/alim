@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Sarpras;
 
+use App\Events\Sarpras\RepairCostRecorded;
 use App\Events\Sarpras\WorkOrderCompleted;
 use App\Events\Sarpras\WorkOrderProgressAdded;
 use App\Http\Controllers\Controller;
@@ -10,12 +11,14 @@ use App\Http\Requests\Sarpras\RecordRepairCostRequest;
 use App\Http\Requests\Sarpras\UpdateWorkOrderProgressRequest;
 use App\Models\Asset;
 use App\Models\RepairCostHistory;
+use App\Models\RepairRequest;
 use App\Models\SparePartUsage;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderProgress;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\RepairRequestWorkflow;
+use App\Services\Sarpras\StateMachineRegistry;
 use App\Services\SarprasCacheInvalidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -84,7 +87,7 @@ class WorkOrderController extends Controller
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
-        $repair = \App\Models\RepairRequest::findOrFail($request->input('repair_request_id'));
+        $repair = RepairRequest::findOrFail($request->input('repair_request_id'));
         $assignee = User::findOrFail($request->assignee_id);
 
         $wo = $this->workflow->generateWorkOrder(
@@ -152,8 +155,8 @@ class WorkOrderController extends Controller
                 'work_order' => $wo,
                 'progress_percent' => $wo->progressPercent(),
                 'cost_summary' => $costSummary,
-                'available_transitions' => \App\Services\Sarpras\StateMachineRegistry::getNextStates(
-                    \App\Services\Sarpras\StateMachineRegistry::WORK_ORDER,
+                'available_transitions' => StateMachineRegistry::getNextStates(
+                    StateMachineRegistry::WORK_ORDER,
                     $wo->status,
                 ),
                 'timeline' => $wo->progressSteps->map(fn ($s) => [
@@ -183,8 +186,8 @@ class WorkOrderController extends Controller
 
         // Validate state transition
         if ($request->filled('status')) {
-            \App\Services\Sarpras\StateMachineRegistry::assertValidTransition(
-                \App\Services\Sarpras\StateMachineRegistry::WORK_ORDER,
+            StateMachineRegistry::assertValidTransition(
+                StateMachineRegistry::WORK_ORDER,
                 $wo->status,
                 $request->status,
             );
@@ -264,7 +267,7 @@ class WorkOrderController extends Controller
                 metadata: ['cost_id' => $cost->id],
             );
 
-            event(new \App\Events\Sarpras\RepairCostRecorded($wo, $cost));
+            event(new RepairCostRecorded($wo, $cost));
 
             return $cost;
         });
@@ -346,8 +349,8 @@ class WorkOrderController extends Controller
 
         $wo = WorkOrder::findOrFail($id);
 
-        \App\Services\Sarpras\StateMachineRegistry::assertValidTransition(
-            \App\Services\Sarpras\StateMachineRegistry::WORK_ORDER,
+        StateMachineRegistry::assertValidTransition(
+            StateMachineRegistry::WORK_ORDER,
             $wo->status,
             $validated['to'],
         );

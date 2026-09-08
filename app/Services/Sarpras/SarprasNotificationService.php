@@ -5,6 +5,8 @@ namespace App\Services\Sarpras;
 use App\Models\RepairRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Notifications\SarprasLifecycleNotification;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
@@ -45,7 +47,7 @@ class SarprasNotificationService
         try {
             $recipients = $this->resolveRecipients($subject);
             if ($recipients->isNotEmpty()) {
-                Notification::send($recipients, new \App\Notifications\SarprasLifecycleNotification($subject));
+                Notification::send($recipients, new SarprasLifecycleNotification($subject));
             }
         } catch (\Throwable $e) {
             Log::warning('sarpras.notification.broadcast_failed', [
@@ -55,7 +57,7 @@ class SarprasNotificationService
         }
     }
 
-    protected function resolveRecipients($subject): \Illuminate\Support\Collection
+    protected function resolveRecipients($subject): Collection
     {
         if ($subject instanceof RepairRequest) {
             return collect([$subject->reported_by, $subject->assigned_to])

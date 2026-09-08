@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProcurementRequest;
+use App\Models\Vendor;
+use App\Models\VendorInvoice;
 use App\Models\WorkOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -105,7 +107,7 @@ class VendorPortalController extends Controller
         $vendor = $request->user();
         $vendorName = $vendor->name;
 
-        $invoices = \App\Models\VendorInvoice::whereHas('vendor', function ($q) use ($vendorName) {
+        $invoices = VendorInvoice::whereHas('vendor', function ($q) use ($vendorName) {
             $q->where('name', $vendorName);
         })
             ->orderByDesc('invoice_date')
@@ -119,7 +121,7 @@ class VendorPortalController extends Controller
         $vendor = $request->user();
         $vendorName = $vendor->name;
 
-        $vendorModel = \App\Models\Vendor::where('name', $vendorName)->first();
+        $vendorModel = Vendor::where('name', $vendorName)->first();
 
         $totalDeliveries = ProcurementRequest::where('vendor_name', $vendorName)->count();
         $onTimeDeliveries = ProcurementRequest::where('vendor_name', $vendorName)
@@ -134,8 +136,8 @@ class VendorPortalController extends Controller
             'on_time_rate' => $totalDeliveries > 0
                 ? round(($onTimeDeliveries / $totalDeliveries) * 100, 1)
                 : 0,
-            'total_invoices' => $vendorModel ? \App\Models\VendorInvoice::where('vendor_id', $vendorModel->id)->count() : 0,
-            'total_revenue' => $vendorModel ? \App\Models\VendorInvoice::where('vendor_id', $vendorModel->id)->sum('total') : 0,
+            'total_invoices' => $vendorModel ? VendorInvoice::where('vendor_id', $vendorModel->id)->count() : 0,
+            'total_revenue' => $vendorModel ? VendorInvoice::where('vendor_id', $vendorModel->id)->sum('total') : 0,
         ];
 
         return view('vendor.performance', compact('performance'));

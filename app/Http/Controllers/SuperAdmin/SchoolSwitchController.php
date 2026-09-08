@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\School;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * SchoolSwitchController
@@ -21,7 +23,7 @@ class SchoolSwitchController extends Controller
     /**
      * Switch the active school context for Super Admin.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function switch(Request $request)
     {
@@ -111,7 +113,7 @@ class SchoolSwitchController extends Controller
         if (! $dormitoryId) {
             return response()->json([]);
         }
-        $wings = \Illuminate\Support\Facades\DB::table('dormitory_wings')
+        $wings = DB::table('dormitory_wings')
             ->where('dormitory_id', $dormitoryId)
             ->orderBy('name')
             ->get(['id', 'name', 'dormitory_id']);
@@ -125,7 +127,7 @@ class SchoolSwitchController extends Controller
         if (! $wingId) {
             return response()->json([]);
         }
-        $rooms = \Illuminate\Support\Facades\DB::table('dormitory_rooms')
+        $rooms = DB::table('dormitory_rooms')
             ->where('wing_id', $wingId)
             ->orderBy('room_number')
             ->get(['id', 'room_number as name', 'wing_id', 'capacity']);

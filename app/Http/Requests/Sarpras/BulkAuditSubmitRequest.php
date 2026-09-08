@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Sarpras;
 
+use App\Models\Asset;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BulkAuditSubmitRequest extends FormRequest
@@ -9,14 +11,14 @@ class BulkAuditSubmitRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'audits' => 'required|array',
             'audits.*.asset_id' => 'required|exists:assets,id',
-            'audits.*.condition' => 'required|in:'.implode(',', \App\Models\Asset::CONDITION_OPTIONS),
+            'audits.*.condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
             'audits.*.notes' => 'nullable|string',
         ];
     }

@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StudentMutatedIn;
 use App\Models\AcademicYear;
+use App\Models\GtkEmployment;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMutationIn;
 use App\Models\StudyGroup;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Pharaonic\Hijri\Hijri;
 
 class StudentMutationInController extends Controller
 {
@@ -52,7 +56,7 @@ class StudentMutationInController extends Controller
 
         $headEmployment = null;
         if ($schoolContextId && $school?->principal_user_id) {
-            $headEmployment = \App\Models\GtkEmployment::with('user')
+            $headEmployment = GtkEmployment::with('user')
                 ->where('school_id', $schoolContextId)
                 ->where('user_id', $school->principal_user_id)
                 ->first();
@@ -65,7 +69,7 @@ class StudentMutationInController extends Controller
         $defaultDateHijri = $this->toHijri($defaultDate);
 
         // Auto-generate NIS untuk sekolah ini
-        $maxNis = \App\Models\Student::where('school_id', $schoolContextId)->max('nis');
+        $maxNis = Student::where('school_id', $schoolContextId)->max('nis');
         $nextNis = $maxNis ? (intval($maxNis) + 1) : 1;
         $defaultNis = str_pad($nextNis, 4, '0', STR_PAD_LEFT);
 
@@ -198,7 +202,7 @@ class StudentMutationInController extends Controller
             }
         }
 
-        \App\Events\StudentMutatedIn::dispatch(
+        StudentMutatedIn::dispatch(
             student: $student,
             mutation: $mutation,
             enrollInStudyGroup: $targetStudyGroup,
@@ -238,7 +242,7 @@ class StudentMutationInController extends Controller
         $mutation = StudentMutationIn::with(['student', 'school'])->findOrFail($mutationUuid);
         $school = $mutation->school;
         $html = view('mutations-in.print.pdf', compact('mutation', 'userId', 'school'))->render();
-        $dompdf = new \Dompdf\Dompdf;
+        $dompdf = new Dompdf;
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4');
         $dompdf->render();
@@ -254,8 +258,8 @@ class StudentMutationInController extends Controller
                 'Jumadil Awwal', 'Jumadil Akhir', 'Rajab', 'Syakban',
                 'Ramadan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah',
             ];
-            \Pharaonic\Hijri\Hijri::getInstance();
-            $h = \Pharaonic\Hijri\Hijri::parse($date);
+            Hijri::getInstance();
+            $h = Hijri::parse($date);
 
             return $h->day.' '.$monthsID[$h->month - 1].' '.$h->year.' H';
         } catch (\Throwable $e) {

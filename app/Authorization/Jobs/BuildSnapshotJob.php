@@ -6,6 +6,8 @@ namespace App\Authorization\Jobs;
 
 use App\Authorization\Contracts\PermissionCacheManager;
 use App\Authorization\Models\PermissionSnapshot;
+use App\Authorization\Services\SnapshotRebuildService;
+use App\Authorization\ValueObjects\OrganizationContext;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -76,13 +78,13 @@ final class BuildSnapshotJob implements ShouldQueue
                 $schoolId = (string) $row->scope_school_id;
                 $academicYearId = $this->resolveAcademicYear($user, $schoolId);
 
-                $context = new \App\Authorization\ValueObjects\OrganizationContext(
+                $context = new OrganizationContext(
                     schoolId: $schoolId,
                     academicYearId: $academicYearId,
                     roleDimension: 'default',
                 );
 
-                $rebuilder = app(\App\Authorization\Services\SnapshotRebuildService::class);
+                $rebuilder = app(SnapshotRebuildService::class);
                 $rebuilder->rebuild($user, $context, 'job');
             } catch (\Throwable $e) {
                 \Log::error('BuildSnapshotJob: rebuild failed for scope', [

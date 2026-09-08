@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Sarpras;
 
+use App\Models\Asset;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AsetStoreRequest extends FormRequest
@@ -9,7 +11,7 @@ class AsetStoreRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -25,10 +27,10 @@ class AsetStoreRequest extends FormRequest
             'specification' => 'nullable|string',
             'acquisition_date' => 'nullable|date',
             'acquisition_price' => 'nullable|numeric|min:0',
-            'acquisition_source' => 'nullable|in:'.implode(',', \App\Models\Asset::ACQUISITION_SOURCE_OPTIONS),
+            'acquisition_source' => 'nullable|in:'.implode(',', Asset::ACQUISITION_SOURCE_OPTIONS),
             'funding_source' => 'nullable|string|max:100',
-            'condition' => 'required|in:'.implode(',', \App\Models\Asset::CONDITION_OPTIONS),
-            'status' => 'nullable|in:'.implode(',', \App\Models\Asset::STATUS_OPTIONS),
+            'condition' => 'required|in:'.implode(',', Asset::CONDITION_OPTIONS),
+            'status' => 'nullable|in:'.implode(',', Asset::STATUS_OPTIONS),
             'is_bookable' => 'boolean',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',

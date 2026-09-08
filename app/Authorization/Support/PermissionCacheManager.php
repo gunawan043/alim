@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Authorization\Support;
 
+use App\Authorization\Contracts\PermissionBuilder;
 use App\Authorization\Contracts\PermissionCacheManager as PermissionCacheManagerInterface;
 use App\Authorization\DTO\PermissionBag;
+use App\Authorization\ValueObjects\OrganizationContext;
+use App\Models\User;
 use Illuminate\Cache\CacheManager;
+use Illuminate\Cache\TaggableStore;
 
 final class PermissionCacheManager implements PermissionCacheManagerInterface
 {
@@ -30,7 +34,7 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
         try {
             $store = $this->cache->store();
 
-            return $store instanceof \Illuminate\Cache\TaggableStore;
+            return $store instanceof TaggableStore;
         } catch (\Throwable) {
             return false;
         }
@@ -122,8 +126,8 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
 
         foreach ($userIds as $userId) {
             try {
-                $user = \App\Models\User::find((string) $userId);
-                if (! $user instanceof \App\Models\User) {
+                $user = User::find((string) $userId);
+                if (! $user instanceof User) {
                     continue;
                 }
 
@@ -132,7 +136,7 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
 
                 foreach ($contexts as $context) {
                     $resolver = function () use ($user, $context): PermissionBag {
-                        $builder = app(\App\Authorization\Contracts\PermissionBuilder::class);
+                        $builder = app(PermissionBuilder::class);
 
                         return $builder->build($user, $context);
                     };
@@ -150,9 +154,9 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
     }
 
     /**
-     * @return array<int, \App\Authorization\ValueObjects\OrganizationContext>
+     * @return array<int, OrganizationContext>
      */
-    private function getContextsForUser(\App\Models\User $user): array
+    private function getContextsForUser(User $user): array
     {
         $contexts = [];
 
@@ -166,7 +170,7 @@ final class PermissionCacheManager implements PermissionCacheManagerInterface
                 $org = $membership->organization;
                 $year = $membership->workUnit?->year;
                 if ($org && $year) {
-                    $contexts[] = new \App\Authorization\ValueObjects\OrganizationContext(
+                    $contexts[] = new OrganizationContext(
                         schoolId: (string) $org->id,
                         academicYearId: (string) $year->tahun_ajaran,
                         roleDimension: (string) ($membership->role ?? 'teacher'),

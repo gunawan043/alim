@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Authorization\DTO\PermissionBag;
 use App\Authorization\Services\AuthorizationManager;
+use App\Authorization\Services\UserFilterService;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Models\User;
+use App\Services\ViewAsService;
+use Illuminate\Database\Eloquent\Collection;
 
 if (! function_exists('canPermission')) {
     /**
@@ -26,13 +29,12 @@ if (! function_exists('canPermission')) {
         /** @var User $user */
         $user = auth()->user();
 
-        // Global super-admin gate: system admins have access to every
-        // permission unless they are currently in View-As mode.
-        if ($user->isSystemAdmin()) {
-            $viewAs = app(\App\Services\ViewAsService::class);
-            if ($viewAs->getCurrentViewRole() === null) {
-                return true;
-            }
+        // Global super-admin gate: system admins and Super Admin role holders
+        // always have access to every permission — including while in View-As
+        // mode, since View-As only simulates the UI perspective (menus/sidebar)
+        // and must never lock the SA out of a page they can normally open.
+        if ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
         }
 
         // System-admin gate shortcut. View-As SA loses this short-circuit so
@@ -142,7 +144,7 @@ if (! function_exists('usersHavingPermission')) {
                 : authorizationContextFor();
         }
 
-        return app(\App\Authorization\Services\UserFilterService::class)
+        return app(UserFilterService::class)
             ->userIdsWithPermission($permission, $context);
     }
 }
@@ -151,9 +153,9 @@ if (! function_exists('usersMissingPermission')) {
     /**
      * Return user IDs whose snapshot does NOT contain the given permission.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     * @return Collection<int, User>
      */
-    function usersMissingPermission(string $permission, ?OrganizationContext $context = null): \Illuminate\Database\Eloquent\Collection
+    function usersMissingPermission(string $permission, ?OrganizationContext $context = null): Collection
     {
         if ($context === null) {
             $context = app()->bound(OrganizationContext::class)
@@ -161,7 +163,56 @@ if (! function_exists('usersMissingPermission')) {
                 : authorizationContextFor();
         }
 
-        return app(\App\Authorization\Services\UserFilterService::class)
+        return app(UserFilterService::class)
             ->usersWithoutPermission($permission, $context);
+    }
+}
+
+if (! function_exists('canAccessUser')) {
+    /**
+     * Check whether the authenticated user may access the page of the given userId.
+     *
+     * - Direct match (self): always allowed.
+     * - View-As active: allowed (EnsureRoleAccess already skipped userId validation).
+     * - System Admin / Super Admin without View-As: allowed.
+     * - Otherwise: denied (403).
+     *
+     * Use this instead of `auth()->user()->id === $userId` in controllers
+     * that need to support the View-As / Login-As impersonation flow.
+     */
+    function canAccessUser(string $userId): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        // Self is always allowed
+        if ((string) $user->id === (string) $userId) {
+            return true;
+        }
+
+        // View-As bypass: admin is impersonating another identity
+        $viewAs = app(ViewAsService::class);
+        if ($viewAs->isViewingAs()) {
+            // Super Admin / System Admin always retains full access in View-As mode.
+            // The role simulation affects page-level permissions only, not user access.
+            $isSuperAdmin = $user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
+            if ($isSuperAdmin) {
+                return true;
+            }
+
+            // In role-only mode (View As without Login As), only admins may proceed.
+            // Regular users cannot use View-As Role to access other users' pages.
+            if ($viewAs->isRoleOnly()) {
+                return false;
+            }
+
+            // Login-As mode (specific user): allow access to the impersonated user's pages
+            return true;
+        }
+
+        // Super Admin / System Admin bypass
+        return (bool) ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
     }
 }

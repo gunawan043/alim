@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Events\Sarpras\WarrantyClaimOpportunity;
+use App\Models\VendorWarranty;
 use App\Services\Sarpras\AutomationSuggestionService;
 use Illuminate\Console\Command;
 
@@ -19,7 +20,7 @@ class DetectWarrantyClaimsCommand extends Command
 
         $count = 0;
         foreach ($recs as $rec) {
-            $warranty = \App\Models\VendorWarranty::find($rec['warranty_id']);
+            $warranty = VendorWarranty::find($rec['warranty_id']);
             if ($warranty) {
                 event(new WarrantyClaimOpportunity($warranty, $rec['priority']));
                 $count++;

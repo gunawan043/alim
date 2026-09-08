@@ -12,7 +12,7 @@ class Position extends Model
 
     protected $table = 'positions';
 
-    protected $fillable = ['jenis_gtk_id', 'nama', 'kategori', 'deskripsi', 'roles', 'is_active', 'urutan'];
+    protected $fillable = ['jenis_gtk_id', 'role_id', 'nama', 'kategori', 'deskripsi', 'roles', 'is_active', 'urutan'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -23,6 +23,11 @@ class Position extends Model
     public function jenisGtk(): BelongsTo
     {
         return $this->belongsTo(JenisGtk::class, 'jenis_gtk_id');
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function scopeActive($q)

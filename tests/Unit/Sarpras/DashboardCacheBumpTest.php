@@ -2,6 +2,9 @@
 
 namespace Tests\Unit\Sarpras;
 
+use App\Http\Controllers\Sarpras\SarprasAsetController;
+use App\Services\Sarpras\AssetEventLogger;
+use App\Services\SarprasCacheInvalidator;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -21,7 +24,7 @@ class DashboardCacheBumpTest extends TestCase
     {
         Cache::forget('sarpras_dashboard_version');
 
-        $invalidator = app(\App\Services\SarprasCacheInvalidator::class);
+        $invalidator = app(SarprasCacheInvalidator::class);
         $invalidator->invalidateAll();
 
         $this->assertTrue(Cache::has('sarpras_dashboard_version'));
@@ -31,7 +34,7 @@ class DashboardCacheBumpTest extends TestCase
     /** @test */
     public function invalidate_all_increments_on_each_call()
     {
-        $invalidator = app(\App\Services\SarprasCacheInvalidator::class);
+        $invalidator = app(SarprasCacheInvalidator::class);
 
         // First call: creates key with value 2
         $invalidator->invalidateAll();
@@ -50,7 +53,7 @@ class DashboardCacheBumpTest extends TestCase
     {
         Cache::put('other:key', 'preserved');
 
-        app(\App\Services\SarprasCacheInvalidator::class)->invalidateAll();
+        app(SarprasCacheInvalidator::class)->invalidateAll();
 
         $this->assertEquals('preserved', Cache::get('other:key'));
         $this->assertNotNull(Cache::get('sarpras_dashboard_version'));
@@ -61,8 +64,8 @@ class DashboardCacheBumpTest extends TestCase
     {
         Cache::put('sarpras_dashboard_version', 10);
 
-        $controller = new \App\Http\Controllers\Sarpras\SarprasAsetController(
-            app(\App\Services\Sarpras\AssetEventLogger::class)
+        $controller = new SarprasAsetController(
+            app(AssetEventLogger::class)
         );
         $reflection = new \ReflectionClass($controller);
         $method = $reflection->getMethod('bumpDashboardCache');

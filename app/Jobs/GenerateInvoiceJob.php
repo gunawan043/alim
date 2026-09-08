@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Notification;
+use App\Models\PurchaseOrder;
+use App\Services\InvoiceApprovalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,13 +26,13 @@ class GenerateInvoiceJob implements ShouldQueue
 
     public function handle(): void
     {
-        $po = \App\Models\PurchaseOrder::find($this->purchaseOrderId);
+        $po = PurchaseOrder::find($this->purchaseOrderId);
         if (! $po || ! $po->delivery || ! $po->delivery->hasDeliveryNote()) {
             return;
         }
 
         // Auto-trigger invoice generation after delivery
-        $invoiceApprovalService = app(\App\Services\InvoiceApprovalService::class);
+        $invoiceApprovalService = app(InvoiceApprovalService::class);
         $invoice = $invoiceApprovalService->create(
             auth()->id(),
             $po->vendor_id,

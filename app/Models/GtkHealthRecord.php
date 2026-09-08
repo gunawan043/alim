@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -120,7 +121,7 @@ class GtkHealthRecord extends Model
     /**
      * All records for a user, ordered by exam date.
      */
-    public static function forUser(string|int $userId): \Illuminate\Database\Eloquent\Collection
+    public static function forUser(string|int $userId): Collection
     {
         if (is_int($userId)) {
             $userId = (string) $userId;

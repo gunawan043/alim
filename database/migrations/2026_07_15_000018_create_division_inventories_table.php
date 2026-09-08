@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('division_inventories', function (Blueprint $table) {
             $table->string('id', 36)->primary();
-            $table->string('division_id', 36);
+            $table->foreignUuid('division_id')->constrained('divisis')->cascadeOnDelete();
             $table->foreignUuid('asset_id')->constrained('assets')->cascadeOnDelete();
             $table->foreignUuid('responsible_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->date('custody_since')->nullable();

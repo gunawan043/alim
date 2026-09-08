@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 /**
  * The single point of notification fan-out. Takes an event payload + audience
@@ -110,7 +111,7 @@ class DispatchNotificationBusJob implements ShouldQueue
 
         foreach ($waliIds as $userId) {
             \App\Models\Notification::create([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'type' => 'integration.'.$this->eventName,
                 'notifiable_type' => 'App\\Models\\User',
                 'notifiable_id' => $userId,

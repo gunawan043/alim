@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Services\BoardingRulesEngine;
 use App\Models\BoardingPolicy;
 use App\Models\Dormitory;
+use App\Models\DormitoryResident;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -121,7 +123,7 @@ class BoardingPolicyController extends Controller
             if ($dorm) {
                 $sampleDormId = $dorm->id;
                 // Find first active resident/student in this dorm
-                $resident = \App\Models\DormitoryResident::where('dormitory_id', $sampleDormId)
+                $resident = DormitoryResident::where('dormitory_id', $sampleDormId)
                     ->where('is_active', true)
                     ->with('student')
                     ->first();
@@ -130,7 +132,7 @@ class BoardingPolicyController extends Controller
                     $sampleStudentId = $sampleStudent->id;
 
                     // Use rules engine to get current usage
-                    $engine = \App\Domain\Services\BoardingRulesEngine::getInstance();
+                    $engine = BoardingRulesEngine::getInstance();
                     $currentUsageVisit = $engine->countUsageForCurrentPeriod(
                         $sampleStudentId, 'visit', $sampleDormId, $policy->visit_quota_period ?? 'monthly'
                     );

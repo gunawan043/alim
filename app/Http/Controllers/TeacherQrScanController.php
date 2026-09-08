@@ -651,7 +651,7 @@ class TeacherQrScanController extends Controller
 
         $allTeachers = User::where('school_id', $user->school_id)
             ->where('role_id', function ($q) {
-                $q->select('id')->from('roles')->whereIn('name', ['Guru', 'Guru Tahfidz', 'Coordinator Guru', 'Departemen Tahfidz']);
+                $q->select('id')->from('roles')->whereIn('name', ['Guru', 'Guru Tahfidz', 'Kepala Departemen Tahfidz']);
             })
             ->with('roles:id,name')
             ->orderBy('name')

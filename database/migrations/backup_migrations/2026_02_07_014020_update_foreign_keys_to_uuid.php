@@ -405,7 +405,7 @@ return new class extends Migration
                     Schema::table($table, function (Blueprint $blueprint) use ($column) {
                         try {
                             $blueprint->dropForeign([$column]);
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Skip jika constraint tidak ada
                         }
                     });

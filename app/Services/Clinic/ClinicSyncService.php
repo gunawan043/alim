@@ -2,7 +2,10 @@
 
 namespace App\Services\Clinic;
 
+use App\Models\ClinicVisit;
+use App\Models\MedicalFollowup;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Clinic Integration Sync Service.
@@ -28,7 +31,7 @@ class ClinicSyncService
         ?string $endDate,
         ?string $notes,
     ): string {
-        $visitId = (string) \Illuminate\Support\Str::uuid();
+        $visitId = (string) Str::uuid();
 
         // Here we'd interact with the Clinic's Visit model:
         // ClinicVisit::create([...]) — but we keep it generic via
@@ -38,8 +41,8 @@ class ClinicSyncService
 
         DB::transaction(function () use ($visitId, $studentId, $boardingPermitId, $permitType, $startDate, $endDate, $notes) {
             // 1. Register clinic visit (only if Clinic module is loaded)
-            if (class_exists(\App\Models\ClinicVisit::class)) {
-                \App\Models\ClinicVisit::create([
+            if (class_exists(ClinicVisit::class)) {
+                ClinicVisit::create([
                     'id' => $visitId,
                     'student_id' => $studentId,
                     'source' => 'boarding_permit',
@@ -53,8 +56,8 @@ class ClinicSyncService
             }
 
             // 2. Auto-create MedicalFollowup for hospitalized cases
-            if ($permitType === 'medical' && class_exists(\App\Models\MedicalFollowup::class)) {
-                \App\Models\MedicalFollowup::create([
+            if ($permitType === 'medical' && class_exists(MedicalFollowup::class)) {
+                MedicalFollowup::create([
                     'visit_id' => $visitId,
                     'boardings_permit_id' => $boardingPermitId,
                     'type' => 'monitoring_hospitalization',
@@ -76,11 +79,11 @@ class ClinicSyncService
         string $boardingPermitId,
         ?string $dischargeNotes,
     ): void {
-        if (! class_exists(\App\Models\ClinicVisit::class)) {
+        if (! class_exists(ClinicVisit::class)) {
             return; // Clinic module not loaded — no-op
         }
 
-        $visit = \App\Models\ClinicVisit::where('student_id', $studentId)
+        $visit = ClinicVisit::where('student_id', $studentId)
             ->where('source_id', $boardingPermitId)
             ->where('status', 'active')
             ->first();

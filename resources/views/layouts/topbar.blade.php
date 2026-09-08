@@ -186,7 +186,9 @@
                      The legacy "Login As" (impersonate) switcher is intentionally
                      disabled so the System Admin can preview any role from one
                      account without ever switching identities. --}}
-                @include('system._switcher')
+                @if(canPermission('super-admin-only'))
+                    @include('system._switcher')
+                @endif
 
                 <div class="dropdown ms-sm-3 header-item">
                     <button type="button" class="btn" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

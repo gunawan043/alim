@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Authorization\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -14,9 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $scope_key
  * @property string $reason
  * @property string $granted_by
- * @property \Illuminate\Support\Carbon $valid_from
- * @property \Illuminate\Support\Carbon|null $valid_until
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $valid_from
+ * @property Carbon|null $valid_until
+ * @property Carbon $created_at
  */
 final class RevokedPermission extends Model
 {
@@ -41,11 +43,11 @@ final class RevokedPermission extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function grantedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'granted_by');
+        return $this->belongsTo(User::class, 'granted_by');
     }
 }

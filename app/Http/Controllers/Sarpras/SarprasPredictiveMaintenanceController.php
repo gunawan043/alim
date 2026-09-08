@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sarpras;
 
+use App\Models\Asset;
 use App\Services\Sarpras\PredictiveMaintenanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class SarprasPredictiveMaintenanceController extends SarprasBaseController
     public function show(Request $request, string $assetId)
     {
         $schoolId = $this->resolveSchoolId($request);
-        $asset = \App\Models\Asset::with(['category', 'room.building'])
+        $asset = Asset::with(['category', 'room.building'])
             ->where('school_id', $schoolId)
             ->findOrFail($assetId);
 

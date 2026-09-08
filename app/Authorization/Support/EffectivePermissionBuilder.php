@@ -12,8 +12,10 @@ use App\Authorization\DTO\SnapshotMetadata;
 use App\Authorization\Enums\SnapshotStatus;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
+use App\Models\User;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Database\Eloquent\Model;
 
 final readonly class EffectivePermissionBuilder implements PermissionBuilder
 {
@@ -30,7 +32,7 @@ final readonly class EffectivePermissionBuilder implements PermissionBuilder
     /**
      * Public facade: build PermissionBag for a user + context.
      */
-    public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
+    public function build(Model $user, OrganizationContext $context): PermissionBag
     {
         $scopeKey = $context->toScopeKey();
 
@@ -91,10 +93,10 @@ final readonly class EffectivePermissionBuilder implements PermissionBuilder
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Model|\App\Models\User  $user
+     * @param  Model|User  $user
      * @return array<int, PermissionOrigin>
      */
-    private function collectOrigins(\Illuminate\Database\Eloquent\Model $user, ScopeKey $scopeKey): array
+    private function collectOrigins(Model $user, ScopeKey $scopeKey): array
     {
         $origins = [];
 

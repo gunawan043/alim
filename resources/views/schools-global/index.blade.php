@@ -27,8 +27,8 @@
                             <p class="text-muted mb-0">Kelola data sekolah/unit kerja.</p>
                         </div>
                         <div class="col-sm-auto">
-                            @if(auth()->user()->hasPermissionTo('school-create'))
-                            <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            @if(auth()->user() && auth()->user()->is_system_admin == 1)
+                            <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Sekolah
                             </a>
                             @endif
@@ -142,14 +142,12 @@
                         @empty
                             <div class="col-12">
                                 <div class="text-center py-5">
-                                    <div class="avatar-lg mx-auto mb-3">
-                                        <div class="avatar-title bg-light rounded-circle"><i class="ri-school-line fs-1 text-muted"></i></div>
-                                    </div>
-                                    <h5 class="text-muted">Belum ada data sekolah</h5>
-                                    <p class="text-muted">Tambah sekolah pertama Anda.</p>
-                                    <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                        <i class="ri-add-line me-1"></i>Tambah Sekolah
-                                    </a>
+                                     <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                    <h6 class="text-muted mb-1 mt-3">Belum Ada Data Sekolah</h6>
+                                    <p class="text-muted mb-3 small">
+                                        Tambahkan sekolah pertama Anda untuk memulai mengelola sistem asrama.
+                                        <a href="{{ route('user.schools.create', ['userId' => $userId]) }}" class="fw-bold">Tambah sekolah baru</a>
+                                    </p>
                                 </div>
                             </div>
                         @endforelse

@@ -8,6 +8,8 @@ use App\Models\AssetMaintenanceLog;
 use App\Models\AssetRoom;
 use App\Models\School;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Facades\Excel;
 use PDF;
 
 class SarprasReportController extends SarprasBaseController
@@ -274,8 +276,8 @@ class SarprasReportController extends SarprasBaseController
 
         $assets = $query->orderBy('asset_name')->get();
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new class($assets) implements \Maatwebsite\Excel\Concerns\FromCollection
+        return Excel::download(
+            new class($assets) implements FromCollection
             {
                 public function __construct($assets)
                 {

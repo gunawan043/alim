@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
@@ -52,8 +54,8 @@ class ForgotPasswordController extends Controller
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
                 $user->forceFill([
-                    'password' => \Illuminate\Support\Facades\Hash::make($password),
-                    'remember_token' => \Illuminate\Support\Str::random(60),
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
                 ])->save();
             }
         );

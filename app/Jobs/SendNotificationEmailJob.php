@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\User;
 use App\Notifications\IntegrationNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,7 +33,7 @@ class SendNotificationEmailJob implements ShouldQueue
 
     public function handle(): void
     {
-        $user = \App\Models\User::find($this->userId);
+        $user = User::find($this->userId);
         if (! $user) {
             Log::warning('SendNotificationEmailJob: User not found', ['user_id' => $this->userId]);
 

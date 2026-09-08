@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryResident;
 use App\Models\Room;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMahrom;
 use App\Models\User;
@@ -24,7 +25,7 @@ class MobileMahromIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createSchool(): \App\Models\School
+    private function createSchool(): School
     {
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -45,7 +46,7 @@ class MobileMahromIntegrationTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return \App\Models\School::find($schoolId);
+        return School::find($schoolId);
     }
 
     private function createWali(): User
@@ -56,7 +57,7 @@ class MobileMahromIntegrationTest extends TestCase
         ]);
     }
 
-    private function createStudent(\App\Models\School $school): Student
+    private function createStudent(School $school): Student
     {
         $uniq = str_pad((string) random_int(1, 99999999), 10, '0', STR_PAD_LEFT);
 

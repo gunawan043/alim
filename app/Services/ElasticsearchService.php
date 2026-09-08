@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\RecruitmentJob;
+use App\Models\RecruitmentProfile;
 use Elasticsearch\ClientBuilder;
 use Illuminate\Support\Facades\Log;
 
@@ -882,7 +884,7 @@ class ElasticsearchService
      */
     protected function fallbackRecruitmentSearch($query, $filters, $page, $perPage)
     {
-        $dbQuery = \App\Models\RecruitmentProfile::query()
+        $dbQuery = RecruitmentProfile::query()
             ->with(['user', 'educations', 'workExperiences', 'skills']);
 
         if ($query) {
@@ -928,7 +930,7 @@ class ElasticsearchService
      */
     protected function fallbackJobSearch($query, $filters, $page, $perPage)
     {
-        $dbQuery = \App\Models\RecruitmentJob::query();
+        $dbQuery = RecruitmentJob::query();
 
         if ($query) {
             $dbQuery->where('judul', 'LIKE', "%{$query}%")

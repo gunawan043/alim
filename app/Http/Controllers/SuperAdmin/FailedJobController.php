@@ -4,7 +4,9 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 class FailedJobController extends Controller
 {
@@ -68,7 +70,7 @@ class FailedJobController extends Controller
             // Dispatch ulang job
             $jobData = json_decode($job->payload, true);
             $connection = $job->connection ?? config('queue.default');
-            \Illuminate\Support\Facades\Queue::connection($connection)->pushRaw(
+            Queue::connection($connection)->pushRaw(
                 $job->payload,
                 $job->queue ?? 'default'
             );
@@ -88,7 +90,7 @@ class FailedJobController extends Controller
 
         try {
             $count = DB::table('failed_jobs')->count();
-            \Illuminate\Support\Facades\Artisan::call('queue:retry', ['all']);
+            Artisan::call('queue:retry', ['all']);
 
             return redirect()->route('super-admin.failed-jobs.index')
                 ->with('success', "{$count} job berhasil di-retry semua.");

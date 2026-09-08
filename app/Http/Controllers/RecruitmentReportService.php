@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ScheduledReport;
 use App\Services\RecruitmentReportService;
 use Illuminate\Http\Request;
 
@@ -89,7 +90,7 @@ class RecruitmentReportController extends Controller
      */
     public function scheduledReports()
     {
-        $reports = \App\Models\ScheduledReport::where('user_id', auth()->id())
+        $reports = ScheduledReport::where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -113,7 +114,7 @@ class RecruitmentReportController extends Controller
             'recipients.*' => 'email',
         ]);
 
-        $schedule = \App\Models\ScheduledReport::create([
+        $schedule = ScheduledReport::create([
             'user_id' => auth()->id(),
             'name' => $request->name,
             'type' => $request->type,

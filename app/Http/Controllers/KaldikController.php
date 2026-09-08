@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\GtkWorkUnit;
 use App\Models\Kaldik;
 use App\Models\NotificationUniversal;
 use App\Models\School;
@@ -348,7 +349,7 @@ class KaldikController extends Controller
 
         if ($isAgenda && $kaldik->work_unit_id) {
             // Agenda satuan kerja → kirim ke Admin TU di satuan kerja itu
-            $adminTUIds = \App\Models\GtkWorkUnit::where('work_unit_id', $kaldik->work_unit_id)
+            $adminTUIds = GtkWorkUnit::where('work_unit_id', $kaldik->work_unit_id)
                 ->whereHas('user', fn ($q) => $q->whereIn('id', usersHavingPermission('admin.tu.assessable')))
                 ->pluck('user_id')
                 ->toArray();

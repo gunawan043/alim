@@ -5,9 +5,13 @@ namespace App\Services;
 use App\Domain\Services\BoardingTimelineService;
 use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
+use App\Models\DormitoryAttendance;
+use App\Models\DormitoryAttendanceRecap;
+use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryViolation;
+use App\Models\StudentHealthPermit;
 use App\Models\StudentMahrom;
 
 class DormitoryService
@@ -148,7 +152,7 @@ class DormitoryService
         // Implementasi kirim WA/Email ke mahrom dapat ditambahkan setelah
         // sistem registrasi wali tersedia.
 
-        \App\Models\DormitoryEmergencyBroadcast::create([
+        DormitoryEmergencyBroadcast::create([
             'dormitory_id' => $dormitory->id,
             'title' => $data['title'] ?? '',
             'content' => $data['content'] ?? '',
@@ -177,7 +181,7 @@ class DormitoryService
      */
     public function canApplySickPermit(DormitoryPermit $permit): bool
     {
-        return \App\Models\StudentHealthPermit::where('student_id', $permit->student_id)
+        return StudentHealthPermit::where('student_id', $permit->student_id)
             ->where('status', 'approved')
             ->whereNotNull('dormitory_id')
             ->whereDate('start_date', '<=', $permit->departure_datetime)
@@ -254,14 +258,14 @@ class DormitoryService
 
         $count = 0;
         foreach ($residents as $resident) {
-            $records = \App\Models\DormitoryAttendance::where('resident_id', $resident->id)
+            $records = DormitoryAttendance::where('resident_id', $resident->id)
                 ->whereMonth('attendance_date', $month)
                 ->whereYear('attendance_date', $year)
                 ->get();
 
             $semester = $month >= 7 ? 'ganjil' : 'genap';
 
-            $recap = \App\Models\DormitoryAttendanceRecap::updateOrCreate(
+            $recap = DormitoryAttendanceRecap::updateOrCreate(
                 [
                     'student_id' => $resident->student_id,
                     'academic_year_id' => $academicYearId,
@@ -302,13 +306,13 @@ class DormitoryService
         $today = now()->toDateString();
 
         $statusMapping = [
-            \App\Models\BoardingTimelineEvent::TYPE_LEAVE_STARTED => 'pulang',
-            \App\Models\BoardingTimelineEvent::TYPE_LEAVE_APPROVED => 'izin',
-            \App\Models\BoardingTimelineEvent::TYPE_RETURNED => 'hadir',
-            \App\Models\BoardingTimelineEvent::TYPE_HOSPITALIZED => 'sakit',
-            \App\Models\BoardingTimelineEvent::TYPE_RECOVERED => 'hadir',
-            \App\Models\BoardingTimelineEvent::TYPE_VISIT_CHECK_IN => 'hadir',
-            \App\Models\BoardingTimelineEvent::TYPE_VISIT_CHECK_OUT => 'pulang',
+            BoardingTimelineEvent::TYPE_LEAVE_STARTED => 'pulang',
+            BoardingTimelineEvent::TYPE_LEAVE_APPROVED => 'izin',
+            BoardingTimelineEvent::TYPE_RETURNED => 'hadir',
+            BoardingTimelineEvent::TYPE_HOSPITALIZED => 'sakit',
+            BoardingTimelineEvent::TYPE_RECOVERED => 'hadir',
+            BoardingTimelineEvent::TYPE_VISIT_CHECK_IN => 'hadir',
+            BoardingTimelineEvent::TYPE_VISIT_CHECK_OUT => 'pulang',
         ];
 
         $status = $statusMapping[$eventType] ?? null;
@@ -325,7 +329,7 @@ class DormitoryService
             return;
         }
 
-        $attendance = \App\Models\DormitoryAttendance::updateOrCreate(
+        $attendance = DormitoryAttendance::updateOrCreate(
             [
                 'resident_id' => $resident->id,
                 'attendance_date' => $today,
@@ -361,7 +365,7 @@ class DormitoryService
         // The implementation here intentionally defers to whatever the
         // academic-attendance side already does for permit-triggered sync.
         try {
-            $academicService = app(\App\Services\AcademicAttendanceService::class);
+            $academicService = app(AcademicAttendanceService::class);
             if (method_exists($academicService, 'syncFromDormitoryEvent')) {
                 $academicService->syncFromDormitoryEvent(
                     studentId: $studentId,

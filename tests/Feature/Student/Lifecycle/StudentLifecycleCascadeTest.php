@@ -11,6 +11,7 @@ use App\Jobs\SendLifecycleNotificationJob;
 use App\Listeners\AuditLifecycleChange;
 use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
 use App\Listeners\HandleManualStudentStatusUpdate;
+use App\Listeners\NotifyGuardiansOnLifecycle;
 use App\Listeners\UpdateStudentStatusOnLifecycle;
 use App\Models\AcademicYear;
 use App\Models\Alumni;
@@ -362,7 +363,7 @@ class StudentLifecycleCascadeTest extends TestCase
             graduationYear: '2026',
         );
 
-        (new \App\Listeners\NotifyGuardiansOnLifecycle)->handle($event);
+        (new NotifyGuardiansOnLifecycle)->handle($event);
 
         // May or may not dispatch depending on LifecycleMessage::forEvent existence
         // Notifications depend on whether Guardian/User exists for this student's school;

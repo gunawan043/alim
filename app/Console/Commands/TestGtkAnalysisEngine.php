@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\GtkAnalysisEngine;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -66,7 +67,7 @@ class TestGtkAnalysisEngine extends Command
         $this->info('========================================');
         $this->newLine();
 
-        $analysis = new \App\Services\GtkAnalysisEngine;
+        $analysis = new GtkAnalysisEngine;
         $result = $analysis->analyze($schoolId, $ayId);
 
         $this->info('');

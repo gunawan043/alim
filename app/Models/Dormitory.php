@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Dormitory extends Model
 {
@@ -17,7 +18,7 @@ class Dormitory extends Model
         parent::boot();
         static::creating(function ($m) {
             if (! $m->id) {
-                $m->id = (string) \Illuminate\Support\Str::uuid();
+                $m->id = (string) Str::uuid();
             }
             // Auto-generate code jika belum ada
             if (! $m->code) {
@@ -25,7 +26,7 @@ class Dormitory extends Model
             }
             // Auto-fill name dari WorkUnit, ganti "Pengasuhan" → "Asrama"
             if (! $m->name && $m->work_unit_id) {
-                $wu = \App\Models\WorkUnit::find($m->work_unit_id);
+                $wu = WorkUnit::find($m->work_unit_id);
                 if ($wu) {
                     $m->name = str_replace('Pengasuhan', 'Asrama', $wu->name);
                 }

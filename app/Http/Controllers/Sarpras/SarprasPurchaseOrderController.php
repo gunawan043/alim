@@ -8,6 +8,7 @@ use App\Models\PurchaseOrderItem;
 use App\Models\Sparepart;
 use App\Models\Vendor;
 use App\Models\Warehouse;
+use App\Services\Sarpras\StockManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -169,7 +170,7 @@ class SarprasPurchaseOrderController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $po) {
-            $stockService = app(\App\Services\Sarpras\StockManagementService::class);
+            $stockService = app(StockManagementService::class);
 
             foreach ($validated['items'] as $row) {
                 $item = PurchaseOrderItem::find($row['id']);

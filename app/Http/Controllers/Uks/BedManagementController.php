@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Uks;
 
 use App\Http\Controllers\Controller;
+use App\Models\Dormitory;
 use App\Models\UksBed;
 use Illuminate\Http\Request;
 
@@ -46,7 +47,7 @@ class BedManagementController extends Controller
 
     public function create()
     {
-        $dormitories = \App\Models\Dormitory::where('is_active', true)->get();
+        $dormitories = Dormitory::where('is_active', true)->get();
 
         return view('uks.beds.create', compact('dormitories'));
     }
@@ -87,7 +88,7 @@ class BedManagementController extends Controller
     public function edit(string $uuid)
     {
         $bed = UksBed::findOrFail($uuid);
-        $dormitories = \App\Models\Dormitory::where('is_active', true)->get();
+        $dormitories = Dormitory::where('is_active', true)->get();
 
         return view('uks.beds.edit', compact('bed', 'dormitories'));
     }

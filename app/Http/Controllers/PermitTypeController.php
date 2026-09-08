@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dormitory;
+use App\Models\DormitoryLeavePolicy;
+use App\Models\DormitoryPermit;
 use App\Models\PermitType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -171,8 +173,8 @@ class PermitTypeController extends Controller
         $permitType = PermitType::findOrFail($permitTypeId);
 
         // Hitung dampak:informasi untuk user (data orphan)
-        $policyCount = \App\Models\DormitoryLeavePolicy::where('permit_type', $permitType->code)->count();
-        $permitCount = \App\Models\DormitoryPermit::where('permit_type', $permitType->code)->count();
+        $policyCount = DormitoryLeavePolicy::where('permit_type', $permitType->code)->count();
+        $permitCount = DormitoryPermit::where('permit_type', $permitType->code)->count();
 
         $permitType->delete();
 

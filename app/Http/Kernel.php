@@ -2,7 +2,45 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\BindOrganizationContext;
+use App\Http\Middleware\CheckIpBlocked;
+use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureEmployeeAccess;
+use App\Http\Middleware\EnsureRoleAccess;
+use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
+use App\Http\Middleware\Localization;
+use App\Http\Middleware\MinRoleLevel;
+use App\Http\Middleware\PreventRequestsDuringMaintenance;
+use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequestIdMiddleware;
+use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RestrictDormitoryUserFromStudents;
+use App\Http\Middleware\RoleLevelMiddleware;
+use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\SchoolContextMiddleware;
+use App\Http\Middleware\SecurityHeadersMiddleware;
+use App\Http\Middleware\ShareRoleId;
+use App\Http\Middleware\TrimStrings;
+use App\Http\Middleware\TrustProxies;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Http\Middleware\WaliSchoolContextMiddleware;
+use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Middleware\SetCacheHeaders;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Middleware\ValidateSignature;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class Kernel extends HttpKernel
 {
@@ -15,12 +53,12 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         // \App\Http\Middleware\TrustHosts::class,
-        \App\Http\Middleware\TrustProxies::class,
-        \Illuminate\Http\Middleware\HandleCors::class,
-        \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
-        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
-        \App\Http\Middleware\TrimStrings::class,
-        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        TrustProxies::class,
+        HandleCors::class,
+        PreventRequestsDuringMaintenance::class,
+        ValidatePostSize::class,
+        TrimStrings::class,
+        ConvertEmptyStringsToNull::class,
     ];
 
     /**
@@ -30,26 +68,26 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            \App\Http\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \App\Http\Middleware\Localization::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\ShareRoleId::class,
-            \App\Http\Middleware\SchoolContextMiddleware::class,
-            \App\Http\Middleware\BindOrganizationContext::class,
-            \App\Http\Middleware\CheckIpBlocked::class,
+            ShareErrorsFromSession::class,
+            VerifyCsrfToken::class,
+            Localization::class,
+            SubstituteBindings::class,
+            ShareRoleId::class,
+            SchoolContextMiddleware::class,
+            BindOrganizationContext::class,
+            CheckIpBlocked::class,
         ],
 
         'api' => [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\SecurityHeadersMiddleware::class,
-            \App\Http\Middleware\RequestIdMiddleware::class,
+            SubstituteBindings::class,
+            SecurityHeadersMiddleware::class,
+            RequestIdMiddleware::class,
         ],
     ];
 
@@ -61,27 +99,27 @@ class Kernel extends HttpKernel
      * @var array<string, class-string|string>
      */
     protected $routeMiddleware = [
-        'auth' => \App\Http\Middleware\Authenticate::class,
-        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
-        'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
-        'can' => \Illuminate\Auth\Middleware\Authorize::class,
-        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-        'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
-        'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
-        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'min.role' => \App\Http\Middleware\MinRoleLevel::class,
-        'role' => \App\Http\Middleware\RoleMiddleware::class,
-        'role.level' => \App\Http\Middleware\RoleLevelMiddleware::class,
-        'role.access' => \App\Http\Middleware\EnsureRoleAccess::class,
-        'super.or.system' => \App\Http\Middleware\EnsureSuperAdminOrSystemAdmin::class,
-        'school.context' => \App\Http\Middleware\SchoolContextMiddleware::class,
-        'wali.school.context' => \App\Http\Middleware\WaliSchoolContextMiddleware::class,
-        'ip.blocked' => \App\Http\Middleware\CheckIpBlocked::class,
-        'employee.access' => \App\Http\Middleware\EnsureEmployeeAccess::class,
-        'organization.context' => \App\Http\Middleware\BindOrganizationContext::class,
-        'permission' => \App\Http\Middleware\RequirePermission::class,
-        'permission-all' => \App\Http\Middleware\RequirePermission::class,
-        'dormitory.restrict' => \App\Http\Middleware\RestrictDormitoryUserFromStudents::class,
+        'auth' => Authenticate::class,
+        'auth.basic' => AuthenticateWithBasicAuth::class,
+        'cache.headers' => SetCacheHeaders::class,
+        'can' => Authorize::class,
+        'guest' => RedirectIfAuthenticated::class,
+        'password.confirm' => RequirePassword::class,
+        'signed' => ValidateSignature::class,
+        'throttle' => ThrottleRequests::class,
+        'verified' => EnsureEmailIsVerified::class,
+        'min.role' => MinRoleLevel::class,
+        'role' => RoleMiddleware::class,
+        'role.level' => RoleLevelMiddleware::class,
+        'role.access' => EnsureRoleAccess::class,
+        'super.or.system' => EnsureSuperAdminOrSystemAdmin::class,
+        'school.context' => SchoolContextMiddleware::class,
+        'wali.school.context' => WaliSchoolContextMiddleware::class,
+        'ip.blocked' => CheckIpBlocked::class,
+        'employee.access' => EnsureEmployeeAccess::class,
+        'organization.context' => BindOrganizationContext::class,
+        'permission' => RequirePermission::class,
+        'permission-all' => RequirePermission::class,
+        'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
     ];
 }

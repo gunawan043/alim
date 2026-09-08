@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\RepairRequest;
 use App\Models\WorkOrder;
 use App\Services\Sarpras\SarprasNotificationService;
 use App\Services\SarprasCacheInvalidator;
@@ -57,7 +58,7 @@ class SarprasKepalaApprovalController extends Controller
         // If linked to a repair request, close the request and put the asset back
         if ($order->repairRequest) {
             $order->repairRequest->update([
-                'status' => \App\Models\RepairRequest::STATUS_CLOSED,
+                'status' => RepairRequest::STATUS_CLOSED,
             ]);
         }
         if ($order->asset) {

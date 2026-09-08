@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\PasswordOtp;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class PasswordResetLogController extends Controller
@@ -47,7 +48,7 @@ class PasswordResetLogController extends Controller
 
         $otpRecords = $otpQuery->orderBy('created_at', 'desc')->paginate(30, ['*'], 'otp_page');
 
-        $users = \App\Models\User::orderBy('name')->get();
+        $users = User::orderBy('name')->get();
 
         return view('super-admin.password-reset-logs.index', compact(
             'otpVerifiedLogs', 'otpRecords', 'users', 'userId'

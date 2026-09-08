@@ -3,6 +3,7 @@
 namespace App\Domain\Listeners;
 
 use App\Domain\Events\BoardingPermitDecided;
+use App\Models\DormitoryPermit;
 use App\Models\NotificationUniversal;
 use App\Models\WaliSantri;
 
@@ -58,7 +59,7 @@ class SendWaliNotificationOnPermitDecision
                 'action' => $event->decision,
                 'title' => $title,
                 'message' => $message,
-                'reference_type' => \App\Models\DormitoryPermit::class,
+                'reference_type' => DormitoryPermit::class,
                 'reference_id' => $permit->id,
                 'action_url' => route('user.asrama.approval-center', [
                     'userId' => $wali->user_id,

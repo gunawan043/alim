@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -90,9 +91,9 @@ class AssetBuilding extends Model
     }
 
     // ACCESSORS
-    protected function buildingName(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function buildingName(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: fn ($v) => $v ? ucwords(strtolower($v)) : $v,
         );
     }

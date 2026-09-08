@@ -47,7 +47,7 @@ class VendorAuditTrail extends Model
 
         if ($actor !== null) {
             if (is_object($actor)) {
-                $actorType = $actor instanceof \App\Models\Vendor ? 'vendor' : 'user';
+                $actorType = $actor instanceof Vendor ? 'vendor' : 'user';
                 $actorId = $actor->id ?? null;
                 $actorName = $actor->name ?? null;
             } elseif (is_int($actor)) {

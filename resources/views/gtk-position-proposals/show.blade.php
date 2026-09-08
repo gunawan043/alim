@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') GTK @endslot
-        @slot('li_2') <a href="{{ route('user.gtk-position-proposals.index') }}">Pengajuan Jabatan</a> @endslot
+        @slot('li_2') <a href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">Pengajuan Jabatan</a> @endslot
         @slot('title') Detail Pengajuan @endslot
     @endcomponent
 
@@ -35,7 +35,7 @@
                                 <tr>
                                     <th>GTK yang Diajukan</th>
                                     <td>
-                                        <a href="{{ route('user.gtk.show', $proposal->user_id) }}">
+                                        <a href="{{ route('user.gtk.show', ['userId' => $userId, 'uuid' => $proposal->user_id]) }}">
                                             {{ $proposal->user?->name ?? '-' }}
                                         </a>
                                     </td>
@@ -133,7 +133,7 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ route('user.gtk-position-proposals.index') }}" class="btn btn-light">
+                        <a href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}" class="btn btn-light">
                             <i class="ri-arrow-left-line me-1"></i> Kembali ke Daftar
                         </a>
 
@@ -147,7 +147,7 @@
                         @endif
 
                         @if(!$canApprove && $proposal->status === 'submitted' && $proposal->proposed_by === auth()->id())
-                            <form action="{{ route('user.gtk-position-proposals.cancel', $proposal->id) }}"
+                            <form action="{{ route('user.gtk-position-proposals.cancel', ['userId' => $userId, 'uuid' => $proposal->id]) }}"
                                   method="POST" onsubmit="return confirm('Batalkan pengajuan ini?')">
                                 @csrf
                                 <button type="submit" class="btn btn-warning w-100">
@@ -192,7 +192,7 @@
                     <h5 class="modal-title">Setujui Pengajuan Jabatan</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('user.gtk-position-proposals.approve', $proposal->id) }}" method="POST">
+                <form action="{{ route('user.gtk-position-proposals.approve', ['userId' => $userId, 'uuid' => $proposal->id]) }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -227,7 +227,7 @@
                     <h5 class="modal-title">Tolak Pengajuan Jabatan</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('user.gtk-position-proposals.reject', $proposal->id) }}" method="POST">
+                <form action="{{ route('user.gtk-position-proposals.reject', ['userId' => $userId, 'uuid' => $proposal->id]) }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">

@@ -26,14 +26,14 @@ return new class extends Migration
             $table->index('created_at', 'idx_snapshots_created_at');
         });
 
-        $driver = \DB::connection()->getDriverName();
+        $driver = DB::connection()->getDriverName();
         if ($driver === 'mysql') {
-            \DB::statement(
+            DB::statement(
                 'CREATE UNIQUE INDEX uniq_snapshots_user_scope_current '
                 .'ON `permission_snapshots` (user_id, scope_key, is_current)'
             );
         } else {
-            \DB::statement(
+            DB::statement(
                 'CREATE UNIQUE INDEX uniq_snapshots_user_scope_current '
                 .'ON permission_snapshots (user_id, scope_key) '
                 .'WHERE is_current = true'

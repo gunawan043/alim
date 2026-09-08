@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Mobile\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Student;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzSetoran;
 use App\Models\WaliSantri;
@@ -26,7 +27,7 @@ class TahfidzController extends Controller
 
         if ($schoolId) {
             // Tenant scope: only return setoran for students in the same school
-            $studentIds = \App\Models\Student::whereIn('id', $studentIds)
+            $studentIds = Student::whereIn('id', $studentIds)
                 ->where('school_id', $schoolId)
                 ->pluck('id');
         }
@@ -83,7 +84,7 @@ class TahfidzController extends Controller
             ->pluck('student_id');
 
         if ($schoolId) {
-            $studentIds = \App\Models\Student::whereIn('id', $studentIds)
+            $studentIds = Student::whereIn('id', $studentIds)
                 ->where('school_id', $schoolId)
                 ->pluck('id');
         }

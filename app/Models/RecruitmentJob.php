@@ -738,7 +738,7 @@ class RecruitmentJob extends Model
             return collect();
         }
 
-        return Position::whereIn('uuid', $uuids)->orderBy('nama')->get();
+        return StructuralPosition::whereIn('id', $uuids)->orderBy('name')->get();
     }
 
     /**
@@ -746,7 +746,7 @@ class RecruitmentJob extends Model
      */
     public function getKategoriNamesAttribute(): array
     {
-        return $this->kategori_jabatan->pluck('nama')->toArray();
+        return $this->kategori_jabatan->pluck('name')->toArray();
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditTrail;
+use App\Models\PurchaseOrder;
 use App\Models\Vendor;
 use App\Models\VendorCommunication;
 use App\Models\VendorDocument;
@@ -107,14 +108,14 @@ class VendorPerformanceService
 
     private function activeOrders(Vendor $vendor): int
     {
-        return (int) \App\Models\PurchaseOrder::where('vendor_id', $vendor->id)
+        return (int) PurchaseOrder::where('vendor_id', $vendor->id)
             ->whereIn('status', ['draft', 'approved', 'ordered', 'partial_delivered'])
             ->count();
     }
 
     private function onTimePercentage(Vendor $vendor): float
     {
-        $orders = \App\Models\PurchaseOrder::where('vendor_id', $vendor->id)
+        $orders = PurchaseOrder::where('vendor_id', $vendor->id)
             ->whereNotNull('expected_date')
             ->get();
 
@@ -131,7 +132,7 @@ class VendorPerformanceService
 
     private function totalValueYTD(Vendor $vendor): float
     {
-        return \App\Models\PurchaseOrder::where('vendor_id', $vendor->id)
+        return PurchaseOrder::where('vendor_id', $vendor->id)
             ->whereYear('expected_date', now()->year)
             ->where('status', '!=', 'draft')
             ->sum('total_amount');

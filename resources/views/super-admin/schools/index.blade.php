@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') 管理学校 @endsection
+@section('title') Manajemen Sekolah @endsection
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
 @endsection
@@ -7,7 +7,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Super Admin @endslot
-        @slot('title') 管理学校 @endslot
+        @slot('title') Manajemen Sekolah @endslot
     @endcomponent
 
     <div class="row">
@@ -16,12 +16,12 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">学校管理</h5>
-                            <p class="text-muted mb-0">管理系统中的所有学校。</p>
+                            <h5 class="card-title mb-0">Manajemen Sekolah</h5>
+                            <p class="text-muted mb-0">Kelola semua sekolah di sistem.</p>
                         </div>
                         <div class="col-sm-auto">
                             <a href="{{ route('user.sa.schools.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                <i class="ri-add-line align-bottom me-1"></i> 添加学校
+                                <i class="ri-add-line align-bottom me-1"></i> Tambah Sekolah
                             </a>
                         </div>
                     </div>
@@ -31,29 +31,29 @@
                     {{-- Filter --}}
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" placeholder="搜索学校名称/NPSN..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama sekolah/NPSN..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
                             <select name="level" class="form-control">
-                                <option value="">全部级别</option>
-                                <option value="sd" {{ request('level') == 'sd' ? 'selected' : '' }}>小学</option>
-                                <option value="smp" {{ request('level') == 'smp' ? 'selected' : '' }}>初中</option>
-                                <option value="sma" {{ request('level') == 'sma' ? 'selected' : '' }}>高中</option>
-                                <option value="smk" {{ request('level') == 'smk' ? 'selected' : '' }}>职校</option>
+                                <option value="">Semua Jenjang</option>
+                                <option value="sd" {{ request('level') == 'sd' ? 'selected' : '' }}>SD</option>
+                                <option value="smp" {{ request('level') == 'smp' ? 'selected' : '' }}>SMP</option>
+                                <option value="sma" {{ request('level') == 'sma' ? 'selected' : '' }}>SMA</option>
+                                <option value="smk" {{ request('level') == 'smk' ? 'selected' : '' }}>SMK</option>
                             </select>
                         </div>
                         <div class="col-md-2">
                             <select name="status" class="form-control">
-                                <option value="">全部状态</option>
-                                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>启用</option>
-                                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>停用</option>
+                                <option value="">Semua Status</option>
+                                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Aktif</option>
+                                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Nonaktif</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> 筛选</button>
+                            <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="btn btn-light w-100">重置</a>
+                            <a href="{{ route('user.sa.schools.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 
@@ -61,14 +61,14 @@
                         <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>学校名称</th>
-                                    <th>级别</th>
+                                    <th>Nama Sekolah</th>
+                                    <th>Jenjang</th>
                                     <th>NPSN</th>
-                                    <th>所属单位</th>
-                                    <th>校长</th>
-                                    <th>状态</th>
-                                    <th>创建时间</th>
-                                    <th class="text-center">操作</th>
+                                    <th>Unit Kerja</th>
+                                    <th>Kepala Sekolah</th>
+                                    <th>Status</th>
+                                    <th>Dibuat</th>
+                                    <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -89,7 +89,7 @@
                                         <td><small>{{ $school->principalUser?->name ?? '-' }}</small></td>
                                         <td>
                                             <span class="badge {{ $school->is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">
-                                                {{ $school->is_active ? '启用' : '停用' }}
+                                                {{ $school->is_active ? 'Aktif' : 'Nonaktif' }}
                                             </span>
                                         </td>
                                         <td><small class="text-muted">{{ $school->created_at?->format('Y-m-d') }}</small></td>
@@ -101,18 +101,18 @@
                                                 <ul class="dropdown-menu dropdown-menu-end">
                                                     <li>
                                                         <a class="dropdown-item" href="{{ route('user.sa.schools.edit', ['userId' => $userId, 'id' => $school->id]) }}">
-                                                            <i class="ri-pencil-line text-primary me-2"></i>编辑
+                                                            <i class="ri-pencil-line text-primary me-2"></i>Edit
                                                         </a>
                                                     </li>
                                                     <li>
                                                         <button class="dropdown-item toggle-status-btn" data-id="{{ $school->id }}" data-active="{{ $school->is_active }}">
                                                             <i class="ri-{{ $school->is_active ? 'pause-circle' : 'play-circle' }} me-2"></i>
-                                                            {{ $school->is_active ? '停用' : '启用' }}
+                                                            {{ $school->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                                                         </button>
                                                     </li>
                                                     <li>
                                                         <button class="dropdown-item text-danger delete-school" data-id="{{ $school->id }}" data-name="{{ $school->name }}">
-                                                            <i class="ri-delete-bin-line me-2"></i>删除
+                                                            <i class="ri-delete-bin-line me-2"></i>Hapus
                                                         </button>
                                                     </li>
                                                 </ul>
@@ -121,7 +121,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-muted">暂无学校数据。</td>
+                                        <td colspan="8" class="text-center py-4 text-muted">Belum ada data sekolah.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -143,14 +143,14 @@
                 <div class="modal-header"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body text-center">
                     <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f06548,secondary:#f7b84b" style="width:80px;height:80px"></lord-icon>
-                    <h4 class="mt-3">删除学校?</h4>
-                    <p class="text-muted">学校 <strong id="deleteSchoolName"></strong> 将被永久删除。</p>
+                    <h4 class="mt-3">Hapus Sekolah?</h4>
+                    <p class="text-muted">Sekolah <strong id="deleteSchoolName"></strong> akan dihapus secara permanen.</p>
                 </div>
                 <div class="modal-footer justify-content-center gap-2">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                     <form id="deleteSchoolForm" method="POST" style="display:inline">
                         @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-danger">确认删除</button>
+                        <button type="submit" class="btn btn-danger">Ya, Hapus</button>
                     </form>
                 </div>
             </div>

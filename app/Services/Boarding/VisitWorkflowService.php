@@ -4,6 +4,7 @@ namespace App\Services\Boarding;
 
 use App\Domain\Events\BoardingVisitCheckIn;
 use App\Domain\Events\BoardingVisitDecided;
+use App\Domain\Exceptions\QuotaExceededException;
 use App\Domain\Services\BoardingRulesEngine;
 use App\Domain\Services\BoardingTimelineService;
 use App\Domain\Types\DefaultBoardingContext;
@@ -60,7 +61,7 @@ class VisitWorkflowService
                 // Can be bypassed? e.g., special permission exists but requires override.
                 if (! $decision->canBeBypassed()) {
                     $denyReason = $decision->firstDenyReason();
-                    throw new \App\Domain\Exceptions\QuotaExceededException(
+                    throw new QuotaExceededException(
                         $denyReason ?: 'Pengajuan tidak dapat diproses karena melebihi kuota.',
                         [
                             'policy_code' => $decision->toArray()['rule_results'][0]['policy_code'] ?? null,

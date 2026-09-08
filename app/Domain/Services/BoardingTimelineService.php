@@ -2,11 +2,17 @@
 
 namespace App\Domain\Services;
 
+use App\Domain\Types\DefaultBoardingContext;
+use App\Domain\Types\QuotaPeriod;
 use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
+use App\Models\DormitoryPermit;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryRoom;
 use App\Models\Student;
+use App\Services\DormitoryService;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -94,7 +100,7 @@ final class BoardingTimelineService
 
         $eventKind = str_starts_with($eventType, 'leave') ? 'leave' : 'visit';
 
-        foreach ([\App\Domain\Types\QuotaPeriod::WEEKLY, \App\Domain\Types\QuotaPeriod::MONTHLY, \App\Domain\Types\QuotaPeriod::SEMESTER, \App\Domain\Types\QuotaPeriod::YEARLY, \App\Domain\Types\QuotaPeriod::DAILY] as $period) {
+        foreach ([QuotaPeriod::WEEKLY, QuotaPeriod::MONTHLY, QuotaPeriod::SEMESTER, QuotaPeriod::YEARLY, QuotaPeriod::DAILY] as $period) {
             // Match the cache key format used by BoardingRulesEngine::countUsageForCurrentPeriod().
             $key = sprintf('usage_%s_%s_%%_%s_%%', $studentId, $eventKind, $period);
             Cache::forget($key);
@@ -112,7 +118,7 @@ final class BoardingTimelineService
         string $studentId,
         ?CarbonImmutable $from = null,
         ?CarbonImmutable $to = null
-    ): \Illuminate\Support\Collection {
+    ): Collection {
         $query = BoardingTimelineEvent::where('student_id', $studentId)
             ->with(['student:id,name', 'room:id,name', 'dormitory:id,name'])
             ->orderByDesc('event_at');
@@ -136,7 +142,7 @@ final class BoardingTimelineService
         ?string $eventType = null,
         ?CarbonImmutable $from = null,
         ?CarbonImmutable $to = null
-    ): \Illuminate\Support\Collection {
+    ): Collection {
         $query = BoardingTimelineEvent::where('dormitory_id', $dormitoryId)
             ->orderByDesc('event_at');
 
@@ -197,7 +203,7 @@ final class BoardingTimelineService
     public function importLegacyPermits(int $perBatch = 1000): int
     {
         $imported = 0;
-        $batch = \App\Models\DormitoryPermit::whereDoesntHave('timeline', function ($q) {
+        $batch = DormitoryPermit::whereDoesntHave('timeline', function ($q) {
             $q->whereRaw('1=0'); // placeholder — no back-ref yet
         })
             ->with('student', 'room')
@@ -240,7 +246,7 @@ final class BoardingTimelineService
         }
 
         // If the room has no assigned residents for this slot, it's open
-        $currentOccupancy = \App\Models\DormitoryResident::where('room_id', $roomId)
+        $currentOccupancy = DormitoryResident::where('room_id', $roomId)
             ->where('is_active', true)
             ->count();
 
@@ -276,7 +282,7 @@ final class BoardingTimelineService
         }
 
         $policy = $this->engine->getApplicablePolicy($studentId, $dormitoryId);
-        $context = new \App\Domain\Types\DefaultBoardingContext(
+        $context = new DefaultBoardingContext(
             $student,
             $dormitory,
             $policy,
@@ -301,7 +307,7 @@ final class BoardingTimelineService
         ?string $dormitoryId,
         array $payload
     ): void {
-        $dormitoryService = app(\App\Services\DormitoryService::class);
+        $dormitoryService = app(DormitoryService::class);
         $dormitoryService->syncBoardingAttendance(
             studentId: $studentId,
             eventType: $eventType,

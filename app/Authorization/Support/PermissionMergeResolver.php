@@ -6,6 +6,7 @@ namespace App\Authorization\Support;
 
 use App\Authorization\DTO\PermissionOrigin;
 use App\Authorization\Enums\PermissionSource;
+use App\Authorization\Registry\PermissionRegistry;
 
 final readonly class PermissionMergeResolver
 {
@@ -86,7 +87,7 @@ final readonly class PermissionMergeResolver
      */
     private function expandWildcards(array $origins): array
     {
-        $registry = \App\Authorization\Registry\PermissionRegistry::all();
+        $registry = PermissionRegistry::all();
         $expanded = [];
 
         foreach ($origins as $origin) {

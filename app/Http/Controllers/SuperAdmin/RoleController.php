@@ -25,11 +25,21 @@ class RoleController extends Controller
         // Group permissions by group field
         $groupedPermissions = $permissions->groupBy(fn ($p) => $p->group ?? 'Lainnya');
 
-        return view('super-admin.roles.index', compact('roles', 'groupedPermissions', 'userId'));
+        return view('super-admin.roles.index', compact('roles', 'permissions', 'groupedPermissions', 'userId'));
+    }
+
+    public function show(Request $request, string $id)
+    {
+        $role = Role::with('permissions')->findOrFail($id);
+        $userId = $request->route('userId');
+
+        return redirect()->route('user.sa.roles.index', ['userId' => $userId])
+            ->with('info', "Role [{$role->name}] — gunakan fitur Edit atau filter pencarian dari halaman index.");
     }
 
     public function store(Request $request)
     {
+        $userId = $request->route('userId');
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name',
             'description' => 'nullable|string|max:500',
@@ -48,12 +58,13 @@ class RoleController extends Controller
             $role->syncPermissions($validated['permissions']);
         }
 
-        return redirect()->route('super-admin.roles.index')
+        return redirect()->route('user.sa.roles.index', ['userId' => $userId])
             ->with('success', 'Role berhasil dibuat.');
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $userId, string $id)
     {
+        $userId = $request->route('userId');
         $role = Role::findOrFail($id);
 
         $validated = $request->validate([
@@ -72,27 +83,30 @@ class RoleController extends Controller
 
         $role->syncPermissions($validated['permissions'] ?? []);
 
-        return redirect()->route('super-admin.roles.index')
+        return redirect()->route('user.sa.roles.index', ['userId' => $userId])
             ->with('success', 'Role berhasil diperbarui.');
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $userId, string $id)
     {
+        $userId = $request->route('userId');
         $role = Role::findOrFail($id);
 
         // Jangan hapus Super Admin role
         if (strtolower($role->name) === 'super admin') {
-            return back()->with('error', 'Role Super Admin tidak dapat dihapus.');
+            return redirect()->route('user.sa.roles.index', ['userId' => $userId])
+                ->with('error', 'Role Super Admin tidak dapat dihapus.');
         }
 
         // Cek apakah ada user dengan role ini
         if ($role->users()->count() > 0) {
-            return back()->with('error', "Role digunakan oleh {$role->users()->count()} user. Lepaskan terlebih dahulu.");
+            return redirect()->route('user.sa.roles.index', ['userId' => $userId])
+                ->with('error', "Role digunakan oleh {$role->users()->count()} user. Lepaskan terlebih dahulu.");
         }
 
         $role->delete();
 
-        return redirect()->route('super-admin.roles.index')
+        return redirect()->route('user.sa.roles.index', ['userId' => $userId])
             ->with('success', 'Role berhasil dihapus.');
     }
 }

@@ -2,9 +2,15 @@
 
 namespace App\Models\Uks;
 
+use App\Models\AcademicYear;
+use App\Models\Dormitory;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\UksBedAssignment;
 use App\Models\UksCareEvent;
 use App\Models\UksMedicationLog;
 use App\Models\UksTreatment;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -124,32 +130,32 @@ class UksPatient extends Model
 
     public function student(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Student::class, 'student_id');
+        return $this->belongsTo(Student::class, 'student_id');
     }
 
     public function school(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\School::class);
+        return $this->belongsTo(School::class);
     }
 
     public function academicYear(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\AcademicYear::class);
+        return $this->belongsTo(AcademicYear::class);
     }
 
     public function dormitory(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Dormitory::class);
+        return $this->belongsTo(Dormitory::class);
     }
 
     public function admittedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'admitted_by');
+        return $this->belongsTo(User::class, 'admitted_by');
     }
 
     public function dischargedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'discharged_by');
+        return $this->belongsTo(User::class, 'discharged_by');
     }
 
     public function treatments(): HasMany
@@ -169,22 +175,22 @@ class UksPatient extends Model
 
     public function bedAssignments(): HasMany
     {
-        return $this->hasMany(\App\Models\UksBedAssignment::class, 'patient_id');
+        return $this->hasMany(UksBedAssignment::class, 'patient_id');
     }
 
     public function treatmentNotes(): HasMany
     {
-        return $this->hasMany(\App\Models\Uks\UksTreatmentNote::class, 'patient_id');
+        return $this->hasMany(UksTreatmentNote::class, 'patient_id');
     }
 
     public function medicationAdministrations(): HasMany
     {
-        return $this->hasMany(\App\Models\Uks\UksMedicationAdministration::class, 'patient_id');
+        return $this->hasMany(UksMedicationAdministration::class, 'patient_id');
     }
 
     public function statusHistories(): HasMany
     {
-        return $this->hasMany(\App\Models\Uks\UksStatusHistory::class, 'patient_id');
+        return $this->hasMany(UksStatusHistory::class, 'patient_id');
     }
 
     /**
@@ -192,7 +198,7 @@ class UksPatient extends Model
      */
     public function currentBedAssignment(): HasOne
     {
-        return $this->hasOne(\App\Models\UksBedAssignment::class, 'patient_id')
+        return $this->hasOne(UksBedAssignment::class, 'patient_id')
             ->where('status', 'assigned')
             ->whereNull('released_at')
             ->latestOfMany();

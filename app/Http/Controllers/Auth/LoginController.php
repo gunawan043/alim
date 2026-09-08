@@ -8,6 +8,7 @@ use App\Mail\AccountLockedMail;
 use App\Mail\IpBlockedMail;
 use App\Models\FailedLoginAttempt;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -269,7 +270,7 @@ class LoginController extends Controller
      * Redirect user based on their role after successful login.
      * This runs BEFORE employee.access middleware to catch edge cases.
      */
-    private function redirectBasedOnRole($user): \Illuminate\Http\RedirectResponse
+    private function redirectBasedOnRole($user): RedirectResponse
     {
         // Rule 0: System Administrator (is_system_admin=true) — bypass role check.
         // They may legitimately have no Spatie role; route to dedicated /system dashboard.

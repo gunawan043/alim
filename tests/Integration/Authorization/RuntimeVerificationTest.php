@@ -13,11 +13,16 @@ use App\Authorization\DTO\PermissionOrigin;
 use App\Authorization\DTO\SnapshotMetadata;
 use App\Authorization\Enums\PermissionSource;
 use App\Authorization\Enums\SnapshotStatus;
+use App\Authorization\Events\AuthorizationDenied;
+use App\Authorization\Events\AuthorizationSucceeded;
 use App\Authorization\Events\PermissionCacheInvalidated;
+use App\Authorization\Events\SnapshotArchived;
 use App\Authorization\Events\SnapshotCacheHit;
 use App\Authorization\Events\SnapshotCacheMiss;
+use App\Authorization\Events\SnapshotCreated;
 use App\Authorization\Events\SnapshotExpired;
 use App\Authorization\Events\SnapshotLoaded;
+use App\Authorization\Exceptions\AuthorizationException;
 use App\Authorization\Jobs\BuildSnapshotJob;
 use App\Authorization\Models\PermissionSnapshot;
 use App\Authorization\Models\RevokedPermission;
@@ -28,14 +33,20 @@ use App\Authorization\Services\SnapshotResolver;
 use App\Authorization\Support\AuthorizationBladeCompiler;
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Authorization\ValueObjects\ScopeKey;
+use App\Http\Middleware\RequirePermission;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\Carbon;
 use DateTimeImmutable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\View\Compilers\BladeCompiler;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 /**
@@ -52,7 +63,7 @@ use Tests\TestCase;
  */
 final class RuntimeVerificationTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -61,10 +72,10 @@ final class RuntimeVerificationTest extends TestCase
         // Forget authorization singletons so each test gets a fresh resolution
         // chain. This is critical for tests that swap bindings or fake events
         // after the singleton was first resolved during app boot.
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotRebuildService::class);
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotResolver::class);
+        $this->app->forgetInstance(SnapshotRebuildService::class);
+        $this->app->forgetInstance(SnapshotResolver::class);
         $this->app->forgetInstance(\App\Authorization\Services\PermissionCacheManager::class);
-        $this->app->forgetInstance(\App\Authorization\Services\AuthorizationManager::class);
+        $this->app->forgetInstance(AuthorizationManager::class);
 
         // Seed roles before each test (needed by permission providers)
         Role::updateOrCreate(['name' => 'Guru'], ['guard_name' => 'web', 'level' => 18]);
@@ -149,7 +160,7 @@ final class RuntimeVerificationTest extends TestCase
         $bag = $rebuilder->rebuild($user, $context, 'role-change');
 
         // SnapshotCreated event should fire
-        Event::assertDispatched(\App\Authorization\Events\SnapshotCreated::class, function ($event) use ($user) {
+        Event::assertDispatched(SnapshotCreated::class, function ($event) use ($user) {
             return $event->userId === (string) $user->getKey()
                 && $event->trigger === 'role-change';
         });
@@ -487,7 +498,7 @@ final class RuntimeVerificationTest extends TestCase
 
         $rebuilder->archiveAll();
 
-        Event::assertDispatched(\App\Authorization\Events\SnapshotArchived::class, function ($event) {
+        Event::assertDispatched(SnapshotArchived::class, function ($event) {
             return $event->archivedCount >= 2;
         });
     }
@@ -684,11 +695,11 @@ final class RuntimeVerificationTest extends TestCase
         app()->instance(OrganizationContext::class, $context);
 
         // Inject user into request via Request setter
-        $request = \Illuminate\Http\Request::create('/test');
+        $request = Request::create('/test');
         $request->setUserResolver(fn () => $user);
 
         // Simpler approach: just test middleware directly
-        $middleware = app(\App\Http\Middleware\RequirePermission::class);
+        $middleware = app(RequirePermission::class);
 
         // The middleware should allow presensi.read for a teacher
         $response = $middleware->handle($request, function ($req) {
@@ -703,18 +714,18 @@ final class RuntimeVerificationTest extends TestCase
     public function test_require_permission_aborts_without_context(): void
     {
         $user = User::factory()->create();
-        $request = \Illuminate\Http\Request::create('/test');
+        $request = Request::create('/test');
         $request->setUserResolver(fn () => $user);
 
         // No OrganizationContext bound
-        $middleware = app(\App\Http\Middleware\RequirePermission::class);
+        $middleware = app(RequirePermission::class);
 
         $caught = false;
         try {
             $middleware->handle($request, function ($req) {
                 return response('ok');
             }, 'any.perm');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             $caught = true;
             $this->assertEquals(403, $e->getStatusCode());
         }
@@ -728,7 +739,7 @@ final class RuntimeVerificationTest extends TestCase
 
     public function test_blade_permission_directive_compiles_to_php(): void
     {
-        $blade = app(\Illuminate\View\Compilers\BladeCompiler::class, [
+        $blade = app(BladeCompiler::class, [
             app()->config['view.compiled'],
             resource_path('views'),
         ]);
@@ -745,7 +756,7 @@ final class RuntimeVerificationTest extends TestCase
 
     public function test_blade_permissionany_directive_compiles(): void
     {
-        $blade = app(\Illuminate\View\Compilers\BladeCompiler::class, [
+        $blade = app(BladeCompiler::class, [
             app()->config['view.compiled'],
             resource_path('views'),
         ]);
@@ -821,39 +832,39 @@ final class RuntimeVerificationTest extends TestCase
     public function test_rebuild_failure_raises_exception(): void
     {
         // Swap out the builder with one that throws
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        $badBuilder = new class implements PermissionBuilder
         {
-            public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
+            public function build(Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('Provider connection refused');
             }
         };
 
-        $this->app->bind(\App\Authorization\Contracts\PermissionBuilder::class, fn () => $badBuilder);
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotRebuildService::class);
+        $this->app->bind(PermissionBuilder::class, fn () => $badBuilder);
+        $this->app->forgetInstance(SnapshotRebuildService::class);
 
         $user = User::factory()->create();
         $context = new OrganizationContext('school-fail', 'ay-2025', 'teacher');
 
         $rebuilder = app(SnapshotRebuildService::class);
 
-        $this->expectException(\App\Authorization\Exceptions\AuthorizationException::class);
+        $this->expectException(AuthorizationException::class);
         $rebuilder->rebuild($user, $context, 'intentional-failure');
     }
 
     public function test_resolve_returns_null_on_rebuild_failure(): void
     {
         // Swap builder to always fail
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        $badBuilder = new class implements PermissionBuilder
         {
-            public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
+            public function build(Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('build always fails');
             }
         };
 
-        $this->app->bind(\App\Authorization\Contracts\PermissionBuilder::class, fn () => $badBuilder);
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotRebuildService::class);
+        $this->app->bind(PermissionBuilder::class, fn () => $badBuilder);
+        $this->app->forgetInstance(SnapshotRebuildService::class);
 
         $user = User::factory()->create();
         $context = new OrganizationContext('school-soft-fail', 'ay-2025', 'teacher');
@@ -872,17 +883,17 @@ final class RuntimeVerificationTest extends TestCase
         $context = new OrganizationContext('school-no-snap', 'ay-2025', 'teacher');
 
         // Swap builder to fail
-        $badBuilder = new class implements \App\Authorization\Contracts\PermissionBuilder
+        $badBuilder = new class implements PermissionBuilder
         {
-            public function build(\Illuminate\Database\Eloquent\Model $user, OrganizationContext $context): PermissionBag
+            public function build(Model $user, OrganizationContext $context): PermissionBag
             {
                 throw new \RuntimeException('denied');
             }
         };
         $this->app
-            ->bind(\App\Authorization\Contracts\PermissionBuilder::class, fn () => $badBuilder);
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotResolver::class);
-        $this->app->forgetInstance(\App\Authorization\Services\SnapshotRebuildService::class);
+            ->bind(PermissionBuilder::class, fn () => $badBuilder);
+        $this->app->forgetInstance(SnapshotResolver::class);
+        $this->app->forgetInstance(SnapshotRebuildService::class);
 
         /** @var AuthorizationManager $manager */
         $manager = app(AuthorizationManager::class);
@@ -930,7 +941,7 @@ final class RuntimeVerificationTest extends TestCase
         $rebuilder = app(SnapshotRebuildService::class);
         $rebuilder->rebuild($user, $context, 'setup');
 
-        $cache = app(\App\Authorization\Contracts\PermissionCacheManager::class);
+        $cache = app(PermissionCacheManager::class);
         $sk = (string) $context->toScopeKey();
         $uid = (string) $user->getKey();
         $bagCheck = $cache->get($uid, $sk);
@@ -947,8 +958,8 @@ final class RuntimeVerificationTest extends TestCase
 
     public function test_authorization_events_on_allow_and_deny(): void
     {
-        Event::fake([\App\Authorization\Events\AuthorizationSucceeded::class,
-            \App\Authorization\Events\AuthorizationDenied::class]);
+        Event::fake([AuthorizationSucceeded::class,
+            AuthorizationDenied::class]);
 
         $user = User::factory()->create();
         $context = new OrganizationContext('school-assert-events', 'ay-2025', 'teacher');
@@ -962,14 +973,14 @@ final class RuntimeVerificationTest extends TestCase
         // Allowed permission
         $manager->allows($user, 'presensi.read', $context);
 
-        Event::assertDispatched(\App\Authorization\Events\AuthorizationSucceeded::class, function ($event) {
+        Event::assertDispatched(AuthorizationSucceeded::class, function ($event) {
             return $event->permission === 'presensi.read';
         });
 
         // Denied permission (non-existent)
         $manager->allows($user, 'nonexistent.permission', $context);
 
-        Event::assertDispatched(\App\Authorization\Events\AuthorizationDenied::class, function ($event) {
+        Event::assertDispatched(AuthorizationDenied::class, function ($event) {
             return $event->permission === 'nonexistent.permission'
                 && $event->reason === 'permission-not-in-snapshot';
         });

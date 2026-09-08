@@ -3,11 +3,19 @@
 namespace App\Services\Sarpras;
 
 use App\Models\Asset;
+use App\Models\AssetAudit;
 use App\Models\AssetEventLog;
+use App\Models\AssetLoan;
+use App\Models\AssetMaintenanceLog;
+use App\Models\AssetTransfer;
 use App\Models\MaintenanceHistory;
+use App\Models\ProcurementRequest;
+use App\Models\ProcurementRequestItem;
 use App\Models\QrScanHistory;
 use App\Models\RepairCostHistory;
 use App\Models\RepairRequest;
+use App\Models\SchoolVendor;
+use App\Models\StockOpnameItem;
 use App\Models\WorkOrder;
 use Carbon\Carbon;
 
@@ -232,7 +240,7 @@ class AssetPassportService
         // Active warranty — suggest vendor service center path
         $vendor = null;
         if ($asset->supplier_id) {
-            $vendor = \App\Models\SchoolVendor::where('id', $asset->supplier_id)->first();
+            $vendor = SchoolVendor::where('id', $asset->supplier_id)->first();
         }
 
         return [
@@ -300,17 +308,17 @@ class AssetPassportService
      */
     public function getVendorPerformance(): array
     {
-        $vendors = \App\Models\SchoolVendor::all();
+        $vendors = SchoolVendor::all();
 
         $results = [];
         foreach ($vendors as $vendor) {
-            $procurements = \App\Models\ProcurementRequest::where('vendor_id', $vendor->id)->get();
+            $procurements = ProcurementRequest::where('vendor_id', $vendor->id)->get();
 
             $totalDelivery = $procurements->count();
             $lateDelivery = $procurements->where('approval_status', 'delivered')
                 ->filter(fn ($pr) => $pr->received_date?->gt($pr->expected_delivery_date))->count();
 
-            $rejectedItems = \App\Models\ProcurementRequestItem::whereHas(
+            $rejectedItems = ProcurementRequestItem::whereHas(
                 'procurementRequest', fn ($q) => $q->where('vendor_id', $vendor->id)
             )->where('quantity_received', '<', 'quantity_ordered')
                 ->get()
@@ -472,7 +480,7 @@ class AssetPassportService
 
     protected function buildMaintenanceSchedule(Asset $asset): array
     {
-        $log = \App\Models\AssetMaintenanceLog::where('asset_id', $asset->id)
+        $log = AssetMaintenanceLog::where('asset_id', $asset->id)
             ->orderByDesc('maintenance_date')
             ->first();
 
@@ -512,7 +520,7 @@ class AssetPassportService
             return [];
         }
 
-        return \App\Models\AssetLoan::where('asset_id', $asset->id)
+        return AssetLoan::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
             ->get(['id', 'loan_number', 'borrower_name', 'start_date', 'end_date', 'status'])
@@ -525,7 +533,7 @@ class AssetPassportService
             return [];
         }
 
-        return \App\Models\AssetTransfer::where('asset_id', $asset->id)
+        return AssetTransfer::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
             ->get()
@@ -538,7 +546,7 @@ class AssetPassportService
             return [];
         }
 
-        return \App\Models\AssetAudit::where('asset_id', $asset->id)
+        return AssetAudit::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
             ->get()
@@ -551,7 +559,7 @@ class AssetPassportService
             return [];
         }
 
-        return \App\Models\StockOpnameItem::with('session')
+        return StockOpnameItem::with('session')
             ->where('asset_id', $asset->id)
             ->orderByDesc('observed_at')
             ->take(20)

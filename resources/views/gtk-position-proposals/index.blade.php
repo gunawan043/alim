@@ -32,7 +32,7 @@
                         </div>
                         <div class="col-sm-auto">
                             @if(!$canApprove)
-                                <a href="{{ route('user.gtk-position-proposals.create') }}" class="btn btn-success">
+                                <a href="{{ route('user.gtk-position-proposals.create', ['userId' => $userId]) }}" class="btn btn-success">
                                     <i class="ri-add-line align-bottom me-1"></i> Ajukan Jabatan
                                 </a>
                             @endif
@@ -65,7 +65,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.gtk-position-proposals.index') }}" class="btn btn-light w-100">Reset</a>
+                            <a href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 
@@ -110,12 +110,12 @@
                                         <td>{{ $proposal->tmt ? $proposal->tmt->format('d M Y') : '-' }}</td>
                                         <td>
                                             <div class="d-flex gap-2">
-                                                <a href="{{ route('user.gtk-position-proposals.show', $proposal->id) }}"
+                                                <a href="{{ route('user.gtk-position-proposals.show', ['userId' => $userId, 'id' => $proposal->id]) }}"
                                                    class="btn btn-sm btn-light" title="Detail">
                                                     <i class="ri-eye-line"></i>
                                                 </a>
                                                 @if($canApprove && $proposal->status === 'submitted')
-                                                    <form action="{{ route('user.gtk-position-proposals.approve', $proposal->id) }}"
+                                                    <form action="{{ route('user.gtk-position-proposals.approve', ['userId' => $userId, 'uuid' => $proposal->id]) }}"
                                                           method="POST" class="d-inline"
                                                           onsubmit="return confirm('Setujui pengajuan ini?')">
                                                         @csrf
@@ -123,7 +123,7 @@
                                                             <i class="ri-check-line"></i>
                                                         </button>
                                                     </form>
-                                                    <form action="{{ route('user.gtk-position-proposals.reject', $proposal->id) }}"
+                                                    <form action="{{ route('user.gtk-position-proposals.reject', ['userId' => $userId, 'uuid' => $proposal->id]) }}"
                                                           method="POST" class="d-inline"
                                                           onsubmit="return confirm('Tolak pengajuan ini?')">
                                                         @csrf
@@ -133,7 +133,7 @@
                                                     </form>
                                                 @endif
                                                 @if(!$canApprove && $proposal->status === 'submitted')
-                                                    <form action="{{ route('user.gtk-position-proposals.cancel', $proposal->id) }}"
+                                                    <form action="{{ route('user.gtk-position-proposals.cancel', ['userId' => $userId, 'uuid' => $proposal->id]) }}"
                                                           method="POST" class="d-inline"
                                                           onsubmit="return confirm('Batalkan pengajuan ini?')">
                                                         @csrf

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -43,7 +44,7 @@ class StudentAchievementTemplateExport
             ->setFitToWidth(1)
             ->setFitToHeight(0);
 
-        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
         $tempPath = storage_path("app/templates/{$filename}");
         if (! is_dir(dirname($tempPath))) {
             mkdir(dirname($tempPath), 0755, true);

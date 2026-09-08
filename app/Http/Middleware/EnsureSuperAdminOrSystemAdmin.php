@@ -18,9 +18,7 @@ class EnsureSuperAdminOrSystemAdmin
         }
 
         $isSystemAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
-        $isSuperAdmin = ! $isSystemAdmin
-            && method_exists($user, 'hasPermissionTo')
-            && $user->hasPermissionTo('impersonate_role');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
 
         if (! $isSystemAdmin && ! $isSuperAdmin) {
             abort(403, 'System Administrator or Super Admin only.');

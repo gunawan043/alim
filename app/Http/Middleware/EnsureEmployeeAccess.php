@@ -37,6 +37,13 @@ class EnsureEmployeeAccess
         }
 
         // ============================================================
+        // RULE 1c: Super Admin (has 'Super Admin' role) also bypasses.
+        // ============================================================
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return $next($request);
+        }
+
+        // ============================================================
         // RULE 2: Applicants → redirect to external recruitment portal
         // Detection: user has RecruitmentProfile but NO Spatie role
         // ============================================================

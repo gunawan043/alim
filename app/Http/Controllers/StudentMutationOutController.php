@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StudentMutatedOut;
+use App\Models\GtkEmployment;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMutationOut;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Pharaonic\Hijri\Hijri;
 
 class StudentMutationOutController extends Controller
 {
@@ -78,7 +82,7 @@ class StudentMutationOutController extends Controller
         // Prioritas 2: school.principal_name / principal_nip / principal_nupy
         $headEmployment = null;
         if ($schoolContextId && $school?->principal_user_id) {
-            $headEmployment = \App\Models\GtkEmployment::with('user')
+            $headEmployment = GtkEmployment::with('user')
                 ->where('school_id', $schoolContextId)
                 ->where('user_id', $school->principal_user_id)
                 ->first();
@@ -218,12 +222,12 @@ class StudentMutationOutController extends Controller
 
         if ($mutation->student) {
             $outType = match ($mutation->out_type) {
-                'graduation' => \App\Events\StudentMutatedOut::TYPE_GRADUATION,
-                'dropout' => \App\Events\StudentMutatedOut::TYPE_DROPOUT,
-                default => \App\Events\StudentMutatedOut::TYPE_MUTATION,
+                'graduation' => StudentMutatedOut::TYPE_GRADUATION,
+                'dropout' => StudentMutatedOut::TYPE_DROPOUT,
+                default => StudentMutatedOut::TYPE_MUTATION,
             };
 
-            \App\Events\StudentMutatedOut::dispatch(
+            StudentMutatedOut::dispatch(
                 student: $mutation->student,
                 mutation: $mutation,
                 outType: $outType,
@@ -263,7 +267,7 @@ class StudentMutationOutController extends Controller
         $mutation = StudentMutationOut::with(['student', 'school'])->findOrFail($mutationUuid);
         $school = $mutation->school;
         $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school'))->render();
-        $dompdf = new \Dompdf\Dompdf;
+        $dompdf = new Dompdf;
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4');
         $dompdf->render();
@@ -279,8 +283,8 @@ class StudentMutationOutController extends Controller
                 'Jumadil Awwal', 'Jumadil Akhir', 'Rajab', 'Syakban',
                 'Ramadan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah',
             ];
-            \Pharaonic\Hijri\Hijri::getInstance();
-            $h = \Pharaonic\Hijri\Hijri::parse($date);
+            Hijri::getInstance();
+            $h = Hijri::parse($date);
 
             return $h->day.' '.$monthsID[$h->month - 1].' '.$h->year.' H';
         } catch (\Throwable $e) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentApplicationStage;
 use App\Models\RecruitmentJob;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AtsDashboardController extends Controller
@@ -155,7 +156,7 @@ class AtsDashboardController extends Controller
         return (int) round((($current - $previous) / $previous) * 100);
     }
 
-    private function getRecentActivities(): \Illuminate\Support\Collection
+    private function getRecentActivities(): Collection
     {
         try {
             $logModel = app(config('activitylog.package', 'Spatie\Activitylog\Models\Activity'));

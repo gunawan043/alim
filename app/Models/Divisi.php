@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Divisi extends Model
 {
@@ -43,7 +44,7 @@ class Divisi extends Model
 
         static::creating(function ($model) {
             if (empty($model->id)) {
-                $model->id = (string) \Illuminate\Support\Str::uuid();
+                $model->id = (string) Str::uuid();
             }
         });
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dormitory;
+use App\Models\DormitoryRoomMove;
 use App\Models\DormitoryViolation;
 use App\Models\Student;
 
@@ -19,7 +20,7 @@ class AsramaDashboardController extends Controller
         $totalSantri = Student::whereHas('activeDormitoryResident')->where('status', 'active')->count();
 
         // Room moves pending
-        $pendingRoomMoves = \App\Models\DormitoryRoomMove::where('status', 'pending')->count();
+        $pendingRoomMoves = DormitoryRoomMove::where('status', 'pending')->count();
 
         // Violations this month
         $thisMonth = date('m');

@@ -9,6 +9,7 @@ use App\Models\School;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class GradeLevelController extends Controller
 {
@@ -136,7 +137,7 @@ class GradeLevelController extends Controller
         }
 
         GradeLevelSubject::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'grade_level_id' => $id,
             'subject_id' => $validated['subject_id'],
             'allocation_hours' => $validated['allocation_hours'] ?? 0,

@@ -4,6 +4,7 @@ namespace App\Listeners\Boarding;
 
 use App\Events\Boarding\HealthDischarged;
 use App\Services\TimelineWriter;
+use Carbon\CarbonImmutable;
 
 class RecordRecoveredOnTimeline
 {
@@ -25,7 +26,7 @@ class RecordRecoveredOnTimeline
             ],
             module: 'boarding',
             category: 'health',
-            eventAt: \Carbon\CarbonImmutable::now(),
+            eventAt: CarbonImmutable::now(),
             sourceActorId: null,
         );
     }

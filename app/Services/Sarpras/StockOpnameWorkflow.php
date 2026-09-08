@@ -9,6 +9,7 @@ use App\Models\StockOpnameItem;
 use App\Models\StockOpnameOfficer;
 use App\Models\StockOpnameSession;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -227,12 +228,12 @@ class StockOpnameWorkflow
 
     /* ---- helpers ---- */
 
-    protected function queryAssets(?array $ids): \Illuminate\Database\Eloquent\Collection
+    protected function queryAssets(?array $ids): Collection
     {
         return Asset::whereIn('id', $ids)->get();
     }
 
-    protected function queryAssetsByWorkUnits(?array $unitIds): \Illuminate\Database\Eloquent\Collection
+    protected function queryAssetsByWorkUnits(?array $unitIds): Collection
     {
         return Asset::whereIn('work_unit_id', $unitIds)->get();
     }

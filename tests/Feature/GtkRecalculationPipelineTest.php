@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Events\GtkProfileUpdated;
 use App\Events\StudyGroupSubjectChanged;
 use App\Events\TeachingAssignmentChanged;
+use App\Listeners\TriggerGtkWorkloadRecalculation;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GtkAnalysisRun;
@@ -15,7 +16,10 @@ use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Observers\GtkProfileObserver;
+use App\Observers\TeachingAssignmentObserver;
 use App\Services\GtkAnalysisEngine;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -23,15 +27,15 @@ use Tests\TestCase;
 
 class GtkRecalculationPipelineTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\DatabaseTransactions;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         // Register observers that are not registered in production AppServiceProvider
-        GtkProfile::observe(\App\Observers\GtkProfileObserver::class);
-        TeachingAssignment::observe(\App\Observers\TeachingAssignmentObserver::class);
+        GtkProfile::observe(GtkProfileObserver::class);
+        TeachingAssignment::observe(TeachingAssignmentObserver::class);
     }
 
     protected function beginDatabaseTransaction(): void
@@ -374,7 +378,7 @@ class GtkRecalculationPipelineTest extends TestCase
     {
         // The guard in TriggerGtkWorkloadRecalculation::handleGtkProfileUpdated
         // prevents dispatch when schoolId is null (no event data, no GtkEmployment)
-        $listener = new \App\Listeners\TriggerGtkWorkloadRecalculation;
+        $listener = new TriggerGtkWorkloadRecalculation;
 
         $user = $this->createUser();
         $profile = GtkProfile::create([

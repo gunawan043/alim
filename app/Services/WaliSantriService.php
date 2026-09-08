@@ -20,7 +20,7 @@ class WaliSantriService
      *
      * @param  User  $wali  User yang login (wali)
      * @param  array  $data  { nik, name, gender, birth_place, birth_date, no_kk, role }
-     * @return array  { student, wali_santri, token }
+     * @return array  { Student, wali_santri, token }
      *
      * @throws \Exception
      */
