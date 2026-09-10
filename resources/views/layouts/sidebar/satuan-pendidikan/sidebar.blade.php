@@ -290,13 +290,6 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.satuan-kerja.other-tasks') ? ' active' : '' }}"
-       href="{{ $primaryWorkUnitId ? route('user.satuan-kerja.other-tasks', ['workUnitId' => $primaryWorkUnitId, 'userId' => $userId]) : '#' }}">
-        <i class="ri-user-settings-line"></i>
-        <span>Tugas Tambahan Guru</span>
-    </a>
-</li>
-<li class="nav-item">
     <a class="nav-link menu-link" href="#sumatif" data-bs-toggle="collapse" role="button"
        aria-expanded="false" aria-controls="sumatif">
         <i class="ri-file-edit-line"></i>
