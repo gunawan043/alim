@@ -9,6 +9,7 @@ $userWorkUnits = \App\Models\GtkWorkUnit::with('workUnit.school')
     ->whereHas('workUnit', fn($q) => $q->where('is_active', true))
     ->get();
 $primaryWorkUnit = $userWorkUnits->where('is_primary', true)->first() ?? $userWorkUnits->first();
+$primaryWorkUnitId = $primaryWorkUnit?->workUnit?->id;
 $sekolah = $primaryWorkUnit?->workUnit?->school;
 
 $sidebarStudyGroups = $sekolah
@@ -96,7 +97,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
                    href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">Tendik</a>
             </li>
-            @if(canPermission('gtk-update'))
+            @if($currentUser->hasRole('Satuan Pendidikan') || $currentUser->hasRole('Unit Rumah Tangga'))
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.gtk.massal' ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}"
@@ -134,10 +135,10 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
-       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.satuan-kerja.additional-tasks') ? ' active' : '' }}"
+       href="{{ $primaryWorkUnitId ? route('user.satuan-kerja.additional-tasks', ['workUnitId' => $primaryWorkUnitId, 'userId' => $userId]) : '#' }}">
         <i class="ri-task-line"></i>
-        <span>Tugas Tambahan</span>
+        <span>Tugas Tambahan GTK</span>
     </a>
 </li>
 
@@ -158,8 +159,8 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
-       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.satuan-kerja.positions') ? ' active' : '' }}"
+       href="{{ $primaryWorkUnitId ? route('user.satuan-kerja.positions', ['workUnitId' => $primaryWorkUnitId, 'userId' => $userId]) : '#' }}">
         <i class="ri-briefcase-line"></i>
         <span>Jabatan GTK</span>
     </a>
@@ -289,10 +290,10 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.other-teacher-tasks.') ? ' active' : '' }}"
-       href="{{ route('user.other-teacher-tasks.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.satuan-kerja.other-tasks') ? ' active' : '' }}"
+       href="{{ $primaryWorkUnitId ? route('user.satuan-kerja.other-tasks', ['workUnitId' => $primaryWorkUnitId, 'userId' => $userId]) : '#' }}">
         <i class="ri-user-settings-line"></i>
-        <span>Tugas Tambahan</span>
+        <span>Tugas Tambahan Guru</span>
     </a>
 </li>
 <li class="nav-item">

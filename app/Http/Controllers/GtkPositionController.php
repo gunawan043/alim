@@ -14,12 +14,16 @@ class GtkPositionController extends Controller
     {
         abort_unless(canPermission('gtk-update'), 403, 'Anda tidak memiliki izin untuk mengelola jabatan GTK.');
 
-        $query = User::with(['employment', 'gtkProfile'])
+        $query = User::with(['employment', 'gtkProfile', 'gtkWorkUnits.workUnit'])
             ->whereHas('employment');
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
             $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+        }
+
+        if ($request->filled('satuan_kerja')) {
+            $query->whereHas('gtkWorkUnits', fn ($q) => $q->where('work_unit_id', $request->satuan_kerja));
         }
 
         if ($request->filled('search')) {
@@ -50,8 +54,9 @@ class GtkPositionController extends Controller
         $gtks = $query->paginate($perPage)->withQueryString();
 
         $jabatans = StructuralPosition::active()->orderBy('urutan')->orderBy('name')->get();
+        $workUnits = \App\Models\WorkUnit::active()->get();
 
-        return view('gtk-positions.index', compact('gtks', 'jabatans', 'userId'));
+        return view('gtk-positions.index', compact('gtks', 'jabatans', 'workUnits', 'userId'));
     }
 
     public function update(Request $request, string $userId, string $id): JsonResponse

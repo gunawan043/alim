@@ -2235,7 +2235,14 @@ class GtkWizardController extends Controller
 
     public function massal(Request $request)
     {
-        abort_unless(canPermission('gtk-update'), 403, 'Anda tidak memiliki izin untuk update massal GTK.');
+        abort_unless(
+            auth()->check() && (
+                auth()->user()->hasRole('Satuan Pendidikan')
+                || auth()->user()->hasRole('Unit Rumah Tangga')
+            ),
+            403,
+            'Hanya Kepala Satuan Kerja dan Tata Usaha yang dapat mengakses manajemen massal GTK.'
+        );
 
         $query = User::with(['gtkProfile', 'employment', 'gtkContact', 'gtkWorkUnits.workUnit', 'gtkProfile.addresses', 'educations'])
             ->whereHas('employment');
@@ -2258,7 +2265,9 @@ class GtkWizardController extends Controller
         $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
         $jabatan = StructuralPosition::active()->orderBy('urutan')->orderBy('name')->get();
         $userId = auth()->id();
+        $currentUser = auth()->user();
+        $canEditWorkUnit = $currentUser->hasRole('Super Admin') || $currentUser->hasRole('Humas Personalia');
 
-        return view('gtk.massal.index', compact('gtkList', 'workUnits', 'jenisGtk', 'jabatan', 'userId'));
+        return view('gtk.massal.index', compact('gtkList', 'workUnits', 'jenisGtk', 'jabatan', 'userId', 'canEditWorkUnit'));
     }
 }

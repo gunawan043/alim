@@ -32,6 +32,7 @@ class GtkAdditionalTask extends Model
     protected $fillable = [
         'user_id',
         'decree_id',
+        'work_unit_id',
         'nama_tugas',
         'hours_per_week',
         'nomor_sk',
@@ -46,11 +47,11 @@ class GtkAdditionalTask extends Model
     protected $casts = [
         'id' => 'string',
         'user_id' => 'string',
+        'work_unit_id' => 'string',
         'tmt' => 'date',
         'tst' => 'date',
     ];
 
-    // RELATIONSHIPS
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -61,7 +62,11 @@ class GtkAdditionalTask extends Model
         return $this->belongsTo(InstitutionDecree::class, 'decree_id');
     }
 
-    // ENCRYPTED FIELDS
+    public function workUnit()
+    {
+        return $this->belongsTo(WorkUnit::class, 'work_unit_id');
+    }
+
     protected function nomorSk(): Attribute
     {
         return Attribute::make(
@@ -70,7 +75,6 @@ class GtkAdditionalTask extends Model
         );
     }
 
-    // ACCESSORS
     public function getMasaTugasAttribute()
     {
         if ($this->tmt && $this->tst) {
@@ -89,7 +93,6 @@ class GtkAdditionalTask extends Model
         return now()->lessThanOrEqualTo($this->tst);
     }
 
-    // MASKED ACCESSOR
     public function getMaskedNomorSkAttribute()
     {
         $nomorSk = $this->nomor_sk;

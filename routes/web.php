@@ -194,6 +194,8 @@ use App\Http\Controllers\WakaController;
 use App\Http\Controllers\WaliAsramaDashboardController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
+use App\Http\Controllers\SatuanKerja\PositionController as SatuanPositionController;
+use App\Http\Controllers\SatuanKerja\TaskController as SatuanTaskController;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Models\User;
@@ -361,6 +363,23 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('satuan-kerja/{workUnitId}')->name('satuan-kerja.')->group(function () {
                     Route::get('/schools/{schoolId}', [SchoolUnitController::class, 'show'])->name('show');
                     Route::get('/schools/{schoolId}/edit', [SchoolUnitController::class, 'edit'])->name('edit');
+
+                    // Jabatan GTK per satuan kerja
+                    Route::get('/jabatan', [SatuanPositionController::class, 'index'])->name('positions');
+                    Route::post('/jabatan/{id}/update', [SatuanPositionController::class, 'update'])->name('positions.update');
+                    Route::post('/jabatan/mass-update', [SatuanPositionController::class, 'massUpdate'])->name('positions.mass-update');
+
+                    // Tugas Tambahan GTK per satuan kerja
+                    Route::get('/tugas-tambahan', [SatuanTaskController::class, 'additionalTasks'])->name('additional-tasks');
+                    Route::post('/tugas-tambahan', [SatuanTaskController::class, 'storeAdditionalTask'])->name('additional-tasks.store');
+                    Route::put('/tugas-tambahan/{id}', [SatuanTaskController::class, 'updateAdditionalTask'])->name('additional-tasks.update');
+                    Route::delete('/tugas-tambahan/{id}', [SatuanTaskController::class, 'destroyAdditionalTask'])->name('additional-tasks.destroy');
+
+                    // Tugas Tambahan Guru per satuan kerja
+                    Route::get('/tugas-guru', [SatuanTaskController::class, 'otherTasks'])->name('other-tasks');
+                    Route::post('/tugas-guru', [SatuanTaskController::class, 'storeOtherTask'])->name('other-tasks.store');
+                    Route::put('/tugas-guru/{id}', [SatuanTaskController::class, 'updateOtherTask'])->name('other-tasks.update');
+                    Route::delete('/tugas-guru/{id}', [SatuanTaskController::class, 'destroyOtherTask'])->name('other-tasks.destroy');
                 });
 
                 // ── DATA NILAI

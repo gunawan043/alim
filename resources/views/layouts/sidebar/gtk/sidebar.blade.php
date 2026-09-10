@@ -52,7 +52,7 @@ function isActiveGTK($routeName, $pattern) {
                    href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">Tendik</a>
             </li>
-            @if(canPermission('gtk-update'))
+            @if($currentUser->hasRole('Satuan Pendidikan') || $currentUser->hasRole('Unit Rumah Tangga'))
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.gtk.massal' ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}"

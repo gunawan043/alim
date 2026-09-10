@@ -45,6 +45,15 @@ function isActiveHumas($routeName, $pattern) {
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.index' ? ' active' : '' }}" href="{{ route('user.gtk.index', ['userId' => $userId]) }}">Semua GTK</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indexguru' ? ' active' : '' }}" href="{{ route('user.gtk.indexguru', ['userId' => $userId]) }}">Guru</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indextendik' ? ' active' : '' }}" href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}">Tendik</a></li>
+            @if($currentUser->hasRole('Super Admin') || $currentUser->hasRole('Humas Personalia'))
+            <li class="nav-item">
+                <a class="nav-link{{ $currentRoute === 'user.gtk.massal' ? ' active' : '' }}"
+                   href="{{ route('user.gtk.massal', ['userId' => $userId]) }}"
+                   style="font-size:0.85rem">
+                    <i class="ri-edit-box-line me-1"></i>Manajemen Massal
+                </a>
+            </li>
+            @endif
         </ul>
     </div>
 </li>

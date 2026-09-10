@@ -73,6 +73,14 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ request()->routeIs('user.gtk.massal') ? ' active' : '' }}"
+           href="{{ route('user.gtk.massal', ['userId' => auth()->id()]) }}">
+            <i class="ri-edit-box-line"></i>
+            <span>Manajemen Massal</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ request()->routeIs('user.pension.*') ? ' active' : '' }}"
            href="{{ route('user.pension.index', ['userId' => auth()->id()]) }}">
             <i class="ri-umbrella-line"></i>

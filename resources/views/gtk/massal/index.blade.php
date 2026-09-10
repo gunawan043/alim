@@ -116,7 +116,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Status Kepegawaian</label>
                             <select class="form-select" id="massStatusKepegawaian">
-                                <option value="">— Biarkan —</option>
+                                <option value="">— Pilih Status Kepegawaian —</option>
                                 <option value="PTT">PTT</option>
                                 <option value="PTY">PTY</option>
                                 <option value="GTT">GTT</option>
@@ -129,7 +129,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Jenis GTK</label>
                             <select class="form-select" id="massJenisGtk">
-                                <option value="">— Biarkan —</option>
+                                <option value="">— Pilih Jenis GTK —</option>
                                 @foreach($jenisGtk as $j)
                                     <option value="{{ $j->id }}">{{ $j->nama }}</option>
                                 @endforeach
@@ -138,7 +138,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Jabatan</label>
                             <select class="form-select" id="massJabatan">
-                                <option value="">— Biarkan —</option>
+                                <option value="">— Pilih Jabatan —</option>
                                 @foreach($jabatan as $j)
                                     <option value="{{ $j->id }}">{{ $j->name }}</option>
                                 @endforeach
@@ -160,15 +160,17 @@
                             <label class="form-label">Pangkat/Golongan</label>
                             <input type="text" class="form-control" id="massPangkat" placeholder="III/a, dst">
                         </div>
+                        @if($canEditWorkUnit)
                         <div class="col-md-6">
                             <label class="form-label">Satuan Kerja</label>
                             <select class="form-select" id="massWorkUnit">
-                                <option value="">— Biarkan —</option>
+                                <option value="">— Pilih Satuan Kerja —</option>
                                 @foreach($workUnits as $wu)
                                     <option value="{{ $wu->id }}">{{ $wu->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+                        @endif
                     </div>
                 </div>
                 <div class="modal-footer">

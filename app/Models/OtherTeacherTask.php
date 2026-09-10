@@ -23,6 +23,7 @@ class OtherTeacherTask extends Model
         'school_id',
         'academic_year_id',
         'study_group_id',
+        'work_unit_id',
         'task_name',
         'task_code',
         'weekly_hours',
@@ -53,5 +54,10 @@ class OtherTeacherTask extends Model
     public function studyGroup(): BelongsTo
     {
         return $this->belongsTo(StudyGroup::class);
+    }
+
+    public function workUnit(): BelongsTo
+    {
+        return $this->belongsTo(WorkUnit::class);
     }
 }

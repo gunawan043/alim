@@ -44,7 +44,7 @@ class PermissionRoleSeeder extends Seeder
                 return;
             }
             $rows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $roleUuid], $ids);
-            DB::table('role_has_permissions')->insert($rows);
+            DB::table('role_has_permissions')->insertOrIgnore($rows);
         };
 
         // Super Admin — seluruh permission sistem
@@ -56,7 +56,7 @@ class PermissionRoleSeeder extends Seeder
                 ->toArray();
             if (! empty($allPermIds)) {
                 $rows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $superRoleId], $allPermIds);
-                DB::table('role_has_permissions')->insert($rows);
+                DB::table('role_has_permissions')->insertOrIgnore($rows);
             }
         }
 
@@ -88,7 +88,7 @@ class PermissionRoleSeeder extends Seeder
             'gtk_contact_view', 'gtk_contact_edit',
             'gtk_address_view', 'gtk_address_edit',
             // Kebab-case aliases (dipakai di views/controllers)
-            'gtk-role', 'gtk-create', 'gtk-update', 'gtk-delete',
+            'gtk-role', 'gtk-create', 'gtk-delete',
             'profile_view', 'profile_edit',
             'laporan_view', 'laporan_export',
             'view_global_school_data',
@@ -148,6 +148,7 @@ class PermissionRoleSeeder extends Seeder
             'menu-coordinator-rumpun-sidebar',
             'menu-waka-kurikulum-sidebar',
             'gtk_view', 'gtk_detail_view', 'gtk_employment_view',
+            'gtk-update',
             'satpen_view',
             'school_view',
             'grade_level_view',
@@ -375,7 +376,7 @@ class PermissionRoleSeeder extends Seeder
                     ->count();
                 if ($existing === 0) {
                     $putraRows = array_map(fn ($pid) => ['permission_id' => $pid, 'role_id' => $putraRoleId], $putraPermIds);
-                    DB::table('role_has_permissions')->insert($putraRows);
+                    DB::table('role_has_permissions')->insertOrIgnore($putraRows);
                 }
             }
         }
@@ -760,6 +761,9 @@ class PermissionRoleSeeder extends Seeder
             'menu-unit-rumah-tangga-sidebar',
             'menu-admin-sarpras-sidebar',
             'menu-sarpras-sidebar',
+            'menu-gtk-sidebar',
+            'gtk_view', 'gtk_detail_view',
+            'gtk-update',
             'profile_view', 'profile_edit',
             'inventory_view', 'inventory_create', 'inventory_edit',
             'sarpras_all_access',

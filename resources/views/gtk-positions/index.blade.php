@@ -67,6 +67,16 @@
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <select name="satuan_kerja" class="form-control">
+                                <option value="">Semua Satuan Kerja</option>
+                                @foreach($workUnits as $wu)
+                                    <option value="{{ $wu->id }}" {{ request('satuan_kerja')==$wu->id ? 'selected' : '' }}>
+                                        {{ $wu->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <select name="jabatan_id" class="form-control">
                                 <option value="">Semua Jabatan</option>
                                 @foreach($jabatans as $jabatan)
@@ -110,6 +120,7 @@
                                     <th>NIP</th>
                                     <th>Jenis GTK</th>
                                     <th>Jabatan Saat Ini</th>
+                                    <th>Satuan Kerja</th>
                                     <th>Status Kepegawaian</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -134,6 +145,16 @@
                                         <td><span class="badge bg-soft-primary text-primary">{{ $gtk->employment?->jenis_gtk ?? '-' }}</span></td>
                                         <td>
                                             <span class="position-current">{{ $gtk->employment?->jabatan ?? '<span class="text-muted">Belum ada</span>' }}</span>
+                                        </td>
+                                        <td>
+                                            @if($gtk->gtkWorkUnits->isNotEmpty())
+                                                @foreach($gtk->gtkWorkUnits as $gu)
+                                                    @php $wu = \App\Models\WorkUnit::find($gu->work_unit_id); @endphp
+                                                    <span class="badge bg-secondary-subtle text-secondary">{{ $wu->name ?? 'N/A' }}</span>
+                                                @endforeach
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="badge bg-soft-{{ $gtk->employment?->status_kepegawaian == 'PTY' || $gtk->employment?->status_kepegawaian == 'GTY' ? 'success' : 'secondary' }} text-{{ $gtk->employment?->status_kepegawaian == 'PTY' || $gtk->employment?->status_kepegawaian == 'GTY' ? 'success' : 'secondary' }}">
