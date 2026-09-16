@@ -62,11 +62,44 @@ function isActiveSatpam($routeName, $pattern) {
 @endif
 
 <li class="nav-item">
+    @php
+        $__satpamAsramaUuid = request()->route()?->parameters()['asramaUuid'] ?? null;
+        if (empty($__satpamAsramaUuid)) {
+            $__firstAsrama = \App\Models\Dormitory::where('is_active', true)->first();
+            $__satpamAsramaUuid = $__firstAsrama?->id;
+        }
+    @endphp
     <a class="nav-link menu-link{{ isActiveSatpam($currentRoute, 'user.asrama.residents.') ? ' active' : '' }}"
-       href="{{ route('user.asrama.residents.index', ['userId' => $userId]) }}">
+       href="{{ $__satpamAsramaUuid ? route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $__satpamAsramaUuid]) : route('root') }}">
         <i class="ri-hotel-line"></i>
         <span>Daftar Penghuni Asrama</span>
     </a>
 </li>
+
+{{-- GTK Section (Kepala) --}}
+@if($isKepala)
+<li class="menu-title"><span>GTK</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveSatpam($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i>
+        <span>Tugas Tambahan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveSatpam($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveSatpam($currentRoute, 'user.gtk-position-proposals.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-up-line"></i>
+        <span>Pengajuan Jabatan</span>
+    </a>
+</li>
+@endif
 
 @include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveSatpam'])

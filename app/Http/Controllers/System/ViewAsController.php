@@ -58,6 +58,8 @@ class ViewAsController extends Controller
         $payload = $request->validate([
             'role' => ['nullable', 'string', 'max:191'],
             'user_id' => ['nullable', 'string', 'max:64'],
+            'school_id' => ['nullable', 'string', 'max:64'],
+            'dormitory_id' => ['nullable', 'string', 'max:64'],
         ]);
 
         $roleName = $payload['role'] ?? null;
@@ -103,8 +105,18 @@ class ViewAsController extends Controller
         }
 
         $ctxSchool = $request->input('school_id');
+        $ctxDormitory = $request->input('dormitory_id');
+        $ctx = [];
         if (is_string($ctxSchool) && $ctxSchool !== '') {
-            $this->viewAs->setCurrentViewContext(['school_id' => $ctxSchool]);
+            $ctx['school_id'] = $ctxSchool;
+        }
+        if (is_string($ctxDormitory) && $ctxDormitory !== '') {
+            $ctx['dormitory_id'] = $ctxDormitory;
+        }
+        if (! empty($ctx)) {
+            $this->viewAs->setCurrentViewContext($ctx);
+        } else {
+            $this->viewAs->clearCurrentViewContext();
         }
 
         return redirect($this->backUrl($request))

@@ -48,6 +48,18 @@ class StructuralPosition extends Model
     }
 
     /**
+     * Domain relationship.
+     *
+     * The domain is the workspace-level permission bucket this position belongs to.
+     * During the cutover period, role_id remains valid; domain_id is the canonical
+     * permission-grant key.
+     */
+    public function domain()
+    {
+        return $this->belongsTo(Domain::class, 'domain_id');
+    }
+
+    /**
      * Active structural positions scope.
      */
     public function scopeActive($query)

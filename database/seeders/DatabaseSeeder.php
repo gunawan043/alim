@@ -20,6 +20,11 @@ class DatabaseSeeder extends Seeder
             SystemSuperAdminSeeder::class,  // permanent system admin — runs AFTER roles/permissions
             PermissionRoleSeeder::class,   // assign permissions to roles
 
+            // Domain layer (added Sep 2026) — must run after RoleSeeder + PermissionRoleSeeder
+            DomainSeeder::class,                        // 14 official domains
+            DomainPermissionSeeder::class,              // mirror role permissions into domain matrix
+            SuperAdminDomainPermissionSeeder::class,   // super admin gets all permissions
+
             WilayahSeeder::class,          // provinces/cities/districts/villages (FK target for GTK)
             DivisiSeeder::class,           // master divisi — harus duluan sebelum WorkUnitSeeder
             WorkUnitSeeder::class,         // satuan kerja (linked to divisi) — harus duluan sebelum SchoolSeeder

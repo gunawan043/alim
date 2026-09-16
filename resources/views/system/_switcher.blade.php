@@ -65,7 +65,7 @@
                         <input type="hidden" name="redirect_to" value="{{ $__redirectTo }}">
                         <div class="mb-2">
                             <label class="form-label small">Role</label>
-                            <select name="role" class="form-select form-select-sm">
+                            <select name="role" class="form-select form-select-sm" id="vas-role-select">
                                 <option value="">-- Off (System Admin mode) --</option>
                                 @foreach (($systemRoles ?? collect()) as $role)
                                     <option value="{{ $role->name }}"
@@ -76,17 +76,35 @@
                             </select>
                         </div>
 
-                        @if (! empty($schools))
-                            <div class="mb-2">
-                                <label class="form-label small">School Context (optional)</label>
-                                <select name="school_id" class="form-select form-select-sm">
-                                    <option value="">-- none --</option>
-                                    @foreach ($schools as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        @endif
+                        <div id="vas-school-ctx" class="mb-2 d-none">
+                            <label class="form-label small">School Context (optional)</label>
+                            <select name="school_id" class="form-select form-select-sm">
+                                <option value="">-- none --</option>
+                                @foreach (($schools ?? collect()) as $s)
+                                    <option value="{{ $s->id }}"
+                                        {{ (app(\App\Services\ViewAsService::class)->getCurrentViewContext()['school_id'] ?? '') === $s->id ? 'selected' : '' }}>
+                                        {{ $s->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="vas-asrama-ctx" class="mb-2 d-none">
+                            <label class="form-label small">Asrama Context (optional)</label>
+                            @php
+                                $__dormitories = \App\Models\Dormitory::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+                                $__curDormitoryId = app(\App\Services\ViewAsService::class)->getCurrentViewContext()['dormitory_id'] ?? '';
+                            @endphp
+                            <select name="dormitory_id" class="form-select form-select-sm">
+                                <option value="">-- none --</option>
+                                @foreach ($__dormitories as $d)
+                                    <option value="{{ $d->id }}"
+                                        {{ $__curDormitoryId === $d->id ? 'selected' : '' }}>
+                                        {{ $d->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
                         <button type="submit" class="btn btn-primary btn-sm w-100">Apply Role</button>
                     </form>
@@ -145,36 +163,52 @@
         (function() {
             const switcher = document.querySelector('[data-view-as-switcher]');
             if (!switcher) return;
+
+            // Role-based context visibility
+            const roleSelect = switcher.querySelector('#vas-role-select');
+            const schoolCtx = switcher.querySelector('#vas-school-ctx');
+            const asramaCtx = switcher.querySelector('#vas-asrama-ctx');
+
+            function toggleContextVisibility() {
+                if (!roleSelect || !schoolCtx || !asramaCtx) return;
+                const role = roleSelect.value;
+                schoolCtx.classList.toggle('d-none', role !== 'Satuan Pendidikan');
+                asramaCtx.classList.toggle('d-none', role !== 'Asrama');
+            }
+
+            if (roleSelect) {
+                roleSelect.addEventListener('change', toggleContextVisibility);
+                toggleContextVisibility();
+            }
+
+            // User search for Login As
             const search = switcher.querySelector('[data-user-search]');
             const list = switcher.querySelector('[data-user-list]');
-            if (!search || !list) return;
-
-            const debounce = (fn, ms) => {
-                let t;
-                return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-            };
-
-            const fetchUsers = debounce(async (q) => {
-                try {
-                    const r = await fetch(`${search.dataset.endpoint}?q=${encodeURIComponent(q||'')}`, {
-                        headers: {'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
-                    });
-                    const data = await r.json();
-                    const current = list.value;
-                    list.innerHTML = '<option value="">-- Pilih user --</option>';
-                    (data.users || []).forEach(u => {
-                        const opt = document.createElement('option');
-                        opt.value = u.id;
-                        opt.textContent = u.name + ' — ' + (u.email ? u.email + ' — ' : '') + (u.roles && u.roles.length ? u.roles.join(', ') : 'no role');
-                        list.appendChild(opt);
-                    });
-                    if (current) list.value = current;
-                } catch (e) { console.error(e); }
-            }, 250);
-
-            search.addEventListener('input', e => fetchUsers(e.target.value));
-            // initial load
-            fetchUsers('');
+            if (search && list) {
+                const debounce = (fn, ms) => {
+                    let t;
+                    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+                };
+                const fetchUsers = debounce(async (q) => {
+                    try {
+                        const r = await fetch(`${search.dataset.endpoint}?q=${encodeURIComponent(q||'')}`, {
+                            headers: {'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+                        });
+                        const data = await r.json();
+                        const current = list.value;
+                        list.innerHTML = '<option value="">-- Pilih user --</option>';
+                        (data.users || []).forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = u.name + ' — ' + (u.email ? u.email + ' — ' : '') + (u.roles && u.roles.length ? u.roles.join(', ') : 'no role');
+                            list.appendChild(opt);
+                        });
+                        if (current) list.value = current;
+                    } catch (e) { console.error(e); }
+                }, 250);
+                search.addEventListener('input', e => fetchUsers(e.target.value));
+                fetchUsers('');
+            }
         })();
         </script>
     @endonce

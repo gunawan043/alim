@@ -331,3 +331,48 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
         </ul>
     </div>
 </li>
+
+{{-- ═══════════════════════════════════════════════════════════════
+     SECTION: GTK — hanya untuk Kepala
+     ═══════════════════════════════════════════════════════════════
+--}}
+@php
+$currentUserJob = $currentUser->gtkEmployment?->jabatan;
+$isKepala = in_array($currentUserJob, [
+    'Kepala Sekolah',
+    'Kepala Sarpras',
+    'Kepala Perpustakaan',
+    'Kepala Unit Pelayanan Gizi',
+    'Kepala Unit Rumah Tangga',
+    'Kepala Keuangan',
+    'Kepala Teknologi Informasi',
+    'Kepala Departemen Tahfidz',
+    'Kepala Departemen Bahasa',
+    'Kepala Departemen Kesiswaan',
+    'Kepala Asrama',
+]);
+@endphp
+@if($isKepala)
+<li class="menu-title"><span>GTK</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i>
+        <span>Tugas Tambahan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'user.gtk-position-proposals.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-up-line"></i>
+        <span>Pengajuan Jabatan</span>
+    </a>
+</li>
+@endif

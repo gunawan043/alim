@@ -220,6 +220,7 @@ class JenisGtkSeeder extends Seeder
                         'kategori' => 'Jabatan',
                         'description' => null,
                         'role_id' => $roleId,
+                        'domain_id' => DB::table('domains')->where('code', $this->getDomainCode($jData['role']))->value('id'),
                         'urutan' => $order + 1,
                         'is_active' => true,
                     ]
@@ -246,5 +247,26 @@ class JenisGtkSeeder extends Seeder
         }
 
         $this->command->info('✅ JenisGtkSeeder selesai dipisah.');
+    }
+
+    private function getDomainCode(string $roleName): ?string
+    {
+        return match ($roleName) {
+            'Pimpinan' => 'pimpinan',
+            'Satuan Pendidikan' => 'satuan_pendidikan',
+            'Asrama' => 'asrama',
+            'UKS' => 'uks',
+            'Departemen Tahfidz' => 'departemen_tahfidz',
+            'Departemen Bahasa' => 'departemen_bahasa',
+            'Perpustakaan' => 'perpustakaan',
+            'Satuan Keamanan' => 'satuan_keamanan',
+            'Humas Personalia' => 'humas_personalia',
+            'Unit Rumah Tangga' => 'unit_rumah_tangga',
+            'Keuangan' => 'keuangan',
+            'Teknologi Informasi' => 'teknologi_informasi',
+            'Unit Pelayanan Gizi' => 'unit_pelayanan_gizi',
+            'Super Admin' => 'super_admin',
+            default => null,
+        };
     }
 }

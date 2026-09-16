@@ -80,6 +80,10 @@ class SchoolContextMiddleware
             if ($viewAsRole !== null) {
                 $ctx = $viewAs->getCurrentViewContext();
                 $ctxSchoolId = $ctx['school_id'] ?? null;
+                $ctxDormitoryId = $ctx['dormitory_id'] ?? null;
+                if ($ctxDormitoryId) {
+                    $request->attributes->set('viewAsDormitoryId', $ctxDormitoryId);
+                }
                 if ($ctxSchoolId) {
                     $school = School::find($ctxSchoolId);
                     $request->attributes->set('schoolContextId', $school?->id);

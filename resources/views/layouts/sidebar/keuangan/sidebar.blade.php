@@ -52,6 +52,27 @@ function isActiveKeuangan($routeName, $pattern) {
         </ul>
     </div>
 </li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveKeuangan($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i>
+        <span>Tugas Tambahan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveKeuangan($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveKeuangan($currentRoute, 'user.gtk-position-proposals.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-up-line"></i>
+        <span>Pengajuan Jabatan</span>
+    </a>
+</li>
 @endif
 
 <li class="menu-title"><span>Keuangan</span></li>
@@ -69,14 +90,6 @@ function isActiveKeuangan($routeName, $pattern) {
        href="{{ route('user.laporan.index', ['userId' => $userId]) }}">
         <i class="ri-bar-chart-2-line"></i>
         <span>Laporan Keuangan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveKeuangan($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
-       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
-        <i class="ri-add-circle-line"></i>
-        <span>Tugas Tambahan</span>
     </a>
 </li>
 

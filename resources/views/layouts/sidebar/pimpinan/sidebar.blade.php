@@ -112,8 +112,15 @@ function isActivePimpinan($routeName, $pattern) {
 <li class="menu-title"><span>Pengasuhan</span></li>
 
 <li class="nav-item">
+    @php
+        $__pimpinanAsramaUuid = request()->route()?->parameters()['asramaUuid'] ?? null;
+        if (empty($__pimpinanAsramaUuid)) {
+            $__firstAsrama = \App\Models\Dormitory::where('is_active', true)->first();
+            $__pimpinanAsramaUuid = $__firstAsrama?->id;
+        }
+    @endphp
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.asrama.') ? ' active' : '' }}"
-       href="{{ route('user.asrama.residents.index', ['userId' => $userId]) }}">
+       href="{{ $__pimpinanAsramaUuid ? route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $__pimpinanAsramaUuid]) : route('root') }}">
         <i class="ri-hotel-line"></i>
         <span>Daftar Penghuni Asrama</span>
     </a>

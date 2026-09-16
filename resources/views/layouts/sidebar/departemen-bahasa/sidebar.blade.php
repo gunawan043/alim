@@ -56,13 +56,20 @@ function isActiveBahasa($routeName, $pattern) {
 </li>
 @endif
 
-{{-- Tugas Tambahan --}}
+{{-- Tugas Tambahan & Jabatan --}}
 @if($isWaka || $isGuru || $isWaliKelas)
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveBahasa($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
        href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
         <i class="ri-add-circle-line"></i>
         <span>Tugas Tambahan</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveBahasa($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
     </a>
 </li>
 @endif

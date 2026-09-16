@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
@@ -459,6 +460,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Active structural assignments for this user.
+     */
+    public function activeAssignments()
+    {
+        return StructuralAssignment::active()->where('user_id', $this->id)->with(['position.domain'])->get();
+    }
+
+    /**
      * @return list<string> Sorted, unique role identifiers.
      */
     public function effectiveRoles(): array
@@ -512,5 +521,75 @@ class User extends Authenticatable
         }
 
         return (bool) array_intersect($roles, self::DORMITORY_ROLES);
+    }
+
+    /**
+     * UUIDs of domains active for this user, derived from their
+     * StructuralAssignment rows (not from Spatie roles).
+     *
+     * @return list<string>
+     */
+    public function activeDomainIds(): array
+    {
+        return StructuralAssignment::active()
+            ->where('user_id', $this->id)
+            ->with(['position.domain'])
+            ->get()
+            ->pluck('position.domain.id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Active Domain models for this user.
+     *
+     * @return Collection<int, Domain>
+     */
+    public function activeDomains()
+    {
+        return Domain::whereIn('id', $this->activeDomainIds())->get();
+    }
+
+    /**
+     * Effective permission names = direct Spatie permissions ∪ union of
+     * all active assignment domain permissions.
+     *
+     * @return list<string>
+     */
+    public function effectivePermissionNames(): array
+    {
+        $directPerms = [];
+        try {
+            $directPerms = $this->getAllPermissions()->pluck('name')->toArray();
+        } catch (\Throwable) {
+            $directPerms = [];
+        }
+
+        $domainPerms = [];
+        foreach ($this->activeDomains() as $domain) {
+            foreach ($domain->permissions as $perm) {
+                $domainPerms[] = $perm->name;
+            }
+        }
+
+        $union = array_unique(array_merge($directPerms, $domainPerms));
+        sort($union);
+
+        return $union;
+    }
+
+    /**
+     * Check if user has a specific permission, considering both direct Spatie
+     * grants AND the union of active assignment domain permissions.
+     */
+    public function hasDomainPermission(string $permission): bool
+    {
+        if ($this->can($permission)) {
+            return true;
+        }
+
+        return in_array($permission, $this->effectivePermissionNames(), true);
     }
 }

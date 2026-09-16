@@ -9,7 +9,17 @@ $routeParams = $routeInstance ? $routeInstance->parameters() : [];
 $asramaUuid = $routeParams['asramaUuid'] ?? null;
 $hasAsramaContext = !empty($asramaUuid);
 
-if (!$hasAsramaContext && $currentRoute === 'user.asrama.my-profile') {
+// Also check View-As context (dormitory_id set by SA via switcher)
+if (!$hasAsramaContext) {
+    $viewAsDormitoryId = request()->attributes->get('viewAsDormitoryId');
+    if ($viewAsDormitoryId) {
+        $asramaUuid = $viewAsDormitoryId;
+        $hasAsramaContext = true;
+    }
+}
+
+// Fallback: first active dormitory when on the my-profile page or role-only view
+if (!$hasAsramaContext) {
     $firstAsrama = \App\Models\Dormitory::where('is_active', true)->first();
     if ($firstAsrama) {
         $asramaUuid = $firstAsrama->id;
@@ -245,5 +255,44 @@ function isActiveAsr($routeName, $pattern) {
         <span>Data Mahrom</span>
     </a>
 </li>
+
+{{-- ═══════════════════════════════════════════════════════════════
+     SECTION: GTK — hanya Kepala Asrama
+     ═══════════════════════════════════════════════════════════════
+--}}
+@php
+$currentUserJob = $currentUser->gtkEmployment?->jabatan;
+$isKepalaAsrama = in_array($currentUserJob, [
+    'Kepala Sekolah',
+    'Kepala Asrama',
+    'Kepala Departemen Tahfidz',
+    'Kepala Departemen Bahasa',
+    'Kepala Departemen Kesiswaan',
+]);
+@endphp
+@if($isKepalaAsrama)
+<li class="menu-title"><span>GTK</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i>
+        <span>Tugas Tambahan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.gtk-position-proposals.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-up-line"></i>
+        <span>Pengajuan Jabatan</span>
+    </a>
+</li>
+@endif
 
 @include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveAsr'])

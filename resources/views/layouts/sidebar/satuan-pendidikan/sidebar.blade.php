@@ -290,6 +290,13 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
 </li>
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.satuan-kerja.other-tasks') ? ' active' : '' }}"
+       href="{{ $primaryWorkUnitId ? route('user.satuan-kerja.other-tasks', ['workUnitId' => $primaryWorkUnitId, 'userId' => $userId]) : '#' }}">
+        <i class="ri-user-settings-line"></i>
+        <span>Tugas Tambahan Guru</span>
+    </a>
+</li>
+<li class="nav-item">
     <a class="nav-link menu-link" href="#sumatif" data-bs-toggle="collapse" role="button"
        aria-expanded="false" aria-controls="sumatif">
         <i class="ri-file-edit-line"></i>
@@ -373,7 +380,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </div>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'user.ekstrakurikuler.') || isActiveSP($currentRoute, 'ekstrakurikuler.') ? ' active' : '' }}" href="{{ route('user.ekstrakurikuler.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveSP($currentRoute, 'waka.ekstrakurikuler.') ? ' active' : '' }}" href="{{ route('waka.ekstrakurikuler.index') }}">
         <i class="ri-basketball-line"></i>
         <span>Ekstrakurikuler</span>
     </a>
@@ -409,8 +416,8 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
     <div class="collapse menu-dropdown" id="surat_menyurat">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link{{ isActiveSP($currentRoute, 'user.surat-keluar.') ? ' active' : '' }}" href="{{ route('user.surat-keluar.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Surat Keluar</a></li>
-            <li class="nav-item"><a class="nav-link{{ isActiveSP($currentRoute, 'user.surat-masuk.') ? ' active' : '' }}" href="{{ route('user.surat-masuk.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Surat Masuk</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSP($currentRoute, 'waka.surat-keluar.') ? ' active' : '' }}" href="{{ route('waka.surat-keluar.index') }}" style="font-size:0.85rem">Surat Keluar</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActiveSP($currentRoute, 'waka.surat-masuk.') ? ' active' : '' }}" href="{{ route('waka.surat-masuk.index') }}" style="font-size:0.85rem">Surat Masuk</a></li>
         </ul>
     </div>
 </li>

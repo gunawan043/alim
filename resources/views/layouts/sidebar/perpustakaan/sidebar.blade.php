@@ -66,4 +66,44 @@ function isActivePerpus($routeName, $pattern) {
     </a>
 </li>
 
+{{-- ═══════════════════════════════════════════════════════════════
+     SECTION: GTK — hanya Kepala
+     ═══════════════════════════════════════════════════════════════
+--}}
+@php
+$currentUserJob = $currentUser->gtkEmployment?->jabatan;
+$isKepala = in_array($currentUserJob, [
+    'Kepala Sekolah',
+    'Kepala Perpustakaan',
+    'Kepala Departemen Tahfidz',
+    'Kepala Departemen Bahasa',
+    'Kepala Departemen Kesiswaan',
+    'Kepala Asrama',
+]);
+@endphp
+@if($isKepala)
+<li class="menu-title"><span>GTK</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePerpus($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i>
+        <span>Tugas Tambahan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePerpus($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
+        <i class="ri-briefcase-line"></i>
+        <span>Jabatan GTK</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePerpus($currentRoute, 'user.gtk-position-proposals.') ? ' active' : '' }}"
+       href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
+        <i class="ri-arrow-up-line"></i>
+        <span>Pengajuan Jabatan</span>
+    </a>
+</li>
+@endif
+
 @include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActivePerpus'])
