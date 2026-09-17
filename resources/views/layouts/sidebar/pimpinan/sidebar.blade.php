@@ -51,7 +51,7 @@ function isActivePimpinan($routeName, $pattern) {
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.schools.') ? ' active' : '' }}"
-       href="{{ route('user.schools-global.index', ['userId' => $userId]) }}">
+       href="{{ route('user.schools.index', ['userId' => $userId]) }}">
         <i class="ri-government-line"></i>
         <span>Satuan Pendidikan</span>
     </a>
@@ -134,4 +134,3 @@ function isActivePimpinan($routeName, $pattern) {
     </a>
 </li>
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActivePimpinan'])

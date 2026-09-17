@@ -295,4 +295,3 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 @endif
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveAsr'])

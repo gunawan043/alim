@@ -157,4 +157,3 @@ function isActiveBahasa($routeName, $pattern) {
 </li>
 @endif
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveBahasa'])

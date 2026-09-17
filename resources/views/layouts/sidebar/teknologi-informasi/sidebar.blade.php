@@ -35,11 +35,13 @@ function isActiveTI($routeName, $pattern) {
 <li class="menu-title"><span>Sistem & Jaringan</span></li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveTI($currentRoute, 'user.systems.') || isActiveTI($currentRoute, 'user.network.') ? ' active' : '' }}"
-       href="{{ route('root') }}">
+    @if(canPermission('super-admin-only'))
+    <a class="nav-link menu-link{{ $currentRoute === 'system.monitoring' ? ' active' : '' }}"
+       href="{{ route('system.monitoring') }}">
         <i class="ri-server-line"></i>
         <span>Monitoring Sistem</span>
     </a>
+    @endif
 </li>
 
 <li class="nav-item">
@@ -93,4 +95,3 @@ function isActiveTI($routeName, $pattern) {
 {{-- Master Data --}}
 @include('layouts.sidebar.master.sidebar')
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveTI'])

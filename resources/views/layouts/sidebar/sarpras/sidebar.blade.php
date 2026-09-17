@@ -3,9 +3,10 @@
 $currentRoute = request()->route() ? request()->route()->getName() : '';
 $currentUser = auth()->user();
 $userId = $currentUser->id;
-$isSarprasAdmin = $currentUser->hasRole('Admin Sarpras') || $currentUser->hasPermissionTo('sarpras_all_access');
-$isTU = $currentUser->hasRole('Admin Tata Usaha') || $currentUser->hasRole('Satuan Pendidikan');
-$isSuperAdmin = $currentUser->isSystemAdmin() || $currentUser->isSuperAdmin();
+@php
+$isSarprasAdmin = $currentUser->canPermission('sarpras_all_access');
+$isTU = $currentUser->hasRole('Satuan Pendidikan');
+$isSuperAdmin = canPermission('super-admin-only');
 $isAdmin = $isSarprasAdmin || $isTU || $isSuperAdmin;
 
 if (! function_exists('isActiveSarpras')) {

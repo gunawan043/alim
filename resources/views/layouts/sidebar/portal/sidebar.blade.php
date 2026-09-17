@@ -56,4 +56,3 @@ function isActivePortal($routeName, $pattern) {
     </a>
 </li>
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActivePortal'])

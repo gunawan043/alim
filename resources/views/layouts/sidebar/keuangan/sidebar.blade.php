@@ -93,4 +93,3 @@ function isActiveKeuangan($routeName, $pattern) {
     </a>
 </li>
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveKeuangan'])

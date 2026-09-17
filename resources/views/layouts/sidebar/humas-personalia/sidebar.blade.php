@@ -45,7 +45,7 @@ function isActiveHumas($routeName, $pattern) {
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.index' ? ' active' : '' }}" href="{{ route('user.gtk.index', ['userId' => $userId]) }}">Semua GTK</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indexguru' ? ' active' : '' }}" href="{{ route('user.gtk.indexguru', ['userId' => $userId]) }}">Guru</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indextendik' ? ' active' : '' }}" href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}">Tendik</a></li>
-            @if($currentUser->hasRole('Super Admin') || $currentUser->hasRole('Humas Personalia'))
+            @if(canPermission('gtk-update'))
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.gtk.massal' ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}"
@@ -140,4 +140,3 @@ function isActiveHumas($routeName, $pattern) {
 {{-- Master Data --}}
 @include('layouts.sidebar.master.sidebar')
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveHumas'])

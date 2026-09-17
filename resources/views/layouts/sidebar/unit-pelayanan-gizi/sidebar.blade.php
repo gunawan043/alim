@@ -95,4 +95,3 @@ function isActiveGizi($routeName, $pattern) {
     </a>
 </li>
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveGizi'])

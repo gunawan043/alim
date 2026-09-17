@@ -97,7 +97,7 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
                    href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">Tendik</a>
             </li>
-            @if($currentUser->hasRole('Satuan Pendidikan') || $currentUser->hasRole('Unit Rumah Tangga'))
+            @if(canPermission('gtk-update'))
             <li class="nav-item">
                 <a class="nav-link{{ $currentRoute === 'user.gtk.massal' ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}"
@@ -386,7 +386,8 @@ $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
     </a>
 </li>
 
-@include('layouts.sidebar.uks.sidebar', ['isActiveFn' => 'isActiveSP'])
+
+
 
 <li class="menu-title"><span>Administrasi</span></li>
 <li class="nav-item">

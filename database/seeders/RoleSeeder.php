@@ -49,10 +49,35 @@ class RoleSeeder extends Seeder
             }
         }
 
-        // Hapus role yang tidak diperlukan (Admin Pendidikan, ATS)
-        Role::where('guard_name', 'web')
-            ->whereIn('name', ['Admin Pendidikan', 'ATS'])
-            ->delete();
+        // Hapus role duplikat lama (nama singkat yang sudah digabung ke role baru)
+        $legacyAliases = [
+            'Pendidikan' => 'Satuan Pendidikan',
+            'Tahfidz' => 'Departemen Tahfidz',
+            'Bahasa' => 'Departemen Bahasa',
+            'Rumah Tangga' => 'Unit Rumah Tangga',
+            'Gizi Logistik' => 'Unit Pelayanan Gizi',
+            'Keamanan' => 'Satuan Keamanan',
+        ];
+
+        foreach ($legacyAliases as $oldName => $newName) {
+            $oldRole = Role::where('guard_name', 'web')->where('name', $oldName)->first();
+            if ($oldRole) {
+                // Pindahkan relasi user jika ada
+                $newRole = Role::where('guard_name', 'web')->where('name', $newName)->first();
+                if ($newRole) {
+                    \DB::table('model_has_roles')
+                        ->where('role_id', $oldRole->id)
+                        ->update(['role_id' => $newRole->id]);
+                }
+                $oldRole->delete();
+                $this->command->info("  ✅ Menghapus role lama '{$oldName}' (diganti '{$newName}')");
+            }
+        }
+
+        // Hapus role Admin Pendidikan, Admin Sarpras, Admin Asrama, Admin Tata Usaha, Wali Kelas, Kepala Sekolah, Kepala Asrama, Kepala UKS
+        $legacyRoles = ['Admin Pendidikan', 'Admin Sarpras', 'Admin Asrama', 'Admin Tata Usaha',
+            'Wali Kelas', 'Kepala Sekolah', 'Kepala Asrama', 'Kepala UKS', 'ATS'];
+        Role::where('guard_name', 'web')->whereIn('name', $legacyRoles)->delete();
 
         $this->command->info('✅ RoleSeeder selesai. Total '.Role::where('guard_name', 'web')->count().' role web.');
     }
