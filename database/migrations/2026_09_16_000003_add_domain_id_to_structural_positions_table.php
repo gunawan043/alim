@@ -59,8 +59,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('structural_positions', function (Blueprint $table) {
-            $table->dropIndex('domain_id');
             $table->dropForeign(['domain_id']);
+            $table->dropIndex('structural_positions_domain_id_index');
             $table->dropColumn('domain_id');
         });
     }
