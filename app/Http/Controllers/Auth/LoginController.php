@@ -40,13 +40,20 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'identity' => 'required|string|min:3',
             'password' => 'required|min:6',
         ]);
 
-        $email = strtolower(trim($request->email));
+        $identity = trim($request->identity);
         $ip = $request->ip();
-        $userFound = User::where('email', $email)->exists();
+
+        // Cari user berdasarkan email ATAU nupy
+        $user = User::where('email', strtolower($identity))
+            ->orWhereHas('employment', fn ($q) => $q->whereRaw("REPLACE(nupy, '-', '') = REPLACE(?, '-', '')", [$identity]))
+            ->first();
+
+        $email = $user ? $user->email : null;
+        $userFound = (bool) $user;
 
         // ── Cek cooldowns ─────────────────────────────────────────────────
         $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
@@ -83,9 +90,17 @@ class LoginController extends Controller
         }
 
         // ── Autentikasi ───────────────────────────────────────────────────
-        $credentials = $request->only('email', 'password');
+        if (! $user) {
+            Log::warning('Login failed: user not found', ['identity' => $identity, 'ip' => $ip]);
+            $this->trackIpAttempt($ip, null, $identity);
 
-        if (Auth::attempt($credentials, $request->filled('remember'))) {
+            return $this->showLoginWithError(
+                $request,
+                'Email atau NUPY tidak ditemukan.',
+            );
+        }
+
+        if (Auth::attempt(['email' => $user->email, 'password' => $request->password], $request->filled('remember'))) {
             $user = Auth::user();
 
             // Reset semua counter sukses
@@ -104,25 +119,12 @@ class LoginController extends Controller
         }
 
         // ── Login Gagal ───────────────────────────────────────────────────
-        Log::warning('Login failed', ['email' => $email, 'ip' => $ip]);
+        Log::warning('Login failed', ['identity' => $identity, 'ip' => $ip]);
 
-        if (! $userFound) {
-            // Email tidak ada di sistem → track per-IP saja (brute force)
-            $this->trackIpAttempt($ip, null, $email);
-
-            return $this->showLoginWithError(
-                $request,
-                'Email atau password salah.'
-            );
-        }
-
-        $user = User::where('email', $email)->first();
-
-        // Reset OTP record if exists
         $user->passwordOtps()->latest()->delete();
         $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
 
-        // A. Attemp 5: cooldown 60 detik baik email ada atau tidak
+        // A. Attempt 5: cooldown 60 detik
         $attempts = ($ipRecord ? $ipRecord->attempts : 0);
         if ($attempts + 1 == 5) {
             if ($ipRecord) {
@@ -132,7 +134,7 @@ class LoginController extends Controller
             } else {
                 FailedLoginAttempt::create([
                     'ip_address' => $ip,
-                    'email' => $email,
+                    'email' => $identity,
                     'attempts' => 5,
                     'last_attempt_at' => now(),
                 ]);
@@ -146,7 +148,7 @@ class LoginController extends Controller
             );
         }
 
-        // B. Attempt 6: reset password diminta + email notifikasi
+        // B. Attempt 6: notifikasi akun terancam
         if ($user->failed_login_attempts + 1 >= self::EMAIL_COMPROMISED_THRESHOLD && $user->failed_login_attempts < self::EMAIL_COMPROMISED_THRESHOLD) {
             Mail::to($user->email)->queue(new AccountCompromisedMail(
                 $user->name,
@@ -156,15 +158,15 @@ class LoginController extends Controller
             ));
             Log::warning('Account compromised threshold reached', [
                 'user_id' => $user->id,
-                'email' => $email,
+                'identity' => $identity,
                 'ip' => $ip,
                 'attempts' => $user->failed_login_attempts + 1,
             ]);
         }
 
-        // C. Attempt 9: email benar → akun dikunci; email salah → IP diblokir
+        // C. Attempt 9: akun dikunci
         $user->incrementFailedLoginAttempts();
-        $this->trackIpAttempt($ip, $user->failed_login_attempts, $email);
+        $this->trackIpAttempt($ip, $user->failed_login_attempts, $identity);
 
         if ($user->failed_login_attempts >= self::EMAIL_MAX_ATTEMPTS) {
             Mail::to($user->email)->send(new AccountLockedMail(
@@ -185,7 +187,7 @@ class LoginController extends Controller
 
             Log::critical('Account locked due to failed login attempts', [
                 'user_id' => $user->id,
-                'email' => $email,
+                'identity' => $identity,
                 'ip' => $ip,
                 'attempts' => $user->failed_login_attempts,
             ]);
@@ -201,7 +203,7 @@ class LoginController extends Controller
         // Middle-range failures (4, 5, 7, 8) → just error message
         return $this->showLoginWithError(
             $request,
-            'Email atau password salah.'
+            'Email atau NUPY salah.'
         );
     }
 
@@ -246,11 +248,9 @@ class LoginController extends Controller
         int $seconds = 0,
         string $errorType = 'login_failed'
     ): mixed {
-        // Gunakan redirect ke /login langsung agar tidak ada redirect loop.
-        // Jangan pakai redirect()->back() karena bisa loop saat countdown aktif.
         return redirect('/login')
             ->withErrors([$errorType => $message])
-            ->withInput($request->only('email'))
+            ->withInput(['identity' => $request->identity])
             ->with([
                 'lockout' => $seconds > 0 ? true : null,
                 'seconds' => $seconds,

@@ -308,13 +308,13 @@
             <form action="{{ route('login.process') }}" method="POST" id="login-form">
                 @csrf
                 <div class="mb-3">
-                    <label for="username" class="form-label">Username <span>*</span></label>
-                    <input type="text" class="form-control @error('email') is-invalid @enderror"
-                           id="username" name="email"
-                           placeholder="Masukkan username"
-                           value="{{ old('email', '') }}"
+                    <label for="identity" class="form-label">Email atau NUPY <span>*</span></label>
+                    <input type="text" class="form-control @error('identity') is-invalid @enderror"
+                           id="identity" name="identity"
+                           placeholder="Masukkan email atau NUPY"
+                           value="{{ old('identity', '') }}"
                            required autofocus>
-                    @error('email')
+                    @error('identity')
                         <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                     @enderror
                 </div>
