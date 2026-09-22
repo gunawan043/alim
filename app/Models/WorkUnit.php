@@ -6,6 +6,7 @@ use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -23,6 +24,7 @@ class WorkUnit extends Model
         'name',
         'code',
         'type',
+        'domain_id',
         'parent_id',
         'induk',
         'divisi_id',
@@ -219,6 +221,11 @@ class WorkUnit extends Model
     public function school()
     {
         return $this->hasOne(School::class);
+    }
+
+    public function domain(): BelongsTo
+    {
+        return $this->belongsTo(Domain::class);
     }
 
     public function dormitories()

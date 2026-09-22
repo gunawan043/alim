@@ -55,6 +55,7 @@ class SidebarAccessSeeder extends Seeder
         'administrator' => 'Administrator',
         'keuangan' => 'Keuangan',
         'mudir' => 'Mudir',
+        'staf-perizinan' => 'Staf Perizinan',
     ];
 
     /**
@@ -123,6 +124,8 @@ class SidebarAccessSeeder extends Seeder
         'mudir' => ['Pimpinan'],
         // Satuan Pendidikan (separate entry)
         'satuan-pendidikan' => ['Satuan Pendidikan'],
+        // Staf Perizinan
+        'staf-perizinan' => ['Asrama'],
     ];
 
     /**

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exports\GtkExport;
 use App\Exports\GtkImportTemplateExport;
+use App\Helpers\JabatanRoleMapper;
+use App\Models\AcademicYear;
 use App\Models\City;
 use App\Models\District;
 use App\Models\GtkAddress;
@@ -17,6 +19,7 @@ use App\Models\GtkWorkUnit;
 use App\Models\JenisGtk;
 use App\Models\Province;
 use App\Models\School;
+use App\Models\StructuralAssignment;
 use App\Models\StructuralPosition;
 use App\Models\User;
 use App\Models\Village;
@@ -314,6 +317,14 @@ class GtkWizardController extends Controller
             $this->createContact($user->id, $data['contact']);
             $this->createEmployment($user->id, $data['employment']);
             $this->assignWorkUnit($user->id, $data['work_unit_id'], $data['employment']['jabatan'] ?? null);
+
+            // Assign Spatie role from jabatan — strict 14-role constraint
+            $role = JabatanRoleMapper::resolve($data['employment']['jabatan'] ?? '');
+            if ($user->hasRole($role)) {
+                $user->syncRoles([$role]);
+            } else {
+                $user->assignRole($role);
+            }
 
             if (! empty($data['family_members'])) {
                 $this->createFamilyMembers($profile->id, $data['family_members']);
@@ -1379,16 +1390,128 @@ class GtkWizardController extends Controller
         return GtkEmployment::create(array_merge($employmentData, ['user_id' => $userId]));
     }
 
-    private function assignWorkUnit(string $userId, string $workUnitId, ?string $jabatan = null)
+    private function assignWorkUnit(string $userId, string $workUnitId, ?string $jabatan = null): void
     {
         GtkWorkUnit::where('user_id', $userId)->update(['is_primary' => false]);
 
-        return GtkWorkUnit::create([
+        GtkWorkUnit::create([
             'user_id' => $userId,
             'work_unit_id' => $workUnitId,
             'jabatan' => $jabatan,
             'is_primary' => true,
         ]);
+
+        // Create StructuralAssignment so domain-based permissions work correctly.
+        // Use the work unit's domain (not the position's seeder domain) so GTK placed
+        // in a Satuan Pendidikan work unit get the correct domain regardless of
+        // whether their position is "Staf Tata Usaha" (seeder: Keuangan) or "Guru".
+        $workUnit = WorkUnit::with('domain')->find($workUnitId);
+        if (! $workUnit || ! $workUnit->domain_id) {
+            return;
+        }
+
+        // Find a structural position whose domain matches the work unit's domain.
+        // We prefer positions that share the same job title name, but fall back to
+        // any active position in the matching domain.
+        $positionId = StructuralPosition::where('domain_id', $workUnit->domain_id)
+            ->whereRaw('LOWER(TRIM(name)) = LOWER(?)', [$jabatan ?? ''])
+            ->where('is_active', true)
+            ->value('id');
+
+        if (! $positionId) {
+            $positionId = StructuralPosition::where('domain_id', $workUnit->domain_id)
+                ->where('is_active', true)
+                ->orderBy('urutan')
+                ->value('id');
+        }
+
+        if (! $positionId) {
+            return;
+        }
+
+        $schoolId = School::where('work_unit_id', $workUnitId)->value('id');
+        if (! $schoolId) {
+            return;
+        }
+
+        $academicYearId = AcademicYear::where('is_active', true)
+            ->orderBy('start_date', 'desc')
+            ->value('id');
+
+        if (! $academicYearId) {
+            return;
+        }
+
+        StructuralAssignment::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'position_id' => $positionId,
+                'school_id' => $schoolId,
+                'academic_year_id' => $academicYearId,
+            ],
+            [
+                'status' => 'active',
+                'start_date' => now()->toDateString(),
+                'notes' => "Assigned via GTK wizard ({$userId})",
+            ]
+        );
+    }
+
+    /**
+     * Refresh or create the StructuralAssignment for a user so that
+     * activeDomainIds() resolves against the work-unit's domain, not
+     * the seeder-snapshot position domain.
+     */
+    private function refreshStructuralAssignment(string $userId, string $workUnitId, ?string $jabatan = null): void
+    {
+        $workUnit = WorkUnit::with('domain')->find($workUnitId);
+        if (! $workUnit || ! $workUnit->domain_id) {
+            return;
+        }
+
+        // Find a structural position whose domain matches the work unit's domain.
+        $positionId = StructuralPosition::where('domain_id', $workUnit->domain_id)
+            ->whereRaw('LOWER(TRIM(name)) = LOWER(?)', [$jabatan ?? ''])
+            ->where('is_active', true)
+            ->value('id');
+
+        if (! $positionId) {
+            $positionId = StructuralPosition::where('domain_id', $workUnit->domain_id)
+                ->where('is_active', true)
+                ->orderBy('urutan')
+                ->value('id');
+        }
+
+        if (! $positionId) {
+            return;
+        }
+
+        $schoolId = School::where('work_unit_id', $workUnitId)->value('id');
+        if (! $schoolId) {
+            return;
+        }
+
+        $academicYearId = AcademicYear::where('is_active', true)
+            ->orderBy('start_date', 'desc')
+            ->value('id');
+
+        if (! $academicYearId) {
+            return;
+        }
+
+        StructuralAssignment::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'position_id' => $positionId,
+                'school_id' => $schoolId,
+                'academic_year_id' => $academicYearId,
+            ],
+            [
+                'status' => 'active',
+                'start_date' => now()->toDateString(),
+                'notes' => "Assigned via GTK wizard ({$userId})",
+            ]
+        );
     }
 
     private function createFamilyMembers(string $profileId, array $members): void
@@ -1509,7 +1632,15 @@ class GtkWizardController extends Controller
 
         $workUnit
             ? $workUnit->update(['work_unit_id' => $workUnitId, 'jabatan' => $jabatan])
-            : $this->assignWorkUnit($userId, $workUnitId, $jabatan);
+            : GtkWorkUnit::create([
+                'user_id' => $userId,
+                'work_unit_id' => $workUnitId,
+                'jabatan' => $jabatan,
+                'is_primary' => true,
+            ]);
+
+        // Refresh StructuralAssignment so domain-based permissions stay in sync.
+        $this->refreshStructuralAssignment($userId, $workUnitId, $jabatan);
     }
 
     private function syncFamilyMembers(string $profileId, array $members): void
@@ -1592,25 +1723,66 @@ class GtkWizardController extends Controller
 
     /**
      * Accept Jabatan UUID or name string — return the Jabatan UUID.
-     * If jenisGtkId given, restrict lookup to that jenis.
+     * Case-insensitive and tolerant of surrounding/multiple spaces.
+     *
+     * If jenisGtkId is given:
+     * 1. Try matching by jenis_gtk_id + name.
+     * 2. If not found, fallback to name only.
      */
     private function resolveJabatanId(?string $value, ?string $jenisGtkId = null): ?string
     {
-        if (! $value) {
+        if (blank($value)) {
             return null;
         }
 
+        $value = trim($value);
+
         $query = StructuralPosition::query();
 
+        // UUID input
+        if (preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $value
+        )) {
+            if ($jenisGtkId) {
+                $id = (clone $query)
+                    ->where('id', $value)
+                    ->where('jenis_gtk_id', $jenisGtkId)
+                    ->value('id');
+
+                if ($id) {
+                    return $id;
+                }
+            }
+
+            return StructuralPosition::where('id', $value)->value('id');
+        }
+
+        // Normalize whitespace
+        $normalizedValue = preg_replace('/\s+/', ' ', $value);
+
+        // 1. Try exact name match WITH jenis GTK
         if ($jenisGtkId) {
-            $query->where('jenis_gtk_id', $jenisGtkId);
+            $id = (clone $query)
+                ->where('jenis_gtk_id', $jenisGtkId)
+                ->whereRaw(
+                    'LOWER(TRIM(name)) = LOWER(?)',
+                    [$normalizedValue]
+                )
+                ->value('id');
+
+            if ($id) {
+                return $id;
+            }
         }
 
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return $query->where('id', $value)->value('id') ?? StructuralPosition::where('id', $value)->value('id');
-        }
-
-        return $query->whereRaw('LOWER(name) = LOWER(?)', [$value])->value('id');
+        // 2. Fallback: exact name match WITHOUT jenis GTK
+        return StructuralPosition::query()
+            ->whereRaw(
+                'LOWER(TRIM(name)) = LOWER(?)',
+                [$normalizedValue]
+            )
+            ->value('id');
     }
 
     /**
@@ -1791,6 +1963,14 @@ class GtkWizardController extends Controller
                 }
 
                 $this->assignWorkUnit($user->id, $workUnitId, $jabatan);
+
+                // Assign Spatie role from jabatan — strict 14-role constraint
+                $role = JabatanRoleMapper::resolve($jabatan ?? '');
+                if ($user->hasRole($role)) {
+                    $user->syncRoles([$role]);
+                } else {
+                    $user->assignRole($role);
+                }
 
                 DB::commit();
                 $imported++;

@@ -135,6 +135,8 @@
                                     <option value="kawin" {{ old('status_perkawinan') == 'kawin' ? 'selected' : '' }}>Kawin</option>
                                     <option value="cerai_hidup" {{ old('status_perkawinan') == 'cerai_hidup' ? 'selected' : '' }}>Cerai Hidup</option>
                                     <option value="cerai_mati" {{ old('status_perkawinan') == 'cerai_mati' ? 'selected' : '' }}>Cerai Mati</option>
+                                    <option value="janda_cerai" {{ old('status_perkawinan') == 'janda_cerai' ? 'selected' : '' }}>Janda/Cerai</option>
+                                    <option value="duda_cerai" {{ old('status_perkawinan') == 'duda_cerai' ? 'selected' : '' }}>Duda/Cerai</option>
                                 </select>
                                 @error('status_perkawinan')
                                     <div class="invalid-feedback">{{ $message }}</div>

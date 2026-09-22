@@ -592,4 +592,38 @@ class User extends Authenticatable
 
         return in_array($permission, $this->effectivePermissionNames(), true);
     }
+
+    /**
+     * Check if user has access to a specific dormitory based on their
+     * Staf Perizinan assignment scope or Kepala Asrama role.
+     */
+    public function canAccessDormitory(string $dormitoryId): bool
+    {
+        if ($this->isSystemAdmin() || (method_exists($this, 'isSuperAdmin') && $this->isSuperAdmin())) {
+            return true;
+        }
+
+        $dormitory = Dormitory::withTrashed()->find($dormitoryId);
+        if ($dormitory && $this->id === $dormitory->head_id) {
+            return true;
+        }
+
+        return DormitoryStaffAssignment::active()
+            ->where('user_id', $this->id)
+            ->where('dormitory_id', $dormitoryId)
+            ->exists();
+    }
+
+    /**
+     * Get list of dormitory IDs this user has access to as Staf Perizinan.
+     *
+     * @return array<int, string>
+     */
+    public function accessibleDormitoryIds(): array
+    {
+        return DormitoryStaffAssignment::active()
+            ->where('user_id', $this->id)
+            ->pluck('dormitory_id')
+            ->toArray();
+    }
 }

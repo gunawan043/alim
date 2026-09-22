@@ -25,7 +25,7 @@ class BoardingHeadDashboardController extends Controller
         $pendingApprovals = [
             'permits' => DormitoryPermit::where('status', 'pending')->count(),
             'visits' => DormitoryVisitLog::where('status', 'pending')->count(),
-            'room_moves' => DormitoryRoomMove::where('status', 'pending')->count(),
+            'room_moves' => DormitoryRoomMove::where('approval_status', 'pending')->count(),
         ];
 
         $pendingTotal = array_sum($pendingApprovals);

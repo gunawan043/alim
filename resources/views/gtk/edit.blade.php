@@ -219,7 +219,7 @@
                                                     <label for="status_perkawinan" class="form-label">Status Perkawinan</label>
                                                     <select class="form-select" id="status_perkawinan" name="status_perkawinan">
                                                         <option value="">Pilih...</option>
-                                                        @foreach(['belum_kawin'=>'Belum Kawin','kawin'=>'Kawin','cerai_hidup'=>'Cerai Hidup','cerai_mati'=>'Cerai Mati'] as $val => $label)
+                                                        @foreach(['belum_kawin'=>'Belum Kawin','kawin'=>'Kawin','cerai_hidup'=>'Cerai Hidup','cerai_mati'=>'Cerai Mati','janda_cerai'=>'Janda/Cerai','duda_cerai'=>'Duda/Cerai'] as $val => $label)
                                                             <option value="{{ $val }}" {{ old('status_perkawinan', $gtk->gtkProfile?->status_perkawinan) == $val ? 'selected' : '' }}>{{ $label }}</option>
                                                         @endforeach
                                                     </select>

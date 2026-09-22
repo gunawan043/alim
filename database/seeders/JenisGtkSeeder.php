@@ -28,6 +28,7 @@ class JenisGtkSeeder extends Seeder
                 'role' => 'Satuan Pendidikan',
                 'jabatan' => [
                     'Guru Umum',
+                    'Guru Kelas',
                     'Guru Agama',
                     'Guru Hadits',
                     'Guru Bahasa Arab',
@@ -74,7 +75,7 @@ class JenisGtkSeeder extends Seeder
                 'role' => 'Keuangan',
                 'jabatan' => [
                     'Kepala Tata Usaha',
-                    'Tata Usaha',
+                    'Staf Tata Usaha',
                     'Bendahara Sekolah',
                     'Kepala Keuangan',
                     'Staf Keuangan',

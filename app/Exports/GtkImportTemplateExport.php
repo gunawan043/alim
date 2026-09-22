@@ -205,6 +205,9 @@ class StatusKepegawaianSheet implements FromCollection, WithColumnWidths, WithHe
             ['KONTRAK', 'Kontrak'],
             ['Percobaan', 'Percobaan'],
             ['Magang', 'Magang'],
+            ['Wafat', 'Wafat'],
+            ['Pensiun', 'Pensiun'],
+            ['Berhenti', 'Berhenti'],
         ]);
     }
 

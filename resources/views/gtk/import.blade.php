@@ -153,14 +153,14 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="mb-2">
+                                <!-- <div class="mb-2">
                                     <select id="jenisGtkSelect" class="form-select form-select-sm" disabled>
                                         <option value="">— Pilih Jenis GTK (untuk filter jabatan) —</option>
                                         @foreach($jenisGtk as $j)
                                             <option value="{{ $j->id }}" data-name="{{ $j->nama }}">{{ $j->nama }}</option>
                                         @endforeach
                                     </select>
-                                </div>
+                                </div> -->
                                 <div class="mb-2" id="jabatanWrap" style="display:none">
                                     <select id="jabatanSelect" class="form-select form-select-sm">
                                         <option value="">— Pilih Jabatan —</option>
@@ -253,7 +253,7 @@
                                 ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
                                 ['no_hp','No HP',true],['no_whatsapp','WhatsApp',false],
                                 ['nupy','NUPY (jd password awal)',true],['jenis_gtk','Jenis GTK',true],
-                                ['jabatan','Jabatan',true],['status_kepegawaian','PTT/PTY/GTT/GTY',true],
+                                ['jabatan','Jabatan',true],['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
                                 ['tmt','Tgl TMT (YYYY-MM-DD)',true],['nomor_sk','No SK',true],
                                 ['tanggal_sk','Tgl SK (YYYY-MM-DD)',true],
                                 ['pangkat_golongan','III/A dst',false],
@@ -575,8 +575,8 @@ function previewFile() {
                 return m;
             });
             // Status normalization map for frontend validation hints.
-            const statusKawinMap = { 'kawin':'kawin', 'menikah':'kawin', 'belum kawin':'belum_kawin', 'belum menikah':'belum_kawin', 'cerai hidup':'cerai_hidup', 'cerai mati':'cerai_mati' };
-            const statusKepegawaianMap = { 'ptt':'PTT', 'pty':'PTY', 'percobaan':'Percobaan', 'magang':'Magang', 'gtt':'GTT', 'gty':'GTY', 'kontrak':'KONTRAK', 'tetap':'PTY' };
+            const statusKawinMap = { 'kawin':'kawin', 'menikah':'kawin', 'belum kawin':'belum_kawin', 'belum menikah':'belum_kawin', 'cerai hidup':'cerai_hidup', 'cerai mati':'cerai_mati', 'Janda/Cerai':'janda_cerai', 'Duda/Cerai':'duda_cerai' };
+            const statusKepegawaianMap = { 'ptt':'PTT', 'pty':'PTY', 'percobaan':'Percobaan', 'magang':'Magang', 'gtt':'GTT', 'gty':'GTY', 'kontrak':'KONTRAK', 'tetap':'PTY', 'pensiun':'Pensiun', 'wafat':'Wafat', 'berhenti':'Berhenti' };
             const jkMap = { 'l':'L', 'laki-laki':'L', 'laki laki':'L', 'p':'P', 'perempuan':'P' };
 
             parsedRows.forEach(r => {

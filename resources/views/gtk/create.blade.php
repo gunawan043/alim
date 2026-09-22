@@ -204,6 +204,8 @@
                                                         <option value="kawin">Kawin</option>
                                                         <option value="cerai_hidup">Cerai Hidup</option>
                                                         <option value="cerai_mati">Cerai Mati</option>
+                                                        <option value="janda_cerai">Janda/Cerai</option>
+                                                        <option value="duda_cerai">Duda/Cerai</option>
                                                     </select>
                                                 </div>
 

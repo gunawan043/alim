@@ -3,9 +3,9 @@
 namespace App\Observers;
 
 use App\Models\GtkEmployment;
+use App\Models\StructuralAssignment;
 use App\Models\StructuralPosition;
 use Illuminate\Support\Facades\Log;
-use Spatie\Permission\Models\Role;
 
 class GtkEmploymentObserver
 {
@@ -30,7 +30,11 @@ class GtkEmploymentObserver
      * Sinkronkan Spatie role user berdasarkan jabatan GTK.
      *
      * Logika:
-     * - Ambil array `roles` dari Position (JSON cast → array).
+     * - Prefer StructuralAssignment (work-unit-aware domain) over the seeder-snapshot
+     *   position. This ensures GTK placed in a Satuan Pendidikan work unit but
+     *   holding a "Staf Tata Usaha" position (seeder domain: Keuangan) get the
+     *   correct Satuan Pendidikan role.
+     * - Fallback to position->role_id from the employment record if no assignment.
      * - syncRoles() REPLACE semua role user, sehingga role lama yang tidak relevan hilang.
      */
     protected function syncRoles(GtkEmployment $employment): void
@@ -42,13 +46,25 @@ class GtkEmploymentObserver
 
         $finalRoles = [];
 
-        if ($employment->jabatan_id) {
+        // 1. Try StructuralAssignment first (work-unit-aware domain)
+        $assignment = StructuralAssignment::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->with(['position.domain', 'position.role'])
+            ->first();
+
+        if ($assignment && $assignment->position) {
+            $pos = $assignment->position;
+            if ($pos->role) {
+                $finalRoles[] = $pos->role->name;
+            }
+        }
+
+        // 2. Fallback: use the employment's jabatan_id directly
+        if (empty($finalRoles) && $employment->jabatan_id) {
             $jabatan = StructuralPosition::with('role')->find($employment->jabatan_id);
-            // Parent role dari posisi (Satuan Pendidikan, Asrama, UKS, dll.)
             if ($jabatan?->role) {
                 $finalRoles[] = $jabatan->role->name;
             }
-            // Sub-role dari posisi jika ada (contoh: admin, kepala unit)
             foreach (($jabatan?->roles ?? []) as $r) {
                 if (! in_array($r, $finalRoles)) {
                     $finalRoles[] = $r;

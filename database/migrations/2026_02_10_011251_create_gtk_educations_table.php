@@ -17,8 +17,8 @@ return new class extends Migration
             $table->string('nama_satuan_pendidikan');
             $table->string('jurusan')->nullable();
             $table->string('fakultas')->nullable();
-            $table->year('tahun_masuk');
-            $table->year('tahun_lulus');
+            $table->year('tahun_masuk')->nullable();
+            $table->year('tahun_lulus')->nullable();
             $table->string('no_ijazah')->nullable();
             $table->string('nama_kepala_sekolah')->nullable();
             $table->string('nama_rektor')->nullable();

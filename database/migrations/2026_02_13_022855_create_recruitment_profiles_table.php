@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('golongan_darah', ['A', 'B', 'AB', 'O'])->nullable();
             $table->enum('jenis_kelamin', ['L', 'P'])->nullable();
             $table->enum('agama', ['islam', 'kristen', 'katolik', 'hindu', 'buddha', 'konghucu'])->nullable();
-            $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati'])->default('belum_kawin');
+            $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati', 'janda_cerai', 'duda_cerai'])->default('belum_kawin');
 
             // Kontak
             $table->string('no_hp')->nullable();

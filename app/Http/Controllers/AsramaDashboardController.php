@@ -20,7 +20,7 @@ class AsramaDashboardController extends Controller
         $totalSantri = Student::whereHas('activeDormitoryResident')->where('status', 'active')->count();
 
         // Room moves pending
-        $pendingRoomMoves = DormitoryRoomMove::where('status', 'pending')->count();
+        $pendingRoomMoves = DormitoryRoomMove::where('approval_status', 'pending')->count();
 
         // Violations this month
         $thisMonth = date('m');

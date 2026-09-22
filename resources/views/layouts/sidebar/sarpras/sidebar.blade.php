@@ -3,8 +3,8 @@
 $currentRoute = request()->route() ? request()->route()->getName() : '';
 $currentUser = auth()->user();
 $userId = $currentUser->id;
-@php
-$isSarprasAdmin = $currentUser->canPermission('sarpras_all_access');
+
+$isSarprasAdmin = canPermission('sarpras_all_access');
 $isTU = $currentUser->hasRole('Satuan Pendidikan');
 $isSuperAdmin = canPermission('super-admin-only');
 $isAdmin = $isSarprasAdmin || $isTU || $isSuperAdmin;

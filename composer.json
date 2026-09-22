@@ -56,7 +56,8 @@
         "files": [
             "app/Helpers/NotificationHelper.php",
             "app/Helpers/SidebarHelper.php",
-            "app/Helpers/BladeHelper.php"
+            "app/Helpers/BladeHelper.php",
+            "app/Helpers/JabatanRoleMapper.php"
         ]
     },
     "autoload-dev": {

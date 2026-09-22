@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('agama', ['islam', 'kristen', 'katolik', 'hindu', 'buddha', 'konghucu'])->nullable();
 
             // MARITAL STATUS
-            $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati'])->default('belum_kawin');
+            $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati', 'duda_cerai', 'janda_cerai'])->default('belum_kawin');
             $table->text('npwp')->nullable();
 
             // WORK UNIT RELATION

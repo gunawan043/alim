@@ -23,6 +23,19 @@ use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ClassQrController;
+use App\Http\Controllers\Dashboard\BendaharaDashboardController;
+use App\Http\Controllers\Dashboard\GuruDashboardController;
+use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
+use App\Http\Controllers\Dashboard\KepSatuanPendidikanDashboardController;
+use App\Http\Controllers\Dashboard\KoordEkskulDashboardController;
+use App\Http\Controllers\Dashboard\KoordGuruDashboardController;
+use App\Http\Controllers\Dashboard\KoordKesiswaanDashboardController;
+use App\Http\Controllers\Dashboard\KoordKurikulumDashboardController;
+use App\Http\Controllers\Dashboard\KoordLaboratoriumDashboardController;
+use App\Http\Controllers\Dashboard\KoordSarprasDashboardController;
+use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
+use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
+use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
@@ -40,6 +53,7 @@ use App\Http\Controllers\DormitoryRewardController;
 use App\Http\Controllers\DormitoryRoomApiController;
 use App\Http\Controllers\DormitoryRoomController;
 use App\Http\Controllers\DormitoryRoomMoveController;
+use App\Http\Controllers\DormitoryStaffAssignmentController;
 use App\Http\Controllers\DormitoryViolationController;
 use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
@@ -126,6 +140,8 @@ use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
 use App\Http\Controllers\Sarpras\SarprasVendorController;
 use App\Http\Controllers\SarprasController;
+use App\Http\Controllers\SatuanKerja\PositionController as SatuanPositionController;
+use App\Http\Controllers\SatuanKerja\TaskController as SatuanTaskController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
 use App\Http\Controllers\SchoolUnitController;
@@ -138,9 +154,9 @@ use App\Http\Controllers\StudentHealthCheckupController;
 use App\Http\Controllers\StudentHealthMetricController;
 use App\Http\Controllers\StudentHealthPermitController;
 use App\Http\Controllers\StudentImmunizationController;
+// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentMedicineInventoryController;
-// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
 use App\Http\Controllers\StudentMutationInController;
@@ -194,8 +210,6 @@ use App\Http\Controllers\WakaController;
 use App\Http\Controllers\WaliAsramaDashboardController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
-use App\Http\Controllers\SatuanKerja\PositionController as SatuanPositionController;
-use App\Http\Controllers\SatuanKerja\TaskController as SatuanTaskController;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Models\User;
@@ -232,6 +246,8 @@ Route::pattern('studyGroupId', $uuidPattern);
 Route::pattern('alumniUuid', $uuidPattern);
 Route::pattern('healthUuid', $uuidPattern);
 Route::pattern('asramaUuid', $uuidPattern);
+Route::pattern('targetUserId', $uuidPattern);
+Route::pattern('dormitoryId', $uuidPattern);
 Route::pattern('residentUuid', $uuidPattern);
 Route::pattern('permitUuid', $uuidPattern);
 Route::pattern('postUuid', $uuidPattern);
@@ -476,7 +492,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/reset-password', [GtkWizardController::class, 'resetPassword'])->name('reset-password');
 
                     Route::prefix('profile')->name('profile.')->group(function () {
-                        Route::get('/', [ProfileController::class, 'show'])->name('show');
+                        Route::get('/', [ProfileController::class, 'myProfile'])->name('show');
                         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
                         Route::put('/', [ProfileController::class, 'update'])->name('update');
                         Route::post('/photo', [ProfileController::class, 'uploadPhoto'])->name('photo.upload');
@@ -1359,6 +1375,23 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/dashboard/boarding-education', [BoardingEducationDashboardController::class, 'index'])->name('dashboard.boarding-education');
             Route::get('/dashboard/boarding-health', [BoardingHealthDashboardController::class, 'index'])->name('dashboard.boarding-health');
 
+            // ── DASHBOARD SATUAN PENDIDIKAN (Jabatan) ────────────────
+            Route::get('/dashboard/kepala-satuan-pendidikan', [KepSatuanPendidikanDashboardController::class, 'index'])->name('dashboard.kepala-satuan-pendidikan');
+            Route::get('/dashboard/wakil-kepala', [WakaSatuanPendidikanDashboardController::class, 'index'])->name('dashboard.wakil-kepala');
+            Route::get('/dashboard/guru', [GuruDashboardController::class, 'index'])->name('dashboard.guru');
+            Route::get('/dashboard/ka-tata-usaha', [KaTataUsahaDashboardController::class, 'index'])->name('dashboard.ka-tata-usaha');
+            Route::get('/dashboard/staf-tata-usaha', [StafTataUsahaDashboardController::class, 'index'])->name('dashboard.staf-tata-usaha');
+            Route::get('/dashboard/bendahara', [BendaharaDashboardController::class, 'index'])->name('dashboard.bendahara');
+
+            // ── DASHBOARD SATUAN PENDIDIKAN (Tugas Tambahan) ─────────
+            Route::get('/dashboard/wali-kelas', [WaliKelasDashboardController::class, 'index'])->name('dashboard.wali-kelas');
+            Route::get('/dashboard/koordinator-guru', [KoordGuruDashboardController::class, 'index'])->name('dashboard.koordinator-guru');
+            Route::get('/dashboard/koordinator-kurikulum', [KoordKurikulumDashboardController::class, 'index'])->name('dashboard.koordinator-kurikulum');
+            Route::get('/dashboard/koordinator-kesiswaan', [KoordKesiswaanDashboardController::class, 'index'])->name('dashboard.koordinator-kesiswaan');
+            Route::get('/dashboard/koordinator-ekskul', [KoordEkskulDashboardController::class, 'index'])->name('dashboard.koordinator-ekskul');
+            Route::get('/dashboard/koordinator-lab', [KoordLaboratoriumDashboardController::class, 'index'])->name('dashboard.koordinator-lab');
+            Route::get('/dashboard/koordinator-sarpras', [KoordSarprasDashboardController::class, 'index'])->name('dashboard.koordinator-sarpras');
+
             // DEBUG TEST ROUTE - check if basic routing works
             Route::get('/route-test', function () {
                 return '<pre>Routes are LOADED! Basic working test at /route-test</pre>';
@@ -1591,6 +1624,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/laporan/kebersihan', [DormitoryReportController::class, 'sanitationHtml'])->name('reports.sanitation');
                 Route::get('/{asramaUuid}/laporan/penghuni', [DormitoryReportController::class, 'occupancy'])->name('reports.occupancy');
                 Route::get('/{asramaUuid}/laporan/santri/{studentId}', [DormitoryReportController::class, 'studentDetail'])->name('reports.student-detail');
+
+                // ── STAF PERIZINAN SCOPE MANAGEMENT ─────────────────────────────
+                Route::get('/staf-assignments/{targetUserId}', [DormitoryStaffAssignmentController::class, 'index'])->name('staf-assignments.index');
+                Route::put('/staf-assignments/{targetUserId}', [DormitoryStaffAssignmentController::class, 'update'])->name('staf-assignments.update');
+                Route::delete('/staf-assignments/{targetUserId}/{dormitoryId}', [DormitoryStaffAssignmentController::class, 'destroy'])->name('staf-assignments.destroy');
             });
 
             // ═══════════════════════════════════════════════════════════════

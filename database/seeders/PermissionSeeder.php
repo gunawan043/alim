@@ -131,6 +131,8 @@ class PermissionSeeder extends Seeder
             'menu-pendidikan-asrama-sidebar',
             'menu-kesehatan-asrama-sidebar',
             'menu-wali-asrama-sidebar',
+            // Staf Perizinan sidebar
+            'menu-staf-perizinan-sidebar',
 
             // UKS Work Unit
             'menu-uks-sidebar',
@@ -282,6 +284,19 @@ class PermissionSeeder extends Seeder
 
             // Export Asrama
             'asrama_export',
+
+            // Staf Perizinan — granular permissions (dynamic via provider)
+            'staf_perizinan.view',
+            'staf_perizinan.create',
+            'staf_perizinan.approve',
+            'staf_perizinan.reject',
+            'staf_perizinan.scan',
+            'staf_perizinan.process_return',
+            'staf_perizinan.visit_view',
+            'staf_perizinan.visit_approve',
+            'staf_perizinan.visit_checkin',
+            'staf_perizinan.type_manage',
+            'staf_perizinan.report_view',
 
             // Inventory/Asset
             'inventory_view',

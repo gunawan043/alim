@@ -146,7 +146,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('dormitory.index', ['userId' => $user->id]) }}" class="btn quick-action-btn w-100 text-start py-2 px-2">
+                    <a href="{{ route('user.asrama.my-profile', ['userId' => $user->id]) }}" class="btn quick-action-btn w-100 text-start py-2 px-2">
                         <i class="ri-home-heart-line text-primary me-1"></i> Data Asrama
                     </a>
                     <a href="#" class="btn quick-action-btn w-100 text-start py-2 px-2">

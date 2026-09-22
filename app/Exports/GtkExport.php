@@ -138,6 +138,8 @@ class GtkExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMap
             'kawin' => 'Kawin',
             'cerai_hidup' => 'Cerai Hidup',
             'cerai_mati' => 'Cerai Mati',
+            'janda_cerai' => 'Janda/Cerai',
+            'duda_cerai' => 'Duda/Cerai',
             default => '-',
         };
     }

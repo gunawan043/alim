@@ -189,6 +189,8 @@ class PermissionRoleSeeder extends Seeder
             // Sidebar access
             'menu-asrama-sidebar', 'menu-head-asrama-sidebar', 'menu-admin-asrama-sidebar',
             'menu-pendidikan-asrama-sidebar', 'menu-kesehatan-asrama-sidebar', 'menu-wali-asrama-sidebar',
+            'menu-staf-perizinan-sidebar',
+            'menu-staf-perizinan-sidebar',
             // Master data — full CRUD
             'dormitory_view', 'dormitory_create', 'dormitory_edit',
             'wing_view', 'wing_create', 'wing_edit', 'wing_delete',
@@ -238,6 +240,7 @@ class PermissionRoleSeeder extends Seeder
             // Sidebar access
             'menu-asrama-sidebar', 'menu-head-asrama-sidebar', 'menu-admin-asrama-sidebar',
             'menu-pendidikan-asrama-sidebar', 'menu-kesehatan-asrama-sidebar', 'menu-wali-asrama-sidebar',
+            'menu-staf-perizinan-sidebar',
             // Master data — full CRUD
             'dormitory_view', 'dormitory_create', 'dormitory_edit',
             'wing_view', 'wing_create', 'wing_edit', 'wing_delete',

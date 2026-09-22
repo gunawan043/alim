@@ -20,6 +20,8 @@ class LoginController extends Controller
 
     private const EMAIL_COMPROMISED_THRESHOLD = 6;
 
+    private const IP_COOLDOWN_THRESHOLD = 5;
+
     private const IP_COOLDOWN_SECONDS = 60;
 
     public function __construct()
@@ -54,25 +56,6 @@ class LoginController extends Controller
 
         $email = $user ? $user->email : null;
         $userFound = (bool) $user;
-
-        // ── Cek cooldowns ─────────────────────────────────────────────────
-        $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
-
-        if ($ipRecord && $ipRecord->attempts >= 5 && $ipRecord->locked_until === null) {
-            $cooldown = $ipRecord->last_attempt_at->addSeconds(self::IP_COOLDOWN_SECONDS);
-            if ($cooldown->isFuture()) {
-                $seconds = now()->diffInSeconds($cooldown, false);
-
-                return $this->showLoginWithError(
-                    $request,
-                    "Terlalu banyak percobaan. Silakan tunggu {$seconds} detik sebelum mencoba lagi.",
-                    $seconds
-                );
-            }
-            // Cooldown expired → reset counter
-            $ipRecord->attempts = 0;
-            $ipRecord->save();
-        }
 
         // ── Cek akun terkunci ─────────────────────────────────────────────
         if ($userFound) {
@@ -122,34 +105,9 @@ class LoginController extends Controller
         Log::warning('Login failed', ['identity' => $identity, 'ip' => $ip]);
 
         $user->passwordOtps()->latest()->delete();
-        $ipRecord = FailedLoginAttempt::forIp($ip)->active()->first();
 
-        // A. Attempt 5: cooldown 60 detik
-        $attempts = ($ipRecord ? $ipRecord->attempts : 0);
-        if ($attempts + 1 == 5) {
-            if ($ipRecord) {
-                $ipRecord->attempts = 5;
-                $ipRecord->last_attempt_at = now();
-                $ipRecord->save();
-            } else {
-                FailedLoginAttempt::create([
-                    'ip_address' => $ip,
-                    'email' => $identity,
-                    'attempts' => 5,
-                    'last_attempt_at' => now(),
-                ]);
-            }
-            $seconds = self::IP_COOLDOWN_SECONDS;
-
-            return $this->showLoginWithError(
-                $request,
-                "Terlalu banyak percobaan. Silakan tunggu {$seconds} detik sebelum mencoba lagi.",
-                $seconds
-            );
-        }
-
-        // B. Attempt 6: notifikasi akun terancam
-        if ($user->failed_login_attempts + 1 >= self::EMAIL_COMPROMISED_THRESHOLD && $user->failed_login_attempts < self::EMAIL_COMPROMISED_THRESHOLD) {
+        // A. Attempt 6: notifikasi akun terancam (sebelum increment)
+        if ($user->failed_login_attempts + 1 == self::EMAIL_COMPROMISED_THRESHOLD) {
             Mail::to($user->email)->queue(new AccountCompromisedMail(
                 $user->name,
                 $user->email,
@@ -164,10 +122,11 @@ class LoginController extends Controller
             ]);
         }
 
-        // C. Attempt 9: akun dikunci
+        // B. Increment user counter & IP counter
         $user->incrementFailedLoginAttempts();
         $this->trackIpAttempt($ip, $user->failed_login_attempts, $identity);
 
+        // C. Attempt 9: akun dikunci
         if ($user->failed_login_attempts >= self::EMAIL_MAX_ATTEMPTS) {
             Mail::to($user->email)->send(new AccountLockedMail(
                 $user->name,
@@ -200,7 +159,8 @@ class LoginController extends Controller
             );
         }
 
-        // Middle-range failures (4, 5, 7, 8) → just error message
+        // Middle-range failures (1, 2, 3, 4, 6, 7, 8) → just error message
+        // Note: IP cooldown is handled by CheckIpBlocked middleware as non-blocking warning
         return $this->showLoginWithError(
             $request,
             'Email atau NUPY salah.'
@@ -217,7 +177,7 @@ class LoginController extends Controller
             $record = FailedLoginAttempt::create([
                 'ip_address' => $ip,
                 'email' => $email,
-                'attempts' => 1,
+                'attempts' => 0,
                 'last_attempt_at' => now(),
             ]);
             $record->recordAttempt(false);
@@ -301,7 +261,58 @@ class LoginController extends Controller
                 ->with('error', 'Akun ini adalah Wali Santri dan tidak memiliki akses ke website ini.');
         }
 
-        // Rule 4: Valid employee → normal intended redirect
+        // Rule 4: Role-based dashboard routing (role + jabatan)
+        $roleName = strtolower(trim((string) $roles->first()));
+        $jabatan = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
+
+        $roleJabatanMap = [
+            'satuan pendidikan' => [
+                'WAKIL KEPALA' => 'dashboard.wakil-kepala',
+                'KEPALA SATUAN PENDIDIKAN' => 'dashboard.kepala-satuan-pendidikan',
+                'STAF TATA USAHA' => 'dashboard.staf-tata-usaha',
+            ],
+            'pimpinan' => [
+                'WAKIL KEPALA' => 'dashboard.wakil-kepala',
+                'KEPALA SATUAN PENDIDIKAN' => 'dashboard.kepala-satuan-pendidikan',
+            ],
+        ];
+
+        if (isset($roleJabatanMap[$roleName])) {
+            foreach ($roleJabatanMap[$roleName] as $jabatanPattern => $route) {
+                if (str_contains($jabatan, $jabatanPattern)) {
+                    return redirect()->route($route);
+                }
+            }
+            // No specific jabatan match — fall through to role keyword matching below
+        }
+
+        $dashboardRoute = match (true) {
+            str_contains($roleName, 'kepala satuan') => 'dashboard.kepala-satuan-pendidikan',
+            str_contains($roleName, 'wakil kepala') || str_contains($roleName, 'waka') => 'dashboard.wakil-kepala',
+            str_contains($roleName, 'wali kelas') => 'dashboard.wali-kelas',
+            str_contains($roleName, 'koordinator guru') => 'dashboard.koordinator-guru',
+            str_contains($roleName, 'koordinator kurikulum') => 'dashboard.koordinator-kurikulum',
+            str_contains($roleName, 'koordinator kesiswaan') => 'dashboard.koordinator-kesiswaan',
+            str_contains($roleName, 'koordinator ekskul') || str_contains($roleName, 'koordinator ekstrakurikuler') => 'dashboard.koordinator-ekskul',
+            str_contains($roleName, 'koordinator lab') || str_contains($roleName, 'koordinator laboratorium') => 'dashboard.koordinator-lab',
+            str_contains($roleName, 'koordinator sarpras') || str_contains($roleName, 'koordinator prasarana') => 'dashboard.koordinator-sarpras',
+            str_contains($roleName, 'kepala tata usaha') || str_contains($roleName, 'ka tata usaha') => 'dashboard.ka-tata-usaha',
+            str_contains($roleName, 'staf tata usaha') || str_contains($roleName, 'staff tata usaha') => 'dashboard.staf-tata-usaha',
+            str_contains($roleName, 'bendahara') || str_contains($roleName, 'keuangan') => 'dashboard.bendahara',
+            str_contains($roleName, 'guru') || str_contains($roleName, 'pendidik') => 'dashboard.guru',
+            str_contains($roleName, 'pengasuh') => 'dashboard.pengasuh',
+            str_contains($roleName, 'wali asrama') => 'dashboard.wali-asrama',
+            str_contains($roleName, 'admin tu') => 'dashboard.admin-tu',
+            str_contains($roleName, 'admin asrama') => 'dashboard.admin-asrama',
+            str_contains($roleName, 'asrama') => 'dashboard.asrama',
+            default => null,
+        };
+
+        if ($dashboardRoute) {
+            return redirect()->route($dashboardRoute);
+        }
+
+        // Rule 5: Fallback to intended or home
         return redirect()->intended('/');
     }
 }

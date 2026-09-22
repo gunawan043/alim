@@ -62,6 +62,7 @@
     <!-- Menu content -->
     <div data-simplebar class="scrollbar-sidebar">
         <div class="container-fluid mt-3">
+            @include('components.user-sidebar-profile')
             <div id="two-column-menu"></div>
             <ul class="navbar-nav" id="navbar-nav" style="padding-bottom: 50px">
                 @php
@@ -106,6 +107,8 @@
                         @include('layouts.sidebar.pimpinan.sidebar')
                     @elseif($viewAsRole === 'Satuan Pendidikan')
                         @include('layouts.sidebar.satuan-pendidikan.sidebar')
+                    @elseif($viewAsRole === 'Asrama' && method_exists($user, 'accessibleDormitoryIds') && !empty($user->accessibleDormitoryIds()))
+                        @include('layouts.sidebar.staf-perizinan.sidebar')
                     @elseif($viewAsRole === 'Asrama')
                         @include('layouts.sidebar.asrama.sidebar')
                     @elseif($viewAsRole === 'UKS')
@@ -143,6 +146,8 @@
                         @include('layouts.sidebar.pimpinan.sidebar')
                     @elseif($user->hasRole('Satuan Pendidikan'))
                         @include('layouts.sidebar.satuan-pendidikan.sidebar')
+                    @elseif($user->hasRole('Asrama') && method_exists($user, 'accessibleDormitoryIds') && !empty($user->accessibleDormitoryIds()))
+                        @include('layouts.sidebar.staf-perizinan.sidebar')
                     @elseif($user->hasRole('Asrama'))
                         @include('layouts.sidebar.asrama.sidebar')
                     @elseif($user->hasRole('UKS'))

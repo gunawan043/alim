@@ -20,11 +20,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DormitoryReportController extends Controller
 {
+    private function enforceScope(string $asramaUuid): Dormitory
+    {
+        $user = request()->user();
+        if ($user && ! $user->canAccessDormitory($asramaUuid)) {
+            abort(403, 'Anda tidak memiliki akses ke asrama ini.');
+        }
+
+        return Dormitory::findOrFail($asramaUuid);
+    }
+
     // ── Dashboard ──────────────────────────────────────────────────
 
     public function index(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         $period = $this->getPeriod($request);
@@ -47,7 +57,7 @@ class DormitoryReportController extends Controller
             'year' => 'nullable|integer|min:2020',
         ]);
 
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
@@ -87,7 +97,7 @@ class DormitoryReportController extends Controller
             'year' => 'nullable|integer|min:2020',
         ]);
 
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
@@ -155,7 +165,7 @@ class DormitoryReportController extends Controller
             'year' => 'nullable|integer|min:2020',
         ]);
 
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
@@ -205,7 +215,7 @@ class DormitoryReportController extends Controller
             'year' => 'nullable|integer|min:2020',
         ]);
 
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
@@ -248,7 +258,7 @@ class DormitoryReportController extends Controller
 
     public function inventoriesHtml(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
 
         $byCondition = DormitoryInventory::where('dormitory_id', $asramaUuid)
             ->selectRaw('condition, COUNT(*) as count')
@@ -276,7 +286,7 @@ class DormitoryReportController extends Controller
 
     public function sanitationHtml(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
 
         $byLocation = SanitationInspection::selectRaw('location_type, AVG(score) as avg_score, COUNT(*) as total')
             ->where('location_type', 'asrama')
@@ -304,7 +314,7 @@ class DormitoryReportController extends Controller
 
     public function occupancy(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         $rooms = DormitoryRoom::withCount([
@@ -333,7 +343,7 @@ class DormitoryReportController extends Controller
 
     public function studentDetail(string $userId, string $asramaUuid, string $studentId)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceScope($asramaUuid);
         $student = Student::findOrFail($studentId);
 
         $residents = DormitoryResident::with(['room.wing'])

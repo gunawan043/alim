@@ -49,6 +49,7 @@ use App\Listeners\RecordVendorAuditListener;
 use App\Listeners\SendVendorNotificationListener;
 use App\Models\BoardingPolicy;
 use App\Models\DokumenIso;
+use App\Models\DormitoryStaffAssignment;
 use App\Models\GradeLevel;
 use App\Models\GtkEmployment;
 use App\Models\Student;
@@ -56,6 +57,7 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Observers\BoardingPolicyObserver;
 use App\Observers\DokumenIsoObserver;
+use App\Observers\DormitoryStaffAssignmentObserver;
 use App\Observers\GtkEmploymentObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
@@ -227,6 +229,7 @@ class AppServiceProvider extends ServiceProvider
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);
+        DormitoryStaffAssignment::observe(DormitoryStaffAssignmentObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
         $engine = BoardingRulesEngine::getInstance();

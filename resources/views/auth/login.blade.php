@@ -58,7 +58,7 @@
             gap: 10px;
             text-decoration: none;
         }
-        .logo-mark img { height: 88px;}
+        .logo-mark img { height: 70px;}
         .logo-mark span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0, 89, 129, 0.5); }
 
         .auth-wrapper {
@@ -257,7 +257,7 @@
     <div class="bg-glow glow-1"></div>
     <div class="bg-glow glow-2"></div>
 
-    <a href="{{ url('/') }}" class="logo-mark">
+    <a href="{{ url('/') }}" class="logo-mark mb-3">
         <img src="/build/images/alim-dark-name.png" alt="ALIM">
     </a>
 

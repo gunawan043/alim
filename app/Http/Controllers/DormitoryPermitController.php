@@ -36,9 +36,24 @@ class DormitoryPermitController extends Controller
         $this->service = $service;
     }
 
+    /**
+     * Enforce dormitory scope for Staf Perizinan users.
+     * Throws 403 if user doesn't have access to the specified dormitory.
+     */
+    private function enforceDormitoryScope(string $asramaUuid): Dormitory
+    {
+        $user = auth()->user();
+
+        if ($user && ! $user->canAccessDormitory($asramaUuid)) {
+            abort(403, 'Anda tidak memiliki akses ke asrama ini.');
+        }
+
+        return Dormitory::findOrFail($asramaUuid);
+    }
+
     public function index(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         $query = DormitoryPermit::with(['student', 'room', 'mahrom', 'approvedBy'])
@@ -123,7 +138,7 @@ class DormitoryPermitController extends Controller
 
     public function create(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         // Ambil resident aktif
@@ -154,7 +169,7 @@ class DormitoryPermitController extends Controller
 
     public function store(StorePermitRequest $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
         $data = $request->validated();
@@ -225,7 +240,7 @@ class DormitoryPermitController extends Controller
 
     public function show(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $permit = DormitoryPermit::with(['student.mahroms', 'room', 'mahrom', 'approvedBy', 'creator'])
             ->where('dormitory_id', $asramaUuid)
             ->findOrFail($permitUuid);
@@ -354,7 +369,7 @@ class DormitoryPermitController extends Controller
      */
     public function card(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $permit = DormitoryPermit::with([
             'student',
             'student.currentClassHistory.studyGroup.gradeLevel',
@@ -382,7 +397,7 @@ class DormitoryPermitController extends Controller
      */
     public function bulkCard(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
         $query = DormitoryPermit::with([
@@ -421,7 +436,7 @@ class DormitoryPermitController extends Controller
     public function cardPdf(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
         try {
-            $dormitory = Dormitory::findOrFail($asramaUuid);
+            $dormitory = $this->enforceDormitoryScope($asramaUuid);
             $permit = DormitoryPermit::with([
                 'student',
                 'student.currentClassHistory.studyGroup.gradeLevel',
@@ -473,7 +488,7 @@ class DormitoryPermitController extends Controller
     public function bulkCardPdf(Request $request, string $userId, string $asramaUuid)
     {
         try {
-            $dormitory = Dormitory::findOrFail($asramaUuid);
+            $dormitory = $this->enforceDormitoryScope($asramaUuid);
             $activeYear = AcademicYear::where('is_active', true)->first();
 
             $query = DormitoryPermit::with([
@@ -540,7 +555,7 @@ class DormitoryPermitController extends Controller
      */
     public function scan(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
 
         $search = trim((string) $request->query('search', ''));
         $dateFrom = $request->query('date_from');

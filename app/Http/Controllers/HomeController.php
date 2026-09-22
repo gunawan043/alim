@@ -54,10 +54,10 @@ class HomeController extends Controller
         // Boarding roles with dedicated dashboards
         // Asrama = single role: Kepala + Admin + Wali (divisi based on jabatan)
         if ($roles->contains('Asrama')) {
-            return redirect()->route('dashboard.asrama');
+            return redirect()->route('user.dashboard.asrama', ['userId' => $user->id]);
         }
 
-        if ($roles->contains('Admin Pendidikan')) {
+        if ($roles->contains('Satuan Pendidikan Pendidikan')) {
             return redirect()->route('dashboard.boarding-education');
         }
 
@@ -77,6 +77,61 @@ class HomeController extends Controller
 
         if ($roles->contains('Administrator')) {
             return redirect()->route('dashboard.administrator');
+        }
+
+        // Role-based dashboard routing (role + jabatan)
+        $roleName = strtolower(trim((string) $roles->first()));
+        $jabatan = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
+
+        $roleJabatanMap = [
+            'satuan pendidikan' => [
+                'WAKIL KEPALA' => 'user.dashboard.wakil-kepala',
+                'KEPALA SATUAN PENDIDIKAN' => 'user.dashboard.kepala-satuan-pendidikan',
+                'STAF TATA USAHA' => 'user.dashboard.staf-tata-usaha',
+            ],
+            'pimpinan' => [
+                'WAKIL KEPALA' => 'user.dashboard.wakil-kepala',
+                'KEPALA SATUAN PENDIDIKAN' => 'user.dashboard.kepala-satuan-pendidikan',
+            ],
+        ];
+
+        if (isset($roleJabatanMap[$roleName])) {
+            foreach ($roleJabatanMap[$roleName] as $jabatanPattern => $route) {
+                if (str_contains($jabatan, $jabatanPattern)) {
+                    return redirect()->route($route, ['userId' => $user->id]);
+                }
+            }
+        }
+
+        $routeMap = [
+            'kepala satuan' => 'user.dashboard.kepala-satuan-pendidikan',
+            'wakil kepala' => 'user.dashboard.wakil-kepala',
+            'wali kelas' => 'user.dashboard.wali-kelas',
+            'koordinator guru' => 'user.dashboard.koordinator-guru',
+            'koordinator kurikulum' => 'user.dashboard.koordinator-kurikulum',
+            'koordinator kesiswaan' => 'user.dashboard.koordinator-kesiswaan',
+            'koordinator ekskul' => 'user.dashboard.koordinator-ekskul',
+            'koordinator lab' => 'user.dashboard.koordinator-lab',
+            'koordinator sarpras' => 'user.dashboard.koordinator-sarpras',
+            'kepala tata usaha' => 'user.dashboard.ka-tata-usaha',
+            'staf tata usaha' => 'user.dashboard.staf-tata-usaha',
+            'staff tata usaha' => 'user.dashboard.staf-tata-usaha',
+            'bendahara' => 'user.dashboard.bendahara',
+            'keuangan' => 'user.dashboard.bendahara',
+            'guru' => 'user.dashboard.guru',
+            'pendidik' => 'user.dashboard.guru',
+            'pengasuh' => 'user.dashboard.pengasuh',
+            'wali asrama' => 'user.dashboard.wali-asrama',
+            'admin tu' => 'user.dashboard.admin-tu',
+            'admin asrama' => 'user.dashboard.admin-asrama',
+        ];
+        foreach ($roles as $rn) {
+            $key = strtolower(trim($rn));
+            foreach ($routeMap as $substr => $route) {
+                if (str_contains($key, $substr)) {
+                    return redirect()->route($route, ['userId' => $user->id]);
+                }
+            }
         }
 
         // Default → GTK dashboard for any remaining role (Guru/Tendik/GTK)

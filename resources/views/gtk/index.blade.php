@@ -906,6 +906,8 @@
                                             <option value="kawin" {{ request('status_perkawinan') == 'kawin' ? 'selected' : '' }}>Kawin</option>
                                             <option value="cerai_hidup" {{ request('status_perkawinan') == 'cerai_hidup' ? 'selected' : '' }}>Cerai Hidup</option>
                                             <option value="cerai_mati" {{ request('status_perkawinan') == 'cerai_mati' ? 'selected' : '' }}>Cerai Mati</option>
+                                            <option value="janda_cerai" {{ request('status_perkawinan') == 'janda_cerai' ? 'selected' : '' }}>Janda/Cerai</option>
+                                            <option value="duda_cerai" {{ request('status_perkawinan') == 'duda_cerai' ? 'selected' : '' }}>Duda/Cerai</option>
                                         </select>
                                     </div>
                                     <div class="mb-2">
@@ -1354,7 +1356,7 @@
             if (key === 'status_aktif')     displayValue = displayValue === '1' ? 'Aktif' : 'Nonaktif';
             if (key === 'jenis_kelamin')    displayValue = displayValue === 'L' ? 'Laki-laki' : 'Perempuan';
             if (key === 'status_perkawinan') {
-                const map = { belum_kawin: 'Belum Kawin', kawin: 'Kawin', cerai_hidup: 'Cerai Hidup', cerai_mati: 'Cerai Mati' };
+                const map = { belum_kawin: 'Belum Kawin', kawin: 'Kawin', cerai_hidup: 'Cerai Hidup', cerai_mati: 'Cerai Mati', janda_cerai: 'Janda/Cerai', duda_cerai: 'Duda/Cerai' };
                 displayValue = map[displayValue] || displayValue;
             }
             const badge = document.createElement('span');
