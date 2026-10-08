@@ -1,71 +1,66 @@
-@extends('layouts.app')
+@extends('layouts.master')
 
-@section('title', 'Jadwal Mengajar — ' . e($teacher->name))
+@section('title', 'Jadwal Mengajar — ' . ($teacher->name ?? ''))
+
+@push('css')
+<style>
+    .time-cell { font-family: 'SF Mono', Monaco, monospace; font-size: .78rem; white-space: nowrap; }
+</style>
+@endpush
 
 @section('content')
+@php $userId = $userId ?? auth()->id(); @endphp
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">Jadwal Mengajar</h4>
-        <div>
-            <small class="text-muted">{{ $activeAy?->name ?? 'TA Aktif' }}</small>
-        </div>
-    </div>
+@component('components.breadcrumb')
+    @slot('li_1') Jadwal Mengajar @endslot
+    @slot('title') Jadwal Mengajar — {{ $teacher->name ?? '-' }} @endslot
+@endcomponent
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body bg-light">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <strong>{{ $teacher->name }}</strong>
-                </div>
-                <div class="col-md-6">
-                    @if($teacher->roles->first())
-                    Role: <span class="badge bg-primary">{{ $teacher->roles->first()->name }}</span>
-                    @endif
-                </div>
+@if($activeAy)
+    <p class="text-muted small mb-3">Tahun Ajaran {{ $activeAy->name }} ({{ ucfirst($activeAy->semester ?? '-') }})</p>
+@endif
+
+<div class="card">
+    <div class="card-body p-0">
+        @if($jadwals->isEmpty())
+            <div class="text-center py-5">
+                <div class="text-muted mb-2"><i class="ri-calendar-close-line" style="font-size:2.5rem;opacity:.4"></i></div>
+                <h6 class="fw-semibold mb-1">Belum ada jadwal mengajar</h6>
+                <p class="text-muted small mb-0">Jadwal akan tampil setelah admin men-generate jadwal KBM.</p>
             </div>
-        </div>
-    </div>
-
-    @if($jadwals->isEmpty())
-    <div class="alert alert-info">Tidak ada jadwal mengajar untuk guru ini pada TA aktif.</div>
-    @else
-    <div class="row g-3">
-        @foreach($jadwals as $dayNum => $items)
-        <div class="col-lg-4 col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <strong>{{ $days[$dayNum] ?? '-' }}</strong>
-                </div>
-                <div class="list-group list-group-flush">
-                    @foreach($items as $j)
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <small class="fw-bold text-primary">
-                                Jam ke {{ $j->slot_index }} ({{ $j->start_time }} — {{ $j->end_time }})
-                            </small>
-                        </div>
-                        <div class="mt-1">
-                            {{ $j->studyGroup->full_name }}
-                            <small class="text-muted">— Rom{{ $j->studyGroup->name }}</small>
-                        </div>
-                        <div class="small text-success">
-                            {{ $j->subject->name }}
-                            @if($j->subject->group)
-                            <span class="badge bg-secondary">{{ $j->subject->group }}</span>
-                            @endif
-                        </div>
-                        @if($j->room)
-                        <div class="small text-muted">Ruang: {{ $j->room }}</div>
-                        @endif
-                    </div>
-                    @endforeach
-                </div>
+        @else
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:96px">Hari</th>
+                            <th style="width:80px" class="text-center">Jam</th>
+                            <th style="width:120px">Waktu</th>
+                            <th>Mata Pelajaran</th>
+                            <th>Rombel</th>
+                            <th style="width:100px">Ruang</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($days as $dayNumber => $dayName)
+                            @php $dayJadwals = $jadwals[$dayNumber] ?? collect(); @endphp
+                            @foreach($dayJadwals as $jadwal)
+                                <tr>
+                                    @if($loop->first)
+                                        <td class="fw-semibold" rowspan="{{ $dayJadwals->count() }}">{{ $dayName }}</td>
+                                    @endif
+                                    <td class="text-center">{{ $jadwal->slot_index }}</td>
+                                    <td class="time-cell">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
+                                    <td class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</td>
+                                    <td>{{ $jadwal->studyGroup?->full_name ?? $jadwal->studyGroup?->name ?? '-' }}</td>
+                                    <td>{{ $jadwal->room ?? '-' }}</td>
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        </div>
-        @endforeach
+        @endif
     </div>
-    @endif
 </div>
-
 @endsection

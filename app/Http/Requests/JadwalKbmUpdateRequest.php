@@ -22,7 +22,7 @@ class JadwalKbmUpdateRequest extends FormRequest
             'entries.*.id' => [
                 'required',
                 'uuid',
-                Rule::exists('jadwal_kbms', 'id')->where('school_id', $schoolId),
+                Rule::exists('jadwal_kbms', 'id')->when($schoolId, fn ($rule) => $rule->where('school_id', $schoolId)),
             ],
             'entries.*.day_of_week' => [
                 'required',
@@ -37,7 +37,7 @@ class JadwalKbmUpdateRequest extends FormRequest
             'entries.*.teacher_id' => [
                 'nullable',
                 'uuid',
-                Rule::exists('users', 'id')->where('school_id', $schoolId),
+                Rule::exists('users', 'id'),
             ],
             'entries.*.subject_id' => [
                 'required',
@@ -75,7 +75,8 @@ class JadwalKbmUpdateRequest extends FormRequest
             return false;
         }
 
-        return canPermission('jadwal_kbm_update')
+        return canPermission('jadwalkbm.write')
+            || canPermission('jadwal_kbm_update')
             || canPermission('jadwal_kbm_manage')
             || canPermission('jadwal-kbm-update-form-request');
     }

@@ -1,90 +1,131 @@
-@extends('layouts.app')
+@extends('layouts.master')
 
-@section('title', 'Jadwal KBM — ' . $studyGroup->full_name)
+@section('title', 'Jadwal KBM — ' . ($studyGroup->full_name ?? $studyGroup->name))
+
+@push('css')
+<style>
+    .day-card .table { margin-bottom: 0; }
+    .day-card .table td { vertical-align: middle; }
+    .time-cell { font-family: 'SF Mono', Monaco, monospace; font-size: .78rem; white-space: nowrap; }
+</style>
+@endpush
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-calendar-alt"></i>
-            Jadwal KBM — {{ $studyGroup->full_name }}
-        </h1>
-        <div>
-            <a href="{{ route('jadwal-kbm.edit', [$userId ?? auth()->id(), $studyGroup->id]) }}"
-               class="btn btn-warning btn-sm">
-                <i class="fas fa-edit"></i> Edit
-            </a>
-            <a href="{{ route('jadwal-kbm.index', [$userId ?? auth()->id()]) }}"
-               class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Kembali
-            </a>
-        </div>
-    </div>
+@php $userId = $userId ?? auth()->id(); @endphp
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
-                Wali Kelas: {{ $studyGroup->homeroomTeacher?->name ?? '-' }}
-                @if($activeAy)
-                    | Tahun Ajaran: {{ $activeAy->name }}
-                @endif
-            </h6>
-        </div>
-        <div class="card-body">
-            @if($jadwals->isEmpty())
-                <div class="alert alert-info">
-                    Belum ada jadwal. <a href="{{ route('jadwal-kbm.generateIndex', [$userId ?? auth()->id()]) }}">Generate jadwal</a> untuk rombel ini.
-                </div>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Slot</th>
-                                <th>Jam</th>
-                                @foreach($days as $num => $name)
-                                    <th>{{ $name }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php
-                                $maxSlot = $jadwals->flatten(1)->max('slot_index') ?? 0;
-                            @endphp
-                            @for($slot = 1; $slot <= $maxSlot; $slot++)
-                                <tr>
-                                    <td class="text-center"><strong>{{ $slot }}</strong></td>
-                                    <td class="text-center text-muted small">
-                                        @php
-                                            $firstEntry = $jadwals->flatten(1)->firstWhere('slot_index', $slot);
-                                        @endphp
-                                        @if($firstEntry)
-                                            {{ substr($firstEntry->start_time, 0, 5) }}–{{ substr($firstEntry->end_time, 0, 5) }}
-                                        @endif
-                                    </td>
-                                    @foreach($days as $num => $name)
-                                        @php
-                                            $entry = $jadwals->get($num, collect())->firstWhere('slot_index', $slot);
-                                        @endphp
-                                        <td>
-                                            @if($entry)
-                                                <div class="font-weight-bold">{{ $entry->subject?->name ?? '-' }}</div>
-                                                <div class="small text-muted">{{ $entry->teacher?->name ?? '-' }}</div>
-                                                @if($entry->room)
-                                                    <div class="small"><i class="fas fa-door-open"></i> {{ $entry->room }}</div>
-                                                @endif
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endfor
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
+@component('components.breadcrumb')
+    @slot('li_1') <a href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}">Jadwal KBM</a> @endslot
+    @slot('li_2') {{ $studyGroup->full_name ?? $studyGroup->name }} @endslot
+    @slot('title') Jadwal — {{ $studyGroup->full_name ?? $studyGroup->name }} @endslot
+@endcomponent
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <p class="text-muted small mb-0">
+        Wali Kelas: {{ $studyGroup->homeroomTeacher?->name ?? '-' }}
+        @if($activeAy) • {{ $activeAy->name }} ({{ ucfirst($activeAy->semester ?? '-') }}) @endif
+    </p>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
+            <i class="ri-arrow-left-line me-1"></i>Kembali
+        </a>
+        <a href="{{ route('user.jadwal-kbm.edit', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}" class="btn btn-warning btn-sm">
+            <i class="ri-edit-line me-1"></i>Edit Manual
+        </a>
+        <a href="{{ route('user.jadwal-kbm.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}" class="btn btn-secondary btn-sm" target="_blank">
+            <i class="ri-printer-line me-1"></i>Cetak
+        </a>
+        @if($activeAy)
+            <form method="POST"
+                  action="{{ route('user.jadwal-kbm.generate.execute', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                  class="d-inline js-regenerate">
+                @csrf
+                <input type="hidden" name="overwrite" value="1">
+                <input type="hidden" name="semester" value="{{ $activeAy->semester ?? 'ganjil' }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="ri-refresh-line me-1"></i>Generate Ulang
+                </button>
+            </form>
+        @endif
     </div>
 </div>
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+@if(session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="ri-error-warning-line me-1"></i>{{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@include('jadwal-kbm._report')
+
+@if($jadwals->isEmpty())
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="text-muted mb-2"><i class="ri-calendar-close-line" style="font-size:2.5rem;opacity:.4"></i></div>
+            <h6 class="fw-semibold">Belum ada jadwal untuk rombel ini</h6>
+            <p class="text-muted small mb-3">Generate jadwal berdasarkan SK guru yang sudah disusun.</p>
+            <a href="{{ route('user.jadwal-kbm.generate', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
+                <i class="ri-magic-line me-1"></i>Generate Jadwal
+            </a>
+        </div>
+    </div>
+@else
+    <div class="row g-3">
+        @foreach($days as $dayNumber => $dayName)
+            @php $dayJadwals = $jadwals[$dayNumber] ?? collect(); @endphp
+            @if($dayJadwals->isNotEmpty())
+                <div class="col-xl-6">
+                    <div class="card day-card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <h6 class="card-title mb-0">{{ $dayName }}</h6>
+                            <span class="badge bg-primary-subtle text-primary">{{ $dayJadwals->count() }} jam</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:42px" class="text-center">Jam</th>
+                                        <th>Waktu</th>
+                                        <th>Mata Pelajaran</th>
+                                        <th>Guru</th>
+                                        <th>Ruang</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($dayJadwals as $jadwal)
+                                        <tr>
+                                            <td class="text-center">{{ $jadwal->slot_index }}</td>
+                                            <td class="time-cell">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
+                                            <td class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</td>
+                                            <td>{{ $jadwal->teacher?->name ?? '-' }}</td>
+                                            <td>{{ $jadwal->room ?? '-' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endforeach
+    </div>
+@endif
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.js-regenerate').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+        if (! confirm('Generate ulang jadwal rombel ini? Jadwal lama akan ditimpa.')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+@endpush

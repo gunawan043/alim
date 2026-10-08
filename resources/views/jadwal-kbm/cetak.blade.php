@@ -1,87 +1,94 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Jadwal KBM — {{ $studyGroup->full_name }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cetak Jadwal — {{ $studyGroup->full_name ?? $studyGroup->name }}</title>
     <style>
-        @page { size: A4 landscape; margin: 12mm; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; color: #222; margin: 0; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6pt; margin-bottom: 12pt; }
-        .header h2 { margin: 0; font-size: 13pt; }
-        .header p  { margin: 1pt 0; font-size: 10pt; }
-        .info { width: 100%; margin-bottom: 8pt; font-size: 9pt; }
-        .info td { padding: 1pt 6pt; }
-        table.grid { width: 100%; border-collapse: collapse; }
-        table.grid th, table.grid td { border: 1px solid #444; padding: 3pt; text-align: center; vertical-align: middle; }
-        table.grid th { background: #e8e8e8; font-size: 9pt; }
-        table.grid td.slot { font-size: 8pt; color: #555; }
-        table.grid td.mapel { font-weight: 600; }
-        table.grid td.guru { font-size: 8pt; }
-        .footer { margin-top: 10pt; font-size: 8pt; text-align: right; color: #666; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; margin: 24px; }
+        .header { text-align: center; margin-bottom: 18px; }
+        .header h2 { margin: 0 0 4px; font-size: 18px; }
+        .header p { margin: 0; font-size: 12px; color: #475569; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 18px; }
+        th, td { border: 1px solid #94a3b8; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; text-align: center; }
+        td.center { text-align: center; }
+        .day-title { background: #e2e8f0; font-weight: bold; }
+        .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 12px; }
+        .footer { margin-top: 36px; display: flex; justify-content: space-between; font-size: 12px; }
+        .signature { width: 220px; text-align: center; }
+        .signature .space { height: 64px; }
+        .no-print { text-align: right; margin-bottom: 12px; }
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 8mm; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>Jadwal Kegiatan Belajar Mengajar (KBM)</h2>
-        <p><strong>{{ $studyGroup->school?->name ?? 'Sekolah' }}</strong></p>
-        <p>Tahun Ajaran: {{ $activeAy?->name ?? '-' }}</p>
+    <div class="no-print">
+        <button onclick="window.print()" style="padding:8px 16px;cursor:pointer;">🖨️ Cetak</button>
+        <button onclick="window.close()" style="padding:8px 16px;cursor:pointer;">Tutup</button>
     </div>
 
-    <table class="info">
-        <tr>
-            <td><strong>Rombel</strong></td>
-            <td>: {{ $studyGroup->full_name }}</td>
-            <td><strong>Wali Kelas</strong></td>
-            <td>: {{ $studyGroup->homeroomTeacher?->name ?? '-' }}</td>
-        </tr>
-    </table>
+    <div class="header">
+        <h2>JADWAL KEGIATAN BELAJAR MENGAJAR</h2>
+        <p>{{ $studyGroup->school->name ?? config('app.name') }}</p>
+        <p>{{ $studyGroup->full_name ?? $studyGroup->name }} — Tahun Ajaran {{ $activeAy->name ?? '-' }} ({{ ucfirst($activeAy->semester ?? '-') }})</p>
+    </div>
 
-    @php
-        $dayLabels = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
-        $allSlots = range(1, 10);
-    @endphp
+    <div class="meta">
+        <span>Wali Kelas: <strong>{{ $studyGroup->homeroomTeacher?->name ?? '-' }}</strong></span>
+        <span>Total slot: <strong>{{ $jadwals->flatten()->count() }}</strong></span>
+    </div>
 
-    <table class="grid">
-        <thead>
-            <tr>
-                <th style="width: 50pt;">Slot</th>
-                <th style="width: 50pt;">Jam</th>
-                @foreach($dayLabels as $d => $label)
-                    <th>{{ $label }}</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($allSlots as $slot)
-                @php
-                    $sample = $jadwals->flatten(1)->firstWhere('slot_index', $slot);
-                    $start = $sample ? substr($sample->start_time, 0, 5) : '-';
-                    $end   = $sample ? substr($sample->end_time, 0, 5) : '-';
-                @endphp
-                <tr>
-                    <td class="slot">{{ $slot }}</td>
-                    <td class="slot">{{ $start }}–{{ $end }}</td>
-                    @foreach($dayLabels as $d => $label)
-                        @php
-                            $entry = isset($jadwals[$d]) ? $jadwals[$d]->firstWhere('slot_index', $slot) : null;
-                        @endphp
-                        <td>
-                            @if($entry)
-                                <div class="mapel">{{ $entry->subject?->name ?? '-' }}</div>
-                                <div class="guru">{{ $entry->teacher?->name ?? '-' }}</div>
-                                @if($entry->room)<div class="guru">R: {{ $entry->room }}</div>@endif
-                            @else
-                                &nbsp;
-                            @endif
-                        </td>
+    @foreach($days as $dayNumber => $dayName)
+        @php $dayJadwals = $jadwals[$dayNumber] ?? collect(); @endphp
+        @if($dayJadwals->isNotEmpty())
+            <table>
+                <thead>
+                    <tr><th colspan="5" class="day-title">{{ strtoupper($dayName) }}</th></tr>
+                    <tr>
+                        <th style="width:56px">Jam</th>
+                        <th style="width:110px">Waktu</th>
+                        <th>Mata Pelajaran</th>
+                        <th>Guru</th>
+                        <th style="width:90px">Ruang</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($dayJadwals as $jadwal)
+                        <tr>
+                            <td class="center">{{ $jadwal->slot_index }}</td>
+                            <td class="center">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
+                            <td>{{ $jadwal->subject?->name ?? '-' }}</td>
+                            <td>{{ $jadwal->teacher?->name ?? '-' }}</td>
+                            <td class="center">{{ $jadwal->room ?? '-' }}</td>
+                        </tr>
                     @endforeach
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+                </tbody>
+            </table>
+        @endif
+    @endforeach
+
+    @if($jadwals->isEmpty())
+        <p style="text-align:center;color:#64748b;">Belum ada jadwal untuk rombel ini.</p>
+    @endif
 
     <div class="footer">
-        Dicetak: {{ now()->translatedFormat('d F Y H:i') }}
+        <div class="signature">
+            <div>Mengetahui,</div>
+            <div>Kepala Satuan Pendidikan</div>
+            <div class="space"></div>
+            <div>__________________________</div>
+        </div>
+        <div class="signature">
+            <div>Wali Kelas</div>
+            <div>&nbsp;</div>
+            <div class="space"></div>
+            <div>{{ $studyGroup->homeroomTeacher?->name ?? '__________________________' }}</div>
+        </div>
     </div>
 </body>
 </html>

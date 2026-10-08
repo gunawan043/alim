@@ -241,7 +241,8 @@ class TeachingAssignmentController extends Controller
         }
 
         // Teachers — hanya guru yang terassign di sekolah decree ini
-        $teacherIds = usersHavingPermission('general_teacher.readable');
+        // Roster: permission snapshot → data kepegawaian (jenis/jabatan guru) sebagai fallback.
+        $teacherIds = app(\App\Services\TeacherRosterService::class)->idsForSchool($decree->school_id);
         $teacherQuery = User::whereIn('id', $teacherIds)
             ->whereHas('employments', fn ($q) => $q->where('school_id', $decree->school_id));
 

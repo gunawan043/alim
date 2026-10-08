@@ -21,12 +21,12 @@ class JadwalKbmGenerateRequest extends FormRequest
             'study_group_ids.*' => [
                 'required',
                 'uuid',
-                Rule::exists('study_groups', 'id')->where('school_id', $schoolId),
+                Rule::exists('study_groups', 'id')->when($schoolId, fn ($rule) => $rule->where('school_id', $schoolId)),
             ],
             'academic_year_id' => [
                 'required',
                 'uuid',
-                Rule::exists('academic_years', 'id')->where('school_id', $schoolId),
+                Rule::exists('academic_years', 'id'),
             ],
             'semester' => ['required', Rule::in(['ganjil', 'genap'])],
             'overwrite' => 'sometimes|boolean',
@@ -63,7 +63,9 @@ class JadwalKbmGenerateRequest extends FormRequest
             return false;
         }
 
-        return canPermission('jadwal_kbm_generate')
+        return canPermission('jadwalkbm.write')
+            || canPermission('jadwalkbm.publish')
+            || canPermission('jadwal_kbm_generate')
             || canPermission('jadwal_kbm_manage')
             || canPermission('jadwal-kbm-generate-form-request');
     }
