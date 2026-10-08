@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -32,7 +33,17 @@ class ProsemItem extends Model
         'mulai_minggu_ke',
         'selesai_minggu_ke',
         'jp',
+        'sumber',
         'keterangan',
+    ];
+
+    const SUMBER_OTOMATIS = 'otomatis';
+
+    const SUMBER_MANUAL = 'manual';
+
+    const SUMBER_OPTIONS = [
+        self::SUMBER_OTOMATIS => 'Otomatis',
+        self::SUMBER_MANUAL => 'Disesuaikan',
     ];
 
     protected $casts = [
@@ -55,5 +66,15 @@ class ProsemItem extends Model
     public function tujuanPembelajaran(): BelongsTo
     {
         return $this->belongsTo(TujuanPembelajaran::class, 'tujuan_pembelajaran_id');
+    }
+
+    public function weeks(): HasMany
+    {
+        return $this->hasMany(ProsemItemWeek::class, 'prosem_item_id')->orderBy('pekan_ke');
+    }
+
+    public function isManual(): bool
+    {
+        return $this->sumber === self::SUMBER_MANUAL;
     }
 }

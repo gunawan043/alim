@@ -658,6 +658,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{id}', [ProsemController::class, 'update'])->name('update');
                     Route::delete('/{id}', [ProsemController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/sync', [ProsemController::class, 'sync'])->name('sync');
+                    Route::put('/{id}/items/{itemId}/distribusi', [ProsemController::class, 'updateDistribusi'])->name('items.distribusi');
+                    Route::post('/{id}/items/{itemId}/reset', [ProsemController::class, 'resetDistribusi'])->name('items.reset');
                 });
 
                 // ── REALISASI PEMBELAJARAN (Jurnal → TP/ATP → Asesmen) ──

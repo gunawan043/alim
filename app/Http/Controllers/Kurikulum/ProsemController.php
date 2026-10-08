@@ -78,6 +78,14 @@ class ProsemController extends Controller
             }
         }
 
+        // PROSEM yang memiliki penyesuaian manual.
+        $adjustedIds = ProsemItem::query()
+            ->whereIn('prosem_id', $prosemList->pluck('id'))
+            ->where('sumber', ProsemItem::SUMBER_MANUAL)
+            ->distinct()
+            ->pluck('prosem_id')
+            ->all();
+
         return view('kurikulum.prosem.index', compact(
             'userId',
             'academicYears',
@@ -85,7 +93,8 @@ class ProsemController extends Controller
             'semester',
             'prosemList',
             'protaOptions',
-            'staleIds'
+            'staleIds',
+            'adjustedIds'
         ));
     }
 
@@ -126,9 +135,9 @@ class ProsemController extends Controller
     public function show(Request $request, string $userId, string $id)
     {
         $prosem = Prosem::with([
-            'subject', 'gradeLevel', 'academicYear', 'teacher', 'creator',
+            'subject', 'gradeLevel', 'academicYear', 'teacher', 'creator', 'school',
             'prota.subject', 'prota.gradeLevel', 'prota.items.tujuanPembelajaran',
-            'items.tujuanPembelajaran', 'items.protaItem',
+            'items.tujuanPembelajaran', 'items.protaItem', 'items.weeks',
         ])->findOrFail($id);
 
         $this->authorizeView($request, $prosem);
@@ -136,14 +145,64 @@ class ProsemController extends Controller
         $stale = $this->prosemService->staleness($prosem);
 
         // Peta pekan dari Pekan Efektif (satu sumber — tanpa kalender kedua).
-        $weeks = $this->prosemService->pekanEfektif($prosem)->keyBy('minggu_ke');
-        $effectiveWeeks = $weeks->filter(fn ($p) => (int) $p->hari_efektif > 0)->count();
+        $weekRows = $this->prosemService->pekanEfektif($prosem);
+        $weeks = $weekRows->keyBy('minggu_ke');
+
+        $effectiveWeekNumbers = $weekRows
+            ->filter(fn ($p) => (int) $p->hari_efektif > 0)
+            ->pluck('minggu_ke')
+            ->map(fn ($v) => (int) $v)
+            ->values()
+            ->all();
+
+        $effectiveWeeks = count($effectiveWeekNumbers);
         $totalJp = (int) $prosem->items->sum('jp');
         $overflowJp = $prosem->items
             ->filter(fn (ProsemItem $i) => str_contains((string) $i->keterangan, 'melebihi pekan efektif'))
             ->count();
 
+        // Status per item + status header (Otomatis / Disesuaikan / Tidak Valid / Perlu diperbarui).
+        $itemStates = [];
+        foreach ($prosem->items as $item) {
+            $validity = $this->prosemService->itemValidity($item, $effectiveWeekNumbers);
+            $itemStates[$item->id] = $validity + ['sumber' => $item->sumber];
+        }
+
+        $manualInvalidCount = collect($itemStates)
+            ->filter(fn ($s) => $s['sumber'] === ProsemItem::SUMBER_MANUAL && ! $s['valid'])
+            ->count();
+        $anyManual = collect($itemStates)->contains(fn ($s) => $s['sumber'] === ProsemItem::SUMBER_MANUAL);
+
+        $headerStatus = match (true) {
+            $manualInvalidCount > 0 => 'tidak_valid',
+            $stale['stale'] => 'perlu_diperbarui',
+            $anyManual => 'disesuaikan',
+            default => 'otomatis',
+        };
+
+        $summary = [
+            'pekan_efektif' => $effectiveWeeks,
+            'jp_tersedia' => (int) ($prosem->prota?->jp_efektif ?? 0),
+            'jp_terencana' => $totalJp,
+        ];
+
+        // Pekan dikelompokkan per bulan untuk modal "Atur Distribusi".
+        $weekGroups = $weekRows
+            ->groupBy(fn ($p) => $p->tanggal_mulai?->locale('id')->translatedFormat('F Y') ?? '—')
+            ->map(fn ($group, $label) => ['label' => $label, 'weeks' => $group->values()]);
+
+        $user = $request->user();
+        $isOwner = $prosem->created_by === $user->id || $prosem->teacher_id === $user->id;
+        $canEdit = $isOwner || $this->access->isKurikulumTeam($user);
+
         $teachers = $this->teachersForSchool($prosem->school_id);
+
+        // Template URL untuk modal "Atur Distribusi" (dihitung di controller agar Blade sederhana).
+        $adjustUrlTemplate = route('user.kurikulum.prosem.items.distribusi', [
+            'userId' => $userId,
+            'id' => $prosem->id,
+            'itemId' => '__ITEM__',
+        ]);
 
         // Realisasi dari jurnal pertemuan (Pelaksanaan → Nilai).
         $realisasiCounts = AdminJurnalPembelajaran::query()
@@ -158,11 +217,18 @@ class ProsemController extends Controller
             'prosem',
             'stale',
             'weeks',
+            'weekGroups',
             'effectiveWeeks',
             'totalJp',
             'overflowJp',
             'teachers',
-            'realisasiCounts'
+            'realisasiCounts',
+            'itemStates',
+            'manualInvalidCount',
+            'headerStatus',
+            'summary',
+            'canEdit',
+            'adjustUrlTemplate'
         ));
     }
 
@@ -193,7 +259,81 @@ class ProsemController extends Controller
 
         $this->prosemService->sync($prosem, $request->boolean('regenerate', true));
 
-        return back()->with('success', 'PROSEM disinkronkan dengan PROTA & Pekan Efektif terbaru.');
+        return back()->with('success', 'PROSEM disinkronkan. Distribusi otomatis diperbarui; penyesuaian manual dipertahankan.');
+    }
+
+    /**
+     * Simpan penyesuaian distribusi manual satu item PROSEM.
+     * Total JP tidak berubah — hanya sebaran pekan yang disesuaikan.
+     */
+    public function updateDistribusi(Request $request, string $userId, string $id, string $itemId)
+    {
+        $prosem = Prosem::findOrFail($id);
+        $this->authorizeManage($request, $prosem);
+
+        $item = ProsemItem::where('prosem_id', $prosem->id)->findOrFail($itemId);
+
+        $validated = $request->validate([
+            'weeks' => 'required|array|min:1',
+            'weeks.*' => 'nullable|integer|min:0|max:200',
+        ]);
+
+        $requested = collect($validated['weeks'])
+            ->mapWithKeys(fn ($jp, $pekan) => [(int) $pekan => (int) $jp])
+            ->filter(fn ($jp) => $jp > 0);
+
+        if ($requested->isEmpty()) {
+            return back()->withInput()->with('error', 'Minimal satu pekan harus memiliki alokasi JP.');
+        }
+
+        // Pekan harus berasal dari Pekan Efektif semester ini dan tidak libur.
+        $weekRows = $this->prosemService->pekanEfektif($prosem)->keyBy('minggu_ke');
+        $problems = [];
+        foreach ($requested as $pekan => $jp) {
+            $row = $weekRows->get($pekan);
+            if (! $row) {
+                $problems[] = "Pekan {$pekan} berada di luar semester.";
+            } elseif ((int) $row->hari_efektif <= 0) {
+                $problems[] = "Pekan {$pekan} adalah pekan libur dan tidak dapat dipilih.";
+            }
+        }
+
+        if ($problems !== []) {
+            return back()->withInput()->with('error', implode(' ', $problems));
+        }
+
+        $sum = (int) $requested->sum();
+        $allocated = (int) $item->jp;
+
+        if ($sum !== $allocated) {
+            $diff = $sum - $allocated;
+
+            return back()->withInput()->with(
+                'error',
+                $diff < 0
+                    ? "Terdistribusi {$sum}/{$allocated} JP — masih kurang ".abs($diff).' JP.'
+                    : "Terdistribusi {$sum}/{$allocated} JP — melebihi alokasi ".abs($diff).' JP.'
+            );
+        }
+
+        $this->prosemService->saveManualDistribution($item, $requested->all());
+
+        return back()->with('success', 'Distribusi berhasil disesuaikan.');
+    }
+
+    /**
+     * Kembalikan distribusi item ke hasil otomatis (generator).
+     */
+    public function resetDistribusi(Request $request, string $userId, string $id, string $itemId)
+    {
+        $prosem = Prosem::findOrFail($id);
+        $this->authorizeManage($request, $prosem);
+
+        $item = ProsemItem::where('prosem_id', $prosem->id)->findOrFail($itemId);
+
+        $this->prosemService->resetToAutomatic($item);
+
+        return back()->with('success', 'Distribusi dikembalikan ke otomatis.');
     }
 
     public function destroy(Request $request, string $userId, string $id)

@@ -88,6 +88,11 @@
                                         <i class="ri-refresh-line me-1"></i>Perlu diperbarui
                                     </span>
                                 @endif
+                                @if(in_array($prosem->id, $adjustedIds ?? [], true))
+                                    <span class="badge bg-primary-subtle text-primary ms-1" title="Ada penyesuaian manual">
+                                        <i class="ri-equalizer-line me-1"></i>Disesuaikan
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 {{ $prosem->gradeLevel?->name ?? 'Semua Jenjang' }}

@@ -47,6 +47,7 @@ class Prosem extends Model
         'grade_level_id',
         'teacher_id',
         'synced_at',
+        'adjusted_at',
         'status',
         'catatan',
         'created_by',
@@ -54,6 +55,7 @@ class Prosem extends Model
 
     protected $casts = [
         'synced_at' => 'datetime',
+        'adjusted_at' => 'datetime',
     ];
 
     public function prota(): BelongsTo

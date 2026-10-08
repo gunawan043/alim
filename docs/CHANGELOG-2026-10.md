@@ -103,6 +103,17 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Rantai lengkap siap pakai: RPM/PROSEM → Jurnal → realisasi TP/ATP → asesmen formatif/sumatif → Buku Administrasi → Leger → Rapor (modul existing).
 - Test: `PelaksanaanPembelajaranTest` 6 test/31 assertion; total **75 test / 544 assertion** lulus.
 
+## 16. Manual Adjustment PROSEM (UI/UX Timeline)
+- **Status PROSEM**: `Otomatis` (generator) / `Disesuaikan` (manual) / `Tidak Valid` (terdampak perubahan Kaldik) / `Perlu Diperbarui` — badge konsisten Velzon. Pendukung: `prosem_items.sumber`, `prosem.adjusted_at`, tabel `prosem_item_weeks` (distribusi JP per pekan; backfill data lama).
+- **Header PROGRAM SEMESTER**: identitas satuan pendidikan, mapel, kelas/fase, semester, tahun ajaran, guru + aksi **[Sinkron dari PROTA] [Atur Distribusi] [Cetak PDF]**.
+- **Summary cards**: Pekan Efektif, JP Tersedia, JP Terencana, dan Status.
+- **Tabel distribusi**: No · CP/TP/Materi · JP · Distribusi (bulan–pekan + rincian JP per pekan bila manual) · Realisasi · Status · Aksi `[Atur]` / `[Atur Ulang]` / `[Kembalikan otomatis]`.
+- **Modal "Atur Distribusi Pembelajaran"**: identitas TP + total alokasi, baris pekan (select dikelompokkan per bulan, pekan libur **disabled**), tombol *+ Tambah Pekan*, referensi ketersediaan pekan per bulan (Efektif/Libur/Ujian/Kegiatan dari Kaldik), validasi realtime (kurang/lebih/duplikat/pekan tidak tersedia), dan konfirmasi dua langkah. Tanpa drag & drop.
+- **Endpoint**: `PUT /kurikulum/prosem/{id}/items/{itemId}/distribusi` dan `POST .../reset`; validasi server: hanya pekan efektif semester berjalan dan total JP wajib sama dengan alokasi TP (sumber tetap PROTA/ATP).
+- **Perubahan kalender**: penyesuaian manual **tidak dihapus** — item ditandai *Tidak Valid*, alert menampilkan jumlah penyesuaian terdampak + **[Tinjau Perubahan] [Sinkronkan]**.
+- **Sinkron aman**: distribusi otomatis diperbarui, penyesuaian manual dipertahankan, item tidak dihapus/dibuat ulang — relasi **Jurnal → realisasi TP/ATP tetap utuh**.
+- Test: `ProsemAdjustmentTest` 9 test/51 assertion; total **84 test / 595 assertion** lulus + smoke MySQL (auto 12/13 pekan → manual → invalid → sync → reset).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PekanEfektif;
 use App\Models\Prosem;
+use App\Models\ProsemItem;
 use App\Models\Prota;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -64,6 +65,7 @@ class ProsemService
             $startIdx = $weekIdx;
             $endIdx = $weekIdx;
             $remainingJp = $jp;
+            $weeksTaken = [];
 
             if ($weekCount === 0 || $jp === 0) {
                 $rows[] = [
@@ -74,6 +76,7 @@ class ProsemService
                     'selesai_minggu_ke' => 0,
                     'jp' => $jp,
                     'keterangan' => $weekCount === 0 ? 'Belum dijadwalkan — Pekan Efektif belum tersedia.' : null,
+                    'weeks' => [],
                 ];
 
                 continue;
@@ -87,6 +90,12 @@ class ProsemService
                 }
 
                 $take = min($remainingJp, $remainingCapacity);
+
+                if ($take > 0) {
+                    $pekanKe = (int) $effective[$weekIdx]->minggu_ke;
+                    $weeksTaken[$pekanKe] = ($weeksTaken[$pekanKe] ?? 0) + $take;
+                }
+
                 $remainingJp -= $take;
                 $remainingCapacity -= $take;
                 $endIdx = $weekIdx;
@@ -119,6 +128,7 @@ class ProsemService
                 'selesai_minggu_ke' => (int) $endWeek->minggu_ke,
                 'jp' => $jp,
                 'keterangan' => $keterangan ? mb_substr($keterangan, 0, 255) : null,
+                'weeks' => $weeksTaken,
             ];
         }
 
@@ -153,7 +163,20 @@ class ProsemService
             ]);
 
             foreach ($computed['rows'] as $row) {
-                $prosem->items()->create($row);
+                $item = $prosem->items()->create([
+                    'prota_item_id' => $row['prota_item_id'],
+                    'tujuan_pembelajaran_id' => $row['tujuan_pembelajaran_id'],
+                    'urutan' => $row['urutan'],
+                    'mulai_minggu_ke' => $row['mulai_minggu_ke'],
+                    'selesai_minggu_ke' => $row['selesai_minggu_ke'],
+                    'jp' => $row['jp'],
+                    'sumber' => ProsemItem::SUMBER_OTOMATIS,
+                    'keterangan' => $row['keterangan'],
+                ]);
+
+                foreach (($row['weeks'] ?? []) as $pekanKe => $jp) {
+                    $item->weeks()->create(['pekan_ke' => (int) $pekanKe, 'jp' => (int) $jp]);
+                }
             }
 
             return $prosem;
@@ -180,9 +203,48 @@ class ProsemService
 
         DB::transaction(function () use ($prosem, $computed, $regenerate) {
             if ($regenerate) {
-                $prosem->items()->delete();
+                $existing = $prosem->items()->get()->keyBy('prota_item_id');
+
                 foreach ($computed['rows'] as $row) {
-                    $prosem->items()->create($row);
+                    /** @var \App\Models\ProsemItem|null $item */
+                    $item = $row['prota_item_id'] ? $existing->get($row['prota_item_id']) : null;
+
+                    // Penyesuaian manual guru dipertahankan; total JP tetap mengikuti PROTA.
+                    // Item tidak pernah dihapus/dibuat ulang agar relasi jurnal tetap utuh.
+                    if ($item && $item->isManual()) {
+                        $item->forceFill(['jp' => $row['jp']])->save();
+
+                        continue;
+                    }
+
+                    if ($item) {
+                        $item->forceFill([
+                            'tujuan_pembelajaran_id' => $row['tujuan_pembelajaran_id'],
+                            'urutan' => $row['urutan'],
+                            'mulai_minggu_ke' => $row['mulai_minggu_ke'],
+                            'selesai_minggu_ke' => $row['selesai_minggu_ke'],
+                            'jp' => $row['jp'],
+                            'sumber' => ProsemItem::SUMBER_OTOMATIS,
+                            'keterangan' => $row['keterangan'],
+                        ])->save();
+
+                        $item->weeks()->delete();
+                    } else {
+                        $item = $prosem->items()->create([
+                            'prota_item_id' => $row['prota_item_id'],
+                            'tujuan_pembelajaran_id' => $row['tujuan_pembelajaran_id'],
+                            'urutan' => $row['urutan'],
+                            'mulai_minggu_ke' => $row['mulai_minggu_ke'],
+                            'selesai_minggu_ke' => $row['selesai_minggu_ke'],
+                            'jp' => $row['jp'],
+                            'sumber' => ProsemItem::SUMBER_OTOMATIS,
+                            'keterangan' => $row['keterangan'],
+                        ]);
+                    }
+
+                    foreach (($row['weeks'] ?? []) as $pekanKe => $jp) {
+                        $item->weeks()->create(['pekan_ke' => (int) $pekanKe, 'jp' => (int) $jp]);
+                    }
                 }
             }
 
@@ -190,6 +252,101 @@ class ProsemService
         });
 
         return $prosem->fresh();
+    }
+
+    /**
+     * Validitas distribusi item PROSEM terhadap Pekan Efektif terkini.
+     *
+     * @param  array<int, int>  $effectiveWeekNumbers
+     * @return array{sum: int, valid: bool, invalid_weeks: array<int, int>}
+     */
+    public function itemValidity(ProsemItem $item, array $effectiveWeekNumbers): array
+    {
+        $weeks = $item->weeks;
+        $sum = (int) $weeks->sum('jp');
+
+        $invalidWeeks = $weeks
+            ->filter(fn ($w) => ! in_array((int) $w->pekan_ke, $effectiveWeekNumbers, true))
+            ->pluck('pekan_ke')
+            ->map(fn ($v) => (int) $v)
+            ->values()
+            ->all();
+
+        return [
+            'sum' => $sum,
+            'valid' => $weeks->isNotEmpty() && $invalidWeeks === [] && $sum === (int) $item->jp,
+            'invalid_weeks' => $invalidWeeks,
+        ];
+    }
+
+    /**
+     * Simpan penyesuaian distribusi manual untuk satu item.
+     * Total JP tidak boleh berubah (validasi dilakukan controller).
+     *
+     * @param  array<int|string, int>  $weeks  [pekan_ke => jp]
+     */
+    public function saveManualDistribution(ProsemItem $item, array $weeks): ProsemItem
+    {
+        $weeks = collect($weeks)
+            ->mapWithKeys(fn ($jp, $pekan) => [(int) $pekan => (int) $jp])
+            ->filter(fn ($jp) => $jp > 0)
+            ->sortKeys();
+
+        DB::transaction(function () use ($item, $weeks) {
+            $item->weeks()->delete();
+
+            foreach ($weeks as $pekanKe => $jp) {
+                $item->weeks()->create(['pekan_ke' => $pekanKe, 'jp' => $jp]);
+            }
+
+            $item->forceFill([
+                'sumber' => ProsemItem::SUMBER_MANUAL,
+                'mulai_minggu_ke' => (int) $weeks->keys()->min(),
+                'selesai_minggu_ke' => (int) $weeks->keys()->max(),
+            ])->save();
+
+            $item->prosem?->forceFill(['adjusted_at' => now()])->save();
+        });
+
+        return $item->fresh(['weeks']);
+    }
+
+    /**
+     * Kembalikan distribusi item ke hasil otomatis (dari PROTA/ATP).
+     */
+    public function resetToAutomatic(ProsemItem $item): ProsemItem
+    {
+        $prosem = $item->prosem;
+        $prota = $prosem?->prota;
+
+        if (! $prosem || ! $prota) {
+            return $item;
+        }
+
+        $computed = $this->buildFromProta($prota);
+        $row = collect($computed['rows'])->firstWhere('prota_item_id', $item->prota_item_id);
+
+        if (! $row) {
+            return $item;
+        }
+
+        DB::transaction(function () use ($item, $row) {
+            $item->weeks()->delete();
+
+            foreach (($row['weeks'] ?? []) as $pekanKe => $jp) {
+                $item->weeks()->create(['pekan_ke' => (int) $pekanKe, 'jp' => (int) $jp]);
+            }
+
+            $item->forceFill([
+                'sumber' => ProsemItem::SUMBER_OTOMATIS,
+                'mulai_minggu_ke' => $row['mulai_minggu_ke'],
+                'selesai_minggu_ke' => $row['selesai_minggu_ke'],
+                'jp' => $row['jp'],
+                'keterangan' => $row['keterangan'],
+            ])->save();
+        });
+
+        return $item->fresh(['weeks']);
     }
 
     /**
