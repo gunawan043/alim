@@ -183,7 +183,7 @@
                                 <button type="submit" class="btn btn-primary btn-sm w-100"><i class="ri-search-line"></i> Filter</button>
                             </div>
                             <div class="col-md-2">
-                                <a href="{{ route('permits.index') }}" class="btn btn-light btn-sm w-100">Reset</a>
+                                <a href="{{ route('system.permits.index') }}" class="btn btn-light btn-sm w-100">Reset</a>
                             </div>
                         </div>
                     </div>

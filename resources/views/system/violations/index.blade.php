@@ -118,7 +118,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('violations.index') }}" class="btn btn-light w-100">Reset</a>
+                            <a href="{{ route('system.violations.index') }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 

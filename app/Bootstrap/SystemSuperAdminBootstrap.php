@@ -2,12 +2,12 @@
 
 namespace App\Bootstrap;
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -83,13 +83,10 @@ class SystemSuperAdminBootstrap
             if (! $allPerms->isEmpty()) {
                 DB::table('role_has_permissions')->where('role_id', $role->id)->delete();
                 $rows = [];
-                $now = now();
                 foreach ($allPerms as $perm) {
                     $rows[] = [
                         'permission_id' => (string) $perm->id,
                         'role_id' => (string) $role->id,
-                        'created_at' => $now,
-                        'updated_at' => $now,
                     ];
                 }
                 DB::table('role_has_permissions')->insert($rows);
