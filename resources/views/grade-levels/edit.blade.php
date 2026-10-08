@@ -46,6 +46,11 @@
                                 <input type="text" name="code" class="form-control" value="{{ old('code', $gradeLevel->code) }}" maxlength="20">
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Fase</label>
+                                <input type="text" name="fase" class="form-control" value="{{ old('fase', $gradeLevel->fase) }}" maxlength="5" placeholder="Contoh: D">
+                                <small class="text-muted">Fase capaian pembelajaran (A–F) — dipakai CP, TP, dan ATP.</small>
+                            </div>
+                            <div class="col-md-6">
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" name="is_active" value="1" {{ old('is_active', $gradeLevel->is_active) ? 'checked' : '' }}>
                                     <label class="form-check-label">Tingkat kelas aktif</label>

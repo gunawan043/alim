@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\AcademicYear;
+use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
 use App\Models\PekanEfektif;
 use App\Models\School;
+use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\TeachingAssignment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -28,6 +31,8 @@ use Illuminate\Support\Facades\DB;
  */
 class PekanEfektifService
 {
+    public function __construct(private readonly TeachingHoursResolver $hoursResolver) {}
+
     /**
      * Rentang tanggal satu semester pada tahun ajaran.
      *
@@ -346,6 +351,10 @@ class PekanEfektifService
      * Alokasi JP efektif per kelas (fondasi perencanaan pembelajaran):
      * JP efektif = JP per minggu × jumlah minggu efektif semester.
      *
+     * Mapel diambil dari gabungan tiga sumber resmi tanpa duplikasi:
+     * teaching_assignments → study_group_subjects → grade_level_subjects.
+     * JP per minggu diselesaikan lewat TeachingHoursResolver (satu aturan).
+     *
      * @return array<int, array<string, mixed>>
      */
     public function effectiveJpForStudyGroup(string $schoolId, string $studyGroupId, string $academicYearId, int $semester): array
@@ -353,26 +362,109 @@ class PekanEfektifService
         $summary = $this->summary($schoolId, $academicYearId, $semester);
         $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
 
-        return TeachingAssignment::query()
-            ->with(['subject:id,name,code', 'teacher:id,name'])
+        $studyGroup = StudyGroup::with('gradeLevel')->find($studyGroupId);
+
+        if (! $studyGroup) {
+            return [];
+        }
+
+        $rows = [];
+        $seenSubjects = [];
+
+        // 1) Plotting mengajar (otoritatif) — SK guru.
+        $assignments = TeachingAssignment::with(['subject', 'teacher:id,name'])
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $academicYearId)
             ->where('status', 'active')
-            ->orderBy('subject_id')
-            ->get()
-            ->map(function (TeachingAssignment $a) use ($mingguEfektif) {
-                $weeklyHours = (int) $a->weekly_hours;
+            ->get();
 
-                return [
-                    'subject_id' => $a->subject_id,
-                    'subject' => $a->subject?->name ?? '-',
-                    'subject_code' => $a->subject?->code ?? '',
-                    'teacher' => $a->teacher?->name ?? '-',
-                    'weekly_hours' => $weeklyHours,
-                    'minggu_efektif' => $mingguEfektif,
-                    'jp_efektif' => $weeklyHours * $mingguEfektif,
-                ];
-            })
-            ->all();
+        foreach ($assignments as $assignment) {
+            if (! $assignment->subject) {
+                continue;
+            }
+
+            $weeklyHours = $this->hoursResolver->resolve(
+                $studyGroup,
+                $assignment->subject,
+                (int) $assignment->weekly_hours
+            );
+
+            $seenSubjects[$assignment->subject_id] = true;
+            $rows[] = $this->jpRow($assignment->subject, $assignment->teacher?->name, $weeklyHours, $mingguEfektif);
+        }
+
+        // 2) Mapel rombel (bila belum ada di plotting).
+        $groupSubjects = StudyGroupSubject::with(['subject', 'teacher:id,name'])
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $academicYearId)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($groupSubjects as $groupSubject) {
+            if (! $groupSubject->subject || isset($seenSubjects[$groupSubject->subject_id])) {
+                continue;
+            }
+
+            $weeklyHours = $this->hoursResolver->resolve(
+                $studyGroup,
+                $groupSubject->subject,
+                (int) $groupSubject->weekly_hours
+            );
+
+            $seenSubjects[$groupSubject->subject_id] = true;
+            $rows[] = $this->jpRow($groupSubject->subject, $groupSubject->teacher?->name, $weeklyHours, $mingguEfektif);
+        }
+
+        // 3) Mapel jenjang (bila belum ada di dua sumber sebelumnya).
+        if ($studyGroup->grade_level_id) {
+            $gradeSubjects = GradeLevelSubject::with('subject')
+                ->where('grade_level_id', $studyGroup->grade_level_id)
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($gradeSubjects as $gradeSubject) {
+                if (! $gradeSubject->subject || isset($seenSubjects[$gradeSubject->subject_id])) {
+                    continue;
+                }
+
+                $weeklyHours = $this->hoursResolver->resolve($studyGroup, $gradeSubject->subject);
+                $seenSubjects[$gradeSubject->subject_id] = true;
+                $rows[] = $this->jpRow($gradeSubject->subject, null, $weeklyHours, $mingguEfektif);
+            }
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['subject'], $b['subject']));
+
+        return $rows;
+    }
+
+    /**
+     * JP efektif untuk satu mapel (tanpa konteks rombel) — dipakai ATP/Kurikulum.
+     * JP efektif = JP per minggu (fallback berjenjang) × minggu efektif semester.
+     */
+    public function effectiveJpForSubject(string $schoolId, string $academicYearId, int $semester, \App\Models\Subject $subject, ?string $gradeLevelId = null): int
+    {
+        $summary = $this->summary($schoolId, $academicYearId, $semester);
+        $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
+
+        $weeklyHours = $this->hoursResolver->resolve(null, $subject, null, $gradeLevelId);
+
+        return $weeklyHours * $mingguEfektif;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function jpRow(\App\Models\Subject $subject, ?string $teacherName, int $weeklyHours, int $mingguEfektif): array
+    {
+        return [
+            'subject_id' => $subject->id,
+            'subject' => $subject->name,
+            'subject_code' => $subject->code,
+            'teacher' => $teacherName ?: '—',
+            'weekly_hours' => $weeklyHours,
+            'minggu_efektif' => $mingguEfektif,
+            'jp_efektif' => $weeklyHours * $mingguEfektif,
+        ];
     }
 }

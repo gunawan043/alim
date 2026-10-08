@@ -56,6 +56,11 @@
                                 <small class="text-muted">Kode romawi opsional (VII, VIII, IX)</small>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Fase</label>
+                                <input type="text" name="fase" class="form-control" value="{{ old('fase') }}" maxlength="5" placeholder="Contoh: D">
+                                <small class="text-muted">Fase capaian pembelajaran (A–F) — dipakai CP, TP, dan ATP.</small>
+                            </div>
+                            <div class="col-md-6">
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" name="is_active" value="1" checked>
                                     <label class="form-check-label">Tingkat kelas aktif</label>

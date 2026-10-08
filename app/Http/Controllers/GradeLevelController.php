@@ -55,6 +55,7 @@ class GradeLevelController extends Controller
             'level' => 'required|integer|min:1|max:15',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',
+            'fase' => 'nullable|string|max:5',
             'is_active' => 'boolean',
         ];
         if (! $schoolId) {
@@ -231,6 +232,7 @@ class GradeLevelController extends Controller
             'level' => 'required|integer|min:1|max:15',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',
+            'fase' => 'nullable|string|max:5',
             'is_active' => 'boolean',
         ];
         if (! $schoolId) {

@@ -424,6 +424,44 @@
             <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? ' active' : '' }}"
+           href="#guru_kurikulum" data-bs-toggle="collapse" role="button"
+           aria-expanded="{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? 'true' : 'false' }}"
+           aria-controls="guru_kurikulum">
+            <i class="ri-book-open-line"></i><span>Kurikulum Saya</span><span class="menu-arrow"></span>
+        </a>
+        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? ' show' : '' }}"
+             id="guru_kurikulum">
+            <ul class="nav nav-sm flex-column">
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.tp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}">
+                        Tujuan Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.atp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}">
+                        ATP
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
+                        Perangkat Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
+                        Peta Kurikulum
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -561,6 +599,50 @@
         </a>
     </li>
     @endif
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? ' active' : '' }}"
+           href="#sp_kurikulum" data-bs-toggle="collapse" role="button"
+           aria-expanded="{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? 'true' : 'false' }}"
+           aria-controls="sp_kurikulum">
+            <i class="ri-book-open-line"></i><span>Kurikulum &amp; Perangkat</span><span class="menu-arrow"></span>
+        </a>
+        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kurikulum.']) ? ' show' : '' }}"
+             id="sp_kurikulum">
+            <ul class="nav nav-sm flex-column">
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
+                        Peta Kurikulum
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.cp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}">
+                        Capaian Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.tp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}">
+                        Tujuan Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.atp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}">
+                        ATP
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
+                        Perangkat Pembelajaran
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? ' active' : '' }}"

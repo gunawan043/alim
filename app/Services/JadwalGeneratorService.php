@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\GradeLevelSubject;
 use App\Models\JadwalKbm;
 use App\Models\StudyGroup;
-use App\Models\StudyGroupSubject;
 use App\Models\TeachingAssignment;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -307,42 +305,16 @@ class JadwalGeneratorService
 
     /**
      * Sumber JP otoritatif: teaching_assignments.weekly_hours.
-     * Fallback: study_group_subjects.weekly_hours → grade_level_subjects.allocation_hours
-     * → subjects.credit_hours → default 2 JP.
+     * Fallback berjenjang ditangani `TeachingHoursResolver` (satu aturan
+     * untuk Jadwal KBM, Pekan Efektif/JP Efektif, ATP, dan Perangkat).
      */
     protected function resolveWeeklyHours(TeachingAssignment $assignment, StudyGroup $studyGroup): int
     {
-        $hours = (int) $assignment->weekly_hours;
-
-        if ($hours > 0) {
-            return $hours;
-        }
-
-        $hours = (int) StudyGroupSubject::query()
-            ->where('study_group_id', $studyGroup->id)
-            ->where('subject_id', $assignment->subject_id)
-            ->where('is_active', true)
-            ->value('weekly_hours');
-
-        if ($hours > 0) {
-            return $hours;
-        }
-
-        if ($studyGroup->grade_level_id) {
-            $hours = (int) GradeLevelSubject::query()
-                ->where('grade_level_id', $studyGroup->grade_level_id)
-                ->where('subject_id', $assignment->subject_id)
-                ->where('is_active', true)
-                ->value('allocation_hours');
-
-            if ($hours > 0) {
-                return $hours;
-            }
-        }
-
-        $credit = (int) ($assignment->subject->credit_hours ?? 0);
-
-        return $credit > 0 ? $credit : self::DEFAULT_WEEKLY_HOURS;
+        return app(TeachingHoursResolver::class)->resolve(
+            $studyGroup,
+            $assignment->subject,
+            (int) $assignment->weekly_hours
+        );
     }
 
     /**

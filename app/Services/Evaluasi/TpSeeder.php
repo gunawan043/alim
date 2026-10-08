@@ -2,6 +2,7 @@
 
 namespace App\Services\Evaluasi;
 
+use App\Models\AcademicYear;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
 
@@ -9,14 +10,22 @@ use App\Models\TujuanPembelajaran;
  * Seeder for sample Tujuan Pembelajaran.
  * Idempotent: re-running updates instead of duplicating.
  *
- * In production, TPs come from kaprog (Kepala Program) input or imported from
- * kurikulum.repo. This seeder provides a deterministic baseline so the
- * ecosystem is never empty during development.
+ * TP selalu terikat tahun ajaran aktif + semester-nya (skema TP 2026_06_19).
  */
 class TpSeeder
 {
     public function seedSample(?string $subjectId = null): int
     {
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        if (! $academicYear) {
+            return 0;
+        }
+
+        $semester = in_array($academicYear->semester, ['ganjil', 'genap'], true)
+            ? $academicYear->semester
+            : 'ganjil';
+
         $subjects = $subjectId
             ? Subject::where('id', $subjectId)->get()
             : Subject::all();
@@ -29,9 +38,15 @@ class TpSeeder
         foreach ($subjects as $subject) {
             $tps = $this->buildSampleTps($subject);
             foreach ($tps as $tp) {
+                $tp['school_id'] = $tp['school_id'] ?? $subject->school_id;
+                $tp['academic_year_id'] = $academicYear->id;
+                $tp['semester'] = $semester;
+
                 TujuanPembelajaran::updateOrCreate(
                     [
                         'subject_id' => $tp['subject_id'],
+                        'academic_year_id' => $academicYear->id,
+                        'semester' => $semester,
                         'kode_tp' => $tp['kode_tp'],
                     ],
                     $tp
@@ -57,7 +72,7 @@ class TpSeeder
             return $this->bahasaTps($subject->id);
         }
 
-        return $this->defaultTps($subject->id);
+        return $this->defaultTps($subject);
     }
 
     private function matematikaTps(string $subjectId): array
@@ -68,7 +83,7 @@ class TpSeeder
                 'kode_tp' => 'TP.01',
                 'deskripsi' => 'Peserta didik mampu memahami konsep bilangan bulat dan operasinya.',
                 'elemen' => 'Bilangan',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 4,
                 'urutan' => 1,
             ],
@@ -77,7 +92,7 @@ class TpSeeder
                 'kode_tp' => 'TP.02',
                 'deskripsi' => 'Peserta didik mampu menerapkan operasi pecahan dalam penyelesaian masalah.',
                 'elemen' => 'Bilangan',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 4,
                 'urutan' => 2,
             ],
@@ -86,7 +101,7 @@ class TpSeeder
                 'kode_tp' => 'TP.03',
                 'deskripsi' => 'Peserta didik mampu menganalisis persamaan dan pertidaksamaan linear satu variabel.',
                 'elemen' => 'Aljabar',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 6,
                 'urutan' => 3,
             ],
@@ -101,7 +116,7 @@ class TpSeeder
                 'kode_tp' => 'TP.01',
                 'deskripsi' => 'Peserta didik mampu memahami konsep pengukuran dan besaran fisika.',
                 'elemen' => 'Pengukuran',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 4,
                 'urutan' => 1,
             ],
@@ -110,7 +125,7 @@ class TpSeeder
                 'kode_tp' => 'TP.02',
                 'deskripsi' => 'Peserta didik mampu menganalisis sistem tata surya dan gerak benda langit.',
                 'elemen' => 'Bumi dan Antariksa',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 6,
                 'urutan' => 2,
             ],
@@ -125,7 +140,7 @@ class TpSeeder
                 'kode_tp' => 'TP.01',
                 'deskripsi' => 'Peserta didik mampu mengidentifikasi informasi dalam teks eksposisi.',
                 'elemen' => 'Membaca',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 4,
                 'urutan' => 1,
             ],
@@ -134,22 +149,22 @@ class TpSeeder
                 'kode_tp' => 'TP.02',
                 'deskripsi' => 'Peserta didik mampu menulis teks argumentasi dengan struktur yang tepat.',
                 'elemen' => 'Menulis',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 6,
                 'urutan' => 2,
             ],
         ];
     }
 
-    private function defaultTps(string $subjectId): array
+    private function defaultTps(Subject $subject): array
     {
         return [
             [
-                'subject_id' => $subjectId,
+                'subject_id' => $subject->id,
                 'kode_tp' => 'TP.01',
                 'deskripsi' => 'Peserta didik mampu memahami konsep dasar '.($subject->name ?? 'mata pelajaran').'.',
                 'elemen' => 'Konsep Dasar',
-                'fase' => 'E',
+                'fase' => null,
                 'alokasi_waktu' => 4,
                 'urutan' => 1,
             ],

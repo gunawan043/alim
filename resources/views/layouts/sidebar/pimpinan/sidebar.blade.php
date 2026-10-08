@@ -114,6 +114,25 @@ function isActivePimpinan($routeName, $pattern) {
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.') ? ' active' : '' }}"
+       href="#pimpinan_kurikulum" data-bs-toggle="collapse" role="button"
+       aria-expanded="{{ isActivePimpinan($currentRoute, 'user.kurikulum.') ? 'true' : 'false' }}"
+       aria-controls="pimpinan_kurikulum">
+        <i class="ri-book-open-line"></i>
+        <span>Kurikulum &amp; Perangkat</span>
+    </a>
+    <div class="collapse menu-dropdown{{ isActivePimpinan($currentRoute, 'user.kurikulum.') ? ' show' : '' }}" id="pimpinan_kurikulum">
+        <ul class="nav nav-sm flex-column">
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.index') ? ' active' : '' }}" href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Peta Kurikulum</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.cp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Capaian Pembelajaran</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.tp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Tujuan Pembelajaran</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.atp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">ATP</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.perangkat.') ? ' active' : '' }}" href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Perangkat Pembelajaran</a></li>
+        </ul>
+    </div>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.schools.') ? ' active' : '' }}"
        href="{{ route('user.schools.index', ['userId' => $userId]) }}">
         <i class="ri-government-line"></i>

@@ -9,23 +9,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * Tujuan Pembelajaran (TP) — diturunkan dari Capaian Pembelajaran (CP),
- * disusun ke dalam ATP, lalu dipakai perangkat pembelajaran & asesmen.
- *
- * Skema fisik mengikuti migrasi 2026_06_19_010001 (+ tautan CP pada
- * migrasi 2026_10_09_100000).
+ * ATP (Alur Tujuan Pembelajaran) — susunan sistematis TP untuk satu
+ * mapel + jenjang pada satu semester, terhubung dengan JP efektif
+ * (minggu efektif × JP per minggu).
  */
-class TujuanPembelajaran extends Model
+class AlurTujuanPembelajaran extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'tujuan_pembelajaran';
+    protected $table = 'alur_tujuan_pembelajaran';
 
     protected $keyType = 'string';
 
     public $incrementing = false;
 
-    protected static $bootDefault;
+    const STATUS_DRAFT = 'draft';
+
+    const STATUS_PUBLISHED = 'published';
+
+    const STATUS_OPTIONS = [
+        self::STATUS_DRAFT => 'Draft',
+        self::STATUS_PUBLISHED => 'Terbit',
+    ];
 
     protected static function boot()
     {
@@ -36,25 +41,20 @@ class TujuanPembelajaran extends Model
     protected $fillable = [
         'id',
         'school_id',
-        'capaian_pembelajaran_id',
-        'subject_id',
-        'grade_level_id',
         'academic_year_id',
         'semester',
+        'subject_id',
+        'grade_level_id',
         'fase',
-        'kode_tp',
-        'deskripsi',
-        'elemen',
-        'alokasi_waktu',
-        'urutan',
-        'is_active',
+        'teacher_id',
+        'total_jp',
+        'status',
+        'catatan',
         'created_by',
     ];
 
     protected $casts = [
-        'alokasi_waktu' => 'integer',
-        'urutan' => 'integer',
-        'is_active' => 'boolean',
+        'total_jp' => 'integer',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -62,6 +62,11 @@ class TujuanPembelajaran extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class, 'school_id');
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class, 'academic_year_id');
     }
 
     public function subject(): BelongsTo
@@ -74,14 +79,9 @@ class TujuanPembelajaran extends Model
         return $this->belongsTo(GradeLevel::class, 'grade_level_id');
     }
 
-    public function academicYear(): BelongsTo
+    public function teacher(): BelongsTo
     {
-        return $this->belongsTo(AcademicYear::class, 'academic_year_id');
-    }
-
-    public function capaianPembelajaran(): BelongsTo
-    {
-        return $this->belongsTo(CapaianPembelajaran::class, 'capaian_pembelajaran_id');
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     public function creator(): BelongsTo
@@ -89,21 +89,31 @@ class TujuanPembelajaran extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function atpItems(): HasMany
+    public function items(): HasMany
     {
-        return $this->hasMany(AlurTujuanPembelajaranItem::class, 'tujuan_pembelajaran_id');
+        return $this->hasMany(AlurTujuanPembelajaranItem::class, 'alur_tujuan_pembelajaran_id')
+            ->orderBy('urutan');
     }
 
-    public function soalOptions(): HasMany
+    public function perangkat(): HasMany
     {
-        return $this->hasMany(SoilOption::class, 'tp_id', 'id');
+        return $this->hasMany(PerangkatPembelajaran::class, 'atp_id');
     }
 
-    // ── Scopes ───────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────
 
-    public function scopeActive($query)
+    /**
+     * Hitung ulang total JP alokasi dari item lalu simpan bila berubah.
+     */
+    public function recalculateTotal(): int
     {
-        return $query->where('is_active', true);
+        $total = (int) $this->items()->sum('jp_alokasi');
+
+        if ($this->total_jp !== $total) {
+            $this->forceFill(['total_jp' => $total])->save();
+        }
+
+        return $total;
     }
 
     public function scopeBySchool($query, ?string $schoolId)
@@ -119,17 +129,5 @@ class TujuanPembelajaran extends Model
     public function scopeBySemester($query, ?string $semester)
     {
         return $semester ? $query->where('semester', $semester) : $query;
-    }
-
-    // ── Accessors (kompatibilitas label lama) ────────────────────────
-
-    public function getTpAttribute(): ?string
-    {
-        return $this->deskripsi;
-    }
-
-    public function getDescriptionAttribute(): ?string
-    {
-        return $this->deskripsi;
     }
 }

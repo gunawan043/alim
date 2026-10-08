@@ -209,6 +209,11 @@ use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
+use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
+use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
+use App\Http\Controllers\Kurikulum\KurikulumController;
+use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
+use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
@@ -586,6 +591,47 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── PEKAN EFEKTIF (turunan Kalender Pendidikan) ───────
             Route::prefix('pekan-efektif')->name('pekan-efektif.')->group(function () {
                 Route::get('/', [PekanEfektifOverviewController::class, 'index'])->name('index');
+            });
+
+            // ── KURIKULUM & PERANGKAT PEMBELAJARAN ────────────────
+            // Kalender → Pekan Efektif → JP Efektif → Kurikulum → CP → TP → ATP → Perangkat
+            Route::prefix('kurikulum')->name('kurikulum.')->group(function () {
+                Route::get('/', [KurikulumController::class, 'index'])->name('index');
+
+                Route::prefix('cp')->name('cp.')->group(function () {
+                    Route::get('/', [CapaianPembelajaranController::class, 'index'])->name('index');
+                    Route::post('/', [CapaianPembelajaranController::class, 'store'])->name('store');
+                    Route::put('/{id}', [CapaianPembelajaranController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [CapaianPembelajaranController::class, 'destroy'])->name('destroy');
+                });
+
+                Route::prefix('tp')->name('tp.')->group(function () {
+                    Route::get('/', [TujuanPembelajaranController::class, 'index'])->name('index');
+                    Route::post('/', [TujuanPembelajaranController::class, 'store'])->name('store');
+                    Route::put('/{id}', [TujuanPembelajaranController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [TujuanPembelajaranController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/move', [TujuanPembelajaranController::class, 'move'])->name('move');
+                });
+
+                Route::prefix('atp')->name('atp.')->group(function () {
+                    Route::get('/', [AlurTujuanPembelajaranController::class, 'index'])->name('index');
+                    Route::post('/', [AlurTujuanPembelajaranController::class, 'store'])->name('store');
+                    Route::get('/{id}', [AlurTujuanPembelajaranController::class, 'show'])->name('show');
+                    Route::put('/{id}', [AlurTujuanPembelajaranController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [AlurTujuanPembelajaranController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/items', [AlurTujuanPembelajaranController::class, 'storeItem'])->name('items.store');
+                    Route::put('/{id}/items/{itemId}', [AlurTujuanPembelajaranController::class, 'updateItem'])->name('items.update');
+                    Route::delete('/{id}/items/{itemId}', [AlurTujuanPembelajaranController::class, 'destroyItem'])->name('items.destroy');
+                    Route::post('/{id}/items/{itemId}/move', [AlurTujuanPembelajaranController::class, 'moveItem'])->name('items.move');
+                });
+
+                Route::prefix('perangkat')->name('perangkat.')->group(function () {
+                    Route::get('/', [PerangkatPembelajaranController::class, 'index'])->name('index');
+                    Route::post('/', [PerangkatPembelajaranController::class, 'store'])->name('store');
+                    Route::get('/{id}', [PerangkatPembelajaranController::class, 'show'])->name('show');
+                    Route::put('/{id}', [PerangkatPembelajaranController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [PerangkatPembelajaranController::class, 'destroy'])->name('destroy');
+                });
             });
 
             // ── JENJANG KARIR

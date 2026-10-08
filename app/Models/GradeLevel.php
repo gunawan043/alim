@@ -22,7 +22,7 @@ class GradeLevel extends Model
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
-    protected $fillable = ['school_id', 'level', 'name', 'code', 'is_active'];
+    protected $fillable = ['school_id', 'level', 'name', 'code', 'fase', 'is_active'];
 
     protected $casts = [
         'level' => 'integer',

@@ -60,7 +60,7 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Dokumentasi usulan skema 5 role tanpa tabel: `docs/usulan-skema-5-role.md`.
 - Perbaikan snapshot authorization: arsip lama dihapus sebelum arsip baru (unique index `(user_id, scope_key, is_current)`).
 
-## 11. Kalender Pendidikan → Pekan Efektif (Fondasi Perangkat Pembelajaran)
+## 11. Kalender Pendidikan → Pekan Efektif
 - **Kalender Pendidikan** (`kaldik`) menjadi sumber data utama: tambah kolom `semester` (ganjil/genap) + tipe baru `libur`, `ujian`, `kegiatan`, `hari_efektif`; filter semester + tampilan semester di modal kalender.
 - **Kewenangan**: pengelolaan Kaldik hanya Super Admin & Pimpinan (policy `canManageKaldik` + policy dipanggil langsung karena registrar snapshot meng-intercept ability Gate `create/update`); Admin TU tetap mengelola agenda satuan kerjanya; user lain melihat sesuai konteks satuan pendidikan (scope query dirapikan + tanpa kebocoran saat work unit kosong).
 - **Pekan Efektif** kini turunan kalender via `PekanEfektifService`:
@@ -70,9 +70,21 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **UI**: tombol *Generate Pekan Efektif* + kartu ringkasan di halaman Waka/Kurikulum; halaman read-only baru `/{userId}/pekan-efektif` untuk Guru & Kurikulum (rincian pekan + alokasi JP efektif per kelas), menu ditambahkan di sidebar Pimpinan, Super Admin, dan Satuan Pendidikan (Guru & Tim Kurikulum).
 - Migrasi additive `2026_10_08_230000` (tanpa menghapus kolom/tabel lama; tabel `academic_calendars` legacy dibiarkan).
 
+## 12. Kurikulum → CP → TP → ATP → Perangkat Pembelajaran
+- **Tahap 1 — JP efektif satu aturan**: service baru `TeachingHoursResolver` (otoritatif `teaching_assignments.weekly_hours` → `study_group_subjects` → `grade_level_subjects` → `subjects.credit_hours` → default 2) dipakai bersama oleh Jadwal KBM dan Pekan Efektif; `effectiveJpForStudyGroup()` kini menggabungkan tiga sumber mapel (plotting SK → mapel rombel → mapel jenjang) tanpa duplikasi; `effectiveJpForSubject()` untuk konteks ATP/jenjang.
+- **Model TP diperbaiki**: `TujuanPembelajaran` sebelumnya tidak cocok dengan skema fisik (fillable `kd/tp/indicator_code/...`); kini sesuai kolom asli + soft deletes, relasi (mapel, jenjang, tahun ajaran, CP, pembuat), scope, dan accessor kompatibilitas.
+- **Migrasi additive `2026_10_09_100000`**: `grade_levels.fase` (data-driven, diisi per jenjang), `tujuan_pembelajaran.capaian_pembelajaran_id`, tabel `capaian_pembelajaran`, `alur_tujuan_pembelajaran`, `alur_tujuan_pembelajaran_items`, `perangkat_pembelajaran` (JSON `desain`).
+- **Hub Kurikulum** `/{userId}/kurikulum`: peta per jenjang × fase × mapel dengan JP/minggu (resolver bersama), JP efektif (Pekan Efektif), jumlah CP/TP, status ATP, rombel, dan guru — tanpa tabel/sumber baru.
+- **CP** (`/kurikulum/cp`): kelola per mapel + fase (opsi fase dari data jenjang), dikelola tim kurikulum.
+- **TP** (`/kurikulum/tp`): diturunkan dari CP (fase/elemen otomatis), kode unik per mapel/jenjang/TA/semester, urutkan naik/turun, kewenangan guru mapel terkait atau tim kurikulum.
+- **ATP** (`/kurikulum/atp`): susun TP dengan urutan & alokasi JP, `total_jp` dihitung dari item, dan indikator **pas / kurang / lebih** terhadap JP efektif (JP/minggu × minggu efektif dari Pekan Efektif) beserta progress bar.
+- **Perangkat Pembelajaran** (`/kurikulum/perangkat`): dibuat dari ATP (kelas/mapel/guru/TA otomatis ikut ATP) dengan desain **Pembelajaran Mendalam** terstruktur: pertanyaan pemantik, pemahaman bermakna, pengalaman memahami → mengaplikasi → merefleksi, konteks nyata, asesmen formatif & sumatif, diferensiasi, media — bukan sekadar satu field.
+- Sidebar: grup *Kurikulum Saya* (guru) & *Kurikulum & Perangkat* (tim kurikulum) di Satuan Pendidikan, Pimpinan, dan Super Admin; field fase di form Tingkat.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.
 - `tests/Feature/TeacherQrScanControllerTest.php` — diperbarui agar berjalan di SQLite (snapshot permission + `Event::fake` terarah).
 - `tests/Feature/KaldikPekanEfektifTest.php` — pembagian semester, generate pekan efektif dari kalender (minggu/hari/libur/ujian), alokasi JP efektif, policy pengelolaan (Super Admin/Pimpinan vs Satuan Pendidikan/Guru), halaman pekan efektif untuk Guru & Satuan Pendidikan.
+- `tests/Feature/KurikulumPembelajaranTest.php` — rantai Kalender → Pekan Efektif → JP Efektif → CP → TP → ATP → Perangkat: fallback JP berjenjang, hub kurikulum, akses CP/TP (tim kurikulum vs guru mapel), urutan TP, indikator alokasi ATP (kurang/pas/lebih), desain Pembelajaran Mendalam perangkat, render semua halaman.
 - Smoke MySQL untuk setiap modul dilakukan dengan data sementara yang selalu dibersihkan.
