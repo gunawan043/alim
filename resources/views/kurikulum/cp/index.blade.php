@@ -1,24 +1,26 @@
 @extends('layouts.master')
 @section('title', 'Capaian Pembelajaran')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+
+        $totalCp = $cpList->count();
+        $mapelCount = $cpList->pluck('subject_id')->filter()->unique()->count();
+        $faseCount = $cpList->pluck('fase')->filter()->unique()->count();
+        $tanpaTp = $cpList->filter(fn ($cp) => (int) ($tpCounts[$cp->id] ?? 0) === 0)->count();
+        $filterFase = request('fase');
+    @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
         @slot('li_2') CP @endslot
         @slot('title') Capaian Pembelajaran @endslot
     @endcomponent
-
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">Capaian Pembelajaran (CP)</h4>
-            <p class="text-muted mb-0 small">Target kompetensi per mapel &amp; fase — dasar penyusunan Tujuan Pembelajaran (TP).</p>
-        </div>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cp-modal" onclick="openCreate()">
-            <i class="ri-add-line align-bottom me-1"></i> Tambah CP
-        </button>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -33,99 +35,184 @@
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
-                <div class="col-xxl-4 col-sm-6">
-                    <label class="form-label">Mata Pelajaran</label>
-                    <select name="subject_id" class="form-select">
-                        <option value="">— Semua Mapel —</option>
-                        @foreach($subjects as $subject)
-                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                        @endforeach
-                    </select>
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-flag-2-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total CP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalCp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Capaian Pembelajaran terdaftar</p>
                 </div>
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Fase</label>
-                    <select name="fase" class="form-select">
-                        <option value="">— Semua Fase —</option>
-                        @foreach($faseOptions as $fase)
-                            <option value="{{ $fase }}" {{ request('fase') === $fase ? 'selected' : '' }}>{{ $fase }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-book-2-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mata Pelajaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($mapelCount) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-price-tag-3-line me-1"></i>Mapel tercakup CP</p>
                 </div>
-                <div class="col-xxl-3 col-sm-6 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line align-bottom me-1"></i> Filter</button>
-                    <a href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line align-bottom"></i></a>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-stack-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Fase</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($faseCount) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-award-line me-1"></i>Fase capaian tercakup</p>
                 </div>
-            </form>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-link-unlink me-0 text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Belum Diturunkan</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($tanpaTp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>CP tanpa TP (pada filter ini)</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-flag-2-line text-primary me-1"></i> Daftar CP</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $cpList->count() }} CP</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Mapel</th>
-                        <th class="text-center">Fase</th>
-                        <th>Elemen</th>
-                        <th>Deskripsi</th>
-                        <th class="text-center">TP</th>
-                        <th class="text-center">Urutan</th>
-                        <th class="text-end" style="width:110px">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($cpList as $cp)
-                        <tr>
-                            <td class="fw-medium">{{ $cp->subject?->name ?? '-' }}</td>
-                            <td class="text-center"><span class="badge bg-info-subtle text-info">{{ $cp->fase }}</span></td>
-                            <td>{{ $cp->elemen ?: '—' }}</td>
-                            <td class="small text-muted">{{ \Illuminate\Support\Str::limit($cp->deskripsi, 90) }}</td>
-                            <td class="text-center">
-                                <span class="badge {{ ($tpCounts[$cp->id] ?? 0) > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
-                                    {{ (int) ($tpCounts[$cp->id] ?? 0) }}
-                                </span>
-                            </td>
-                            <td class="text-center">{{ $cp->urutan }}</td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-soft-warning"
-                                    data-cp="{{ json_encode([
-                                        'id' => $cp->id,
-                                        'subject_id' => $cp->subject_id,
-                                        'fase' => $cp->fase,
-                                        'elemen' => $cp->elemen,
-                                        'deskripsi' => $cp->deskripsi,
-                                        'urutan' => $cp->urutan,
-                                        'is_active' => (bool) $cp->is_active,
-                                    ]) }}"
-                                    onclick="openEdit(this)" title="Edit">
-                                    <i class="ri-pencil-line"></i>
-                                </button>
-                                <form action="{{ route('user.kurikulum.cp.destroy', ['userId' => $userId, 'id' => $cp->id]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Hapus CP ini?');">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card" id="cpList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Daftar CP</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $totalCp }} CP</span>
+                                <span class="text-muted small ms-2">Target kompetensi per mapel &amp; fase — dasar penyusunan TP.</span>
+                            </p>
+                        </div>
+                        <div class="col-sm-auto">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <form method="GET" action="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <select name="subject_id" class="form-select" style="width:200px" onchange="this.form.submit()">
+                                        <option value="">— Semua Mapel —</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="fase" class="form-select" style="width:130px" onchange="this.form.submit()">
+                                        <option value="">— Semua Fase —</option>
+                                        @foreach($faseOptions as $fase)
+                                            <option value="{{ $fase }}" {{ $filterFase === $fase ? 'selected' : '' }}>Fase {{ $fase }}</option>
+                                        @endforeach
+                                    </select>
+                                    <a href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="ri-flag-2-line fs-1 d-block mb-2"></i>
-                                    Belum ada CP. Klik <strong>Tambah CP</strong> untuk memulai.
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#cp-modal" onclick="openCreate()">
+                                    <i class="ri-add-line align-bottom me-1"></i> Tambah CP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if($faseOptions->isNotEmpty())
+                    <div class="card-header py-2 bg-light border-bottom">
+                        <div class="d-flex flex-wrap align-items-center">
+                            <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                            <a href="{{ request()->fullUrlWithQuery(['fase' => null]) }}" class="filter-badge {{ ! $filterFase ? 'active' : '' }}">Semua Fase</a>
+                            @foreach($faseOptions as $fase)
+                                <a href="{{ request()->fullUrlWithQuery(['fase' => $fase]) }}" class="filter-badge {{ $filterFase === $fase ? 'active' : '' }}">Fase {{ $fase }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-freeze mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mapel</th>
+                                <th class="text-center">Fase</th>
+                                <th>Elemen</th>
+                                <th>Deskripsi</th>
+                                <th class="text-center">TP</th>
+                                <th class="text-center">Urutan</th>
+                                <th class="text-end" style="width:110px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($cpList as $cp)
+                                <tr>
+                                    <td class="fw-medium">{{ $cp->subject?->name ?? '-' }}</td>
+                                    <td class="text-center"><span class="badge bg-info-subtle text-info">{{ $cp->fase }}</span></td>
+                                    <td>{{ $cp->elemen ?: '—' }}</td>
+                                    <td class="small text-muted">{{ \Illuminate\Support\Str::limit($cp->deskripsi, 90) }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {{ ($tpCounts[$cp->id] ?? 0) > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
+                                            {{ (int) ($tpCounts[$cp->id] ?? 0) }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">{{ $cp->urutan }}</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-soft-warning"
+                                            data-cp="{{ json_encode([
+                                                'id' => $cp->id,
+                                                'subject_id' => $cp->subject_id,
+                                                'fase' => $cp->fase,
+                                                'elemen' => $cp->elemen,
+                                                'deskripsi' => $cp->deskripsi,
+                                                'urutan' => $cp->urutan,
+                                                'is_active' => (bool) $cp->is_active,
+                                            ]) }}"
+                                            onclick="openEdit(this)" title="Edit">
+                                            <i class="ri-pencil-line"></i>
+                                        </button>
+                                        <form action="{{ route('user.kurikulum.cp.destroy', ['userId' => $userId, 'id' => $cp->id]) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Hapus CP ini?');">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="ri-flag-2-line fs-1 d-block mb-2"></i>
+                                            Belum ada CP. Klik <strong>Tambah CP</strong> untuk memulai.
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -193,7 +280,7 @@
 @section('script')
     <script>
         var cpStoreUrl = @json(route('user.kurikulum.cp.store', ['userId' => $userId]));
-        var cpUpdateUrl = @json(route('user.kurikulum.cp.update', ['userId' => $userId, 'id' => '__ID__']));
+        var cpUpdateUrl = @json($cpUpdateUrlTemplate);
 
         function openCreate() {
             document.getElementById('cp-modal-title').innerHTML = '<i class="ri-flag-2-line me-1"></i> Tambah CP';

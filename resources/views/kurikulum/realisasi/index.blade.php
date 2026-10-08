@@ -9,95 +9,106 @@
         @slot('title') Realisasi Pembelajaran @endslot
     @endcomponent
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">Realisasi Pembelajaran</h4>
-            <p class="text-muted mb-0 small">
-                Jurnal pertemuan → realisasi TP/ATP → asesmen formatif/sumatif → Buku Administrasi (Leger &amp; Rapor).
-            </p>
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-book-2-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Buku Administrasi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['books']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Jurnal &amp; nilai guru mapel</p>
+                </div>
+            </div>
         </div>
-        @if($isTeam)
-            <span class="badge bg-primary-subtle text-primary p-2"><i class="ri-team-line me-1"></i> Tampilan Tim Kurikulum (semua kelas)</span>
-        @endif
-    </div>
-
-    <div class="card">
-        <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select">
-                        @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
-                        @endforeach
-                    </select>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-article-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Jurnal Pertemuan</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['meetings']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pertemuan tercatat</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Semester</label>
-                    <select name="semester" class="form-select">
-                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-check-double-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">TP Terealisasi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['realized_tp']) }}<small class="fw-normal text-muted ms-1 stat-label">/ {{ $stats['planned_tp'] }}</small></h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-route-line me-1"></i>Realisasi TP/ATP</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line align-bottom me-1"></i> Tampilkan</button>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title {{ $stats['progress'] >= 100 ? 'bg-success-subtle' : 'bg-warning-subtle' }} rounded fs-2">
+                                <i class="ri-line-chart-line {{ $stats['progress'] >= 100 ? 'text-success' : 'text-warning' }}"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Progres Realisasi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['progress'] }}%</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Rata-rata seluruh buku</p>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-xxl-3 col-md-6">
-            <div class="card card-animate">
-                <div class="card-body">
-                    <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Buku Administrasi</p>
-                    <div class="d-flex align-items-end justify-content-between mt-3">
-                        <h4 class="fs-22 fw-semibold mb-0 text-primary">{{ $stats['books'] }}</h4>
-                        <div class="avatar-sm"><span class="avatar-title bg-primary-subtle rounded fs-3"><i class="ri-book-2-line text-primary"></i></span></div>
+        <div class="col-lg-12">
+            <div class="card" id="realisasiList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Realisasi per Buku Administrasi (Kelas &amp; Mapel)</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} buku</span>
+                                @if($isTeam)
+                                    <span class="badge bg-info-subtle text-info ms-1"><i class="ri-team-line me-1"></i>Tim Kurikulum (semua kelas)</span>
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-sm-auto">
+                            <form method="GET" action="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                    @foreach($academicYears as $ay)
+                                        <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                    @endforeach
+                                </select>
+                                <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
+                                    <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                    <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                                </select>
+                                <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
+                            </form>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-md-6">
-            <div class="card card-animate">
-                <div class="card-body">
-                    <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Jurnal Pertemuan</p>
-                    <div class="d-flex align-items-end justify-content-between mt-3">
-                        <h4 class="fs-22 fw-semibold mb-0 text-info">{{ $stats['meetings'] }}</h4>
-                        <div class="avatar-sm"><span class="avatar-title bg-info-subtle rounded fs-3"><i class="ri-article-line text-info"></i></span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-md-6">
-            <div class="card card-animate">
-                <div class="card-body">
-                    <p class="text-uppercase fw-medium text-muted mb-0 fs-13">TP Terealisasi</p>
-                    <div class="d-flex align-items-end justify-content-between mt-3">
-                        <h4 class="fs-22 fw-semibold mb-0 text-success">{{ $stats['realized_tp'] }} <span class="fs-14 text-muted">/ {{ $stats['planned_tp'] }}</span></h4>
-                        <div class="avatar-sm"><span class="avatar-title bg-success-subtle rounded fs-3"><i class="ri-check-double-line text-success"></i></span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-md-6">
-            <div class="card card-animate">
-                <div class="card-body">
-                    <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Progres Realisasi</p>
-                    <div class="d-flex align-items-end justify-content-between mt-3">
-                        <h4 class="fs-22 fw-semibold mb-0 {{ $stats['progress'] >= 100 ? 'text-success' : 'text-warning' }}">{{ $stats['progress'] }}%</h4>
-                        <div class="avatar-sm"><span class="avatar-title bg-warning-subtle rounded fs-3"><i class="ri-line-chart-line text-warning"></i></span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-article-line text-primary me-1"></i> Realisasi per Buku Administrasi (Kelas &amp; Mapel)</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} buku</span>
-        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -165,14 +176,25 @@
                     @endforelse
                 </tbody>
             </table>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-route-line text-primary me-1"></i> Cakupan ATP (lintas kelas)</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $atpRows->count() }} ATP</span>
-        </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card" id="cakupanAtpList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Cakupan ATP (lintas kelas)</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $atpRows->count() }} ATP</span>
+                                <span class="text-muted small ms-2">Realisasi TP dari jurnal seluruh kelas pengguna ATP.</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -215,6 +237,8 @@
                     @endforelse
                 </tbody>
             </table>
+                </div>
+            </div>
         </div>
     </div>
 @endsection

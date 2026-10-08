@@ -97,4 +97,21 @@ class Prosem extends Model
     {
         return $this->hasMany(ProsemItem::class, 'prosem_id')->orderBy('urutan');
     }
+
+    // ── Scopes ───────────────────────────────────────────────────────
+
+    public function scopeBySchool($query, ?string $schoolId)
+    {
+        return $schoolId ? $query->where('school_id', $schoolId) : $query;
+    }
+
+    public function scopeByAcademicYear($query, ?string $academicYearId)
+    {
+        return $academicYearId ? $query->where('academic_year_id', $academicYearId) : $query;
+    }
+
+    public function scopeBySemester($query, ?string $semester)
+    {
+        return $semester ? $query->where('semester', $semester) : $query;
+    }
 }

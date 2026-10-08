@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title', 'Pekan Efektif')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php $userId = $userId ?? auth()->id(); @endphp
 
@@ -59,64 +63,68 @@
             </div>
         @endif
 
-        <div class="row">
-            <div class="col-xxl-3 col-md-6">
-                <div class="card card-animate">
-                    <div class="card-body">
-                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Minggu Efektif</p>
-                        <div class="d-flex align-items-end justify-content-between mt-3">
-                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-success">{{ $ringkasan['minggu_efektif'] }}</h4>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
-                                <span class="avatar-title bg-success-subtle rounded fs-3">
-                                    <i class="ri-calendar-check-line text-success"></i>
-                                </span>
+                                <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-calendar-check-line text-success"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Minggu Efektif</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['minggu_efektif'] }}</h3>
                             </div>
                         </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Dari Kalender Pendidikan</p>
                     </div>
                 </div>
             </div>
-            <div class="col-xxl-3 col-md-6">
-                <div class="card card-animate">
-                    <div class="card-body">
-                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Hari Efektif</p>
-                        <div class="d-flex align-items-end justify-content-between mt-3">
-                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-primary">{{ $ringkasan['total_hari_efektif'] }}</h4>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
-                                <span class="avatar-title bg-primary-subtle rounded fs-3">
-                                    <i class="ri-calendar-2-line text-primary"></i>
-                                </span>
+                                <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-calendar-2-line text-primary"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Hari Efektif</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['total_hari_efektif'] }}</h3>
                             </div>
                         </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Senin–Sabtu dikurangi libur</p>
                     </div>
                 </div>
             </div>
-            <div class="col-xxl-3 col-md-6">
-                <div class="card card-animate">
-                    <div class="card-body">
-                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Minggu Libur</p>
-                        <div class="d-flex align-items-end justify-content-between mt-3">
-                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-danger">{{ $ringkasan['minggu_libur'] }}</h4>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
-                                <span class="avatar-title bg-danger-subtle rounded fs-3">
-                                    <i class="ri-calendar-close-line text-danger"></i>
-                                </span>
+                                <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-calendar-close-line text-danger"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Minggu Libur</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['minggu_libur'] }}</h3>
                             </div>
                         </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-lock-line me-1"></i>Tidak dihitung efektif</p>
                     </div>
                 </div>
             </div>
-            <div class="col-xxl-3 col-md-6">
-                <div class="card card-animate">
-                    <div class="card-body">
-                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Minggu Ujian</p>
-                        <div class="d-flex align-items-end justify-content-between mt-3">
-                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-warning">{{ $ringkasan['minggu_ujian'] }}</h4>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
-                                <span class="avatar-title bg-warning-subtle rounded fs-3">
-                                    <i class="ri-draft-line text-warning"></i>
-                                </span>
+                                <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-draft-line text-warning"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Minggu Ujian</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['minggu_ujian'] }}</h3>
                             </div>
                         </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pekan sumatif/ujian</p>
                     </div>
                 </div>
             </div>
@@ -126,7 +134,7 @@
     <div class="row">
         <div class="col-xl-7">
             <div class="card h-100">
-                <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0"><i class="ri-calendar-2-line text-primary me-1"></i> Rincian Pekan</h5>
                     <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} pekan</span>
                 </div>
@@ -181,7 +189,7 @@
 
         <div class="col-xl-5">
             <div class="card h-100">
-                <div class="card-header d-flex align-items-center justify-content-between gap-2">
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between gap-2">
                     <h5 class="card-title mb-0"><i class="ri-stack-line text-primary me-1"></i> Alokasi JP Efektif</h5>
                     @if($studyGroups->count() > 1)
                         <form method="GET" action="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">

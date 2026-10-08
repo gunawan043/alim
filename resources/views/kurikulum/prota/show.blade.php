@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title', 'Detail PROTA')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php $userId = $userId ?? auth()->id(); @endphp
 
@@ -140,7 +144,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Pengaturan PROTA</h5></div>
+        <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Pengaturan PROTA</h5></div>
         <div class="card-body">
             <form method="POST" action="{{ route('user.kurikulum.prota.update', ['userId' => $userId, 'id' => $prota->id]) }}" class="row g-3 align-items-end">
                 @csrf @method('PUT')
@@ -172,7 +176,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0"><i class="ri-list-ordered-2 text-primary me-1"></i> Rincian TP / BAB / Materi</h5>
             <span class="badge bg-primary-subtle text-primary">{{ $prota->items->count() }} baris · {{ $itemsTotal }} JP</span>
         </div>

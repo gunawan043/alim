@@ -56,13 +56,16 @@ class CapaianPembelajaranController extends Controller
             ->groupBy('capaian_pembelajaran_id')
             ->map->count();
 
+        $cpUpdateUrlTemplate = route('user.kurikulum.cp.update', ['userId' => $userId, 'id' => '__ID__']);
+
         return view('kurikulum.cp.index', compact(
             'userId',
             'schoolId',
             'cpList',
             'subjects',
             'faseOptions',
-            'tpCounts'
+            'tpCounts',
+            'cpUpdateUrlTemplate'
         ));
     }
 

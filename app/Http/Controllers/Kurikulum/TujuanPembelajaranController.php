@@ -97,6 +97,8 @@ class TujuanPembelajaranController extends Controller
             ->values()
             ->all();
 
+        $tpUpdateUrlTemplate = route('user.kurikulum.tp.update', ['userId' => $userId, 'id' => '__ID__']);
+
         return view('kurikulum.tp.index', compact(
             'userId',
             'academicYears',
@@ -110,7 +112,8 @@ class TujuanPembelajaranController extends Controller
             'cpOptionsJson',
             'usedTpIds',
             'isKurikulumTeam',
-            'taughtSubjectIds'
+            'taughtSubjectIds',
+            'tpUpdateUrlTemplate'
         ));
     }
 

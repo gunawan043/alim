@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title', 'PROSEM')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php
         $userId = $userId ?? auth()->id();
@@ -182,7 +186,7 @@
 
     {{-- ═══ Pengaturan PROSEM ═══ --}}
     <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Pengaturan PROSEM</h5></div>
+        <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Pengaturan PROSEM</h5></div>
         <div class="card-body">
             <form method="POST" action="{{ route('user.kurikulum.prosem.update', ['userId' => $userId, 'id' => $prosem->id]) }}" class="row g-3 align-items-end">
                 @csrf @method('PUT')
@@ -217,7 +221,7 @@
 
     {{-- ═══ Tabel Distribusi ═══ --}}
     <div class="card" id="tabel-distribusi">
-        <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0"><i class="ri-calendar-2-line text-primary me-1"></i> Distribusi TP / Materi</h5>
             <span class="badge bg-primary-subtle text-primary">{{ $prosem->items->count() }} baris · {{ $totalJp }} JP</span>
         </div>

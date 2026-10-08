@@ -1,24 +1,25 @@
 @extends('layouts.master')
 @section('title', 'Alur Tujuan Pembelajaran')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+
+        $totalAtp = $atpList->count();
+        $terbit = $atpList->where('status', 'published')->count();
+        $draft = $totalAtp - $terbit;
+        $totalTp = (int) $atpList->sum('items_count');
+    @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
         @slot('li_2') ATP @endslot
         @slot('title') Alur Tujuan Pembelajaran @endslot
     @endcomponent
-
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">Alur Tujuan Pembelajaran (ATP)</h4>
-            <p class="text-muted mb-0 small">Susunan TP sistematis per mapel &amp; jenjang, dibandingkan dengan JP efektif dari Pekan Efektif.</p>
-        </div>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#atp-modal">
-            <i class="ri-add-line align-bottom me-1"></i> Susun ATP
-        </button>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -33,107 +34,182 @@
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select">
-                        @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
-                        @endforeach
-                    </select>
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-route-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total ATP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalAtp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pada filter ini</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Semester</label>
-                    <select name="semester" class="form-select">
-                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-check-double-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Terbit</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($terbit) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-send-plane-line me-1"></i>ATP berstatus terbit</p>
                 </div>
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Mata Pelajaran</label>
-                    <select name="subject_id" class="form-select">
-                        <option value="">— Semua Mapel —</option>
-                        @foreach($subjects as $subject)
-                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-draft-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Draft</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($draft) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-edit-line me-1"></i>Masih disusun</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Jenjang</label>
-                    <select name="grade_level_id" class="form-select">
-                        <option value="">— Semua —</option>
-                        @foreach($gradeLevels as $grade)
-                            <option value="{{ $grade->id }}" {{ request('grade_level_id') === $grade->id ? 'selected' : '' }}>{{ $grade->name }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-list-check-2 text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">TP Teralur</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalTp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-links-line me-1"></i>Total TP dalam ATP</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line align-bottom me-1"></i> Filter</button>
-                    <a href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-refresh-line align-bottom"></i></a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-route-line text-primary me-1"></i> Daftar ATP</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $atpList->count() }} ATP</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Mapel</th>
-                        <th>Jenjang / Fase</th>
-                        <th>Guru Penyusun</th>
-                        <th class="text-center">Jumlah TP</th>
-                        <th class="text-center">Total JP</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-end" style="width:150px">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($atpList as $atp)
-                        <tr>
-                            <td class="fw-medium">{{ $atp->subject?->name ?? '-' }}</td>
-                            <td>
-                                {{ $atp->gradeLevel?->name ?? 'Semua Jenjang' }}
-                                @if($atp->fase) <span class="badge bg-info-subtle text-info ms-1">{{ $atp->fase }}</span> @endif
-                            </td>
-                            <td class="small">{{ $atp->teacher?->name ?? '—' }}</td>
-                            <td class="text-center">{{ $atp->items_count }}</td>
-                            <td class="text-center fw-semibold">{{ $atp->total_jp }}</td>
-                            <td class="text-center">
-                                <span class="badge {{ $atp->status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
-                                    {{ \App\Models\AlurTujuanPembelajaran::STATUS_OPTIONS[$atp->status] ?? $atp->status }}
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <a href="{{ route('user.kurikulum.atp.show', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
-                                    <i class="ri-eye-line"></i>
-                                </a>
-                                <form action="{{ route('user.kurikulum.atp.destroy', ['userId' => $userId, 'id' => $atp->id]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Hapus ATP ini beserta susunan TP-nya?');">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card" id="atpList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Daftar ATP</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $totalAtp }} ATP</span>
+                                <span class="text-muted small ms-2">Susunan TP sistematis per mapel &amp; jenjang, dibandingkan dengan JP efektif.</span>
+                            </p>
+                        </div>
+                        <div class="col-sm-auto">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <form method="GET" action="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
+                                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                                    </select>
+                                    <select name="subject_id" class="form-select" style="width:180px" onchange="this.form.submit()">
+                                        <option value="">— Semua Mapel —</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="grade_level_id" class="form-select" style="width:140px" onchange="this.form.submit()">
+                                        <option value="">— Semua Jenjang —</option>
+                                        @foreach($gradeLevels as $grade)
+                                            <option value="{{ $grade->id }}" {{ request('grade_level_id') === $grade->id ? 'selected' : '' }}>{{ $grade->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <a href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="ri-route-line fs-1 d-block mb-2"></i>
-                                    Belum ada ATP pada filter ini. Klik <strong>Susun ATP</strong>.
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#atp-modal">
+                                    <i class="ri-add-line align-bottom me-1"></i> Susun ATP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil']) }}" class="filter-badge {{ $semester === 'ganjil' ? 'active' : '' }}">Ganjil</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap']) }}" class="filter-badge {{ $semester === 'genap' ? 'active' : '' }}">Genap</a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-freeze mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mapel</th>
+                                <th>Jenjang / Fase</th>
+                                <th>Guru Penyusun</th>
+                                <th class="text-center">Jumlah TP</th>
+                                <th class="text-center">Total JP</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end" style="width:150px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($atpList as $atp)
+                                <tr>
+                                    <td class="fw-medium">{{ $atp->subject?->name ?? '-' }}</td>
+                                    <td>
+                                        {{ $atp->gradeLevel?->name ?? 'Semua Jenjang' }}
+                                        @if($atp->fase) <span class="badge bg-info-subtle text-info ms-1">{{ $atp->fase }}</span> @endif
+                                    </td>
+                                    <td class="small">{{ $atp->teacher?->name ?? '—' }}</td>
+                                    <td class="text-center">{{ $atp->items_count }}</td>
+                                    <td class="text-center fw-semibold">{{ $atp->total_jp }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {{ $atp->status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
+                                            {{ \App\Models\AlurTujuanPembelajaran::STATUS_OPTIONS[$atp->status] ?? $atp->status }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ route('user.kurikulum.atp.show', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <form action="{{ route('user.kurikulum.atp.destroy', ['userId' => $userId, 'id' => $atp->id]) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Hapus ATP ini beserta susunan TP-nya?');">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="ri-route-line fs-1 d-block mb-2"></i>
+                                            Belum ada ATP pada filter ini. Klik <strong>Susun ATP</strong>.
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -392,10 +392,14 @@ class KurikulumPembelajaranTest extends TestCase
     public function test_semua_halaman_kurikulum_render(): void
     {
         $this->actingAs($this->kurikulum);
+        $this->get("/{$this->kurikulum->id}/kurikulum")->assertOk()->assertSee('Peta Kurikulum');
         $this->get("/{$this->kurikulum->id}/kurikulum/cp")->assertOk()->assertSee('Capaian Pembelajaran');
         $this->get("/{$this->kurikulum->id}/kurikulum/tp")->assertOk()->assertSee('Tujuan Pembelajaran');
         $this->get("/{$this->kurikulum->id}/kurikulum/atp")->assertOk()->assertSee('Alur Tujuan Pembelajaran');
+        $this->get("/{$this->kurikulum->id}/kurikulum/prota")->assertOk()->assertSee('Program Tahunan');
+        $this->get("/{$this->kurikulum->id}/kurikulum/prosem")->assertOk()->assertSee('Program Semester');
         $this->get("/{$this->kurikulum->id}/kurikulum/perangkat")->assertOk()->assertSee('Perangkat Pembelajaran');
+        $this->get("/{$this->kurikulum->id}/kurikulum/realisasi")->assertOk()->assertSee('Realisasi Pembelajaran');
 
         // Halaman guru (Kurikulum Saya) juga render.
         $this->actingAs($this->guru);

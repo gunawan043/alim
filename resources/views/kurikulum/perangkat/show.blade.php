@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title', 'RPM / Perangkat Pembelajaran')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php
         $userId = $userId ?? auth()->id();
@@ -77,7 +81,7 @@
 
         {{-- ── Informasi Umum ─────────────────────────────────────── --}}
         <div class="card">
-            <div class="card-header"><h5 class="card-title mb-0"><i class="ri-information-line text-primary me-1"></i> Informasi Umum</h5></div>
+            <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-information-line text-primary me-1"></i> Informasi Umum</h5></div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-lg-5">
@@ -119,7 +123,7 @@
         {{-- ── CP & TP otomatis dari ATP ──────────────────────────── --}}
         @if($cps->isNotEmpty() || $tps->isNotEmpty())
             <div class="card">
-                <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0"><i class="ri-link text-primary me-1"></i> CP &amp; TP (otomatis dari ATP)</h5>
                     <span class="badge bg-secondary-subtle text-secondary">Tidak perlu diisi ulang</span>
                 </div>
@@ -149,7 +153,7 @@
         {{-- ── Desain Pembelajaran / Pengalaman / Asesmen per tipe ── --}}
         @foreach($perangkat->groups() as $group)
             <div class="card">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="{{ $group['icon'] }} text-primary me-1"></i> {{ $group['label'] }}</h5>
                     <p class="text-muted mb-0 small mt-1">{{ $group['desc'] }}</p>
                 </div>
@@ -169,7 +173,7 @@
         {{-- ── Bagian fondasi lama (bila masih terisi) ────────────── --}}
         @if(! empty($legacyFilled))
             <div class="card">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="ri-history-line text-secondary me-1"></i> Fondasi Pembelajaran Mendalam</h5>
                     <p class="text-muted mb-0 small mt-1">Bagian dari struktur sebelumnya yang masih terisi — tetap dipertahankan.</p>
                 </div>

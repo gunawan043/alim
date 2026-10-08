@@ -114,6 +114,16 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **Sinkron aman**: distribusi otomatis diperbarui, penyesuaian manual dipertahankan, item tidak dihapus/dibuat ulang — relasi **Jurnal → realisasi TP/ATP tetap utuh**.
 - Test: `ProsemAdjustmentTest` 9 test/51 assertion; total **84 test / 595 assertion** lulus + smoke MySQL (auto 12/13 pekan → manual → invalid → sync → reset).
 
+## 17. Perbaikan Scope PROSEM & Konsistensi UI Modul Kurikulum
+- **Fix bug** `Call to undefined method Illuminate\Database\Eloquent\Builder::bySchool()` pada halaman **PROSEM** (scope `bySchool`/`byAcademicYear`/`bySemester` belum ada di model `Prosem`) — ditambahkan; test render index PROTA/PROSEM/Realisasi ikut ditambahkan agar tidak terulang.
+- **Konsistensi UI**: halaman modul Kurikulum (Peta Kurikulum, CP, TP, ATP, PROTA, PROSEM, Perangkat/RPM, Realisasi) dan Pekan Efektif disamakan dengan pola `gtk/index.blade.php`:
+  - kartu statistik `card card-animate` (avatar-sm + label 11px + nilai `h3 fw-bold` + sub badge/progress),
+  - `card-header border-bottom-dashed` (judul + badge kiri, filter inline + tombol aksi kanan),
+  - baris **Filter Cepat** `.filter-badge` (semester/fase) di `card-header py-2 bg-light`,
+  - tabel `table table-hover table-freeze` + `thead table-light`.
+- Style bersama: `resources/views/kurikulum/_styles.blade.php` (filter-badge & stat-label) dipakai oleh index maupun halaman detail; detail page memakai `border-bottom-dashed` yang sama.
+- Konvensi ini menjadi acuan pembuatan halaman modul berikutnya.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

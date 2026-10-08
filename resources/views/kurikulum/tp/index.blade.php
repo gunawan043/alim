@@ -1,24 +1,25 @@
 @extends('layouts.master')
 @section('title', 'Tujuan Pembelajaran')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+
+        $totalTp = $tpList->count();
+        $dalamAtp = $tpList->filter(fn ($tp) => in_array($tp->id, $usedTpIds, true))->count();
+        $belumAtp = $totalTp - $dalamAtp;
+        $mapelCount = $tpList->pluck('subject_id')->filter()->unique()->count();
+    @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
         @slot('li_2') TP @endslot
         @slot('title') Tujuan Pembelajaran @endslot
     @endcomponent
-
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">Tujuan Pembelajaran (TP)</h4>
-            <p class="text-muted mb-0 small">TP diturunkan dari CP; buat, ubah, dan urutkan sebagai dasar ATP.</p>
-        </div>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#tp-modal" onclick="openCreate()">
-            <i class="ri-add-line align-bottom me-1"></i> Tambah TP
-        </button>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -33,151 +34,228 @@
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select">
-                        @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
-                        @endforeach
-                    </select>
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-list-check-2 text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total TP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalTp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pada filter ini</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Semester</label>
-                    <select name="semester" class="form-select">
-                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-route-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Sudah di ATP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($dalamAtp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-check-double-line me-1"></i>TP sudah masuk alur</p>
                 </div>
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Mata Pelajaran</label>
-                    <select name="subject_id" class="form-select">
-                        <option value="">— Semua Mapel —</option>
-                        @foreach($subjects as $subject)
-                            <option value="{{ $subject->id }}" {{ $subjectId === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-error-warning-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Belum di ATP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($belumAtp) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Perlu disusun ke ATP</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Jenjang</label>
-                    <select name="grade_level_id" class="form-select">
-                        <option value="">— Semua —</option>
-                        @foreach($gradeLevels as $grade)
-                            <option value="{{ $grade->id }}" {{ request('grade_level_id') === $grade->id ? 'selected' : '' }}>{{ $grade->name }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-book-2-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mata Pelajaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($mapelCount) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-price-tag-3-line me-1"></i>Mapel tercakup TP</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line align-bottom me-1"></i> Filter</button>
-                    <a href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-refresh-line align-bottom"></i></a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-list-check-2 text-primary me-1"></i> Daftar TP</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $tpList->count() }} TP</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Kode / Mapel</th>
-                        <th>Tujuan Pembelajaran</th>
-                        <th>CP / Elemen</th>
-                        <th class="text-center">Fase</th>
-                        <th class="text-center">JP</th>
-                        <th class="text-center" style="width:110px">Urutan</th>
-                        <th class="text-end" style="width:110px">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($tpList as $tp)
-                        @php
-                            $canManage = $isKurikulumTeam || in_array($tp->subject_id, $taughtSubjectIds, true);
-                            $inAtp = in_array($tp->id, $usedTpIds, true);
-                        @endphp
-                        <tr>
-                            <td>
-                                <span class="badge bg-primary-subtle text-primary">{{ $tp->kode_tp }}</span>
-                                <div class="small text-muted mt-1">{{ $tp->subject?->name }}</div>
-                                <div class="small text-muted">{{ $tp->gradeLevel?->name ?? 'Semua Jenjang' }}</div>
-                            </td>
-                            <td class="small">{{ $tp->deskripsi }}</td>
-                            <td class="small text-muted">
-                                @if($tp->capaianPembelajaran)
-                                    <div>{{ \Illuminate\Support\Str::limit($tp->capaianPembelajaran->deskripsi, 60) }}</div>
-                                @endif
-                                {{ $tp->elemen ?: '—' }}
-                            </td>
-                            <td class="text-center">{{ $tp->fase ?: '—' }}</td>
-                            <td class="text-center">{{ $tp->alokasi_waktu }}</td>
-                            <td class="text-center">
-                                @if($canManage)
-                                    <div class="d-inline-flex align-items-center gap-1">
-                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
-                                            @csrf <input type="hidden" name="direction" value="up">
-                                            <button class="btn btn-sm btn-soft-secondary" title="Naik"><i class="ri-arrow-up-line"></i></button>
-                                        </form>
-                                        <span class="fw-semibold">{{ $tp->urutan }}</span>
-                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
-                                            @csrf <input type="hidden" name="direction" value="down">
-                                            <button class="btn btn-sm btn-soft-secondary" title="Turun"><i class="ri-arrow-down-line"></i></button>
-                                        </form>
-                                    </div>
-                                @else
-                                    {{ $tp->urutan }}
-                                @endif
-                            </td>
-                            <td class="text-end">
-                                @if($canManage)
-                                    <button class="btn btn-sm btn-soft-warning"
-                                        data-tp="{{ json_encode([
-                                            'id' => $tp->id,
-                                            'subject_id' => $tp->subject_id,
-                                            'grade_level_id' => $tp->grade_level_id,
-                                            'academic_year_id' => $tp->academic_year_id,
-                                            'semester' => $tp->semester,
-                                            'capaian_pembelajaran_id' => $tp->capaian_pembelajaran_id,
-                                            'kode_tp' => $tp->kode_tp,
-                                            'deskripsi' => $tp->deskripsi,
-                                            'elemen' => $tp->elemen,
-                                            'fase' => $tp->fase,
-                                            'alokasi_waktu' => $tp->alokasi_waktu,
-                                            'urutan' => $tp->urutan,
-                                            'is_active' => (bool) $tp->is_active,
-                                        ]) }}"
-                                        onclick="openEdit(this)" title="Edit">
-                                        <i class="ri-pencil-line"></i>
-                                    </button>
-                                    @if(! $inAtp)
-                                        <form action="{{ route('user.kurikulum.tp.destroy', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline"
-                                              onsubmit="return confirm('Hapus TP ini?');">
-                                            @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
-                                        </form>
-                                    @else
-                                        <span class="badge bg-secondary-subtle text-secondary" title="Dipakai di ATP">ATP</span>
-                                    @endif
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="ri-list-check-2 fs-1 d-block mb-2"></i>
-                                    Belum ada TP pada filter ini.
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card" id="tpList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Daftar TP</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $totalTp }} TP</span>
+                                <span class="text-muted small ms-2">TP diturunkan dari CP; buat, ubah, dan urutkan sebagai dasar ATP.</span>
+                            </p>
+                        </div>
+                        <div class="col-sm-auto">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <form method="GET" action="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
+                                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                                    </select>
+                                    <select name="subject_id" class="form-select" style="width:180px" onchange="this.form.submit()">
+                                        <option value="">— Semua Mapel —</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ $subjectId === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="grade_level_id" class="form-select" style="width:140px" onchange="this.form.submit()">
+                                        <option value="">— Semua Jenjang —</option>
+                                        @foreach($gradeLevels as $grade)
+                                            <option value="{{ $grade->id }}" {{ request('grade_level_id') === $grade->id ? 'selected' : '' }}>{{ $grade->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <a href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
+                                </form>
+                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#tp-modal" onclick="openCreate()">
+                                    <i class="ri-add-line align-bottom me-1"></i> Tambah TP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil']) }}" class="filter-badge {{ $semester === 'ganjil' ? 'active' : '' }}">Ganjil</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap']) }}" class="filter-badge {{ $semester === 'genap' ? 'active' : '' }}">Genap</a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <span class="text-muted small">{{ $dalamAtp }} sudah di ATP · {{ $belumAtp }} belum</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-freeze mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Kode / Mapel</th>
+                                <th>Tujuan Pembelajaran</th>
+                                <th>CP / Elemen</th>
+                                <th class="text-center">Fase</th>
+                                <th class="text-center">JP</th>
+                                <th class="text-center" style="width:110px">Urutan</th>
+                                <th class="text-end" style="width:110px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($tpList as $tp)
+                                @php
+                                    $canManage = $isKurikulumTeam || in_array($tp->subject_id, $taughtSubjectIds, true);
+                                    $inAtp = in_array($tp->id, $usedTpIds, true);
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary">{{ $tp->kode_tp }}</span>
+                                        <div class="small text-muted mt-1">{{ $tp->subject?->name }}</div>
+                                        <div class="small text-muted">{{ $tp->gradeLevel?->name ?? 'Semua Jenjang' }}</div>
+                                    </td>
+                                    <td class="small">{{ $tp->deskripsi }}</td>
+                                    <td class="small text-muted">
+                                        @if($tp->capaianPembelajaran)
+                                            <div>{{ \Illuminate\Support\Str::limit($tp->capaianPembelajaran->deskripsi, 60) }}</div>
+                                        @endif
+                                        {{ $tp->elemen ?: '—' }}
+                                    </td>
+                                    <td class="text-center">{{ $tp->fase ?: '—' }}</td>
+                                    <td class="text-center">{{ $tp->alokasi_waktu }}</td>
+                                    <td class="text-center">
+                                        @if($canManage)
+                                            <div class="d-inline-flex align-items-center gap-1">
+                                                <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
+                                                    @csrf <input type="hidden" name="direction" value="up">
+                                                    <button class="btn btn-sm btn-soft-secondary" title="Naik"><i class="ri-arrow-up-line"></i></button>
+                                                </form>
+                                                <span class="fw-semibold">{{ $tp->urutan }}</span>
+                                                <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
+                                                    @csrf <input type="hidden" name="direction" value="down">
+                                                    <button class="btn btn-sm btn-soft-secondary" title="Turun"><i class="ri-arrow-down-line"></i></button>
+                                                </form>
+                                            </div>
+                                        @else
+                                            {{ $tp->urutan }}
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        @if($canManage)
+                                            <button class="btn btn-sm btn-soft-warning"
+                                                data-tp="{{ json_encode([
+                                                    'id' => $tp->id,
+                                                    'subject_id' => $tp->subject_id,
+                                                    'grade_level_id' => $tp->grade_level_id,
+                                                    'academic_year_id' => $tp->academic_year_id,
+                                                    'semester' => $tp->semester,
+                                                    'capaian_pembelajaran_id' => $tp->capaian_pembelajaran_id,
+                                                    'kode_tp' => $tp->kode_tp,
+                                                    'deskripsi' => $tp->deskripsi,
+                                                    'elemen' => $tp->elemen,
+                                                    'fase' => $tp->fase,
+                                                    'alokasi_waktu' => $tp->alokasi_waktu,
+                                                    'urutan' => $tp->urutan,
+                                                    'is_active' => (bool) $tp->is_active,
+                                                ]) }}"
+                                                onclick="openEdit(this)" title="Edit">
+                                                <i class="ri-pencil-line"></i>
+                                            </button>
+                                            @if(! $inAtp)
+                                                <form action="{{ route('user.kurikulum.tp.destroy', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline"
+                                                      onsubmit="return confirm('Hapus TP ini?');">
+                                                    @csrf @method('DELETE')
+                                                    <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+                                                </form>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary" title="Dipakai di ATP">ATP</span>
+                                            @endif
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="ri-list-check-2 fs-1 d-block mb-2"></i>
+                                            Belum ada TP pada filter ini.
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -279,7 +357,7 @@
 @section('script')
     <script>
         var tpStoreUrl = @json(route('user.kurikulum.tp.store', ['userId' => $userId]));
-        var tpUpdateUrl = @json(route('user.kurikulum.tp.update', ['userId' => $userId, 'id' => '__ID__']));
+        var tpUpdateUrl = @json($tpUpdateUrlTemplate);
         var cpOptions = @json($cpOptionsJson);
 
         function filterCpOptions(selectedId) {

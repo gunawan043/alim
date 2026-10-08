@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title', 'Detail ATP')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php $userId = $userId ?? auth()->id(); @endphp
 
@@ -52,7 +56,7 @@
     <div class="row">
         <div class="col-xl-8">
             <div class="card h-100">
-                <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Pengaturan ATP</h5>
                     <span class="badge {{ $atp->status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
                         {{ \App\Models\AlurTujuanPembelajaran::STATUS_OPTIONS[$atp->status] ?? $atp->status }}
@@ -93,7 +97,7 @@
 
         <div class="col-xl-4">
             <div class="card h-100">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="ri-scales-3-line text-primary me-1"></i> Kesesuaian Alokasi JP</h5>
                 </div>
                 <div class="card-body">
@@ -135,7 +139,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0"><i class="ri-list-ordered-2 text-primary me-1"></i> Susunan Tujuan Pembelajaran</h5>
             <span class="badge bg-primary-subtle text-primary">{{ $atp->items->count() }} TP</span>
         </div>
@@ -213,7 +217,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header">
+        <div class="card-header border-bottom-dashed">
             <h5 class="card-title mb-0"><i class="ri-add-circle-line text-primary me-1"></i> Tambah TP ke ATP</h5>
         </div>
         <div class="card-body">

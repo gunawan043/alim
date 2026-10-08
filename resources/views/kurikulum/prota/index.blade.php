@@ -1,31 +1,25 @@
 @extends('layouts.master')
 @section('title', 'PROTA')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+
+        $totalProta = $protaList->count();
+        $finalCount = $protaList->where('status', 'final')->count();
+        $totalJp = (int) $protaList->sum('total_jp');
+        $staleCount = count($staleIds);
+    @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
         @slot('li_2') PROTA @endslot
         @slot('title') Program Tahunan @endslot
     @endcomponent
-
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">PROTA — Program Tahunan</h4>
-            <p class="text-muted mb-0 small">
-                Dibangun dari ATP (TP + alokasi JP) dan Pekan Efektif (minggu &amp; JP efektif) — tanpa input ulang pekan efektif.
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('user.kurikulum.cetak.kaldik', ['userId' => $userId]) }}" class="btn btn-light btn-sm" target="_blank">
-                <i class="ri-printer-line align-bottom me-1"></i> Cetak Kaldik
-            </a>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#prota-modal">
-                <i class="ri-add-line align-bottom me-1"></i> Susun PROTA
-            </button>
-        </div>
-    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -40,116 +34,200 @@
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select">
-                        @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
-                        @endforeach
-                    </select>
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-calendar-schedule-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total PROTA</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalProta) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pada filter ini</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6">
-                    <label class="form-label">Semester</label>
-                    <select name="semester" class="form-select">
-                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-check-double-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Final</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($finalCount) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-verified-badge-line me-1"></i>Sudah ditetapkan</p>
                 </div>
-                <div class="col-xxl-3 col-sm-6">
-                    <label class="form-label">Mata Pelajaran</label>
-                    <select name="subject_id" class="form-select">
-                        <option value="">— Semua Mapel —</option>
-                        @foreach($subjects as $subject)
-                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                        @endforeach
-                    </select>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-timer-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total JP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalJp) }}<small class="fw-normal text-muted ms-1 stat-label">JP</small></h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-stack-line me-1"></i>Alokasi seluruh PROTA</p>
                 </div>
-                <div class="col-xxl-2 col-sm-6 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line align-bottom me-1"></i> Filter</button>
-                    <a href="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-refresh-line align-bottom"></i></a>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-100">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title {{ $staleCount > 0 ? 'bg-warning-subtle' : 'bg-success-subtle' }} rounded fs-2">
+                                <i class="{{ $staleCount > 0 ? 'ri-refresh-line text-warning' : 'ri-checkbox-circle-line text-success' }}"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Perlu Diperbarui</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($staleCount) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>{{ $staleCount > 0 ? 'Sumber data berubah' : 'Semua sinkron' }}
+                    </p>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0"><i class="ri-calendar-schedule-line text-primary me-1"></i> Daftar PROTA</h5>
-            <span class="badge bg-primary-subtle text-primary">{{ $protaList->count() }} PROTA</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Mapel</th>
-                        <th>Kelas / Fase</th>
-                        <th>Guru</th>
-                        <th class="text-center">Minggu Efektif</th>
-                        <th class="text-center">JP/Minggu</th>
-                        <th class="text-center">JP Efektif</th>
-                        <th class="text-center">Total JP</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-end" style="width:160px">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($protaList as $prota)
-                        <tr>
-                            <td class="fw-medium">
-                                {{ $prota->subject?->name ?? '-' }}
-                                @if(in_array($prota->id, $staleIds, true))
-                                    <span class="badge bg-warning-subtle text-warning ms-1" title="Sumber data berubah — perlu sinkron">
-                                        <i class="ri-refresh-line me-1"></i>Perlu diperbarui
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                {{ $prota->gradeLevel?->name ?? 'Semua Jenjang' }}
-                                @if($prota->fase) <span class="badge bg-info-subtle text-info ms-1">{{ $prota->fase }}</span> @endif
-                            </td>
-                            <td class="small">{{ $prota->teacher?->name ?? '—' }}</td>
-                            <td class="text-center">{{ $prota->minggu_efektif }}</td>
-                            <td class="text-center">{{ $prota->jp_per_minggu }}</td>
-                            <td class="text-center fw-semibold">{{ $prota->jp_efektif }}</td>
-                            <td class="text-center">
-                                <span class="badge {{ $prota->total_jp == $prota->jp_efektif ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
-                                    {{ $prota->total_jp }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge {{ $prota->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
-                                    {{ \App\Models\Prota::STATUS_OPTIONS[$prota->status] ?? $prota->status }}
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <a href="{{ route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
-                                    <i class="ri-eye-line"></i>
-                                </a>
-                                <a href="{{ route('user.kurikulum.cetak.prota', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
-                                    <i class="ri-printer-line"></i>
-                                </a>
-                                <form action="{{ route('user.kurikulum.prota.destroy', ['userId' => $userId, 'id' => $prota->id]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Hapus PROTA ini? PROSEM turunannya ikut terhapus.');">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card" id="protaList">
+                <div class="card-header border-bottom-dashed">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-sm">
+                            <h5 class="card-title mb-0">Daftar PROTA</h5>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-primary-subtle text-primary">{{ $totalProta }} PROTA</span>
+                                <span class="text-muted small ms-2">Dibangun dari ATP (TP + alokasi JP) dan Pekan Efektif.</span>
+                            </p>
+                        </div>
+                        <div class="col-sm-auto">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <form method="GET" action="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
+                                        <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                        <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                                    </select>
+                                    <select name="subject_id" class="form-select" style="width:180px" onchange="this.form.submit()">
+                                        <option value="">— Semua Mapel —</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <a href="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="ri-calendar-schedule-line fs-1 d-block mb-2"></i>
-                                    Belum ada PROTA. Susun dari ATP yang sudah terbit.
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#prota-modal">
+                                    <i class="ri-add-line align-bottom me-1"></i> Susun PROTA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil']) }}" class="filter-badge {{ $semester === 'ganjil' ? 'active' : '' }}">Ganjil</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap']) }}" class="filter-badge {{ $semester === 'genap' ? 'active' : '' }}">Genap</a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <span class="text-muted small">{{ $staleCount }} PROTA perlu diperbarui</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-freeze mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mapel</th>
+                                <th>Kelas / Fase</th>
+                                <th>Guru</th>
+                                <th class="text-center">Minggu Efektif</th>
+                                <th class="text-center">JP/Minggu</th>
+                                <th class="text-center">JP Efektif</th>
+                                <th class="text-center">Total JP</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end" style="width:160px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($protaList as $prota)
+                                <tr>
+                                    <td class="fw-medium">
+                                        {{ $prota->subject?->name ?? '-' }}
+                                        @if(in_array($prota->id, $staleIds, true))
+                                            <span class="badge bg-warning-subtle text-warning ms-1" title="Sumber data berubah — perlu sinkron">
+                                                <i class="ri-refresh-line me-1"></i>Perlu diperbarui
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $prota->gradeLevel?->name ?? 'Semua Jenjang' }}
+                                        @if($prota->fase) <span class="badge bg-info-subtle text-info ms-1">{{ $prota->fase }}</span> @endif
+                                    </td>
+                                    <td class="small">{{ $prota->teacher?->name ?? '—' }}</td>
+                                    <td class="text-center">{{ $prota->minggu_efektif }}</td>
+                                    <td class="text-center">{{ $prota->jp_per_minggu }}</td>
+                                    <td class="text-center fw-semibold">{{ $prota->jp_efektif }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {{ $prota->total_jp == $prota->jp_efektif ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
+                                            {{ $prota->total_jp }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {{ $prota->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
+                                            {{ \App\Models\Prota::STATUS_OPTIONS[$prota->status] ?? $prota->status }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <a href="{{ route('user.kurikulum.cetak.prota', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
+                                            <i class="ri-printer-line"></i>
+                                        </a>
+                                        <form action="{{ route('user.kurikulum.prota.destroy', ['userId' => $userId, 'id' => $prota->id]) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Hapus PROTA ini? PROSEM turunannya ikut terhapus.');">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="9" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="ri-calendar-schedule-line fs-1 d-block mb-2"></i>
+                                            Belum ada PROTA. Susun dari ATP yang sudah terbit.
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
