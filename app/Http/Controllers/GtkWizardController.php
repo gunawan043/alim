@@ -1316,11 +1316,23 @@ class GtkWizardController extends Controller
             'education' => $validated['pendidikan'] ?? [],
             'contact' => $validated['kontak'] ?? [],
             'employment' => array_merge($validated['kepegawaian'] ?? [], [
-                'jenis_gtk_id' => $this->resolveJenisGtkId($validated['kepegawaian']['jenis_gtk'] ?? null),
-                'jenis_gtk' => $this->resolveJenisGtkName($validated['kepegawaian']['jenis_gtk'] ?? null),
+                'jenis_gtk_id' => $this->resolveJenisGtkId(
+                    $validated['kepegawaian']['jenis_gtk'] ?? null,
+                    $validated['kepegawaian']['jabatan'] ?? null
+                ),
+                'jenis_gtk' => $this->resolveJenisGtkName(
+                    $validated['kepegawaian']['jenis_gtk'] ?? null,
+                    $this->resolveJenisGtkId(
+                        $validated['kepegawaian']['jenis_gtk'] ?? null,
+                        $validated['kepegawaian']['jabatan'] ?? null
+                    )
+                ),
                 'jabatan_id' => $this->resolveJabatanId(
                     $validated['kepegawaian']['jabatan'] ?? null,
-                    $this->resolveJenisGtkId($validated['kepegawaian']['jenis_gtk'] ?? null)
+                    $this->resolveJenisGtkId(
+                        $validated['kepegawaian']['jenis_gtk'] ?? null,
+                        $validated['kepegawaian']['jabatan'] ?? null
+                    )
                 ),
                 'jabatan' => $this->resolveJabatanName($validated['kepegawaian']['jabatan'] ?? null),
                 'school_id' => $this->resolveSchoolId($validated['work_unit_id'] ?? null),
@@ -1689,104 +1701,148 @@ class GtkWizardController extends Controller
         return '@'.$nupy;
     }
 
-    /**
-     * Accept UUID or name string — return the JenisGtk UUID.
-     */
-    private function resolveJenisGtkId(?string $value): ?string
+    protected function resolveJenisGtkId(?string $jenisGtk, ?string $jabatan = null): ?string
     {
-        if (! $value) {
+        // ── Step 0: Kosong → null ────────────────────────────────────────
+        if (! $jenisGtk) {
+            return $this->resolveJenisGtkIdFromJabatan($jabatan);
+        }
+
+        // ── Step 1: UUID detection ───────────────────────────────────────
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $jenisGtk)) {
+            return JenisGtk::where('id', $jenisGtk)->value('id');
+        }
+
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($jenisGtk);
+        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(nama), ' ', ''), '/', ''), '-', ''), '.', '')";
+
+        // ── Step 2: Exact match ──────────────────────────────────────────
+        $id = JenisGtk::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
+        if ($id) {
+            return $id;
+        }
+
+        // ── Step 3: LIKE match ───────────────────────────────────────────
+        $id = JenisGtk::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->value('id');
+        if ($id) {
+            return $id;
+        }
+
+        // ── Step 4: Fallback — cari dari JABATAN ─────────────────────────
+        return $this->resolveJenisGtkIdFromJabatan($jabatan);
+    }
+
+    protected function resolveJenisGtkIdFromJabatan(?string $jabatan): ?string
+    {
+        if (! $jabatan) {
             return null;
         }
 
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return JenisGtk::find($value)?->id;
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($jabatan);
+
+        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '')";
+
+        // Cari StructuralPosition dengan nama jabatan yang match
+        $sp = StructuralPosition::whereRaw("{$sqlExpr} = ?", [$target])->first();
+        if ($sp && $sp->jenis_gtk_id) {
+            return $sp->jenis_gtk_id;
         }
 
-        return JenisGtk::whereRaw('LOWER(nama) = LOWER(?)', [$value])->value('id');
+        // Fallback: LIKE match
+        $sp = StructuralPosition::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->first();
+        if ($sp && $sp->jenis_gtk_id) {
+            return $sp->jenis_gtk_id;
+        }
+
+        return null;
     }
 
     /**
-     * Accept UUID or name string — return the human-readable name.
+     * Return human-readable nama jenis GTK.
+     * Kalau input null atau tidak ketemu, fallback ke lookup by ID.
      */
-    private function resolveJenisGtkName(?string $value): ?string
+    private function resolveJenisGtkName(?string $value, ?string $resolvedId = null): ?string
     {
+        // Kalau value kosong, ambil dari resolvedId
         if (! $value) {
-            return null;
+            return $resolvedId ? JenisGtk::find($resolvedId)?->nama : null;
         }
 
+        // Kalau value UUID, cari namanya
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
             return JenisGtk::find($value)?->nama;
+        }
+
+        // Cek apakah jenis GTK dengan nama ini ADA di DB
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($value);
+        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(nama), ' ', ''), '/', ''), '-', ''), '.', '')";
+
+        $found = JenisGtk::whereRaw("{$sqlExpr} = ?", [$target])->first();
+        if ($found) {
+            return $found->nama;
+        }
+
+        // Kalau tidak ketemu tapi ada resolvedId → ambil dari resolvedId
+        // (artinya value dari Excel salah, tapi sudah di-resolve dari jabatan)
+        if ($resolvedId) {
+            return JenisGtk::find($resolvedId)?->nama ?? $value;
         }
 
         return $value;
     }
 
+    
+
     /**
-     * Accept Jabatan UUID or name string — return the Jabatan UUID.
-     * Case-insensitive and tolerant of surrounding/multiple spaces.
-     *
-     * If jenisGtkId is given:
-     * 1. Try matching by jenis_gtk_id + name.
-     * 2. If not found, fallback to name only.
+     * Accept UUID or name — return StructuralPosition UUID.
+     * Case-insensitive, whitespace-insensitive, punctuation-insensitive.
+     * If jenisGtkId given: prefer match within that jenis, fallback to global.
      */
-    private function resolveJabatanId(?string $value, ?string $jenisGtkId = null): ?string
+    protected function resolveJabatanId(?string $jabatanName, ?string $jenisGtkId = null): ?string
     {
-        if (blank($value)) {
+        if (! $jabatanName) {
             return null;
         }
 
-        $value = trim($value);
-
-        $query = StructuralPosition::query();
-
-        // UUID input
-        if (preg_match(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
-            $value
-        )) {
-            if ($jenisGtkId) {
-                $id = (clone $query)
-                    ->where('id', $value)
-                    ->where('jenis_gtk_id', $jenisGtkId)
-                    ->value('id');
-
-                if ($id) {
-                    return $id;
-                }
-            }
-
-            return StructuralPosition::where('id', $value)->value('id');
+        // UUID detection
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $jabatanName)) {
+            return StructuralPosition::where('id', $jabatanName)->value('id');
         }
 
-        // Normalize whitespace
-        $normalizedValue = preg_replace('/\s+/', ' ', $value);
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($jabatanName);
 
-        // 1. Try exact name match WITH jenis GTK
+        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '')";
+
+        // Step 1: Exact + jenis filter
         if ($jenisGtkId) {
-            $id = (clone $query)
-                ->where('jenis_gtk_id', $jenisGtkId)
-                ->whereRaw(
-                    'LOWER(TRIM(name)) = LOWER(?)',
-                    [$normalizedValue]
-                )
+            $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
+                ->whereRaw("{$sqlExpr} = ?", [$target])
                 ->value('id');
-
-            if ($id) {
-                return $id;
-            }
+            if ($id) return $id;
         }
 
-        // 2. Fallback: exact name match WITHOUT jenis GTK
-        return StructuralPosition::query()
-            ->whereRaw(
-                'LOWER(TRIM(name)) = LOWER(?)',
-                [$normalizedValue]
-            )
-            ->value('id');
+        // Step 2: Exact global
+        $id = StructuralPosition::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
+        if ($id) return $id;
+
+        // Step 3: LIKE + jenis filter
+        if ($jenisGtkId) {
+            $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
+                ->whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])
+                ->value('id');
+            if ($id) return $id;
+        }
+
+        // Step 4: LIKE global
+        return StructuralPosition::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->value('id');
     }
 
     /**
-     * Accept Jabatan UUID or name string — return the human-readable name.
+     * Accept UUID or name — return human-readable name.
      */
     private function resolveJabatanName(?string $value): ?string
     {
@@ -1927,23 +1983,62 @@ class GtkWizardController extends Controller
                 $jenisGtk = $row['jenis_gtk'] ?? null;
                 $jabatan = $row['jabatan'] ?? null;
 
-                // Resolve to UUIDs for stable references (handles rename-safe FK)
-                $jenisGtkId = $jenisGtk ? $this->resolveJenisGtkId($jenisGtk) : null;
-                $jabatanId = ($jenisGtk && $jabatan) ? $this->resolveJabatanId($jabatan, $jenisGtkId) : null;
+                // ── Resolve jenis GTK — dengan fallback ke jabatan ─────────────────
+                // Kalau jenis GTK dari Excel tidak ketemu, cari dari jabatan
+                $jenisGtkId = $this->resolveJenisGtkId($jenisGtk, $jabatan);
 
-                // Validate that resolved IDs exist
-                if ($jenisGtk && ! $jenisGtkId) {
-                    throw new \InvalidArgumentException("Jenis GTK '{$jenisGtk}' tidak ditemukan di master data.");
+                // ── Resolve jabatan (setelah jenis GTK benar) ───────────────────────
+                $jabatanId = $jabatan ? $this->resolveJabatanId($jabatan, $jenisGtkId) : null;
+
+                // ── Validasi ────────────────────────────────────────────────────────
+                if (! $jenisGtkId) {
+                    // Kalau benar-benar tidak ketemu (bahkan setelah fallback)
+                    if ($jenisGtk) {
+                        throw new \InvalidArgumentException(
+                            "Jenis GTK '{$jenisGtk}' tidak ditemukan, dan juga tidak bisa di-resolve "
+                            . "dari jabatan '{$jabatan}'. Cek data master `jenis_gtk` & `structural_positions`."
+                        );
+                    }
+                    throw new \InvalidArgumentException(
+                        "Jenis GTK kosong dan jabatan '{$jabatan}' juga tidak bisa di-resolve ke jenis GTK manapun."
+                    );
                 }
+
                 if ($jabatan && ! $jabatanId) {
-                    throw new \InvalidArgumentException("Jabatan '{$jabatan}' tidak ditemukan. Pastikan jabatan sesuai dengan Jenis GTK yang dipilih.");
+                    $debugInfo = $jenisGtkId
+                        ? " di jenis GTK ID '{$jenisGtkId}'"
+                        : " (jenis GTK juga tidak ketemu)";
+
+                    throw new \InvalidArgumentException(
+                        "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
+                        . "Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
+                    );
+                }
+
+                // Validasi
+                if ($jenisGtk && ! $jenisGtkId) {
+                    throw new \InvalidArgumentException(
+                        "Jenis GTK '{$jenisGtk}' tidak ditemukan di master data. "
+                        ."Cek: apakah nama jenis GTK di Excel sudah sesuai dengan tabel `jenis_gtk`?"
+                    );
+                }
+
+                if ($jabatan && ! $jabatanId) {
+                    $debugInfo = $jenisGtkId
+                        ? " di jenis GTK ID '{$jenisGtkId}'"
+                        : " (jenis GTK juga tidak ketemu)";
+
+                    throw new \InvalidArgumentException(
+                        "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
+                        ."Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
+                    );
                 }
 
                 $this->createEmployment($user->id, [
                     'nupy' => $nupy,
-                    'jenis_gtk' => $jenisGtk,
+                    'jenis_gtk' => $this->resolveJenisGtkName($jenisGtk),
                     'jenis_gtk_id' => $jenisGtkId,
-                    'jabatan' => $jabatan,
+                    'jabatan' => $this->resolveJabatanName($jabatan),
                     'jabatan_id' => $jabatanId,
                     'status_kepegawaian' => $row['status_kepegawaian'] ?? null,
                     'tmt' => $row['tmt'] ?? null,
@@ -1964,13 +2059,40 @@ class GtkWizardController extends Controller
 
                 $this->assignWorkUnit($user->id, $workUnitId, $jabatan);
 
-                // Assign Spatie role from jabatan — strict 14-role constraint
-                $role = JabatanRoleMapper::resolve($jabatan ?? '');
-                if ($user->hasRole($role)) {
-                    $user->syncRoles([$role]);
-                } else {
-                    $user->assignRole($role);
+                // Resolve role dari StructuralPosition
+                $roleName = null;
+
+                if (! empty($jabatanId)) {
+                    $sp = StructuralPosition::with('role')->find($jabatanId);
+                    if ($sp && $sp->role) {
+                        $roleName = $sp->role->name;
+                    }
                 }
+
+                if (! $roleName && ! empty($jabatan)) {
+                    $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+                    $target = $normalize($jabatan);
+
+                    $sp = StructuralPosition::with('role')
+                        ->whereRaw(
+                            "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '') = ?",
+                            [$target]
+                        )
+                        ->first();
+
+                    if ($sp && $sp->role) {
+                        $roleName = $sp->role->name;
+                    }
+                }
+
+                if (! $roleName) {
+                    throw new \InvalidArgumentException(
+                        "Role untuk jabatan '{$jabatan}' tidak ditemukan. "
+                        ."Pastikan jabatan '{$jabatan}' sudah terdaftar di StructuralPosition dengan `role_id` yang benar."
+                    );
+                }
+
+                $user->syncRoles([$roleName]);
 
                 DB::commit();
                 $imported++;

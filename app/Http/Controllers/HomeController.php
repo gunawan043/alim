@@ -49,6 +49,10 @@ class HomeController extends Controller
             return redirect()->route('system.dashboard');
         }
 
+        if ($user->hasRole('Super Admin')) {
+            return redirect()->route('system.dashboard');
+        }
+
         $roles = $user->getRoleNames();
 
         // Boarding roles with dedicated dashboards
@@ -62,12 +66,33 @@ class HomeController extends Controller
         }
 
         if ($roles->contains('UKS')) {
-            return redirect()->route('dashboard.boarding-health');
+            return redirect()->route('user.uks.dashboard', ['userId' => $user->id]);
         }
 
         // Existing dedicated dashboards for other roles
+        if ($roles->contains('Keuangan')) {
+            return redirect()->route('user.dashboard.keuangan', ['userId' => $user->id]);
+        }
+
+        if ($roles->contains('Pimpinan')) {
+            return redirect()->route('user.dashboard.pimpinan', ['userId' => $user->id]);
+        }
+
+        if ($roles->contains('Departemen Tahfidz')) {
+            return redirect()->route('user.dashboard.tahfidz', ['userId' => $user->id]);
+        }
+
+        if ($roles->contains('Humas Personalia')) {
+            return redirect()->route('user.dashboard.personalia', ['userId' => $user->id]);
+        }
+
         if ($roles->contains('Personalia')) {
-            return redirect()->route('user.dashboard');
+            return redirect()->route('user.dashboard.personalia', ['userId' => $user->id]);
+        }
+
+        // Unit Rumah Tangga
+        if ($roles->contains('Unit Rumah Tangga')) {
+            return redirect()->route('user.dashboard.unit-rumah-tangga', ['userId' => $user->id]);
         }
 
         // Sarpras = single role: Admin + Staf (divisi based on jabatan)

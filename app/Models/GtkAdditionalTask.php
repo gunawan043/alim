@@ -84,6 +84,16 @@ class GtkAdditionalTask extends Model
         return null;
     }
 
+    /**
+     * Alias atribut `nama` (dipakai sidebar: pluck('nama')).
+     */
+    protected function nama(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->nama_tugas,
+        );
+    }
+
     public function getIsActiveAttribute()
     {
         if (! $this->tst) {

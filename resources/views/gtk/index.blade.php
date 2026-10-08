@@ -26,8 +26,8 @@
             padding: 12px 16px;
             word-break: break-word;
         }
-        .table-freeze th:first-child,
-        .table-freeze td:first-child {
+        .table-freeze th:second-child,
+        .table-freeze td:second-child {
             position: sticky;
             left: 0;
             z-index: 100;
@@ -598,12 +598,12 @@
                                     {{-- DEFAULT --}}
                                     <th data-column="email">Email</th>
                                     <th data-column="no_hp">No HP</th>
+                                    <th data-column="nupy">NUPY</th>
 
                                     {{-- NON-DEFAULT: Kontak --}}
                                     <th data-column="no_whatsapp" class="col-hidden">No WhatsApp</th>
 
                                     {{-- NON-DEFAULT: Kepegawaian --}}
-                                    <th data-column="nupy" class="col-hidden">NUPY</th>
                                     <th data-column="jenis_gtk" class="col-hidden">Jenis GTK</th>
 
                                     {{-- DEFAULT --}}
@@ -706,7 +706,7 @@
                                         <td data-column="no_whatsapp" class="col-hidden">{{ $gtk->gtkContact?->no_whatsapp ?? '-' }}</td>
 
                                         {{-- NON-DEFAULT: Kepegawaian --}}
-                                        <td data-column="nupy" class="col-hidden">{{ $gtk->employment?->nupy ?? '-' }}</td>
+                                        <td data-column="nupy">{{ $gtk->employment?->nupy ?? '-' }}</td>
                                         <td data-column="jenis_gtk" class="col-hidden">{{ $gtk->employment?->jenis_gtk ?? '-' }}</td>
 
                                         {{-- DEFAULT: Kepegawaian --}}

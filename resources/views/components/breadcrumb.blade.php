@@ -1,7 +1,17 @@
 <!-- start page title -->
 @php
 $items = $crumbs ?? [];
-if ($li_1) array_unshift($items, ['label' => $li_1, 'url' => $li_1_url ?? 'javascript:void(0)' ]);
+if (! empty($li_1)) {
+    array_unshift($items, ['label' => $li_1, 'url' => $li_1_url ?? 'javascript:void(0)']);
+}
+// Slot li_2 .. li_4: item breadcrumb tambahan (mendukung <a> di dalamnya).
+foreach ([2, 3, 4] as $__n) {
+    $__var = 'li_'.$__n;
+    $__urlVar = 'li_'.$__n.'_url';
+    if (! empty($$__var)) {
+        $items[] = ['label' => $$__var, 'url' => $$__urlVar ?? 'javascript:void(0)'];
+    }
+}
 @endphp
 <div class="row">
     <div class="col-12">
@@ -10,10 +20,20 @@ if ($li_1) array_unshift($items, ['label' => $li_1, 'url' => $li_1_url ?? 'javas
             <div class="page-title-right">
                 <ol class="breadcrumb m-0">
                     @foreach($items as $i => $item)
+                        @php
+                            $__label = (string) ($item['label'] ?? '');
+                            $__hasLink = str_contains($__label, '<a ');
+                        @endphp
                         @if($i < count($items) - 1)
-                            <li class="breadcrumb-item"><a href="{{ $item['url'] ?? 'javascript:void(0)' }}">{{ $item['label'] }}</a></li>
+                            <li class="breadcrumb-item">
+                                @if($__hasLink)
+                                    {!! $__label !!}
+                                @else
+                                    <a href="{{ $item['url'] ?? 'javascript:void(0)' }}">{!! $__label !!}</a>
+                                @endif
+                            </li>
                         @else
-                            <li class="breadcrumb-item active" aria-current="page">{{ $item['label'] }}</li>
+                            <li class="breadcrumb-item active" aria-current="page">{!! $__label !!}</li>
                         @endif
                     @endforeach
                 </ol>

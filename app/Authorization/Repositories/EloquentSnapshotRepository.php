@@ -22,6 +22,15 @@ final class EloquentSnapshotRepository implements SnapshotRepository
         $scopeKey = $bag->getMetadata()->scopeKey->__toString();
         $schoolId = $context?->schoolId;
 
+        // Index unik (user_id, scope_key, is_current) hanya mengizinkan SATU baris
+        // non-current. Hapus arsip lama sebelum mengarsipkan snapshot aktif agar
+        // rebuild berikutnya tidak gagal duplicate entry.
+        PermissionSnapshot::query()
+            ->where('user_id', $userId)
+            ->where('scope_key', $scopeKey)
+            ->where('is_current', false)
+            ->delete();
+
         PermissionSnapshot::query()
             ->where('user_id', $userId)
             ->where('scope_key', $scopeKey)

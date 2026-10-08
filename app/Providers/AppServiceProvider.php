@@ -173,6 +173,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Register isActiveRoute() as a Blade directive so every view can use it
+        Blade::if('menuallowed', function ($menuKey) {
+            return menu_allowed((string) $menuKey);
+        });
+
         Blade::if('isActiveRoute', function ($routes) {
             $routeName = Route::currentRouteName() ?? '';
             if (! $routeName) {

@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class DormitoryMasterController extends Controller
@@ -67,6 +68,44 @@ class DormitoryMasterController extends Controller
         ];
 
         return view('dormitory.master.index', compact('dormitories', 'workUnits', 'stats', 'userId'));
+    }
+
+    /**
+     * Profil asrama milik user yang login:
+     * staf assignment → kepala asrama → wali kamar → fallback daftar asrama.
+     */
+    public function myProfile(Request $request, string $userId)
+    {
+        $this->validateAccess($userId);
+
+        $user = auth()->user();
+
+        $dormitoryId = DB::table('dormitory_staff_assignments')
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString()))
+            ->value('dormitory_id');
+
+        if (! $dormitoryId) {
+            $dormitoryId = Dormitory::where('head_id', $user->id)->where('is_active', true)->value('id');
+        }
+
+        if (! $dormitoryId) {
+            $dormitoryId = DB::table('room_supervisors')
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->value('dormitory_id');
+        }
+
+        if ($dormitoryId) {
+            return redirect()->route('user.dormitory-master.show', [
+                'userId'     => $userId,
+                'asramaUuid' => $dormitoryId,
+            ]);
+        }
+
+        return redirect()->route('user.dormitory-master.index', ['userId' => $userId])
+            ->with('warning', 'Anda belum ditugaskan pada asrama mana pun.');
     }
 
     public function create(Request $request, string $userId)

@@ -23,19 +23,19 @@ use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ClassQrController;
-use App\Http\Controllers\Dashboard\BendaharaDashboardController;
-use App\Http\Controllers\Dashboard\GuruDashboardController;
-use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
-use App\Http\Controllers\Dashboard\KepSatuanPendidikanDashboardController;
-use App\Http\Controllers\Dashboard\KoordEkskulDashboardController;
-use App\Http\Controllers\Dashboard\KoordGuruDashboardController;
-use App\Http\Controllers\Dashboard\KoordKesiswaanDashboardController;
-use App\Http\Controllers\Dashboard\KoordKurikulumDashboardController;
-use App\Http\Controllers\Dashboard\KoordLaboratoriumDashboardController;
-use App\Http\Controllers\Dashboard\KoordSarprasDashboardController;
-use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
-use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
-use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
+// use App\Http\Controllers\Dashboard\BendaharaDashboardController;
+// use App\Http\Controllers\Dashboard\GuruDashboardController;
+// use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
+// use App\Http\Controllers\Dashboard\KepSatuanPendidikanDashboardController;
+// use App\Http\Controllers\Dashboard\KoordEkskulDashboardController;
+// use App\Http\Controllers\Dashboard\KoordGuruDashboardController;
+// use App\Http\Controllers\Dashboard\KoordKesiswaanDashboardController;
+// use App\Http\Controllers\Dashboard\KoordKurikulumDashboardController;
+// use App\Http\Controllers\Dashboard\KoordLaboratoriumDashboardController;
+// use App\Http\Controllers\Dashboard\KoordSarprasDashboardController;
+// use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
+// use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
+// use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
@@ -78,6 +78,7 @@ use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\JadwalKbmController;
+use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JenjangKarirController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
@@ -193,6 +194,10 @@ use App\Http\Controllers\Uks\PatientController;
 use App\Http\Controllers\Uks\SchedulingController;
 use App\Http\Controllers\Uks\StudentHealthController;
 use App\Http\Controllers\Uks\TreatmentStatusController;
+use App\Http\Controllers\Dashboard\UnitRumahTanggaDashboardController;
+use App\Http\Controllers\Dashboard\PersonaliaDashboardController as RolePersonaliaDashboardController;
+use App\Http\Controllers\Dashboard\TahfidzDashboardController;
+use App\Http\Controllers\Dashboard\UksDashboardController as RoleUksDashboardController;
 use App\Http\Controllers\Uks\UksDashboardController;
 use App\Http\Controllers\UserKalkulasiNilaiController;
 use App\Http\Controllers\UserLaporanController;
@@ -216,7 +221,10 @@ use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Dashboard\AsramaDashboardController as RoleAsramaDashboardController;
+use App\Http\Controllers\Dashboard\KeuanganDashboardController;
+use App\Http\Controllers\Dashboard\PimpinanDashboardController;
+use App\Http\Controllers\Dashboard\SatuanPendidikanDashboardController;
 /*
 |--------------------------------------------------------------------------
 | GLOBAL ROUTE PATTERNS
@@ -289,6 +297,7 @@ Route::prefix('portal')->name('portal.')->group(function () {
     Route::post('/{token}/visit', [GuardianPortalController::class, 'submitVisit'])->name('visit');
     Route::post('/{token}/health', [GuardianPortalController::class, 'submitHealth'])->name('health');
 });
+
 
 Route::middleware('guest')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
@@ -415,6 +424,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{studyGroupId}/leger/cetak', [NilaiKelasController::class, 'legerCetak'])->name('leger.cetak');
                     Route::get('/{studyGroupId}/leger/download', [NilaiKelasController::class, 'legerDownload'])->name('leger.download');
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
+                    Route::post('/{studyGroupId}/rapor/{studentId}/catatan', [NilaiKelasController::class, 'raporNote'])->name('rapor.note');
                     Route::get('/{studyGroupId}/rapor/{studentId}/cetak', [NilaiKelasController::class, 'raporCetak'])->name('rapor.cetak');
                 });
 
@@ -437,6 +447,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3'])->name('w3');
                     Route::post('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3Store'])->name('w3.store');
                     Route::post('/{adminBookId}/w3/bobot', [NilaiGuruController::class, 'wizard3Bobot'])->name('w3.bobot');
+                    Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
                     Route::get('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4'])->name('w4');
                     Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
                     Route::get('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5'])->name('w5');
@@ -712,7 +723,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── ABSENSI GURU MAPEL VIA QR ─────────────────────────────
             Route::prefix('absensi-guru-mapel-qr')->name('teacher-qr.')->group(function () {
                 Route::get('/scan', [TeacherQrScanController::class, 'scanIndex'])->name('scan');
-                Route::post('/scan/process/{study_group_id}', [TeacherQrScanController::class, 'scanProcess'])
+                Route::match(['get', 'post'], '/scan/process/{study_group_id}', [TeacherQrScanController::class, 'scanProcess'])
                     ->name('scan.process');
                 Route::post('/manual-checkin', [TeacherQrScanController::class, 'manualCheckin'])
                     ->middleware('permission:teacher-attendance_manual')
@@ -724,7 +735,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     ->middleware('permission:teacher-attendance_view')
                     ->name('history.export');
                 Route::post('/manual-checkout', [TeacherQrScanController::class, 'manualCheckout'])
-                    ->middleware('permission:teacher-attendance_view')
+                    ->middleware('permission:teacher-attendance_manual')
                     ->name('manual-checkout');
                 Route::get('/waka-dashboard', [TeacherQrScanController::class, 'wakaDashboard'])
                     ->middleware('permission:teacher-attendance_view')
@@ -738,6 +749,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // QR kelas (untuk cetak / bagi ke guru) — public signed URL
+            Route::get('/qr', [ClassQrController::class, 'index'])
+                ->name('qr.index');
             Route::get('/qr/{study_group_id}/image', [ClassQrController::class, 'qrImage'])
                 ->name('qr.image');
             Route::get('/qr/{study_group_id}', [ClassQrController::class, 'show'])
@@ -1101,12 +1114,22 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('jadwal-kbm')->name('jadwal-kbm.')->group(function () {
                 Route::get('/', [JadwalKbmController::class, 'index'])->name('index');
                 Route::get('/generate', [JadwalKbmController::class, 'generateIndex'])->name('generate');
-                Route::post('/generate/{studyGroupId}', [JadwalKbmController::class, 'generate'])->name('generate.execute');
+                Route::post('/generate', [JadwalKbmController::class, 'generate'])->name('generate.store');
+                Route::post('/generate/{studyGroupId}', [JadwalKbmController::class, 'generateSingle'])->name('generate.execute');
+                Route::get('/teacher/{teacherId}', [JadwalKbmController::class, 'forTeacher'])->name('for-teacher');
                 Route::get('/{studyGroupId}', [JadwalKbmController::class, 'show'])->name('show');
                 Route::get('/{studyGroupId}/edit', [JadwalKbmController::class, 'edit'])->name('edit');
                 Route::put('/{studyGroupId}', [JadwalKbmController::class, 'update'])->name('update');
                 Route::get('/{studyGroupId}/cetak', [JadwalKbmController::class, 'cetak'])->name('cetak');
-                Route::get('/teacher/{teacherId}', [JadwalKbmController::class, 'forTeacher'])->name('for-teacher');
+            });
+
+            // ── MASTER JAM PELAJARAN (slot waktu & istirahat) ──────
+            Route::prefix('jam-pelajaran')->name('jam-pelajaran.')->group(function () {
+                Route::get('/', [JamPelajaranController::class, 'index'])->name('index');
+                Route::post('/', [JamPelajaranController::class, 'store'])->name('store');
+                Route::post('/template', [JamPelajaranController::class, 'template'])->name('template');
+                Route::put('/{slotId}', [JamPelajaranController::class, 'update'])->name('update');
+                Route::delete('/{slotId}', [JamPelajaranController::class, 'destroy'])->name('destroy');
             });
 
             // ── EVALUASI: KISI-KISI SOAL ────────────────────────────
@@ -1367,30 +1390,65 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/students/{studentId}/violations', [StudentViolationController::class, 'index'])->name('students.violations');
             Route::get('/students/{studentId}/health', [App\Http\Controllers\StudentHealthController::class, 'show'])->name('students.health');
 
-            // Pengasuh Dashboard
-            Route::get('/dashboard/pengasuh', [PengasuhDashboardController::class, 'index'])->name('dashboard.pengasuh');
+            // Pengasuh / Wali Asrama / Admin Asrama → dashboard role Asrama
+            Route::redirect('/dashboard/pengasuh', '/{userId}/dashboard/asrama')->name('dashboard.pengasuh');
 
             // Boarding Role Dashboards
             Route::get('/dashboard/boarding-head', [BoardingHeadDashboardController::class, 'index'])->name('dashboard.boarding-head');
             Route::get('/dashboard/boarding-education', [BoardingEducationDashboardController::class, 'index'])->name('dashboard.boarding-education');
             Route::get('/dashboard/boarding-health', [BoardingHealthDashboardController::class, 'index'])->name('dashboard.boarding-health');
 
-            // ── DASHBOARD SATUAN PENDIDIKAN (Jabatan) ────────────────
-            Route::get('/dashboard/kepala-satuan-pendidikan', [KepSatuanPendidikanDashboardController::class, 'index'])->name('dashboard.kepala-satuan-pendidikan');
-            Route::get('/dashboard/wakil-kepala', [WakaSatuanPendidikanDashboardController::class, 'index'])->name('dashboard.wakil-kepala');
-            Route::get('/dashboard/guru', [GuruDashboardController::class, 'index'])->name('dashboard.guru');
-            Route::get('/dashboard/ka-tata-usaha', [KaTataUsahaDashboardController::class, 'index'])->name('dashboard.ka-tata-usaha');
-            Route::get('/dashboard/staf-tata-usaha', [StafTataUsahaDashboardController::class, 'index'])->name('dashboard.staf-tata-usaha');
-            Route::get('/dashboard/bendahara', [BendaharaDashboardController::class, 'index'])->name('dashboard.bendahara');
+            // ── SUPER ADMIN → Konsol Sistem (/system) ─────────────────
+            // Dashboard Super Admin adalah Konsol Sistem (system.dashboard).
+            Route::redirect('/dashboard/super-admin', '/system')->name('dashboard.super-admin');
 
-            // ── DASHBOARD SATUAN PENDIDIKAN (Tugas Tambahan) ─────────
-            Route::get('/dashboard/wali-kelas', [WaliKelasDashboardController::class, 'index'])->name('dashboard.wali-kelas');
-            Route::get('/dashboard/koordinator-guru', [KoordGuruDashboardController::class, 'index'])->name('dashboard.koordinator-guru');
-            Route::get('/dashboard/koordinator-kurikulum', [KoordKurikulumDashboardController::class, 'index'])->name('dashboard.koordinator-kurikulum');
-            Route::get('/dashboard/koordinator-kesiswaan', [KoordKesiswaanDashboardController::class, 'index'])->name('dashboard.koordinator-kesiswaan');
-            Route::get('/dashboard/koordinator-ekskul', [KoordEkskulDashboardController::class, 'index'])->name('dashboard.koordinator-ekskul');
-            Route::get('/dashboard/koordinator-lab', [KoordLaboratoriumDashboardController::class, 'index'])->name('dashboard.koordinator-lab');
-            Route::get('/dashboard/koordinator-sarpras', [KoordSarprasDashboardController::class, 'index'])->name('dashboard.koordinator-sarpras');
+            // ── DASHBOARD UNIT RUMAH TANGGA (1 role = 1 dashboard) ───
+            Route::get('/dashboard/unit-rumah-tangga', [UnitRumahTanggaDashboardController::class, 'index'])
+                ->name('dashboard.unit-rumah-tangga');
+
+            // ── DASHBOARD HUMAS PERSONALIA (1 role = 1 dashboard, global) ──
+            Route::get('/dashboard/personalia', [RolePersonaliaDashboardController::class, 'index'])
+                ->name('dashboard.personalia');
+
+            // ── DASHBOARD DEPARTEMEN TAHFIDZ (1 role = 1 dashboard) ──
+            Route::get('/dashboard/tahfidz', [TahfidzDashboardController::class, 'index'])
+                ->name('dashboard.tahfidz');
+
+            // ── DASHBOARD KEUANGAN (1 role = 1 dashboard) ────────────
+            Route::get('/dashboard/keuangan', [KeuanganDashboardController::class, 'index'])
+                ->name('dashboard.keuangan');
+
+            // ── DASHBOARD PIMPINAN (1 role = 1 dashboard, global) ────
+            Route::get('/dashboard/pimpinan', [PimpinanDashboardController::class, 'index'])
+                ->name('dashboard.pimpinan');
+
+            // ── DASHBOARD SATUAN PENDIDIKAN (1 role = 1 dashboard) ───
+            // Widget = jabatan struktural + tugas tambahan (dijumlahkan & dedup).
+            Route::get('/dashboard/satuan-pendidikan', [SatuanPendidikanDashboardController::class, 'index'])
+                ->name('dashboard.satuan-pendidikan');
+
+            // Redirect route lama per-jabatan → dashboard role di atas.
+            // Nama route dipertahankan supaya sidebar, login redirect, dan link lama tetap jalan.
+            foreach ([
+                'kepala-satuan-pendidikan',
+                'wakil-kepala',
+                'guru',
+                'ka-tata-usaha',
+                'staf-tata-usaha',
+                'bendahara',
+                'wali-kelas',
+                'koordinator-guru',
+                'koordinator-kurikulum',
+                'koordinator-kesiswaan',
+                'koordinator-ekskul',
+                'koordinator-lab',
+                'koordinator-sarpras',
+            ] as $legacyJabatanSlug) {
+                Route::redirect(
+                    "/dashboard/{$legacyJabatanSlug}",
+                    '/{userId}/dashboard/satuan-pendidikan'
+                )->name("dashboard.{$legacyJabatanSlug}");
+            }
 
             // DEBUG TEST ROUTE - check if basic routing works
             Route::get('/route-test', function () {
@@ -1406,9 +1464,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // Boarding Role Dashboards (continued from earlier)
             Route::get('/dashboard/admin-tu', [AdminTUDashboardController::class, 'index'])->name('dashboard.admin-tu');
-            Route::get('/dashboard/admin-asrama', [AdminAsramaDashboardController::class, 'index'])->name('dashboard.admin-asrama');
-            Route::get('/dashboard/wali-asrama', [WaliAsramaDashboardController::class, 'index'])->name('dashboard.wali-asrama');
-            Route::get('/dashboard/asrama', [AsramaDashboardController::class, 'index'])->name('dashboard.asrama');
+            Route::redirect('/dashboard/admin-asrama', '/{userId}/dashboard/asrama')->name('dashboard.admin-asrama');
+            Route::redirect('/dashboard/wali-asrama', '/{userId}/dashboard/asrama')->name('dashboard.wali-asrama');
+            // ── DASHBOARD ASRAMA (1 role = 1 dashboard, ber-scope) ───
+            Route::get('/dashboard/asrama', [RoleAsramaDashboardController::class, 'index'])->name('dashboard.asrama');
 
             // Academic Integration
             Route::get('/academic', [AcademicIntegrationController::class, 'index'])->name('academic.index');
@@ -1744,7 +1803,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/laporan/santri/{studentId}', [DormitoryReportController::class, 'studentDetail'])->name('reports.student-detail');
 
                 // ── DASHBOARD UKS ─────────────────────────────────────────────
-                Route::get('/', [UksDashboardController::class, 'index'])->name('dashboard');
+                Route::get('/', [RoleUksDashboardController::class, 'index'])->name('dashboard');
 
                 // ── STUDENT HEALTH — DATA KRISTIAN ────────────────────────────────
                 Route::prefix('student-health')->name('student-health.')->group(function () {
@@ -2019,6 +2078,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── KE HADIRAN (REKAP & LAPORAN) ──────────────────────────
             Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
                 Route::get('/pergantian-jam', [KehadiranController::class, 'pergantianJam'])->name('pergantian-jam');
+                Route::get('/pergantian-jam/export', [KehadiranController::class, 'pergantianJamExport'])->name('pergantian-jam.export');
                 Route::get('/rekap', [KehadiranController::class, 'rekap'])->name('rekap');
                 Route::get('/cuti-izin', [KehadiranController::class, 'cutiIzin'])->name('cuti-izin');
             });
@@ -2124,7 +2184,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 | Dikelola oleh akun Sarpras / Unit Rumah Tangga (PAH-ADM-003)
 | Akses langsung di /sarpras/* — TIDAK menggunakan prefix {userId}
 */
-Route::middleware(['auth', 'role:Admin Sarpras,Admin Tata Usaha'])->prefix('sarpras')->name('sarpras.')->group(function () {
+Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.')->group(function () {
 
     // Dashboard
     Route::get('/', [SarprasDashboardController::class, 'index'])->name('dashboard');

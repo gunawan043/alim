@@ -181,6 +181,18 @@ class User extends Authenticatable
         return $this->hasMany(GtkAdditionalTask::class);
     }
 
+    /**
+     * Alias "tugas tambahan" yang dipakai sidebar — hanya tugas aktif
+     * (tst kosong atau belum berakhir).
+     */
+    public function tugasTambahan()
+    {
+        return $this->hasMany(GtkAdditionalTask::class, 'user_id')
+            ->where(function ($q) {
+                $q->whereNull('tst')->orWhere('tst', '>=', now()->toDateString());
+            });
+    }
+
     public function careerPaths()
     {
         return $this->hasMany(GtkCareerPath::class);
