@@ -24,16 +24,21 @@ class KaldikPolicy
     /**
      * Siapa yang boleh BUAT / UPDATE / HAPUS Kaldik atau Agenda:
      *
-     * Super Admin & Administrator → boleh untuk semua
+     * Super Admin, Administrator & Pimpinan → boleh mengelola Kalender Pendidikan
      * Admin Tata Usaha → hanya untuk kategori 'agenda' yang work_unit_id-nya sendiri
      */
     public function create(User $user): bool
     {
-        return canPermission('kaldik-create');
+        return $this->canManageKaldik($user) || canPermission('kaldik-create');
     }
 
     public function update(User $user, Kaldik $kaldik): bool
     {
+        // Kalender Pendidikan (kaldik pondok) hanya dikelola Super Admin & Pimpinan.
+        if ($kaldik->category === Kaldik::CATEGORY_KALDIK) {
+            return $this->canManageKaldik($user) || canPermission('kaldik-update-all');
+        }
+
         if (canPermission('kaldik-update-all')) {
             return true;
         }
@@ -49,7 +54,7 @@ class KaldikPolicy
             return $kaldik->work_unit_id === $userWorkUnitId;
         }
 
-        return false;
+        return $this->canManageKaldik($user);
     }
 
     public function delete(User $user, Kaldik $kaldik): bool
@@ -65,6 +70,20 @@ class KaldikPolicy
     public function forceDelete(User $user, Kaldik $kaldik): bool
     {
         return $this->update($user, $kaldik);
+    }
+
+    /**
+     * Super Admin / Administrator (system admin) & Pimpinan boleh mengelola
+     * Kalender Pendidikan. Role lain hanya dapat melihat sesuai konteks
+     * satuan pendidikannya.
+     */
+    private function canManageKaldik(User $user): bool
+    {
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return in_array('pimpinan', $user->effectiveRoles(), true);
     }
 
     /**

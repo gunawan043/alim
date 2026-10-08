@@ -98,6 +98,22 @@ function isActivePimpinan($routeName, $pattern) {
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.kaldik.') ? ' active' : '' }}"
+       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-event-line"></i>
+        <span>Kalender Pendidikan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.pekan-efektif.') ? ' active' : '' }}"
+       href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-todo-line"></i>
+        <span>Pekan Efektif</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.schools.') ? ' active' : '' }}"
        href="{{ route('user.schools.index', ['userId' => $userId]) }}">
         <i class="ri-government-line"></i>

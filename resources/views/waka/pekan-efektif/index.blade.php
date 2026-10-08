@@ -27,6 +27,94 @@
         </div>
     </div>
 
+    {{-- Generate dari Kalender Pendidikan --}}
+    <div class="card mb-3 border-primary-subtle">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <h6 class="mb-1"><i class="ri-calendar-event-line me-1 text-primary"></i> Generate dari Kalender Pendidikan</h6>
+                    <p class="text-muted small mb-0">
+                        Pekan efektif, hari efektif, minggu libur, dan minggu ujian dihitung otomatis
+                        dari Kalender Pendidikan (tipe kegiatan <strong>Libur</strong>, <strong>Ujian</strong>, <strong>Kegiatan Sekolah</strong>).
+                        Data lama pada tahun ajaran &amp; semester yang sama akan diganti.
+                    </p>
+                </div>
+                <div class="col-md-7">
+                    <form method="POST" action="{{ route('waka.pekan-efektif.generate') }}" class="row g-2 align-items-end">
+                        @csrf
+                        <div class="col-md-5">
+                            <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
+                            <select name="academic_year_id" class="form-select form-select-sm" required>
+                                @foreach($academicYears as $ay)
+                                    <option value="{{ $ay->id }}" {{ $selectedAyId == $ay->id ? 'selected' : '' }}>
+                                        {{ $ay->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Semester</label>
+                            <select name="semester" class="form-select form-select-sm" required>
+                                <option value="1" {{ (int) $selectedSemester === 1 ? 'selected' : '' }}>Ganjil</option>
+                                <option value="2" {{ (int) $selectedSemester === 2 ? 'selected' : '' }}>Genap</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                <i class="ri-magic-line me-1"></i> Generate Pekan Efektif
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Ringkasan turunan kalender --}}
+    @if($ringkasan)
+        @if(! ($ringkasan['is_persisted'] ?? false))
+            <div class="alert alert-info py-2 small">
+                <i class="ri-information-line me-1"></i>
+                Pekan efektif untuk tahun ajaran &amp; semester ini belum digenerate.
+                Ringkasan di bawah dihitung langsung dari Kalender Pendidikan ({{ $ringkasan['sumber'] ?? '-' }}).
+            </div>
+        @endif
+        <div class="row mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="text-muted small">Minggu Efektif</div>
+                        <h4 class="mb-0 text-success">{{ $ringkasan['minggu_efektif'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="text-muted small">Hari Efektif</div>
+                        <h4 class="mb-0 text-primary">{{ $ringkasan['total_hari_efektif'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="text-muted small">Minggu Libur</div>
+                        <h4 class="mb-0 text-danger">{{ $ringkasan['minggu_libur'] }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card">
+                    <div class="card-body py-3">
+                        <div class="text-muted small">Minggu Ujian</div>
+                        <h4 class="mb-0 text-warning">{{ $ringkasan['minggu_ujian'] }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Ringkasan semester --}}
     @if(isset($summary) && $summary->count())
         <div class="row mb-3">
@@ -100,6 +188,7 @@
                         <th>Smt</th>
                         <th>Minggu</th>
                         <th>Periode</th>
+                        <th>Hari Efektif</th>
                         <th>Jenis</th>
                         <th>Keterangan</th>
                         <th>Aksi</th>
@@ -110,8 +199,18 @@
                         <tr>
                             <td>{{ $p->academicYear?->name ?? '-' }}</td>
                             <td>{{ $p->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
-                            <td><strong>{{ $p->minggu_ke }}</strong></td>
+                            <td>
+                                <strong>{{ $p->minggu_ke }}</strong>
+                                @if($p->is_generated)
+                                    <span class="badge bg-primary-subtle text-primary" style="font-size:0.6rem">Kaldik</span>
+                                @endif
+                            </td>
                             <td>{{ $p->tanggal_mulai?->format('d/m/Y') }} – {{ $p->tanggal_selesai?->format('d/m/Y') }}</td>
+                            <td>
+                                <span class="badge {{ $p->hari_efektif > 0 ? 'badge-soft-success' : 'badge-soft-danger' }}">
+                                    {{ $p->hari_efektif }} hari
+                                </span>
+                            </td>
                             <td>
                                 @php
                                     $map = ['efektif'=>'success','libur'=>'danger','ujian'=>'warning','kegiatan_sekolah'=>'info','lainnya'=>'secondary'];
@@ -132,7 +231,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">Belum ada data.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">Belum ada data. Gunakan tombol <strong>Generate Pekan Efektif</strong> di atas untuk membuat dari Kalender Pendidikan.</td></tr>
                     @endforelse
                 </tbody>
             </table>

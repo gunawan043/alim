@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Waka;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\PekanEfektif;
+use App\Services\PekanEfektifService;
 use Illuminate\Http\Request;
 
 class PekanEfektifController extends Controller
 {
+    public function __construct(private readonly PekanEfektifService $pekanService) {}
+
     public function index(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -41,7 +44,64 @@ class PekanEfektifController extends Controller
             ->get()
             ->groupBy('semester');
 
-        return view('waka.pekan-efektif.index', compact('pekanList', 'academicYears', 'summary'));
+        // Ringkasan turunan Kalender Pendidikan untuk tahun ajaran & semester terpilih.
+        $selectedAyId = $request->input('academic_year_id')
+            ?: $academicYears->firstWhere('is_active', true)?->id
+            ?: $academicYears->first()?->id;
+        $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
+        $selectedSemester = (int) ($request->input('semester')
+            ?: ($selectedAy?->semester === 'genap' ? 2 : 1));
+
+        $ringkasan = ($schoolId && $selectedAyId)
+            ? $this->pekanService->summary($schoolId, $selectedAyId, $selectedSemester)
+            : null;
+
+        return view('waka.pekan-efektif.index', compact(
+            'pekanList',
+            'academicYears',
+            'summary',
+            'ringkasan',
+            'selectedAyId',
+            'selectedSemester'
+        ));
+    }
+
+    /**
+     * Generate Pekan Efektif dari Kalender Pendidikan (sumber data tunggal).
+     */
+    public function generate(Request $request)
+    {
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:1,2',
+        ]);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if (! $schoolId) {
+            return back()->with('error', 'Konteks satuan pendidikan tidak ditemukan. Pilih sekolah terlebih dahulu.');
+        }
+
+        $result = $this->pekanService->generate(
+            $schoolId,
+            $validated['academic_year_id'],
+            (int) $validated['semester'],
+            $request->user()?->id
+        );
+
+        $summary = $result['summary'];
+
+        return redirect()
+            ->route('waka.pekan-efektif.index', [
+                'academic_year_id' => $validated['academic_year_id'],
+                'semester' => $validated['semester'],
+            ])
+            ->with(
+                'success',
+                "Pekan efektif berhasil digenerate dari Kalender Pendidikan: "
+                ."{$summary['minggu_efektif']} minggu efektif, "
+                ."{$summary['total_hari_efektif']} hari efektif, "
+                ."{$summary['minggu_libur']} minggu libur."
+            );
     }
 
     public function create(Request $request)

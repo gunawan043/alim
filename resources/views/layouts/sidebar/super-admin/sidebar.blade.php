@@ -227,13 +227,13 @@
 
 {{-- ─── Step 5: Konfigurasi Akademik ───────────────────────────────────── --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.dokumen-iso.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.pekan-efektif.', 'user.dokumen-iso.']) ? ' active' : '' }}"
        href="#boot_akademik" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.dokumen-iso.']) ? 'true' : 'false' }}"
+       aria-expanded="{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.pekan-efektif.', 'user.dokumen-iso.']) ? 'true' : 'false' }}"
        aria-controls="boot_akademik">
         <i class="ri-book-2-line"></i><span>5. Konfigurasi Akademik</span><span class="menu-arrow"></span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.dokumen-iso.']) ? ' show' : '' }}"
+    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.kaldik.', 'user.pekan-efektif.', 'user.dokumen-iso.']) ? ' show' : '' }}"
          id="boot_akademik">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
@@ -258,6 +258,12 @@
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
                    href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
                     <i class="ri-task-line me-1"></i> Kalender Pendidikan
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+                   href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+                    <i class="ri-calendar-todo-line me-1"></i> Pekan Efektif
                 </a>
             </li>
             <li class="nav-item">

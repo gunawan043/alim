@@ -60,8 +60,19 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Dokumentasi usulan skema 5 role tanpa tabel: `docs/usulan-skema-5-role.md`.
 - Perbaikan snapshot authorization: arsip lama dihapus sebelum arsip baru (unique index `(user_id, scope_key, is_current)`).
 
+## 11. Kalender Pendidikan → Pekan Efektif (Fondasi Perangkat Pembelajaran)
+- **Kalender Pendidikan** (`kaldik`) menjadi sumber data utama: tambah kolom `semester` (ganjil/genap) + tipe baru `libur`, `ujian`, `kegiatan`, `hari_efektif`; filter semester + tampilan semester di modal kalender.
+- **Kewenangan**: pengelolaan Kaldik hanya Super Admin & Pimpinan (policy `canManageKaldik` + policy dipanggil langsung karena registrar snapshot meng-intercept ability Gate `create/update`); Admin TU tetap mengelola agenda satuan kerjanya; user lain melihat sesuai konteks satuan pendidikan (scope query dirapikan + tanpa kebocoran saat work unit kosong).
+- **Pekan Efektif** kini turunan kalender via `PekanEfektifService`:
+  - `semesterRange()` otomatis membagi semester dari tanggal tahun ajaran (Jul–Des / Jan–Jun; kolom override `academic_years.semester_{ganjil,genap}_{start,end}` tersedia bila ingin eksplisit).
+  - `computeWeeks()`/`generate()` menghitung minggu efektif, hari efektif (Senin–Sabtu, dikurangi event **Libur**), minggu libur/ujian/kegiatan, keterangan event — tersimpan di `pekan_efektif` (`jumlah_hari`, `is_generated`, `generated_at`).
+  - `effectiveJpForStudyGroup()` → JP efektif = JP/minggu × minggu efektif (dasar alokasi & perencanaan pembelajaran guru).
+- **UI**: tombol *Generate Pekan Efektif* + kartu ringkasan di halaman Waka/Kurikulum; halaman read-only baru `/{userId}/pekan-efektif` untuk Guru & Kurikulum (rincian pekan + alokasi JP efektif per kelas), menu ditambahkan di sidebar Pimpinan, Super Admin, dan Satuan Pendidikan (Guru & Tim Kurikulum).
+- Migrasi additive `2026_10_08_230000` (tanpa menghapus kolom/tabel lama; tabel `academic_calendars` legacy dibiarkan).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.
 - `tests/Feature/TeacherQrScanControllerTest.php` — diperbarui agar berjalan di SQLite (snapshot permission + `Event::fake` terarah).
+- `tests/Feature/KaldikPekanEfektifTest.php` — pembagian semester, generate pekan efektif dari kalender (minggu/hari/libur/ujian), alokasi JP efektif, policy pengelolaan (Super Admin/Pimpinan vs Satuan Pendidikan/Guru), halaman pekan efektif untuk Guru & Satuan Pendidikan.
 - Smoke MySQL untuk setiap modul dilakukan dengan data sementara yang selalu dibersihkan.

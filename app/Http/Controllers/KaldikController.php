@@ -8,12 +8,21 @@ use App\Models\Kaldik;
 use App\Models\NotificationUniversal;
 use App\Models\School;
 use App\Models\WorkUnit;
+use App\Policies\KaldikPolicy;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class KaldikController extends Controller
 {
+    /**
+     * Policy Kaldik dipanggil langsung (bukan via Gate) karena registrar
+     * snapshot global men-intercept ability Gate bernama 'create'/'update'.
+     */
+    private function policy(): KaldikPolicy
+    {
+        return app(KaldikPolicy::class);
+    }
+
     /**
      * Ambil work_unit_id dari school context.
      */
@@ -58,20 +67,32 @@ class KaldikController extends Controller
             $query->where('academic_year_id', $request->academic_year_id);
         }
 
+        // ── FILTER SEMESTER ──────────────────────────────────
+        if ($request->filled('semester')) {
+            $query->where('semester', $request->semester);
+        }
+
         // ── FILTER AKTIF ────────────────────────────────────
         if ($request->filled('is_active')) {
             $query->where('is_active', $request->is_active);
         }
 
         // ── FILTER WORK UNIT (NON-GLOBAL) ────────────────────
-        if (! $isGlobal && $userWorkUnitId) {
-            // Admin TU: hanya lihat agenda miliknya + semua kaldik pondok
-            $query->where(function ($q) {
-                $q->where('category', Kaldik::CATEGORY_KALDIK)
-                    ->whereNull('work_unit_id');
-            })->orWhere(function ($q) use ($userWorkUnitId) {
-                $q->where('category', Kaldik::CATEGORY_AGENDA)
-                    ->where('work_unit_id', $userWorkUnitId);
+        if (! $isGlobal) {
+            // Kaldik pondok (work_unit null) untuk semua + agenda satuan kerja sendiri.
+            // Bila user tidak punya konteks satuan kerja, hanya kaldik pondok.
+            $query->where(function ($q) use ($userWorkUnitId) {
+                $q->where(function ($q2) {
+                    $q2->where('category', Kaldik::CATEGORY_KALDIK)
+                        ->whereNull('work_unit_id');
+                });
+
+                if ($userWorkUnitId) {
+                    $q->orWhere(function ($q2) use ($userWorkUnitId) {
+                        $q2->where('category', Kaldik::CATEGORY_AGENDA)
+                            ->where('work_unit_id', $userWorkUnitId);
+                    });
+                }
             });
         }
 
@@ -92,6 +113,8 @@ class KaldikController extends Controller
                     'categoryLabel' => $isKaldik ? 'Kaldik' : 'Agenda Kegiatan',
                     'type' => $item->type,
                     'typeLabel' => $item->type ? (Kaldik::TYPE_OPTIONS[$item->type] ?? '-') : '-',
+                    'semester' => $item->semester,
+                    'semesterLabel' => $item->semester ? (Kaldik::SEMESTER_OPTIONS[$item->semester] ?? '-') : '-',
                     'color' => $item->color,
                     'work_unit_id' => $item->work_unit_id,
                     'work_unit_name' => $item->workUnit?->name ?? 'Pondok (Semua)',
@@ -104,16 +127,16 @@ class KaldikController extends Controller
             ];
         });
 
+        // Label role untuk JS
+        $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
+
         // Authorization flags for JS
-        $canCreate = Gate::allows('create', Kaldik::class);
-        $canUpdate = Gate::allows('update', new Kaldik);
+        $canCreate = $this->policy()->create($user) || $isAdminTU;
+        $canUpdate = $this->policy()->update($user, new Kaldik);
 
         // Dropdowns
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
-
-        // Label role untuk JS
-        $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
 
         return view('kaldik.index', compact(
             'kaldikEvents',
@@ -134,10 +157,29 @@ class KaldikController extends Controller
     public function create(Request $request, string $userId)
     {
         $isGlobal = $this->isGlobalUser($request);
+        $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
+
+        // Selain Admin TU (agenda satuan kerja), hanya Super Admin & Pimpinan
+        // yang boleh mengelola kalender.
+        if (! $isAdminTU && ! $this->policy()->create($request->user())) {
+            abort(403, 'Hanya Super Admin dan Pimpinan yang dapat mengelola Kalender Pendidikan.');
+        }
+
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
 
-        return view('kaldik.create', compact('academicYears', 'workUnits', 'userId'));
+        $categoryOptions = $isAdminTU
+            ? [Kaldik::CATEGORY_AGENDA => Kaldik::CATEGORY_OPTIONS[Kaldik::CATEGORY_AGENDA]]
+            : Kaldik::CATEGORY_OPTIONS;
+        $forcedCategory = $isAdminTU ? Kaldik::CATEGORY_AGENDA : null;
+
+        return view('kaldik.create', compact(
+            'academicYears',
+            'workUnits',
+            'userId',
+            'categoryOptions',
+            'forcedCategory',
+        ));
     }
 
     /**
@@ -152,11 +194,18 @@ class KaldikController extends Controller
         $isGlobal = $this->isGlobalUser($request);
         $isAdminTU = ! $isGlobal && canPermission('kaldik-admin-tu');
 
+        // Selain Admin TU (agenda satuan kerja), hanya Super Admin & Pimpinan
+        // yang boleh mengelola kalender.
+        if (! $isAdminTU && ! $this->policy()->create($user)) {
+            abort(403, 'Hanya Super Admin dan Pimpinan yang dapat mengelola Kalender Pendidikan.');
+        }
+
         $rules = [
             'name' => 'required|string|max:255',
             'category' => $isAdminTU ? 'nullable' : 'required|in:kaldik,agenda',
+            'semester' => 'nullable|in:ganjil,genap',
             'academic_year_id' => 'nullable|exists:academic_years,id',
-            'type' => 'nullable|in:tahunan,mid_semester,lainnya',
+            'type' => 'nullable|in:'.implode(',', array_keys(Kaldik::TYPE_OPTIONS)),
             'color' => 'nullable|string|max:30',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
@@ -221,12 +270,15 @@ class KaldikController extends Controller
             if ($kaldik->work_unit_id !== $school?->work_unit_id) {
                 abort(403, 'Anda tidak memiliki akses untuk mengedit agenda ini.');
             }
+        } elseif (! $this->policy()->update($user, $kaldik)) {
+            abort(403, 'Hanya Super Admin dan Pimpinan yang dapat mengelola Kalender Pendidikan.');
         }
 
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
+        $categoryOptions = Kaldik::CATEGORY_OPTIONS;
 
-        return view('kaldik.edit', compact('kaldik', 'academicYears', 'workUnits', 'userId', 'isGlobal'));
+        return view('kaldik.edit', compact('kaldik', 'academicYears', 'workUnits', 'userId', 'isGlobal', 'categoryOptions'));
     }
 
     /**
@@ -248,13 +300,16 @@ class KaldikController extends Controller
             if ($kaldik->work_unit_id !== $school?->work_unit_id) {
                 abort(403, 'Anda tidak memiliki akses untuk mengedit agenda ini.');
             }
+        } elseif (! $this->policy()->update($user, $kaldik)) {
+            abort(403, 'Hanya Super Admin dan Pimpinan yang dapat mengelola Kalender Pendidikan.');
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|in:kaldik,agenda',
+            'semester' => 'nullable|in:ganjil,genap',
             'academic_year_id' => 'nullable|exists:academic_years,id',
-            'type' => 'nullable|in:tahunan,mid_semester,lainnya',
+            'type' => 'nullable|in:'.implode(',', array_keys(Kaldik::TYPE_OPTIONS)),
             'color' => 'nullable|string|max:30',
             'work_unit_id' => 'nullable|exists:work_units,id',
             'start_date' => 'required|date',
@@ -293,7 +348,7 @@ class KaldikController extends Controller
             if ($kaldik->work_unit_id !== $school?->work_unit_id) {
                 abort(403, 'Anda tidak memiliki akses untuk menghapus agenda ini.');
             }
-        } elseif (Gate::denies('update', $kaldik)) {
+        } elseif (! $this->policy()->update($user, $kaldik)) {
             abort(403);
         }
 
@@ -314,7 +369,7 @@ class KaldikController extends Controller
     {
         $kaldik = Kaldik::findOrFail($kaldikId);
 
-        if (Gate::denies('update', $kaldik)) {
+        if (! $this->policy()->update($request->user(), $kaldik)) {
             abort(403);
         }
 

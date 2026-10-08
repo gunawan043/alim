@@ -208,6 +208,7 @@ use App\Http\Controllers\ViolationPointController;
 use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
+use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
@@ -580,6 +581,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{kaldikId}', [KaldikController::class, 'update'])->name('update');
                 Route::delete('/{kaldikId}', [KaldikController::class, 'destroy'])->name('destroy');
                 Route::post('/{kaldikId}/toggle', [KaldikController::class, 'toggleActive'])->name('toggle');
+            });
+
+            // ── PEKAN EFEKTIF (turunan Kalender Pendidikan) ───────
+            Route::prefix('pekan-efektif')->name('pekan-efektif.')->group(function () {
+                Route::get('/', [PekanEfektifOverviewController::class, 'index'])->name('index');
             });
 
             // ── JENJANG KARIR
@@ -2563,6 +2569,8 @@ Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
         Route::resource('surat-keluar', SuratKeluarController::class);
 
         // ── PEKAN EFEKTIF ───────────────────────────────────────
+        Route::post('pekan-efektif/generate', [PekanEfektifController::class, 'generate'])
+            ->name('pekan-efektif.generate');
         Route::resource('pekan-efektif', PekanEfektifController::class);
 
         // ── ADMINISTRASI GTK ─────────────────────────────────────

@@ -24,6 +24,7 @@ class Kaldik extends Model
     protected $fillable = [
         'name',
         'category',
+        'semester',
         'academic_year_id',
         'work_unit_id',
         'created_by',
@@ -55,6 +56,18 @@ class Kaldik extends Model
 
     const TYPE_LAINNYA = 'lainnya';
 
+    const TYPE_LIBUR = 'libur';
+
+    const TYPE_UJIAN = 'ujian';
+
+    const TYPE_KEGIATAN = 'kegiatan';
+
+    const TYPE_HARI_EFEKTIF = 'hari_efektif';
+
+    const SEMESTER_GANJIL = 'ganjil';
+
+    const SEMESTER_GENAP = 'genap';
+
     const CATEGORY_OPTIONS = [
         self::CATEGORY_KALDIK => 'Kaldik (Pondok)',
         self::CATEGORY_AGENDA => 'Agenda Kegiatan',
@@ -63,7 +76,19 @@ class Kaldik extends Model
     const TYPE_OPTIONS = [
         self::TYPE_TAHUNAN => 'Tahunan',
         self::TYPE_MID_SEMESTER => 'Mid Semester',
+        self::TYPE_LIBUR => 'Libur',
+        self::TYPE_UJIAN => 'Ujian / Sumatif',
+        self::TYPE_KEGIATAN => 'Kegiatan Sekolah',
+        self::TYPE_HARI_EFEKTIF => 'Hari Efektif',
         self::TYPE_LAINNYA => 'Lainnya',
+    ];
+
+    /** Tipe yang membuat hari menjadi tidak efektif (libur). */
+    const NON_EFFECTIVE_TYPES = [self::TYPE_LIBUR];
+
+    const SEMESTER_OPTIONS = [
+        self::SEMESTER_GANJIL => 'Ganjil',
+        self::SEMESTER_GENAP => 'Genap',
     ];
 
     protected static function boot()

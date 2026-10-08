@@ -151,11 +151,11 @@
                 {{-- LEFT SIDEBAR ─────────────────────────────────────── --}}
                 <div class="col-xl-3">
                     {{-- Action Button ─────────────────────────────── --}}
-                    @can('create', \App\Models\Kaldik::class)
+                    @if($canCreate)
                         <button class="btn btn-primary w-100 mb-3" id="btn-new-event">
                             <i class="ri-add-line"></i> Tambah Kegiatan
                         </button>
-                    @endcan
+                    @endif
 
                     {{-- Filters Card ─────────────────────────────── --}}
                     <div class="card mb-3">
@@ -177,6 +177,14 @@
                                             {{ $ay->name }} ({{ $ay->semester_text }})
                                         </option>
                                     @endforeach
+                                </select>
+                            </div>
+                            <div class="mt-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:#64748b">Semester</label>
+                                <select class="form-control form-control-sm" id="filter-semester">
+                                    <option value="">Semua</option>
+                                    <option value="ganjil" {{ request('semester') === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                    <option value="genap" {{ request('semester') === 'genap' ? 'selected' : '' }}>Genap</option>
                                 </select>
                             </div>
                         </div>
@@ -313,6 +321,14 @@
                                             <h6 class="d-block fw-semibold mb-0"><span id="event-academic-year-tag">-</span></h6>
                                         </div>
                                     </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="flex-shrink-0 me-3">
+                                            <i class="ri-award-line text-muted fs-16"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="d-block fw-semibold mb-0">Semester: <span id="event-semester-tag">-</span></h6>
+                                        </div>
+                                    </div>
                                     <div class="d-flex mb-3">
                                         <div class="flex-shrink-0 me-3">
                                             <i class="ri-discuss-line text-muted fs-16"></i>
@@ -343,8 +359,8 @@
                                             </div>
                                         </div>
 
-                                        @if($isGlobal)
-                                        {{-- Super Admin / Administrator: boleh pilih kategori --}}
+                                        @if($isGlobal || ! $isAdminTU)
+                                        {{-- Super Admin / Administrator / Pimpinan: boleh pilih kategori --}}
                                         <div class="col-12">
                                             <div class="mb-2">
                                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
@@ -365,10 +381,11 @@
                                                 <label class="form-label">Tipe</label>
                                                 <select class="form-select" name="event-type" id="event-type">
                                                     <option value="">-- Pilih Tipe --</option>
-                                                    <option value="tahunan">Tahunan</option>
-                                                    <option value="mid_semester">Mid Semester</option>
-                                                    <option value="lainnya">Lainnya</option>
+                                                    @foreach(\App\Models\Kaldik::TYPE_OPTIONS as $val => $label)
+                                                        <option value="{{ $val }}">{{ $label }}</option>
+                                                    @endforeach
                                                 </select>
+                                                <small class="text-muted">Tipe <strong>Libur</strong> dipakai Pekan Efektif untuk menghitung hari efektif.</small>
                                             </div>
                                         </div>
                                         <div class="col-12">
@@ -418,6 +435,17 @@
                                                     <option value="">-- Pilih --</option>
                                                     @foreach($academicYears as $ay)
                                                         <option value="{{ $ay->id }}">{{ $ay->name }} ({{ $ay->semester_text }})</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="mb-2">
+                                                <label class="form-label">Semester</label>
+                                                <select class="form-select" name="event-semester" id="event-semester">
+                                                    <option value="">-- Semua Semester --</option>
+                                                    @foreach(\App\Models\Kaldik::SEMESTER_OPTIONS as $val => $label)
+                                                        <option value="{{ $val }}">{{ $label }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>

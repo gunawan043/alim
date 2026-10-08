@@ -19,6 +19,10 @@ class AcademicYear extends Model
         'is_active',
         'start_date',
         'end_date',
+        'semester_ganjil_start',
+        'semester_ganjil_end',
+        'semester_genap_start',
+        'semester_genap_end',
         'registration_start',
         'registration_end',
     ];
@@ -27,6 +31,10 @@ class AcademicYear extends Model
         'is_active' => 'boolean',
         'start_date' => 'date',
         'end_date' => 'date',
+        'semester_ganjil_start' => 'date',
+        'semester_ganjil_end' => 'date',
+        'semester_genap_start' => 'date',
+        'semester_genap_end' => 'date',
         'registration_start' => 'date',
         'registration_end' => 'date',
     ];

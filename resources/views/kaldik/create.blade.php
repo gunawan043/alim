@@ -61,6 +61,19 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label class="form-label">Semester</label>
+                                <select name="semester" class="form-control">
+                                    <option value="">-- Semua Semester --</option>
+                                    @foreach(\App\Models\Kaldik::SEMESTER_OPTIONS as $val => $label)
+                                        <option value="{{ $val }}" {{ old('semester') == $val ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Dipakai Pekan Efektif untuk memisahkan kegiatan per semester.</small>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label class="form-label">Tipe</label>
                                 <select name="type" class="form-control">
                                     <option value="">-- Pilih Tipe --</option>
@@ -70,6 +83,7 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <small class="text-muted">Tipe <strong>Libur</strong> otomatis mengurangi hari efektif pada Pekan Efektif.</small>
                             </div>
 
                             <div class="col-md-6">

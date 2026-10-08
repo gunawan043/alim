@@ -233,6 +233,7 @@ File: Kaldik Calendar init js
             ['event-category', 'd-none'],
             ['event-type', 'd-none'],
             ['event-academic-year', 'd-none'],
+            ['event-semester', 'd-none'],
             ['event-work-unit', 'd-none'],
             ['event-start-date', 'd-none'],
             ['event-description', 'd-none'],
@@ -245,7 +246,7 @@ File: Kaldik Calendar init js
 
         var tagEls = ['event-start-date-tag', 'event-timepicker1-tag', 'event-timepicker2-tag',
             'event-category-tag', 'event-workunit-tag', 'event-academic-year-tag',
-            'event-description-tag', 'event-time-divider', 'event-color-row'];
+            'event-semester-tag', 'event-description-tag', 'event-time-divider', 'event-color-row'];
         tagEls.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.classList.replace('d-none', 'd-block');
@@ -254,7 +255,7 @@ File: Kaldik Calendar init js
 
     function eventTyped() {
         var formEls = ['event-title', 'event-category', 'event-type', 'event-academic-year',
-            'event-start-date', 'event-description', 'event-is-active'];
+            'event-semester', 'event-start-date', 'event-description', 'event-is-active'];
         formEls.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) {
@@ -274,7 +275,7 @@ File: Kaldik Calendar init js
 
         var tagEls = ['event-start-date-tag', 'event-timepicker1-tag', 'event-timepicker2-tag',
             'event-category-tag', 'event-workunit-tag', 'event-academic-year-tag',
-            'event-description-tag', 'event-time-divider'];
+            'event-semester-tag', 'event-description-tag', 'event-time-divider'];
         tagEls.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.classList.add('d-none');
@@ -318,6 +319,12 @@ File: Kaldik Calendar init js
         // Academic Year
         var aySelect = document.getElementById('event-academic-year');
         if (aySelect) aySelect.value = props.academic_year_id || '';
+
+        // Semester
+        var semesterSelect = document.getElementById('event-semester');
+        if (semesterSelect) semesterSelect.value = props.semester || '';
+        var semesterTag = document.getElementById('event-semester-tag');
+        if (semesterTag) semesterTag.textContent = props.semesterLabel || '-';
 
         // Work Unit
         var wuSelect = document.getElementById('event-work-unit');
@@ -543,6 +550,8 @@ File: Kaldik Calendar init js
         var category = categorySelectVal === 'bg-primary-subtle' ? 'kaldik' : 'agenda';
         var type = document.getElementById('event-type').value;
         var academicYearId = document.getElementById('event-academic-year').value;
+        var semesterEl = document.getElementById('event-semester');
+        var semester = semesterEl ? (semesterEl.value || null) : null;
         var dateRange = document.getElementById('event-start-date').value;
         var description = document.getElementById('event-description').value;
         var isActive = document.getElementById('event-is-active').checked ? 1 : 0;
@@ -557,7 +566,8 @@ File: Kaldik Calendar init js
             workUnitId = window.KALDIK_USER_WORK_UNIT_ID || null;
             category = 'agenda'; // force agenda
         } else {
-            workUnitId = document.getElementById('event-work-unit').value || null;
+            var wuEl = document.getElementById('event-work-unit');
+            workUnitId = wuEl ? (wuEl.value || null) : (window.KALDIK_USER_WORK_UNIT_ID || null);
         }
 
         // Parse dates
@@ -570,6 +580,7 @@ File: Kaldik Calendar init js
             name: title,
             category: category,
             type: type || null,
+            semester: semester,
             color: eventColor,
             academic_year_id: academicYearId || null,
             work_unit_id: workUnitId,
@@ -690,5 +701,16 @@ File: Kaldik Calendar init js
     // ── Filter listeners ──────────────────────────────────────────
     document.getElementById('filter-category')?.addEventListener('change', applyFilters);
     document.getElementById('filter-academic-year')?.addEventListener('change', applyFilters);
+
+    // Filter semester bersifat server-side (query string) agar konsisten dengan Pekan Efektif.
+    document.getElementById('filter-semester')?.addEventListener('change', function () {
+        var url = new URL(window.location.href);
+        if (this.value) {
+            url.searchParams.set('semester', this.value);
+        } else {
+            url.searchParams.delete('semester');
+        }
+        window.location.href = url.toString();
+    });
 
 })();

@@ -417,6 +417,13 @@
             <i class="ri-time-line"></i><span>Jadwal Mengajar Saya</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+           href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+        </a>
+    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -545,6 +552,15 @@
             <i class="ri-timer-line"></i><span>Jam Pelajaran</span>
         </a>
     </li>
+
+    @if(!$isGuru)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+           href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+        </a>
+    </li>
+    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? ' active' : '' }}"

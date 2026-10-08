@@ -29,6 +29,9 @@ class PekanEfektif extends Model
         'tanggal_selesai',
         'jenis',
         'keterangan',
+        'jumlah_hari',
+        'is_generated',
+        'generated_at',
     ];
 
     protected $casts = [
@@ -36,6 +39,9 @@ class PekanEfektif extends Model
         'minggu_ke' => 'integer',
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
+        'jumlah_hari' => 'integer',
+        'is_generated' => 'boolean',
+        'generated_at' => 'datetime',
     ];
 
     const JENIS_EFEKTIF = 'efektif';
@@ -93,6 +99,24 @@ class PekanEfektif extends Model
 
         return (int) Carbon::parse($this->tanggal_mulai)
             ->diffInDays(Carbon::parse($this->tanggal_selesai)) + 1;
+    }
+
+    /**
+     * Hari efektif pekan ini. Untuk data hasil generate dari Kalender
+     * Pendidikan memakai kolom jumlah_hari; data manual memakai perkiraan durasi.
+     */
+    public function getHariEfektifAttribute(): int
+    {
+        if ($this->jumlah_hari !== null) {
+            return (int) $this->jumlah_hari;
+        }
+
+        return $this->jenis === self::JENIS_LIBUR ? 0 : $this->durasi_hari;
+    }
+
+    public function getJenisLabelAttribute(): string
+    {
+        return self::JENIS_OPTIONS[$this->jenis] ?? ucfirst(str_replace('_', ' ', (string) $this->jenis));
     }
 
     public function scopeBySchool($query, ?string $schoolId)
