@@ -3,9 +3,9 @@
 @section('content')
 @component('components.breadcrumb')
     @slot('li_1') Approval @endslot
-    @slot('li_2_link') {{ route('user.approvals.index') }} @endslot
+    @slot('li_2_link') {{ route('user.approvals.index', ['userId' => auth()->id()]) }} @endslot
     @slot('li_2') Approval @endslot
-    @slot('li_3_link') {{ route('user.approvals.show', $approval->id) }} @endslot
+    @slot('li_3_link') {{ route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $approval->id]) }} @endslot
     @slot('li_3') {{ $approval->type_text }} @endslot
     @slot('li_4') Tracking @endslot
 @endcomponent
@@ -125,7 +125,7 @@
                 </div>
             </div>
             <div class="card-footer text-end">
-                <a href="{{ route('user.approvals.show', $approval->id) }}" class="btn btn-light">
+                <a href="{{ route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $approval->id]) }}" class="btn btn-light">
                     <i class="ri-arrow-left-line me-1"></i> Kembali
                 </a>
             </div>

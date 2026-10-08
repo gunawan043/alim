@@ -34,7 +34,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.approvals.history') }}" class="btn btn-light w-100">Reset</a>
+                            <a href="{{ route('user.approvals.history', ['userId' => auth()->id()]) }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 
@@ -62,7 +62,7 @@
                                         </td>
                                         <td><small>{{ $req->created_at->format('d/m/Y H:i') }}</small></td>
                                         <td class="text-center">
-                                            <a href="{{ route('user.approvals.show', $req->id) }}" class="btn btn-sm btn-soft-secondary">
+                                            <a href="{{ route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $req->id]) }}" class="btn btn-sm btn-soft-secondary">
                                                 <i class="ri-eye-line"></i>
                                             </a>
                                         </td>

@@ -31,6 +31,7 @@ class ApprovalFlowStep extends Model
         'approval_flow_id',
         'step_order',
         'role_name',
+        'step_permission',
         'min_role_level',
     ];
 

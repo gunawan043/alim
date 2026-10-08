@@ -71,7 +71,7 @@
                                         </td>
                                         <td><small>{{ $req->created_at->format('d/m/Y H:i') }}</small></td>
                                         <td class="text-center">
-                                            <a href="{{ route('user.approvals.show', $req->id) }}" class="btn btn-sm btn-soft-secondary">
+                                            <a href="{{ route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $req->id]) }}" class="btn btn-sm btn-soft-secondary">
                                                 <i class="ri-eye-line"></i>
                                             </a>
                                         </td>

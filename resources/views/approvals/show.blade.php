@@ -7,6 +7,25 @@
         @slot('title') Detail Approval @endslot
     @endcomponent
 
+    @if (session('success'))
+        <div class="alert alert-success"><i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger"><i class="ri-error-warning-line me-1"></i>{{ session('error') }}</div>
+    @endif
+
+    @php
+        $step = $approval->currentStep();
+        $user = auth()->user();
+        $isAdmin = (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
+        $canAct = $approval->status === 'PENDING' && $step && (
+            $isAdmin
+            || ($step->step_permission && canPermission($step->step_permission))
+            || ($step->role_name && method_exists($user, 'hasRole') && $user->hasRole($step->role_name))
+        );
+    @endphp
+
     <div class="row">
         <div class="col-lg-8">
             <div class="card">
@@ -31,6 +50,16 @@
                             <th>Tanggal Pengajuan</th>
                             <td>{{ $approval->created_at->format('d/m/Y H:i') }}</td>
                         </tr>
+                        @if ($step)
+                            <tr>
+                                <th>Tahap Menunggu</th>
+                                <td>
+                                    <span class="badge bg-warning-subtle text-warning">
+                                        Step {{ $step->step_order }} — {{ $step->role_name }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endif
                     </table>
 
                     @if($approval->actions->count())
@@ -68,8 +97,46 @@
                         </div>
                     @endif
 
-                    <div class="mt-3">
-                        <a href="{{ url()->previous() }}" class="btn btn-light"><i class="ri-arrow-left-line me-1"></i> Kembali</a>
+                    @if ($canAct)
+                        <hr>
+                        <h6 class="mb-3"><i class="ri-git-pull-request-line me-1"></i>Aksi Persetujuan</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <form method="POST"
+                                      action="{{ route('user.approvals.approve', ['userId' => $user->id, 'approvalUuid' => $approval->id]) }}">
+                                    @csrf
+                                    <label class="form-label small">Catatan (opsional)</label>
+                                    <textarea name="note" rows="2" class="form-control mb-2" placeholder="Catatan persetujuan..."></textarea>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="ri-check-double-line me-1"></i> Setujui Tahap Ini
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="POST"
+                                      action="{{ route('user.approvals.reject', ['userId' => $user->id, 'approvalUuid' => $approval->id]) }}">
+                                    @csrf
+                                    <label class="form-label small">Alasan penolakan <span class="text-danger">*</span></label>
+                                    <textarea name="note" rows="2" class="form-control mb-2" required placeholder="Alasan penolakan..."></textarea>
+                                    <button type="submit" class="btn btn-outline-danger w-100"
+                                            onclick="return confirm('Tolak pengajuan ini?')">
+                                        <i class="ri-close-circle-line me-1"></i> Tolak Pengajuan
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mt-3 d-flex gap-2">
+                        <a href="{{ route('user.approvals.index', ['userId' => $user->id]) }}" class="btn btn-light">
+                            <i class="ri-arrow-left-line me-1"></i> Kembali
+                        </a>
+                        @if (\Illuminate\Support\Facades\Route::has('user.approvals.track'))
+                            <a href="{{ route('user.approvals.track', ['userId' => $user->id, 'approvalUuid' => $approval->id]) }}"
+                               class="btn btn-soft-info">
+                                <i class="ri-route-line me-1"></i> Lacak Alur
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

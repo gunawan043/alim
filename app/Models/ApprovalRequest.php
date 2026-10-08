@@ -32,12 +32,19 @@ class ApprovalRequest extends Model
         'reference_id',
         'requested_by',
         'status',
+        'approval_flow_id',
+        'requestable_type',
+        'requestable_id',
+        'current_step_id',
     ];
 
     protected $casts = [
         'id' => 'string',
         'reference_id' => 'string',
         'requested_by' => 'string',
+        'requestable_id' => 'string',
+        'current_step_id' => 'string',
+        'approval_flow_id' => 'string',
     ];
 
     // RELATIONSHIPS
@@ -46,14 +53,35 @@ class ApprovalRequest extends Model
         return $this->belongsTo(User::class, 'requested_by');
     }
 
+    public function flow()
+    {
+        return $this->belongsTo(ApprovalFlow::class, 'approval_flow_id');
+    }
+
+    public function requestable()
+    {
+        return $this->morphTo('requestable', 'requestable_type', 'requestable_id');
+    }
+
     public function actions()
     {
         return $this->hasMany(ApprovalAction::class)->orderBy('step_order');
     }
 
+    /**
+     * Tahap yang sedang menunggu persetujuan (action pertama yang PENDING).
+     */
     public function currentStep()
     {
         return $this->actions()->where('action', 'PENDING')->orderBy('step_order')->first();
+    }
+
+    /** Relasi currentStep untuk eager loading / akses data. */
+    public function currentStepAction()
+    {
+        return $this->hasOne(ApprovalAction::class, 'approval_request_id', 'id')
+            ->where('action', 'PENDING')
+            ->orderBy('step_order');
     }
 
     // SCOPES

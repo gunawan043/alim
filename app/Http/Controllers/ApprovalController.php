@@ -10,6 +10,8 @@ use App\Models\ApprovalRequest;
 use App\Models\GtkTransferRequest;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +43,7 @@ class ApprovalController extends Controller
     public function myPending(Request $request)
     {
         $user = auth()->user();
+
         $query = ApprovalRequest::with(['requestedBy', 'actions'])
             ->where('status', 'PENDING')
             ->orderByDesc('created_at');
@@ -50,9 +53,46 @@ class ApprovalController extends Controller
             $query->whereHas('requestedBy', fn ($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
-        $requests = $query->paginate(15)->withQueryString();
+        // Hanya tampilkan yang benar-benar bisa di-approve oleh user ini.
+        $actionable = $query->get()
+            ->filter(fn (ApprovalRequest $req) => $this->canActOn($req, $user))
+            ->values();
+
+        $perPage = 15;
+        $page = Paginator::resolveCurrentPage() ?: 1;
+
+        $requests = new LengthAwarePaginator(
+            $actionable->forPage($page, $perPage)->values(),
+            $actionable->count(),
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
 
         return view('approvals.my-pending', compact('requests'));
+    }
+
+    /**
+     * Apakah user berwenang pada tahap yang sedang menunggu.
+     */
+    protected function canActOn(ApprovalRequest $request, $user): bool
+    {
+        if ((method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        $step = $request->currentStep();
+
+        if (! $step) {
+            return false;
+        }
+
+        if ($step->step_permission && canPermission($step->step_permission)) {
+            return true;
+        }
+
+        return $step->role_name && method_exists($user, 'hasRole') && $user->hasRole($step->role_name);
     }
 
     public function history(Request $request, ?string $userId = null)
@@ -76,21 +116,22 @@ class ApprovalController extends Controller
         return view('approvals.history', compact('requests'));
     }
 
-    public function show(string $approvalUuid)
+    public function show(string $userId, string $approvalUuid)
     {
         $approval = ApprovalRequest::with(['requestedBy', 'actions'])->findOrFail($approvalUuid);
 
         return view('approvals.show', compact('approval'));
     }
 
-    public function track(string $approvalUuid)
+    public function track(string $userId, string $approvalUuid)
     {
         $approval = ApprovalRequest::with([
             'flow.steps',
             'actions' => fn ($q) => $q->orderBy('created_at'),
-            'actions.actionBy',
+            'actions.approvedBy',
+            'requestedBy',
             'requestable',
-        ])->where('uuid', $approvalUuid)->firstOrFail();
+        ])->findOrFail($approvalUuid);
 
         return view('approvals.track', compact('approval'));
     }
@@ -202,39 +243,71 @@ class ApprovalController extends Controller
         });
     }
 
-    public function approve(Request $request, ApprovalRequest $approvalRequest)
+    public function approve(Request $request, string $userId, string $approvalUuid)
     {
+        $approvalRequest = ApprovalRequest::findOrFail($approvalUuid);
+
         $this->authorize('approve', $approvalRequest);
 
         $request->validate([
             'note' => 'nullable|string|max:1000',
         ]);
 
-        DB::transaction(function () use ($approvalRequest, $request) {
-            app(ApprovalService::class)
-                ->approve($approvalRequest, auth()->user(), $request->note);
-        });
+        try {
+            DB::transaction(function () use ($approvalRequest, $request) {
+                app(ApprovalService::class)
+                    ->approve($approvalRequest, Auth::user(), $request->note);
+            });
+        } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
 
-        return response()->json([
-            'message' => 'Approval berhasil diproses',
-        ]);
+            return redirect()->back()->with('error', 'Approval gagal: ' . $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Approval berhasil diproses']);
+        }
+
+        return redirect()
+            ->route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $approvalRequest->id])
+            ->with('success', 'Approval berhasil diproses.');
     }
 
-    public function reject(Request $request, ApprovalRequest $approvalRequest)
+    public function reject(Request $request, string $userId, string $approvalUuid)
     {
+        $approvalRequest = ApprovalRequest::findOrFail($approvalUuid);
+
         $this->authorize('reject', $approvalRequest);
 
         $request->validate([
             'note' => 'required|string|max:1000',
         ]);
 
-        DB::transaction(function () use ($approvalRequest, $request) {
-            app(ApprovalService::class)
-                ->reject($approvalRequest, auth()->user(), $request->note);
-        });
+        try {
+            DB::transaction(function () use ($approvalRequest, $request) {
+                app(ApprovalService::class)
+                    ->reject($approvalRequest, Auth::user(), $request->note);
+            });
+        } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
 
-        return response()->json([
-            'message' => 'Approval ditolak',
-        ]);
+            return redirect()->back()->with('error', 'Penolakan gagal: ' . $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Approval ditolak']);
+        }
+
+        return redirect()
+            ->route('user.approvals.show', ['userId' => auth()->id(), 'approvalUuid' => $approvalRequest->id])
+            ->with('success', 'Pengajuan ditolak.');
     }
 }
