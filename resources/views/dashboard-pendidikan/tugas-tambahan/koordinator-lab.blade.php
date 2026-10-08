@@ -82,16 +82,16 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.sarpras-ruang.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('user.ruang.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-building-line me-1"></i>Cek Kondisi Lab
                     </a>
-                    <a href="{{ route('user.asset-loans.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('peminjaman.index') }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-arrow-right-up-line me-1"></i>Approve Peminjaman
                     </a>
-                    <a href="{{ route('user.sarpras-pemeliharaan.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
+                    <a href="{{ route('pemeliharaan.schedule.create') }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-wrench-line me-1"></i>Lapor Kerusakan
                     </a>
-                    <a href="{{ route('user.sarpras-aset.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-info">
+                    <a href="{{ route('user.aset.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-info">
                         <i class="ri-archive-line me-1"></i>Inventory Lab
                     </a>
                 </div>
@@ -139,7 +139,7 @@
                 <h5 class="card-title mb-0 text-warning">
                     <i class="ri-tools-line me-1"></i>Maintenance Mendesak (7 Hari)
                 </h5>
-                <a href="{{ route('user.sarpras-pemeliharaan.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola Semua</a>
+                <a href="{{ route('pemeliharaan.schedule.index') }}" class="btn btn-sm btn-outline-primary">Kelola Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

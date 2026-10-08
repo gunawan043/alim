@@ -82,10 +82,10 @@
                     <a href="{{ route('user.absensi-gtk.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-checkbox-circle-line me-1"></i>Absensi Guru
                     </a>
-                    <a href="{{ route('user.supervisi.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('waka.supervisi.index') }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-clipboard-line me-1"></i>Supervisi Mengajar
                     </a>
-                    <a href="{{ route('user.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
+                    <a href="{{ route('user.schools.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-bar-chart-line me-1"></i>Rekap Nilai Per Mapel
                     </a>
                     <a href="{{ route('user.jadwal-kbm.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-info">

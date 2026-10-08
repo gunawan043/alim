@@ -23,6 +23,8 @@
     <x-dashboards.stat-card label="Surat Keluar Hari Ini" :value="$suratKeluar" icon="ri-send-plane-line" color="success" />
     <x-dashboards.stat-card label="Dokumen GTK Expiring" :value="$dokumenExpiring" icon="ri-alert-line" color="danger" />
     <x-dashboards.stat-card label="GTK Baru Bulan Ini" :value="$gtkBaru" icon="ri-user-add-line" color="info" />
+    <x-dashboards.stat-card label="Mutasi Masuk Pending" :value="$mutasiMasukPending" icon="ri-login-box-line" color="success" />
+    <x-dashboards.stat-card label="Mutasi Keluar Pending" :value="$mutasiKeluarPending" icon="ri-logout-box-line" color="danger" />
 </div>
 
 <div class="row g-3 mb-3">
@@ -31,7 +33,7 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Antrian Surat Masuk</h5>
-                <a href="{{ route('user.surat-masuk.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+                <a href="{{ route('waka.surat-masuk.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -70,7 +72,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.surat-masuk.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('waka.surat-masuk.create') }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-mail-add-line me-1"></i>Catat Surat Masuk
                     </a>
                     <a href="{{ route('user.gtk.indexguru', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
@@ -130,7 +132,7 @@
                 <h5 class="card-title mb-0">
                     <i class="ri-task-line text-primary me-1"></i>Tugas Tambahan
                 </h5>
-                <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body">
                 <div class="row g-3">

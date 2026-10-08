@@ -30,7 +30,7 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Daftar Ekstrakurikuler yang Dibina</h5>
-                <a href="{{ route('user.ekstrakurikuler.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -71,10 +71,10 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.ekstrakurikuler.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-list-check-line me-1"></i>Kelola Ekskul
                     </a>
-                    <a href="{{ route('user.ekstrakurikuler-anggota.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-group-line me-1"></i>Anggota Ekskul
                     </a>
                     <a href="{{ route('user.recruitment.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">

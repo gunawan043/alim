@@ -75,16 +75,16 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.sarpras-dashboard', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('user.dashboard.koordinator-sarpras', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-dashboard-line me-1"></i>Dashboard Sarpras
                     </a>
-                    <a href="{{ route('user.procurement-requests.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
+                    <a href="{{ route('sarpras.user.pengadaan.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-shopping-cart-2-line me-1"></i>Request Pengadaan
                     </a>
-                    <a href="{{ route('user.sarpras-aset.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('user.aset.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-add-circle-line me-1"></i>Tambah Aset Baru
                     </a>
-                    <a href="{{ route('user.sarpras-pemeliharaan.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-info">
+                    <a href="{{ route('pemeliharaan.schedule.create') }}" class="btn quick-action-btn btn-outline-info">
                         <i class="ri-calendar-schedule-line me-1"></i>Jadwalkan Maintenance
                     </a>
                 </div>
@@ -124,7 +124,7 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Jadwal Maintenance Mendatang</h5>
-                <a href="{{ route('user.sarpras-pemeliharaan.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+                <a href="{{ route('pemeliharaan.schedule.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

@@ -31,12 +31,12 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Inbox Surat</h5>
-                <a href="{{ route('user.surat-masuk.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Semua</a>
+                <a href="{{ route('waka.surat-masuk.index') }}" class="btn btn-sm btn-outline-primary">Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="list-group list-group-flush">
                     @forelse($inboxSurat as $s)
-                    <a href="{{ route('user.surat-masuk.show', ['userId' => $user->id, 'suratMasuk' => $s->id]) }}" class="list-group-item list-group-item-action">
+                    <a href="{{ route('waka.surat-masuk.show', ['surat_masuk' => $s->id]) }}" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">{{ Str::limit($s->perihal ?? $s->subject ?? 'Tanpa Perihal', 40) }}</h6>
                             <small class="text-muted">{{ $s->created_at?->format('d M H:i') }}</small>
@@ -56,7 +56,7 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Outbox Surat</h5>
-                <a href="{{ route('user.surat-keluar.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Semua</a>
+                <a href="{{ route('waka.surat-keluar.index') }}" class="btn btn-sm btn-outline-primary">Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="list-group list-group-flush">
@@ -120,7 +120,7 @@
                 <h5 class="card-title mb-0">
                     <i class="ri-task-line text-primary me-1"></i>Tugas Tambahan
                 </h5>
-                <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body">
                 <div class="row g-3">

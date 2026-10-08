@@ -60,10 +60,10 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.kktp.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('user.schools.kktp.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-file-text-line me-1"></i>Manage KKTP / Silabus
                     </a>
-                    <a href="{{ route('user.evalusi-bank-soal.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
+                    <a href="{{ route('user.bank-soal.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-question-line me-1"></i>Review Bank Soal
                     </a>
                     <a href="{{ route('user.jadwal-kbm.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
@@ -94,7 +94,7 @@
                             <strong>{{ Str::limit($soal->soal ?? 'Soal tanpa teks', 50) }}</strong>
                             <br><small class="text-muted">{{ $soal->paketSoal?->nama ?? 'Tanpa Paket' }}</small>
                         </div>
-                        <a href="{{ route('user.evalusi-soal.show', ['userId' => $user->id, 'soal' => $soal->id]) }}" class="btn btn-sm btn-outline-primary">Review</a>
+                        <a href="{{ route('user.bank-soal.show', ['userId' => $user->id, 'id' => $soal->bank_soal_id]) }}" class="btn btn-sm btn-outline-primary">Review</a>
                     </div>
                     @empty
                     <div class="list-group-item text-center text-muted py-4">Tidak ada soal pending review</div>

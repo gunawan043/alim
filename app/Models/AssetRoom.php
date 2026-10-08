@@ -106,6 +106,11 @@ class AssetRoom extends Model
         return $this->hasMany(Asset::class, 'room_id');
     }
 
+    public function bookings()
+    {
+        return $this->hasMany(RoomBooking::class, 'room_id');
+    }
+
     // SCOPES
     public function scopeActive($query)
     {

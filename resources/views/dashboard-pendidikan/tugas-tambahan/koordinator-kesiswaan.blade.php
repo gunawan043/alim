@@ -78,13 +78,13 @@
                     <a href="{{ route('user.violation-points.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-danger">
                         <i class="ri-alert-line me-1"></i>Catat Pelanggaran
                     </a>
-                    <a href="{{ route('user.dormitory.permits.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
+                    <a href="{{ route('user.asrama.permits.index', ['userId' => $user->id, 'asramaUuid' => $asramaUuid ?? \App\Models\Dormitory::where('is_active', true)->first()?->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-mail-line me-1"></i>Approve Izin Pulang
                         @if($izinPending > 0)
                         <span class="badge bg-danger ms-1">{{ $izinPending }}</span>
                         @endif
                     </a>
-                    <a href="{{ route('user.ekstrakurikuler.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-trophy-line me-1"></i>Kelola Ekskul
                     </a>
                     <a href="{{ route('user.student-achievements.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-info">

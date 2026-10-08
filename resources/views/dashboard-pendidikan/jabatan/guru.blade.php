@@ -77,10 +77,10 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.class-qr.scan', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('user.teacher-qr.scan', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-qr-code-line me-1"></i>Ambil Absensi
                     </a>
-                    <a href="{{ route('user.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('user.schools.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-bar-chart-line me-1"></i>Input Nilai
                     </a>
                     <a href="{{ route('user.violation-points.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
@@ -98,7 +98,7 @@
         <div class="card">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Grading Pending</h5>
-                <a href="{{ route('user.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+                <a href="{{ route('user.schools.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -139,7 +139,7 @@
                 <h5 class="card-title mb-0">
                     <i class="ri-user-star-line text-primary me-1"></i>Tugas Tambahan: Wali Kelas
                 </h5>
-                <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -189,7 +189,7 @@
                 <h5 class="card-title mb-0">
                     <i class="ri-task-line text-primary me-1"></i>Tugas Tambahan: Koordinator Guru
                 </h5>
-                <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -237,7 +237,7 @@
                     <h5 class="card-title mb-0">
                         <i class="ri-task-line text-primary me-1"></i>Tugas Tambahan: {{ ucwords(str_replace('_', ' ', $task->nama_tugas)) }}
                     </h5>
-                    <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                    <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">

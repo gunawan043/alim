@@ -31,7 +31,7 @@
         <div class="card h-100">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Presensi Kelas — {{ $kelas?->full_name ?? 'Belum Ada Kelas' }}</h5>
-                <a href="{{ route('user.absensi-santri.create', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Ambil Absensi</a>
+                <a href="{{ route('user.absensi.harian.create', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Ambil Absensi</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -85,18 +85,20 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.class-qr.scan', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                    <a href="{{ route('user.teacher-qr.scan', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
                         <i class="ri-qr-code-line me-1"></i>Ambil Presensi
                     </a>
                     <a href="{{ route('user.violation-points.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-alert-line me-1"></i>Catat Pelanggaran
                     </a>
-                    <a href="{{ route('user.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
+                    <a href="{{ route('user.schools.nilai-kelas.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
                         <i class="ri-edit-circle-line me-1"></i>Input Nilai
                     </a>
-                    <a href="{{ route('user.students.show', ['userId' => $user->id, 'student' => $santriList->first()?->id ?? '']) }}" class="btn quick-action-btn btn-outline-info">
+                    @if($santriList->isNotEmpty())
+                    <a href="{{ route('user.students.show', ['userId' => $user->id, 'santriUuid' => $santriList->first()->id]) }}" class="btn quick-action-btn btn-outline-info">
                         <i class="ri-file-list-3-line me-1"></i>Lihat Rapor
                     </a>
+                    @endif
                 </div>
             </div>
         </div>

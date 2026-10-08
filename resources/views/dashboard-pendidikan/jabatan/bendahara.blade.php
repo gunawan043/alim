@@ -65,15 +65,6 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.procurement-requests.create', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
-                        <i class="ri-shopping-cart-2-line me-1"></i>Pengadaan Baru
-                    </a>
-                    <a href="{{ route('user.goods-receipts.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-success">
-                        <i class="ri-file-text-line me-1"></i>Terima Barang
-                    </a>
-                    <a href="{{ route('user.surat-keluar.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
-                        <i class="ri-send-plane-line me-1"></i>Buat Surat
-                    </a>
                 </div>
             </div>
         </div>
@@ -156,7 +147,7 @@
                 <h5 class="card-title mb-0">
                     <i class="ri-task-line text-primary me-1"></i>Tugas Tambahan
                 </h5>
-                <a href="{{ route('user.satuan-kerja.additional-tasks', ['userId' => $user->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['userId' => $user->id, 'workUnitId' => $primaryWorkUnit?->id]) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
             </div>
             <div class="card-body">
                 <div class="row g-3">

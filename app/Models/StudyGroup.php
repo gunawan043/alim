@@ -61,6 +61,11 @@ class StudyGroup extends Model
         return $this->hasMany(StudentClassHistory::class);
     }
 
+    public function jadwalKbms(): HasMany
+    {
+        return $this->hasMany(JadwalKbm::class, 'study_group_id');
+    }
+
     // ── Accessors ────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string
