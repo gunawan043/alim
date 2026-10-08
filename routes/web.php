@@ -211,8 +211,11 @@ use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
+use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
 use App\Http\Controllers\Kurikulum\KurikulumController;
 use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
+use App\Http\Controllers\Kurikulum\ProsemController;
+use App\Http\Controllers\Kurikulum\ProtaController;
 use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
@@ -631,6 +634,39 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{id}', [PerangkatPembelajaranController::class, 'show'])->name('show');
                     Route::put('/{id}', [PerangkatPembelajaranController::class, 'update'])->name('update');
                     Route::delete('/{id}', [PerangkatPembelajaranController::class, 'destroy'])->name('destroy');
+                });
+
+                // ── PROTA — Program Tahunan ───────────────────────
+                Route::prefix('prota')->name('prota.')->group(function () {
+                    Route::get('/', [ProtaController::class, 'index'])->name('index');
+                    Route::post('/', [ProtaController::class, 'store'])->name('store');
+                    Route::get('/{id}', [ProtaController::class, 'show'])->name('show');
+                    Route::put('/{id}', [ProtaController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [ProtaController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/sync', [ProtaController::class, 'sync'])->name('sync');
+                    Route::post('/{id}/items', [ProtaController::class, 'storeItem'])->name('items.store');
+                    Route::put('/{id}/items/{itemId}', [ProtaController::class, 'updateItem'])->name('items.update');
+                    Route::delete('/{id}/items/{itemId}', [ProtaController::class, 'destroyItem'])->name('items.destroy');
+                });
+
+                // ── PROSEM — Program Semester ─────────────────────
+                Route::prefix('prosem')->name('prosem.')->group(function () {
+                    Route::get('/', [ProsemController::class, 'index'])->name('index');
+                    Route::post('/', [ProsemController::class, 'store'])->name('store');
+                    Route::get('/{id}', [ProsemController::class, 'show'])->name('show');
+                    Route::put('/{id}', [ProsemController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [ProsemController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/sync', [ProsemController::class, 'sync'])->name('sync');
+                });
+
+                // ── CETAK PDF DOKUMEN KURIKULUM ───────────────────
+                Route::prefix('cetak')->name('cetak.')->group(function () {
+                    Route::get('/kaldik', [CetakDokumenKurikulumController::class, 'kaldik'])->name('kaldik');
+                    Route::get('/pekan-efektif', [CetakDokumenKurikulumController::class, 'pekanEfektif'])->name('pekan-efektif');
+                    Route::get('/atp/{id}', [CetakDokumenKurikulumController::class, 'atp'])->name('atp');
+                    Route::get('/prota/{id}', [CetakDokumenKurikulumController::class, 'prota'])->name('prota');
+                    Route::get('/prosem/{id}', [CetakDokumenKurikulumController::class, 'prosem'])->name('prosem');
+                    Route::get('/rpm/{id}', [CetakDokumenKurikulumController::class, 'rpm'])->name('rpm');
                 });
             });
 

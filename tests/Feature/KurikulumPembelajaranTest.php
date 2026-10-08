@@ -385,7 +385,7 @@ class KurikulumPembelajaranTest extends TestCase
         $this->get("/{$this->guru->id}/kurikulum/perangkat/{$perangkat->id}")
             ->assertOk()
             ->assertSee('Pertanyaan Pemantik')
-            ->assertSee('Pengalaman Belajar — Merefleksi')
+            ->assertSee('Merefleksikan')
             ->assertSee('Koneksi Konteks Nyata');
     }
 

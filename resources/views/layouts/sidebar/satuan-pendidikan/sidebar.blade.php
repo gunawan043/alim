@@ -460,9 +460,21 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.prota.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}">
+                        PROTA
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.prosem.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId]) }}">
+                        PROSEM
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
-                        Perangkat Pembelajaran
+                        RPM / Perangkat
                     </a>
                 </li>
                 <li class="nav-item">
@@ -644,6 +656,18 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.atp.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}">
                         ATP
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.prota.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}">
+                        PROTA
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.prosem.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId]) }}">
+                        PROSEM
                     </a>
                 </li>
                 <li class="nav-item">

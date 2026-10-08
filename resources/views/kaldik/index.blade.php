@@ -157,6 +157,11 @@
                         </button>
                     @endif
 
+                    <a href="{{ route('user.kurikulum.cetak.kaldik', ['userId' => $userId, 'academic_year_id' => request('academic_year_id')]) }}"
+                       target="_blank" class="btn btn-soft-secondary w-100 mb-3">
+                        <i class="ri-printer-line me-1"></i> Cetak PDF
+                    </a>
+
                     {{-- Filters Card ─────────────────────────────── --}}
                     <div class="card mb-3">
                         <div class="card-body">

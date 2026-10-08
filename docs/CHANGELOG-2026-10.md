@@ -86,10 +86,19 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Halaman Waka/Pekan Efektif ikut diseragamkan (kartu generate, stat card, filter, tabel, detail pekan menampilkan hari efektif & sumber Kaldik/Manual).
 - **Kalender Pendidikan dapat dilihat semua user lewat sidebar**: section *Referensi → Kalender Pendidikan* untuk seluruh pengguna Satuan Pendidikan, ditambahkan untuk role Asrama & UKS, dan menu fallback pengguna tanpa role; role lain sudah memiliki entri kalender masing-masing.
 
+## 14. PROTA → PROSEM → RPM → Cetak PDF (Ekosistem Siap Guru)
+- **PROTA** (`/kurikulum/prota`): dibangun dari ATP (TP + alokasi JP) + Pekan Efektif (minggu & JP efektif) — guru tidak mengisi ulang pekan efektif/JP. Snapshot `minggu_efektif`, `jp_per_minggu`, `jp_efektif` + item BAB/TP/alokasi; indikator **Perlu diperbarui** otomatis bila Pekan Efektif/ATP berubah, dengan aksi *Sinkronkan Snapshot* dan *Bangun Ulang dari ATP*.
+- **PROSEM** (`/kurikulum/prosem`): distribusi otomatis PROTA/ATP ke **bulan & pekan efektif** dari Kalender (tanpa kalender kedua). Minggu libur dilewati; pekan **ujian** & **kegiatan sekolah** ditandai pada keterangan; JP yang melebihi pekan efektif ditandai; sinkron ulang dari PROTA.
+- **RPM terstruktur** (Guru Agama & Guru Umum): `perangkat_pembelajaran.tipe` + JSON `desain` dengan bagian tetap — Informasi Umum, Identifikasi (Umum), Desain Pembelajaran, Pengalaman Belajar (Awal → Memahami → Mengaplikasikan → Merefleksikan → Penutup), Asesmen Formatif & Sumatif. **CP & TP otomatis dari ATP** (tidak diisi ulang); bagian fondasi lama tetap dipertahankan lewat merge.
+- **Guru serumpun**: RPM untuk mapel & tahun ajaran sama dapat **dilihat dan dicetak bersama** (badge *Serumpun*); perubahan dibatasi penyusun atau tim kurikulum.
+- **Cetak PDF 6 dokumen** (Kaldik, Pekan Efektif, ATP, PROTA, PROSEM, RPM) via Dompdf dengan template A4 resmi: kop identitas satuan pendidikan (nama/alamat/NPSN/logo), identitas guru/mapel/kelas/tahun ajaran, tabel tidak terpotong, nomor halaman, dan area tanda tangan (Kepala Satuan Pendidikan memakai `principal_name`/`principal_nip`).
+- Migrasi additive `2026_10_09_140000` (`perangkat_pembelajaran.tipe`, `prota`, `prota_items`, `prosem`, `prosem_items`).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.
 - `tests/Feature/TeacherQrScanControllerTest.php` — diperbarui agar berjalan di SQLite (snapshot permission + `Event::fake` terarah).
 - `tests/Feature/KaldikPekanEfektifTest.php` — pembagian semester, generate pekan efektif dari kalender (minggu/hari/libur/ujian), alokasi JP efektif, policy pengelolaan (Super Admin/Pimpinan vs Satuan Pendidikan/Guru), halaman pekan efektif untuk Guru & Satuan Pendidikan.
 - `tests/Feature/KurikulumPembelajaranTest.php` — rantai Kalender → Pekan Efektif → JP Efektif → CP → TP → ATP → Perangkat: fallback JP berjenjang, hub kurikulum, akses CP/TP (tim kurikulum vs guru mapel), urutan TP, indikator alokasi ATP (kurang/pas/lebih), desain Pembelajaran Mendalam perangkat, render semua halaman.
+- `tests/Feature/ProtaProsemRpmTest.php` — PROTA dari ATP+Pekan Efektif (snapshot & indikator perlu diperbarui + sinkron), PROSEM distribusi pekan/bulan (libur dilewati, pekan ujian ditandai), RPM terstruktur umum vs agama, akses serumpun (lihat vs ubah), dan **cetak PDF 6 dokumen** (content-type `application/pdf` + magic bytes `%PDF`).
 - Smoke MySQL untuk setiap modul dilakukan dengan data sementara yang selalu dibersihkan.

@@ -8,12 +8,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * Perangkat Pembelajaran — fondasi perencanaan pembelajaran turunan ATP.
+ * Perangkat Pembelajaran / RPM (Rencana Pembelajaran Mendalam).
  *
- * Desain pembelajarannya dirancang mengikuti prinsip Pembelajaran Mendalam:
- * berkesadaran (pertanyaan pemantik, pemahaman bermakna), bermakna
- * (konteks nyata, asesmen), dan menggembirakan (pengalaman memahami →
- * mengaplikasi → merefleksi, diferensiasi).
+ * Data terstruktur (JSON `desain`) dengan dua varian sesuai kebutuhan guru:
+ *  - TIPE_AGAMA : Desain (TP, Model, Kemitraan, Lingkungan, Digital),
+ *                 Pengalaman Belajar (Awal→Memahami→Mengaplikasi→Merefleksi→Penutup),
+ *                 Asesmen Formatif & Sumatif.
+ *  - TIPE_UMUM  : Identifikasi (Peserta Didik, Materi, Profil Lulusan),
+ *                 Desain (CP, Topik, Lintas Disiplin, TP, Praktik Pedagogik,
+ *                 Kemitraan, Lingkungan, Digital), Pengalaman Belajar, Asesmen.
+ *
+ * CP & TP tidak diinput ulang — dibaca dari ATP/TP yang sama.
+ * Desain lama (fondasi Pembelajaran Mendalam) tetap dipertahankan.
  */
 class PerangkatPembelajaran extends Model
 {
@@ -34,10 +40,17 @@ class PerangkatPembelajaran extends Model
         self::STATUS_FINAL => 'Final',
     ];
 
+    const TIPE_UMUM = 'umum';
+
+    const TIPE_AGAMA = 'agama';
+
+    const TIPE_OPTIONS = [
+        self::TIPE_AGAMA => 'Guru Agama (RPM Agama)',
+        self::TIPE_UMUM => 'Guru Umum (RPM Umum)',
+    ];
+
     /**
-     * Bagian desain pembelajaran (kunci JSON `desain` → label tampilan).
-     * Struktur ini yang memastikan dimensi pembelajaran mendalam melekat
-     * di perencanaan, bukan sekadar field bernama "pembelajaran mendalam".
+     * Fondasi Pembelajaran Mendalam (legacy, tetap didukung).
      */
     const DESAIN_SECTIONS = [
         'pertanyaan_pemantik' => 'Pertanyaan Pemantik',
@@ -50,6 +63,86 @@ class PerangkatPembelajaran extends Model
         'asesmen_sumatif' => 'Asesmen Sumatif',
         'diferensiasi' => 'Diferensiasi',
         'media_sumber' => 'Media & Sumber Belajar',
+    ];
+
+    /** Bagian yang hanya ada di struktur lama (tetap dipertahankan bila terisi). */
+    const LEGACY_ONLY_SECTIONS = [
+        'pertanyaan_pemantik' => 'Pertanyaan Pemantik',
+        'pemahaman_bermakna' => 'Pemahaman Bermakna',
+        'konteks_nyata' => 'Koneksi Konteks Nyata',
+        'diferensiasi' => 'Diferensiasi',
+        'media_sumber' => 'Media & Sumber Belajar',
+    ];
+
+    const SECTIONS_RPM = [
+        'model_pembelajaran' => 'Model Pembelajaran',
+        'kemitraan_pembelajaran' => 'Kemitraan Pembelajaran',
+        'lingkungan_pembelajaran' => 'Lingkungan Pembelajaran',
+        'pemanfaatan_digital' => 'Pemanfaatan Digital',
+        'kegiatan_awal' => 'Kegiatan Awal',
+        'pengalaman_memahami' => 'Memahami',
+        'pengalaman_mengaplikasi' => 'Mengaplikasikan',
+        'pengalaman_refleksi' => 'Merefleksikan',
+        'penutup' => 'Penutup',
+        'asesmen_formatif' => 'Asesmen Formatif',
+        'asesmen_sumatif' => 'Asesmen Sumatif',
+        'identifikasi_peserta_didik' => 'Peserta Didik',
+        'identifikasi_materi' => 'Materi',
+        'profil_lulusan' => 'Profil Lulusan',
+        'topik' => 'Topik',
+        'lintas_disiplin' => 'Lintas Disiplin Ilmu',
+        'praktik_pedagogik' => 'Praktik Pedagogik',
+    ];
+
+    /**
+     * Grup tampilan per tipe RPM (dipakai form & cetak PDF).
+     */
+    const GROUPS_AGAMA = [
+        'desain' => [
+            'label' => 'Desain Pembelajaran',
+            'icon' => 'ri-focus-3-line',
+            'desc' => 'Tujuan Pembelajaran diambil dari ATP; lengkapi model, kemitraan, lingkungan, dan pemanfaatan digital.',
+            'keys' => ['model_pembelajaran', 'kemitraan_pembelajaran', 'lingkungan_pembelajaran', 'pemanfaatan_digital'],
+        ],
+        'pengalaman' => [
+            'label' => 'Pengalaman Belajar',
+            'icon' => 'ri-compasses-2-line',
+            'desc' => 'Kegiatan awal → memahami → mengaplikasikan → merefleksikan → penutup.',
+            'keys' => ['kegiatan_awal', 'pengalaman_memahami', 'pengalaman_mengaplikasi', 'pengalaman_refleksi', 'penutup'],
+        ],
+        'asesmen' => [
+            'label' => 'Asesmen Formatif dan Sumatif',
+            'icon' => 'ri-draft-line',
+            'desc' => 'Rencana asesmen selama dan di akhir pembelajaran.',
+            'keys' => ['asesmen_formatif', 'asesmen_sumatif'],
+        ],
+    ];
+
+    const GROUPS_UMUM = [
+        'identifikasi' => [
+            'label' => 'Identifikasi',
+            'icon' => 'ri-search-eye-line',
+            'desc' => 'Peserta didik, materi, dan profil lulusan yang disasar.',
+            'keys' => ['identifikasi_peserta_didik', 'identifikasi_materi', 'profil_lulusan'],
+        ],
+        'desain' => [
+            'label' => 'Desain Pembelajaran',
+            'icon' => 'ri-focus-3-line',
+            'desc' => 'CP & TP diambil dari ATP; lengkapi topik, lintas disiplin, praktik pedagogik, kemitraan, lingkungan, dan digital.',
+            'keys' => ['topik', 'lintas_disiplin', 'praktik_pedagogik', 'model_pembelajaran', 'kemitraan_pembelajaran', 'lingkungan_pembelajaran', 'pemanfaatan_digital'],
+        ],
+        'pengalaman' => [
+            'label' => 'Pengalaman Belajar',
+            'icon' => 'ri-compasses-2-line',
+            'desc' => 'Kegiatan awal → memahami → mengaplikasikan → merefleksikan → penutup.',
+            'keys' => ['kegiatan_awal', 'pengalaman_memahami', 'pengalaman_mengaplikasi', 'pengalaman_refleksi', 'penutup'],
+        ],
+        'asesmen' => [
+            'label' => 'Asesmen Formatif dan Sumatif',
+            'icon' => 'ri-draft-line',
+            'desc' => 'Rencana asesmen selama dan di akhir pembelajaran.',
+            'keys' => ['asesmen_formatif', 'asesmen_sumatif'],
+        ],
     ];
 
     protected static function boot()
@@ -69,6 +162,7 @@ class PerangkatPembelajaran extends Model
         'atp_id',
         'teacher_id',
         'judul',
+        'tipe',
         'status',
         'desain',
         'catatan',
@@ -124,13 +218,55 @@ class PerangkatPembelajaran extends Model
     // ── Helpers ──────────────────────────────────────────────────────
 
     /**
-     * Desain default dengan seluruh bagian Pembelajaran Mendalam.
+     * Semua kunci desain yang dikenal sistem.
+     *
+     * @return array<int, string>
+     */
+    public static function allDesainKeys(): array
+    {
+        return array_values(array_unique(array_merge(
+            array_keys(self::DESAIN_SECTIONS),
+            array_keys(self::SECTIONS_RPM),
+        )));
+    }
+
+    /**
+     * Grup tampilan sesuai tipe RPM.
+     */
+    public function groups(): array
+    {
+        return $this->tipe === self::TIPE_AGAMA ? self::GROUPS_AGAMA : self::GROUPS_UMUM;
+    }
+
+    /**
+     * Desain default dengan seluruh bagian dikenal.
      *
      * @return array<string, string|null>
      */
     public static function defaultDesain(): array
     {
-        return array_fill_keys(array_keys(self::DESAIN_SECTIONS), null);
+        return array_fill_keys(self::allDesainKeys(), null);
+    }
+
+    /**
+     * Gabungkan input desain dengan nilai lama — hanya kunci dikenal yang
+     * diperbarui, kunci lain (termasuk bagian legacy yang terisi) tetap utuh.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, string|null>
+     */
+    public function mergeDesain(array $input): array
+    {
+        $desain = is_array($this->desain) ? $this->desain : [];
+
+        foreach ($input as $key => $value) {
+            if (! in_array($key, self::allDesainKeys(), true)) {
+                continue;
+            }
+            $desain[$key] = filled($value) ? (string) $value : null;
+        }
+
+        return $desain;
     }
 
     /**
@@ -141,6 +277,24 @@ class PerangkatPembelajaran extends Model
         $desain = $this->desain ?? [];
 
         return filled($desain[$key] ?? null) ? (string) $desain[$key] : null;
+    }
+
+    /**
+     * Bagian legacy yang masih terisi (ditampilkan agar tidak hilang).
+     *
+     * @return array<string, string>
+     */
+    public function legacyFilledSections(): array
+    {
+        $filled = [];
+
+        foreach (self::LEGACY_ONLY_SECTIONS as $key => $label) {
+            if ($this->desainValue($key)) {
+                $filled[$key] = $label;
+            }
+        }
+
+        return $filled;
     }
 
     public function scopeBySchool($query, ?string $schoolId)

@@ -22,6 +22,9 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('user.kurikulum.cetak.atp', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
+                <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
+            </a>
             <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'atp_id' => $atp->id, 'academic_year_id' => $atp->academic_year_id, 'semester' => $atp->semester]) }}"
                class="btn btn-soft-primary btn-sm">
                 <i class="ri-booklet-line align-bottom me-1"></i> Perangkat ({{ $perangkatCount }})

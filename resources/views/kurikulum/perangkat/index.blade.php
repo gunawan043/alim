@@ -12,11 +12,14 @@
 
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
-            <h4 class="mb-1">Perangkat Pembelajaran</h4>
-            <p class="text-muted mb-0 small">Disiapkan dari ATP: kelas, mapel, guru, dan JP efektif yang sama — dengan desain Pembelajaran Mendalam.</p>
+            <h4 class="mb-1">RPM / Perangkat Pembelajaran</h4>
+            <p class="text-muted mb-0 small">
+                Disiapkan dari ATP: kelas, mapel, guru, CP/TP, dan JP efektif yang sama.
+                RPM untuk mapel &amp; jenjang/fase sama dapat dilihat bersama oleh guru serumpun.
+            </p>
         </div>
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#perangkat-modal">
-            <i class="ri-add-line align-bottom me-1"></i> Buat Perangkat
+            <i class="ri-add-line align-bottom me-1"></i> Buat RPM
         </button>
     </div>
 
@@ -80,18 +83,33 @@
                         <th>Mapel</th>
                         <th>Kelas</th>
                         <th>Guru</th>
+                        <th class="text-center">Tipe</th>
                         <th class="text-center">ATP</th>
                         <th class="text-center">Status</th>
-                        <th class="text-end" style="width:150px">Aksi</th>
+                        <th class="text-end" style="width:180px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($perangkatList as $perangkat)
+                        @php
+                            $isOwner = $perangkat->teacher_id === $userId || $perangkat->created_by === $userId;
+                            $isSerumpun = ! $isOwner && in_array($perangkat->subject_id, $mySubjectIds ?? [], true);
+                        @endphp
                         <tr>
                             <td class="fw-medium">{{ $perangkat->judul }}</td>
-                            <td>{{ $perangkat->subject?->name ?? '-' }}</td>
+                            <td>
+                                {{ $perangkat->subject?->name ?? '-' }}
+                                @if($isSerumpun)
+                                    <span class="badge bg-info-subtle text-info ms-1" title="RPM bersama untuk mapel & jenjang/fase yang sama">Serumpun</span>
+                                @endif
+                            </td>
                             <td>{{ $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? '—' }}</td>
                             <td class="small">{{ $perangkat->teacher?->name ?? '—' }}</td>
+                            <td class="text-center">
+                                <span class="badge {{ $perangkat->tipe === 'agama' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary' }}">
+                                    {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
+                                </span>
+                            </td>
                             <td class="text-center">
                                 @if($perangkat->atp)
                                     <span class="badge bg-secondary-subtle text-secondary">{{ $perangkat->atp->total_jp }} JP</span>
@@ -108,16 +126,21 @@
                                 <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
                                     <i class="ri-eye-line"></i>
                                 </a>
-                                <form action="{{ route('user.kurikulum.perangkat.destroy', ['userId' => $userId, 'id' => $perangkat->id]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Hapus perangkat ini?');">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
-                                </form>
+                                <a href="{{ route('user.kurikulum.cetak.rpm', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
+                                    <i class="ri-printer-line"></i>
+                                </a>
+                                @if($isOwner)
+                                    <form action="{{ route('user.kurikulum.perangkat.destroy', ['userId' => $userId, 'id' => $perangkat->id]) }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Hapus perangkat ini?');">
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <div class="text-muted">
                                     <i class="ri-booklet-line fs-1 d-block mb-2"></i>
                                     Belum ada perangkat. Buat dari ATP yang sudah tersusun.
@@ -165,6 +188,15 @@
                                 <div class="col-md-12">
                                     <label class="form-label">Judul Perangkat <span class="text-danger">*</span></label>
                                     <input type="text" name="judul" id="perangkat-judul" class="form-control" required maxlength="255">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Struktur RPM <span class="text-danger">*</span></label>
+                                    <select name="tipe" class="form-select" required>
+                                        @foreach(\App\Models\PerangkatPembelajaran::TIPE_OPTIONS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Guru Agama &amp; Guru Umum memiliki struktur RPM yang berbeda — pilih sesuai kebutuhan.</small>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="form-label">Kelas</label>

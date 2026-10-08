@@ -36,6 +36,10 @@
                 <input type="hidden" name="study_group_id" value="{{ $selectedGroup->id }}">
             @endif
             <button type="submit" class="btn btn-primary btn-sm"><i class="ri-search-line align-bottom me-1"></i> Tampilkan</button>
+            <a href="{{ route('user.kurikulum.cetak.pekan-efektif', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
+               target="_blank" class="btn btn-soft-secondary btn-sm">
+                <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
+            </a>
         </form>
     </div>
 

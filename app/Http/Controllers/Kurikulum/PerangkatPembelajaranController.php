@@ -53,6 +53,17 @@ class PerangkatPembelajaranController extends Controller
 
         $isKurikulumTeam = $this->access->isKurikulumTeam($user);
 
+        // Mapel yang diampu user — untuk badge "serumpun" di daftar.
+        $mySubjectIds = TeachingAssignment::query()
+            ->where('teacher_id', $user->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('status', 'active')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->pluck('subject_id')
+            ->unique()
+            ->values()
+            ->all();
+
         // ATP yang boleh dipakai user: semua (tim kurikulum) atau mapel yang diampu.
         $atpQuery = AlurTujuanPembelajaran::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name'])
@@ -98,7 +109,8 @@ class PerangkatPembelajaranController extends Controller
             'atpOptions',
             'studyGroups',
             'subjects',
-            'isKurikulumTeam'
+            'isKurikulumTeam',
+            'mySubjectIds'
         ));
     }
 
@@ -110,6 +122,7 @@ class PerangkatPembelajaranController extends Controller
             'atp_id' => 'required|exists:alur_tujuan_pembelajaran,id',
             'study_group_id' => 'nullable|exists:study_groups,id',
             'judul' => 'required|string|max:255',
+            'tipe' => 'nullable|in:umum,agama',
             'catatan' => 'nullable|string|max:2000',
         ]);
 
@@ -126,6 +139,7 @@ class PerangkatPembelajaranController extends Controller
             'atp_id' => $atp->id,
             'teacher_id' => $request->user()->id,
             'judul' => $validated['judul'],
+            'tipe' => $validated['tipe'] ?? PerangkatPembelajaran::TIPE_UMUM,
             'status' => PerangkatPembelajaran::STATUS_DRAFT,
             'desain' => PerangkatPembelajaran::defaultDesain(),
             'catatan' => $validated['catatan'] ?? null,
@@ -144,10 +158,9 @@ class PerangkatPembelajaranController extends Controller
             'atp.items.tujuanPembelajaran',
         ])->findOrFail($id);
 
+        $this->authorizeView($request, $perangkat);
+
         $schoolId = $request->attributes->get('schoolContextId');
-        if ($schoolId && $perangkat->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
-        }
 
         $studyGroups = StudyGroup::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -155,47 +168,46 @@ class PerangkatPembelajaranController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('kurikulum.perangkat.show', compact('userId', 'perangkat', 'studyGroups'));
+        $isOwner = $this->isOwner($request, $perangkat);
+        $canEdit = $isOwner || $this->access->isKurikulumTeam($request->user());
+
+        return view('kurikulum.perangkat.show', compact('userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit'));
     }
 
     public function update(Request $request, string $userId, string $id)
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
-        $schoolId = $request->attributes->get('schoolContextId');
-        $this->authorizeManage($request, $perangkat->subject_id, $perangkat->academic_year_id, $schoolId);
+        $this->authorizeEdit($request, $perangkat);
 
         $validated = $request->validate([
             'judul' => 'required|string|max:255',
             'study_group_id' => 'nullable|exists:study_groups,id',
+            'tipe' => 'nullable|in:umum,agama',
             'status' => 'required|in:draft,final',
             'catatan' => 'nullable|string|max:2000',
             'desain' => 'nullable|array',
             'desain.*' => 'nullable|string|max:5000',
         ]);
 
-        // Hanya bagian desain yang dikenal yang disimpan (struktur Pembelajaran Mendalam).
-        $desain = PerangkatPembelajaran::defaultDesain();
-        foreach (array_keys($desain) as $key) {
-            $value = $validated['desain'][$key] ?? null;
-            $desain[$key] = filled($value) ? (string) $value : null;
-        }
+        // Bagian desain yang tidak dikirim tetap dipertahankan (merge, bukan overwrite).
+        $desain = $perangkat->mergeDesain($validated['desain'] ?? []);
 
         $perangkat->update([
             'judul' => $validated['judul'],
             'study_group_id' => $validated['study_group_id'] ?? null,
+            'tipe' => $validated['tipe'] ?? $perangkat->tipe,
             'status' => $validated['status'],
             'catatan' => $validated['catatan'] ?? null,
             'desain' => $desain,
         ]);
 
-        return back()->with('success', 'Perangkat pembelajaran berhasil disimpan.');
+        return back()->with('success', 'RPM / perangkat pembelajaran berhasil disimpan.');
     }
 
     public function destroy(Request $request, string $userId, string $id)
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
-        $schoolId = $request->attributes->get('schoolContextId');
-        $this->authorizeManage($request, $perangkat->subject_id, $perangkat->academic_year_id, $schoolId);
+        $this->authorizeEdit($request, $perangkat);
 
         $perangkat->delete();
 
@@ -209,5 +221,46 @@ class PerangkatPembelajaranController extends Controller
         if (! $this->access->canManageSubject($request->user(), $subjectId, $academicYearId, $schoolId)) {
             abort(403, 'Anda tidak berwenang mengelola perangkat untuk mata pelajaran ini.');
         }
+    }
+
+    /**
+     * Lihat RPM: tim kurikulum, guru serumpun (mapel + AY sama), atau pemilik.
+     */
+    private function authorizeView(Request $request, PerangkatPembelajaran $perangkat): void
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $perangkat->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $user = $request->user();
+        $allowed = $this->access->isKurikulumTeam($user)
+            || $this->access->teachesSubject($user, $perangkat->subject_id, $perangkat->academic_year_id, $schoolId)
+            || $this->isOwner($request, $perangkat);
+
+        if (! $allowed) {
+            abort(403, 'RPM ini bukan untuk mata pelajaran yang Anda ampu.');
+        }
+    }
+
+    /**
+     * Ubah RPM: penyusun (guru pembuat/pemilik) atau tim kurikulum.
+     * Guru serumpun tetap dapat melihat & mencetak sebagai RPM bersama.
+     */
+    private function authorizeEdit(Request $request, PerangkatPembelajaran $perangkat): void
+    {
+        $this->authorizeView($request, $perangkat);
+
+        if (! $this->isOwner($request, $perangkat) && ! $this->access->isKurikulumTeam($request->user())) {
+            abort(403, 'Hanya penyusun RPM atau tim kurikulum yang dapat mengubah RPM ini.');
+        }
+    }
+
+    private function isOwner(Request $request, PerangkatPembelajaran $perangkat): bool
+    {
+        $user = $request->user();
+
+        return $perangkat->created_by === $user->id || $perangkat->teacher_id === $user->id;
     }
 }

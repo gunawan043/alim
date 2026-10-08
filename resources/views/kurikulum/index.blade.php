@@ -27,6 +27,12 @@
             <a href="{{ route('user.kurikulum.atp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="btn btn-soft-primary btn-sm">
                 <i class="ri-route-line align-bottom me-1"></i> ATP
             </a>
+            <a href="{{ route('user.kurikulum.prota.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="btn btn-soft-primary btn-sm">
+                <i class="ri-calendar-schedule-line align-bottom me-1"></i> PROTA
+            </a>
+            <a href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="btn btn-soft-primary btn-sm">
+                <i class="ri-calendar-2-line align-bottom me-1"></i> PROSEM
+            </a>
             <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="btn btn-primary btn-sm">
                 <i class="ri-booklet-line align-bottom me-1"></i> Perangkat
             </a>
