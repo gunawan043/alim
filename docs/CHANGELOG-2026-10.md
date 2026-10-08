@@ -94,6 +94,15 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **Cetak PDF 6 dokumen** (Kaldik, Pekan Efektif, ATP, PROTA, PROSEM, RPM) via Dompdf dengan template A4 resmi: kop identitas satuan pendidikan (nama/alamat/NPSN/logo), identitas guru/mapel/kelas/tahun ajaran, tabel tidak terpotong, nomor halaman, dan area tanda tangan (Kepala Satuan Pendidikan memakai `principal_name`/`principal_nip`).
 - Migrasi additive `2026_10_09_140000` (`perangkat_pembelajaran.tipe`, `prota`, `prota_items`, `prosem`, `prosem_items`).
 
+## 15. Pelaksanaan Pembelajaran — Jurnal → Realisasi TP/ATP → Asesmen → Buku Administrasi
+- **Jurnal Pembelajaran (wizard2 Buku Administrasi)** kini terhubung ke rencana: `prosem_item_id`, `perangkat_pembelajaran_id`, `tujuan_pembelajaran_id` (migrasi additive `2026_10_09_160000`). TP terisi **otomatis** dari item PROSEM; RPM dapat dipilih; tanda tangan guru kini benar-benar tersimpan.
+- Validasi konsistensi: rencana/TP/RPM yang dipilih harus satu mapel + tahun ajaran + semester dengan Buku Administrasi (mencegah salah tempel).
+- Halaman Jurnal menampilkan **kartu realisasi** (TP terealisasi X/Y, jumlah pertemuan, status formatif & sumatif) + **saran pekan otomatis** dari tanggal pertemuan via Pekan Efektif; riwayat menampilkan TP, rencana pekan, dan RPM yang digunakan.
+- **Halaman baru Realisasi Pembelajaran** (`/kurikulum/realisasi`): progres realisasi TP per Buku Administrasi (kelas & mapel), status asesmen formatif/sumatif, tindak lanjut langsung ke Jurnal/Formatif/Sumatif, plus **cakupan ATP lintas kelas** (tim kurikulum melihat semua kelas; guru hanya bukunya).
+- PROSEM show: kolom **Realisasi** (jumlah pertemuan & kelas dari jurnal). ATP show: kolom **Realisasi** per TP.
+- Rantai lengkap siap pakai: RPM/PROSEM → Jurnal → realisasi TP/ATP → asesmen formatif/sumatif → Buku Administrasi → Leger → Rapor (modul existing).
+- Test: `PelaksanaanPembelajaranTest` 6 test/31 assertion; total **75 test / 544 assertion** lulus.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

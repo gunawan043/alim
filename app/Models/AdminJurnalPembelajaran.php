@@ -22,6 +22,7 @@ class AdminJurnalPembelajaran extends Model
 
     protected $fillable = [
         'admin_book_id', 'academic_year_id', 'semester',
+        'prosem_item_id', 'perangkat_pembelajaran_id', 'tujuan_pembelajaran_id',
         'meeting_number', 'meeting_date', 'time_in', 'time_out',
         'material', 'teacher_signature', 'class_leader_signature',
     ];
@@ -40,5 +41,20 @@ class AdminJurnalPembelajaran extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
+    }
+
+    public function prosemItem(): BelongsTo
+    {
+        return $this->belongsTo(ProsemItem::class, 'prosem_item_id');
+    }
+
+    public function perangkat(): BelongsTo
+    {
+        return $this->belongsTo(PerangkatPembelajaran::class, 'perangkat_pembelajaran_id');
+    }
+
+    public function tujuanPembelajaran(): BelongsTo
+    {
+        return $this->belongsTo(TujuanPembelajaran::class, 'tujuan_pembelajaran_id');
     }
 }

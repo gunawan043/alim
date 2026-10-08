@@ -145,6 +145,7 @@
                     <tr>
                         <th class="text-center" style="width:120px">Urutan</th>
                         <th>TP</th>
+                        <th class="text-center" style="width:110px">Realisasi</th>
                         <th style="width:300px">Alokasi JP &amp; Catatan</th>
                         <th class="text-end" style="width:70px">Aksi</th>
                     </tr>
@@ -170,6 +171,14 @@
                                 <div class="small mt-1">{{ $item->tujuanPembelajaran?->deskripsi }}</div>
                                 @if($item->tujuanPembelajaran?->elemen)
                                     <div class="small text-muted"><i class="ri-price-tag-3-line me-1"></i>{{ $item->tujuanPembelajaran->elemen }}</div>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @php $realisasi = (int) ($realisasiByTp[$item->tujuan_pembelajaran_id] ?? 0); @endphp
+                                @if($realisasi > 0)
+                                    <span class="badge bg-success-subtle text-success" title="Jumlah jurnal pertemuan yang mencatat TP ini">{{ $realisasi }}×</span>
+                                @else
+                                    <span class="text-muted small">Belum</span>
                                 @endif
                             </td>
                             <td>

@@ -6,12 +6,18 @@ use App\Models\AdminCatatanGuru;
 use App\Models\AdminJurnalPembelajaran;
 use App\Models\AdminPresensiMapel;
 use App\Models\AdminPresensiSiswa;
+use App\Models\AlurTujuanPembelajaran;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
+use App\Models\PekanEfektif;
 use App\Models\PenghargaanAkademik;
+use App\Models\PerangkatPembelajaran;
+use App\Models\Prosem;
+use App\Models\ProsemItem;
 use App\Models\StudentClassHistory;
 use App\Models\Subject;
 use App\Models\TeacherAdminBook;
+use App\Models\TujuanPembelajaran;
 use App\Models\User;
 use App\Services\SumatifHarianService;
 use Carbon\Carbon;
@@ -291,6 +297,7 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId);
         $schoolId = $request->attributes->get('schoolContextId');
+        $adminBook = $book['adminBook'];
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -298,11 +305,38 @@ class NilaiGuruController extends Controller
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
-        $journals = AdminJurnalPembelajaran::where('admin_book_id', $book['adminBook']->id)
+        $journals = AdminJurnalPembelajaran::with([
+            'tujuanPembelajaran:id,kode_tp,deskripsi',
+            'perangkat:id,judul',
+            'prosemItem:id,mulai_minggu_ke,selesai_minggu_ke',
+        ])
+            ->where('admin_book_id', $adminBook->id)
             ->orderBy('meeting_number', 'asc')
             ->get();
 
-        return view('nilai-guru.wizard2', compact('userId', 'book', 'books', 'journals'));
+        // Konteks rencana: ATP/TP, PROSEM, RPM, pekan efektif (satu sumber).
+        $plan = $this->planContextForBook($adminBook);
+
+        $realizedTpIds = $journals->pluck('tujuan_pembelajaran_id')->filter()->unique()->values();
+        $plannedTpCount = $plan['tps']->count();
+        $realizedCount = $realizedTpIds->count();
+        $progress = $plannedTpCount > 0 ? (int) round($realizedCount / $plannedTpCount * 100) : 0;
+
+        $formatifCount = NilaiFormatif::where('admin_book_id', $adminBook->id)->count();
+        $sumatifCount = NilaiSumatif::where('admin_book_id', $adminBook->id)->count();
+
+        return view('nilai-guru.wizard2', compact(
+            'userId',
+            'book',
+            'books',
+            'journals',
+            'plan',
+            'progress',
+            'realizedCount',
+            'plannedTpCount',
+            'formatifCount',
+            'sumatifCount'
+        ));
     }
 
     public function wizard2Store(Request $request, string $userId, string $adminBookId)
@@ -310,22 +344,73 @@ class NilaiGuruController extends Controller
         $request->validate([
             'meeting_number' => 'required|integer|min:1',
             'meeting_date' => 'required|date',
+            'time_in' => 'nullable',
+            'time_out' => 'nullable',
+            'material' => 'nullable|string|max:5000',
+            'prosem_item_id' => 'nullable|exists:prosem_items,id',
+            'perangkat_pembelajaran_id' => 'nullable|exists:perangkat_pembelajaran,id',
+            'tujuan_pembelajaran_id' => 'nullable|exists:tujuan_pembelajaran,id',
         ]);
 
         $book = $this->loadAdminBook($userId, $adminBookId);
+        $adminBook = $book['adminBook'];
+        $semester = $adminBook->semester;
+
+        $tpId = $request->tujuan_pembelajaran_id;
+        $prosemItemId = $request->prosem_item_id;
+
+        // Konsistensi rencana dengan buku administrasi (mapel/TA/semester).
+        if ($prosemItemId) {
+            $prosemItem = ProsemItem::with('prosem')->find($prosemItemId);
+
+            if (! $prosemItem || ! $prosemItem->prosem
+                || $prosemItem->prosem->subject_id !== $adminBook->subject_id
+                || $prosemItem->prosem->academic_year_id !== $adminBook->academic_year_id
+                || $prosemItem->prosem->semester !== $semester) {
+                return back()->withInput()->with('error', 'Rencana PROSEM yang dipilih bukan untuk mapel/tahun ajaran ini.');
+            }
+
+            $tpId = $tpId ?: $prosemItem->tujuan_pembelajaran_id;
+        }
+
+        if ($tpId) {
+            $tp = TujuanPembelajaran::find($tpId);
+
+            if (! $tp
+                || $tp->subject_id !== $adminBook->subject_id
+                || $tp->academic_year_id !== $adminBook->academic_year_id
+                || $tp->semester !== $semester) {
+                return back()->withInput()->with('error', 'TP yang dipilih bukan untuk mapel/tahun ajaran/semester ini.');
+            }
+        }
+
+        if ($request->perangkat_pembelajaran_id) {
+            $rpm = PerangkatPembelajaran::find($request->perangkat_pembelajaran_id);
+
+            if (! $rpm
+                || $rpm->subject_id !== $adminBook->subject_id
+                || $rpm->academic_year_id !== $adminBook->academic_year_id
+                || $rpm->semester !== $semester) {
+                return back()->withInput()->with('error', 'RPM yang dipilih bukan untuk mapel/tahun ajaran/semester ini.');
+            }
+        }
 
         AdminJurnalPembelajaran::updateOrCreate(
             [
-                'admin_book_id' => $book['adminBook']->id,
+                'admin_book_id' => $adminBook->id,
                 'meeting_number' => (int) $request->meeting_number,
-                'semester' => $book['adminBook']->semester,
+                'semester' => $semester,
             ],
             [
-                'academic_year_id' => $book['adminBook']->academic_year_id,
+                'academic_year_id' => $adminBook->academic_year_id,
                 'meeting_date' => $request->meeting_date,
                 'time_in' => $request->time_in ?? null,
                 'time_out' => $request->time_out ?? null,
                 'material' => $request->material ?? null,
+                'prosem_item_id' => $prosemItemId ?: null,
+                'perangkat_pembelajaran_id' => $request->perangkat_pembelajaran_id ?: null,
+                'tujuan_pembelajaran_id' => $tpId ?: null,
+                'teacher_signature' => $request->teacher_signature ? 'Terverifikasi' : null,
             ]
         );
 
@@ -831,6 +916,88 @@ class NilaiGuruController extends Controller
     // ══════════════════════════════════════════════════════════════════
     // HELPER — load admin book
     // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Konteks rencana pembelajaran untuk satu buku administrasi:
+     * ATP/TP, PROSEM (distribusi pekan), RPM, dan pekan efektif.
+     * Semua dari sumber data yang sama (Kalender → Pekan Efektif → ATP → PROSEM → RPM).
+     *
+     * @return array<string, mixed>
+     */
+    private function planContextForBook(TeacherAdminBook $adminBook): array
+    {
+        $semester = $adminBook->semester === 'genap' ? 'genap' : 'ganjil';
+        $gradeLevelId = $adminBook->studyGroup?->grade_level_id;
+
+        $atp = AlurTujuanPembelajaran::query()
+            ->where('school_id', $adminBook->school_id)
+            ->where('academic_year_id', $adminBook->academic_year_id)
+            ->where('semester', $semester)
+            ->where('subject_id', $adminBook->subject_id)
+            ->when($gradeLevelId, fn ($q) => $q->where('grade_level_id', $gradeLevelId), fn ($q) => $q->whereNull('grade_level_id'))
+            ->first();
+
+        $tps = collect();
+
+        if ($atp) {
+            $tps = $atp->items()->with('tujuanPembelajaran')->get()
+                ->map->tujuanPembelajaran->filter()->values();
+        }
+
+        if ($tps->isEmpty()) {
+            $tps = TujuanPembelajaran::query()
+                ->active()
+                ->bySchool($adminBook->school_id)
+                ->byAcademicYear($adminBook->academic_year_id)
+                ->bySemester($semester)
+                ->where('subject_id', $adminBook->subject_id)
+                ->when($gradeLevelId, function ($q) use ($gradeLevelId) {
+                    $q->where(function ($q2) use ($gradeLevelId) {
+                        $q2->where('grade_level_id', $gradeLevelId)->orWhereNull('grade_level_id');
+                    });
+                })
+                ->orderBy('urutan')
+                ->orderBy('kode_tp')
+                ->get();
+        }
+
+        $prosem = Prosem::query()
+            ->where('school_id', $adminBook->school_id)
+            ->where('academic_year_id', $adminBook->academic_year_id)
+            ->where('semester', $semester)
+            ->where('subject_id', $adminBook->subject_id)
+            ->when($gradeLevelId, fn ($q) => $q->where('grade_level_id', $gradeLevelId), fn ($q) => $q->whereNull('grade_level_id'))
+            ->first();
+
+        $prosemItems = $prosem
+            ? $prosem->items()->with('tujuanPembelajaran:id,kode_tp,deskripsi')->orderBy('urutan')->get()
+            : collect();
+
+        // Pekan efektif (hari efektif > 0) — untuk saran pekan berdasarkan tanggal.
+        $semesterInt = $semester === 'genap' ? 2 : 1;
+        $weeks = PekanEfektif::query()
+            ->bySchool($adminBook->school_id)
+            ->byAcademicYear($adminBook->academic_year_id)
+            ->bySemester($semesterInt)
+            ->where('jumlah_hari', '>', 0)
+            ->orderBy('minggu_ke')
+            ->get(['minggu_ke', 'tanggal_mulai', 'tanggal_selesai', 'jenis', 'jumlah_hari']);
+
+        $rpmOptions = PerangkatPembelajaran::query()
+            ->where('school_id', $adminBook->school_id)
+            ->where('academic_year_id', $adminBook->academic_year_id)
+            ->where('semester', $semester)
+            ->where('subject_id', $adminBook->subject_id)
+            ->when($gradeLevelId, function ($q) use ($gradeLevelId) {
+                $q->where(function ($q2) use ($gradeLevelId) {
+                    $q2->where('grade_level_id', $gradeLevelId)->orWhereNull('grade_level_id');
+                });
+            })
+            ->orderBy('judul')
+            ->get(['id', 'judul', 'tipe', 'teacher_id']);
+
+        return compact('atp', 'tps', 'prosem', 'prosemItems', 'weeks', 'rpmOptions');
+    }
 
     private function loadAdminBook(string $userId, string $adminBookId): array
     {

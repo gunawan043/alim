@@ -472,6 +472,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
+                        Realisasi Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
                         RPM / Perangkat
@@ -668,6 +674,12 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.prosem.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId]) }}">
                         PROSEM
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
+                        Realisasi Pembelajaran
                     </a>
                 </li>
                 <li class="nav-item">

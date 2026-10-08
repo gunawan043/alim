@@ -129,6 +129,7 @@ function isActivePimpinan($routeName, $pattern) {
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.atp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">ATP</a></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.prota.') ? ' active' : '' }}" href="{{ route('user.kurikulum.prota.index', ['userId' => $userId]) }}" style="font-size:0.85rem">PROTA</a></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.prosem.') ? ' active' : '' }}" href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId]) }}" style="font-size:0.85rem">PROSEM</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.realisasi.') ? ' active' : '' }}" href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Realisasi Pembelajaran</a></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.perangkat.') ? ' active' : '' }}" href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Perangkat Pembelajaran</a></li>
         </ul>
     </div>

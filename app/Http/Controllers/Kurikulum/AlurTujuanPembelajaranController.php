@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Kurikulum;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\AdminJurnalPembelajaran;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\AlurTujuanPembelajaranItem;
 use App\Models\GradeLevel;
@@ -190,6 +191,13 @@ class AlurTujuanPembelajaranController extends Controller
 
         $perangkatCount = PerangkatPembelajaran::where('atp_id', $atp->id)->count();
 
+        // Realisasi dari jurnal pertemuan (Pelaksanaan Pembelajaran).
+        $realisasiByTp = AdminJurnalPembelajaran::query()
+            ->whereIn('tujuan_pembelajaran_id', $atp->items->pluck('tujuan_pembelajaran_id')->filter()->values())
+            ->selectRaw('tujuan_pembelajaran_id, COUNT(*) as total')
+            ->groupBy('tujuan_pembelajaran_id')
+            ->pluck('total', 'tujuan_pembelajaran_id');
+
         $teachers = User::query()
             ->when($schoolId ?? $atp->school_id, function ($q, $sid) {
                 $q->whereHas('employments', fn ($q2) => $q2->where('school_id', $sid));
@@ -209,6 +217,7 @@ class AlurTujuanPembelajaranController extends Controller
             'statusAlokasi',
             'availableTps',
             'perangkatCount',
+            'realisasiByTp',
             'teachers'
         ));
     }

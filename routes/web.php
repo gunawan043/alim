@@ -216,6 +216,7 @@ use App\Http\Controllers\Kurikulum\KurikulumController;
 use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
 use App\Http\Controllers\Kurikulum\ProsemController;
 use App\Http\Controllers\Kurikulum\ProtaController;
+use App\Http\Controllers\Kurikulum\RealisasiPembelajaranController;
 use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
@@ -658,6 +659,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [ProsemController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/sync', [ProsemController::class, 'sync'])->name('sync');
                 });
+
+                // ── REALISASI PEMBELAJARAN (Jurnal → TP/ATP → Asesmen) ──
+                Route::get('/realisasi', [RealisasiPembelajaranController::class, 'index'])->name('realisasi.index');
 
                 // ── CETAK PDF DOKUMEN KURIKULUM ───────────────────
                 Route::prefix('cetak')->name('cetak.')->group(function () {

@@ -182,6 +182,7 @@
                         <th class="text-center" style="width:80px">JP</th>
                         <th style="width:200px">Bulan</th>
                         <th style="width:140px">Pekan Ke</th>
+                        <th style="width:140px">Realisasi</th>
                         <th>Keterangan</th>
                     </tr>
                 </thead>
@@ -196,6 +197,7 @@
                             $pekan = $item->mulai_minggu_ke > 0
                                 ? 'Pekan '.$item->mulai_minggu_ke.($item->selesai_minggu_ke > $item->mulai_minggu_ke ? '–'.$item->selesai_minggu_ke : '')
                                 : '—';
+                            $rc = $realisasiCounts[$item->id] ?? null;
                         @endphp
                         <tr>
                             <td class="text-center">{{ $item->urutan }}</td>
@@ -208,11 +210,19 @@
                             <td class="text-center fw-semibold">{{ $item->jp }}</td>
                             <td class="small">{{ $bulan }}</td>
                             <td class="small">{{ $pekan }}</td>
+                            <td class="small">
+                                @if($rc)
+                                    <span class="badge bg-success-subtle text-success">{{ $rc->total }} pertemuan</span>
+                                    <span class="text-muted">· {{ $rc->books }} kelas</span>
+                                @else
+                                    <span class="text-muted">Belum tercatat</span>
+                                @endif
+                            </td>
                             <td class="small text-muted">{{ $item->keterangan ?: '—' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5">
+                            <td colspan="7" class="text-center py-5">
                                 <div class="text-muted">
                                     <i class="ri-calendar-2-line fs-1 d-block mb-2"></i>
                                     Belum ada distribusi. Klik <strong>Sinkronkan Distribusi</strong> untuk menghitung dari Pekan Efektif.

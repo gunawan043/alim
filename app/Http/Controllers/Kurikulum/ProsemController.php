@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Kurikulum;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\AdminJurnalPembelajaran;
 use App\Models\Prosem;
 use App\Models\ProsemItem;
 use App\Models\Prota;
@@ -144,6 +145,14 @@ class ProsemController extends Controller
 
         $teachers = $this->teachersForSchool($prosem->school_id);
 
+        // Realisasi dari jurnal pertemuan (Pelaksanaan → Nilai).
+        $realisasiCounts = AdminJurnalPembelajaran::query()
+            ->whereIn('prosem_item_id', $prosem->items->pluck('id'))
+            ->selectRaw('prosem_item_id, COUNT(*) as total, COUNT(DISTINCT admin_book_id) as books')
+            ->groupBy('prosem_item_id')
+            ->get()
+            ->keyBy('prosem_item_id');
+
         return view('kurikulum.prosem.show', compact(
             'userId',
             'prosem',
@@ -152,7 +161,8 @@ class ProsemController extends Controller
             'effectiveWeeks',
             'totalJp',
             'overflowJp',
-            'teachers'
+            'teachers',
+            'realisasiCounts'
         ));
     }
 
