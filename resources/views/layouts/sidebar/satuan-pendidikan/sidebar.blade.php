@@ -171,6 +171,18 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
+     REFERENSI — dapat dilihat SEMUA user (kalender sumber data akademik)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+<li class="menu-title"><span>Referensi</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
+       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
+    </a>
+</li>
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 2 — DASHBOARD (multi per jabatan & tugas)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Dashboard</span></li>

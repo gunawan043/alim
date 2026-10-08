@@ -376,3 +376,15 @@
         </a>
     </li>
 @endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     REFERENSI — Kalender Pendidikan untuk semua user
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+<li class="menu-title"><span>Referensi</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
+       href="{{ $uksUrl('user.kaldik.index') }}">
+        <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
+    </a>
+</li>

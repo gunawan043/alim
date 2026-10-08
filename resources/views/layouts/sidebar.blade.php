@@ -396,6 +396,13 @@
                             </a>
                         </li>
 
+                        <li class="nav-item">
+                            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
+                               href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
+                                <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
+                            </a>
+                        </li>
+
                         @if($userJabatan)
                             <li class="menu-title"><span>Info</span></li>
                             <li class="nav-item">

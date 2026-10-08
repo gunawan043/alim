@@ -81,6 +81,11 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **Perangkat Pembelajaran** (`/kurikulum/perangkat`): dibuat dari ATP (kelas/mapel/guru/TA otomatis ikut ATP) dengan desain **Pembelajaran Mendalam** terstruktur: pertanyaan pemantik, pemahaman bermakna, pengalaman memahami → mengaplikasi → merefleksi, konteks nyata, asesmen formatif & sumatif, diferensiasi, media — bukan sekadar satu field.
 - Sidebar: grup *Kurikulum Saya* (guru) & *Kurikulum & Perangkat* (tim kurikulum) di Satuan Pendidikan, Pimpinan, dan Super Admin; field fase di form Tingkat.
 
+## 13. UI Velzon & Akses Kalender untuk Semua User
+- Seluruh halaman baru modul Kurikulum (Peta Kurikulum, CP, TP, ATP, ATP detail, Perangkat, Perangkat detail) dan Pekan Efektif ditulis ulang mengikuti pola Velzon: page header + aksi kanan, kartu filter `row g-3`, stat card `card-animate` dengan `avatar-title bg-*-subtle`, tabel `table-hover align-middle` + `thead table-light`, badge `bg-*-subtle`, tombol `btn-soft-*`, modal `fade zoomIn`, empty state, dan alert dismissible.
+- Halaman Waka/Pekan Efektif ikut diseragamkan (kartu generate, stat card, filter, tabel, detail pekan menampilkan hari efektif & sumber Kaldik/Manual).
+- **Kalender Pendidikan dapat dilihat semua user lewat sidebar**: section *Referensi → Kalender Pendidikan* untuk seluruh pengguna Satuan Pendidikan, ditambahkan untuk role Asrama & UKS, dan menu fallback pengguna tanpa role; role lain sudah memiliki entri kalender masing-masing.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

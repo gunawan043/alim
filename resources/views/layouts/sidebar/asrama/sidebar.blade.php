@@ -665,3 +665,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 @endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     REFERENSI — Kalender Pendidikan untuk semua user
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+<li class="menu-title"><span>Referensi</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.kaldik.') ? ' active' : '' }}"
+       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-event-line"></i>
+        <span>Kalender Pendidikan</span>
+    </a>
+</li>

@@ -1,176 +1,195 @@
 @extends('layouts.master')
-@section('title') Tujuan Pembelajaran @endsection
+@section('title', 'Tujuan Pembelajaran')
 
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
         @slot('li_2') TP @endslot
         @slot('title') Tujuan Pembelajaran @endslot
     @endcomponent
 
-    <div class="row mb-3">
-        <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>
-                <h4 class="mb-1">Tujuan Pembelajaran (TP)</h4>
-                <p class="text-muted small mb-0">TP diturunkan dari CP; buat, ubah, dan urutkan sebagai dasar ATP.</p>
-            </div>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#tp-modal" onclick="openCreate()">
-                <i class="ri-add-line me-1"></i> Tambah TP
-            </button>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h4 class="mb-1">Tujuan Pembelajaran (TP)</h4>
+            <p class="text-muted mb-0 small">TP diturunkan dari CP; buat, ubah, dan urutkan sebagai dasar ATP.</p>
         </div>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#tp-modal" onclick="openCreate()">
+            <i class="ri-add-line align-bottom me-1"></i> Tambah TP
+        </button>
     </div>
 
-    @if(session('error'))
-        <div class="alert alert-danger py-2 small">{{ session('error') }}</div>
-    @endif
     @if(session('success'))
-        <div class="alert alert-success py-2 small">{{ session('success') }}</div>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     @endif
 
-    <div class="card mb-3">
+    <div class="card">
         <div class="card-body">
-            <form method="GET" action="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select form-select-sm">
+            <form method="GET" action="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="row g-3 align-items-end">
+                <div class="col-xxl-3 col-sm-6">
+                    <label class="form-label">Tahun Ajaran</label>
+                    <select name="academic_year_id" class="form-select">
                         @foreach($academicYears as $ay)
                             <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small text-muted mb-1">Semester</label>
-                    <select name="semester" class="form-select form-select-sm">
+                <div class="col-xxl-2 col-sm-6">
+                    <label class="form-label">Semester</label>
+                    <select name="semester" class="form-select">
                         <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                         <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">Mapel</label>
-                    <select name="subject_id" class="form-select form-select-sm">
-                        <option value="">— Semua —</option>
+                <div class="col-xxl-3 col-sm-6">
+                    <label class="form-label">Mata Pelajaran</label>
+                    <select name="subject_id" class="form-select">
+                        <option value="">— Semua Mapel —</option>
                         @foreach($subjects as $subject)
                             <option value="{{ $subject->id }}" {{ $subjectId === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small text-muted mb-1">Jenjang</label>
-                    <select name="grade_level_id" class="form-select form-select-sm">
+                <div class="col-xxl-2 col-sm-6">
+                    <label class="form-label">Jenjang</label>
+                    <select name="grade_level_id" class="form-select">
                         <option value="">— Semua —</option>
                         @foreach($gradeLevels as $grade)
                             <option value="{{ $grade->id }}" {{ request('grade_level_id') === $grade->id ? 'selected' : '' }}>{{ $grade->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <button class="btn btn-sm btn-primary w-100"><i class="ri-filter-3-line me-1"></i> Filter</button>
+                <div class="col-xxl-2 col-sm-6 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line align-bottom me-1"></i> Filter</button>
+                    <a href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-refresh-line align-bottom"></i></a>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0"><i class="ri-list-check-2 text-primary me-1"></i> Daftar TP</h5>
+            <span class="badge bg-primary-subtle text-primary">{{ $tpList->count() }} TP</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Kode / Mapel</th>
+                        <th>Tujuan Pembelajaran</th>
+                        <th>CP / Elemen</th>
+                        <th class="text-center">Fase</th>
+                        <th class="text-center">JP</th>
+                        <th class="text-center" style="width:110px">Urutan</th>
+                        <th class="text-end" style="width:110px">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($tpList as $tp)
+                        @php
+                            $canManage = $isKurikulumTeam || in_array($tp->subject_id, $taughtSubjectIds, true);
+                            $inAtp = in_array($tp->id, $usedTpIds, true);
+                        @endphp
                         <tr>
-                            <th>Kode</th>
-                            <th>Tujuan Pembelajaran</th>
-                            <th>CP / Elemen</th>
-                            <th>Fase</th>
-                            <th class="text-center">JP</th>
-                            <th class="text-center">Urutan</th>
-                            <th class="text-end">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($tpList as $tp)
-                            @php
-                                $canManage = $isKurikulumTeam || in_array($tp->subject_id, $taughtSubjectIds, true);
-                                $inAtp = in_array($tp->id, $usedTpIds, true);
-                            @endphp
-                            <tr>
-                                <td>
-                                    <span class="badge bg-primary-subtle text-primary">{{ $tp->kode_tp }}</span>
-                                    <div class="small text-muted">{{ $tp->subject?->name }}</div>
-                                    <div class="small text-muted">{{ $tp->gradeLevel?->name }}</div>
-                                </td>
-                                <td class="small">{{ $tp->deskripsi }}</td>
-                                <td class="small text-muted">
-                                    @if($tp->capaianPembelajaran)
-                                        <div>{{ \Illuminate\Support\Str::limit($tp->capaianPembelajaran->deskripsi, 60) }}</div>
-                                    @endif
-                                    {{ $tp->elemen ?: '—' }}
-                                </td>
-                                <td>{{ $tp->fase ?: '—' }}</td>
-                                <td class="text-center">{{ $tp->alokasi_waktu }}</td>
-                                <td class="text-center">
-                                    @if($canManage)
-                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline">
+                            <td>
+                                <span class="badge bg-primary-subtle text-primary">{{ $tp->kode_tp }}</span>
+                                <div class="small text-muted mt-1">{{ $tp->subject?->name }}</div>
+                                <div class="small text-muted">{{ $tp->gradeLevel?->name ?? 'Semua Jenjang' }}</div>
+                            </td>
+                            <td class="small">{{ $tp->deskripsi }}</td>
+                            <td class="small text-muted">
+                                @if($tp->capaianPembelajaran)
+                                    <div>{{ \Illuminate\Support\Str::limit($tp->capaianPembelajaran->deskripsi, 60) }}</div>
+                                @endif
+                                {{ $tp->elemen ?: '—' }}
+                            </td>
+                            <td class="text-center">{{ $tp->fase ?: '—' }}</td>
+                            <td class="text-center">{{ $tp->alokasi_waktu }}</td>
+                            <td class="text-center">
+                                @if($canManage)
+                                    <div class="d-inline-flex align-items-center gap-1">
+                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
                                             @csrf <input type="hidden" name="direction" value="up">
-                                            <button class="btn btn-sm btn-link p-0"><i class="ri-arrow-up-line"></i></button>
+                                            <button class="btn btn-sm btn-soft-secondary" title="Naik"><i class="ri-arrow-up-line"></i></button>
                                         </form>
-                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline">
+                                        <span class="fw-semibold">{{ $tp->urutan }}</span>
+                                        <form action="{{ route('user.kurikulum.tp.move', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST">
                                             @csrf <input type="hidden" name="direction" value="down">
-                                            <button class="btn btn-sm btn-link p-0"><i class="ri-arrow-down-line"></i></button>
+                                            <button class="btn btn-sm btn-soft-secondary" title="Turun"><i class="ri-arrow-down-line"></i></button>
+                                        </form>
+                                    </div>
+                                @else
+                                    {{ $tp->urutan }}
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if($canManage)
+                                    <button class="btn btn-sm btn-soft-warning"
+                                        data-tp="{{ json_encode([
+                                            'id' => $tp->id,
+                                            'subject_id' => $tp->subject_id,
+                                            'grade_level_id' => $tp->grade_level_id,
+                                            'academic_year_id' => $tp->academic_year_id,
+                                            'semester' => $tp->semester,
+                                            'capaian_pembelajaran_id' => $tp->capaian_pembelajaran_id,
+                                            'kode_tp' => $tp->kode_tp,
+                                            'deskripsi' => $tp->deskripsi,
+                                            'elemen' => $tp->elemen,
+                                            'fase' => $tp->fase,
+                                            'alokasi_waktu' => $tp->alokasi_waktu,
+                                            'urutan' => $tp->urutan,
+                                            'is_active' => (bool) $tp->is_active,
+                                        ]) }}"
+                                        onclick="openEdit(this)" title="Edit">
+                                        <i class="ri-pencil-line"></i>
+                                    </button>
+                                    @if(! $inAtp)
+                                        <form action="{{ route('user.kurikulum.tp.destroy', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Hapus TP ini?');">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
                                         </form>
                                     @else
-                                        {{ $tp->urutan }}
+                                        <span class="badge bg-secondary-subtle text-secondary" title="Dipakai di ATP">ATP</span>
                                     @endif
-                                </td>
-                                <td class="text-end">
-                                    @if($canManage)
-                                        <button class="btn btn-sm btn-outline-warning"
-                                            data-tp="{{ json_encode([
-                                                'id' => $tp->id,
-                                                'subject_id' => $tp->subject_id,
-                                                'grade_level_id' => $tp->grade_level_id,
-                                                'academic_year_id' => $tp->academic_year_id,
-                                                'semester' => $tp->semester,
-                                                'capaian_pembelajaran_id' => $tp->capaian_pembelajaran_id,
-                                                'kode_tp' => $tp->kode_tp,
-                                                'deskripsi' => $tp->deskripsi,
-                                                'elemen' => $tp->elemen,
-                                                'fase' => $tp->fase,
-                                                'alokasi_waktu' => $tp->alokasi_waktu,
-                                                'urutan' => $tp->urutan,
-                                                'is_active' => (bool) $tp->is_active,
-                                            ]) }}"
-                                            onclick="openEdit(this)">
-                                            <i class="ri-edit-line"></i>
-                                        </button>
-                                        @if(! $inAtp)
-                                            <form action="{{ route('user.kurikulum.tp.destroy', ['userId' => $userId, 'id' => $tp->id]) }}" method="POST" class="d-inline"
-                                                  onsubmit="return confirm('Hapus TP ini?');">
-                                                @csrf @method('DELETE')
-                                                <button class="btn btn-sm btn-outline-danger"><i class="ri-delete-bin-line"></i></button>
-                                            </form>
-                                        @else
-                                            <span class="badge bg-secondary-subtle text-secondary" title="Dipakai di ATP">ATP</span>
-                                        @endif
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="7" class="text-center text-muted py-4">Belum ada TP pada filter ini.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="ri-list-check-2 fs-1 d-block mb-2"></i>
+                                    Belum ada TP pada filter ini.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="modal fade" id="tp-modal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal fade zoomIn" id="tp-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <form method="POST" id="tp-form" action="{{ route('user.kurikulum.tp.store', ['userId' => $userId]) }}">
                     @csrf
                     <input type="hidden" name="_method" id="tp-method" value="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="tp-modal-title">Tambah TP</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-primary-subtle p-3">
+                        <h5 class="modal-title" id="tp-modal-title"><i class="ri-list-check-2 me-1"></i> Tambah TP</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="row g-3">
@@ -249,7 +268,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> Simpan</button>
+                        <button type="submit" class="btn btn-success"><i class="ri-save-line align-bottom me-1"></i> Simpan</button>
                     </div>
                 </form>
             </div>
@@ -294,7 +313,7 @@
         }
 
         function openCreate() {
-            document.getElementById('tp-modal-title').textContent = 'Tambah TP';
+            document.getElementById('tp-modal-title').innerHTML = '<i class="ri-list-check-2 me-1"></i> Tambah TP';
             document.getElementById('tp-form').action = tpStoreUrl;
             document.getElementById('tp-method').value = 'POST';
             document.getElementById('tp-subject').value = @json($subjectId ?? '');
@@ -313,7 +332,7 @@
 
         function openEdit(btn) {
             var tp = JSON.parse(btn.dataset.tp);
-            document.getElementById('tp-modal-title').textContent = 'Edit TP';
+            document.getElementById('tp-modal-title').innerHTML = '<i class="ri-pencil-line me-1"></i> Edit TP';
             document.getElementById('tp-form').action = tpUpdateUrl.replace('__ID__', tp.id);
             document.getElementById('tp-method').value = 'PUT';
             document.getElementById('tp-subject').value = tp.subject_id;
