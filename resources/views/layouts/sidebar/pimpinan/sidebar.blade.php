@@ -47,7 +47,55 @@ function isActivePimpinan($routeName, $pattern) {
     </a>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.teacher-qr.waka-dashboard') ? ' active' : '' }}"
+       href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
+        <i class="ri-dashboard-2-line"></i>
+        <span>Kehadiran Guru Per Jam</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.teacher-qr.history') ? ' active' : '' }}"
+       href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
+        <i class="ri-history-line"></i>
+        <span>Riwayat Kehadiran Guru</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.kehadiran.pergantian-jam') ? ' active' : '' }}"
+       href="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}">
+        <i class="ri-refresh-line"></i>
+        <span>Rekap Pergantian Jam</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.qr.') ? ' active' : '' }}"
+       href="{{ route('user.qr.index', ['userId' => $userId]) }}">
+        <i class="ri-qr-code-line"></i>
+        <span>QR Kelas</span>
+    </a>
+</li>
+
 <li class="menu-title"><span>Akademik</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.jadwal-kbm.') ? ' active' : '' }}"
+       href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-schedule-line"></i>
+        <span>Jadwal Pelajaran</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.jam-pelajaran.') ? ' active' : '' }}"
+       href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}">
+        <i class="ri-timer-line"></i>
+        <span>Jam Pelajaran</span>
+    </a>
+</li>
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.schools.') ? ' active' : '' }}"

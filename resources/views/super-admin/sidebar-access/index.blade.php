@@ -65,6 +65,7 @@
                                                                 data-bs-target="#editAccessModal"
                                                                 data-menu-key="{{ $access->menu_key }}"
                                                                 data-display-name="{{ $access->display_name }}"
+                                                                data-update-url="{{ route('user.sa.sidebar-access.update', ['userId' => $userId, 'menuKey' => $access->menu_key]) }}"
                                                                 data-allowed-roles='@json($access->allowed_roles ?? [])'>
                                                             <i class="ri-edit-line me-1"></i> Edit
                                                         </button>
@@ -75,7 +76,8 @@
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#deleteAccessModal"
                                                                 data-menu-key="{{ $access->menu_key }}"
-                                                                data-display-name="{{ $access->display_name }}">
+                                                                data-display-name="{{ $access->display_name }}"
+                                                                data-delete-url="{{ route('user.sa.sidebar-access.destroy', ['userId' => $userId, 'menuKey' => $access->menu_key]) }}">
                                                             <i class="ri-delete-bin-line me-1"></i> Hapus
                                                         </button>
                                                     </li>
@@ -106,7 +108,7 @@
                     <h5 class="modal-title">Tambah Menu Sidebar</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ route('super-admin.sidebar-access.store') }}">
+                <form method="POST" action="{{ route('user.sa.sidebar-access.store', ['userId' => $userId]) }}">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -208,7 +210,7 @@
     </div>
 @endsection
 
-@section('script')
+@push('scripts')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -220,7 +222,7 @@
                 var allowedRoles = JSON.parse(this.dataset.allowedRoles);
 
                 document.getElementById('editDisplayName').value = displayName;
-                document.getElementById('editAccessForm').action = `/super-admin/sidebar-access/${menuKey}`;
+                document.getElementById('editAccessForm').action = this.dataset.updateUrl;
 
                 document.querySelectorAll('.role-checkbox').forEach(cb => {
                     cb.checked = allowedRoles.includes(cb.value);
@@ -243,9 +245,9 @@
                 var displayName = this.dataset.displayName;
 
                 document.getElementById('deleteAccessName').textContent = displayName;
-                document.getElementById('deleteAccessForm').action = `/super-admin/sidebar-access/${menuKey}`;
+                document.getElementById('deleteAccessForm').action = this.dataset.deleteUrl;
             });
         });
     });
     </script>
-@endsection
+@endpush

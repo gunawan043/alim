@@ -216,3 +216,34 @@ if (! function_exists('canAccessUser')) {
         return (bool) ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
     }
 }
+
+if (! function_exists('menu_allowed')) {
+    /**
+     * Cek apakah menu sidebar (menu_key) boleh diakses oleh role user saat ini.
+     * Tidak ada record → diizinkan. allowed_roles kosong → diizinkan semua role.
+     * System/Super Admin selalu diizinkan.
+     */
+    function menu_allowed(string $menuKey): bool
+    {
+        if (! auth()->check()) {
+            return false;
+        }
+
+        /** @var User $user */
+        $user = auth()->user();
+
+        if ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        $access = \App\Models\SidebarAccess::getFor($menuKey);
+
+        if (! $access) {
+            return true;
+        }
+
+        $roleNames = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->all() : [];
+
+        return $access->canAccessByRoles($roleNames);
+    }
+}

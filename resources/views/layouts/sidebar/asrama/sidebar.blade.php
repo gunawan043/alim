@@ -10,6 +10,12 @@ $routeParams = $routeInstance ? $routeInstance->parameters() : [];
 $asramaUuid = $routeParams['asramaUuid'] ?? null;
 $hasAsramaContext = !empty($asramaUuid);
 
+// Flag akses global (Super/System Admin). Aman bila variabel belum di-set dari parent view.
+$showAll = $showAll ?? (
+    (method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin())
+    || (method_exists($currentUser, 'isSystemAdmin') && $currentUser->isSystemAdmin())
+);
+
 /*
 |--------------------------------------------------------------------------
 | View-As Context
@@ -129,6 +135,75 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <span>Dashboard Pengasuh</span>
     </a>
 </li>
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION — PERIZINAN LINTAS ASRAMA (Staf Perizinan)
+     Scope: semua asrama, filter gender (putra/putri)
+     Akses: Staf Perizinan (jabatan atau tugas tambahan)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@php
+    $isStafPerizinanGlobal = $hasJabatan('Staf Perizinan') || $hasTugas('Staf Perizinan');
+    $userGender = $user->gender ?? $user->assigned_gender ?? null; // sesuaikan field
+    $genderLabel = match($userGender) {
+        'L', 'putra', 'male'   => 'Putra',
+        'P', 'putri', 'female' => 'Putri',
+        default                => 'Semua',
+    };
+@endphp
+
+@if(($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama'))
+    <li class="menu-title"><span>Perizinan Lintas Asrama</span></li>
+
+    <li class="nav-item">
+        <span class="nav-link text-muted" style="font-size:0.8rem">
+            <i class="ri-information-line me-1"></i>
+            Sektor: <strong>{{ $genderLabel }}</strong>
+        </span>
+    </li>
+
+    {{-- Semua perizinan (lintas asrama) — via system.permits --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.']) ? ' active' : '' }}"
+           href="{{ route('system.permits.index') }}">
+            <i class="ri-pass-valid-line"></i><span>Semua Perizinan</span>
+        </a>
+    </li>
+
+    {{-- Semua kunjungan (lintas asrama) --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.', 'user.asrama.visits.']) ? ' active' : '' }}"
+           href="{{ route('system.permits.index') }}">
+            <i class="ri-footprint-line"></i><span>Semua Kunjungan</span>
+        </a>
+    </li>
+
+    {{-- Scan & Verifikasi (per-asrama, pakai fallback) --}}
+    @if($scanAsramaId ?? null)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.scan']) ? ' active' : '' }}"
+           href="{{ route('user.asrama.permits.scan', ['userId' => $userId, 'asramaUuid' => $scanAsramaId]) }}">
+            <i class="ri-qr-scan-2-line"></i><span>Scan QR Izin</span>
+        </a>
+    </li>
+    @endif
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.verify']) ? ' active' : '' }}"
+           href="{{ route('user.asrama.permits.verify', ['userId' => $userId]) }}">
+            <i class="ri-shield-check-line"></i><span>Verifikasi Izin</span>
+        </a>
+    </li>
+
+    {{-- Kedatangan Santri --}}
+    @if($scanAsramaId ?? null)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.dormitory-returns.index']) ? ' active' : '' }}"
+           href="{{ route('user.asrama.dormitory-returns.index', ['userId' => $userId, 'asramaUuid' => $scanAsramaId]) }}">
+            <i class="ri-login-box-line"></i><span>Kedatangan Santri</span>
+        </a>
+    </li>
+    @endif
+@endif
 
 
 {{-- ================================================================
@@ -550,7 +625,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
 {{-- ================================================================
      GTK — Kepala Asrama & Pejabat Terkait
 ================================================================= --}}
-@if($isKepalaAsrama)
+@if(($isKepalaAsrama) && menu_allowed('asrama'))
 
 <li class="menu-title">
     <span>GTK</span>

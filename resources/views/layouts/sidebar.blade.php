@@ -43,6 +43,241 @@
     background: transparent !important;
 }
 </style>
+
+@php
+    /* ═══════════════════════════════════════════════════════════════════════
+       APP MENU — DISPATCHER
+       ───────────────────────────────────────────────────────────────────────
+       Tugas   : Menyiapkan konteks user (role, jabatan, tugas tambahan) dan
+                 memilih sidebar role mana yang akan di-render.
+       Prinsip : 1 folder = 1 role → layouts/sidebar/{folder}/sidebar.blade.php
+                 Tugas tambahan → layouts/sidebar/tugas-tambahan/{file}.blade.php
+       ───────────────────────────────────────────────────────────────────────
+       Helper yang tersedia untuk semua sidebar yang di-include:
+         $userId         — ID user yang login
+         $currentRoute   — nama route aktif (mis. 'user.sa.users.index')
+         $hasRole()      — fn(string)   → cek user punya role tertentu
+         $hasJabatan()   — fn(string)   → cek user punya jabatan tertentu
+         $hasTugas()     — fn(string)   → cek user punya tugas tambahan tertentu
+         isActiveAny()   — fn(route, [patterns]) → cek route aktif diawali salah satu pattern
+         $userRoles      — array nama role user
+         $userJabatan    — string nama jabatan user
+         $userTugas      — array nama tugas tambahan user
+         $myDashboardRoute — nama route dashboard sesuai jabatan/tugas user
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    $user = auth()->user();
+
+    // ── Deteksi Super Admin / System Admin ────────────────────────────────
+    $isSystemAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
+
+    // ── Deteksi View-As (Super Admin / pemegang permission impersonate) ───
+    $viewAsRole   = null;
+    $canUseViewAs = $isSystemAdmin
+        || (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('impersonate_role'));
+    if ($canUseViewAs) {
+        $viewAsRole = app(\App\Services\ViewAsService::class)->getCurrentViewRole();
+    }
+    $isViewingAs = $viewAsRole !== null;
+
+    // ── Data user: role / jabatan / tugas tambahan ────────────────────────
+    $userRoles = method_exists($user, 'roles')
+        ? $user->roles->pluck('name')->toArray()
+        : [];
+
+    // ── Jabatan: PRIORITAS dari employment.jabatan ────────────────────────
+    // Setelah import GTK, jabatan disimpan di `gtk_employments.jabatan` (string),
+    // BUKAN di relasi `$user->jabatan` (yang mungkin UUID/objek/null).
+    $userJabatan = null;
+
+    if ($user && $user->employment) {
+        $userJabatan = $user->employment->jabatan;
+    }
+
+    if (! $userJabatan && $user && method_exists($user, 'jabatan') && $user->jabatan) {
+        // Fallback: relasi jabatan (kalau ada)
+        if (is_object($user->jabatan)) {
+            $userJabatan = $user->jabatan->nama
+                ?? $user->jabatan->name
+                ?? null;
+        } elseif (is_string($user->jabatan)) {
+            $userJabatan = $user->jabatan;
+        }
+    }
+
+    $userJabatan = trim((string) ($userJabatan ?? ''));
+
+    $userTugas = method_exists($user, 'tugasTambahan')
+        ? $user->tugasTambahan->pluck('nama')->toArray()
+        : [];
+
+    // ── Helper: cek role / jabatan / tugas (case-insensitive untuk jabatan) ─
+    $hasRole    = fn ($role)  => in_array($role, $userRoles, true);
+    $hasJabatan = fn ($jab)   => strtolower(trim($userJabatan)) === strtolower(trim($jab));
+    $hasTugas   = fn ($tugas) => in_array($tugas, $userTugas, true);
+
+    // ── Helper: context route ─────────────────────────────────────────────
+    $currentRoute = request()->route() ? request()->route()->getName() : '';
+    $userId       = $user?->id;
+
+    // Helper: cek route aktif diawali salah satu pattern
+    if (! function_exists('isActiveAny')) {
+        function isActiveAny($routeName, $patterns = []) {
+            if (! is_string($routeName) || $routeName === '') return false;
+
+            if (is_string($patterns)) {
+                $patterns = [$patterns];
+            }
+            if (! is_array($patterns)) return false;
+
+            $flat = [];
+            array_walk_recursive($patterns, function ($value) use (&$flat) {
+                if (is_string($value) && $value !== '') {
+                    $flat[] = $value;
+                }
+            });
+
+            foreach ($flat as $p) {
+                if (str_starts_with($routeName, $p)) return true;
+            }
+            return false;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PEMETAAN ROLE → FOLDER SIDEBAR
+       ═══════════════════════════════════════════════════════════════════════ */
+    $roleFolderMap = [
+        'Pimpinan'              => 'pimpinan',
+        'Satuan Pendidikan'     => 'satuan-pendidikan',
+        'Asrama'                => 'asrama',
+        'UKS'                   => 'uks',
+        'Departemen Tahfidz'    => 'departemen-tahfidz',
+        'Departemen Bahasa'     => 'departemen-bahasa',
+        'Perpustakaan'          => 'perpustakaan',
+        'Satuan Keamanan'       => 'satpam',
+        'Humas Personalia'      => 'humas-personalia',
+        'Unit Rumah Tangga'     => 'unit-rumah-tangga',
+        'Keuangan'              => 'keuangan',
+        'Teknologi Informasi'   => 'teknologi-informasi',
+        'Unit Pelayanan Gizi'   => 'unit-pelayanan-gizi',
+    ];
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PEMETAAN TUGAS TAMBAHAN → FILE
+       ═══════════════════════════════════════════════════════════════════════ */
+        $tugasFileMap = [
+        'Wali Kelas'                            => 'wali-kelas',
+        'Wali Kamar'                            => 'wali-kamar',
+        'Wali Asrama'                           => 'wali-asrama',
+        'Staf Asrama'                           => 'staf-asrama',            // ← BARU
+        'Staf Perizinan'                        => 'staf-perizinan',         // ← BARU
+        'Koordinator Kurikulum'                 => 'koordinator-kurikulum',
+        'Koordinator Kesiswaan'                 => 'koordinator-kesiswaan',
+        'Koordinator Ekstrakurikuler'           => 'koordinator-ekskul',
+        'Koordinator Laboratorium'              => 'koordinator-lab',
+        'Koordinator Sarpras Satuan Pendidikan' => 'koordinator-sarpras',
+        'Koordinator Sarpras'                   => 'koordinator-sarpras',    // alias
+        'Koordinator Guru Umum'                 => 'koordinator-guru-umum',
+        'Koordinator Guru Agama'                => 'koordinator-guru-agama',
+        'Koordinator Guru Hadits'               => 'koordinator-guru-hadits',
+        'Koordinator Guru Bahasa Arab'          => 'koordinator-guru-bahasa-arab',
+        'Koordinator Guru Tahfidz'              => 'koordinator-guru-tahfidz',
+        'Tim Kurikulum'                         => 'tim-kurikulum',
+        'Tim Kesiswaan'                         => 'tim-kesiswaan',
+        'Pembina Ekstrakurikuler'               => 'pembina-ekskul',
+        'Admin UKS Putra'                       => 'admin-uks-putra',
+        'Admin UKS Putri'                       => 'admin-uks-putri',
+    ];
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PEMETAAN DASHBOARD PER JABATAN
+       Dipakai untuk menentukan dashboard utama user (fallback Mode 3).
+       ═══════════════════════════════════════════════════════════════════════ */
+    $jabatanDashboardMap = [
+        // ── Satuan Pendidikan ────────────────────────────────────────
+        'Kepala Satuan Pendidikan'       => 'user.dashboard.kepala-satuan-pendidikan',
+        'Wakil Kepala Satuan Pendidikan' => 'user.dashboard.wakil-kepala',
+        'Guru Umum'                      => 'user.dashboard.guru',
+        'Guru Agama'                     => 'user.dashboard.guru',
+        'Guru Hadits'                    => 'user.dashboard.guru',
+        'Guru Bahasa Arab'               => 'user.dashboard.guru',
+        'Guru Tahfidz'                   => 'user.dashboard.guru',
+        'Kepala Tata Usaha'              => 'user.dashboard.ka-tata-usaha',
+        'Tata Usaha'                     => 'user.dashboard.staf-tata-usaha',
+        'Bendahara Sekolah'              => 'user.dashboard.bendahara',
+
+        // ── Asrama / Kepengasuhan ─────────────────────────────────────
+        'Kepala Asrama'                  => 'user.dashboard.asrama',
+        'Wakil Kepala Asrama'            => 'user.dashboard.asrama',
+        'Tata Usaha Asrama'              => 'user.dashboard.asrama',
+        'Staf Perizinan'                 => 'user.dashboard.asrama',
+        'Musrif'                         => 'user.dashboard.pengasuh',
+        'Musrifah'                       => 'user.dashboard.pengasuh',
+
+        // ── UKS ──────────────────────────────────────────────────────
+        'Kepala UKS'                     => 'user.dashboard.boarding-health',
+        'Staf UKS Putra'                 => 'user.dashboard.boarding-health',
+        'Staf UKS Putri'                 => 'user.dashboard.boarding-health',
+
+        // ── Pimpinan ─────────────────────────────────────────────────
+        'Mudir'                          => 'root',
+        'Wadir 1'                        => 'root',
+        'Wadir 2'                        => 'root',
+
+        // ── Kepala Unit (non-sekolah) ─────────────────────────────────
+        'Kepala Unit Rumah Tangga'       => 'sarpras.dashboard',
+        'Koordinator Sarana Prasarana'   => 'sarpras.dashboard',
+        'Kepala Humas & Personalia'      => 'user.dashboard',
+        'Kepala Humas'                   => 'user.dashboard',
+        'Kepala Personalia'              => 'user.dashboard',
+        'Kepala Departemen Tahfidz'      => 'root',
+        'Kepala Departemen Bahasa'       => 'root',
+        'Koordinator Perpustakaan'       => 'root',
+        'Kepala Satuan Keamanan'         => 'root',
+        'Kepala Unit Teknologi Informasi'=> 'root',
+        'Kepala Unit Gizi & Logistik'    => 'root',
+    ];
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PEMETAAN DASHBOARD PER TUGAS TAMBAHAN
+       ═══════════════════════════════════════════════════════════════════════ */
+    $tugasDashboardMap = [
+        'Wali Kelas'                            => 'user.dashboard.wali-kelas',
+        'Koordinator Kurikulum'                 => 'user.dashboard.koordinator-kurikulum',
+        'Koordinator Kesiswaan'                 => 'user.dashboard.koordinator-kesiswaan',
+        'Koordinator Ekstrakurikuler'           => 'user.dashboard.koordinator-ekskul',
+        'Koordinator Laboratorium'              => 'user.dashboard.koordinator-lab',
+        'Koordinator Sarpras Satuan Pendidikan' => 'user.dashboard.koordinator-sarpras',
+        'Koordinator Guru Umum'                 => 'user.dashboard.koordinator-guru',
+        'Koordinator Guru Agama'                => 'user.dashboard.koordinator-guru',
+        'Koordinator Guru Hadits'               => 'user.dashboard.koordinator-guru',
+        'Koordinator Guru Bahasa Arab'          => 'user.dashboard.koordinator-guru',
+        'Koordinator Guru Tahfidz'              => 'user.dashboard.koordinator-guru',
+    ];
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       RESOLUSI DASHBOARD USER SAAT INI
+       Prioritas: jabatan → tugas tambahan → fallback root
+       ═══════════════════════════════════════════════════════════════════════ */
+    $myDashboardRoute = null;
+
+    if ($userJabatan && isset($jabatanDashboardMap[trim($userJabatan)])) {
+        $myDashboardRoute = $jabatanDashboardMap[trim($userJabatan)];
+    }
+
+    if (! $myDashboardRoute && ! empty($userTugas)) {
+        foreach ($userTugas as $tugas) {
+            if (isset($tugasDashboardMap[$tugas])) {
+                $myDashboardRoute = $tugasDashboardMap[$tugas];
+                break;
+            }
+        }
+    }
+
+    $myDashboardRoute = $myDashboardRoute ?: 'root';
+@endphp
+
 <div class="app-menu navbar-menu">
     <!-- Logo area -->
     <div class="navbar-brand-box mt-2">
@@ -60,124 +295,125 @@
     </div>
 
     <!-- Menu content -->
-    <div data-simplebar class="scrollbar-sidebar">
+    <div data-simplebar class="scrollbar_sidebar">
         <div class="container-fluid mt-3">
             @include('components.user-sidebar-profile')
             <div id="two-column-menu"></div>
+
             <ul class="navbar-nav" id="navbar-nav" style="padding-bottom: 50px">
-                @php
-                    $user = auth()->user();
-                    $isSystemAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin();
-                    $viewAsRole = null;
-                    $canUseViewAs = $isSystemAdmin
-                        || (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('impersonate_role'));
-                    if ($canUseViewAs) {
-                        $viewAsRole = app(\App\Services\ViewAsService::class)->getCurrentViewRole();
-                    }
-                    $isViewingAs = $viewAsRole !== null;
 
-                    // SidebarAccess logic
-                    $showSidebar = true;
-
-                    if (!$isSystemAdmin && !$isViewingAs && !empty($sidebarAccesses)) {
-                        $userRoleNames = method_exists($user, 'roles')
-                            ? $user->roles->pluck('name')->toArray()
-                            : [];
-                        $roleHasAccess = false;
-                        foreach ($sidebarAccesses as $access) {
-                            if ($access->canAccessByRoles($userRoleNames)) {
-                                $roleHasAccess = true;
-                                break;
-                            }
-                        }
-                        $showSidebar = $roleHasAccess;
-                    }
-                @endphp
-
-                {{-- When viewing-as, render the sidebar for the impersonated role --}}
+                {{-- ═══════════════════════════════════════════════════════════
+                     MODE 1 — VIEW-AS (Super Admin / impersonate)
+                     Hanya render role yang sedang di-View-As, tanpa tugas tambahan.
+                     ═══════════════════════════════════════════════════════════ --}}
                 @if($isViewingAs)
+
+                    @if(isset($roleFolderMap[$viewAsRole]))
+                        @includeIf('layouts.sidebar.' . $roleFolderMap[$viewAsRole] . '.sidebar')
+                    @else
+                        <li class="nav-item">
+                            <span class="nav-link text-muted px-3">
+                                <i class="ri-error-warning-line me-1"></i>
+                                Role '{{ $viewAsRole }}' belum punya menu sidebar.
+                            </span>
+                        </li>
+                    @endif
+
+                {{-- ═══════════════════════════════════════════════════════════
+                     MODE 2 — SUPER ADMIN (login langsung)
+                     Selalu mendapat sidebar super-admin penuh.
+                     ═══════════════════════════════════════════════════════════ --}}
+                @elseif($isSystemAdmin)
+
+                    @includeIf('layouts.sidebar.super-admin.sidebar')
+
+                {{-- ═══════════════════════════════════════════════════════════
+                     MODE 3 — USER NORMAL
+                     Render semua role + semua tugas tambahan.
+                     ═══════════════════════════════════════════════════════════ --}}
+                @else
+
                     @php
-                        $viewAsRoleModel = \App\Models\Role::where('name', $viewAsRole)->first();
-                        $viewAsPerms = $viewAsRoleModel
-                            ? $viewAsRoleModel->permissions->pluck('name')->toArray()
-                            : [];
-                        $has = fn ($p) => in_array($p, $viewAsPerms);
+                        $renderedCount = 0;
                     @endphp
-                    @if($viewAsRole === 'Pimpinan')
-                        @include('layouts.sidebar.pimpinan.sidebar')
-                    @elseif($viewAsRole === 'Satuan Pendidikan')
-                        @include('layouts.sidebar.satuan-pendidikan.sidebar')
-                    @elseif($viewAsRole === 'Asrama' && method_exists($user, 'accessibleDormitoryIds') && !empty($user->accessibleDormitoryIds()))
-                        @include('layouts.sidebar.staf-perizinan.sidebar')
-                    @elseif($viewAsRole === 'Asrama')
-                        @include('layouts.sidebar.asrama.sidebar')
-                    @elseif($viewAsRole === 'UKS')
-                        @include('layouts.sidebar.uks.role')
-                    @elseif($viewAsRole === 'Wali Santri' || $has('menu-wali-asrama-sidebar'))
-                        @include('layouts.sidebar.portal.sidebar')
-                    @elseif($viewAsRole === 'Departemen Tahfidz')
-                        @include('layouts.sidebar.departemen-tahfidz.sidebar')
-                    @elseif($viewAsRole === 'Departemen Bahasa')
-                        @include('layouts.sidebar.departemen-bahasa.sidebar')
-                    @elseif($viewAsRole === 'Perpustakaan')
-                        @include('layouts.sidebar.perpustakaan.sidebar')
-                    @elseif($viewAsRole === 'Satuan Keamanan')
-                        @include('layouts.sidebar.satpam.sidebar')
-                    @elseif($viewAsRole === 'Humas Personalia')
-                        @include('layouts.sidebar.humas-personalia.sidebar')
-                    @elseif($viewAsRole === 'Unit Rumah Tangga')
-                        @include('layouts.sidebar.unit-rumah-tangga.sidebar')
-                    @elseif($viewAsRole === 'Keuangan')
-                        @include('layouts.sidebar.keuangan.sidebar')
-                    @elseif($viewAsRole === 'Teknologi Informasi')
-                        @include('layouts.sidebar.teknologi-informasi.sidebar')
-                    @elseif($viewAsRole === 'Unit Pelayanan Gizi')
-                        @include('layouts.sidebar.unit-pelayanan-gizi.sidebar')
-                    @else
-                        <li class="nav-item"><span class="nav-link text-muted px-3">Role '{{ $viewAsRole }}' belum punya menu sidebar.</span></li>
+
+                    {{-- 3a. Semua role yang dimiliki user --}}
+                    @foreach($userRoles as $roleName)
+                        @php
+                            $folder = $roleFolderMap[$roleName] ?? null;
+                            $viewPath = $folder ? 'layouts.sidebar.' . $folder . '.sidebar' : null;
+                        @endphp
+                        @if($viewPath && view()->exists($viewPath))
+                            @include($viewPath)
+                            @php $renderedCount++; @endphp
+                        @endif
+                    @endforeach
+
+                    {{-- 3b. Semua tugas tambahan yang dimiliki user --}}
+                    @foreach($userTugas as $tugasName)
+                        @php
+                            $slug = $tugasFileMap[$tugasName] ?? null;
+                            $viewPath = $slug ? 'layouts.sidebar.tugas-tambahan.' . $slug : null;
+                        @endphp
+                        @if($viewPath && view()->exists($viewPath))
+                            @include($viewPath)
+                            @php $renderedCount++; @endphp
+                        @endif
+                    @endforeach
+
+                    {{-- 3c. Fallback: user tanpa role / tugas tambahan yang dikenali --}}
+                    @if($renderedCount === 0)
+                        <li class="menu-title"><span>Menu</span></li>
+
+                        {{-- Dashboard dinamis sesuai jabatan / tugas tambahan --}}
+                        <li class="nav-item">
+                            <a class="nav-link menu-link{{ isActiveAny($currentRoute, [$myDashboardRoute, 'root']) ? ' active' : '' }}"
+                               href="{{ $myDashboardRoute === 'root'
+                                    ? route('root')
+                                    : route($myDashboardRoute, ['userId' => $userId]) }}">
+                                <i class="ri-dashboard-3-line"></i><span>Dashboard</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.profile.']) ? ' active' : '' }}"
+                               href="{{ route('user.profile.my', ['userId' => $userId]) }}">
+                                <i class="ri-user-line"></i><span>Profil Saya</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}"
+                               href="{{ route('user.notifications.index', ['userId' => $userId]) }}">
+                                <i class="ri-notification-3-line"></i><span>Notifikasi</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.todos.']) ? ' active' : '' }}"
+                               href="{{ route('user.todos.index', ['userId' => $userId]) }}">
+                                <i class="ri-checkbox-multiple-line"></i><span>To-Do List</span>
+                            </a>
+                        </li>
+
+                        @if($userJabatan)
+                            <li class="menu-title"><span>Info</span></li>
+                            <li class="nav-item">
+                                <span class="nav-link text-muted px-3" style="font-size:0.8rem">
+                                    <i class="ri-information-line me-1"></i>
+                                    Jabatan: <strong>{{ $userJabatan }}</strong>
+                                </span>
+                            </li>
+                        @endif
                     @endif
-                @elseif($showSidebar && $isSystemAdmin)
-                    @include('layouts.sidebar.super-admin.sidebar')
-                {{-- ── ROLE-BASED SIDEBAR (14 role resmi dari RoleSeeder) ──────────────── --}}
-                @elseif($showSidebar)
-                    @if($user->hasRole('Super Admin'))
-                        @include('layouts.sidebar.super-admin.sidebar')
-                    @elseif($user->hasRole('Pimpinan'))
-                        @include('layouts.sidebar.pimpinan.sidebar')
-                    @elseif($user->hasRole('Satuan Pendidikan'))
-                        @include('layouts.sidebar.satuan-pendidikan.sidebar')
-                    @elseif($user->hasRole('Asrama') && method_exists($user, 'accessibleDormitoryIds') && !empty($user->accessibleDormitoryIds()))
-                        @include('layouts.sidebar.staf-perizinan.sidebar')
-                    @elseif($user->hasRole('Asrama'))
-                        @include('layouts.sidebar.asrama.sidebar')
-                    @elseif($user->hasRole('UKS'))
-                        @include('layouts.sidebar.uks.role')
-                    @elseif($user->hasRole('Departemen Tahfidz'))
-                        @include('layouts.sidebar.departemen-tahfidz.sidebar')
-                    @elseif($user->hasRole('Departemen Bahasa'))
-                        @include('layouts.sidebar.departemen-bahasa.sidebar')
-                    @elseif($user->hasRole('Perpustakaan'))
-                        @include('layouts.sidebar.perpustakaan.sidebar')
-                    @elseif($user->hasRole('Satuan Keamanan'))
-                        @include('layouts.sidebar.satpam.sidebar')
-                    @elseif($user->hasRole('Humas Personalia'))
-                        @include('layouts.sidebar.humas-personalia.sidebar')
-                    @elseif($user->hasRole('Unit Rumah Tangga'))
-                        @include('layouts.sidebar.unit-rumah-tangga.sidebar')
-                    @elseif($user->hasRole('Keuangan'))
-                        @include('layouts.sidebar.keuangan.sidebar')
-                    @elseif($user->hasRole('Teknologi Informasi'))
-                        @include('layouts.sidebar.teknologi-informasi.sidebar')
-                    @elseif($user->hasRole('Unit Pelayanan Gizi'))
-                        @include('layouts.sidebar.unit-pelayanan-gizi.sidebar')
-                    @else
-                        <li class="nav-item"><span class="nav-link text-muted px-3">Tidak ada menu untuk role ini</span></li>
-                    @endif
+
                 @endif
+
             </ul>
         </div>
     </div>
     <div class="sidebar-background"></div>
 </div>
+
 <!-- Overlay: close sidebar on mobile -->
 <div class="vertical-overlay"></div>
