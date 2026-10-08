@@ -15,7 +15,9 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeacherClassAttendance;
 use App\Models\User;
+use App\Authorization\ValueObjects\ScopeKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -151,6 +153,40 @@ final class TeacherQrScanControllerTest extends TestCase
 
         // Give waka role the required permissions
         $wakaRole->givePermissionTo(['teacher-attendance_view', 'teacher-attendance_manual']);
+
+        // Middleware permission menggunakan snapshot (bukan Spatie langsung),
+        // jadi snapshot user harus di-seed agar gate mengizinkan.
+        $this->seedPermissionSnapshot($this->wakaUser, ['teacher-attendance_view', 'teacher-attendance_manual']);
+        $this->seedPermissionSnapshot($this->regularTeacher, ['teacher-attendance_view']);
+    }
+
+    /**
+     * Seed snapshot permission user pada scope sekolah test.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    private function seedPermissionSnapshot(User $user, array $permissions): void
+    {
+        $roleDimension = implode(',', $user->fresh()->effectiveRoles()) ?: 'default';
+
+        $scopeKey = ScopeKey::fromComponents(
+            schoolId: $this->school->id,
+            academicYearId: 'global',
+            roleDimension: $roleDimension,
+            tenantId: 'local',
+        )->value;
+
+        DB::table('permission_snapshots')->insert([
+            'user_id' => $user->id,
+            'scope_key' => $scopeKey,
+            'scope_school_id' => $this->school->id,
+            'fingerprint' => hash('sha256', $user->id.$scopeKey),
+            'permissions' => json_encode(array_values($permissions)),
+            'revoked' => json_encode([]),
+            'is_current' => 1,
+            'created_at' => now(),
+            'archived_at' => null,
+        ]);
     }
 
     // ── WAKA DASHBOARD ACCESS ──────────────────────────────────────
@@ -174,7 +210,7 @@ final class TeacherQrScanControllerTest extends TestCase
         );
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['teacher_id', 'jadwal_kbm_id', 'checkin_time']);
+        $response->assertJsonStructure(['error' => ['errors' => ['teacher_id', 'jadwal_kbm_id', 'checkin_time']]]);
     }
 
     /** @test */
@@ -208,13 +244,16 @@ final class TeacherQrScanControllerTest extends TestCase
             ]
         );
 
-        $response->assertStatus(404);
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('attendance_id');
     }
 
     /** @test */
     public function manual_checkout_updates_existing_attendance(): void
     {
-        Event::fake();
+        // Fake hanya event yang diuji — Event::fake() tanpa argumen memblokir
+        // model events (id UUID tidak akan ter-generate).
+        Event::fake([\App\Events\TeacherCheckedOut::class]);
 
         $this->actingAs($this->wakaUser);
 
@@ -245,7 +284,7 @@ final class TeacherQrScanControllerTest extends TestCase
         $response->assertSessionHas('success');
 
         $attendance->refresh();
-        $this->assertEquals('08:30', $attendance->actual_time_out);
+        $this->assertEquals('08:30', $attendance->actual_time_out?->format('H:i'));
         $this->assertEquals('selesai', $attendance->status_keluar);
         $this->assertEquals('Manual checkout by Waka', $attendance->notes);
     }
@@ -280,7 +319,7 @@ final class TeacherQrScanControllerTest extends TestCase
         $response->assertRedirect();
 
         $attendance->refresh();
-        $this->assertEquals('08:15', $attendance->actual_time_out);
+        $this->assertEquals('08:15', $attendance->actual_time_out?->format('H:i'));
         $this->assertGreaterThan(0, $attendance->early_leave_minutes);
     }
 

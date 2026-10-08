@@ -243,7 +243,7 @@
 
 @endsection
 
-@push('js')
+@push('scripts')
 <script>
 let selectedTeacherId = null;
 let selectedTeacherName = '';

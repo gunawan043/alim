@@ -32,14 +32,17 @@ class QrTokenService
 
     /**
      * Generate a signed URL for the QR code.
-     * URL format: /teacher/qr/scan/{studyGroupId}?visitUuid={tokenUuid}&signature=...
+     * URL menuju endpoint proses scan (userId milik user yang login saat QR dibuat).
      */
     public function generateSignedUrl(QrClassToken $token): string
     {
         return URL::temporarySignedRoute(
-            'teacher.qr.scan.process',
+            'user.teacher-qr.scan.process',
             now()->addHours(24),
-            ['study_group_id' => $token->study_group_id]
+            [
+                'userId' => (string) (auth()->id() ?? $token->studyGroup?->homeroom_teacher_id ?? 'self'),
+                'study_group_id' => $token->study_group_id,
+            ]
         );
     }
 

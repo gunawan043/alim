@@ -1,210 +1,260 @@
-{{-- Kehadiran: Pergantian Jam --}}
+{{-- Rekap Kehadiran Pergantian Jam: jadwal seharusnya vs scan QR masuk/keluar --}}
 @extends('layouts.master')
-@section('title') Pergantian Jam Kerja @endsection
+
+@section('title', 'Rekap Pergantian Jam')
 
 @push('css')
 <style>
-.stat-card{transition:all .25s ease;cursor:default}.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
-.table-freeze{table-layout:auto;min-width:900px;width:100%;margin-bottom:0}
-.table-freeze th,.table-freeze td{vertical-align:middle;padding:11px 14px;word-break:break-word}
-.table-freeze thead th{position:sticky;top:0;z-index:20;font-weight:600;background:#f8fafc;border-bottom:2px solid #e2e8f0}
-.table-freeze tbody tr:hover td{background:#f1f5f9}
-.page-header-card{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #bbf7d0;padding:1.25rem 1.5rem;border-radius:.625rem}
-[data-bs-theme="dark"] .page-header-card{background:linear-gradient(135deg,#052e16 0%,#0a2e1a 100%);border-color:#166534}
-@media print{.no-print{display:none!important}}
-.badge-status{font-size:.78rem;padding:.35em .7em}
+    .stat-card { border: none; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); transition: transform .2s, box-shadow .2s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.09); }
+    .stat-value { font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+    .stat-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .5px; margin: 0; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .table-freeze { min-width: 1080px; width: 100%; margin-bottom: 0; }
+    .table-freeze th, .table-freeze td { vertical-align: middle; padding: 9px 10px; }
+    .table-freeze thead th { position: sticky; top: 0; z-index: 5; font-weight: 600; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: .78rem; }
+    .time-cell { font-family: 'SF Mono', Monaco, monospace; font-size: .78rem; white-space: nowrap; }
+    .badge-status { font-size: .72rem; padding: .35em .65em; }
+    @media print { .no-print { display: none !important; } .table-freeze { min-width: 0; } }
 </style>
 @endpush
 
 @section('content')
-@php $userId = request()->route('userId') ?? auth()->id(); @endphp
+@php
+    $userId = $userId ?? auth()->id();
+    $statusColors = ['tepat' => 'success', 'terlambat' => 'warning', 'keluar_cepat' => 'info', 'belum_keluar' => 'secondary', 'tidak_hadir' => 'danger'];
+@endphp
 
-<div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <div style="width:48px;height:48px;background:#22c55e18;color:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="ri-loop-right-line fs-4"></i>
-        </div>
-        <div>
-            <h4 class="fw-bold text-dark mb-1" style="font-size:1.1rem">Pergantian Jam Kerja</h4>
-            <p class="mb-0 text-muted" style="font-size:.8rem">Kelola permintaan pergantian jam kerja GTK</p>
-        </div>
-    </div>
-    <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.kehadiran.rekap', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-file-chart-line me-1"></i> Rekap Kehadiran
+@component('components.breadcrumb')
+    @slot('li_1') Kehadiran @endslot
+    @slot('li_2') Pergantian Jam @endslot
+    @slot('title') Rekap Kehadiran Pergantian Jam @endslot
+@endcomponent
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <p class="text-muted small mb-0">
+        Jadwal mengajar vs scan QR masuk/keluar kelas
+        @if($activeAy) • {{ $activeAy->name }} @endif
+    </p>
+    <div class="d-flex gap-2 no-print">
+        <a href="{{ route('user.kehadiran.pergantian-jam.export', array_merge(['userId' => $userId], request()->query())) }}"
+           class="btn btn-success btn-sm">
+            <i class="ri-file-excel-2-line me-1"></i>Export Excel
         </a>
-        <a href="{{ route('user.kehadiran.cuti-izin', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-calendar-check-line me-1"></i> Cuti & Izin
-        </a>
+        <button onclick="window.print()" class="btn btn-light btn-sm">
+            <i class="ri-printer-line me-1"></i>Print
+        </button>
     </div>
 </div>
 
-{{-- Stat Cards --}}
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #16a34a;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-2" style="background:#22c55e18;">
-                            <i class="ri-loop-right-line" style="color:#16a34a;"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Total</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $total ?? 0 }}</h3>
-                    </div>
+{{-- Statistik ringkas --}}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-primary-subtle text-primary"><i class="ri-calendar-check-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Total Jadwal</p>
+                    <div class="stat-value">{{ $stats['total'] }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #16a34a;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-success-subtle rounded-3 fs-2">
-                            <i class="ri-checkbox-circle-line text-success"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Disetujui</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $disetujui ?? 0 }}</h3>
-                    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-success-subtle text-success"><i class="ri-checkbox-circle-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Tepat</p>
+                    <div class="stat-value">{{ $stats['tepat'] }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #d97706;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-warning-subtle rounded-3 fs-2">
-                            <i class="ri-time-line text-warning"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Menunggu</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $menunggu ?? 0 }}</h3>
-                    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-warning-subtle text-warning"><i class="ri-time-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Terlambat</p>
+                    <div class="stat-value">{{ $stats['terlambat'] }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #dc2626;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-danger-subtle rounded-3 fs-2">
-                            <i class="ri-close-circle-line text-danger"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Ditolak</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $ditolak ?? 0 }}</h3>
-                    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-info-subtle text-info"><i class="ri-logout-box-r-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Keluar Cepat</p>
+                    <div class="stat-value">{{ $stats['keluar_cepat'] }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-danger-subtle text-danger"><i class="ri-user-unfollow-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Tidak Hadir</p>
+                    <div class="stat-value">{{ $stats['tidak_hadir'] }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card stat-card h-100">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <span class="stat-icon bg-secondary-subtle text-secondary"><i class="ri-hourglass-line"></i></span>
+                <div>
+                    <p class="stat-label text-muted">Belum Keluar</p>
+                    <div class="stat-value">{{ $stats['belum_keluar'] }}</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- Filter Bar --}}
-<div class="filter-bar rounded-2 border p-3 mb-3 no-print">
-    <form method="GET" action="{{ route('user.kehadiran.pergantian-jam', $userId) }}" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label mb-0" style="font-size:.8rem">Nama GTK</label>
-            <select name="gtk_id" class="form-select form-select-sm">
-                <option value="">Semua GTK</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label mb-0" style="font-size:.8rem">Status</label>
-            <select name="status" class="form-select form-select-sm">
-                <option value="">Semua</option>
-                <option value="disetujui">Disetujui</option>
-                <option value="menunggu">Menunggu</option>
-                <option value="ditolak">Ditolak</option>
-            </select>
-        </div>
-        <div class="col-md-3 d-flex align-items-end gap-1">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="ri-filter-3-line me-1"></i>Filter</button>
-            <a href="{{ route('user.kehadiran.pergantian-jam', $userId) }}" class="btn btn-light btn-sm"><i class="ri-reset-right-line me-1"></i>Reset</a>
-        </div>
-        <div class="col-md-3 d-flex align-items-end justify-content-end">
-            <button onclick="window.print()" class="btn btn-light btn-sm"><i class="ri-printer-line me-1"></i>Print</button>
-        </div>
-    </form>
+{{-- Filter --}}
+<div class="card border mb-3 no-print">
+    <div class="card-body py-3">
+        <form method="GET" action="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label mb-0 small">Dari Tanggal</label>
+                <input type="date" name="start_date" value="{{ $start }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small">Sampai Tanggal</label>
+                <input type="date" name="end_date" value="{{ $end }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small">Guru</label>
+                <select name="teacher_id" class="form-select form-select-sm">
+                    <option value="">Semua Guru</option>
+                    @foreach($teachers as $teacher)
+                        <option value="{{ $teacher->id }}" {{ $filters['teacher_id'] === $teacher->id ? 'selected' : '' }}>{{ $teacher->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small">Rombel</label>
+                <select name="study_group_id" class="form-select form-select-sm">
+                    <option value="">Semua Rombel</option>
+                    @foreach($studyGroups as $group)
+                        <option value="{{ $group->id }}" {{ $filters['study_group_id'] === $group->id ? 'selected' : '' }}>{{ $group->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small">Mata Pelajaran</label>
+                <select name="subject_id" class="form-select form-select-sm">
+                    <option value="">Semua Mapel</option>
+                    @foreach($subjects as $subject)
+                        <option value="{{ $subject->id }}" {{ $filters['subject_id'] === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label mb-0 small">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Semua</option>
+                    @foreach($statusLabels as $key => $label)
+                        <option value="{{ $key }}" {{ $filters['status'] === $key ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100" title="Filter"><i class="ri-filter-3-line"></i></button>
+                <a href="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-reset-right-line"></i></a>
+            </div>
+        </form>
+    </div>
 </div>
 
-{{-- Table --}}
+{{-- Tabel --}}
 <div class="card">
-    <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
-        <h5 class="card-title mb-0"><i class="ri-table-2 text-primary me-1"></i> Daftar Pergantian Jam Kerja</h5>
+    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h6 class="card-title mb-0"><i class="ri-table-2 text-primary me-1"></i>Jadwal vs Kehadiran Aktual</h6>
+        <span class="small text-muted">
+            Periode {{ \Illuminate\Support\Carbon::parse($start)->translatedFormat('d M Y') }} — {{ \Illuminate\Support\Carbon::parse($end)->translatedFormat('d M Y') }}
+            • Kehadiran {{ $stats['persen_kehadiran'] }}%
+        </span>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle table-freeze">
+        <table class="table table-hover table-freeze">
             <thead>
                 <tr>
-                    <th class="bg-light text-center" style="width:48px">No</th>
-                    <th class="bg-light">Nama GTK</th>
-                    <th class="bg-light">Tanggal</th>
-                    <th class="bg-light text-center">Jam Awal</th>
-                    <th class="bg-light text-center">Jam Pengganti</th>
-                    <th class="bg-light">Alasan</th>
-                    <th class="bg-light text-center">Status</th>
-                    <th class="bg-light text-center">Aksi</th>
+                    <th class="text-center" style="width:44px">No</th>
+                    <th>Tanggal</th>
+                    <th>Guru</th>
+                    <th>Rombel</th>
+                    <th>Mata Pelajaran</th>
+                    <th class="text-center">Jam Jadwal</th>
+                    <th class="text-center">Scan Masuk</th>
+                    <th class="text-center">Scan Keluar</th>
+                    <th class="text-center">Terlambat</th>
+                    <th class="text-center">Keluar Cepat</th>
+                    <th class="text-center">Durasi</th>
+                    <th class="text-center">Status</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($pergantianList ?? [] as $item)
+                @forelse($rows as $row)
                     <tr>
                         <td class="text-center">{{ $loop->iteration }}</td>
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="avatar-xs rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="font-size:.7rem;width:28px;height:28px">
-                                    {{ strtoupper(substr($item['nama'] ?? 'G', 0, 1)) }}
-                                </div>
-                                <span class="fw-medium">{{ $item['nama'] ?? '-' }}</span>
-                            </div>
+                            <div class="fw-medium">{{ $row['date']->translatedFormat('d M Y') }}</div>
+                            <small class="text-muted">{{ $row['day_name'] }}</small>
                         </td>
-                        <td>{{ $item['tanggal'] ?? '-' }}</td>
-                        <td class="text-center">{{ $item['jam_awal'] ?? '-' }}</td>
-                        <td class="text-center">{{ $item['jam_pengganti'] ?? '-' }}</td>
-                        <td><span class="small text-muted">{{ $item['alasan'] ?? '-' }}</span></td>
+                        <td>{{ $row['teacher'] }}</td>
+                        <td>{{ $row['study_group'] }}</td>
+                        <td>{{ $row['subject'] }}</td>
+                        <td class="text-center time-cell">
+                            {{ $row['scheduled_start'] ? substr($row['scheduled_start'], 0, 5) : '—' }}–{{ $row['scheduled_end'] ? substr($row['scheduled_end'], 0, 5) : '—' }}
+                        </td>
+                        <td class="text-center time-cell">{{ $row['scan_in']?->format('H:i') ?? '—' }}</td>
+                        <td class="text-center time-cell">{{ $row['scan_out']?->format('H:i') ?? '—' }}</td>
                         <td class="text-center">
-                            @php $status = $item['status'] ?? 'menunggu'; @endphp
-                            @if($status == 'disetujui')
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Disetujui</span>
-                            @elseif($status == 'ditolak')
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Ditolak</span>
+                            @if($row['late_minutes'] > 0)
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-status">{{ $row['late_minutes'] }} mnt</span>
                             @else
-                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Menunggu</span>
+                                <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td class="text-center no-print">
-                            <a href="{{ route('user.kehadiran.pergantian-jam', $userId) }}" class="btn btn-sm btn-light"><i class="ri-eye-line"></i></a>
+                        <td class="text-center">
+                            @if($row['early_minutes'] > 0)
+                                <span class="badge bg-info-subtle text-info border border-info-subtle badge-status">{{ $row['early_minutes'] }} mnt</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
+                        <td class="text-center">{{ $row['duration'] > 0 ? $row['duration'].' mnt' : '—' }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ $statusColors[$row['status']] ?? 'secondary' }}-subtle text-{{ $statusColors[$row['status']] ?? 'secondary' }} border border-{{ $statusColors[$row['status']] ?? 'secondary' }}-subtle badge-status">
+                                {{ $row['status_label'] }}
+                            </span>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center py-5">
-                            <div style="color:#22c55e;opacity:.4"><i class="ri-loop-right-line" style="font-size:3rem"></i></div>
-                            <h5 class="mt-2 fw-semibold">Belum ada data</h5>
-                            <p class="text-muted mb-0 small">Data pergantian jam kerja GTK akan muncul di sini</p>
+                        <td colspan="12" class="text-center py-5">
+                            <div class="text-muted mb-2"><i class="ri-calendar-close-line" style="font-size:2.5rem;opacity:.4"></i></div>
+                            <h6 class="fw-semibold">Belum ada data pada periode/filter ini</h6>
+                            <p class="text-muted small mb-0">Rekap dihitung dari jadwal KBM aktif dibandingkan absensi QR guru.</p>
                         </td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    @if(isset($pergantianList) && method_exists($pergantianList, 'hasPages') && $pergantianList->hasPages())
-        <div class="card-footer bg-white py-2 d-flex justify-content-between align-items-center no-print">
-            <span class="text-muted small">Menampilkan {{ $pergantianList->firstItem() ?? 0 }} - {{ $pergantianList->lastItem() ?? 0 }} dari {{ $pergantianList->total() }} data</span>
-            <nav>{{ $pergantianList->appends(request()->query())->links() }}</nav>
-        </div>
-    @endif
+    <div class="card-footer bg-white py-2">
+        <span class="small text-muted">
+            <i class="ri-information-line me-1"></i>
+            "Tidak Hadir" dihitung dari jadwal aktif yang tidak memiliki record absensi QR pada tanggal tersebut.
+            Rentang maksimum {{ 92 }} hari per rekap.
+        </span>
+    </div>
 </div>
 @endsection

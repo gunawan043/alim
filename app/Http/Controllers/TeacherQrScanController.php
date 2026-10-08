@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -46,7 +47,7 @@ class TeacherQrScanController extends Controller
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
             ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
-            ->with(['studyGroup' => fn ($q) => $q->with('gradeLevel')])
+            ->with(['studyGroup' => fn ($q) => $q->with('gradeLevel'), 'subject:id,name'])
             ->orderBy('slot_index')
             ->get();
 
@@ -62,6 +63,21 @@ class TeacherQrScanController extends Controller
             return $att && $att->actual_time_in && ! $att->actual_time_out;
         });
 
+        // Kelompokkan jadwal hari ini untuk wizard tab (mirip scan asrama).
+        $belumAbsen = $schedules->filter(fn ($s) => ! isset($attendances[$s->id]))->values();
+
+        $berlangsung = $schedules->filter(function ($s) use ($attendances) {
+            $att = $attendances[$s->id] ?? null;
+
+            return $att && $att->actual_time_in && ! $att->actual_time_out;
+        })->values();
+
+        $selesaiHariIni = $schedules->filter(function ($s) use ($attendances) {
+            $att = $attendances[$s->id] ?? null;
+
+            return $att && $att->actual_time_out;
+        })->values();
+
         $stats = [
             'total' => $schedules->count(),
             'checked_in' => $schedules->filter(fn ($s) => isset($attendances[$s->id]) && $attendances[$s->id]->actual_time_in)->count(),
@@ -71,11 +87,32 @@ class TeacherQrScanController extends Controller
         ];
 
         $recentRecords = TeacherClassAttendance::where('teacher_id', $user->id)
-            ->where('attendance_date', '>=', $today->subDays(6))
+            ->where('attendance_date', '>=', $today->copy()->subDays(6))
             ->with(['jadwalKbm.studyGroup', 'jadwalKbm.subject'])
             ->orderByDesc('attendance_date')
             ->limit(5)
             ->get();
+
+        // URL bertanda tangan per kelas hari ini — dipakai scanner in-app
+        // (endpoint tetap memvalidasi signature, sehingga aman dari request manual).
+        $scanUrls = $schedules
+            ->pluck('study_group_id')
+            ->unique()
+            ->mapWithKeys(fn ($studyGroupId) => [
+                $studyGroupId => URL::temporarySignedRoute(
+                    'user.teacher-qr.scan.process',
+                    now()->addHours(12),
+                    ['userId' => $user->id, 'study_group_id' => $studyGroupId]
+                ),
+            ])
+            ->all();
+
+        $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+
+        // Kelas yang sedang berlangsung (jika ada) & kelas berikutnya — untuk spotlight.
+        $currentClass = $berlangsung->first();
+        $nextClass = $belumAbsen->first();
+        $completion = $stats['total'] > 0 ? (int) round(($stats['checked_out'] / $stats['total']) * 100) : 0;
 
         return view('teacher.qr.scan.index', compact(
             'schedules',
@@ -83,15 +120,24 @@ class TeacherQrScanController extends Controller
             'needsCheckout',
             'academicYear',
             'stats',
-            'recentRecords'
-        ));
+            'recentRecords',
+            'scanUrls',
+            'belumAbsen',
+            'berlangsung',
+            'selesaiHariIni',
+            'currentClass',
+            'nextClass',
+            'completion'
+        ))->with('userId', $user->id)
+            ->with('today', $today)
+            ->with('dayName', $dayNames[$dayOfWeek] ?? '-');
     }
 
     /**
      * Process QR scan (check-in or check-out).
      * Accepts signed URL from QR code.
      */
-    public function scanProcess(Request $request, string $studyGroupId)
+    public function scanProcess(Request $request, string $userId, string $studyGroupId)
     {
         // Verify signature (shared with the QR URL)
         if (! $request->hasValidSignature()) {
@@ -219,7 +265,7 @@ class TeacherQrScanController extends Controller
             'recorded_by' => $user->id,
         ]);
 
-        event(new TeacherQrScanned(
+        $this->safeEvent(new TeacherQrScanned(
             schoolId: $jadwalKbm->school_id,
             teacherId: $user->id,
             teacherName: $user->name,
@@ -229,7 +275,7 @@ class TeacherQrScanController extends Controller
             lateMinutes: $lateMinutes,
             scheduledStartTime: $startTime,
             scheduledEndTime: $jadwalKbm->end_time,
-            isSubstitute: $attendance->is_substituted,
+            isSubstitute: (bool) ($attendance->is_substituted ?? false),
         ));
 
         return $this->scanSuccess($request, [
@@ -290,7 +336,7 @@ class TeacherQrScanController extends Controller
             'checkout_qr_token_id' => $token->id,
         ]);
 
-        event(new TeacherCheckedOut(
+        $this->safeEvent(new TeacherCheckedOut(
             schoolId: $jadwalKbm->school_id,
             teacherId: $attendance->teacher_id,
             teacherName: $attendance->teacher->name ?? '',
@@ -409,7 +455,7 @@ class TeacherQrScanController extends Controller
 
         $jadwalKbm = JadwalKbm::find($attendance->jadwal_kbm_id);
 
-        event(new TeacherCheckedOut(
+        $this->safeEvent(new TeacherCheckedOut(
             schoolId: (string) $jadwalKbm?->school_id ?? '',
             teacherId: (string) $attendance->teacher_id,
             teacherName: $attendance->teacher?->name ?? '',
@@ -493,7 +539,7 @@ class TeacherQrScanController extends Controller
             'notes' => $request->notes,
         ]);
 
-        event(new TeacherQrScanned(
+        $this->safeEvent(new TeacherQrScanned(
             schoolId: $jadwalKbm->school_id,
             teacherId: $targetTeacher->id,
             teacherName: $targetTeacher->name,
@@ -503,7 +549,7 @@ class TeacherQrScanController extends Controller
             lateMinutes: $lateMinutes,
             scheduledStartTime: $startTime,
             scheduledEndTime: $jadwalKbm->end_time,
-            isSubstitute: $attendance->is_substituted,
+            isSubstitute: (bool) ($attendance->is_substituted ?? false),
         ));
 
         return back()->with('success',
@@ -644,20 +690,21 @@ class TeacherQrScanController extends Controller
      */
     public function manualIndex(Request $request)
     {
-        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId');
         $academicYear = AcademicYear::where('is_active', true)->first();
         $today = today();
         $dayOfWeek = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
 
-        $allTeachers = User::where('school_id', $user->school_id)
-            ->where('role_id', function ($q) {
-                $q->select('id')->from('roles')->whereIn('name', ['Guru', 'Guru Tahfidz', 'Kepala Departemen Tahfidz']);
-            })
+        // Roster guru: snapshot permission → data kepegawaian (fallback).
+        $teacherIds = app(\App\Services\TeacherRosterService::class)->idsForSchool($schoolId);
+
+        $allTeachers = User::whereIn('id', $teacherIds)
             ->with('roles:id,name')
             ->orderBy('name')
             ->get();
 
         $schedules = JadwalKbm::where('is_active', true)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('day_of_week', $dayOfWeek)
             ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
             ->with(['teacher:id,name', 'studyGroup:name,code', 'subject:name'])
@@ -665,6 +712,7 @@ class TeacherQrScanController extends Controller
             ->get();
 
         $todayAttendances = TeacherClassAttendance::where('attendance_date', $today)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->with(['teacher:id,name'])
             ->get()
             ->keyBy(fn ($a) => $a->teacher_id);
@@ -743,7 +791,7 @@ class TeacherQrScanController extends Controller
             'notes' => $request->notes,
         ]);
 
-        event(new TeacherQrScanned(
+        $this->safeEvent(new TeacherQrScanned(
             schoolId: $jadwalKbm->school_id,
             teacherId: $targetTeacher->id,
             teacherName: $targetTeacher->name,
@@ -753,7 +801,7 @@ class TeacherQrScanController extends Controller
             lateMinutes: $lateMinutes,
             scheduledStartTime: $startTime,
             scheduledEndTime: $jadwalKbm->end_time,
-            isSubstitute: $attendance->is_substituted,
+            isSubstitute: (bool) ($attendance->is_substituted ?? false),
         ));
 
         return back()->with('success',
@@ -775,5 +823,19 @@ class TeacherQrScanController extends Controller
         $overrides = AbsensiGtkSetting::get('qr_settings', []) ?? [];
 
         return array_merge($defaultSettings, is_array($overrides) ? $overrides : []);
+    }
+
+    /**
+     * Kirim event broadcast tanpa menggagalkan proses scan.
+     * Data absensi sudah tersimpan; kegagalan broadcast (mis. Pusher tidak
+     * tersedia) hanya dicatat, tidak mengembalikan 500 ke guru.
+     */
+    private function safeEvent(object $event): void
+    {
+        try {
+            event($event);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

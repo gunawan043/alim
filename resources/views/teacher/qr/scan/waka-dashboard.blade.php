@@ -275,7 +275,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ route('user.teacher-qr.manual-checkin') }}">
+            <form method="POST" action="{{ route('user.teacher-qr.manual-checkin', ['userId' => $userId]) }}">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -328,7 +328,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ route('user.teacher-qr.manual-checkout') }}">
+            <form method="POST" action="{{ route('user.teacher-qr.manual-checkout', ['userId' => $userId]) }}">
                 @csrf
                 <input type="hidden" name="attendance_id" id="mco_attendance_id">
                 <div class="modal-body">
@@ -358,7 +358,7 @@
 
 @endsection
 
-@push('js')
+@push('scripts')
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.17.1/dist/echo.iife.js"></script>
 <script>

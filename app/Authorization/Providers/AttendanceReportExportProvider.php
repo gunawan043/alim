@@ -24,8 +24,10 @@ final class AttendanceReportExportProvider implements PermissionProvider
 {
     private const ALLOWED_JABATAN = [
         'Kepala Sekolah',
+        'Kepala Satuan Pendidikan',
         'Wakil Kepala Sekolah',
-        'Wakil Kepala Sekolah',
+        'Wakil Kepala Satuan Pendidikan',
+        'Wakasek Satuan Pendidikan',
         'Kepala Tata Usaha',
         'Staf Tata Usaha',
     ];

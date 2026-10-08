@@ -17,7 +17,9 @@ class QrClassToken extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->id = $m->id ?: (string) Str::uuid();
+        });
         static::creating(function ($token) {
             if (empty($token->token_hash)) {
                 $token->token_hash = hash('sha256', $token->id.time().Str::random(32));
@@ -69,40 +71,33 @@ class QrClassToken extends Model
         });
     }
 
-    public function scopeForStudyGroup($query, string $studyGroupId): ?self
+    public function scopeForStudyGroup($query, string $studyGroupId)
     {
         return $query
             ->where('study_group_id', $studyGroupId)
             ->whereNotNull('study_group_id')
             ->active()
-            ->orderByDesc('last_regenerated_at')
-            ->first();
+            ->orderByDesc('last_regenerated_at');
     }
 
     // ── Actions ───────────────────────────────────────────────────
 
     /**
-     * Regenerate a new token for this study group.
-     * Used when class details change or manually requested.
+     * Regenerate QR untuk study group ini.
+     * Satu kelas + tahun ajaran hanya punya SATU baris token (unique constraint),
+     * sehingga regenerate memperbarui token_hash & status pada baris yang sama.
+     * Token hash baru membuat QR lama tidak dikenali sistem.
      */
-    public function regenerate(): void
+    public function regenerate(): self
     {
-        // Deactivate old tokens via unique constraint on (study_group_id, academic_year_id)
-        self::where('study_group_id', $this->study_group_id)
-            ->where('academic_year_id', $this->academic_year_id)
-            ->update(['qr_url_expires_at' => now()]);
-
-        $new = new self([
-            'study_group_id' => $this->study_group_id,
-            'school_id' => $this->school_id,
-            'academic_year_id' => $this->academic_year_id,
-        ]);
-        $new->save();
-
-        $this->token_hash = $new->token_hash;
+        $this->token_hash = hash('sha256', $this->id.time().Str::random(32));
+        $this->qr_url_expires_at = null;
         $this->last_regenerated_at = now();
         $this->scan_count = 0;
+        $this->last_scan_at = null;
         $this->save();
+
+        return $this;
     }
 
     /**
