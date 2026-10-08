@@ -133,6 +133,9 @@
                                 <button class="btn btn-primary"><i class="ri-search-line"></i></button>
                                 <a href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-refresh-line"></i></a>
                             </form>
+                            <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}" class="btn btn-success" style="margin-left:.5rem;">
+                                <i class="ri-add-line align-bottom me-1"></i> Buat Soal
+                            </a>
                         </div>
                     </div>
                 </div>

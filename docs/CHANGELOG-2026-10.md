@@ -137,6 +137,7 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Test: `BankSoalTerpusatTest` 7 test/69 assertion; total **91 test / 672 assertion** lulus + smoke MySQL (similarity semantic 81,67%).
 - **Sidebar**: satu seksi *Bank Soal Terpusat* (Repository Soal + Review Soal Serumpun, serta TU — Cetak Paket Final khusus TU) untuk Guru, Koor Mapel, Kurikulum, Waka/KSP, dan TU pada sidebar Satuan Pendidikan (tanpa duplikasi); ditambahkan juga pada sidebar **Waka** (grup Pelaksanaan Sumatif), **Pimpinan**, dan **Super Admin**.
 - **Akses semua soal**: **Waka, Kurikulum, TU, dan KSP** (Kepala/Wakil satuan pendidikan) melihat **seluruh repositori soal** via `KurikulumAccess::canAccessAllBankSoal`; role lain tetap terbatas pada bank accessible + soal miliknya. TU tetap tidak dapat mengubah isi akademik soal.
+- **Input soal**: form input langsung di sistem tetap melalui **Bank Soal → Tambah Soal** (`/bank-soal/{bank}/soal/create`) dan kini memuat field terstruktur **Materi/Topik** serta **Pembahasan**; ditambahkan pintasan **Buat Soal** di halaman Repository dan menu **Bank Soal & Input Soal** di sidebar (Satuan Pendidikan & Waka).
 
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.

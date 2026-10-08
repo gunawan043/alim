@@ -588,6 +588,13 @@
     <li class="menu-title"><span>Bank Soal Terpusat</span></li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
+           href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
+            <i class="ri-add-circle-line"></i><span>Bank Soal &amp; Input Soal</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
            href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
             <i class="ri-archive-2-line"></i><span>Repository Soal</span>

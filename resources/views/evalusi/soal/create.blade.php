@@ -46,12 +46,26 @@
                                 </select>
                             </div>
 
+                            <div class="col-md-6">
+                                <label class="form-label">Materi / Topik</label>
+                                <input type="text" name="materi" class="form-control" maxlength="150"
+                                       value="{{ old('materi') }}" placeholder="Contoh: Perkalian bilangan bulat">
+                            </div>
+
                             <div class="col-12">
                                 <label class="form-label">Pertanyaan / Stimulus <span class="text-danger">*</span></label>
                                 <textarea name="pertanyaan" id="pertanyaan" class="form-control @error('pertanyaan') is-invalid @enderror"
                                           rows="6" required>{{ old('pertanyaan') }}</textarea>
                                 <small class="text-muted">Mendukung HTML dasar untuk equation/gambar: <code>&lt;img src="..."&gt;</code></small>
                                 @error('pertanyaan') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Pembahasan</label>
+                                <textarea name="pembahasan" rows="3" class="form-control @error('pembahasan') is-invalid @enderror"
+                                          placeholder="Penjelasan kunci jawaban...">{{ old('pembahasan') }}</textarea>
+                                <small class="text-muted">Membantu reviewer dan analisis butir soal.</small>
+                                @error('pembahasan') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
 
                             <div class="col-md-6">

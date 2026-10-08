@@ -417,6 +417,27 @@ class BankSoalTerpusatTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
+    // MENU INPUT SOAL
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_form_input_soal_tersedia_dan_memuat_field_baru(): void
+    {
+        $this->actingAs($this->guruA);
+
+        // Pintasan dari repository.
+        $this->get("/{$this->guruA->id}/bank-soal-terpusat")
+            ->assertOk()
+            ->assertSee('Buat Soal');
+
+        // Form input soal (Bank Soal → Tambah Soal) memuat field terstruktur.
+        $this->get("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal/create")
+            ->assertOk()
+            ->assertSee('Materi / Topik')
+            ->assertSee('Pembahasan')
+            ->assertSee('Opsi Jawaban');
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // AKSES SEMUA SOAL: WAKA, KURIKULUM, TU, KSP
     // ─────────────────────────────────────────────────────────────
 

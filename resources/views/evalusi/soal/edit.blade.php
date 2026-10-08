@@ -45,9 +45,22 @@
                                 </select>
                             </div>
 
+                            <div class="col-md-6">
+                                <label class="form-label">Materi / Topik</label>
+                                <input type="text" name="materi" class="form-control" maxlength="150"
+                                       value="{{ old('materi', $soal->materi) }}" placeholder="Contoh: Perkalian bilangan bulat">
+                            </div>
+
                             <div class="col-12">
                                 <label class="form-label">Pertanyaan / Stimulus <span class="text-danger">*</span></label>
                                 <textarea name="pertanyaan" id="pertanyaan" class="form-control" rows="6" required>{{ old('pertanyaan', $soal->pertanyaan) }}</textarea>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Pembahasan</label>
+                                <textarea name="pembahasan" rows="3" class="form-control"
+                                          placeholder="Penjelasan kunci jawaban...">{{ old('pembahasan', $soal->pembahasan) }}</textarea>
+                                <small class="text-muted">Membantu reviewer dan analisis butir soal.</small>
                             </div>
 
                             <div class="col-md-6">

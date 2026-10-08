@@ -122,6 +122,9 @@
                                 <a href="{{ route('waka.soal-sumatif') }}" class="nav-link">Soal Sumatif</a>
                             </li>
                             <li class="nav-item">
+                                <a href="{{ route('user.bank-soal.index', ['userId' => auth()->id()]) }}" class="nav-link">Bank Soal &amp; Input Soal</a>
+                            </li>
+                            <li class="nav-item">
                                 <a href="{{ route('user.bank-soal-terpusat.index', ['userId' => auth()->id()]) }}" class="nav-link">Bank Soal Terpusat</a>
                             </li>
                             <li class="nav-item">
