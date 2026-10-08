@@ -26,7 +26,27 @@ class PaketSoal extends Model
         'jumlah_soal_aktual', 'total_bobot_aktual',
         'waktu_pengerjaan_menit', 'instruksi_umum',
         'is_published', 'published_by', 'published_at',
+        'workflow_status', 'approved_at', 'approved_by',
+        'similarity_checked_at', 'similarity_summary', 'distributed_at',
         'shared_scope', 'kkm',
+    ];
+
+    const WORKFLOW_DRAFT = 'draft';
+
+    const WORKFLOW_REVIEW = 'review';
+
+    const WORKFLOW_REVISI = 'revisi';
+
+    const WORKFLOW_APPROVED = 'approved';
+
+    const WORKFLOW_PUBLISHED = 'published';
+
+    const WORKFLOW_OPTIONS = [
+        self::WORKFLOW_DRAFT => 'Draft',
+        self::WORKFLOW_REVIEW => 'Review',
+        self::WORKFLOW_REVISI => 'Perlu Perbaikan',
+        self::WORKFLOW_APPROVED => 'Approved',
+        self::WORKFLOW_PUBLISHED => 'Didistribusikan',
     ];
 
     protected $appends = [];
@@ -37,6 +57,10 @@ class PaketSoal extends Model
         'is_published' => 'boolean',
         'shared_scope' => 'string',
         'published_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'similarity_checked_at' => 'datetime',
+        'similarity_summary' => 'array',
+        'distributed_at' => 'datetime',
         'jumlah_soal_aktual' => 'integer',
         'total_bobot_aktual' => 'decimal:2',
         'waktu_pengerjaan_menit' => 'integer',
@@ -95,6 +119,32 @@ class PaketSoal extends Model
         return $this->hasMany(ItemAnalysis::class, 'paket_soal_id');
     }
 
+    public function reviewAssignments(): HasMany
+    {
+        return $this->hasMany(ReviewAssignment::class, 'reviewable_id')
+            ->where('reviewable_type', self::class);
+    }
+
+    public function distributions(): HasMany
+    {
+        return $this->hasMany(PaketSoalDistribution::class, 'paket_soal_id');
+    }
+
+    public function printJobs(): HasMany
+    {
+        return $this->hasMany(PaketSoalPrintJob::class, 'paket_soal_id');
+    }
+
+    /**
+     * Paket siap dipakai asesmen final:
+     * sudah disetujui seluruh validator + dipublikasikan.
+     */
+    public function isFinal(): bool
+    {
+        return in_array($this->workflow_status, [self::WORKFLOW_APPROVED, self::WORKFLOW_PUBLISHED], true)
+            && $this->is_published;
+    }
+
     /**
      * Publish the paket soal.
      */
@@ -104,6 +154,7 @@ class PaketSoal extends Model
             'is_published' => true,
             'published_by' => $userId,
             'published_at' => now(),
+            'workflow_status' => self::WORKFLOW_PUBLISHED,
         ]);
     }
 

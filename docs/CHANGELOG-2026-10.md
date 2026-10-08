@@ -124,6 +124,18 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Style bersama: `resources/views/kurikulum/_styles.blade.php` (filter-badge & stat-label) dipakai oleh index maupun halaman detail; detail page memakai `border-bottom-dashed` yang sama.
 - Konvensi ini menjadi acuan pembuatan halaman modul berikutnya.
 
+## 18. Bank Soal Terpusat Lintas Satuan Pendidikan
+- **Repository terpusat**: `bank_soal` + `is_central`, `jenjang`, `grade_level_id`, `academic_year_id`, `semester`; scope akses diperluas sehingga bank **public_pool/central** dapat dipakai lintas satuan pendidikan. Serumpun = mapel + jenjang/kelas + tahun ajaran + semester — **bukan school_id**.
+- **Halaman `/bank-soal-terpusat`**: statistik *Soal Saya / Soal Serumpun / Terverifikasi / Tahun Sebelumnya*, filter lengkap (mapel, kelas, fase, TA, semester, bentuk, kesulitan, status, satuan pembuat, guru), quick scope, dan aksi **Gunakan sebagai Dasar** → membuat turunan baru (`derived_from_soal_id` + `soal_clone_log` tipe `adapt`) tanpa mengubah soal asli.
+- **Soal terstruktur**: kolom baru `materi` & `pembahasan`; options + kunci tetap terstruktur; hash & shingles ternormalisasi (`ContentHashEngine`).
+- **Similarity berjenjang** lintas bank/tahun: Level 1 Exact (`content_hash`), Level 2 Text (shingles Jaccard ≥ 70%), Level 3 Semantic (token-set ≥ 60% + penguat kesamaan angka) — disimpan di `soal_similarities` + ringkasan di soal; **comparison view** side-by-side via endpoint JSON. Similarity = warning, bukan penolakan otomatis.
+- **Review guru serumpun lintas satuan**: `review_assignments` (generik Soal & Paket) — reviewer otomatis dari guru mapel serumpun (cocok `subject_id`/nama mapel, maks 4, lintas sekolah), **semua harus menyetujui**; satu permintaan perbaikan → *Perlu Perbaikan*; ajukan ulang mereset seluruh approval; perubahan soal setelah approval membatalkan validasi lama. Inbox reviewer + halaman tinjau (metadata, CP/TP, kunci, pembahasan, similarity, comparison). Audit trail via `audit_logs`.
+- **Paket soal**: quality gate (duplikasi internal + kemiripan historis, tersimpan di `similarity_summary`), approval seluruh reviewer, publish → final; **hanya soal approved** yang boleh menjadi bagian paket final; **distribusi via sistem** ke Tata Usaha/Waka/Kurikulum/Koordinator/KSP (`paket_soal_distributions`); **TU print jobs** (`paket_soal_print_jobs`: jumlah cetak, status produksi, tanggal, petugas) — TU tidak dapat mengubah isi akademik.
+- **Integrasi Buku Administrasi**: wizard Sumatif memilih **paket final** (approved + dipublikasikan) → tersimpan pada `admin_nilai_sumatif.paket_soal_id` (validasi server menolak paket belum final).
+- Perbaikan pendukung: signature `PaketSoalController` mengikuti parameter route posisional (`{userId}/{paketUuid}`); stub `kisi_kisi_soal` untuk SQLite dipindah ke `tests/TestCase.php`.
+- Migrasi additive `2026_10_09_200000`; route baru `bank-soal-terpusat`, `review-soal`, `tu-paket-soal`; menu sidebar (guru, koor mapel, TU).
+- Test: `BankSoalTerpusatTest` 7 test/69 assertion; total **91 test / 672 assertion** lulus + smoke MySQL (similarity semantic 81,67%).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

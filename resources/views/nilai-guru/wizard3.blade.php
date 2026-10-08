@@ -162,15 +162,31 @@
                         </table>
                     </div>
                     <div class="card-footer border-top-dashed bg-light">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <span class="text-muted">RS = Rata-rata SH &bull; STS = Sumatif Tengah Semester &bull; SAS = Sumatif Akhir Semester &bull; RSA = auto &bull; NR Final = RS×wRs + STS×wSts + SAS×wSas</span>
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="text-muted small mb-0" style="white-space:nowrap;"><i class="ri-stack-line me-1"></i>Paket Soal Final</label>
+                                    <select name="paket_soal_id" class="form-select form-select-sm" style="min-width:220px;">
+                                        <option value="">— Tanpa paket (input manual) —</option>
+                                        @foreach($paketOptions as $paket)
+                                            <option value="{{ $paket->id }}" {{ $selectedPaketId === $paket->id ? 'selected' : '' }}>
+                                                {{ $paket->kode_paket }} — {{ \Illuminate\Support\Str::limit($paket->judul, 40) }} ✓
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <span id="save-status" class="text-muted" style="font-size:.8rem;"></span>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="ri-save-line me-1"></i> Simpan Nilai
                                 </button>
                             </div>
                         </div>
+                        @if($paketOptions->isEmpty())
+                            <small class="text-muted d-block mt-1">
+                                Hanya paket soal <strong>final (approved + dipublikasikan)</strong> dari Bank Soal Terpusat yang dapat dipakai sebagai asesmen final.
+                            </small>
+                        @endif
                     </div>
                 </form>
             </div>

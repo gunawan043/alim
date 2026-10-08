@@ -484,6 +484,18 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+                        Bank Soal Terpusat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
+                        Review Soal Serumpun
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
                         Peta Kurikulum
@@ -562,6 +574,20 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
            href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
             <i class="ri-stack-line"></i><span>Paket Soal Sumatif</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+           href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+            <i class="ri-archive-2-line"></i><span>Bank Soal Terpusat</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
+           href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
+            <i class="ri-git-pull-request-line"></i><span>Review Soal Serumpun</span>
         </a>
     </li>
 
@@ -1088,13 +1114,13 @@
 
     {{-- Pelaksanaan Sumatif --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
            href="#tu_sumatif" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.']) ? 'true' : 'false' }}"
+           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
            aria-controls="tu_sumatif">
             <i class="ri-file-edit-line"></i><span>Pelaksanaan Sumatif</span><span class="menu-arrow"></span>
         </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.']) ? ' show' : '' }}"
+        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
              id="tu_sumatif">
             <ul class="nav nav-sm flex-column">
                 <li class="nav-item">
@@ -1113,6 +1139,12 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
                        href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
                         Soal Sumatif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
+                        TU — Cetak Paket Final
                     </a>
                 </li>
             </ul>

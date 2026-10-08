@@ -6,7 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\Soal;
 use App\Models\SoalOption;
+use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Services\Evaluasi\ContentHashEngine;
+use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\Evaluasi\SoalSimilarityService;
+use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -38,7 +43,7 @@ class SoalController extends Controller
     {
         $bank = BankSoal::findOrFail($bankId);
 
-        Gate::authorize('createSoal', $bank);
+        $this->authorizeManage(request(), $bank);
 
         $tps = TujuanPembelajaran::where('subject_id', $bank->subject_id)->get();
 
@@ -60,11 +65,13 @@ class SoalController extends Controller
     {
         $bank = BankSoal::findOrFail($bankId);
 
-        Gate::authorize('createSoal', $bank);
+        $this->authorizeManage(request(), $bank);
 
         $validated = $request->validate([
             'tipe_soal' => 'required|in:pg,bs,jodoh,isian,uraian',
             'pertanyaan' => 'required|string',
+            'pembahasan' => 'nullable|string|max:5000',
+            'materi' => 'nullable|string|max:150',
             'gambar_path' => 'nullable|string|max:255',
             'audio_path' => 'nullable|string|max:255',
             'bobot_default' => 'required|numeric|min:0|max:100',
@@ -79,12 +86,20 @@ class SoalController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $request, $bank, $userId) {
+            $engine = app(ContentHashEngine::class);
+            $correctTexts = collect($request->options ?? [])
+                ->filter(fn ($opt) => isset($opt['is_correct']) && (string) $opt['is_correct'] === '1')
+                ->pluck('teks_opsi')
+                ->all();
+
             $soal = new Soal;
             $soal->fill([
                 'bank_soal_id' => $bank->id,
                 'tp_id' => $validated['tp_id'] ?? null,
+                'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
                 'pertanyaan' => $validated['pertanyaan'],
+                'pembahasan' => $validated['pembahasan'] ?? null,
                 'gambar_path' => $validated['gambar_path'] ?? null,
                 'audio_path' => $validated['audio_path'] ?? null,
                 'bobot_default' => $validated['bobot_default'],
@@ -92,11 +107,13 @@ class SoalController extends Controller
                 'waktu_estimasi_menit' => $validated['waktu_estimasi_menit'],
                 'tags' => $validated['tags'] ? array_map('trim', explode(',', $validated['tags'])) : null,
                 'status' => 'draft',
+                'workflow_status' => Soal::WORKFLOW_DRAFT,
                 'dibuat_oleh' => $userId,
             ]);
 
-            // Auto-hash for dedupe detection
-            $soal->content_hash = hash('sha256', $soal->pertanyaan);
+            // Hash & shingles ternormalisasi (fondasi deteksi kemiripan).
+            $soal->content_hash = $engine->hashFromSoal($soal->pertanyaan, $correctTexts);
+            $soal->shingles_hash = $engine->shinglesFromSoal($soal->pertanyaan);
 
             $soal->save();
 
@@ -107,7 +124,7 @@ class SoalController extends Controller
                         'soal_id' => $soal->id,
                         'label' => $opt['label'],
                         'teks_opsi' => $opt['teks_opsi'],
-                        'is_correct' => isset($opt['is_correct']) && $opt['is_correct'] === '1',
+                        'is_correct' => filter_var($opt['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN),
                         'urutan' => $i + 1,
                     ]);
                 }
@@ -127,7 +144,7 @@ class SoalController extends Controller
         $soal = Soal::with('options')->findOrFail($id);
         $bank = $soal->bankSoal;
 
-        Gate::authorize('updateSoal', [$bank, $soal]);
+        $this->authorizeEdit(request(), $bank, $soal);
 
         $tps = TujuanPembelajaran::where('subject_id', $bank->subject_id)->get();
 
@@ -150,11 +167,13 @@ class SoalController extends Controller
         $soal = Soal::findOrFail($id);
         $bank = $soal->bankSoal;
 
-        Gate::authorize('updateSoal', [$bank, $soal]);
+        $this->authorizeEdit(request(), $bank, $soal);
 
         $validated = $request->validate([
             'tipe_soal' => 'required|in:pg,bs,jodoh,isian,uraian',
             'pertanyaan' => 'required|string',
+            'pembahasan' => 'nullable|string|max:5000',
+            'materi' => 'nullable|string|max:150',
             'gambar_path' => 'nullable|string|max:255',
             'audio_path' => 'nullable|string|max:255',
             'bobot_default' => 'required|numeric|min:0|max:100',
@@ -170,10 +189,18 @@ class SoalController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $request, $soal, $userId) {
+            $engine = app(ContentHashEngine::class);
+            $correctTexts = collect($request->options ?? [])
+                ->filter(fn ($opt) => isset($opt['is_correct']) && (string) $opt['is_correct'] === '1')
+                ->pluck('teks_opsi')
+                ->all();
+
             $soal->fill([
                 'tp_id' => $validated['tp_id'] ?? null,
+                'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
                 'pertanyaan' => $validated['pertanyaan'],
+                'pembahasan' => $validated['pembahasan'] ?? null,
                 'gambar_path' => $validated['gambar_path'] ?? null,
                 'audio_path' => $validated['audio_path'] ?? null,
                 'bobot_default' => $validated['bobot_default'],
@@ -181,8 +208,15 @@ class SoalController extends Controller
                 'waktu_estimasi_menit' => $validated['waktu_estimasi_menit'],
                 'tags' => $validated['tags'] ? array_map('trim', explode(',', $validated['tags'])) : null,
             ]);
-            $soal->content_hash = hash('sha256', $soal->pertanyaan);
+            $soal->content_hash = $engine->hashFromSoal($soal->pertanyaan, $correctTexts);
+            $soal->shingles_hash = $engine->shinglesFromSoal($soal->pertanyaan);
             $soal->save();
+
+            // Perubahan soal setelah approval/review → versi baru wajib divalidasi ulang.
+            if ($soal->reviewAssignments()->exists() || $soal->workflow_status !== Soal::WORKFLOW_DRAFT) {
+                $soal->reviewAssignments()->delete();
+                $soal->syncWorkflowStatus(Soal::WORKFLOW_DRAFT);
+            }
 
             // Replace options (simpler than diff for now)
             if (in_array($validated['tipe_soal'], ['pg', 'bs', 'jodoh']) && $request->filled('options')) {
@@ -192,7 +226,7 @@ class SoalController extends Controller
                         'soal_id' => $soal->id,
                         'label' => $opt['label'],
                         'teks_opsi' => $opt['teks_opsi'],
-                        'is_correct' => isset($opt['is_correct']) && $opt['is_correct'] === '1',
+                        'is_correct' => filter_var($opt['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN),
                         'urutan' => $i + 1,
                     ]);
                 }
@@ -214,7 +248,7 @@ class SoalController extends Controller
         $soal = Soal::findOrFail($id);
         $bank = $soal->bankSoal;
 
-        Gate::authorize('updateSoal', [$bank, $soal]);
+        $this->authorizeEdit(request(), $bank, $soal);
 
         $soal->delete();
 
@@ -224,31 +258,77 @@ class SoalController extends Controller
     }
 
     /**
-     * Submit soal for review (draft → submitted).
+     * Ajukan soal untuk review serumpun:
+     *  1) jalankan automatic similarity check (cross-bank/historical),
+     *  2) tugaskan reviewer serumpun lintas satuan pendidikan.
+     * Similarity adalah warning — guru tetap dapat melanjutkan review.
      */
     public function submitForReview(string $userId, string $bankId, string $id)
     {
         $soal = Soal::findOrFail($id);
-        $soal->update(['status' => 'submitted']);
+        $user = request()->user();
 
-        return back()->with('success', 'Soal disubmit untuk review.');
+        $check = app(SoalSimilarityService::class)->check($soal, 5, 'review');
+        $assignments = app(ReviewWorkflowService::class)->submit($soal, $user);
+
+        $warning = $check['summary']['total'] > 0
+            ? " Ditemukan {$check['summary']['total']} soal historis mirip (tertinggi {$check['summary']['highest']}%) — mohon ditinjau reviewer."
+            : ' Tidak ditemukan kemiripan signifikan dengan soal historis.';
+
+        return back()->with('success', 'Soal diajukan untuk review ('.count($assignments).' reviewer serumpun).'.$warning);
     }
 
     /**
-     * Approve a soal (kepalasekolah / kaprog only — via Gate).
+     * Approve langsung oleh tim kurikulum (jalur legacy).
+     * Alur utama tetap melalui review serumpun (ReviewSoalController).
      */
     public function approve(string $userId, string $bankId, string $id)
     {
         $soal = Soal::findOrFail($id);
 
-        Gate::authorize('approveSoal', $soal);
+        if (! app(KurikulumAccess::class)->isKurikulumTeam(request()->user())) {
+            abort(403, 'Hanya tim kurikulum yang dapat menyetujui langsung.');
+        }
 
-        $soal->update([
-            'status' => 'approved',
-            'approved_by' => $userId,
-            'approved_at' => now(),
-        ]);
+        $soal->syncWorkflowStatus(Soal::WORKFLOW_APPROVED);
+        $soal->forceFill(['approved_by' => $userId])->save();
 
         return back()->with('success', 'Soal disetujui.');
+    }
+
+    // ── Otorisasi bank soal (tanpa Gate: registrar snapshot meng-intercept ability) ──
+
+    private function authorizeManage(Request $request, ?BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        if (! $bank) {
+            abort(404);
+        }
+
+        $isOwner = $bank->owner_user_id === $user->id || $bank->created_by === $user->id;
+        $isTeam = app(KurikulumAccess::class)->isKurikulumTeam($user);
+        $isSubjectTeacher = TeachingAssignment::query()
+            ->where('teacher_id', $user->id)
+            ->where('subject_id', $bank->subject_id)
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $isOwner && ! $isTeam && ! $isSubjectTeacher) {
+            abort(403, 'Anda tidak berwenang mengelola soal pada bank ini.');
+        }
+    }
+
+    private function authorizeEdit(Request $request, ?BankSoal $bank, Soal $soal): void
+    {
+        $user = $request->user();
+
+        $isAuthor = $soal->dibuat_oleh === $user->id;
+        $isTeam = app(KurikulumAccess::class)->isKurikulumTeam($user);
+        $isBankOwner = $bank && ($bank->owner_user_id === $user->id || $bank->created_by === $user->id);
+
+        if (! $isAuthor && ! $isTeam && ! $isBankOwner) {
+            abort(403, 'Hanya pembuat soal atau tim kurikulum yang dapat mengubah soal ini.');
+        }
     }
 }

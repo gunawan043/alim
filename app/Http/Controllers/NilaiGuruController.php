@@ -451,8 +451,26 @@ class NilaiGuruController extends Controller
             fn (NilaiSumatif $row) => $sumatifService->valuesFor($row, $columns)
         );
 
+        // Paket soal final (approved + dipublikasikan) untuk asesmen sumatif final.
+        $paketOptions = \App\Models\PaketSoal::query()
+            ->where('is_published', true)
+            ->whereIn('workflow_status', [\App\Models\PaketSoal::WORKFLOW_APPROVED, \App\Models\PaketSoal::WORKFLOW_PUBLISHED])
+            ->whereHas('kisiKisi', function ($q) use ($book) {
+                $q->where('subject_id', $book['adminBook']->subject_id)
+                    ->where('academic_year_id', $book['adminBook']->academic_year_id)
+                    ->where('semester', $book['adminBook']->semester);
+            })
+            ->orderBy('kode_paket')
+            ->get(['id', 'judul', 'kode_paket']);
+
+        $selectedPaketId = NilaiSumatif::query()
+            ->where('admin_book_id', $book['adminBook']->id)
+            ->where('semester', $book['adminBook']->semester)
+            ->whereNotNull('paket_soal_id')
+            ->value('paket_soal_id');
+
         return view('nilai-guru.wizard3', compact(
-            'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap'
+            'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId'
         ));
     }
 
@@ -504,6 +522,20 @@ class NilaiGuruController extends Controller
 
         $service = app(SumatifHarianService::class);
 
+        // Paket soal final (jika dipilih) — hanya paket approved+published yang sahih.
+        $paketId = $request->input('paket_soal_id');
+        if ($paketId) {
+            $paket = \App\Models\PaketSoal::with('kisiKisi')->find($paketId);
+            $isValid = $paket && $paket->isFinal()
+                && $paket->kisiKisi
+                && $paket->kisiKisi->subject_id === $book['adminBook']->subject_id
+                && $paket->kisiKisi->semester === $book['adminBook']->semester;
+
+            if (! $isValid) {
+                return back()->with('error', 'Paket soal tidak valid — hanya paket final (approved + dipublikasikan) yang boleh dipakai untuk asesmen final.');
+            }
+        }
+
         foreach ($request->sumatif as $studentId => $data) {
             $input = [
                 'sts' => array_key_exists('sts', $data) ? $data['sts'] : null,
@@ -524,6 +556,13 @@ class NilaiGuruController extends Controller
             }
 
             $service->upsertSumatif($book['adminBook'], (string) $studentId, $input);
+        }
+
+        if ($paketId) {
+            NilaiSumatif::query()
+                ->where('admin_book_id', $book['adminBook']->id)
+                ->where('semester', $book['adminBook']->semester)
+                ->update(['paket_soal_id' => $paketId]);
         }
 
         return redirect()->back()->with('success', 'Nilai Sumatif berhasil disimpan.');

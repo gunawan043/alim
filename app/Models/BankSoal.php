@@ -27,12 +27,17 @@ class BankSoal extends Model
         'school_id',
         'subject_id',
         'fase',
+        'jenjang',
+        'grade_level_id',
+        'academic_year_id',
+        'semester',
         'nama',
         'deskripsi',
         'jenis_soal',
         'tingkat_kesulitan_target',
         'is_public',
         'shared_scope',
+        'is_central',
         'owner_user_id',
         'allow_cross_teacher_clone',
         'total_soal',
@@ -42,6 +47,7 @@ class BankSoal extends Model
 
     protected $casts = [
         'is_public' => 'boolean',
+        'is_central' => 'boolean',
         'allow_cross_teacher_clone' => 'boolean',
         'distribusi_kesulitan_aktual' => 'array',
         'total_soal' => 'integer',
@@ -89,22 +95,59 @@ class BankSoal extends Model
             ->withTimestamps();
     }
 
+    public function gradeLevel(): BelongsTo
+    {
+        return $this->belongsTo(GradeLevel::class, 'grade_level_id');
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class, 'academic_year_id');
+    }
+
     public function scopeOwnedBy($query, string $userId)
     {
         return $query->where('owner_user_id', $userId);
     }
 
+    public function scopeCentral($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_central', true)->orWhere('shared_scope', 'public_pool');
+        });
+    }
+
+    /**
+     * Konteks serumpun lintas satuan pendidikan:
+     * mapel (+jenjang/kelas/TA/semester bila tersedia) — BUKAN school_id.
+     */
+    public function scopeRumpun($query, ?string $subjectId = null, array $context = [])
+    {
+        return $query
+            ->when($subjectId, fn ($q) => $q->where('subject_id', $subjectId))
+            ->when($context['jenjang'] ?? null, fn ($q) => $q->where('jenjang', $context['jenjang']))
+            ->when($context['grade_level_id'] ?? null, fn ($q) => $q->where('grade_level_id', $context['grade_level_id']))
+            ->when($context['fase'] ?? null, fn ($q) => $q->where('fase', $context['fase']))
+            ->when($context['academic_year_id'] ?? null, fn ($q) => $q->where('academic_year_id', $context['academic_year_id']))
+            ->when($context['semester'] ?? null, fn ($q) => $q->where('semester', $context['semester']));
+    }
+
+    /**
+     * Akses bank: milik sendiri, publik, internal sekolah, atau repositori
+     * terpusat (central/public_pool) lintas satuan pendidikan.
+     */
     public function scopeAccessibleBy($query, string $userId, ?string $schoolId = null)
     {
         return $query->where(function ($q) use ($userId, $schoolId) {
             $q->where('owner_user_id', $userId)
                 ->orWhere('is_public', true)
-                ->where(function ($q2) use ($schoolId) {
+                ->orWhere('is_central', true)
+                ->orWhere('shared_scope', 'public_pool')
+                ->orWhere(function ($q2) use ($schoolId) {
+                    $q2->where('shared_scope', 'internal_school');
+
                     if ($schoolId) {
-                        $q2->where('shared_scope', 'internal_school')
-                            ->where('school_id', $schoolId);
-                    } else {
-                        $q2->where('shared_scope', '<>', 'private');
+                        $q2->where('school_id', $schoolId);
                     }
                 });
         });

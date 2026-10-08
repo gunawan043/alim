@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Evaluasi;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
+use App\Models\GtkEmployment;
 use App\Models\KisiKisiSoal;
 use App\Models\KisiKisiSoalItem;
 use App\Models\PaketSoal;
+use App\Models\PaketSoalDistribution;
 use App\Models\PaketSoalItem;
+use App\Models\School;
 use App\Models\Soal;
+use App\Services\Evaluasi\PaketQualityGateService;
+use App\Services\Evaluasi\ReviewWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -36,7 +41,7 @@ class PaketSoalController extends Controller
     /**
      * Show create form with auto-selection preview.
      */
-    public function create(Request $request, string $kisiKisiId)
+    public function create(Request $request, string $userId, string $kisiKisiId)
     {
         $kisi = KisiKisiSoal::with(['items.tujuanPembelajaran', 'subject'])->findOrFail($kisiKisiId);
 
@@ -46,7 +51,7 @@ class PaketSoalController extends Controller
     /**
      * Build paket soal by auto-selecting soal from BankSoal matching kisi-kisi items.
      */
-    public function store(Request $request, string $kisiKisiId)
+    public function store(Request $request, string $userId, string $kisiKisiId)
     {
         $validated = $request->validate([
             'judul' => 'required|string|max:150',
@@ -103,11 +108,11 @@ class PaketSoalController extends Controller
     /**
      * Show paket soal detail with full soals.
      */
-    public function show(string $id)
+    public function show(string $userId, string $paketUuid)
     {
         $paket = PaketSoal::with(['kisiKisi.subject', 'kisiKisi.gradeLevel',
             'items.soal.options'])
-            ->findOrFail($id);
+            ->findOrFail($paketUuid);
 
         return view('evalusi.paket-soal.show', compact('paket'));
     }
@@ -115,9 +120,9 @@ class PaketSoalController extends Controller
     /**
      * Publish paket soal (locks the soal selection).
      */
-    public function publish(Request $request, string $id)
+    public function publish(Request $request, string $userId, string $paketUuid)
     {
-        $paket = PaketSoal::findOrFail($id);
+        $paket = PaketSoal::findOrFail($paketUuid);
 
         if ($paket->jumlah_soal_aktual === 0) {
             return back()->with('error', 'Paket tidak memiliki soal. Tambahkan soal sebelum publish.');
@@ -131,9 +136,9 @@ class PaketSoalController extends Controller
     /**
      * Unpublish paket soal.
      */
-    public function unpublish(string $id)
+    public function unpublish(string $userId, string $paketUuid)
     {
-        $paket = PaketSoal::findOrFail($id);
+        $paket = PaketSoal::findOrFail($paketUuid);
         $paket->update(['is_published' => false, 'published_at' => null]);
 
         return back()->with('success', 'Paket soal di-unpublish.');
@@ -142,10 +147,10 @@ class PaketSoalController extends Controller
     /**
      * Re-roll soal selection (delete current items and re-pick).
      */
-    public function reroll(string $id)
+    public function reroll(string $userId, string $paketUuid)
     {
-        return DB::transaction(function () use ($id) {
-            $paket = PaketSoal::with('kisiKisi.items')->findOrFail($id);
+        return DB::transaction(function () use ($paketUuid) {
+            $paket = PaketSoal::with('kisiKisi.items')->findOrFail($paketUuid);
 
             if ($paket->is_published) {
                 return back()->with('error', 'Paket sudah dipublish. Unpublish terlebih dahulu untuk re-roll.');
@@ -180,9 +185,9 @@ class PaketSoalController extends Controller
     /**
      * Delete paket soal.
      */
-    public function destroy(string $id)
+    public function destroy(string $userId, string $paketUuid)
     {
-        $paket = PaketSoal::findOrFail($id);
+        $paket = PaketSoal::findOrFail($paketUuid);
         $paket->delete();
 
         return redirect()->route('user.paket-soal.index')->with('success', 'Paket soal dihapus.');
@@ -218,5 +223,155 @@ class PaketSoalController extends Controller
         }
 
         return $candidates->take($n)->pluck('id')->toArray();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // QUALITY GATE → APPROVAL → DISTRIBUSI (Bank Soal Terpusat)
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Jalankan quality gate: duplikasi internal + kemiripan historis.
+     */
+    public function qualityGate(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::findOrFail($paketUuid);
+        $result = app(PaketQualityGateService::class)->run($paket);
+        $summary = $result['summary'];
+
+        return back()->with(
+            'success',
+            "Quality gate selesai: {$summary['internal_duplicates']} duplikasi internal, "
+            ."{$summary['historical_warnings']} kemiripan historis (tertinggi {$summary['highest_historical']}%)."
+        );
+    }
+
+    /**
+     * Ajukan paket untuk approval reviewer serumpun.
+     * Hanya soal approved yang boleh menjadi bagian paket final.
+     */
+    public function submitApproval(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::with(['kisiKisi', 'items.soal'])->findOrFail($paketUuid);
+
+        if ($paket->items->isEmpty()) {
+            return back()->with('error', 'Paket belum memiliki soal.');
+        }
+
+        $notApproved = $paket->items->filter(fn ($item) => ! $item->soal?->isApproved())->count();
+        if ($notApproved > 0) {
+            return back()->with('error', "{$notApproved} soal belum tervalidasi — hanya soal approved yang boleh masuk paket final.");
+        }
+
+        if (! $paket->similarity_checked_at) {
+            app(PaketQualityGateService::class)->run($paket);
+        }
+
+        $assignments = app(ReviewWorkflowService::class)->submit($paket, $request->user());
+
+        return back()->with('success', 'Paket diajukan untuk approval ('.count($assignments).' reviewer serumpun).');
+    }
+
+    /**
+     * Halaman distribusi & quality gate paket.
+     */
+    public function distribution(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::with([
+            'kisiKisi.subject', 'kisiKisi.gradeLevel', 'kisiKisi.academicYear',
+            'items.soal.options', 'distributions.recipient', 'printJobs.creator',
+        ])->findOrFail($paketUuid);
+
+        $progress = app(ReviewWorkflowService::class)->progress($paket);
+        $summary = $paket->similarity_summary ?? [];
+        $notApproved = $paket->items->filter(fn ($item) => ! $item->soal?->isApproved())->count();
+
+        return view('evalusi.paket-soal.distribusi', compact('paket', 'progress', 'summary', 'notApproved'));
+    }
+
+    /**
+     * Distribusikan paket final via sistem ke TU, Waka, Kurikulum, Koordinator, KSP.
+     */
+    public function distribute(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::with(['kisiKisi', 'items.soal'])->findOrFail($paketUuid);
+
+        if (! $paket->isFinal()) {
+            return back()->with('error', 'Hanya paket final (approved + dipublikasikan) yang dapat didistribusikan.');
+        }
+
+        $notApproved = $paket->items->filter(fn ($item) => ! $item->soal?->isApproved())->count();
+        if ($notApproved > 0) {
+            return back()->with('error', "Ada {$notApproved} soal belum tervalidasi pada paket ini.");
+        }
+
+        $recipients = $this->resolveRecipients($paket);
+
+        DB::transaction(function () use ($paket, $recipients, $request) {
+            PaketSoalDistribution::where('paket_soal_id', $paket->id)->delete();
+
+            foreach ($recipients as $recipient) {
+                PaketSoalDistribution::create([
+                    'paket_soal_id' => $paket->id,
+                    'recipient_user_id' => $recipient['user_id'] ?? null,
+                    'recipient_role' => $recipient['role'],
+                    'recipient_name' => $recipient['name'] ?? $recipient['role'],
+                    'status' => PaketSoalDistribution::STATUS_SENT,
+                    'distributed_at' => now(),
+                    'distributed_by' => $request->user()?->id,
+                ]);
+            }
+
+            $paket->forceFill([
+                'distributed_at' => now(),
+                'workflow_status' => PaketSoal::WORKFLOW_PUBLISHED,
+            ])->save();
+
+            app(ReviewWorkflowService::class)->audit($paket, 'distributed', $request->user(), [
+                'recipients' => count($recipients),
+            ]);
+        });
+
+        return back()->with('success', 'Paket didistribusikan ke '.count($recipients).' penerima langsung melalui sistem.');
+    }
+
+    /**
+     * @return array<int, array{role: string, user_id?: ?string, name?: ?string}>
+     */
+    private function resolveRecipients(PaketSoal $paket): array
+    {
+        $schoolId = $paket->kisiKisi?->school_id;
+
+        $definitions = [
+            ['role' => 'Tata Usaha', 'like' => 'tata usaha'],
+            ['role' => 'Waka', 'like' => 'wakil'],
+            ['role' => 'Kurikulum', 'like' => 'kurikulum'],
+            ['role' => 'Koordinator', 'like' => 'koordinator'],
+            ['role' => 'KSP', 'principal' => true],
+        ];
+
+        $recipients = [];
+
+        foreach ($definitions as $definition) {
+            $user = null;
+
+            if (! empty($definition['principal'])) {
+                $principalId = $schoolId ? School::where('id', $schoolId)->value('principal_user_id') : null;
+                $user = $principalId ? \App\Models\User::find($principalId) : null;
+            } else {
+                $employment = GtkEmployment::query()
+                    ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                    ->where('jabatan', 'like', '%'.$definition['like'].'%')
+                    ->first();
+                $user = $employment ? \App\Models\User::find($employment->user_id) : null;
+            }
+
+            $recipients[] = [
+                'role' => $definition['role'],
+                'user_id' => $user?->id,
+                'name' => $user?->name,
+            ];
+        }
+
+        return $recipients;
     }
 }

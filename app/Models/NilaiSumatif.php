@@ -37,6 +37,7 @@ class NilaiSumatif extends Model
         'nr_murni',
         'nr_final',
         'ket',
+        'paket_soal_id',
     ];
 
     protected $casts = [

@@ -59,8 +59,11 @@ use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
 use App\Http\Controllers\DormitoryWingController;
 use App\Http\Controllers\Evaluasi\BankSoalController;
+use App\Http\Controllers\Evaluasi\BankSoalTerpusatController;
 use App\Http\Controllers\Evaluasi\KisiKisiController;
 use App\Http\Controllers\Evaluasi\PaketSoalController;
+use App\Http\Controllers\Evaluasi\PaketSoalTuController;
+use App\Http\Controllers\Evaluasi\ReviewSoalController;
 use App\Http\Controllers\Evaluasi\SoalController;
 use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
@@ -1271,6 +1274,33 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/unpublish', [PaketSoalController::class, 'unpublish'])->name('unpublish');
                 Route::post('/{paketUuid}/reroll', [PaketSoalController::class, 'reroll'])->name('reroll');
                 Route::delete('/{paketUuid}', [PaketSoalController::class, 'destroy'])->name('destroy');
+
+                // Bank Soal Terpusat: quality gate → approval → distribusi
+                Route::post('/{paketUuid}/quality-gate', [PaketSoalController::class, 'qualityGate'])->name('quality-gate');
+                Route::post('/{paketUuid}/submit-approval', [PaketSoalController::class, 'submitApproval'])->name('submit-approval');
+                Route::get('/{paketUuid}/distribusi', [PaketSoalController::class, 'distribution'])->name('distribusi');
+                Route::post('/{paketUuid}/distribute', [PaketSoalController::class, 'distribute'])->name('distribute');
+            });
+
+            // ── BANK SOAL TERPUSAT (LINTAS SATUAN PENDIDIKAN) ───────
+            Route::prefix('bank-soal-terpusat')->name('bank-soal-terpusat.')->group(function () {
+                Route::get('/', [BankSoalTerpusatController::class, 'index'])->name('index');
+                Route::post('/{soalId}/reuse', [BankSoalTerpusatController::class, 'reuse'])->name('reuse');
+                Route::get('/{soalId}/compare/{comparedId}', [BankSoalTerpusatController::class, 'compare'])->name('compare');
+            });
+
+            // ── REVIEW GURU SERUMPUN (SOAL & PAKET) ─────────────────
+            Route::prefix('review-soal')->name('review-soal.')->group(function () {
+                Route::get('/', [ReviewSoalController::class, 'index'])->name('index');
+                Route::get('/{assignmentId}', [ReviewSoalController::class, 'show'])->name('show');
+                Route::post('/{assignmentId}/decide', [ReviewSoalController::class, 'decide'])->name('decide');
+            });
+
+            // ── TATA USAHA: PAKET FINAL (CETAK/PERBANYAK) ───────────
+            Route::prefix('tu-paket-soal')->name('tu-paket-soal.')->group(function () {
+                Route::get('/', [PaketSoalTuController::class, 'index'])->name('index');
+                Route::post('/{paketUuid}/print-jobs', [PaketSoalTuController::class, 'storePrintJob'])->name('print-jobs.store');
+                Route::put('/{paketUuid}/print-jobs/{jobId}', [PaketSoalTuController::class, 'updatePrintJob'])->name('print-jobs.update');
             });
             // ── STUDENT PROMOTIONS ────────────────────────────────
             Route::prefix('student-promotions')->name('student-promotions.')->group(function () {

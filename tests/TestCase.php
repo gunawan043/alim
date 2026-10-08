@@ -26,5 +26,33 @@ abstract class TestCase extends BaseTestCase
                 $table->timestamps();
             });
         }
+
+        // Migrasi kisi-kisi dilewati pada SQLite (kolom char(36) anonim). Stub
+        // minimal agar fitur yang membaca relasi kisi-kisi (paket soal, wizard
+        // sumatif) tetap dapat diuji.
+        if (DB::connection()->getDriverName() === 'sqlite' && ! Schema::hasTable('kisi_kisi_soal')) {
+            Schema::create('kisi_kisi_soal', function ($table) {
+                $table->uuid('id')->primary();
+                $table->uuid('school_id');
+                $table->uuid('subject_id');
+                $table->uuid('grade_level_id');
+                $table->uuid('academic_year_id')->nullable();
+                $table->uuid('created_by')->nullable();
+                $table->string('semester')->nullable();
+                $table->string('jenis_ujian')->nullable();
+                $table->string('judul')->nullable();
+                $table->text('deskripsi')->nullable();
+                $table->string('tingkat_sekolah')->nullable();
+                $table->string('peminatan')->nullable();
+                $table->integer('total_soal_target')->nullable();
+                $table->decimal('total_bobot_target', 8, 2)->nullable();
+                $table->text('distribusi_kognitif')->nullable();
+                $table->text('distribusi_kesulitan')->nullable();
+                $table->timestamp('approved_at')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
     }
 }
