@@ -45,7 +45,14 @@ class NotificationUniversalController extends Controller
         $users = User::orderBy('name')->get();
         $modules = NotificationUniversal::distinct()->whereNotNull('module')->pluck('module');
 
-        return view('super-admin.notifications.index', compact('notifications', 'users', 'modules', 'userId'));
+        $stats = [
+            'total' => NotificationUniversal::count(),
+            'today' => NotificationUniversal::whereDate('created_at', today())->count(),
+            'unread' => NotificationUniversal::where('is_read', false)->count(),
+            'high' => NotificationUniversal::where('priority', 'high')->count(),
+        ];
+
+        return view('super-admin.notifications.index', compact('notifications', 'users', 'modules', 'userId', 'stats'));
     }
 
     public function create(Request $request)

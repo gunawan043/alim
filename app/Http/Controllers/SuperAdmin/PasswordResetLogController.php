@@ -50,8 +50,15 @@ class PasswordResetLogController extends Controller
 
         $users = User::orderBy('name')->get();
 
+        $stats = [
+            'verified' => AuditLog::where('action', 'PASSWORD_OTP_VERIFIED')->count(),
+            'verified_today' => AuditLog::where('action', 'PASSWORD_OTP_VERIFIED')->whereDate('created_at', today())->count(),
+            'otp_total' => PasswordOtp::count(),
+            'otp_today' => PasswordOtp::whereDate('created_at', today())->count(),
+        ];
+
         return view('super-admin.password-reset-logs.index', compact(
-            'otpVerifiedLogs', 'otpRecords', 'users', 'userId'
+            'otpVerifiedLogs', 'otpRecords', 'users', 'userId', 'stats'
         ));
     }
 }

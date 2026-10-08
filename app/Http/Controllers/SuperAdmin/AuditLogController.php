@@ -47,7 +47,14 @@ class AuditLogController extends Controller
         $actions = AuditLog::distinct()->pluck('action')->filter();
         $tables = AuditLog::distinct()->pluck('table_name')->filter();
 
-        return view('super-admin.audit-logs.index', compact('logs', 'users', 'actions', 'tables', 'userId'));
+        $stats = [
+            'total' => AuditLog::count(),
+            'today' => AuditLog::whereDate('created_at', today())->count(),
+            'week' => AuditLog::where('created_at', '>=', now()->subDays(7))->count(),
+            'users' => AuditLog::distinct()->whereNotNull('user_id')->count('user_id'),
+        ];
+
+        return view('super-admin.audit-logs.index', compact('logs', 'users', 'actions', 'tables', 'userId', 'stats'));
     }
 
     public function show(Request $request, string $id)

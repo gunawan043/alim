@@ -40,7 +40,14 @@ class FailedJobController extends Controller
             $jobs = $query->orderBy('failed_at', 'desc')->paginate(20);
             $hasTable = true;
 
-            return view('super-admin.failed-jobs.index', compact('jobs', 'hasTable', 'userId'));
+            $stats = [
+                'total' => DB::table('failed_jobs')->count(),
+                'today' => DB::table('failed_jobs')->whereDate('failed_at', today())->count(),
+                'week' => DB::table('failed_jobs')->where('failed_at', '>=', now()->subDays(7))->count(),
+                'queues' => DB::table('failed_jobs')->distinct()->count('queue'),
+            ];
+
+            return view('super-admin.failed-jobs.index', compact('jobs', 'hasTable', 'userId', 'stats'));
         } catch (\Exception $e) {
             return view('super-admin.failed-jobs.index', [
                 'jobs' => collect([]),

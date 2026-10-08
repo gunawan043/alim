@@ -10,6 +10,53 @@
         @slot('title') Token & Sesi @endslot
     @endcomponent
 
+    {-- Statistik ringkas --}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-success-subtle text-success" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-shield-check-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">Sesi Aktif (Sanctum)</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['sessions'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-primary-subtle text-primary" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-key-2-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">Secure Token Aktif</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['secure'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-info-subtle text-info" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-history-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">Dipakai 24 Jam</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['used_24h'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
     @if(session('token'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <strong>Token berhasil dibuat!</strong> Salin token ini (hanya ditampilkan sekali):

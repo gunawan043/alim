@@ -18,13 +18,34 @@ class TokenSesiController extends Controller
         $userId = $request->route('userId');
         $tab = $request->tab ?? 'sessions';
 
+        // Statistik ringkas
+        $activeSessionQuery = fn () => DB::table('personal_access_tokens')
+            ->where('personal_access_tokens.tokenable_type', User::class)
+            ->where(function ($q) {
+                $q->whereNull('personal_access_tokens.expires_at')
+                    ->orWhere('personal_access_tokens.expires_at', '>', now());
+            });
+
+        $stats = [
+            'sessions' => $activeSessionQuery()->count(),
+            'secure' => SecureAccessToken::where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })->count(),
+            'used_24h' => DB::table('personal_access_tokens')
+                ->where('tokenable_type', User::class)
+                ->where('last_used_at', '>=', now()->subDay())
+                ->count(),
+        ];
+
         if ($tab === 'sessions') {
             // Active sessions dari database (personal access tokens via Sanctum)
             $tokens = DB::table('personal_access_tokens')
                 ->join('users', 'personal_access_tokens.tokenable_id', '=', 'users.id')
                 ->where('personal_access_tokens.tokenable_type', User::class)
-                ->whereDate('personal_access_tokens.expires_at', '>', now())
-                ->orWhereNull('personal_access_tokens.expires_at')
+                ->where(function ($q) {
+                    $q->whereNull('personal_access_tokens.expires_at')
+                        ->orWhere('personal_access_tokens.expires_at', '>', now());
+                })
                 ->select(
                     'personal_access_tokens.*',
                     'users.name as user_name',
@@ -39,13 +60,15 @@ class TokenSesiController extends Controller
                 'secureTokens' => null,
                 'users' => null,
                 'userId' => $userId,
+                'stats' => $stats,
             ]);
         }
 
         if ($tab === 'secure-tokens') {
             $secureTokens = SecureAccessToken::with('user')
-                ->where('expires_at', '>', now())
-                ->orWhereNull('expires_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->orderBy('created_at', 'desc')
                 ->paginate(20, ['*'], 'page');
 
@@ -55,6 +78,7 @@ class TokenSesiController extends Controller
                 'secureTokens' => $secureTokens,
                 'users' => null,
                 'userId' => $userId,
+                'stats' => $stats,
             ]);
         }
 
@@ -64,6 +88,7 @@ class TokenSesiController extends Controller
             'secureTokens' => null,
             'users' => null,
             'userId' => $userId,
+            'stats' => $stats,
         ]);
     }
 

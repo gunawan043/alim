@@ -7,6 +7,67 @@
         @slot('title') Audit Log @endslot
     @endcomponent
 
+    {-- Statistik ringkas --}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-primary-subtle text-primary" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-file-history-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">Total Log</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['total'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-success-subtle text-success" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-calendar-check-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">Hari Ini</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['today'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-info-subtle text-info" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-calendar-2-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">7 Hari Terakhir</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['week'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body py-3 d-flex align-items-center gap-3">
+                    <span class="bg-warning-subtle text-warning" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">
+                        <i class="ri-user-line"></i>
+                    </span>
+                    <div>
+                        <p class="text-muted mb-0" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;">User Unik</p>
+                        <h5 class="mb-0 fw-bold">{{ number_format($stats['users'] ?? 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
