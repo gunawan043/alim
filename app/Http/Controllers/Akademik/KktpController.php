@@ -89,6 +89,10 @@ class KktpController extends Controller
         $glId = $request->grade_level_id;
 
         foreach ($request->kktp as $subjectId => $data) {
+            // Satu nilai KKTP: kkm_score otoritatif (Leger/Rapor), kktp_score mirror.
+            $score = $data['kktp_score'] ?? $data['score'] ?? $data['kkm_score'] ?? null;
+            $score = ($score === '' || $score === null) ? null : $score;
+
             SubjectKktp::updateOrCreate(
                 [
                     'subject_id' => $subjectId,
@@ -98,15 +102,15 @@ class KktpController extends Controller
                     'semester' => $sem,
                 ],
                 [
-                    'kktp_score' => $data['kktp_score'] ?? null,
-                    'kkm_score' => $data['kkm_score'] ?? null,
+                    'kktp_score' => $score,
+                    'kkm_score' => $score,
                     'notes' => $data['notes'] ?? null,
                     'created_by' => $userId,
                 ]
             );
         }
 
-        return redirect()->back()->with('success', 'KKM/KKTP berhasil disimpan.');
+        return redirect()->back()->with('success', 'KKTP berhasil disimpan.');
     }
 
     /**

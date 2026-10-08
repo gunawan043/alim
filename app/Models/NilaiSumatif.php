@@ -28,6 +28,7 @@ class NilaiSumatif extends Model
         'academic_year_id',
         'semester',
         's1', 's2', 's3', 's4', 's5', 's6',
+        'sumatif_harian',
         'rs',
         'sts',
         'raport_sts',
@@ -45,6 +46,7 @@ class NilaiSumatif extends Model
         's4' => 'decimal:2',
         's5' => 'decimal:2',
         's6' => 'decimal:2',
+        'sumatif_harian' => 'array',
         'rs' => 'decimal:2',
         'sts' => 'decimal:2',
         'raport_sts' => 'decimal:2',
@@ -69,13 +71,11 @@ class NilaiSumatif extends Model
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
     }
 
-    // Auto-calculate: RS = average of S1-S6
-    public static function calcRs(array $s): ?float
+    // Auto-calculate: RS = rata-rata semua kolom Sumatif Harian yang terisi.
+    // Aturan tunggal ada di SumatifHarianService (legacy S1–S6 + kolom dinamis).
+    public static function calcRs(array $values): ?float
     {
-        $values = array_filter([$s['s1'] ?? null, $s['s2'] ?? null, $s['s3'] ?? null,
-            $s['s4'] ?? null, $s['s5'] ?? null, $s['s6'] ?? null]);
-
-        return count($values) ? round(array_sum($values) / count($values), 2) : null;
+        return app(\App\Services\SumatifHarianService::class)->calcRs($values);
     }
 
     // Auto-calculate: RSA = (STS + SAS) / 2
@@ -112,25 +112,16 @@ class NilaiSumatif extends Model
         return round(($rs * $wRs + $effectiveSts * $wSts + $sas * $wSas) / 100, 2);
     }
 
-    // Batch-recalculate NR Final for all students in a book when weights change
+    // Batch-recalculate seluruh nilai turunan satu buku (aturan tunggal dari service).
     public static function recalcNrFinalByBook(string $adminBookId, float $wRs, float $wSts, float $wSas): int
     {
-        $updated = 0;
-        static::where('admin_book_id', $adminBookId)->each(function ($row) use ($wRs, $wSts, $wSas, &$updated) {
-            $nrFinal = static::calcNrFinal(
-                $row->rs !== null ? (float) $row->rs : null,
-                $row->sts !== null ? (float) $row->sts : null,
-                $row->sas !== null ? (float) $row->sas : null,
-                $wRs, $wSts, $wSas,
-                $row->raport_sts !== null ? (float) $row->raport_sts : null
-            );
-            if ($nrFinal !== null) {
-                $row->nr_final = $nrFinal;
-                $row->save();
-                $updated++;
-            }
-        });
+        $book = TeacherAdminBook::find($adminBookId);
 
-        return $updated;
+        if (! $book) {
+            return 0;
+        }
+
+        // Bobot sudah disimpan oleh pemanggil — hitung ulang semua nilai turunan.
+        return app(\App\Services\SumatifHarianService::class)->recalcByBook($book);
     }
 }

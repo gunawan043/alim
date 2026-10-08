@@ -46,7 +46,7 @@
                 <dt class="col-sm-2">Jumlah Soal</dt><dd class="col-sm-10"><strong>{{ $paket->jumlah_soal_aktual }} butir</strong></dd>
                 <dt class="col-sm-2">Total Bobot</dt><dd class="col-sm-10">{{ number_format($paket->total_bobot_aktual, 2) }}</dd>
                 <dt class="col-sm-2">Waktu</dt><dd class="col-sm-10">{{ $paket->waktu_pengerjaan_menit }} menit</dd>
-                <dt class="col-sm-2">KKM</dt><dd class="col-sm-10">{{ $paket->kkm ?? '-' }}</dd>
+                <dt class="col-sm-2">KKTP</dt><dd class="col-sm-10">{{ $paket->kkm ?? '-' }}</dd>
                 <dt class="col-sm-2">Acak Soal/Opsi</dt>
                 <dd class="col-sm-10">
                     <span class="badge bg-{{ $paket->is_acak_urutan_soal ? 'success':'secondary' }}">Soal</span>

@@ -67,21 +67,18 @@
                                         <th rowspan="2" class="text-center align-middle" width="40">No</th>
                                         <th rowspan="2" class="text-center align-middle" width="60">NIS</th>
                                         <th rowspan="2" class="text-center align-middle" width="220">Nama Siswa</th>
-                                        <th colspan="6">Asesmen Sumatif Harian</th>
+                                        <th colspan="{{ count($columns) }}">Asesmen Sumatif Harian</th>
                                         <th rowspan="2" class="text-center align-middle bg-primary-subtle" width="70">
-                                            RS<br><small class="fw-normal">(50%)</small>
+                                            RS<br><small class="fw-normal">({{ $adminBook->nr_final_weight_rs ?? 50 }}%)</small>
                                         </th>
                                         <th rowspan="2" class="text-center align-middle bg-warning-subtle" width="80">
-                                            STS<br><small class="fw-normal">(25%)</small>
+                                            STS<br><small class="fw-normal">({{ $adminBook->nr_final_weight_sts ?? 25 }}%)</small>
                                         </th>
                                     </tr>
                                     <tr>
-                                        <th class="text-center" width="60">S1</th>
-                                        <th class="text-center" width="60">S2</th>
-                                        <th class="text-center" width="60">S3</th>
-                                        <th class="text-center" width="60">S4</th>
-                                        <th class="text-center" width="60">S5</th>
-                                        <th class="text-center" width="60">S6</th>
+                                        @foreach($columns as $col)
+                                            <th class="text-center" width="60" title="{{ $col['legacy'] ? 'Kolom legacy (S1–S6)' : 'Kolom tambahan' }}">{{ $col['label'] }}</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -92,49 +89,17 @@
                                             <td class="text-center">{{ $i + 1 }}</td>
                                             <td class="text-center">{{ $student->nis ?? '-' }}</td>
                                             <td>{{ $student->name }}</td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s1]"
-                                                       value="{{ $existing?->s1 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s2]"
-                                                       value="{{ $existing?->s2 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s3]"
-                                                       value="{{ $existing?->s3 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s4]"
-                                                       value="{{ $existing?->s4 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s5]"
-                                                       value="{{ $existing?->s5 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center sumatif-input"
-                                                       name="nilai[{{ $student->id }}][s6]"
-                                                       value="{{ $existing?->s6 ?? '' }}"
-                                                       min="0" max="100" step="0.01"
-                                                       placeholder="0">
-                                            </td>
-                                            <td class="text-center bg-primary-subtle fw-semibold rs-cell">-</td>
+                                            @foreach($columns as $col)
+                                                @php $shVal = $shMap[$student->id][$col['id']] ?? null; @endphp
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm text-center sumatif-input"
+                                                           name="nilai[{{ $student->id }}][sh][{{ $col['id'] }}]"
+                                                           value="{{ $shVal !== null ? $shVal : '' }}"
+                                                           min="0" max="100" step="0.01"
+                                                           placeholder="0">
+                                                </td>
+                                            @endforeach
+                                            <td class="text-center bg-primary-subtle fw-semibold rs-cell">{{ $existing?->rs !== null ? number_format((float) $existing->rs, 1) : '-' }}</td>
                                             <td>
                                                 <input type="number" class="form-control form-control-sm text-center bg-warning-subtle"
                                                        name="nilai[{{ $student->id }}][sts]"
@@ -145,7 +110,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="12" class="text-center text-muted py-4">
+                                            <td colspan="{{ 5 + count($columns) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada siswa di kelas ini.
                                             </td>
                                         </tr>

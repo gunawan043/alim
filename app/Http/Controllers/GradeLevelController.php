@@ -193,7 +193,9 @@ class GradeLevelController extends Controller
                     'semester' => $validated['semester'],
                 ],
                 [
+                    // Satu nilai KKTP: tulis ke kedua kolom (otoritatif + mirror).
                     'kktp_score' => $score,
+                    'kkm_score' => $score,
                     'school_id' => $gradeLevel->school_id,
                     'created_by' => $request->user()?->id,
                 ]

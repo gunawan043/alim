@@ -127,10 +127,31 @@
                     class="btn btn-outline-primary btn-md me-1">
                         <i class="ri-file-paper-2-line me-1"></i> Cetak Rapor
                     </a>
-                    <a href="{{ route('user.schools.nilai-kelas.leger.download', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester]) }}"
-                    class="btn btn-outline-secondary btn-md">
-                        <i class="ri-download-2-line me-1"></i> Download Leger (Excel)
+                    <a href="{{ route('user.schools.nilai-kelas.leger.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sts']) }}"
+                    class="btn btn-outline-dark btn-md me-1" target="_blank">
+                        <i class="ri-printer-line me-1"></i> Leger STS
                     </a>
+                    <a href="{{ route('user.schools.nilai-kelas.leger.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas']) }}"
+                    class="btn btn-outline-dark btn-md me-1" target="_blank">
+                        <i class="ri-printer-line me-1"></i> Leger SAS
+                    </a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-secondary btn-md dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="ri-download-2-line me-1"></i> Download Leger (Excel)
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('user.schools.nilai-kelas.leger.download', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sts']) }}">
+                                    Leger STS
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('user.schools.nilai-kelas.leger.download', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas']) }}">
+                                    Leger SAS
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 @endif
             </div>
@@ -261,7 +282,7 @@
                                     <tr>
                                         <th colspan="3" class="text-center fw-bold" style="background:#f1f5f9;vertical-align:middle;">
                                             <span class="badge bg-dark-subtle text-dark" style="font-size:12px;">
-                                                <i class="ri-checkbox-circle-line me-1"></i>KKM
+                                                <i class="ri-checkbox-circle-line me-1"></i>KKTP
                                             </span>
                                         </th>
                                         @foreach($subjectMap as $subject)
@@ -274,7 +295,7 @@
                                                            min="0" max="100" step="0.01"
                                                            oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
                                                            style="background:#f8fafc;border-color:#cbd5e1;font-weight:700;color:#475569;font-size:13px;"
-                                                           title="KKM {{ $subject->name }}">
+                                                           title="KKTP {{ $subject->name }}">
                                                 @else
                                                     <span style="font-weight:700;color:#94a3b8;font-size:11px;">—</span>
                                                 @endif
@@ -452,17 +473,17 @@
                                     <th rowspan="2" class="align-middle" width="40">No</th>
                                     <th rowspan="2" class="align-middle" width="70">NIS</th>
                                     <th rowspan="2" class="text-start align-middle" width="220">Nama Santri</th>
-                                    <th colspan="6">Asesmen Sumatif Harian</th>
+                                    <th colspan="{{ count($columns) }}">Asesmen Sumatif Harian</th>
                                     <th rowspan="2" class="align-middle bg-primary-subtle" width="80">
-                                        RS<br><small class="fw-normal">(50%)</small>
+                                        RS<br><small class="fw-normal">({{ $activeBook?->nr_final_weight_rs ?? 50 }}%)</small>
                                     </th>
                                     <th rowspan="2" class="align-middle bg-warning-subtle" width="80">
-                                        STS<br><small class="fw-normal">(25%)</small>
+                                        STS<br><small class="fw-normal">({{ $activeBook?->nr_final_weight_sts ?? 25 }}%)</small>
                                     </th>
                                 </tr>
                                 <tr>
-                                    @foreach(['S1','S2','S3','S4','S5','S6'] as $s)
-                                        <th width="10">{{ $s }}</th>
+                                    @foreach($columns as $col)
+                                        <th width="10" title="{{ $col['legacy'] ? 'Kolom legacy (S1–S6)' : 'Kolom tambahan' }}">{{ $col['label'] }}</th>
                                     @endforeach
                                 </tr>
                             </thead>
@@ -483,11 +504,12 @@
                                                 <span class="fw-medium" style="font-size:13px;">{{ $student->name }}</span>
                                             </div>
                                         </td>
-                                        @foreach(['s1','s2','s3','s4','s5','s6'] as $s)
+                                        @foreach($columns as $col)
+                                            @php $shVal = $shMap[$student->id][$col['id']] ?? null; @endphp
                                             <td style="text-align:center;">
                                                 <input type="number" class="sumatif-input"
-                                                       name="nilai[{{ $student->id }}][{{ $s }}]"
-                                                       value="{{ $existing?->$s ?? '' }}"
+                                                       name="nilai[{{ $student->id }}][sh][{{ $col['id'] }}]"
+                                                       value="{{ $shVal !== null ? $shVal : '' }}"
                                                        placeholder="---"
                                                        min="0" max="100" step="0.01"
                                                        oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"

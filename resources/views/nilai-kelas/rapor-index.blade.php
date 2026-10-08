@@ -112,10 +112,34 @@
                                                 'studentId' => $student->id,
                                                 'academic_year_id' => $selectedAyId,
                                                 'semester' => $selectedSem,
+                                                'jenis' => 'sts',
                                             ]) }}"
                                                class="btn btn-primary btn-sm">
-                                                <i class="ri-download-2-line me-1"></i> Unduh PDF
+                                                <i class="ri-download-2-line me-1"></i> Rapor STS
                                             </a>
+                                            <a href="{{ route('user.schools.nilai-kelas.rapor.cetak', [
+                                                'userId' => $userId,
+                                                'studyGroupId' => $studyGroup->id,
+                                                'studentId' => $student->id,
+                                                'academic_year_id' => $selectedAyId,
+                                                'semester' => $selectedSem,
+                                                'jenis' => 'sas',
+                                            ]) }}"
+                                               class="btn btn-success btn-sm">
+                                                <i class="ri-download-2-line me-1"></i> Rapor SAS
+                                            </a>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-note"
+                                                    data-name="{{ $student->name }}"
+                                                    data-note="{{ $registrations[$student->id]->homeroom_note ?? '' }}"
+                                                    data-action="{{ route('user.schools.nilai-kelas.rapor.note', [
+                                                        'userId' => $userId,
+                                                        'studyGroupId' => $studyGroup->id,
+                                                        'studentId' => $student->id,
+                                                        'academic_year_id' => $selectedAyId,
+                                                        'semester' => $selectedSem,
+                                                    ]) }}">
+                                                <i class="ri-chat-1-line me-1"></i> Catatan
+                                            </button>
                                         </td>
                                     </tr>
                                 @empty
@@ -132,4 +156,42 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: Catatan Wali Kelas --}}
+    <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" id="noteForm">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-chat-1-line me-1"></i> Catatan Wali Kelas</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">Santri: <strong id="noteStudent">—</strong></p>
+                        <textarea name="homeroom_note" id="noteText" class="form-control" rows="4" maxlength="500"
+                                  placeholder="Catatan untuk rapor (maks. 500 karakter)"></textarea>
+                        <small class="text-muted">Catatan ini tampil pada bagian "Catatan Wali Kelas" di Rapor.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.js-note').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.getElementById('noteForm').action = btn.dataset.action;
+        document.getElementById('noteStudent').textContent = btn.dataset.name || '—';
+        document.getElementById('noteText').value = btn.dataset.note || '';
+        new bootstrap.Modal(document.getElementById('noteModal')).show();
+    });
+});
+</script>
+@endpush

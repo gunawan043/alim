@@ -6,6 +6,7 @@ use App\Exports\LegerExport;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
+use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
@@ -13,6 +14,8 @@ use App\Models\StudyGroup;
 use App\Models\SubjectKktp;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\SumatifHarianService;
+use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -202,11 +205,23 @@ class NilaiKelasController extends Controller
             $rankMap[$sid] = $rank++;
         }
 
+        // Kolom Sumatif Harian (legacy S1–S6 + dinamis) — aturan tunggal dari service.
+        $sumatifService = app(SumatifHarianService::class);
+        $columns = $sumatifService->columnsFor($activeBook);
+        $shMap = collect();
+
+        if ($activeBook) {
+            foreach ($students as $history) {
+                $row = $nilaiMap[$history->student_id][$activeBook->id] ?? null;
+                $shMap[$history->student_id] = $sumatifService->valuesFor($row, $columns);
+            }
+        }
+
         return view('nilai-kelas.sts', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
-            'presensiMap', 'legerAggMap', 'rankMap'
+            'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap'
         ));
     }
 
@@ -217,42 +232,37 @@ class NilaiKelasController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        // ── TAB MAPEL: simpan per mapel (S1–S6 + STS) ──
+        // ── TAB MAPEL: simpan per mapel (SH dinamis + STS) ──
         if ($request->tab === 'mapel' && $request->filled('admin_book_id')) {
             $bookId = is_numeric($request->admin_book_id) ? (int) $request->admin_book_id : $request->admin_book_id;
             $adminBook = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($bookId);
 
             $nilaiData = $request->input('nilai', []);
             $savedRows = [];
-            foreach ($nilaiData as $studentId => $data) {
-                $rs = NilaiSumatif::calcRs($data);
-                $rsa = NilaiSumatif::calcRsa($data['sts'] ?? null, null);
+            $service = app(SumatifHarianService::class);
 
-                $nilai = NilaiSumatif::updateOrCreate(
-                    [
-                        'admin_book_id' => $bookId,
-                        'student_id' => $studentId,
-                        'semester' => $adminBook->semester,
-                    ],
-                    [
-                        'academic_year_id' => $adminBook->academic_year_id,
-                        's1' => $data['s1'] ?? null,
-                        's2' => $data['s2'] ?? null,
-                        's3' => $data['s3'] ?? null,
-                        's4' => $data['s4'] ?? null,
-                        's5' => $data['s5'] ?? null,
-                        's6' => $data['s6'] ?? null,
-                        'rs' => $rs,
-                        'sts' => $data['sts'] ?? null,
-                        'rsa' => $rsa,
-                        'nr_murni' => NilaiSumatif::calcNrMurni($rs, $rsa),
-                    ]
-                );
+            foreach ($nilaiData as $studentId => $data) {
+                $input = [
+                    'sts' => array_key_exists('sts', $data) ? $data['sts'] : null,
+                    's1' => $data['s1'] ?? null,
+                    's2' => $data['s2'] ?? null,
+                    's3' => $data['s3'] ?? null,
+                    's4' => $data['s4'] ?? null,
+                    's5' => $data['s5'] ?? null,
+                    's6' => $data['s6'] ?? null,
+                ];
+
+                if (array_key_exists('sh', $data) && is_array($data['sh'])) {
+                    $input['sh'] = $data['sh'];
+                }
+
+                $row = $service->upsertSumatif($adminBook, (string) $studentId, $input);
+
                 $savedRows[] = [
-                    'student_id' => $studentId,
+                    'student_id' => (string) $studentId,
                     'book_id' => $bookId,
-                    'rs' => $nilai->rs,
-                    'sts' => $nilai->sts,
+                    'rs' => $row->rs !== null ? (float) $row->rs : null,
+                    'sts' => $row->sts !== null ? (float) $row->sts : null,
                 ];
             }
 
@@ -287,7 +297,7 @@ class NilaiKelasController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            // ── Simpan KKM inline (jika ada) ──
+            // ── Simpan KKTP inline (jika ada) ──
             if ($request->filled('leger_kkm')) {
                 foreach ($request->leger_kkm as $bookId => $kkmVal) {
                     $book = $allBooks->get($bookId);
@@ -331,6 +341,9 @@ class NilaiKelasController extends Controller
                         continue;
                     }
 
+                    $stsVal = $fields['sts'] ?? null;
+                    $stsVal = ($stsVal === '' || $stsVal === null) ? null : $stsVal;
+
                     $nilai = NilaiSumatif::updateOrCreate(
                         [
                             'admin_book_id' => (string) $bookId,
@@ -339,13 +352,17 @@ class NilaiKelasController extends Controller
                         ],
                         [
                             'academic_year_id' => $selectedAyId,
-                            'sts' => $fields['sts'] ?? null,
+                            'sts' => $stsVal,
                         ]
                     );
+
+                    // Satu aturan kalkulasi: hitung ulang RS/RSA/NR dari kondisi baris.
+                    $nilai = app(SumatifHarianService::class)->recalcDerived($nilai, $book);
+
                     $savedRows[] = [
                         'student_id' => $studentId,
                         'book_id' => $bookId,
-                        'sts' => $nilai->sts,
+                        'sts' => $nilai->sts !== null ? (float) $nilai->sts : null,
                     ];
                 }
             }
@@ -390,6 +407,9 @@ class NilaiKelasController extends Controller
             : AcademicYear::where('is_active', true)->first()?->id;
 
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+
+        // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
+        $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
@@ -458,6 +478,19 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Nilai tampil: STS → sts; SAS → nilai akhir (NR Final, fallback SAS).
+        $nilaiResolved = [];
+        foreach ($students as $history) {
+            $sid = $history->student_id;
+            foreach ($subjectMap as $subject) {
+                $book = $bookMap[$subject->id] ?? null;
+                if (! $book) {
+                    continue;
+                }
+                $nilaiResolved[$sid][$book->id] = $this->resolveNilaiTampil($jenis, $nilaiMap[$sid][$book->id] ?? null);
+            }
+        }
+
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
@@ -468,9 +501,9 @@ class NilaiKelasController extends Controller
                 if (! $book) {
                     continue;
                 }
-                $n = $nilaiMap[$sid][$book->id] ?? null;
-                if ($n && $n->sts !== null) {
-                    $total += $n->sts;
+                $val = $nilaiResolved[$sid][$book->id] ?? null;
+                if ($val !== null) {
+                    $total += $val;
                     $count++;
                 }
             }
@@ -487,7 +520,7 @@ class NilaiKelasController extends Controller
         return view('nilai-kelas.leger-cetak', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSem', 'selectedAy',
-            'presensiMap', 'legerAggMap', 'rankMap',
+            'presensiMap', 'legerAggMap', 'rankMap', 'jenis', 'nilaiResolved',
         ));
     }
 
@@ -507,6 +540,9 @@ class NilaiKelasController extends Controller
             : AcademicYear::where('is_active', true)->first()?->id;
 
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+
+        // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
+        $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
 
         $selectedAy = AcademicYear::orderByDesc('name')->firstWhere('id', $selectedAyId);
 
@@ -571,6 +607,19 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Nilai tampil mengikuti jenis dokumen (STS → sts; SAS → NR Final fallback SAS).
+        $nilaiResolved = [];
+        foreach ($students as $history) {
+            $sid = $history->student_id;
+            foreach ($subjectMap as $subject) {
+                $book = $bookMap[$subject->id] ?? null;
+                if (! $book) {
+                    continue;
+                }
+                $nilaiResolved[$sid][$book->id] = $this->resolveNilaiTampil($jenis, $nilaiMap[$sid][$book->id] ?? null);
+            }
+        }
+
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
@@ -581,9 +630,9 @@ class NilaiKelasController extends Controller
                 if (! $book) {
                     continue;
                 }
-                $n = $nilaiMap[$sid][$book->id] ?? null;
-                if ($n && $n->sts !== null) {
-                    $total += $n->sts;
+                $val = $nilaiResolved[$sid][$book->id] ?? null;
+                if ($val !== null) {
+                    $total += $val;
                     $count++;
                 }
             }
@@ -598,13 +647,13 @@ class NilaiKelasController extends Controller
         }
 
         $ayName = str_replace(['/', ' '], '-', $selectedAy?->name ?? '');
-        $filename = 'Leger-STS-'.str_replace(' ', '-', $studyGroup->name)
+        $filename = 'Leger-'.strtoupper($jenis).'-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.$ayName.'.xlsx';
 
         return Excel::download(new LegerExport(compact(
             'studyGroup', 'selectedAy', 'selectedSem', 'subjectMap', 'bookMap',
-            'students', 'nilaiMap', 'legerAggMap', 'rankMap', 'presensiMap'
+            'students', 'nilaiMap', 'legerAggMap', 'rankMap', 'presensiMap', 'jenis', 'nilaiResolved'
         )), $filename);
     }
 
@@ -635,9 +684,50 @@ class NilaiKelasController extends Controller
             ->orderBy('attendance_number')
             ->get();
 
+        // Catatan wali kelas per santri (kolom homeroom_note — data existing).
+        $registrations = RaportRegistration::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('semester', $selectedSem)
+            ->get()
+            ->keyBy('student_id');
+
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations',
         ));
+    }
+
+    /**
+     * Simpan catatan wali kelas untuk satu santri (Rapor).
+     */
+    public function raporNote(Request $request, string $userId, string $studyGroupId, string $studentId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : AcademicYear::where('is_active', true)->first()?->id;
+        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+
+        $validated = $request->validate([
+            'homeroom_note' => 'nullable|string|max:500',
+        ]);
+
+        RaportRegistration::updateOrCreate(
+            [
+                'student_id' => $studentId,
+                'study_group_id' => $studyGroup->id,
+                'academic_year_id' => $selectedAyId,
+                'semester' => $selectedSem,
+            ],
+            [
+                'homeroom_note' => $validated['homeroom_note'] ?? null,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Catatan wali kelas berhasil disimpan.');
     }
 
     /**
@@ -650,6 +740,9 @@ class NilaiKelasController extends Controller
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+
+        // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
+        $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -714,55 +807,51 @@ class NilaiKelasController extends Controller
 
         foreach ($subjectMap as $idx => $subject) {
             $book = $bookMap[$subject->id] ?? null;
-            $kkm = $book?->kktp?->kkm_score ?? 75;
-            $n = $nilaiMap[$book->id] ?? null;
-            $sts = $n?->sts ?? null;
+            $n = $book ? ($nilaiMap[$book->id] ?? null) : null;
+            $nilai = $this->resolveNilaiTampil($jenis, $n);
 
-            if ($sts !== null) {
-                $jumlahNilai += $sts;
+            if ($nilai !== null) {
+                $jumlahNilai += $nilai;
                 $jumlahMapel++;
-            }
-
-            if ($sts !== null && is_numeric($sts)) {
-                if ($sts > $kkm) {
-                    $keterangan = 'Terlampaui';
-                } elseif ($sts >= $kkm) {
-                    $keterangan = 'Tercapai';
-                } else {
-                    $keterangan = 'Belum Tuntas';
-                }
-            } else {
-                $keterangan = '';
             }
 
             $mapelRows[] = [
                 'no' => $idx + 1,
                 'mapel' => $subject->name,
-                'kkm' => $kkm,
-                'nilai' => $sts !== null ? number_format($sts, 1) : '',
-                'keterangan' => $keterangan,
+                'kkm' => AcademicNilai::kkmLabel($book),
+                'nilai' => $nilai !== null ? number_format($nilai, 1) : '',
+                'keterangan' => AcademicNilai::keterangan($nilai, $book),
             ];
         }
 
         $rata = $jumlahMapel > 0 ? round($jumlahNilai / $jumlahMapel, 1) : null;
-
-        if ($rata === null) {
-            $predikat = '—';
-        } elseif ($rata >= 95) {
-            $predikat = "Mumtaz Murtafi'";
-        } elseif ($rata >= 90) {
-            $predikat = 'Mumtaz';
-        } elseif ($rata >= 85) {
-            $predikat = 'Jayyid Jiddan';
-        } elseif ($rata >= 80) {
-            $predikat = 'Jayyid';
-        } elseif ($rata >= 75) {
-            $predikat = 'Maqbul';
-        } else {
-            $predikat = 'Roosib';
-        }
+        $predikat = AcademicNilai::predikat($rata);
 
         // Susun $santri array — format sesuai template
+        $registration = RaportRegistration::where('student_id', $studentId)
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('semester', $selectedSem)
+            ->first();
+
+        $catatanWali = $registration?->homeroom_note;
+
+        // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir).
+        if ($jenis === 'sas') {
+            RaportRegistration::updateOrCreate(
+                [
+                    'student_id' => $studentId,
+                    'study_group_id' => $studyGroupId,
+                    'academic_year_id' => $selectedAyId,
+                    'semester' => $selectedSem,
+                ],
+                [
+                    'final_score' => $rata,
+                    'predicate' => $predikat,
+                ]
+            );
+        }
+
         $santri[$studentId] = [
             'Nama' => $student->name,
             'NIS' => $student->nis ?? '-',
@@ -770,6 +859,7 @@ class NilaiKelasController extends Controller
             'Kelas' => $studyGroup->name,
             'Semester' => ucfirst($selectedSem),
             'TahunAjaran' => $selectedAy?->name ?? '-',
+            'Jenis' => $jenis,
             'Mapel' => $mapelRows,
             'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
             'Rata' => $rata !== null ? number_format($rata, 1) : '-',
@@ -777,6 +867,7 @@ class NilaiKelasController extends Controller
             'Sakit' => $sCount,
             'Izin' => $iCount,
             'Alpa' => $aCount,
+            'CatatanWali' => $catatanWali,
         ];
 
         // Baca kop surat dari storage (school->kop_path)
@@ -812,6 +903,28 @@ class NilaiKelasController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * Nilai yang ditampilkan pada dokumen Leger/Rapor:
+     *  - STS (tengah semester) → nilai STS
+     *  - SAS (akhir semester)  → Nilai Akhir (NR Final), fallback nilai SAS
+     */
+    private function resolveNilaiTampil(string $jenis, ?NilaiSumatif $row): ?float
+    {
+        if (! $row) {
+            return null;
+        }
+
+        if ($jenis === 'sas') {
+            if ($row->nr_final !== null) {
+                return (float) $row->nr_final;
+            }
+
+            return $row->sas !== null ? (float) $row->sas : null;
+        }
+
+        return $row->sts !== null ? (float) $row->sts : null;
     }
 
     /**

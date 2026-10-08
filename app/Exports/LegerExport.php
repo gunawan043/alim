@@ -26,8 +26,8 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
     public function collection(): Collection
     {
         $rows = collect();
-        // KKM row
-        $kkmRow = collect(['KKM']);
+        // KKTP row
+        $kkmRow = collect(['KKTP']);
         foreach ($this->data['subjectMap'] as $subject) {
             $book = $this->data['bookMap'][$subject->id] ?? null;
             $kkmRow->push($book?->kktp?->kkm_score ?? '—');
@@ -52,10 +52,17 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
 
             foreach ($this->data['subjectMap'] as $subject) {
                 $book = $this->data['bookMap'][$subject->id] ?? null;
-                $n = $book ? ($this->data['nilaiMap'][$sid][$book->id] ?? null) : null;
-                if ($n && $n->sts !== null) {
-                    $row->push($n->sts);
-                    $jumlah += $n->sts;
+                $val = $book ? ($this->data['nilaiResolved'][$sid][$book->id] ?? null) : null;
+
+                // Fallback kompatibilitas: bila resolved belum ada, gunakan STS.
+                if ($val === null && $book) {
+                    $n = $this->data['nilaiMap'][$sid][$book->id] ?? null;
+                    $val = ($n && $n->sts !== null) ? (float) $n->sts : null;
+                }
+
+                if ($val !== null) {
+                    $row->push($val);
+                    $jumlah += $val;
                     $count++;
                 } else {
                     $row->push('—');
@@ -121,7 +128,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
         ]);
         $sheet->fromArray($this->headings(), null, "A{$headerRow}");
 
-        // KKM row
+        // KKTP row
         $kkmRowIdx = $headerRow + 1;
         $kkmData = $this->collection()->first()['data']->toArray();
         $sheet->fromArray([$kkmData], null, "A{$kkmRowIdx}");
@@ -149,25 +156,6 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
 
     private function predikatText(?float $avg): string
     {
-        if ($avg === null) {
-            return '—';
-        }
-        if ($avg >= 95) {
-            return "Mumtaz Murtafi'";
-        }
-        if ($avg >= 90) {
-            return 'Mumtaz';
-        }
-        if ($avg >= 85) {
-            return 'Jayyid Jiddan';
-        }
-        if ($avg >= 80) {
-            return 'Jayyid';
-        }
-        if ($avg >= 75) {
-            return 'Maqbul';
-        }
-
-        return 'Roosib';
+        return \App\Support\AcademicNilai::predikat($avg);
     }
 }

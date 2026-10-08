@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') KKM / KKTP @endsection
+@section('title') KKTP @endsection
 
 @section('css')
 <style>
@@ -18,7 +18,7 @@
 
 @component('components.breadcrumb')
     @slot('li_1') Akademik @endslot
-    @slot('title') KKM / KKTP @endslot
+    @slot('title') KKTP @endslot
 @endcomponent
 
 @if(session('success'))
@@ -36,7 +36,7 @@
                     <div class="col-sm">
                         <h5 class="card-title mb-0">
                             <i class="ri-file-edit-line text-primary me-1"></i>
-                            KKM / KKTP — Target Kompetensi Tuntas
+                            KKTP — Kriteria Ketercapaian Tujuan Pembelajaran
                         </h5>
                     </div>
                     <div class="col-sm-auto">
@@ -93,11 +93,8 @@
                                         <th class="text-start" style="min-width:280px;">
                                             <i class="ri-book-line me-1"></i>Mata Pelajaran
                                         </th>
-                                        <th style="min-width:120px;">
-                                            <div style="font-size:12px;">KKTP<br><small class="fw-normal text-muted">Target per Mapel</small></div>
-                                        </th>
-                                        <th style="min-width:120px;">
-                                            <div style="font-size:12px;">KKM<br><small class="fw-normal text-muted">Ketuntasan Minimal</small></div>
+                                        <th style="min-width:150px;">
+                                            <div style="font-size:12px;">KKTP<br><small class="fw-normal text-muted">Batas ketuntasan per mapel</small></div>
                                         </th>
                                         <th style="min-width:200px;">Catatan</th>
                                     </tr>
@@ -119,16 +116,10 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <input type="number" class="form-control form-control-sm text-center kktp-input"
-                                                       name="kktp[{{ $subject->id }}][kktp_score]"
-                                                       value="{{ $existing?->kktp_score ?? ($existing ? $existing->kkm_score : '') }}"
-                                                       min="0" max="100" step="0.01" placeholder="0–100">
-                                            </td>
-                                            <td>
                                                 <input type="number" class="form-control form-control-sm text-center kkm-input"
-                                                       name="kktp[{{ $subject->id }}][kkm_score]"
-                                                       value="{{ $existing?->kkm_score ?? 75 }}"
-                                                       min="0" max="100" step="0.01" placeholder="75">
+                                                       name="kktp[{{ $subject->id }}][kktp_score]"
+                                                       value="{{ $existing?->kkm_score ?? $existing?->kktp_score ?? '' }}"
+                                                       min="0" max="100" step="0.01" placeholder="0–100">
                                             </td>
                                             <td>
                                                 <input type="text" class="form-control form-control-sm"
@@ -139,7 +130,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="text-center text-muted py-4">
+                                            <td colspan="3" class="text-center text-muted py-4">
                                                 <i class="ri-book-line me-1"></i>Belum ada mata pelajaran.
                                             </td>
                                         </tr>
@@ -152,11 +143,11 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted" style="font-size:12px;">
                                     <i class="ri-information-line me-1"></i>
-                                    KKTP = Target Kompetensi Tuntas per mapel. KKM = Nilai minimal yang harus dicapai siswa.
+                                    KKTP = Kriteria Ketercapaian Tujuan Pembelajaran — satu nilai per mapel sebagai batas ketuntasan pada Leger & Rapor.
                                 </small>
                                 <div class="d-flex gap-2">
                                     <button type="submit" class="btn btn-success">
-                                        <i class="ri-save-line me-1"></i> Simpan KKM / KKTP
+                                        <i class="ri-save-line me-1"></i> Simpan KKTP
                                     </button>
                                 </div>
                             </div>
@@ -172,7 +163,7 @@
                         </div>
                         <h6 class="text-muted">Pilih Tingkat di Filter</h6>
                         <p class="text-muted mb-0" style="font-size:13px;">
-                            Pilih <strong>Tingkat</strong> di atas untuk menampilkan KKM / KKTP per mata pelajaran.
+                            Pilih <strong>Tingkat</strong> di atas untuk menampilkan KKTP per mata pelajaran.
                         </p>
                         @if($selectedGlId)
                             <a href="{{ route('user.schools.kktp.index', array_merge(['userId' => $userId], request()->query(), ['grade_level_id' => ''])) }}"

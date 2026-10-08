@@ -264,7 +264,7 @@
                                             <td class="text-center">
                                                 @if($kktp)
                                                     <span class="badge bg-success-subtle text-success border border-success border-opacity-25"
-                                                          style="font-size:0.8rem" title="KKM: {{ $kktp->kkm_score ?? '-' }}">
+                                                          style="font-size:0.8rem" title="KKTP: {{ $kktp->kkm_score ?? '-' }}">
                                                         <i class="ri-check-line me-1"></i>{{ $kktp->kktp_score }}
                                                     </span>
                                                 @else

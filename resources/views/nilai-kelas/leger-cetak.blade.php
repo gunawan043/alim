@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Leger Nilai STS — {{ $studyGroup->name ?? '' }}</title>
+    <title>Leger Nilai {{ strtoupper($jenis ?? 'sts') }} — {{ $studyGroup->name ?? '' }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 15mm; }
@@ -42,7 +42,7 @@
 </div>
 
 <div class="header">
-    <h2>LEGER NILAI SUMATIF TENGAH SEMESTER (STS)</h2>
+    <h2>LEGER NILAI {{ ($jenis ?? 'sts') === 'sas' ? 'AKHIR SEMESTER (SAS)' : 'SUMATIF TENGAH SEMESTER (STS)' }}</h2>
     <p>{{ $studyGroup->school?->name ?? '' }} — {{ $studyGroup->name }} — TA {{ $selectedAy?->name ?? '' }} Semester {{ ucfirst($selectedSem) }}</p>
 </div>
 
@@ -73,10 +73,10 @@
             <th style="width:30px;background:#ffebee;">A</th>
         </tr>
         <tr>
-            <th colspan="3" class="name" style="background:#f0f0f0;font-size:9px;text-align:center;">KKM</th>
+            <th colspan="3" class="name" style="background:#f0f0f0;font-size:9px;text-align:center;">KKTP</th>
             @foreach($subjectMap as $subject)
                 @php $book = $bookMap[$subject->id] ?? null; @endphp
-                <th style="background:#f0f0f0;font-weight:700;">{{ $book?->kktp?->kkm_score ?? '—' }}</th>
+                <th style="background:#f0f0f0;font-weight:700;">{{ \App\Support\AcademicNilai::kkmLabel($book) }}</th>
             @endforeach
             <th class="aggregate" colspan="7"></th>
         </tr>
@@ -94,16 +94,11 @@
                 foreach ($subjectMap as $subject) {
                     $book = $bookMap[$subject->id] ?? null;
                     if (!$book) continue;
-                    $n = $nilaiMap[$sid][$book->id] ?? null;
-                    if ($n && $n->sts !== null) { $jumlahSts += $n->sts; $countMapel++; }
+                    $val = $nilaiResolved[$sid][$book->id] ?? null;
+                    if ($val !== null) { $jumlahSts += $val; $countMapel++; }
                 }
                 if ($avgVal === null) $predikat = '—';
-                elseif ($avgVal >= 95) $predikat = "Mumtaz Murtafi'";
-                elseif ($avgVal >= 90) $predikat = 'Mumtaz';
-                elseif ($avgVal >= 85) $predikat = 'Jayyid Jiddan';
-                elseif ($avgVal >= 80) $predikat = 'Jayyid';
-                elseif ($avgVal >= 75) $predikat = 'Maqbul';
-                else $predikat = 'Roosib';
+                else $predikat = \App\Support\AcademicNilai::predikat((float) $avgVal);
             @endphp
             <tr>
                 <td>{{ $idx + 1 }}</td>
@@ -112,9 +107,8 @@
                 @foreach($subjectMap as $subject)
                     @php
                         $book = $bookMap[$subject->id] ?? null;
-                        $n = $book ? ($nilaiMap[$sid][$book->id] ?? null) : null;
-                        $kkm = $book?->kktp?->kkm_score ?? 75;
-                        $stsVal = $n?->sts ?? null;
+                        $kkm = \App\Support\AcademicNilai::kkm($book);
+                        $stsVal = $nilaiResolved[$sid][$book->id] ?? null;
                     @endphp
                     @if($stsVal !== null)
                         <td class="{{ $stsVal < $kkm ? 'below' : '' }}">

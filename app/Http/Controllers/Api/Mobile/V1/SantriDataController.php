@@ -151,6 +151,8 @@ class SantriDataController extends Controller
                 's4' => $n->s4,
                 's5' => $n->s5,
                 's6' => $n->s6,
+                'sumatif_harian' => $n->sumatif_harian,
+                'kolom_sumatif' => app(\App\Services\SumatifHarianService::class)->columnsFor($n->adminBook),
                 'rs' => $n->rs,
                 'sts' => $n->sts,
                 'sas' => $n->sas,

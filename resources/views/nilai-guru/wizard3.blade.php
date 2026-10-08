@@ -99,7 +99,13 @@
                                     <th rowspan="2" style="vertical-align:middle;width:35px;text-align:center;">#</th>
                                     <th rowspan="2" style="vertical-align:middle;width:70px;text-align:center;">NIS</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:200px;text-align:center;">Nama Siswa</th>
-                                    <th colspan="6" style="vertical-align:middle;text-align:center;text-align:center;">Sumatif Harian</th>
+                                    <th colspan="{{ count($columns) }}" style="vertical-align:middle;text-align:center;">
+                                        Sumatif Harian
+                                        <button type="button" class="btn btn-outline-primary btn-sm ms-2 py-0 px-2" style="font-size:.65rem;"
+                                                data-bs-toggle="modal" data-bs-target="#kolomModal">
+                                            <i class="ri-settings-3-line"></i> Kelola Kolom
+                                        </button>
+                                    </th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">RS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_rs ?? 50.0 }}%</small></th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">STS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sts ?? 25.0 }}%</small></th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">SAS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sas ?? 25.0 }}%</small></th>
@@ -110,27 +116,28 @@
                                     <th rowspan="2" style="vertical-align:middle;min-width:240px;text-align:center;">Ket.</th>
                                 </tr>
                                 <tr>
-                                    <th style="text-align:center;min-width:65px;">S1</th>
-                                    <th style="text-align:center;min-width:65px;">S2</th>
-                                    <th style="text-align:center;min-width:65px;">S3</th>
-                                    <th style="text-align:center;min-width:65px;">S4</th>
-                                    <th style="text-align:center;min-width:65px;">S5</th>
-                                    <th style="text-align:center;min-width:65px;">S6</th>
+                                    @foreach($columns as $col)
+                                        <th style="text-align:center;min-width:65px;" title="{{ $col['legacy'] ? 'Kolom legacy (S1–S6)' : 'Kolom tambahan' }}">
+                                            {{ $col['label'] }}
+                                        </th>
+                                    @endforeach
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($students as $i => $s)
-                                @php $n = $sumatifMap->get($s->student_id); @endphp
+                                @php $n = $sumatifMap->get($s->student_id); $shVals = $shMap[$s->student_id] ?? []; @endphp
                                 <tr>
                                     <td class="text-center fw-bold text-muted">{{ $i + 1 }}</td>
                                     <td class="text-center">{{ $s->student->nis ?? '-' }}</td>
                                     <td>{{ $s->student->name ?? '-' }}</td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s1]" value="{{ $n->s1 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s2]" value="{{ $n->s2 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s3]" value="{{ $n->s3 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s4]" value="{{ $n->s4 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s5]" value="{{ $n->s5 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][s6]" value="{{ $n->s6 ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    @foreach($columns as $col)
+                                        <td>
+                                            <input type="number" name="sumatif[{{ $s->student_id }}][sh][{{ $col['id'] }}]"
+                                                   value="{{ $shVals[$col['id']] ?? '' }}"
+                                                   min="0" max="100" placeholder="---"
+                                                   style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;">
+                                        </td>
+                                    @endforeach
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rs-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rs ?? '-' }}</span>
                                     </td>
@@ -149,7 +156,7 @@
                                     <td><input type="text" name="sumatif[{{ $s->student_id }}][ket]" value="{{ $n->ket ?? '' }}" placeholder="---" style="width:100%;text-align:left;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="18" class="text-center text-muted py-3">Belum ada siswa.</td></tr>
+                                <tr><td colspan="{{ 12 + count($columns) }}" class="text-center text-muted py-3">Belum ada siswa.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -174,11 +181,40 @@
                 <div class="card-header"><h6 class="mb-0"><i class="ri-help-line me-1 text-secondary"></i> Petunjuk Pengisian</h6></div>
                 <div class="card-body" style="font-size:.75rem;">
                     <ol class="mb-0 ps-3">
-                        <li class="mb-2">Isi nilai <strong>Sumatif Harian</strong> (S1–S6), <strong>STS</strong>, dan <strong>SAS</strong> untuk setiap siswa (0–100).</li>
-                        <li class="mb-2"><strong>RS</strong>, <strong>RSA</strong>, dan <strong>NR Murni</strong> dihitung secara otomatis.</li>
-                        <li class="mb-2"><strong>NR Final</strong> dapat diubah manual sesuai kebutuhan.</li>
-                        <li>Klik <strong>Simpan Nilai</strong> untuk menyimpan data.</li>
+                        <li class="mb-2">Isi nilai <strong>Sumatif Harian</strong> (kolom dapat ditambah melalui tombol <strong>Kelola Kolom</strong>), <strong>STS</strong>, dan <strong>SAS</strong> untuk setiap siswa (0–100).</li>
+                        <li class="mb-2"><strong>RS</strong> = rata-rata semua kolom Sumatif Harian yang terisi; <strong>RSA</strong> dan <strong>NR Murni</strong> dihitung otomatis.</li>
+                        <li class="mb-2"><strong>NR Final</strong> = RS×bobot RS + STS×bobot STS + SAS×bobot SAS (aturan sama dengan Leger & Rapor).</li>
+                        <li>Klik <strong>Simpan Nilai</strong> atau biarkan tersimpan otomatis (autosave) saat berpindah sel.</li>
                     </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: Kelola Kolom Sumatif Harian --}}
+    <div class="modal fade" id="kolomModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-layout-column-line me-1"></i> Kelola Kolom Sumatif Harian</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info small py-2">
+                        Kolom <strong>S1–S6 (legacy)</strong> wajib dipertahankan untuk kompatibilitas dan tidak dapat dihapus —
+                        hanya labelnya yang bisa diganti. Kolom <strong>baru</strong> dapat ditambah, diganti nama, diurutkan, dan dihapus.
+                    </div>
+                    <div id="kolom-list"></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="kolomAdd()">
+                        <i class="ri-add-line me-1"></i>Tambah Kolom
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <span id="kolom-status" class="text-muted small me-auto"></span>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="kolomSave()">
+                        <i class="ri-save-line me-1"></i>Simpan Kolom
+                    </button>
                 </div>
             </div>
         </div>
@@ -381,5 +417,87 @@
         renderTotal();
     })();
 })();
+</script>
+
+<script>
+// ─── Kelola Kolom Sumatif Harian (tambah/rename/hapus/urut) ─────
+const kolomColumnsUrl = @json(route('user.schools.guru-mapel.w3.columns', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]));
+const kolomLegacyIds = @json(\App\Services\SumatifHarianService::LEGACY_IDS);
+let kolomData = @json($columns);
+
+function kolomIsLegacy(id) { return kolomLegacyIds.includes(id); }
+
+function kolomRender() {
+    const wrap = document.getElementById('kolom-list');
+    if (!wrap) return;
+
+    wrap.innerHTML = kolomData.map(function (c, i) {
+        const legacy = kolomIsLegacy(c.id);
+        const safeLabel = String(c.label).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        return '<div class="input-group input-group-sm mb-2">' +
+            '<span class="input-group-text" style="width:110px;font-size:.7rem;">' + (legacy ? 'Legacy' : 'Baru') + '</span>' +
+            '<input type="text" class="form-control kolom-label" maxlength="60" value="' + safeLabel + '" oninput="kolomData[' + i + '].label = this.value">' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="kolomMove(' + i + ', -1)" ' + (i === 0 ? 'disabled' : '') + '><i class="ri-arrow-up-line"></i></button>' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="kolomMove(' + i + ', 1)" ' + (i === kolomData.length - 1 ? 'disabled' : '') + '><i class="ri-arrow-down-line"></i></button>' +
+            (legacy
+                ? '<button type="button" class="btn btn-outline-secondary" disabled title="Kolom legacy tidak dapat dihapus"><i class="ri-lock-line"></i></button>'
+                : '<button type="button" class="btn btn-outline-danger" onclick="kolomRemove(' + i + ')" title="Hapus kolom"><i class="ri-delete-bin-line"></i></button>') +
+            '</div>';
+    }).join('');
+}
+
+function kolomAdd() {
+    const id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'col-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    kolomData.push({ id: id, label: 'Sumatif Baru', legacy: false });
+    kolomRender();
+}
+
+function kolomRemove(i) {
+    if (!confirm('Hapus kolom "' + kolomData[i].label + '"? Nilai pada kolom ini akan ikut terhapus dari semua siswa.')) return;
+    kolomData.splice(i, 1);
+    kolomRender();
+}
+
+function kolomMove(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= kolomData.length) return;
+    const tmp = kolomData[i];
+    kolomData[i] = kolomData[j];
+    kolomData[j] = tmp;
+    kolomRender();
+}
+
+function kolomSave() {
+    const status = document.getElementById('kolom-status');
+    status.textContent = 'Menyimpan…';
+
+    fetch(kolomColumnsUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+        },
+        body: JSON.stringify({
+            columns: kolomData.map(function (c) { return { id: c.id, label: c.label }; }),
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            status.textContent = data.message || 'Gagal menyimpan kolom';
+        }
+    })
+    .catch(() => { status.textContent = 'Gagal menyimpan kolom'; });
+}
+
+document.getElementById('kolomModal')?.addEventListener('show.bs.modal', function () {
+    kolomRender();
+    document.getElementById('kolom-status').textContent = '';
+});
 </script>
 @endpush

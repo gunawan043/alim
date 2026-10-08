@@ -104,49 +104,36 @@ class RaportController extends Controller
 
         $regWithRelations = $reg->loadMissing(['academicYear', 'student']);
 
-        // Fetch NilaiSumatif entries
-        $nilai = NilaiSumatif::query()
-            ->join('subjects', 'nilai_sumatifs.subject_id', '=', 'subjects.id')
-            ->where('nilai_sumatifs.student_id', $studentId)
-            ->where('nilai_sumatifs.academic_year_id', $reg->academic_year_id)
-            ->where('nilai_sumatifs.semester', $reg->semester)
-            ->select(
-                'subjects.name as subject_name',
-                'nilai_sumatifs.id',
-                'nilai_sumatifs.s1',
-                'nilai_sumatifs.s2',
-                'nilai_sumatifs.s3',
-                'nilai_sumatifs.s4',
-                'nilai_sumatifs.s5',
-                'nilai_sumatifs.s6',
-                'nilai_sumatifs.rs',
-                'nilai_sumatifs.sts',
-                'nilai_sumatifs.raport_sts',
-                'nilai_sumatifs.sas',
-                'nilai_sumatifs.rsa',
-                'nilai_sumatifs.nr_murni',
-                'nilai_sumatifs.nr_final',
-                'nilai_sumatifs.ket'
-            )
+        // Fetch NilaiSumatif entries — tabel: admin_nilai_sumatif, mapel via admin book.
+        $sumatifService = app(\App\Services\SumatifHarianService::class);
+
+        $nilai = NilaiSumatif::with('adminBook.subject')
+            ->where('student_id', $studentId)
+            ->where('academic_year_id', $reg->academic_year_id)
+            ->where('semester', $reg->semester)
             ->get()
-            ->map(fn ($row) => [
-                'id' => $row->id,
-                'subject_name' => $row->subject_name,
-                's1' => $row->s1,
-                's2' => $row->s2,
-                's3' => $row->s3,
-                's4' => $row->s4,
-                's5' => $row->s5,
-                's6' => $row->s6,
-                'rs' => $row->rs,
-                'sts' => $row->sts,
-                'raport_sts' => $row->raport_sts,
-                'sas' => $row->sas,
-                'rsa' => $row->rsa,
-                'nr_murni' => $row->nr_murni,
-                'nr_final' => $row->nr_final,
-                'ket' => $row->ket,
-            ]);
+            ->map(function ($row) use ($sumatifService) {
+                return [
+                    'id' => $row->id,
+                    'subject_name' => $row->adminBook?->subject?->name,
+                    's1' => $row->s1,
+                    's2' => $row->s2,
+                    's3' => $row->s3,
+                    's4' => $row->s4,
+                    's5' => $row->s5,
+                    's6' => $row->s6,
+                    'sumatif_harian' => $row->sumatif_harian,
+                    'kolom_sumatif' => $sumatifService->columnsFor($row->adminBook),
+                    'rs' => $row->rs,
+                    'sts' => $row->sts,
+                    'raport_sts' => $row->raport_sts,
+                    'sas' => $row->sas,
+                    'rsa' => $row->rsa,
+                    'nr_murni' => $row->nr_murni,
+                    'nr_final' => $row->nr_final,
+                    'ket' => $row->ket,
+                ];
+            });
 
         // Get Pembiasaan data
         $pembiasaan = PembiasaanPagi::where('student_id', $studentId)
@@ -178,6 +165,10 @@ class RaportController extends Controller
                     'tahun_ajaran' => $regWithRelations->academicYear?->name ?? '',
                     'status' => $reg->status,
                     'status_label' => $this->raportStatusLabel($reg->status),
+                    'final_score' => $reg->final_score,
+                    'predicate' => $reg->predicate,
+                    'class_rank' => $reg->class_rank,
+                    'catatan_wali' => $reg->homeroom_note,
                     'finalized_at' => $reg->finalized_at?->toIso8601String(),
                 ],
                 'nilai' => $nilai,

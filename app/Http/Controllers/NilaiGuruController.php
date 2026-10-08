@@ -13,6 +13,7 @@ use App\Models\StudentClassHistory;
 use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\SumatifHarianService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -357,7 +358,43 @@ class NilaiGuruController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        return view('nilai-guru.wizard3', compact('userId', 'book', 'books', 'students', 'sumatifMap'));
+        // Kolom Sumatif Harian (legacy S1–S6 + kolom dinamis) — satu sumber aturan.
+        $sumatifService = app(SumatifHarianService::class);
+        $columns = $sumatifService->columnsFor($book['adminBook']);
+
+        $shMap = $sumatifMap->map(
+            fn (NilaiSumatif $row) => $sumatifService->valuesFor($row, $columns)
+        );
+
+        return view('nilai-guru.wizard3', compact(
+            'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap'
+        ));
+    }
+
+    /**
+     * Simpan definisi kolom Sumatif Harian (tambah/rename/hapus/urutkan).
+     * Kolom legacy S1–S6 tidak dapat dihapus.
+     */
+    public function wizard3Columns(Request $request, string $userId, string $adminBookId)
+    {
+        $book = $this->loadAdminBook($userId, $adminBookId);
+
+        $request->validate([
+            'columns' => 'required|array|min:1',
+            'columns.*.id' => 'required|string|max:64',
+            'columns.*.label' => 'required|string|max:60',
+        ]);
+
+        $columns = app(SumatifHarianService::class)->saveColumns(
+            $book['adminBook'],
+            $request->input('columns', [])
+        );
+
+        return response()->json([
+            'success' => true,
+            'columns' => $columns,
+            'message' => 'Kolom Sumatif Harian berhasil disimpan.',
+        ]);
     }
 
     public function wizard3Store(Request $request, string $userId, string $adminBookId)
@@ -366,63 +403,42 @@ class NilaiGuruController extends Controller
 
         $request->validate([
             'sumatif' => 'required|array',
+            'sumatif.*.sh' => 'nullable|array',
+            'sumatif.*.sh.*' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.sts' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.sas' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.raport_sts' => 'nullable|numeric|min:0|max:100',
+            // Kompatibilitas form lama (tanpa sh[])
             'sumatif.*.s1' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s2' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s3' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s4' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s5' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s6' => 'nullable|numeric|min:0|max:100',
-            'sumatif.*.sts' => 'nullable|numeric|min:0|max:100',
-            'sumatif.*.sas' => 'nullable|numeric|min:0|max:100',
-            'sumatif.*.raport_sts' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $wRs = (float) ($book['adminBook']->nr_final_weight_rs ?? 50.0);
-        $wSts = (float) ($book['adminBook']->nr_final_weight_sts ?? 25.0);
-        $wSas = (float) ($book['adminBook']->nr_final_weight_sas ?? 25.0);
+        $service = app(SumatifHarianService::class);
 
         foreach ($request->sumatif as $studentId => $data) {
-            $rs = NilaiSumatif::calcRs($data);
-            $raportSts = $data['raport_sts'] !== '' && is_numeric($data['raport_sts'])
-                ? (float) $data['raport_sts'] : null;
-            $rsa = NilaiSumatif::calcRsa(
-                $data['sts'] !== '' && is_numeric($data['sts']) ? (float) $data['sts'] : null,
-                $data['sas'] !== '' && is_numeric($data['sas']) ? (float) $data['sas'] : null,
-                $raportSts
-            );
-            $nrMurni = NilaiSumatif::calcNrMurni($rs, $rsa);
-            $nrFinal = NilaiSumatif::calcNrFinal(
-                $rs,
-                $data['sts'] !== '' && is_numeric($data['sts']) ? (float) $data['sts'] : null,
-                $data['sas'] !== '' && is_numeric($data['sas']) ? (float) $data['sas'] : null,
-                $wRs, $wSts, $wSas,
-                $raportSts
-            );
+            $input = [
+                'sts' => array_key_exists('sts', $data) ? $data['sts'] : null,
+                'sas' => array_key_exists('sas', $data) ? $data['sas'] : null,
+                'raport_sts' => array_key_exists('raport_sts', $data) ? $data['raport_sts'] : null,
+                'ket' => $data['ket'] ?? null,
+                // Fallback form lama
+                's1' => $data['s1'] ?? null,
+                's2' => $data['s2'] ?? null,
+                's3' => $data['s3'] ?? null,
+                's4' => $data['s4'] ?? null,
+                's5' => $data['s5'] ?? null,
+                's6' => $data['s6'] ?? null,
+            ];
 
-            NilaiSumatif::updateOrCreate(
-                [
-                    'admin_book_id' => $book['adminBook']->id,
-                    'student_id' => $studentId,
-                    'semester' => $book['adminBook']->semester,
-                ],
-                [
-                    'academic_year_id' => $book['adminBook']->academic_year_id,
-                    's1' => $data['s1'] ?? null,
-                    's2' => $data['s2'] ?? null,
-                    's3' => $data['s3'] ?? null,
-                    's4' => $data['s4'] ?? null,
-                    's5' => $data['s5'] ?? null,
-                    's6' => $data['s6'] ?? null,
-                    'rs' => $rs,
-                    'sts' => $data['sts'] !== '' && is_numeric($data['sts']) ? (float) $data['sts'] : null,
-                    'raport_sts' => $raportSts,
-                    'sas' => $data['sas'] !== '' && is_numeric($data['sas']) ? (float) $data['sas'] : null,
-                    'rsa' => $rsa,
-                    'nr_murni' => $nrMurni,
-                    'nr_final' => $nrFinal,
-                    'ket' => $data['ket'] ?? null,
-                ]
-            );
+            if (array_key_exists('sh', $data) && is_array($data['sh'])) {
+                $input['sh'] = $data['sh'];
+            }
+
+            $service->upsertSumatif($book['adminBook'], (string) $studentId, $input);
         }
 
         return redirect()->back()->with('success', 'Nilai Sumatif berhasil disimpan.');
@@ -684,58 +700,44 @@ class NilaiGuruController extends Controller
 
         switch ($request->input('type')) {
             case 'sumatif':
-                // Bobot NR Final dari admin_book (default: RS=50, STS=25, SAS=25)
-                $wRs = (float) ($book['adminBook']->nr_final_weight_rs ?? 50.0);
-                $wSts = (float) ($book['adminBook']->nr_final_weight_sts ?? 25.0);
-                $wSas = (float) ($book['adminBook']->nr_final_weight_sas ?? 25.0);
-
+                $service = app(SumatifHarianService::class);
                 $savedRows = [];
 
                 foreach ($data['sumatif'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                    $hasAny = collect($flds)->filter(fn ($v) => ! is_array($v) && $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty()
+                        || collect($flds['sh'] ?? [])->filter(fn ($v) => $v !== '' && is_numeric($v))->isNotEmpty();
+
                     if (! $hasAny) {
                         continue;
                     }
 
-                    // RS = rata-rata S1-S6
-                    $shFilled = collect(['s1', 's2', 's3', 's4', 's5', 's6'])
-                        ->map(fn ($k) => $flds[$k] ?? null)
-                        ->filter(fn ($v) => is_numeric($v))
-                        ->values()
-                        ->toArray();
-                    $rs = count($shFilled) > 0 ? round(array_sum($shFilled) / count($shFilled), 2) : null;
+                    $input = [
+                        'sts' => array_key_exists('sts', $flds) ? $flds['sts'] : null,
+                        'sas' => array_key_exists('sas', $flds) ? $flds['sas'] : null,
+                        'raport_sts' => array_key_exists('raport_sts', $flds) ? $flds['raport_sts'] : null,
+                        'ket' => $flds['ket'] ?? null,
+                        // Fallback form lama
+                        's1' => $flds['s1'] ?? null,
+                        's2' => $flds['s2'] ?? null,
+                        's3' => $flds['s3'] ?? null,
+                        's4' => $flds['s4'] ?? null,
+                        's5' => $flds['s5'] ?? null,
+                        's6' => $flds['s6'] ?? null,
+                    ];
 
-                    $stsVal = is_numeric($flds['sts'] ?? null) ? (float) $flds['sts'] : null;
-                    $sasVal = is_numeric($flds['sas'] ?? null) ? (float) $flds['sas'] : null;
-                    $raportStsVal = is_numeric($flds['raport_sts'] ?? null) ? (float) $flds['raport_sts'] : null;
+                    if (array_key_exists('sh', $flds) && is_array($flds['sh'])) {
+                        $input['sh'] = $flds['sh'];
+                    }
 
-                    // RSA = (raport_sts|sts + SAS) / 2
-                    $rsa = NilaiSumatif::calcRsa($stsVal, $sasVal, $raportStsVal);
+                    $row = $service->upsertSumatif($book['adminBook'], (string) $sid, $input);
 
-                    // NR Murni = (RS + RSA) / 2
-                    $nrMurni = NilaiSumatif::calcNrMurni($rs, $rsa);
-
-                    // NR Final = (RS × wRs + raport_sts|sts × wSts + SAS × wSas) / 100
-                    $nrFinal = NilaiSumatif::calcNrFinal($rs, $stsVal, $sasVal, $wRs, $wSts, $wSas, $raportStsVal);
-
-                    NilaiSumatif::updateOrCreate(
-                        ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
-                        [
-                            'academic_year_id' => $academicYearId,
-                            's1' => $flds['s1'] ?? null, 's2' => $flds['s2'] ?? null,
-                            's3' => $flds['s3'] ?? null, 's4' => $flds['s4'] ?? null,
-                            's5' => $flds['s5'] ?? null, 's6' => $flds['s6'] ?? null,
-                            'rs' => $rs,
-                            'sts' => $stsVal,
-                            'raport_sts' => $raportStsVal,
-                            'sas' => $sasVal,
-                            'rsa' => $rsa,
-                            'nr_murni' => $nrMurni,
-                            'nr_final' => $nrFinal,
-                            'ket' => $flds['ket'] ?? null,
-                        ]
-                    );
-                    $savedRows[] = ['student_id' => $sid, 'rs' => $rs, 'rsa' => $rsa, 'nr_murni' => $nrMurni, 'nr_final' => $nrFinal];
+                    $savedRows[] = [
+                        'student_id' => (string) $sid,
+                        'rs' => $row->rs !== null ? (float) $row->rs : null,
+                        'rsa' => $row->rsa !== null ? (float) $row->rsa : null,
+                        'nr_murni' => $row->nr_murni !== null ? (float) $row->nr_murni : null,
+                        'nr_final' => $row->nr_final !== null ? (float) $row->nr_final : null,
+                    ];
                 }
 
                 if (empty($savedRows)) {

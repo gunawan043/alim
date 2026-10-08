@@ -227,7 +227,7 @@
     @endif
 
     {{-- Judul --}}
-    <div class="judul">Laporan Hasil Belajar Tengah Semester</div>
+    <div class="judul">{{ ($data['Jenis'] ?? 'sts') === 'sas' ? 'Laporan Hasil Belajar Akhir Semester' : 'Laporan Hasil Belajar Tengah Semester' }}</div>
 
     {{-- Info Santri --}}
     <table class="info-grid">
@@ -312,8 +312,11 @@
                 3.&nbsp; Alpa &nbsp;&nbsp;: {{ $data['Alpa'] ?? '-' }} Hari
             </td>
             <td>
-                Tingkatkan terus prestasinya, bertakwalah kepada Allah,
-                jaga salat 5 waktu, dan berbaktilah kepada orang tua.
+                @if(! empty($data['CatatanWali']))
+                    {!! nl2br(e($data['CatatanWali'])) !!}
+                @else
+                    <span style="color:#94a3b8;">—</span>
+                @endif
             </td>
         </tr>
     </table>

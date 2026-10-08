@@ -35,12 +35,14 @@ class TeacherAdminBook extends Model
         'nr_final_weight_rs',
         'nr_final_weight_sts',
         'nr_final_weight_sas',
+        'sumatif_columns',
     ];
 
     protected $casts = [
         'nr_final_weight_rs' => 'float',
         'nr_final_weight_sts' => 'float',
         'nr_final_weight_sas' => 'float',
+        'sumatif_columns' => 'array',
     ];
 
     public function teacher(): BelongsTo
@@ -68,7 +70,7 @@ class TeacherAdminBook extends Model
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
     }
 
-    public function nilaiSumatif(): HasMany
+    public function nilaiSumatifs(): HasMany
     {
         return $this->hasMany(NilaiSumatif::class, 'admin_book_id');
     }

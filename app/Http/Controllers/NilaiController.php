@@ -10,6 +10,7 @@ use App\Models\PenghargaanAkademik;
 use App\Models\StudentClassHistory;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\SumatifHarianService;
 use Illuminate\Http\Request;
 
 class NilaiController extends Controller
@@ -120,11 +121,22 @@ class NilaiController extends Controller
             ->get();
 
         // Nilai sumatif yang sudah ada
-        $nilaiMap = NilaiSumatif::where('admin_book_id', $bookId)
+        $sumatifRows = NilaiSumatif::where('admin_book_id', $bookId)
             ->where('semester', $adminBook->semester)
-            ->pluck('rs', 'student_id');
+            ->get()
+            ->keyBy('student_id');
 
-        return view('nilai.sts', compact('userId', 'adminBook', 'students', 'nilaiMap', 'isPrivileged'));
+        // View lama memakai $nilaiMap sebagai model per siswa.
+        $nilaiMap = $sumatifRows;
+
+        // Kolom SH dinamis (legacy S1–S6 + kolom baru) — aturan tunggal.
+        $sumatifService = app(SumatifHarianService::class);
+        $columns = $sumatifService->columnsFor($adminBook);
+        $shMap = $sumatifRows->map(fn (NilaiSumatif $row) => $sumatifService->valuesFor($row, $columns));
+
+        return view('nilai.sts', compact(
+            'userId', 'adminBook', 'students', 'nilaiMap', 'isPrivileged', 'columns', 'shMap', 'sumatifRows'
+        ));
     }
 
     /**
@@ -134,43 +146,39 @@ class NilaiController extends Controller
     {
         $request->validate([
             'nilai' => 'required|array',
+            'nilai.*.sh' => 'nullable|array',
+            'nilai.*.sh.*' => 'nullable|numeric|min:0|max:100',
+            'nilai.*.sts' => 'nullable|numeric|min:0|max:100',
+            // Kompatibilitas form lama
             'nilai.*.s1' => 'nullable|numeric|min:0|max:100',
             'nilai.*.s2' => 'nullable|numeric|min:0|max:100',
             'nilai.*.s3' => 'nullable|numeric|min:0|max:100',
             'nilai.*.s4' => 'nullable|numeric|min:0|max:100',
             'nilai.*.s5' => 'nullable|numeric|min:0|max:100',
             'nilai.*.s6' => 'nullable|numeric|min:0|max:100',
-            'nilai.*.sts' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
         $adminBook = TeacherAdminBook::findOrFail($bookId);
 
-        foreach ($request->nilai as $studentId => $data) {
-            $rs = NilaiSumatif::calcRs($data);
-            $rsa = NilaiSumatif::calcRsa($data['sts'] ?? null, null); // SAS belum ada
-            $nrMurni = NilaiSumatif::calcNrMurni($rs, $rsa);
+        $service = app(SumatifHarianService::class);
 
-            NilaiSumatif::updateOrCreate(
-                [
-                    'admin_book_id' => $bookId,
-                    'student_id' => $studentId,
-                    'semester' => $adminBook->semester,
-                ],
-                [
-                    'academic_year_id' => $adminBook->academic_year_id,
-                    's1' => $data['s1'] ?? null,
-                    's2' => $data['s2'] ?? null,
-                    's3' => $data['s3'] ?? null,
-                    's4' => $data['s4'] ?? null,
-                    's5' => $data['s5'] ?? null,
-                    's6' => $data['s6'] ?? null,
-                    'rs' => $rs,
-                    'sts' => $data['sts'] ?? null,
-                    'rsa' => $rsa,
-                    'nr_murni' => $nrMurni,
-                ]
-            );
+        foreach ($request->nilai as $studentId => $data) {
+            $input = [
+                'sts' => array_key_exists('sts', $data) ? $data['sts'] : null,
+                's1' => $data['s1'] ?? null,
+                's2' => $data['s2'] ?? null,
+                's3' => $data['s3'] ?? null,
+                's4' => $data['s4'] ?? null,
+                's5' => $data['s5'] ?? null,
+                's6' => $data['s6'] ?? null,
+            ];
+
+            if (array_key_exists('sh', $data) && is_array($data['sh'])) {
+                $input['sh'] = $data['sh'];
+            }
+
+            $service->upsertSumatif($adminBook, (string) $studentId, $input);
         }
 
         return redirect()->back()->with('success', 'Nilai STS berhasil disimpan.');
@@ -249,33 +257,11 @@ class NilaiController extends Controller
         ]);
 
         foreach ($request->sumatif as $studentId => $data) {
-            // ── Nilai Sumatif (update SAS, recalculate RSA & NR) ──
-            $existing = NilaiSumatif::where('admin_book_id', $bookId)
-                ->where('student_id', $studentId)
-                ->where('semester', $adminBook->semester)
-                ->first();
-
-            $sas = $data['sas'] ?? null;
-            $sts = $existing?->sts;
-            $rs = $existing?->rs;
-            $rsa = NilaiSumatif::calcRsa($sts, $sas);
-            $nrMurni = NilaiSumatif::calcNrMurni($rs, $rsa);
-
-            NilaiSumatif::updateOrCreate(
-                [
-                    'admin_book_id' => $bookId,
-                    'student_id' => $studentId,
-                    'semester' => $adminBook->semester,
-                ],
-                [
-                    'academic_year_id' => $adminBook->academic_year_id,
-                    'sas' => $sas,
-                    'rsa' => $rsa,
-                    'nr_murni' => $nrMurni,
-                    'nr_final' => $data['nr_final'] ?? null,
-                    'ket' => $data['ket'] ?? null,
-                ]
-            );
+            // ── Nilai Sumatif: update SAS (parsial) — aturan kalkulasi tunggal ──
+            app(SumatifHarianService::class)->upsertSumatif($adminBook, (string) $studentId, [
+                'sas' => array_key_exists('sas', $data) ? $data['sas'] : null,
+                'ket' => $data['ket'] ?? null,
+            ]);
 
             // ── Nilai Formatif ──
             NilaiFormatif::updateOrCreate(

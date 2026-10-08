@@ -61,7 +61,7 @@
                         <input type="number" name="waktu_pengerjaan_menit" class="form-control" value="{{ old('waktu_pengerjaan_menit', 90) }}" min="15" max="480" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">KKM</label>
+                        <label class="form-label">KKTP</label>
                         <input type="number" name="kkm" class="form-control" value="{{ old('kkm') }}" step="0.01" min="0" max="100">
                     </div>
                     <div class="col-md-6 mb-3">
