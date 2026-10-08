@@ -40,6 +40,23 @@ class KurikulumAccess
         return in_array('tim kurikulum', $this->tugasTambahan($user), true);
     }
 
+    /**
+     * Tata Usaha: menerima paket final & repositori soal (tanpa hak edit soal).
+     */
+    public function isTataUsaha(User $user): bool
+    {
+        return str_contains($this->jabatan($user), 'tata usaha');
+    }
+
+    /**
+     * Akses seluruh repositori soal: Waka, Kurikulum, TU, dan KSP
+     * (Kepala/Wakil satuan pendidikan) + Super Admin.
+     */
+    public function canAccessAllBankSoal(User $user): bool
+    {
+        return $this->isKurikulumTeam($user) || $this->isTataUsaha($user);
+    }
+
     public function teachesSubject(User $user, string $subjectId, string $academicYearId, ?string $schoolId = null): bool
     {
         return TeachingAssignment::query()

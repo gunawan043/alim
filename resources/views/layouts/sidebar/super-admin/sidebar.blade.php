@@ -273,6 +273,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+                   href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+                    <i class="ri-archive-2-line me-1"></i> Bank Soal Terpusat
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.dokumen-iso.']) ? ' active' : '' }}"
                    href="{{ route('user.dokumen-iso.index', ['userId' => $userId]) }}">
                     <i class="ri-folder-shield-2-line me-1"></i> Dokumen ISO

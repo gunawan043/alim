@@ -484,18 +484,6 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
-                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-                        Bank Soal Terpusat
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
-                        Review Soal Serumpun
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
                         Peta Kurikulum
@@ -577,19 +565,6 @@
         </a>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
-           href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-            <i class="ri-archive-2-line"></i><span>Bank Soal Terpusat</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-git-pull-request-line"></i><span>Review Soal Serumpun</span>
-        </a>
-    </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
@@ -604,6 +579,36 @@
             <i class="ri-line-chart-line"></i><span>Evaluasi Guru Mapel</span>
         </a>
     </li>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 8b — BANK SOAL TERPUSAT (Guru, Koor Mapel, Kurikulum, Waka/KSP, TU)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isGuru || $isKoorMapel || $isTimKurikulumG || $isAdminTU)
+    <li class="menu-title"><span>Bank Soal Terpusat</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+           href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+            <i class="ri-archive-2-line"></i><span>Repository Soal</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
+           href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
+            <i class="ri-git-pull-request-line"></i><span>Review Soal Serumpun</span>
+        </a>
+    </li>
+
+    @if($showAll || $isAdminTU)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
+               href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
+                <i class="ri-printer-line"></i><span>TU — Cetak Paket Final</span>
+            </a>
+        </li>
+    @endif
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -1139,12 +1144,6 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
                        href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
                         Soal Sumatif
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
-                        TU — Cetak Paket Final
                     </a>
                 </li>
             </ul>

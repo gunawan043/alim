@@ -14,6 +14,7 @@ use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\Evaluasi\ContentHashEngine;
 use App\Services\Evaluasi\SoalSimilarityService;
+use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,11 +39,16 @@ class BankSoalTerpusatController extends Controller
 
         $mySubjectIds = $this->mySubjectIds($user);
 
-        // ── Scope akses repository (terpusat + publik + internal sekolah + milik sendiri)
+        // Waka, Kurikulum, TU, dan KSP (Kepala/Wakil satuan pendidikan) melihat
+        // SELURUH repositori soal; role lain dibatasi akses bank + soal miliknya.
+        $canViewAll = app(KurikulumAccess::class)->canAccessAllBankSoal($user);
+
         $accessible = Soal::query()
-            ->where(function ($q) use ($user, $schoolId) {
-                $q->where('dibuat_oleh', $user->id)
-                    ->orWhereHas('bankSoal', fn ($b) => $b->accessibleBy($user->id, $schoolId));
+            ->when(! $canViewAll, function ($q) use ($user, $schoolId) {
+                $q->where(function ($q2) use ($user, $schoolId) {
+                    $q2->where('dibuat_oleh', $user->id)
+                        ->orWhereHas('bankSoal', fn ($b) => $b->accessibleBy($user->id, $schoolId));
+                });
             });
 
         $baseQuery = (clone $accessible)

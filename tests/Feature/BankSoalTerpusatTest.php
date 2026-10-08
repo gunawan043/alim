@@ -67,6 +67,12 @@ class BankSoalTerpusatTest extends TestCase
 
     private User $tu;
 
+    private User $waka;
+
+    private User $ksp;
+
+    private User $koor;
+
     private BankSoal $bankA;
 
     private BankSoal $bankHist;
@@ -411,6 +417,53 @@ class BankSoalTerpusatTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
+    // AKSES SEMUA SOAL: WAKA, KURIKULUM, TU, KSP
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_waka_kurikulum_tu_ksp_melihat_semua_soal(): void
+    {
+        // Bank privat milik guruB (sekolah B) — tidak accessible bagi guru biasa.
+        $privateBank = BankSoal::create([
+            'school_id' => $this->schoolB->id,
+            'subject_id' => $this->fisikaB->id,
+            'fase' => 'D',
+            'jenjang' => 'smp',
+            'nama' => 'Bank Privat Sekolah B',
+            'jenis_soal' => 'pilihan_ganda',
+            'tingkat_kesulitan_target' => 'campuran',
+            'shared_scope' => 'private',
+            'is_central' => false,
+            'owner_user_id' => $this->guruB->id,
+            'created_by' => $this->guruB->id,
+        ]);
+
+        $privateSoal = 'Soal privat fisika rahasia sekolah B.';
+        $this->makeSoal($privateBank, $this->guruB, $privateSoal, 'approved');
+
+        // Guru biasa (mapel lain) tidak melihat soal privat sekolah lain.
+        $this->actingAs($this->guruA);
+        $this->get("/{$this->guruA->id}/bank-soal-terpusat")
+            ->assertOk()
+            ->assertDontSee($privateSoal);
+
+        // Waka, Kurikulum, TU, dan KSP melihat SELURUH soal.
+        foreach ([$this->waka, $this->koor, $this->tu, $this->ksp] as $user) {
+            $this->actingAs($user);
+            $response = $this->get("/{$user->id}/bank-soal-terpusat")
+                ->assertOk()
+                ->assertSee($privateSoal)
+                ->assertSee('Repository Soal'); // menu sidebar
+        }
+
+        // Hanya TU yang melihat menu cetak paket final.
+        $this->actingAs($this->tu);
+        $this->get("/{$this->tu->id}/bank-soal-terpusat")->assertSee('TU — Cetak Paket Final');
+
+        $this->actingAs($this->waka);
+        $this->get("/{$this->waka->id}/bank-soal-terpusat")->assertDontSee('TU — Cetak Paket Final');
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // FIXTURE & HELPERS
     // ─────────────────────────────────────────────────────────────
 
@@ -553,6 +606,9 @@ class BankSoalTerpusatTest extends TestCase
         $this->guruD = $make('Guru D', 'guru.d@test.local', $this->schoolB, 'Guru Mapel');
         $this->guruC = $make('Guru C', 'guru.c@test.local', $this->schoolB, 'Guru Mapel');
         $this->tu = $make('TU Uji', 'tu@test.local', $this->schoolA, 'Staf Tata Usaha');
+        $this->waka = $make('Waka Kurikulum Uji', 'waka@test.local', $this->schoolB, 'Wakil Kepala Satuan Pendidikan');
+        $this->ksp = $make('Kepala Satuan Uji', 'ksp@test.local', $this->schoolB, 'Kepala Satuan Pendidikan');
+        $this->koor = $make('Koor Kurikulum Uji', 'koor@test.local', $this->schoolB, 'Koordinator Kurikulum');
 
         $decreeId = (string) Str::uuid();
         DB::table('institution_decrees')->insert([
