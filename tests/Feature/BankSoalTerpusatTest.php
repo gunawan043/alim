@@ -485,6 +485,429 @@ class BankSoalTerpusatTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
+    // SIMILARITY: EXACT, NORMALISASI, FUZZY, TOKEN, HISTORIS
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_exact_duplicate_terdeteksi_tanpa_memblokir_input(): void
+    {
+        $this->actingAs($this->guruA);
+
+        $payload = fn () => [
+            'tipe_soal' => 'pg',
+            'pertanyaan' => 'Hasil dari 25 x 4 adalah ....',
+            'pembahasan' => '25 dikali 4 sama dengan 100.',
+            'materi' => 'Perkalian',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'sedang',
+            'waktu_estimasi_menit' => 2,
+            'options' => [
+                ['label' => 'A', 'teks_opsi' => '75', 'is_correct' => 0],
+                ['label' => 'B', 'teks_opsi' => '100', 'is_correct' => 1],
+                ['label' => 'C', 'teks_opsi' => '125', 'is_correct' => 0],
+            ],
+        ];
+
+        // Exact duplicate TIDAK diblokir — similarity adalah indikator, bukan vonis.
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal", $payload())->assertStatus(302);
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal", $payload())->assertStatus(302);
+
+        $this->assertSame(2, Soal::count());
+        $a = Soal::firstOrFail();
+        $b = Soal::where('id', '<>', $a->id)->firstOrFail();
+        $this->assertSame($a->content_hash, $b->content_hash, 'Normalisasi harus menghasilkan hash identik.');
+
+        $result = app(\App\Services\Evaluasi\SoalSimilarityService::class)->check($a);
+        $row = collect($result['results'])->firstWhere('soal.id', $b->id);
+
+        $this->assertNotNull($row, 'Exact duplicate harus terdeteksi.');
+        $this->assertSame(\App\Models\SoalSimilarity::LEVEL_EXACT, $row['level']);
+        $this->assertSame(100.0, (float) $row['score']);
+    }
+
+    public function test_perbedaan_kapitalisasi_spasi_dan_tanda_baca_dinormalisasi(): void
+    {
+        $this->actingAs($this->guruA);
+
+        $base = [
+            'tipe_soal' => 'pg',
+            'pembahasan' => 'Kunci 100.',
+            'materi' => 'Perkalian',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'sedang',
+            'waktu_estimasi_menit' => 2,
+            'options' => [
+                ['label' => 'A', 'teks_opsi' => '75', 'is_correct' => 0],
+                ['label' => 'B', 'teks_opsi' => '100', 'is_correct' => 1],
+            ],
+        ];
+
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal", $base + [
+            'pertanyaan' => 'Berapakah hasil 25 x 4 ???',
+        ])->assertStatus(302);
+
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal", $base + [
+            'pertanyaan' => '   berapakah   HASIL 25 X 4   ',
+        ])->assertStatus(302);
+
+        $a = Soal::firstOrFail();
+        $b = Soal::where('id', '<>', $a->id)->firstOrFail();
+
+        $engine = app(\App\Services\Evaluasi\ContentHashEngine::class);
+        $this->assertSame(
+            $engine->pertanyaanNormalized('Berapakah hasil 25 x 4 ???'),
+            $engine->pertanyaanNormalized('   berapakah   HASIL 25 X 4   ')
+        );
+        $this->assertSame($a->content_hash, $b->content_hash);
+
+        $result = app(\App\Services\Evaluasi\SoalSimilarityService::class)->check($a);
+        $row = collect($result['results'])->firstWhere('soal.id', $b->id);
+        $this->assertNotNull($row);
+        $this->assertSame(\App\Models\SoalSimilarity::LEVEL_EXACT, $row['level']);
+    }
+
+    public function test_soal_redaksi_mirip_terdeteksi_fuzzy_text(): void
+    {
+        $a = $this->makeSoal($this->bankHist, $this->guruB, 'Hasil dari 25 x 4 adalah 100.', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '75', 'is_correct' => false],
+            ['label' => 'B', 'teks_opsi' => '100', 'is_correct' => true],
+        ]);
+
+        $b = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 x 4 ialah 100.', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '75', 'is_correct' => false],
+            ['label' => 'B', 'teks_opsi' => '100', 'is_correct' => true],
+        ]);
+
+        $result = app(\App\Services\Evaluasi\SoalSimilarityService::class)->check($b);
+        $row = collect($result['results'])->firstWhere('soal.id', $a->id);
+
+        $this->assertNotNull($row, 'Redaksi mirip harus terdeteksi sebagai kandidat.');
+        $this->assertSame(\App\Models\SoalSimilarity::LEVEL_TEXT, $row['level']);
+        $this->assertGreaterThanOrEqual(\App\Services\Evaluasi\SoalSimilarityService::WARN_THRESHOLD, (float) $row['score']);
+    }
+
+    public function test_redaksi_berbeda_dengan_kata_kunci_sama_terdeteksi_token_overlap(): void
+    {
+        $hist = $this->makeSoal($this->bankHist, $this->guruB, 'Berapakah hasil perkalian 25 dengan 4?', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $baru = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 × 4 adalah ....', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $result = app(\App\Services\Evaluasi\SoalSimilarityService::class)->check($baru);
+        $row = collect($result['results'])->firstWhere('soal.id', $hist->id);
+
+        $this->assertNotNull($row, 'Kesamaan kata kunci & angka harus terdeteksi (lexical token overlap).');
+        $this->assertSame(\App\Models\SoalSimilarity::LEVEL_TOKEN, $row['level']);
+        $this->assertGreaterThanOrEqual(\App\Services\Evaluasi\SoalSimilarityService::TOKEN_THRESHOLD, (float) $row['score']);
+    }
+
+    public function test_perbandingan_soal_historis_lintas_tahun_ajaran(): void
+    {
+        $hist = $this->makeSoal($this->bankHist, $this->guruB, 'Berapakah hasil perkalian 25 dengan 4?', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $baru = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 × 4 adalah ....', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal/{$baru->id}/submit-review")->assertStatus(302);
+
+        // Hasil similarity menyimpan konteks tahun ajaran historis.
+        $sim = \App\Models\SoalSimilarity::where('soal_id', $baru->id)->where('compared_soal_id', $hist->id)->firstOrFail();
+        $this->assertGreaterThanOrEqual(60, (float) $sim->score);
+
+        // Comparison view menampilkan metadata tahun ajaran & metode.
+        $response = $this->getJson("/{$this->guruA->id}/bank-soal-terpusat/{$baru->id}/compare/{$hist->id}")
+            ->assertOk()
+            ->assertJsonPath('compared.academic_year', '2024/2025')
+            ->assertJsonPath('compared.subject', 'Matematika')
+            ->assertJsonPath('solution_visible', true);
+
+        $this->assertNotEmpty($response->json('level_label'));
+        $this->assertGreaterThanOrEqual(60, (float) $response->json('score'));
+    }
+
+    public function test_repository_filter_tahun_ajaran_dan_jenis_asesmen(): void
+    {
+        $historis = 'Soal historis tahun lalu tentang pecahan.';
+        $this->makeSoal($this->bankHist, $this->guruB, $historis, 'approved');
+
+        $this->actingAs($this->guruA);
+
+        // Filter tahun ajaran historis → tampil.
+        $this->get("/{$this->guruA->id}/bank-soal-terpusat?academic_year_id={$this->ayPrev->id}")
+            ->assertOk()
+            ->assertSee($historis);
+
+        // Filter tahun ajaran aktif → soal historis tidak tampil.
+        $this->get("/{$this->guruA->id}/bank-soal-terpusat?academic_year_id={$this->ay->id}")
+            ->assertOk()
+            ->assertDontSee($historis);
+
+        // Filter jenis asesmen & materi.
+        $this->get("/{$this->guruA->id}/bank-soal-terpusat?jenis_asesmen=pilihan_ganda&materi=Perkalian")
+            ->assertOk()
+            ->assertSee($historis);
+    }
+
+    public function test_turunan_soal_wajib_melewati_review_ulang(): void
+    {
+        $original = $this->makeSoal($this->bankHist, $this->guruB, 'Berapakah hasil perkalian 25 dengan 4?', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/bank-soal-terpusat/{$original->id}/reuse")->assertStatus(302);
+
+        $derivative = Soal::where('derived_from_soal_id', $original->id)->firstOrFail();
+        $this->assertSame(Soal::WORKFLOW_DRAFT, $derivative->workflow_status);
+        $this->assertNotNull($derivative->similarity_checked_at, 'Similarity check dijalankan saat reuse.');
+
+        // Ajukan review → reviewer serumpun bertugas; original tidak berubah.
+        $this->post("/{$this->guruA->id}/bank-soal/{$derivative->bank_soal_id}/soal/{$derivative->id}/submit-review")->assertStatus(302);
+
+        // Halaman edit (penyusun) menampilkan hasil similarity.
+        $this->get("/{$this->guruA->id}/bank-soal/{$derivative->bank_soal_id}/soal/{$derivative->id}/edit")
+            ->assertOk()
+            ->assertSee('Pemeriksaan Kemiripan');
+
+        $reviewers = ReviewAssignment::where('reviewable_type', Soal::class)
+            ->where('reviewable_id', $derivative->id)
+            ->pluck('reviewer_id');
+
+        $this->assertTrue($reviewers->contains($this->guruB->id));
+        $this->assertSame(Soal::WORKFLOW_REVIEW, $derivative->fresh()->workflow_status);
+        $this->assertSame(Soal::WORKFLOW_APPROVED, $original->fresh()->workflow_status, 'Soal asli tidak boleh berubah status.');
+    }
+
+    public function test_perubahan_soal_membatalkan_approval_dan_similarity_lama(): void
+    {
+        $this->makeSoal($this->bankHist, $this->guruB, 'Berapakah hasil perkalian 25 dengan 4?', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $soal = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 × 4 adalah ....', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal/{$soal->id}/submit-review", [
+            'ack_note' => 'Kemiripan wajar, konteks soal berbeda.',
+        ])->assertStatus(302);
+
+        // Setujui semua reviewer → approved.
+        foreach (ReviewAssignment::where('reviewable_id', $soal->id)->get() as $assignment) {
+            $reviewer = User::find($assignment->reviewer_id);
+            $this->actingAs($reviewer);
+            $this->post("/{$reviewer->id}/review-soal/{$assignment->id}/decide", ['status' => 'approved'])->assertStatus(302);
+        }
+
+        $soal->refresh();
+        $this->assertSame(Soal::WORKFLOW_APPROVED, $soal->workflow_status);
+        $this->assertSame('Kemiripan wajar, konteks soal berbeda.', $soal->similarity_ack_note);
+        $this->assertGreaterThan(0, $soal->similarities()->count());
+
+        // Edit soal → approval & similarity lama kedaluwarsa.
+        $this->actingAs($this->guruA);
+        $this->put("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal/{$soal->id}", [
+            'tipe_soal' => 'pg',
+            'pertanyaan' => 'Hasil dari 26 × 4 adalah ....',
+            'pembahasan' => '26 dikali 4 = 104.',
+            'materi' => 'Perkalian',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'sedang',
+            'waktu_estimasi_menit' => 2,
+            'options' => [
+                ['label' => 'A', 'teks_opsi' => '104', 'is_correct' => 1],
+                ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => 0],
+            ],
+        ])->assertStatus(302);
+
+        $soal->refresh();
+        $this->assertSame(Soal::WORKFLOW_DRAFT, $soal->workflow_status, 'Approval lama harus gugur.');
+        $this->assertSame(0, $soal->reviewAssignments()->count());
+        $this->assertNull($soal->similarity_checked_at, 'Hasil similarity lama kedaluwarsa.');
+        $this->assertNull($soal->similarity_ack_note, 'Pengecualian lama kedaluwarsa.');
+        $this->assertSame(0, $soal->similarities()->count());
+    }
+
+    public function test_similarity_dan_alasan_penyusun_tampil_kepada_reviewer(): void
+    {
+        $this->makeSoal($this->bankHist, $this->guruB, 'Berapakah hasil perkalian 25 dengan 4?', 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $soal = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 × 4 adalah ....', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/bank-soal/{$this->bankA->id}/soal/{$soal->id}/submit-review", [
+            'ack_note' => 'Redaksi berbeda, angka sama — tetap dilanjutkan.',
+        ])->assertStatus(302);
+
+        $assignment = ReviewAssignment::where('reviewable_id', $soal->id)
+            ->where('reviewer_id', $this->guruB->id)
+            ->firstOrFail();
+
+        $this->actingAs($this->guruB);
+        $this->get("/{$this->guruB->id}/review-soal/{$assignment->id}")
+            ->assertOk()
+            ->assertSee('Pemeriksaan Kemiripan')
+            ->assertSee('Perlu ditinjau reviewer')
+            ->assertSee('Kata Kunci Mirip')
+            ->assertSee('Bandingkan')
+            ->assertSee('Redaksi berbeda, angka sama — tetap dilanjutkan.');
+    }
+
+    public function test_kunci_jawaban_dan_pembahasan_terlindungi_authorization(): void
+    {
+        $soalGuruA = $this->makeSoal($this->bankA, $this->guruA, 'Soal rahasia milik guru A.', 'approved', [
+            ['label' => 'A', 'teks_opsi' => 'Kunci rahasia A', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => 'Pengecoh', 'is_correct' => false],
+        ]);
+        $soalGuruA->forceFill(['pembahasan' => 'Pembahasan rahasia A.'])->save();
+
+        $soalGuruB = $this->makeSoal($this->bankHist, $this->guruB, 'Soal milik guru B.', 'approved', [
+            ['label' => 'A', 'teks_opsi' => 'Kunci rahasia B', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => 'Pengecoh', 'is_correct' => false],
+        ]);
+
+        // Guru C: bukan penyusun, bukan reviewer, bukan tim lintas satuan → kunci disembunyikan.
+        $this->actingAs($this->guruC);
+        $this->getJson("/{$this->guruC->id}/bank-soal-terpusat/{$soalGuruA->id}/compare/{$soalGuruB->id}")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', false)
+            ->assertJsonPath('soal.pembahasan', null)
+            ->assertJsonPath('soal.options.0.correct', null)
+            ->assertJsonPath('compared.options.0.correct', null);
+
+        $this->getJson("/{$this->guruC->id}/bank-soal-terpusat/{$soalGuruA->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', false)
+            ->assertJsonPath('soal.pembahasan', null);
+
+        // Penyusun melihat kunci soal sendiri.
+        $this->actingAs($this->guruA);
+        $this->getJson("/{$this->guruA->id}/bank-soal-terpusat/{$soalGuruA->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.pembahasan', 'Pembahasan rahasia A.')
+            ->assertJsonPath('soal.options.0.correct', true);
+
+        // Waka (tim lintas satuan) melihat kunci.
+        $this->actingAs($this->waka);
+        $this->getJson("/{$this->waka->id}/bank-soal-terpusat/{$soalGuruA->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.options.0.correct', true);
+    }
+
+    public function test_quality_gate_mendeteksi_duplikasi_internal_dan_kelengkapan(): void
+    {
+        $question = 'Hasil dari 25 × 4 adalah ....';
+
+        $a = $this->makeSoal($this->bankA, $this->guruA, $question, 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+        $b = $this->makeSoal($this->bankA, $this->guruA, $question, 'approved', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+        $tanpaKunci = $this->makeSoal($this->bankA, $this->guruA, 'Soal PG tanpa kunci jawaban.', 'draft', [
+            ['label' => 'A', 'teks_opsi' => 'Pilihan satu', 'is_correct' => false],
+            ['label' => 'B', 'teks_opsi' => 'Pilihan dua', 'is_correct' => false],
+        ]);
+
+        $paket = $this->makePaket([$a, $b, $tanpaKunci]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/paket-soal/{$paket->id}/quality-gate")->assertStatus(302);
+
+        $summary = $paket->fresh()->similarity_summary;
+
+        $this->assertGreaterThanOrEqual(1, (int) $summary['internal_duplicates'], 'Duplikasi internal harus terdeteksi.');
+        $this->assertGreaterThanOrEqual(1, (int) $summary['unapproved']);
+        $this->assertGreaterThanOrEqual(1, (int) $summary['missing_key']);
+        $this->assertGreaterThanOrEqual(1, (int) $summary['missing_metadata']);
+    }
+
+    public function test_paket_final_menolak_soal_yang_belum_approved(): void
+    {
+        $draft = $this->makeSoal($this->bankA, $this->guruA, 'Soal masih draft untuk paket.', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $paket = $this->makePaket([$draft]);
+
+        $this->actingAs($this->guruA);
+        $this->post("/{$this->guruA->id}/paket-soal/{$paket->id}/submit-approval")
+            ->assertStatus(302)
+            ->assertSessionHas('error');
+
+        $this->assertSame(PaketSoal::WORKFLOW_DRAFT, $paket->fresh()->workflow_status);
+        $this->assertSame(0, ReviewAssignment::where('reviewable_type', PaketSoal::class)->where('reviewable_id', $paket->id)->count());
+    }
+
+    public function test_repository_tetap_efisien_untuk_data_dalam_jumlah_besar(): void
+    {
+        // 60 soal serumpun di dua bank lintas satuan.
+        for ($i = 1; $i <= 30; $i++) {
+            $this->makeSoal($this->bankA, $this->guruA, "Soal latihan A nomor {$i} tentang operasi bilangan.", 'approved', [
+                ['label' => 'A', 'teks_opsi' => "A{$i}", 'is_correct' => true],
+                ['label' => 'B', 'teks_opsi' => "B{$i}", 'is_correct' => false],
+            ]);
+        }
+        for ($i = 1; $i <= 30; $i++) {
+            $this->makeSoal($this->bankHist, $this->guruB, "Soal latihan B nomor {$i} tentang operasi bilangan.", 'approved', [
+                ['label' => 'A', 'teks_opsi' => "A{$i}", 'is_correct' => true],
+                ['label' => 'B', 'teks_opsi' => "B{$i}", 'is_correct' => false],
+            ]);
+        }
+
+        $target = $this->makeSoal($this->bankA, $this->guruA, 'Hasil dari 25 × 4 adalah ....', 'draft', [
+            ['label' => 'A', 'teks_opsi' => '100', 'is_correct' => true],
+            ['label' => 'B', 'teks_opsi' => '120', 'is_correct' => false],
+        ]);
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries) {
+            $queries[] = $query->sql;
+        });
+
+        $result = app(\App\Services\Evaluasi\SoalSimilarityService::class)->check($target);
+
+        $this->assertNotNull($result['summary']['checked_at']);
+        $this->assertLessThanOrEqual(5, count($result['results']), 'Hasil similarity dibatasi (top-N), bukan seluruh repository.');
+
+        // Prefilter kandidat memakai index (hash/tp/materi/shingle) — bukan scan seluruh tabel.
+        $candidateQueries = array_values(array_filter($queries, function ($sql) {
+            return str_contains($sql, '"pertanyaan" is not null') || str_contains($sql, '`pertanyaan` is not null');
+        }));
+        $this->assertCount(1, $candidateQueries, 'Hanya satu query kandidat yang dijalankan.');
+        $this->assertTrue(
+            str_contains($candidateQueries[0], 'content_hash') || str_contains($candidateQueries[0], 'json_each') || str_contains($candidateQueries[0], 'json_contains'),
+            'Query kandidat harus memakai prefilter index.'
+        );
+        $this->assertLessThan(30, count($queries), 'Jumlah query tidak melebar mengikuti jumlah soal.');
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // FIXTURE & HELPERS
     // ─────────────────────────────────────────────────────────────
 

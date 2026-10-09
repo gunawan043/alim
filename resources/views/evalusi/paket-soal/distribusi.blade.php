@@ -58,15 +58,29 @@
         </div>
     </div>
 
-    @if($notApproved > 0)
+    @php
+        $summary = $summary ?? ($paket->similarity_summary ?? []);
+        $unapprovedCount = $summary['unapproved'] ?? $notApproved;
+        $missingKey = $summary['missing_key'] ?? 0;
+        $missingMetadata = $summary['missing_metadata'] ?? 0;
+        $hasCompletenessIssue = $unapprovedCount > 0 || $missingKey > 0 || $missingMetadata > 0;
+    @endphp
+
+    @if($hasCompletenessIssue)
         <div class="alert alert-warning small" role="alert">
-            <i class="ri-error-warning-line me-1"></i>{{ $notApproved }} soal pada paket ini belum tervalidasi (bukan status approved). Paket final hanya boleh berisi soal tervalidasi.
+            <i class="ri-error-warning-line me-1"></i><strong>Kelengkapan paket</strong> (hasil quality gate menjadi bahan keputusan reviewer, bukan pengganti approval):
+            <span class="badge bg-danger-subtle text-danger ms-1">{{ $unapprovedCount }} soal belum approved</span>
+            @if($missingKey > 0)<span class="badge bg-danger-subtle text-danger">{{ $missingKey }} tanpa kunci jawaban</span>@endif
+            @if($missingMetadata > 0)<span class="badge bg-warning-subtle text-warning">{{ $missingMetadata }} metadata belum lengkap</span>@endif
+            @if($missingKey > 0 || $missingMetadata > 0)
+                <div class="mt-1">Soal PG/B-S/Menjodohkan wajib memiliki kunci; materi, pertanyaan, dan TP wajib terisi.</div>
+            @endif
         </div>
     @endif
 
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Duplikasi Internal</p>
                     <h3 class="fw-bold ff-secondary mb-0 {{ ($summary['internal_duplicates'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">{{ $summary['internal_duplicates'] ?? 0 }}</h3>
@@ -75,7 +89,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Kemiripan Historis</p>
                     <h3 class="fw-bold ff-secondary mb-0 {{ ($summary['historical_warnings'] ?? 0) > 0 ? 'text-warning' : 'text-success' }}">{{ $summary['historical_warnings'] ?? 0 }}</h3>
@@ -84,7 +98,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Approval Reviewer</p>
                     <h3 class="fw-bold ff-secondary mb-0">{{ $progress['approved'] }}/{{ $progress['total'] }}</h3>
@@ -93,7 +107,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Distribusi</p>
                     <h4 class="fw-bold ff-secondary mb-0">{{ $paket->distributed_at ? 'Terkirim' : 'Belum' }}</h4>

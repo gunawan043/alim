@@ -10,6 +10,7 @@ use App\Models\School;
 use App\Models\Soal;
 use App\Models\SoalCloneLog;
 use App\Models\SoalOption;
+use App\Models\SoalSimilarity;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\Evaluasi\ContentHashEngine;
@@ -140,7 +141,8 @@ class BankSoalTerpusatController extends Controller
             'academicYears',
             'schools',
             'jenjangOptions',
-            'scope'
+            'scope',
+            'canViewAll'
         ));
     }
 
@@ -180,8 +182,9 @@ class BankSoalTerpusatController extends Controller
                 'status' => 'draft',
                 'workflow_status' => Soal::WORKFLOW_DRAFT,
                 'dibuat_oleh' => $user->id,
-                // Hash unik tidak boleh sama (unique index) — turunan tetap
-                // terdeteksi mirip lewat shingles/text & relasi derived_from.
+                // Hash turunan di-salt (berbeda dari asli) agar relasi turunan
+                // tetap terdeteksi lewat shingles/text & derived_from_soal_id —
+                // bukan sebagai duplikat persis yang sama barisnya.
                 'content_hash' => hash('sha256', ($original->content_hash ?? $original->id).'|deriv|'.now()->timestamp.'|'.mt_rand()),
                 'shingles_hash' => $this->hashEngine->shinglesFromSoal($original->pertanyaan),
             ]);
@@ -211,44 +214,114 @@ class BankSoalTerpusatController extends Controller
             return $copy;
         });
 
+        // Soal turunan tetap menjalani similarity check terhadap repository.
+        $check = $this->similarity->check($derivative->fresh(), 5, 'review');
+        $warning = $check['summary']['total'] > 0
+            ? " Ditemukan {$check['summary']['total']} soal mirip (tertinggi {$check['summary']['highest']}%) — tinjau sebelum mengajukan review."
+            : '';
+
         return redirect()
             ->route('user.soal.edit', [
                 'userId' => $userId,
                 'bankId' => $derivative->bank_soal_id,
                 'id' => $derivative->id,
             ])
-            ->with('success', 'Salinan turunan dibuat (draft). Soal asli tidak berubah — lengkapi lalu ajukan review.');
+            ->with('success', 'Salinan turunan dibuat (draft). Soal asli tidak berubah — lengkapi lalu ajukan review.'.$warning);
     }
 
     /**
      * Data perbandingan soal (comparison view) — JSON.
+     * Kunci jawaban & pembahasan hanya untuk pengguna berwenang
+     * (penyusun salah satu soal, reviewer yang ditugaskan, Waka/Kurikulum/TU/KSP).
      */
-    public function compare(string $userId, string $soalId, string $comparedId)
+    public function compare(Request $request, string $userId, string $soalId, string $comparedId)
     {
         $soal = Soal::with('options')->findOrFail($soalId);
         $compared = Soal::with(['options', 'bankSoal.subject', 'bankSoal.academicYear', 'creator:id,name'])->findOrFail($comparedId);
+
+        $user = $request->user();
+        $canSeeSolution = $this->canSeeSolution($user, $soal) || $this->canSeeSolution($user, $compared);
 
         $result = $this->similarity->compare($soal, $compared);
 
         return response()->json([
             'score' => $result['score'],
             'level' => $result['level'],
-            'soal' => [
-                'id' => $soal->id,
-                'pertanyaan' => $soal->pertanyaan,
-                'pembahasan' => $soal->pembahasan,
-                'options' => $soal->options->map(fn ($o) => ['label' => $o->label, 'teks' => $o->teks_opsi, 'correct' => (bool) $o->is_correct]),
-            ],
-            'compared' => [
-                'id' => $compared->id,
-                'pertanyaan' => $compared->pertanyaan,
-                'pembahasan' => $compared->pembahasan,
-                'options' => $compared->options->map(fn ($o) => ['label' => $o->label, 'teks' => $o->teks_opsi, 'correct' => (bool) $o->is_correct]),
+            'level_label' => SoalSimilarity::LEVEL_OPTIONS[$result['level']] ?? $result['level'],
+            'solution_visible' => $canSeeSolution,
+            'soal' => $this->soalPayload($soal, $canSeeSolution),
+            'compared' => $this->soalPayload($compared, $canSeeSolution) + [
                 'subject' => $compared->bankSoal?->subject?->name,
                 'academic_year' => $compared->bankSoal?->academicYear?->name,
+                'semester' => $compared->bankSoal?->semester,
+                'jenis_asesmen' => $compared->bankSoal?->jenis_soal,
                 'pembuat' => $compared->creator?->name,
+                'status' => $compared->workflow_status,
             ],
         ]);
+    }
+
+    /**
+     * Detail satu soal historis (repository) — kunci/pembahasan mengikuti hak akses.
+     */
+    public function detail(Request $request, string $userId, string $soalId)
+    {
+        $soal = Soal::with([
+            'options',
+            'bankSoal.subject',
+            'bankSoal.gradeLevel',
+            'bankSoal.academicYear',
+            'bankSoal.school:id,name',
+            'creator:id,name',
+            'tujuanPembelajaran:id,kode_tp,deskripsi',
+        ])->findOrFail($soalId);
+
+        $user = $request->user();
+        $canSeeSolution = $this->canSeeSolution($user, $soal);
+
+        return response()->json([
+            'solution_visible' => $canSeeSolution,
+            'soal' => $this->soalPayload($soal, $canSeeSolution) + [
+                'subject' => $soal->bankSoal?->subject?->name,
+                'grade_level' => $soal->bankSoal?->gradeLevel?->name,
+                'academic_year' => $soal->bankSoal?->academicYear?->name,
+                'semester' => $soal->bankSoal?->semester,
+                'jenis_asesmen' => $soal->bankSoal?->jenis_soal,
+                'school' => $soal->bankSoal?->school?->name,
+                'pembuat' => $soal->creator?->name,
+                'status' => $soal->workflow_status,
+                'tipe_soal' => $soal->tipe_soal,
+                'kesulitan' => $soal->tingkat_kesulitan_estimasi,
+                'tp' => $soal->tujuanPembelajaran?->kode_tp,
+            ],
+            'similarity' => $soal->similarity_summary,
+        ]);
+    }
+
+    /**
+     * Pengguna berwenang melihat kunci & pembahasan soal:
+     * penyusun soal, reviewer yang ditugaskan, atau tim lintas satuan (Waka/Kurikulum/TU/KSP).
+     */
+    private function canSeeSolution($user, Soal $soal): bool
+    {
+        return $user->id === $soal->dibuat_oleh
+            || app(KurikulumAccess::class)->canAccessAllBankSoal($user)
+            || $soal->reviewAssignments()->where('reviewer_id', $user->id)->exists();
+    }
+
+    private function soalPayload(Soal $item, bool $canSeeSolution): array
+    {
+        return [
+            'id' => $item->id,
+            'pertanyaan' => $item->pertanyaan,
+            'pembahasan' => $canSeeSolution ? $item->pembahasan : null,
+            'materi' => $item->materi,
+            'options' => $item->options->map(fn ($o) => [
+                'label' => $o->label,
+                'teks' => $o->teks_opsi,
+                'correct' => $canSeeSolution ? (bool) $o->is_correct : null,
+            ]),
+        ];
     }
 
     /**

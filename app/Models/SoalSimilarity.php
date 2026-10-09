@@ -22,7 +22,17 @@ class SoalSimilarity extends Model
 
     const LEVEL_TEXT = 'text';
 
-    const LEVEL_SEMANTIC = 'semantic';
+    const LEVEL_TOKEN = 'token';
+
+    /** Level tampilan untuk perbandingan yang di bawah semua ambang. */
+    const LEVEL_DIFFERENT = 'different';
+
+    const LEVEL_OPTIONS = [
+        self::LEVEL_EXACT => 'Duplikat Persis',
+        self::LEVEL_TEXT => 'Teks Sangat Mirip (fuzzy)',
+        self::LEVEL_TOKEN => 'Kata Kunci Mirip (token overlap)',
+        self::LEVEL_DIFFERENT => 'Tidak Mirip (di bawah ambang)',
+    ];
 
     protected static function boot()
     {
@@ -57,10 +67,7 @@ class SoalSimilarity extends Model
 
     public function levelLabel(): string
     {
-        return match ($this->level) {
-            self::LEVEL_EXACT => 'Exact Duplicate',
-            self::LEVEL_TEXT => 'Text Similarity',
-            default => 'Semantic Similarity',
-        };
+        return self::LEVEL_OPTIONS[$this->level]
+            ?? (($this->level === 'semantic') ? 'Kata Kunci Mirip (token overlap)' : ucfirst((string) $this->level));
     }
 }

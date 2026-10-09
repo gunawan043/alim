@@ -3,6 +3,7 @@
 namespace App\Services\Evaluasi;
 
 use App\Models\PaketSoal;
+use App\Models\Soal;
 use Illuminate\Support\Collection;
 
 /**
@@ -32,7 +33,7 @@ class PaketQualityGateService
             foreach ($soals->slice($i + 1) as $b) {
                 $comparison = $this->similarity->compare($a, $b);
 
-                if ($comparison['score'] >= SoalSimilarityService::SEMANTIC_THRESHOLD) {
+                if ($comparison['score'] >= SoalSimilarityService::TOKEN_THRESHOLD) {
                     $internal[] = [
                         'a' => $a,
                         'b' => $b,
@@ -69,11 +70,25 @@ class PaketQualityGateService
             ->values()
             ->all();
 
+        // ── Kelengkapan validasi & metadata (bahan keputusan reviewer)
+        $unapproved = $soals->filter(fn (Soal $s) => ! $s->isApproved())->count();
+        $missingKey = $soals->filter(function (Soal $s) {
+            if (! in_array($s->tipe_soal, ['pg', 'bs', 'jodoh'], true)) {
+                return false; // isian/uraian dinilai manual
+            }
+
+            return ! $s->options->contains(fn ($o) => (bool) $o->is_correct);
+        })->count();
+        $missingMetadata = $soals->filter(fn (Soal $s) => blank($s->materi) || blank($s->pertanyaan) || ! $s->tp_id)->count();
+
         $summary = [
             'checked_at' => now()->toIso8601String(),
             'internal_duplicates' => count($internal),
             'historical_warnings' => count($historical),
             'highest_historical' => (float) (collect($historical)->max('score') ?? 0),
+            'unapproved' => $unapproved,
+            'missing_key' => $missingKey,
+            'missing_metadata' => $missingMetadata,
         ];
 
         $paket->forceFill([

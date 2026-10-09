@@ -1286,6 +1286,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('bank-soal-terpusat')->name('bank-soal-terpusat.')->group(function () {
                 Route::get('/', [BankSoalTerpusatController::class, 'index'])->name('index');
                 Route::post('/{soalId}/reuse', [BankSoalTerpusatController::class, 'reuse'])->name('reuse');
+                Route::get('/{soalId}/detail', [BankSoalTerpusatController::class, 'detail'])->name('detail');
                 Route::get('/{soalId}/compare/{comparedId}', [BankSoalTerpusatController::class, 'compare'])->name('compare');
             });
 

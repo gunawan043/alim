@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\DB;
 /**
  * Pemeriksaan kemiripan soal lintas bank & lintas satuan pendidikan.
  *
- * Level:
- *  1. Exact Duplicate   — content_hash sama (100%)
- *  2. Text Similarity   — shingle/Jaccard sangat mirip (>= 70%)
- *  3. Semantic Similarity — struktur/substansi mirip walau redaksi berbeda (>= 60%),
- *     termasuk penguat kesamaan angka pada soal matematika.
+ * Level (semuanya berbasis teks terukur — bukan AI/semantic embedding):
+ *  1. Exact Duplicate  — content_hash sama setelah normalisasi (100%)
+ *  2. Text Similarity  — kemiripan karakter 3-gram/Jaccard (>= 70%)
+ *  3. Token Overlap    — kesamaan kata bermakna (bag-of-words Jaccard >= 60%),
+ *     dengan penguat bila angka-angka soal identik.
  *
  * Hasil similarity adalah WARNING/quality control — bukan penolakan otomatis.
  */
@@ -23,7 +23,10 @@ class SoalSimilarityService
 {
     public const WARN_THRESHOLD = 70.0;
 
-    public const SEMANTIC_THRESHOLD = 60.0;
+    public const TOKEN_THRESHOLD = 60.0;
+
+    /** @deprecated gunakan TOKEN_THRESHOLD */
+    public const SEMANTIC_THRESHOLD = self::TOKEN_THRESHOLD;
 
     /** Kata umum yang tidak membawa makna pembeda soal. */
     private const STOPWORDS = [
@@ -45,10 +48,10 @@ class SoalSimilarityService
      */
     public function check(Soal $soal, int $limit = 5, string $context = 'review'): array
     {
-        $candidates = $this->candidates($soal);
-
         $shingles = $this->hashEngine->shinglesFromSoal($soal->pertanyaan ?? '');
-        $tokens = $this->semanticTokens($soal->pertanyaan ?? '');
+
+        $candidates = $this->candidates($soal, $shingles);
+        $tokens = $this->significantTokens($soal->pertanyaan ?? '');
         $numbers = $this->numberTokens($soal->pertanyaan ?? '');
 
         $results = collect();
@@ -63,17 +66,17 @@ class SoalSimilarityService
             } else {
                 $textScore = $this->dedup->jaccardSimilarity($shingles, $candidate->shingles_hash ?? []) * 100;
 
-                $semanticScore = $this->tokenSetSimilarity($tokens, $this->semanticTokens($candidate->pertanyaan ?? '')) * 100;
+                $tokenScore = $this->tokenSetSimilarity($tokens, $this->significantTokens($candidate->pertanyaan ?? '')) * 100;
                 if ($numbers !== [] && $numbers === $this->numberTokens($candidate->pertanyaan ?? '')) {
-                    $semanticScore = min(100.0, $semanticScore + 15.0);
+                    $tokenScore = min(100.0, $tokenScore + 15.0);
                 }
 
                 if ($textScore >= self::WARN_THRESHOLD) {
                     $level = SoalSimilarity::LEVEL_TEXT;
                     $score = round($textScore, 2);
-                } elseif ($semanticScore >= self::SEMANTIC_THRESHOLD) {
-                    $level = SoalSimilarity::LEVEL_SEMANTIC;
-                    $score = round($semanticScore, 2);
+                } elseif ($tokenScore >= self::TOKEN_THRESHOLD) {
+                    $level = SoalSimilarity::LEVEL_TOKEN;
+                    $score = round($tokenScore, 2);
                 }
             }
 
@@ -109,24 +112,25 @@ class SoalSimilarityService
             return ['score' => round($textScore, 2), 'level' => SoalSimilarity::LEVEL_TEXT];
         }
 
-        $semantic = $this->tokenSetSimilarity(
-            $this->semanticTokens($a->pertanyaan ?? ''),
-            $this->semanticTokens($b->pertanyaan ?? '')
+        $tokenScore = $this->tokenSetSimilarity(
+            $this->significantTokens($a->pertanyaan ?? ''),
+            $this->significantTokens($b->pertanyaan ?? '')
         ) * 100;
 
-        if ($semantic >= self::SEMANTIC_THRESHOLD) {
-            return ['score' => round($semantic, 2), 'level' => SoalSimilarity::LEVEL_SEMANTIC];
+        if ($tokenScore >= self::TOKEN_THRESHOLD) {
+            return ['score' => round($tokenScore, 2), 'level' => SoalSimilarity::LEVEL_TOKEN];
         }
 
-        return ['score' => round($textScore, 2), 'level' => SoalSimilarity::LEVEL_TEXT];
+        return ['score' => round($textScore, 2), 'level' => SoalSimilarity::LEVEL_DIFFERENT];
     }
 
     /**
-     * Token kata bermakna (tanpa stopwords) untuk similarity level semantik.
+     * Token kata bermakna (tanpa stopwords) untuk level Token Overlap.
+     * Berbasis leksikal (bag-of-words), bukan embedding semantik.
      *
      * @return array<int, string>
      */
-    public function semanticTokens(string $text): array
+    public function significantTokens(string $text): array
     {
         $normalized = $this->hashEngine->pertanyaanNormalized($text);
 
@@ -181,9 +185,12 @@ class SoalSimilarityService
 
     /**
      * Kandidat pembanding: semua bank lintas satuan pendidikan dengan mapel sama
-     * (repositori terpusat), bukan dibatasi school_id/bank_soal_id.
+     * (repositori terpusat), difilter via index (hash/tp/materi/shingle) agar
+     * tidak memindai seluruh tabel saat data sudah besar.
+     *
+     * @param  array<int, string>  $candidateShingles
      */
-    private function candidates(Soal $soal, int $limit = 500): Collection
+    private function candidates(Soal $soal, array $candidateShingles, int $limit = 200): Collection
     {
         $bank = $soal->bankSoal;
 
@@ -196,14 +203,35 @@ class SoalSimilarityService
                 : [$bank->subject_id];
         }
 
-        return Soal::query()
-            ->with(['bankSoal:id,school_id,subject_id,jenjang,grade_level_id,academic_year_id,semester,nama'])
-            ->where('id', '<>', $soal->id)
+        // Probe shingle: gunakan beberapa shingle teratas sebagai index pencarian.
+        $probes = array_slice($candidateShingles, 0, 3);
+
+        $hasPrefilter = $soal->content_hash || $soal->tp_id || $soal->materi || $probes !== [];
+
+        $query = Soal::query()
+            ->with(['bankSoal:id,school_id,subject_id,jenjang,grade_level_id,academic_year_id,semester,nama,jenis_soal'])
+            ->whereKeyNot($soal->id)
             ->whereNotNull('pertanyaan')
-            ->when($subjectIds !== [], fn ($q) => $q->whereHas('bankSoal', fn ($q2) => $q2->whereIn('subject_id', $subjectIds)))
-            ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get();
+            ->when($subjectIds !== [], fn ($q) => $q->whereHas('bankSoal', fn ($q2) => $q2->whereIn('subject_id', $subjectIds)));
+
+        if ($hasPrefilter) {
+            $query->where(function ($q) use ($soal, $probes) {
+                if ($soal->content_hash) {
+                    $q->orWhere('content_hash', $soal->content_hash);
+                }
+                if ($soal->tp_id) {
+                    $q->orWhere('tp_id', $soal->tp_id);
+                }
+                if ($soal->materi) {
+                    $q->orWhere('materi', $soal->materi);
+                }
+                foreach ($probes as $shingle) {
+                    $q->orWhereJsonContains('shingles_hash', $shingle);
+                }
+            });
+        }
+
+        return $query->orderByDesc('created_at')->limit($limit)->get();
     }
 
     /**
@@ -235,7 +263,7 @@ class SoalSimilarityService
                 'highest' => (float) ($results->max('score') ?? 0),
                 'exact' => $results->where('level', SoalSimilarity::LEVEL_EXACT)->count(),
                 'text' => $results->where('level', SoalSimilarity::LEVEL_TEXT)->count(),
-                'semantic' => $results->where('level', SoalSimilarity::LEVEL_SEMANTIC)->count(),
+                'token' => $results->where('level', SoalSimilarity::LEVEL_TOKEN)->count(),
             ];
 
             $soal->forceFill([

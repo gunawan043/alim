@@ -46,6 +46,9 @@ class Soal extends Model
         'shingles_hash',
         'similarity_checked_at',
         'similarity_summary',
+        'similarity_ack_note',
+        'similarity_ack_by',
+        'similarity_ack_at',
         'times_used',
     ];
 
@@ -73,6 +76,7 @@ class Soal extends Model
         'times_used' => 'integer',
         'approved_at' => 'datetime',
         'similarity_checked_at' => 'datetime',
+        'similarity_ack_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -189,6 +193,14 @@ class Soal extends Model
     public function isApproved(): bool
     {
         return $this->workflow_status === self::WORKFLOW_APPROVED || $this->status === 'approved';
+    }
+
+    /**
+     * Apakah pemeriksaan kemiripan menemukan kandidat untuk ditinjau.
+     */
+    public function hasSimilarityWarnings(): bool
+    {
+        return (int) ($this->similarity_summary['total'] ?? 0) > 0;
     }
 
     public function getIsObjectivelyGradableAttribute(): bool

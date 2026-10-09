@@ -76,7 +76,12 @@ class ReviewSoalController extends Controller
         if ($reviewable instanceof Soal) {
             $reviewable->load(['options', 'tujuanPembelajaran.capaianPembelajaran', 'bankSoal.subject', 'bankSoal.gradeLevel', 'creator:id,name']);
             $similarities = $reviewable->similarities()
-                ->with(['comparedSoal.bankSoal.subject', 'comparedSoal.bankSoal.academicYear', 'comparedSoal.creator:id,name'])
+                ->with([
+                    'comparedSoal.bankSoal.subject',
+                    'comparedSoal.bankSoal.gradeLevel',
+                    'comparedSoal.bankSoal.academicYear',
+                    'comparedSoal.creator:id,name',
+                ])
                 ->get();
         } elseif ($reviewable instanceof PaketSoal) {
             $reviewable->load(['items.soal.options', 'kisiKisi.subject', 'kisiKisi.gradeLevel', 'kisiKisi.academicYear']);

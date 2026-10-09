@@ -21,9 +21,9 @@
         </div>
     @endif
 
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Progres Review</p>
                     <h3 class="fw-bold ff-secondary mb-0">{{ $progress['approved'] }}/{{ $progress['total'] }}</h3>
@@ -32,7 +32,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Status Workflow</p>
                     @php
@@ -45,7 +45,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Kemiripan Historis</p>
                     @php $sim = $reviewable->similarity_summary ?? []; @endphp
@@ -63,7 +63,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Keputusan Anda</p>
                     <h4 class="fw-bold ff-secondary mb-0">{{ \App\Models\ReviewAssignment::STATUS_OPTIONS[$assignment->status] ?? $assignment->status }}</h4>
@@ -169,23 +169,39 @@
                         @if($similarities->isEmpty())
                             <p class="text-muted small mb-0"><i class="ri-checkbox-circle-line text-success me-1"></i>Tidak ada kemiripan signifikan dengan soal historis.</p>
                         @else
-                            <p class="text-warning small"><i class="ri-error-warning-line me-1"></i>Potensi kemiripan dengan {{ $similarities->count() }} soal historis (warning, bukan penolakan otomatis):</p>
+                            <p class="text-warning small mb-1"><i class="ri-error-warning-line me-1"></i>Potensi kemiripan dengan {{ $similarities->count() }} soal historis (indikator, bukan penolakan otomatis):</p>
+                            <p class="small text-muted mb-2"><strong>Status:</strong> Perlu ditinjau reviewer</p>
                             @foreach($similarities as $sim)
                                 <div class="border rounded p-2 mb-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="badge bg-warning-subtle text-warning">{{ $sim->score }}% · {{ $sim->levelLabel() }}</span>
                                         <button type="button" class="btn btn-sm btn-soft-secondary"
                                                 onclick="showComparison('{{ $reviewable->id }}', '{{ $sim->compared_soal_id }}')">
-                                            Lihat Perbandingan
+                                            Bandingkan
                                         </button>
                                     </div>
                                     <div class="small text-muted mt-1">
-                                        {{ $sim->comparedSoal?->bankSoal?->subject?->name }} · {{ $sim->comparedSoal?->bankSoal?->academicYear?->name ?? '—' }}
-                                        · {{ $sim->comparedSoal?->creator?->name ?? '—' }}
+                                        {{ $sim->comparedSoal?->bankSoal?->subject?->name ?? '—' }}
+                                        · {{ $sim->comparedSoal?->bankSoal?->gradeLevel?->name }}
+                                        · {{ $sim->comparedSoal?->bankSoal?->academicYear?->name ?? '—' }}
+                                        · {{ ucfirst($sim->comparedSoal?->bankSoal?->semester ?? '—') }}
+                                        · {{ strtoupper((string) $sim->comparedSoal?->bankSoal?->jenis_soal) }}
                                     </div>
+                                    @if($sim->comparedSoal?->materi)
+                                        <div class="small text-muted">Materi: {{ $sim->comparedSoal->materi }}</div>
+                                    @endif
+                                    <div class="small text-muted">Pembuat: {{ $sim->comparedSoal?->creator?->name ?? '—' }} · Status: {{ \App\Models\Soal::WORKFLOW_OPTIONS[$sim->comparedSoal?->workflow_status] ?? '—' }}</div>
                                     <div class="small mt-1">{{ \Illuminate\Support\Str::limit(strip_tags($sim->comparedSoal?->pertanyaan ?? ''), 90) }}</div>
                                 </div>
                             @endforeach
+                        @endif
+
+                        @if($reviewable->similarity_ack_note)
+                            <div class="border rounded p-2 bg-light-subtle small mt-2">
+                                <div class="fw-semibold"><i class="ri-chat-check-line me-1"></i>Alasan penyusun melanjutkan</div>
+                                <div>{{ $reviewable->similarity_ack_note }}</div>
+                                <div class="text-muted">{{ $reviewable->similarity_ack_at?->format('d/m/Y H:i') }}</div>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -274,7 +290,7 @@
         }
 
         function showComparison(soalId, comparedId) {
-            var url = @json(route('user.bank-soal-terpusat.compare', ['userId' => $userId, 'soalId' => '__SOAL__', 'comparedId' => '__CMP__']));
+            var url = {{ route('user.bank-soal-terpusat.compare', ['userId' => $userId, 'soalId' => '__SOAL__', 'comparedId' => '__CMP__']) }};
             url = url.replace('__SOAL__', soalId).replace('__CMP__', comparedId);
 
             fetch(url, { headers: { 'Accept': 'application/json' } })
@@ -284,7 +300,7 @@
                     document.getElementById('compare-right').innerHTML = renderSoal(data.compared);
                     document.getElementById('compare-score').textContent = data.score + '%';
                     document.getElementById('compare-meta').textContent =
-                        (data.compared.academic_year || '-') + ' · ' + (data.compared.subject || '-') + ' · ' + (data.compared.pembuat || '-');
+                        (data.level_label || '') + ' · ' + (data.compared.academic_year || '-') + ' · ' + (data.compared.subject || '-') + ' · ' + (data.compared.pembuat || '-');
                     new bootstrap.Modal(document.getElementById('comparison-modal')).show();
                 });
         }

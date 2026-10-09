@@ -105,7 +105,7 @@ class SoalController extends Controller
                 'bobot_default' => $validated['bobot_default'],
                 'tingkat_kesulitan_estimasi' => $validated['tingkat_kesulitan_estimasi'],
                 'waktu_estimasi_menit' => $validated['waktu_estimasi_menit'],
-                'tags' => $validated['tags'] ? array_map('trim', explode(',', $validated['tags'])) : null,
+                'tags' => ($validated['tags'] ?? null) ? array_map('trim', explode(',', $validated['tags'])) : null,
                 'status' => 'draft',
                 'workflow_status' => Soal::WORKFLOW_DRAFT,
                 'dibuat_oleh' => $userId,
@@ -141,7 +141,16 @@ class SoalController extends Controller
      */
     public function edit(string $userId, string $bankId, string $id)
     {
-        $soal = Soal::with('options')->findOrFail($id);
+        $soal = Soal::with([
+            'options',
+            'reviewAssignments:id,reviewable_type,reviewable_id,reviewer_id,status',
+            'similarities:id,soal_id,compared_soal_id,score,level',
+            'similarities.comparedSoal:id,bank_soal_id,pertanyaan,dibuat_oleh,materi',
+            'similarities.comparedSoal.bankSoal:id,subject_id,academic_year_id,semester,jenis_soal',
+            'similarities.comparedSoal.bankSoal.subject:id,name',
+            'similarities.comparedSoal.bankSoal.academicYear:id,name',
+            'similarities.comparedSoal.creator:id,name',
+        ])->findOrFail($id);
         $bank = $soal->bankSoal;
 
         $this->authorizeEdit(request(), $bank, $soal);
@@ -206,17 +215,27 @@ class SoalController extends Controller
                 'bobot_default' => $validated['bobot_default'],
                 'tingkat_kesulitan_estimasi' => $validated['tingkat_kesulitan_estimasi'],
                 'waktu_estimasi_menit' => $validated['waktu_estimasi_menit'],
-                'tags' => $validated['tags'] ? array_map('trim', explode(',', $validated['tags'])) : null,
+                'tags' => ($validated['tags'] ?? null) ? array_map('trim', explode(',', $validated['tags'])) : null,
             ]);
             $soal->content_hash = $engine->hashFromSoal($soal->pertanyaan, $correctTexts);
             $soal->shingles_hash = $engine->shinglesFromSoal($soal->pertanyaan);
             $soal->save();
 
             // Perubahan soal setelah approval/review → versi baru wajib divalidasi ulang.
+            // Hasil similarity & pengecualian lama juga kedaluwarsa (teks soal berubah).
             if ($soal->reviewAssignments()->exists() || $soal->workflow_status !== Soal::WORKFLOW_DRAFT) {
                 $soal->reviewAssignments()->delete();
                 $soal->syncWorkflowStatus(Soal::WORKFLOW_DRAFT);
             }
+
+            $soal->similarities()->delete();
+            $soal->forceFill([
+                'similarity_checked_at' => null,
+                'similarity_summary' => null,
+                'similarity_ack_note' => null,
+                'similarity_ack_by' => null,
+                'similarity_ack_at' => null,
+            ])->save();
 
             // Replace options (simpler than diff for now)
             if (in_array($validated['tipe_soal'], ['pg', 'bs', 'jodoh']) && $request->filled('options')) {
@@ -260,22 +279,35 @@ class SoalController extends Controller
     /**
      * Ajukan soal untuk review serumpun:
      *  1) jalankan automatic similarity check (cross-bank/historical),
-     *  2) tugaskan reviewer serumpun lintas satuan pendidikan.
+     *  2) catat alasan bila penyusun tetap melanjutkan meski ada kemiripan,
+     *  3) tugaskan reviewer serumpun lintas satuan pendidikan.
      * Similarity adalah warning — guru tetap dapat melanjutkan review.
      */
-    public function submitForReview(string $userId, string $bankId, string $id)
+    public function submitForReview(Request $request, string $userId, string $bankId, string $id)
     {
         $soal = Soal::findOrFail($id);
-        $user = request()->user();
+        $user = $request->user();
 
         $check = app(SoalSimilarityService::class)->check($soal, 5, 'review');
+
+        $ackNote = trim((string) $request->input('ack_note', ''));
+        if ($check['summary']['total'] > 0 && $ackNote !== '') {
+            $soal->forceFill([
+                'similarity_ack_note' => $ackNote,
+                'similarity_ack_by' => $user->id,
+                'similarity_ack_at' => now(),
+            ])->save();
+        }
+
         $assignments = app(ReviewWorkflowService::class)->submit($soal, $user);
 
         $warning = $check['summary']['total'] > 0
             ? " Ditemukan {$check['summary']['total']} soal historis mirip (tertinggi {$check['summary']['highest']}%) — mohon ditinjau reviewer."
             : ' Tidak ditemukan kemiripan signifikan dengan soal historis.';
 
-        return back()->with('success', 'Soal diajukan untuk review ('.count($assignments).' reviewer serumpun).'.$warning);
+        $ack = $ackNote !== '' ? ' Alasan melanjutkan tercatat.' : '';
+
+        return back()->with('success', 'Soal diajukan untuk review ('.count($assignments).' reviewer serumpun).'.$warning.$ack);
     }
 
     /**
