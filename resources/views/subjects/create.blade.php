@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Tambah Mata Pelajaran @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.subjects.index', ['userId' => $userId]) }}">Mata Pelajaran</a> @endslot
+        @slot('li_1') <a href="{{ route('user.subjects.index', ['userId' => $userId]) }}">Mata Pelajaran</a> @endslot
         @slot('title') Tambah Mapel @endslot
     @endcomponent
 
@@ -22,9 +27,12 @@
     <form method="POST" action="{{ route('user.subjects.store', ['userId' => $userId]) }}">
         @csrf
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-lg-8">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Form Mata Pelajaran</h5></div>
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-book-open-line text-primary me-1"></i>Form Mata Pelajaran</h5>
+                        <p class="text-muted mb-0 small">Mapel menjadi dasar CP/TP/ATP, plotting guru, jadwal, dan penilaian.</p>
+                    </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -33,7 +41,7 @@
                                     <input type="text" class="form-control" value="{{ $schoolContext->name }}" readonly>
                                     <input type="hidden" name="school_id" value="{{ $schoolContext->id }}">
                                 @else
-                                    <select name="school_id" class="form-control" required>
+                                    <select name="school_id" class="form-select" required>
                                         <option value="">— Pilih Sekolah —</option>
                                         @foreach($schools as $s)
                                             <option value="{{ $s->id }}" {{ old('school_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
@@ -51,7 +59,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
-                                <select name="category" class="form-control" required>
+                                <select name="category" class="form-select" required>
                                     <option value="">— Pilih Kategori —</option>
                                     <option value="nasional" {{ old('category') == 'nasional' ? 'selected' : '' }}>Nasional</option>
                                     <option value="lokal" {{ old('category') == 'lokal' ? 'selected' : '' }}>Lokal</option>
@@ -81,6 +89,22 @@
                                 <i class="ri-save-line me-1"></i> Simpan
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-information-line text-info me-1"></i>Panduan</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="text-muted small mb-0 ps-3">
+                            <li class="mb-2">Gunakan kode singkat unik per sekolah (contoh: <code>MTK</code>, <code>B.IND</code>).</li>
+                            <li class="mb-2">JP/minggu menjadi alokasi dasar sebelum disesuaikan di <strong>Plotting Guru</strong> dan jadwal.</li>
+                            <li class="mb-2">Kategori <em>Muatan Lokal</em> dipakai untuk mapel khas satuan pendidikan.</li>
+                            <li>Mapel nonaktif tidak dihitung pada rekap JP aktif.</li>
+                        </ul>
                     </div>
                 </div>
             </div>

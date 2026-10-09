@@ -2,6 +2,10 @@
 
 @section('title', 'Edit Jadwal KBM — ' . ($studyGroup->full_name ?? $studyGroup->name))
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
 @php $userId = $userId ?? auth()->id(); @endphp
 
@@ -28,6 +32,10 @@
     @method('PUT')
 
     <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-edit-line text-primary me-1"></i>Edit Jadwal Manual</h5>
+            <p class="text-muted mb-0 small">Perubahan manual tetap divalidasi bentrok guru/rombel.</p>
+        </div>
         <div class="card-body">
             <div class="alert alert-info small">
                 <i class="ri-information-line me-1"></i>

@@ -151,6 +151,136 @@ class KurikulumMasterUiTest extends TestCase
             ->assertSee('card-animate');
     }
 
+    public function test_halaman_form_dan_detail_tahun_ajaran_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/academic-years/create")
+            ->assertOk()
+            ->assertSee('Form Tahun Ajaran');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/academic-years/{$this->ay->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Tahun Ajaran');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/academic-years/{$this->ay->id}")
+            ->assertOk()
+            ->assertSee('Zona Berbahaya');
+    }
+
+    public function test_halaman_form_dan_detail_mata_pelajaran_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/subjects/create")
+            ->assertOk()
+            ->assertSee('Form Mata Pelajaran');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/subjects/{$this->subject->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Mata Pelajaran');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/subjects/{$this->subject->id}")
+            ->assertOk()
+            ->assertSee($this->subject->name);
+    }
+
+    public function test_halaman_form_dan_detail_data_kelas_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/grade-levels/create")
+            ->assertOk()
+            ->assertSee('Form Tingkat Kelas');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/grade-levels/{$this->grade->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Tingkat Kelas');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/grade-levels/{$this->grade->id}")
+            ->assertOk()
+            ->assertSee('Informasi Tingkat');
+    }
+
+    public function test_halaman_form_dan_detail_rombel_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/study-groups/create")
+            ->assertOk()
+            ->assertSee('Form Rombongan Belajar');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/study-groups/{$this->group->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Rombongan Belajar');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/study-groups/{$this->group->id}")
+            ->assertOk()
+            ->assertSee('Anggota Rombel');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/study-groups/{$this->group->id}/subjects/create")
+            ->assertOk()
+            ->assertSee('Pilih Mata Pelajaran');
+    }
+
+    public function test_halaman_form_dan_detail_plotting_guru_tampil(): void
+    {
+        $assignment = TeachingAssignment::firstOrFail();
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/create")
+            ->assertOk()
+            ->assertSee('Form Penugasan Mengajar');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/{$assignment->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Penugasan Mengajar');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/{$assignment->id}")
+            ->assertOk()
+            ->assertSee('Jam Pelajaran / Minggu');
+    }
+
+    public function test_halaman_generate_dan_detail_jadwal_pelajaran_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/jadwal-kbm/generate")
+            ->assertOk()
+            ->assertSee('Generate Jadwal Kegiatan Belajar');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/jadwal-kbm/{$this->group->id}")
+            ->assertOk()
+            ->assertSee('Kembali');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/jadwal-kbm/{$this->group->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Jadwal Manual');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/jadwal-kbm/teacher/{$this->guru->id}")
+            ->assertOk()
+            ->assertSee('Jadwal Mengajar');
+    }
+
+    public function test_halaman_matriks_pembagian_tugas_tampil(): void
+    {
+        $decreeId = DB::table('institution_decrees')->value('id');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/matrix/{$decreeId}/edit")
+            ->assertOk()
+            ->assertSee('Edit Matriks Pembagian Tugas');
+    }
+
     // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────
@@ -300,7 +430,7 @@ class KurikulumMasterUiTest extends TestCase
             'scope_key' => $scopeKey,
             'scope_school_id' => $this->school->id,
             'fingerprint' => hash('sha256', $user->id.$scopeKey),
-            'permissions' => json_encode(['jadwalkbm.read']),
+            'permissions' => json_encode(['jadwalkbm.read', 'jadwalkbm.write', 'jadwalkbm.publish']),
             'revoked' => json_encode([]),
             'is_current' => 1,
             'created_at' => now(),

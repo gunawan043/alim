@@ -3,6 +3,7 @@
 @section('title', 'Jadwal Mengajar — ' . ($teacher->name ?? ''))
 
 @push('css')
+@include('kurikulum._styles')
 <style>
     .time-cell { font-family: 'SF Mono', Monaco, monospace; font-size: .78rem; white-space: nowrap; }
 </style>
@@ -21,6 +22,9 @@
 @endif
 
 <div class="card">
+    <div class="card-header border-bottom-dashed">
+        <h5 class="card-title mb-0"><i class="ri-user-star-line text-primary me-1"></i>Jadwal Mengajar — {{ $teacher->name ?? '-' }}</h5>
+    </div>
     <div class="card-body p-0">
         @if($jadwals->isEmpty())
             <div class="text-center py-5">

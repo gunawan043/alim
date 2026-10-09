@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') {{ $studyGroup->full_name }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
+        @slot('li_1') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
         @slot('title') {{ $studyGroup->full_name }} @endslot
     @endcomponent
 
@@ -34,7 +39,7 @@
         {{-- Info Rombel --}}
         <div class="col-lg-5">
             <div class="card">
-                <div class="card-header"><h5 class="mb-0">{{ $studyGroup->full_name }}</h5></div>
+                <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-group-line text-primary me-1"></i>{{ $studyGroup->full_name }}</h5></div>
                 <div class="card-body">
                     <table class="table table-borderless mb-0">
                         <tr>
@@ -137,8 +142,8 @@
         {{-- Anggota Rombel --}}
         <div class="col-lg-7">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Anggota Rombel</h5>
+                <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Anggota Rombel</h5>
                     <button type="button" class="btn btn-success btn-sm" onclick="openBulkModal()">
                         <i class="ri-add-line me-1"></i> Tarik Santri
                     </button>

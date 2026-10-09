@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Edit {{ $studyGroup->full_name }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
+        @slot('li_1') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
         @slot('title') Edit {{ $studyGroup->full_name }} @endslot
     @endcomponent
 
@@ -31,7 +36,15 @@
         <div class="row">
             <div class="col-lg-12">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Edit Rombongan Belajar</h5></div>
+                    <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-0"><i class="ri-pencil-line text-primary me-1"></i>Edit Rombongan Belajar</h5>
+                            <p class="text-muted mb-0 small">{{ $studyGroup->academicYear?->name }} · {{ $studyGroup->gradeLevel?->name }}</p>
+                        </div>
+                        <span class="badge {{ $studyGroup->is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
+                            {{ $studyGroup->is_active ? 'Aktif' : 'Nonaktif' }}
+                        </span>
+                    </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -41,7 +54,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Tahun Ajaran <span class="text-danger">*</span></label>
-                                <select name="academic_year_id" class="form-control" required>
+                                <select name="academic_year_id" class="form-select" required>
                                     @foreach($academicYears as $ay)
                                         <option value="{{ $ay->id }}" {{ old('academic_year_id', $studyGroup->academic_year_id) == $ay->id ? 'selected' : '' }}>
                                             {{ $ay->name }} ({{ $ay->semester_text }})
@@ -51,7 +64,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Tingkat Kelas <span class="text-danger">*</span></label>
-                                <select name="grade_level_id" class="form-control" required>
+                                <select name="grade_level_id" class="form-select" required>
                                     @foreach($gradeLevels as $gl)
                                         <option value="{{ $gl->id }}" {{ old('grade_level_id', $studyGroup->grade_level_id) == $gl->id ? 'selected' : '' }}>{{ $gl->name }}</option>
                                     @endforeach
@@ -75,7 +88,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Wali Kelas</label>
-                                <select name="homeroom_teacher_id" class="form-control">
+                                <select name="homeroom_teacher_id" class="form-select">
                                     <option value="">— Pilih Wali Kelas —</option>
                                     @foreach($teachers as $t)
                                         <option value="{{ $t->id }}" {{ old('homeroom_teacher_id', $studyGroup->homeroom_teacher_id) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
@@ -84,7 +97,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Kurikulum</label>
-                                <select name="curriculum_type" class="form-control">
+                                <select name="curriculum_type" class="form-select">
                                     <option value="merdeka" {{ old('curriculum_type', $studyGroup->curriculum_type) === 'merdeka' ? 'selected' : '' }}>Merdeka</option>
                                     <option value="2013" {{ old('curriculum_type', $studyGroup->curriculum_type) === '2013' ? 'selected' : '' }}>2013</option>
                                     <option value="ktsp" {{ old('curriculum_type', $studyGroup->curriculum_type) === 'ktsp' ? 'selected' : '' }}>KTSP</option>
@@ -92,7 +105,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Shift</label>
-                                <select name="shift" class="form-control">
+                                <select name="shift" class="form-select">
                                     <option value="pagi" {{ old('shift', $studyGroup->shift) === 'pagi' ? 'selected' : '' }}>Pagi</option>
                                     <option value="siang" {{ old('shift', $studyGroup->shift) === 'siang' ? 'selected' : '' }}>Siang</option>
                                 </select>

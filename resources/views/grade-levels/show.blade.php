@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') {{ $gradeLevel->name }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Tingkat Kelas</a> @endslot
+        @slot('li_1') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Data Kelas</a> @endslot
         @slot('title') {{ $gradeLevel->name }} @endslot
     @endcomponent
 
@@ -22,64 +27,68 @@
     @endif
 
     {{-- STATS RINGKASAN ─────────────────────────────── --}}
-    <div class="row g-3 mb-3">
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-primary bg-opacity-10 border-primary border-1 mb-0">
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted mb-1 text-uppercase" style="font-size:0.68rem;letter-spacing:0.06em;font-weight:600">Total Mapel</p>
-                            <h4 class="mb-0">{{ $gradeLevelSubjects->count() }}</h4>
-                        </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary rounded-circle text-white fs-5"><i class="ri-book-2-line"></i></span>
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-book-2-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Mapel</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->count() }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Alokasi mapel tingkat ini</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-success bg-opacity-10 border-success border-1 mb-0">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted mb-1 text-uppercase" style="font-size:0.68rem;letter-spacing:0.06em;font-weight:600">Total Jam/Minggu</p>
-                            <h4 class="mb-0">{{ $gradeLevelSubjects->sum('allocation_hours') }} <small class="fs-6 text-muted">jp</small></h4>
-                        </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success rounded-circle text-white fs-5"><i class="ri-time-line"></i></span>
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-time-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Jam/Minggu</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->sum('allocation_hours') }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">JP</small></h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Akumulasi alokasi JP</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-info bg-opacity-10 border-info border-1 mb-0">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted mb-1 text-uppercase" style="font-size:0.68rem;letter-spacing:0.06em;font-weight:600">Mapel Nasional</p>
-                            <h4 class="mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') === 'nasional')->count() }}</h4>
-                        </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info rounded-circle text-white fs-5"><i class="ri-global-line"></i></span>
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-global-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mapel Nasional</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') === 'nasional')->count() }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-flag-2-line me-1"></i>Kurikulum nasional</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-warning bg-opacity-10 border-warning border-1 mb-0">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted mb-1 text-uppercase" style="font-size:0.68rem;letter-spacing:0.06em;font-weight:600">Muatan Lokal</p>
-                            <h4 class="mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') !== 'nasional')->count() }}</h4>
-                        </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning rounded-circle text-white fs-5"><i class="ri-home-line"></i></span>
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-home-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Muatan Lokal</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') !== 'nasional')->count() }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Mapel khas satuan pendidikan</p>
                 </div>
             </div>
         </div>
@@ -89,7 +98,7 @@
         {{-- KOLOM INFO ─────────────────────────────── --}}
         <div class="col-lg-4">
             <div class="card mb-0 h-100">
-                <div class="card-header bg-light">
+                <div class="card-header border-bottom-dashed">
                     <div class="d-flex align-items-center justify-content-between">
                         <h6 class="mb-0"><i class="ri-information-line text-primary me-1"></i>Informasi Tingkat</h6>
                         <div class="dropdown">
@@ -169,7 +178,7 @@
         {{-- KOLOM MAPEL + KKTP ─────────────────────── --}}
         <div class="col-lg-8">
             <div class="card mb-0">
-                <div class="card-header bg-light">
+                <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-sm">
                             <h6 class="mb-0">
@@ -221,7 +230,7 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0">
+                            <table class="table table-sm table-hover align-middle table-freeze mb-0">
                                 <thead class="table-light text-muted" style="font-size:0.72rem">
                                     <tr>
                                         <th class="text-center text-uppercase" style="width:45px">#</th>
@@ -393,7 +402,7 @@
                     @csrf
                     <div class="modal-body">
                         {{-- Info semester & tahun ajaran --}}
-                        <div class="row g-3 mb-3">
+                        <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Tahun Ajaran</label>
                                 <select name="academic_year_id" class="form-select" required>

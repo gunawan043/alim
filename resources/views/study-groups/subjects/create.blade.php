@@ -1,11 +1,16 @@
 @extends('layouts.master')
 @section('title') Tambah Mata Pelajaran @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
-        @slot('li_3') <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id]) }}">{{ $studyGroup->full_name }}</a> @endslot
+        @slot('li_1') <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">Rombongan Belajar</a> @endslot
+        @slot('li_2') <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id]) }}">{{ $studyGroup->full_name }}</a> @endslot
         @slot('title') Tambah Mata Pelajaran @endslot
     @endcomponent
 
@@ -31,8 +36,10 @@
         <div class="row">
             <div class="col-lg-8">
                 <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-book-add-line text-primary me-1"></i>Pilih Mata Pelajaran untuk {{ $studyGroup->full_name }}</h5>
+                    </div>
                     <div class="card-body">
-                        <h5 class="card-title mb-3">Pilih Mata Pelajaran untuk {{ $studyGroup->full_name }}</h5>
 
                         @if($availableSubjects->isEmpty())
                             <div class="alert alert-warning">
@@ -77,12 +84,12 @@
 
                         <div class="d-flex justify-content-between mt-3">
                             <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id]) }}"
-                               class="btn btn-secondary">
-                                <i class="mdi mdi-arrow-left"></i> Kembali
+                               class="btn btn-light">
+                                <i class="ri-arrow-left-line me-1"></i> Kembali
                             </a>
                             @if(!$availableSubjects->isEmpty())
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="mdi mdi-content-save"></i> Simpan
+                                <button type="submit" class="btn btn-success">
+                                    <i class="ri-save-line me-1"></i> Simpan
                                 </button>
                             @endif
                         </div>

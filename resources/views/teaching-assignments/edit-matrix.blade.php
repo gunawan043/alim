@@ -2,6 +2,7 @@
 @section('title') Edit Matriks — {{ $decree->decree_number }} @endsection
 
 @section('css')
+@include('kurikulum._styles')
 <style>
     .entry-card { border-left: 3px solid #0d6efd; background: #fafbff; }
     .entry-card.task-type { border-left-color: #fd7e14; }
@@ -21,8 +22,10 @@
 @endsection
 
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Administrasi @endslot
+        @slot('li_1') <a href="{{ route('user.teaching-assignments.index', ['userId' => $userId]) }}">Plotting Guru</a> @endslot
         @slot('li_2') <a href="{{ route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decree->id]) }}">{{ $decree->decree_number }}</a> @endslot
         @slot('title') Edit Matriks Pembagian Tugas @endslot
     @endcomponent
@@ -57,14 +60,14 @@
 
         {{-- Add Teacher Form --}}
         <div class="card mb-3">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="ri-user-add-line me-1"></i> Tambah Guru ke Matriks</h6>
+            <div class="card-header border-bottom-dashed">
+                <h6 class="card-title mb-0"><i class="ri-user-add-line text-primary me-1"></i> Tambah Guru ke Matriks</h6>
             </div>
             <div class="card-body pt-2 pb-2">
                 <div class="row g-2 align-items-end">
                     <div class="col-md-5">
                         <label class="form-label" style="font-size:12px;">Pilih Guru</label>
-                        <select id="addTeacherSelect" class="form-control form-control-sm">
+                        <select id="addTeacherSelect" class="form-select form-select-sm">
                             <option value="">-- Pilih Guru --</option>
                             @foreach($teachers as $t)
                                 <option value="{{ $t->id }}">{{ $t->name }}
@@ -75,7 +78,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" style="font-size:12px;">Mapel yang diajar</label>
-                        <select id="addSubjectSelect" class="form-control form-control-sm">
+                        <select id="addSubjectSelect" class="form-select form-select-sm">
                             <option value="">-- Pilih Mapel --</option>
                             @foreach($subjects as $s)
                                 <option value="{{ $s->id }}">{{ $s->name }}</option>
@@ -107,7 +110,7 @@
             @endphp
 
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">Matriks Pembagian Tugas Mengajar</h6>
                     <div class="d-flex gap-2">
                         <a href="{{ route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decree->id]) }}"

@@ -1,21 +1,27 @@
 @extends('layouts.master')
 @section('title') Tambah Tahun Ajaran @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') Tahun Ajaran @endslot
+        @slot('li_1') <a href="{{ route('user.academic-years.index', ['userId' => $userId]) }}">Tahun Ajaran</a> @endslot
         @slot('title') Tambah Tahun Ajaran @endslot
     @endcomponent
 
     <div class="row">
         <div class="col-lg-8">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="ri-calendar-event-line me-2"></i>Form Tahun Ajaran</h5>
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-calendar-event-line text-primary me-1"></i>Form Tahun Ajaran</h5>
+                    <p class="text-muted mb-0 small">Data terpusat — semua satuan pendidikan mengikuti tahun ajaran ini.</p>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('user.academic-years.store') }}">
+                    <form method="POST" action="{{ route('user.academic-years.store', ['userId' => $userId]) }}">
                         @csrf
 
                         <div class="row g-3">
@@ -31,7 +37,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">Semester <span class="text-danger">*</span></label>
-                                <select name="semester" class="form-control @error('semester') is-invalid @enderror" required>
+                                <select name="semester" class="form-select @error('semester') is-invalid @enderror" required>
                                     <option value="">-- Pilih Semester --</option>
                                     <option value="ganjil" {{ old('semester') === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                                     <option value="genap" {{ old('semester') === 'genap' ? 'selected' : '' }}>Genap</option>
@@ -86,11 +92,27 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="ri-save-line me-1"></i> Simpan
                             </button>
-                            <a href="{{ route('user.academic-years.index') }}" class="btn btn-light">
+                            <a href="{{ route('user.academic-years.index', ['userId' => $userId]) }}" class="btn btn-light">
                                 <i class="ri-arrow-left-line me-1"></i> Kembali
                             </a>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-information-line text-info me-1"></i>Panduan</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="text-muted small mb-0 ps-3">
+                        <li class="mb-2">Nama tahun ajaran memakai format <strong>YYYY/YYYY</strong> (contoh: 2025/2026).</li>
+                        <li class="mb-2">Semester menentukan periode pembelajaran ganjil/genap.</li>
+                        <li class="mb-2">Tanggal mulai–selesai menjadi dasar perhitungan <strong>Kalender Pendidikan</strong> dan <strong>Pekan Efektif</strong>.</li>
+                        <li>Aktifkan tahun ajaran agar semua modul (Kurikulum, Asesmen, Buku Administrasi) memakai periode ini.</li>
+                    </ul>
                 </div>
             </div>
         </div>

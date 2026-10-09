@@ -2,6 +2,10 @@
 
 @section('title', 'Generate Jadwal KBM')
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
 @php $userId = $userId ?? auth()->id(); @endphp
 
@@ -28,7 +32,7 @@
             @csrf
             <input type="hidden" name="academic_year_id" value="{{ $activeAy?->id }}">
 
-            <div class="row g-3 mb-3">
+            <div class="row">
                 <div class="col-md-4">
                     <label class="form-label">Tahun Ajaran</label>
                     <input type="text" class="form-control" value="{{ $activeAy->name ?? '—' }}" disabled>
@@ -130,7 +134,7 @@
 
 @if($otherTasks->isNotEmpty())
     <div class="card">
-        <div class="card-header">
+        <div class="card-header border-bottom-dashed">
             <h6 class="card-title mb-0">
                 <i class="ri-folders-line text-secondary me-1"></i> Tugas Mengajar Tambahan
                 <span class="badge bg-secondary-subtle text-secondary ms-1">{{ $otherTasks->count() }}</span>

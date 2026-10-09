@@ -164,6 +164,20 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Perbaikan bug ikutan: direktif Blade `@else`/`@endif` yang menempel tanpa spasi (`Anda@else`) tidak terkompilasi dan menyebabkan parse error di halaman Data Kelas & Rombel.
 - Test: `KurikulumMasterUiTest` **7 test / 42 assertion** (render + filter tiap halaman); regresi modul (Jadwal, Sumatif, Kaldik, Kurikulum, PROTA/PROSEM/RPM, Adjustment, Pelaksanaan, Bank Soal) **87 test / 761 assertion** lulus; `view:cache` sukses.
 
+## 21. UI Kurikulum — Form & Detail Diseragamkan (Lanjutan)
+- **Halaman form & detail 7 modul** kini konsisten dengan pola gtk/kurikulum: breadcrumb `Kurikulum`, `card-header border-bottom-dashed`, kolom form (8) + kartu **Panduan/Quick Actions** (4), `form-select` konsisten, tombol aksi `btn-success`/`btn-light`, dan `@include('kurikulum._styles')`:
+  - **Tahun Ajaran** — create, edit, show (kartu ringkasan status/semester/durasi/pendaftaran + zona berbahaya).
+  - **Mata Pelajaran** — create, edit, show.
+  - **Data Kelas** — create, edit, show (stat cards gtk + sticky table-freeze).
+  - **Rombel** — create, edit, show, serta form **Mapel Rombel** (create/edit).
+  - **Plotting Guru Mengajar** — create, edit, show, dan **Matriks Pembagian Tugas (SK)**.
+  - **Jadwal Pelajaran** — generate, show, edit manual, dan jadwal per guru.
+- **Bug laten yang ditemukan & diperbaiki** (halaman sebelumnya tidak pernah bisa dibuka):
+  1. `AcademicYearController` `show/edit/update/destroy/toggleActive` tidak menerima `$userId` sehingga parameter route bergeser secara posisional → `ModelNotFoundException`/404. Kini semua menerima `(string $userId, string $id)`.
+  2. `teaching-assignments/show` memanggil `route('user.gtk.show', ['id' => ...])` padahal parameter route bernama `{uuid}` → `UrlGenerationException`; diperbaiki menjadi `'uuid'`.
+  3. `TeachingAssignmentController::editMatrix` memakai `OtherTeacherTask` tanpa `use App\Models\OtherTeacherTask` → 500 pada halaman Matriks SK.
+- Test: `KurikulumMasterUiTest` diperluas menjadi **14 test / 84 assertion** (render create/edit/show tiap modul + matriks); regresi modul (Jadwal, Sumatif, Kaldik, Kurikulum, PROTA/PROSEM/RPM, Adjustment, Pelaksanaan, Bank Soal) **94 test / 808 assertion** lulus; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

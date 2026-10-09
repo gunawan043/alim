@@ -75,7 +75,7 @@ class AcademicYearController extends Controller
     /**
      * Display the specified academic year.
      */
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
 
@@ -85,7 +85,7 @@ class AcademicYearController extends Controller
     /**
      * Show the form for editing the specified academic year.
      */
-    public function edit(string $id)
+    public function edit(string $userId, string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
 
@@ -95,7 +95,7 @@ class AcademicYearController extends Controller
     /**
      * Update the specified academic year.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $userId, string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
 
@@ -123,7 +123,7 @@ class AcademicYearController extends Controller
     /**
      * Remove the specified academic year.
      */
-    public function destroy(string $id)
+    public function destroy(string $userId, string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
         $academicYear->delete();
@@ -135,7 +135,7 @@ class AcademicYearController extends Controller
     /**
      * Toggle the active status.
      */
-    public function toggleActive(string $id)
+    public function toggleActive(string $userId, string $id)
     {
         $academicYear = AcademicYear::findOrFail($id);
 

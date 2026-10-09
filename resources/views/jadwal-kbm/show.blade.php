@@ -3,6 +3,7 @@
 @section('title', 'Jadwal KBM — ' . ($studyGroup->full_name ?? $studyGroup->name))
 
 @push('css')
+@include('kurikulum._styles')
 <style>
     .day-card .table { margin-bottom: 0; }
     .day-card .table td { vertical-align: middle; }
@@ -82,7 +83,7 @@
             @if($dayJadwals->isNotEmpty())
                 <div class="col-xl-6">
                     <div class="card day-card h-100">
-                        <div class="card-header d-flex align-items-center justify-content-between">
+                        <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                             <h6 class="card-title mb-0">{{ $dayName }}</h6>
                             <span class="badge bg-primary-subtle text-primary">{{ $dayJadwals->count() }} jam</span>
                         </div>

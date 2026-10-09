@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Edit {{ $gradeLevel->name }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Tingkat Kelas</a> @endslot
+        @slot('li_1') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Data Kelas</a> @endslot
         @slot('title') Edit {{ $gradeLevel->name }} @endslot
     @endcomponent
 
@@ -23,9 +28,17 @@
         @csrf
         @method('PUT')
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-lg-8">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Edit Tingkat Kelas</h5></div>
+                    <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-0"><i class="ri-pencil-line text-primary me-1"></i>Edit Tingkat Kelas</h5>
+                            <p class="text-muted mb-0 small">{{ $gradeLevel->school?->name ?? 'Institusi' }}</p>
+                        </div>
+                        <span class="badge {{ $gradeLevel->is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
+                            {{ $gradeLevel->is_active ? 'Aktif' : 'Nonaktif' }}
+                        </span>
+                    </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -60,10 +73,28 @@
                     </div>
                     <div class="card-footer">
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+                            <a href="{{ route('user.grade-levels.show', ['userId' => $userId, 'id' => $gradeLevel->id]) }}" class="btn btn-light">Batal</a>
                             <button type="submit" class="btn btn-success">
                                 <i class="ri-save-line me-1"></i> Simpan Perubahan
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-links-line text-primary me-1"></i>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ route('user.grade-levels.show', ['userId' => $userId, 'id' => $gradeLevel->id]) }}" class="btn btn-light w-100 text-start">
+                                <i class="ri-eye-line me-2"></i> Lihat Detail Tingkat
+                            </a>
+                            <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="btn btn-light w-100 text-start">
+                                <i class="ri-list-check me-2"></i> Daftar Data Kelas
+                            </a>
                         </div>
                     </div>
                 </div>

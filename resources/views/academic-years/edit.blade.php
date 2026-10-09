@@ -1,21 +1,41 @@
 @extends('layouts.master')
 @section('title') Edit Tahun Ajaran @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') Tahun Ajaran @endslot
-        @slot('title') Edit Tahun Ajaran @endslot
+        @slot('li_1') <a href="{{ route('user.academic-years.index', ['userId' => $userId]) }}">Tahun Ajaran</a> @endslot
+        @slot('title') Edit {{ $academicYear->name }} @endslot
     @endcomponent
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     <div class="row">
         <div class="col-lg-8">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="ri-pencil-line me-2"></i>Edit Tahun Ajaran</h5>
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="card-title mb-0"><i class="ri-pencil-line text-primary me-1"></i>Edit Tahun Ajaran</h5>
+                        <p class="text-muted mb-0 small">{{ $academicYear->name }} · {{ $academicYear->semester_text }}</p>
+                    </div>
+                    @if($academicYear->is_active)
+                        <span class="badge bg-success-subtle text-success">Aktif</span>
+                    @else
+                        <span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>
+                    @endif
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('user.academic-years.update', $academicYear->id) }}">
+                    <form method="POST" action="{{ route('user.academic-years.update', ['userId' => $userId, 'id' => $academicYear->id]) }}">
                         @csrf
                         @method('PUT')
 
@@ -32,7 +52,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">Semester <span class="text-danger">*</span></label>
-                                <select name="semester" class="form-control @error('semester') is-invalid @enderror" required>
+                                <select name="semester" class="form-select @error('semester') is-invalid @enderror" required>
                                     <option value="">-- Pilih Semester --</option>
                                     <option value="ganjil" {{ old('semester', $academicYear->semester) === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                                     <option value="genap" {{ old('semester', $academicYear->semester) === 'genap' ? 'selected' : '' }}>Genap</option>
@@ -81,7 +101,7 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="ri-save-line me-1"></i> Simpan Perubahan
                             </button>
-                            <a href="{{ route('user.academic-years.show', $academicYear->id) }}" class="btn btn-light">
+                            <a href="{{ route('user.academic-years.show', ['userId' => $userId, 'id' => $academicYear->id]) }}" class="btn btn-light">
                                 <i class="ri-close-line me-1"></i> Batal
                             </a>
                         </div>

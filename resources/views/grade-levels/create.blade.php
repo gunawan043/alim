@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Tambah Tingkat Kelas @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php $userId = $userId ?? auth()->id(); @endphp
+
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
-        @slot('li_2') Tingkat Kelas @endslot
+        @slot('li_1') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Data Kelas</a> @endslot
         @slot('title') Tambah Tingkat @endslot
     @endcomponent
 
@@ -22,9 +27,12 @@
     <form method="POST" action="{{ route('user.grade-levels.store', ['userId' => $userId]) }}">
         @csrf
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-lg-8">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Form Tingkat Kelas</h5></div>
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-stack-line text-primary me-1"></i>Form Tingkat Kelas</h5>
+                        <p class="text-muted mb-0 small">Tingkat kelas menghubungkan fase CP dengan rombel dan JP efektif.</p>
+                    </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -33,7 +41,7 @@
                                     <input type="text" class="form-control" value="{{ $schoolContext->name }}" readonly>
                                     <input type="hidden" name="school_id" value="{{ $schoolContext->id }}">
                                 @else
-                                    <select name="school_id" class="form-control" required>
+                                    <select name="school_id" class="form-select" required>
                                         <option value="">— Pilih Sekolah —</option>
                                         @foreach($schools as $s)
                                             <option value="{{ $s->id }}" {{ old('school_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
@@ -75,6 +83,22 @@
                                 <i class="ri-save-line me-1"></i> Simpan
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-information-line text-info me-1"></i>Panduan</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="text-muted small mb-0 ps-3">
+                            <li class="mb-2"><strong>Tingkat</strong> = angka urut untuk pengurutan kelas (7, 8, 9).</li>
+                            <li class="mb-2"><strong>Fase</strong> dipakai CP/TP/ATP — pastikan konsisten dengan jenjang (A–F).</li>
+                            <li class="mb-2">Setelah tingkat dibuat, tambahkan <strong>Rombel</strong> dan alokasi mapelnya.</li>
+                            <li>Tingkat nonaktif tidak muncul saat pembuatan rombel baru.</li>
+                        </ul>
                     </div>
                 </div>
             </div>
