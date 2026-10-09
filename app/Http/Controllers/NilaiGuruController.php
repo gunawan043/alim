@@ -34,16 +34,14 @@ class NilaiGuruController extends Controller
     public function index(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $user = User::findOrFail($userId);
-
-        $isPrivileged = $user->hasAnyRole([
-            'Kepala Sekolah',
-        ]);
+        $authUser = auth()->user();
+        $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
+            || app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($authUser));
 
         // Daftar mapel yang diampu guru ini
         $baseQuery = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester');
 
@@ -71,7 +69,7 @@ class NilaiGuruController extends Controller
         if ($adminBookId === 'none' || ! is_string($adminBookId)) {
             $firstBook = TeacherAdminBook::with(['subject', 'studyGroup'])
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                ->where('teacher_id', $userId)
+                ->where('teacher_id', auth()->id())
                 ->where('is_active', true)
                 ->orderBy('semester')->first();
 
@@ -100,7 +98,7 @@ class NilaiGuruController extends Controller
         // Admin book selector (untuk switch mapel/kelas)
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -301,7 +299,7 @@ class NilaiGuruController extends Controller
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -428,7 +426,7 @@ class NilaiGuruController extends Controller
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -624,7 +622,7 @@ class NilaiGuruController extends Controller
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -694,7 +692,7 @@ class NilaiGuruController extends Controller
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -768,7 +766,7 @@ class NilaiGuruController extends Controller
 
         $books = TeacherAdminBook::with(['subject', 'studyGroup'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $book['isPrivileged'], fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('is_active', true)
             ->orderBy('semester')->get();
 
@@ -1041,18 +1039,16 @@ class NilaiGuruController extends Controller
     private function loadAdminBook(string $userId, string $adminBookId): array
     {
         $schoolId = request()->attributes->get('schoolContextId');
-        $user = User::findOrFail($userId);
-
-        $isPrivileged = $user->hasAnyRole([
-            'Kepala Sekolah',
-        ]);
+        $authUser = auth()->user();
+        $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
+            || app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($authUser));
 
         // Cast integer adminBookId
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
 
         $adminBook = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel', 'academicYear', 'teacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
+            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', auth()->id()))
             ->where('id', $bookId)
             ->firstOrFail();
 

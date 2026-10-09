@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Evaluasi;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\Soal;
@@ -11,6 +12,7 @@ use App\Models\TujuanPembelajaran;
 use App\Services\Evaluasi\ContentHashEngine;
 use App\Services\Evaluasi\ReviewWorkflowService;
 use App\Services\Evaluasi\SoalSimilarityService;
+use App\Services\SubjectGroupResolver;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,8 @@ use Illuminate\Support\Facades\Gate;
 
 class SoalController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * List soal within a BankSoal (inline endpoint for tab on show page).
      */
@@ -288,6 +292,8 @@ class SoalController extends Controller
         $soal = Soal::findOrFail($id);
         $user = $request->user();
 
+        $this->authorizeManage($request, $soal->bankSoal);
+
         $check = app(SoalSimilarityService::class)->check($soal, 5, 'review');
 
         $ackNote = trim((string) $request->input('ack_note', ''));
@@ -330,6 +336,32 @@ class SoalController extends Controller
 
     // ── Otorisasi bank soal (tanpa Gate: registrar snapshot meng-intercept ability) ──
 
+    /**
+     * Akses baca bank soal: tim/TU, bank accessible (owner/publik/internal),
+     * atau penyusun.
+     */
+    private function authorizeBankAccess(Request $request, ?BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        if (! $bank) {
+            abort(404);
+        }
+
+        if (app(KurikulumAccess::class)->canAccessAllBankSoal($user)) {
+            return;
+        }
+
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($bank->id)
+            ->exists();
+
+        if (! $accessible) {
+            abort(403, 'Anda tidak berwenang mengakses bank soal ini.');
+        }
+    }
+
     private function authorizeManage(Request $request, ?BankSoal $bank): void
     {
         $user = $request->user();
@@ -340,13 +372,18 @@ class SoalController extends Controller
 
         $isOwner = $bank->owner_user_id === $user->id || $bank->created_by === $user->id;
         $isTeam = app(KurikulumAccess::class)->isKurikulumTeam($user);
-        $isSubjectTeacher = TeachingAssignment::query()
-            ->where('teacher_id', $user->id)
-            ->where('subject_id', $bank->subject_id)
-            ->where('status', 'active')
+
+        // Kebijakan Tahap 1: guru mengelola bank pada rumpun kewenangannya
+        // (bukan hanya kesamaan mapel) dan hanya untuk bank yang dapat diakses.
+        $resolver = app(SubjectGroupResolver::class);
+        $bankGroup = $bank->subject ? $resolver->groupForSubject($bank->subject) : null;
+        $inRumpun = $bankGroup && $resolver->groupsForTeacher($user)->contains('id', $bankGroup->id);
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($bank->id)
             ->exists();
 
-        if (! $isOwner && ! $isTeam && ! $isSubjectTeacher) {
+        if (! $isOwner && ! $isTeam && ! ($inRumpun && $accessible)) {
             abort(403, 'Anda tidak berwenang mengelola soal pada bank ini.');
         }
     }

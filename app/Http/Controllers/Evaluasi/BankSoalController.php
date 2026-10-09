@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Evaluasi;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BankSoal;
@@ -14,16 +15,67 @@ use Illuminate\Support\Facades\Gate;
 
 class BankSoalController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * Display a paginated list of BankSoal for the current school context.
      */
+    /**
+     * Akses baca bank: tim/TU, owner, atau bank accessible (publik/internal).
+     */
+    private function authorizeBankView(Request $request, BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        if (app(\App\Services\KurikulumAccess::class)->canAccessAllBankSoal($user)) {
+            return;
+        }
+
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($bank->id)
+            ->exists();
+
+        if (! $accessible) {
+            abort(403, 'Anda tidak berwenang mengakses bank soal ini.');
+        }
+    }
+
+    /**
+     * Kelola bank: owner/tim kurikulum, atau guru pada rumpun kewenangannya
+     * dengan bank yang accessible.
+     */
+    private function authorizeBankManage(Request $request, BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        if ($bank->owner_user_id === $user->id || $bank->created_by === $user->id) {
+            return;
+        }
+
+        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            return;
+        }
+
+        $resolver = app(\App\Services\SubjectGroupResolver::class);
+        $bankGroup = $bank->subject ? $resolver->groupForSubject($bank->subject) : null;
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($bank->id)
+            ->exists();
+
+        if ($bankGroup && $accessible && $resolver->groupsForTeacher($user)->contains('id', $bankGroup->id)) {
+            return;
+        }
+
+        abort(403, 'Anda tidak berwenang mengelola bank soal ini.');
+    }
+
     public function index(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
         // Scope filtering: owner can see their own + public/internal_school banks
-        Gate::authorize('viewAny', BankSoal::class);
-
         $baseQuery = BankSoal::where('school_id', $schoolId)
             ->where(function ($q) use ($userId, $schoolId) {
                 $q->where('owner_user_id', $userId)
@@ -173,7 +225,7 @@ class BankSoalController extends Controller
     /**
      * Display a single BankSoal with its Soal list.
      */
-    public function show(string $userId, string $id)
+    public function show(Request $request, string $userId, string $id)
     {
         $bank = BankSoal::with(['school', 'subject', 'owner', 'creator', 'tujuanPembelajaran',
             'soal' => fn ($q) => $q->with('tujuanPembelajaran')
@@ -182,18 +234,19 @@ class BankSoalController extends Controller
                     'status', 'bobot_default', 'created_at')])
             ->findOrFail($id);
 
+        $this->authorizeBankView($request, $bank);
+
         return view('evalusi.bank-soal.show', compact('bank', 'userId'));
     }
 
     /**
      * Show the edit form for an existing BankSoal.
      */
-    public function edit(string $userId, string $id)
+    public function edit(Request $request, string $userId, string $id)
     {
         $bank = BankSoal::findOrFail($id);
 
-        // Authorization: only owner or school admin can edit
-        Gate::authorize('update', $bank);
+        $this->authorizeBankManage($request, $bank);
 
         $schoolId = request()->attributes->get('schoolContextId');
 
@@ -241,7 +294,7 @@ class BankSoalController extends Controller
     {
         $bank = BankSoal::findOrFail($id);
 
-        Gate::authorize('update', $bank);
+        $this->authorizeBankManage($request, $bank);
 
         $validated = $request->validate([
             'nama' => 'required|string|max:150',
@@ -276,7 +329,7 @@ class BankSoalController extends Controller
     {
         $bank = BankSoal::findOrFail($id);
 
-        Gate::authorize('delete', $bank);
+        $this->authorizeBankManage($request, $bank);
 
         $bank->delete();
 
@@ -288,8 +341,12 @@ class BankSoalController extends Controller
     /**
      * API: Return Soal list within a BankSoal (JSON).
      */
-    public function soalList(string $userId, string $bankId)
+    public function soalList(Request $request, string $userId, string $bankId)
     {
+        $bank = BankSoal::findOrFail($bankId);
+
+        $this->authorizeBankView($request, $bank);
+
         $soals = Soal::where('bank_soal_id', $bankId)
             ->orderBy('created_at')
             ->select('id', 'bank_soal_id', 'tipe_soal', 'pertanyaan', 'status', 'bobot_default')
@@ -305,7 +362,7 @@ class BankSoalController extends Controller
     {
         $source = BankSoal::findOrFail($id);
 
-        Gate::authorize('clone', $source);
+        $this->authorizeBankManage($request, $source);
 
         $validated = $request->validate([
             'subject_id' => 'required|exists:subjects,id',

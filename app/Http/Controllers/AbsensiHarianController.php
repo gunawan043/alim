@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Exports\AbsensiRecapExport;
 use App\Exports\AbsensiSemesterFullExport;
 use App\Models\AcademicYear;
@@ -18,6 +19,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AbsensiHarianController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     // ── Helpers ───────────────────────────────────────────────────
 
     protected function getSchoolId(Request $request): ?string
@@ -151,6 +154,14 @@ class AbsensiHarianController extends Controller
             ? Carbon::parse($request->date)
             : Carbon::today();
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
+
+        if ($selectedStudyGroupId) {
+            $selectedSg = StudyGroup::find($selectedStudyGroupId);
+            if (! $selectedSg) {
+                abort(404, 'Rombel tidak ditemukan.');
+            }
+            $this->authorizeStudyGroupScope($request, $selectedSg);
+        }
         $selectedSemester = $request->filled('semester')
             ? $request->semester
             : $activeYear->semester;
@@ -242,6 +253,21 @@ class AbsensiHarianController extends Controller
             abort(403, 'Anda bukan wali kelas rombel ini.');
         }
 
+        // Validasi integritas: seluruh santri harus anggota aktif rombel ini.
+        $validStudentIds = StudentClassHistory::where('study_group_id', $validated['study_group_id'])
+            ->where('academic_year_id', $activeYear->id)
+            ->where('is_active', true)
+            ->pluck('student_id')
+            ->all();
+
+        $invalidStudents = collect($validated['records'])
+            ->pluck('student_id')
+            ->diff($validStudentIds);
+
+        if ($invalidStudents->isNotEmpty()) {
+            abort(422, 'Terdapat santri yang bukan anggota aktif rombel ini.');
+        }
+
         $inputMode = $request->input('mode', 'dropdown');
         $date = Carbon::parse($validated['attendance_date']);
         $records = $validated['records'];
@@ -284,6 +310,14 @@ class AbsensiHarianController extends Controller
         $activeYear = $this->getActiveAcademicYear();
 
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
+
+        if ($selectedStudyGroupId) {
+            $selectedSg = StudyGroup::find($selectedStudyGroupId);
+            if (! $selectedSg) {
+                abort(404, 'Rombel tidak ditemukan.');
+            }
+            $this->authorizeStudyGroupScope($request, $selectedSg);
+        }
         $selectedMonth = $request->filled('month') ? (int) $request->month : (int) now()->month;
         $selectedYear = $request->filled('year') ? (int) $request->year : (int) now()->year;
         $selectedSemester = $request->filled('semester')
@@ -450,6 +484,14 @@ class AbsensiHarianController extends Controller
         $activeYear = $this->getActiveAcademicYear();
 
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
+
+        if ($selectedStudyGroupId) {
+            $selectedSg = StudyGroup::find($selectedStudyGroupId);
+            if (! $selectedSg) {
+                abort(404, 'Rombel tidak ditemukan.');
+            }
+            $this->authorizeStudyGroupScope($request, $selectedSg);
+        }
         $selectedMonth = $request->filled('month') ? (int) $request->month : (int) now()->month;
         $selectedYear = $request->filled('year') ? (int) $request->year : (int) now()->year;
         $selectedSemester = $request->filled('semester')
@@ -545,6 +587,14 @@ class AbsensiHarianController extends Controller
         $activeYear = $this->getActiveAcademicYear();
 
         $selectedStudyGroupId = $request->filled('study_group_id') ? $request->study_group_id : null;
+
+        if ($selectedStudyGroupId) {
+            $selectedSg = StudyGroup::find($selectedStudyGroupId);
+            if (! $selectedSg) {
+                abort(404, 'Rombel tidak ditemukan.');
+            }
+            $this->authorizeStudyGroupScope($request, $selectedSg);
+        }
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : $activeYear?->id;
@@ -710,10 +760,21 @@ class AbsensiHarianController extends Controller
         ));
     }
 
-    public function exportStudent(Request $request, string $studentUuid)
+    public function exportStudent(Request $request, string $userId, string $studentUuid)
     {
         // $studentUuid is actually the student's UUID primary key (not a separate 'uuid' column)
-        $student = Student::with('currentClassHistory.gradeLevel')->findOrFail($studentUuid);
+        $student = Student::with('currentClassHistory.studyGroup')->findOrFail($studentUuid);
+
+        $this->ensureSchoolScope($request, $student->school_id, 'Santri tidak ditemukan pada satuan pendidikan Anda.');
+
+        $user = $request->user();
+
+        if (! $this->isCrossClassOfficer($user)) {
+            $studyGroup = $student->currentClassHistory?->studyGroup;
+            if (! $studyGroup || (string) $studyGroup->homeroom_teacher_id !== (string) $user->id) {
+                abort(403, 'Anda hanya dapat mengekspor data kelas yang Anda walikan.');
+            }
+        }
 
         $records = AdminPresensiHarian::where('student_id', $student->id)
             ->orderBy('attendance_date', 'desc')

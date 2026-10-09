@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Evaluasi;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\GtkEmployment;
@@ -19,9 +20,68 @@ use Illuminate\Support\Facades\DB;
 
 class PaketSoalController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * List paket soal.
      */
+    /**
+     * Guard kisi-kisi saat membangun paket: batas satuan pendidikan,
+     * perubahan hanya penyusun kisi atau tim kurikulum.
+     */
+    private function authorizePaketKisi(Request $request, KisiKisiSoal $kisi, bool $write = true): void
+    {
+        $this->ensureSchoolScope($request, $kisi->school_id, 'Kisi-kisi tidak ditemukan pada satuan pendidikan Anda.');
+
+        if (! $write) {
+            return;
+        }
+
+        $user = $request->user();
+
+        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            return;
+        }
+
+        if ((string) $kisi->created_by === (string) $user->id) {
+            return;
+        }
+
+        abort(403, 'Anda tidak berwenang membangun paket dari kisi-kisi ini.');
+    }
+
+    /**
+     * Guard paket: batas satuan pendidikan + kewenangan mengubah.
+     * TU/Kurikulum/Waka boleh melihat sesuai scope; perubahan hanya
+     * penyusun kisi-kisi (owner) atau tim kurikulum (TU tidak mengubah isi akademik).
+     */
+    private function authorizePaket(Request $request, PaketSoal $paket, bool $write = true): void
+    {
+        $paket->loadMissing('kisiKisi');
+
+        $this->ensureSchoolScope(
+            $request,
+            $paket->kisiKisi?->school_id,
+            'Paket soal tidak ditemukan pada satuan pendidikan Anda.'
+        );
+
+        if (! $write) {
+            return;
+        }
+
+        $user = $request->user();
+
+        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            return;
+        }
+
+        if ((string) ($paket->kisiKisi?->created_by) === (string) $user->id) {
+            return;
+        }
+
+        abort(403, 'Anda tidak berwenang mengubah paket ini.');
+    }
+
     public function index(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -72,6 +132,8 @@ class PaketSoalController extends Controller
     {
         $kisi = KisiKisiSoal::with(['items.tujuanPembelajaran', 'subject'])->findOrFail($kisiKisiId);
 
+        $this->authorizePaketKisi($request, $kisi, false);
+
         return view('evalusi.paket-soal.create', compact('kisi'));
     }
 
@@ -93,6 +155,8 @@ class PaketSoalController extends Controller
 
         return DB::transaction(function () use ($validated, $kisiKisiId) {
             $kisi = KisiKisiSoal::with('items')->findOrFail($kisiKisiId);
+
+            $this->authorizePaketKisi($request, $kisi);
             $bank = BankSoal::findOrFail($validated['bank_soal_id']);
 
             $paket = new PaketSoal;
@@ -135,11 +199,13 @@ class PaketSoalController extends Controller
     /**
      * Show paket soal detail with full soals.
      */
-    public function show(string $userId, string $paketUuid)
+    public function show(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::with(['kisiKisi.subject', 'kisiKisi.gradeLevel',
             'items.soal.options'])
             ->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket, false);
 
         return view('evalusi.paket-soal.show', compact('paket'));
     }
@@ -150,6 +216,8 @@ class PaketSoalController extends Controller
     public function publish(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
 
         // Kebijakan approval: paket hanya boleh dipublikasikan setelah
         // disetujui seluruh reviewer (workflow Approved). Publish dari draft
@@ -174,9 +242,11 @@ class PaketSoalController extends Controller
     /**
      * Unpublish paket soal.
      */
-    public function unpublish(string $userId, string $paketUuid)
+    public function unpublish(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
         $paket->update(['is_published' => false, 'published_at' => null]);
 
         return back()->with('success', 'Paket soal di-unpublish.');
@@ -185,10 +255,12 @@ class PaketSoalController extends Controller
     /**
      * Re-roll soal selection (delete current items and re-pick).
      */
-    public function reroll(string $userId, string $paketUuid)
+    public function reroll(Request $request, string $userId, string $paketUuid)
     {
-        return DB::transaction(function () use ($paketUuid) {
+        return DB::transaction(function () use ($paketUuid, $request) {
             $paket = PaketSoal::with('kisiKisi.items')->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
 
             if ($paket->is_published) {
                 return back()->with('error', 'Paket sudah dipublish. Unpublish terlebih dahulu untuk re-roll.');
@@ -223,9 +295,11 @@ class PaketSoalController extends Controller
     /**
      * Delete paket soal.
      */
-    public function destroy(string $userId, string $paketUuid)
+    public function destroy(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
         $paket->delete();
 
         return redirect()->route('user.paket-soal.index')->with('success', 'Paket soal dihapus.');
@@ -273,6 +347,8 @@ class PaketSoalController extends Controller
     public function qualityGate(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
         $result = app(PaketQualityGateService::class)->run($paket);
         $summary = $result['summary'];
 
@@ -290,6 +366,8 @@ class PaketSoalController extends Controller
     public function submitApproval(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::with(['kisiKisi', 'items.soal'])->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
 
         if ($paket->items->isEmpty()) {
             return back()->with('error', 'Paket belum memiliki soal.');
@@ -319,6 +397,8 @@ class PaketSoalController extends Controller
             'items.soal.options', 'distributions.recipient', 'printJobs.creator',
         ])->findOrFail($paketUuid);
 
+        $this->authorizePaket($request, $paket);
+
         $progress = app(ReviewWorkflowService::class)->progress($paket);
         $summary = $paket->similarity_summary ?? [];
         $notApproved = $paket->items->filter(fn ($item) => ! $item->soal?->isApproved())->count();
@@ -332,6 +412,8 @@ class PaketSoalController extends Controller
     public function distribute(Request $request, string $userId, string $paketUuid)
     {
         $paket = PaketSoal::with(['kisiKisi', 'items.soal'])->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
 
         if (! $paket->isFinal()) {
             return back()->with('error', 'Hanya paket final (approved + dipublikasikan) yang dapat didistribusikan.');

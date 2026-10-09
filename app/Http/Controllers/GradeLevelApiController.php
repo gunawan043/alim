@@ -9,8 +9,14 @@ use Illuminate\Http\Request;
 
 class GradeLevelApiController extends Controller
 {
-    public function bySchool(string $schoolId)
+    public function bySchool(Request $request, string $userId, string $schoolId)
     {
+        $context = $request->attributes->get('schoolContextId');
+
+        if ($context && (string) $context !== (string) $schoolId && $request->attributes->get('isGlobalView') !== true) {
+            abort(403, 'Akses lintas satuan pendidikan ditolak.');
+        }
+
         $gradeLevels = GradeLevel::where('school_id', $schoolId)
             ->orderBy('level')
             ->get(['id', 'name', 'code', 'level']);
@@ -45,8 +51,14 @@ class GradeLevelApiController extends Controller
         ]);
     }
 
-    public function teachersBySchool(string $schoolId)
+    public function teachersBySchool(Request $request, string $userId, string $schoolId)
     {
+        $context = $request->attributes->get('schoolContextId');
+
+        if ($context && (string) $context !== (string) $schoolId && $request->attributes->get('isGlobalView') !== true) {
+            abort(403, 'Akses lintas satuan pendidikan ditolak.');
+        }
+
         $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get(['id', 'name']);

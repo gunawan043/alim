@@ -30,6 +30,28 @@ abstract class TestCase extends BaseTestCase
         // Migrasi kisi-kisi dilewati pada SQLite (kolom char(36) anonim). Stub
         // minimal agar fitur yang membaca relasi kisi-kisi (paket soal, wizard
         // sumatif) tetap dapat diuji.
+        // Stub tabel pivot kisi-kisi & bank soal TP (migrasi aslinya di-skip di SQLite).
+        if (DB::connection()->getDriverName() === 'sqlite' && ! Schema::hasTable('kisi_kisi_soal_items')) {
+            Schema::create('kisi_kisi_soal_items', function ($table) {
+                $table->uuid('id')->primary();
+                $table->uuid('kisi_kisi_soal_id')->nullable();
+                $table->uuid('tp_id')->nullable();
+                $table->string('level_kognitif')->nullable();
+                $table->integer('jumlah_soal')->nullable();
+                $table->decimal('bobot_per_soal', 8, 2)->nullable();
+                $table->text('materi')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (DB::connection()->getDriverName() === 'sqlite' && ! Schema::hasTable('bank_soal_tp')) {
+            Schema::create('bank_soal_tp', function ($table) {
+                $table->uuid('bank_soal_id');
+                $table->uuid('tp_id');
+                $table->timestamps();
+            });
+        }
+
         if (DB::connection()->getDriverName() === 'sqlite' && ! Schema::hasTable('kisi_kisi_soal')) {
             Schema::create('kisi_kisi_soal', function ($table) {
                 $table->uuid('id')->primary();

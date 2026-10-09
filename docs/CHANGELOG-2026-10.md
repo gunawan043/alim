@@ -256,6 +256,17 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Test: `SubjectGroupPolicyTest` **9 test / 52 assertion** (pemetaan rumpun, keanggotaan multi-rumpun, koordinator, reviewer utama & fallback, guard publish, masking kunci); regresi **136 test / 1.013 assertion** lulus; `view:cache` sukses; migrasi + backfill diterapkan di MySQL dev.
 - **Sisa Tahap 1 (increment berikutnya)**: policy per model (BankSoal/Soal/Paket/Perangkat/Nilai/Absensi), sweep scope+guard P0 menyeluruh (kisi-kisi, repository reuse/detail, nilai, kehadiran, API internal), dan UI pengelolaan master rumpun/penugasan koordinator.
 
+## 27. Tahap 1 (Increment 2) — Sweep Guard Server-Side Kebijakan Akademik
+- **Trait bersama `AuthorizesAcademicScope`**: batas satuan pendidikan (`ensureSchoolScope`), petugas lintas kelas (Kurikulum/Kepala/Wakil, TU, Kesiswaan), scope rombel (lihat semua dalam satuan; ubah hanya wali kelas/petugas), dan scope buku nilai (guru pengampu termasuk **co-teacher** pada mapel+rombel+TA yang sama).
+- **Paket Soal**: seluruh aksi (show/publish/unpublish/reroll/destroy/quality-gate/submit-approval/distribution/distribute) kini ber-guard — batas satuan pendidikan (404 lintas sekolah) dan kewenangan ubah hanya **penyusun kisi** atau **tim kurikulum** (TU tidak mengubah isi akademik). Halaman distribusi baca-saja.
+- **Kisi-kisi**: show/edit/update/destroy ber-scope satuan + kewenangan ubah (penyusun/tim kurikulum).
+- **Bank Soal & Soal**: guard baca bank (owner/publik/internal/tim-TU) pada show/soal-list/index-form; guard kelola kini **rumpun-aware** (guru pada rumpun kewenangannya + bank accessible) menggantikan kecocokan mapel lintas sekolah; `submit-review` wajib lolos guard kelola; Gate `viewAny/update/delete/clone` yang mati (tanpa policy) diganti cek eksplisit sehingga halaman bank tidak lagi terkunci total.
+- **Repositori terpusat**: `compare`, `detail`, dan `reuse` kini memvalidasi akses soal (tim/TU, penyusun, reviewer, atau bank accessible) dan bank tujuan reuse harus bank yang boleh dikelola.
+- **Buku Nilai**: `storeSts`/`storeSas` ber-guard scope buku (satuan + pengampu/co-teacher); scope guru di `NilaiGuruController` memakai **auth id** (bukan `{userId}` URL) sehingga spoofing URL tidak lagi membuka buku guru lain.
+- **Kehadiran**: ekspor per-santri dibatasi satuan + wali kelas (petugas berwenang dikecualikan); `recap/recapDetail/recapSemester` memvalidasi `study_group_id` (404 lintas satuan, tidak lagi IDOR); input harian memvalidasi seluruh santri adalah **anggota aktif rombel** (422 bila bukan).
+- **API internal**: `grade-levels/by-school` & `teachers-by-school` menolak lintas satuan (403) kecuali global view; `study-groups/students/*` ber-scope satuan dan perubahan anggota rombel hanya wali kelas/petugas berwenang.
+- Test: `AcademicServerSideAuthorizationTest` **10 test / 20 assertion** (paket lintas sekolah & non-penyusun, kisi lintas sekolah, bank privat, submit-review, reuse lintas sekolah, scope buku nilai via trait, ekspor/rekap kehadiran, API lintas satuan); regresi **174 test / 1.116 assertion** lulus; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

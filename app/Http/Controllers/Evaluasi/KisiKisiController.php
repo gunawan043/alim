@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Evaluasi;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BankSoal;
@@ -14,9 +15,36 @@ use Illuminate\Support\Facades\DB;
 
 class KisiKisiController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * List kisi-kisi (filters by school context).
      */
+    /**
+     * Guard kisi-kisi: batas satuan pendidikan; perubahan hanya penyusun
+     * atau tim kurikulum.
+     */
+    private function authorizeKisi(Request $request, KisiKisiSoal $kisi, bool $write = true): void
+    {
+        $this->ensureSchoolScope($request, $kisi->school_id, 'Kisi-kisi tidak ditemukan pada satuan pendidikan Anda.');
+
+        if (! $write) {
+            return;
+        }
+
+        $user = $request->user();
+
+        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            return;
+        }
+
+        if ((string) $kisi->created_by === (string) $user->id) {
+            return;
+        }
+
+        abort(403, 'Anda tidak berwenang mengubah kisi-kisi ini.');
+    }
+
     public function index(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -125,11 +153,13 @@ class KisiKisiController extends Controller
     /**
      * Show kisi-kisi detail.
      */
-    public function show(string $userId, string $id)
+    public function show(Request $request, string $userId, string $id)
     {
         $kisi = KisiKisiSoal::with(['subject', 'gradeLevel', 'academicYear',
             'items.tujuanPembelajaran', 'items.kisiKisi'])
             ->findOrFail($id);
+
+        $this->authorizeKisi($request, $kisi);
 
         return view('evalusi.kisi-kisi.show', compact('kisi'));
     }
@@ -137,10 +167,12 @@ class KisiKisiController extends Controller
     /**
      * Edit form.
      */
-    public function edit(string $userId, string $id)
+    public function edit(Request $request, string $userId, string $id)
     {
         $kisi = KisiKisiSoal::with(['subject', 'gradeLevel', 'academicYear', 'items.tujuanPembelajaran'])
             ->findOrFail($id);
+
+        $this->authorizeKisi($request, $kisi);
 
         $subjects = Subject::all();
         $gradeLevels = GradeLevel::all();
@@ -177,6 +209,8 @@ class KisiKisiController extends Controller
 
         return DB::transaction(function () use ($validated, $id) {
             $kisi = KisiKisiSoal::findOrFail($id);
+
+        $this->authorizeKisi($request, $kisi);
             $kisi->fill(array_filter($validated, fn ($key) => ! in_array($key, ['items']), ARRAY_FILTER_USE_KEY));
             $kisi->save();
 
@@ -216,9 +250,11 @@ class KisiKisiController extends Controller
     /**
      * Delete kisi-kisi.
      */
-    public function destroy(string $userId, string $id)
+    public function destroy(Request $request, string $userId, string $id)
     {
         $kisi = KisiKisiSoal::findOrFail($id);
+
+        $this->authorizeKisi($request, $kisi);
         $kisi->delete();
 
         return redirect()->route('user.kisi-kisi-soal.index', ['userId' => $userId])->with('success', 'Kisi-kisi dihapus.');

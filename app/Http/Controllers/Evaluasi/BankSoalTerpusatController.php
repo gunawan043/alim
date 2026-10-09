@@ -33,6 +33,65 @@ class BankSoalTerpusatController extends Controller
         private readonly ContentHashEngine $hashEngine,
     ) {}
 
+    /**
+     * Akses soal pada repositori: tim/TU, penyusun, reviewer yang ditugaskan,
+     * atau bank yang accessible bagi pengguna.
+     */
+    private function authorizeSoalAccess(Request $request, Soal $soal): void
+    {
+        $user = $request->user();
+
+        if (app(KurikulumAccess::class)->canAccessAllBankSoal($user)) {
+            return;
+        }
+
+        if ((string) $soal->dibuat_oleh === (string) $user->id) {
+            return;
+        }
+
+        if ($soal->reviewAssignments()->where('reviewer_id', $user->id)->exists()) {
+            return;
+        }
+
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($soal->bank_soal_id)
+            ->exists();
+
+        if (! $accessible) {
+            abort(403, 'Anda tidak berwenang mengakses soal ini.');
+        }
+    }
+
+    /**
+     * Bank tujuan reuse harus bank yang dapat dikelola pengguna.
+     */
+    private function authorizeBankWrite(Request $request, BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        if ($bank->owner_user_id === $user->id || $bank->created_by === $user->id) {
+            return;
+        }
+
+        if (app(KurikulumAccess::class)->isKurikulumTeam($user)) {
+            return;
+        }
+
+        $resolver = app(\App\Services\SubjectGroupResolver::class);
+        $bankGroup = $bank->subject ? $resolver->groupForSubject($bank->subject) : null;
+        $accessible = BankSoal::query()
+            ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
+            ->whereKey($bank->id)
+            ->exists();
+
+        if ($bankGroup && $accessible && $resolver->groupsForTeacher($user)->contains('id', $bankGroup->id)) {
+            return;
+        }
+
+        abort(403, 'Anda tidak berwenang menggunakan bank tujuan ini.');
+    }
+
     public function index(Request $request, string $userId)
     {
         $user = $request->user();
@@ -155,9 +214,13 @@ class BankSoalTerpusatController extends Controller
         $user = $request->user();
         $original = Soal::with('options')->findOrFail($soalId);
 
+        $this->authorizeSoalAccess($request, $original);
+
         // Derivative disimpan pada bank target (default: bank yang sama).
         $targetBankId = $request->input('target_bank_id', $original->bank_soal_id);
         $targetBank = BankSoal::findOrFail($targetBankId);
+
+        $this->authorizeBankWrite($request, $targetBank);
 
         $derivative = DB::transaction(function () use ($original, $targetBank, $user) {
             $correctTexts = $original->options
@@ -239,6 +302,9 @@ class BankSoalTerpusatController extends Controller
         $soal = Soal::with('options')->findOrFail($soalId);
         $compared = Soal::with(['options', 'bankSoal.subject', 'bankSoal.academicYear', 'creator:id,name'])->findOrFail($comparedId);
 
+        $this->authorizeSoalAccess($request, $soal);
+        $this->authorizeSoalAccess($request, $compared);
+
         $user = $request->user();
 
         // Hak kunci dihitung PER SISI — hak atas salah satu soal tidak
@@ -282,6 +348,9 @@ class BankSoalTerpusatController extends Controller
         ])->findOrFail($soalId);
 
         $user = $request->user();
+
+        $this->authorizeSoalAccess($request, $soal);
+
         $canSeeSolution = $this->canSeeSolution($user, $soal);
 
         return response()->json([

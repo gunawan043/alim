@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
 
 class StudyGroupApiController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * Get students not yet assigned to any active rombel in the current academic year.
      */
@@ -21,6 +24,8 @@ class StudyGroupApiController extends Controller
         if (! $studyGroup) {
             return response()->json(['success' => false, 'message' => 'Rombel tidak ditemukan.'], 404);
         }
+
+        $this->ensureSchoolScope($request, $studyGroup->school_id);
 
         // Students who already have an active class history (is_active = true)
         $assignedStudentIds = StudentClassHistory::where('is_active', true)
@@ -57,6 +62,12 @@ class StudyGroupApiController extends Controller
 
         if ($schoolId && $studyGroup->school_id !== $schoolId) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $user = $request->user();
+
+        if (! $this->isCrossClassOfficer($user) && (string) $studyGroup->homeroom_teacher_id !== (string) $user->id) {
+            return response()->json(['success' => false, 'message' => 'Hanya wali kelas atau petugas berwenang yang dapat mengubah anggota rombel.'], 403);
         }
 
         $activeAcademicYear = AcademicYear::where('is_active', true)->first();
@@ -122,6 +133,12 @@ class StudyGroupApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
 
+        $user = $request->user();
+
+        if (! $this->isCrossClassOfficer($user) && (string) $studyGroup->homeroom_teacher_id !== (string) $user->id) {
+            return response()->json(['success' => false, 'message' => 'Hanya wali kelas atau petugas berwenang yang dapat mengubah anggota rombel.'], 403);
+        }
+
         $activeAcademicYear = AcademicYear::where('is_active', true)->first();
 
         // Count existing active members
@@ -181,6 +198,8 @@ class StudyGroupApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Rombel tidak ditemukan.'], 404);
         }
 
+        $this->ensureSchoolScope($request, $studyGroup->school_id);
+
         $academicYearId = $request->get('academic_year_id');
 
         $query = StudentClassHistory::with('student:id,name,nisn,gender,birth_date')
@@ -214,6 +233,12 @@ class StudyGroupApiController extends Controller
 
         if ($schoolId && $studyGroup->school_id !== $schoolId) {
             return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $user = $request->user();
+
+        if (! $this->isCrossClassOfficer($user) && (string) $studyGroup->homeroom_teacher_id !== (string) $user->id) {
+            return response()->json(['success' => false, 'message' => 'Hanya wali kelas atau petugas berwenang yang dapat mengubah anggota rombel.'], 403);
         }
 
         $activeAcademicYear = AcademicYear::where('is_active', true)->first();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Models\AcademicYear;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 
 class NilaiController extends Controller
 {
+    use AuthorizesAcademicScope;
+
     /**
      * Halaman awal: pilih tahun ajaran, semester, tingkat
      * Menampilkan list KELAS, bukan list mapel
@@ -161,6 +164,8 @@ class NilaiController extends Controller
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
         $adminBook = TeacherAdminBook::findOrFail($bookId);
 
+        $this->authorizeAdminBookScope($request, $adminBook);
+
         $service = app(SumatifHarianService::class);
 
         foreach ($request->nilai as $studentId => $data) {
@@ -248,6 +253,8 @@ class NilaiController extends Controller
         // admin_book_id uses integer type in DB
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
         $adminBook = TeacherAdminBook::findOrFail($bookId);
+
+        $this->authorizeAdminBookScope($request, $adminBook);
 
         $request->validate([
             'sumatif' => 'required|array',
