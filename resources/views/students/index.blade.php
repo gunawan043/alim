@@ -137,9 +137,9 @@
 
     {{-- MODE: PER ROMBEL --}}
     @if ($isFilteredByClass && $studyGroup)
-        <div class="row g-3 mb-3">
+        <div class="row">
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span
@@ -163,7 +163,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-info-subtle rounded fs-2"><i
@@ -183,7 +183,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span
@@ -200,7 +200,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span
@@ -219,9 +219,9 @@
             </div>
         </div>
     @else
-        <div class="row g-3 mb-3">
+        <div class="row">
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span
@@ -239,7 +239,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span
@@ -268,7 +268,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-info-subtle rounded fs-2"><i
@@ -290,7 +290,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-warning-subtle rounded fs-2"><i
@@ -312,7 +312,7 @@
     
     <div class="row">
         <div class="col-lg-12">
-            <div class="card" style="padding: 20px">
+            <div class="card">
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
@@ -525,8 +525,31 @@
                     </div>
                 </div>
 
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => null, 'gender' => null, 'is_pip_eligible' => null, 'alumni_filter' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !request('status') && !request('gender') && !request('is_pip_eligible') && !request('alumni_filter') ? 'active' : '' }}">Semua</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'active', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'active' ? 'active' : '' }}"><i class="ri-checkbox-circle-line"></i>Aktif</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'transfer_in', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'transfer_in' ? 'active' : '' }}"><i class="ri-login-box-line"></i>Pindahan Masuk</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'transfer_out', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'transfer_out' ? 'active' : '' }}"><i class="ri-logout-box-line"></i>Pindahan Keluar</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'graduate', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'graduate' ? 'active' : '' }}"><i class="ri-graduation-cap-line"></i>Lulus</a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <a href="{{ request()->fullUrlWithQuery(['gender' => 'L', 'page' => null]) }}"
+                           class="filter-badge {{ request('gender') === 'L' ? 'active' : '' }}"><i class="ri-men-line"></i>Laki-laki</a>
+                        <a href="{{ request()->fullUrlWithQuery(['gender' => 'P', 'page' => null]) }}"
+                           class="filter-badge {{ request('gender') === 'P' ? 'active' : '' }}"><i class="ri-women-line"></i>Perempuan</a>
+                        <a href="{{ request()->fullUrlWithQuery(['is_pip_eligible' => '1', 'page' => null]) }}"
+                           class="filter-badge {{ request('is_pip_eligible') ? 'active' : '' }}"><i class="ri-hand-coin-line"></i>Penerima PIP</a>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-nowrap align-middle">
+                    <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light text-muted">
                             <tr>
                                 <th>#</th>

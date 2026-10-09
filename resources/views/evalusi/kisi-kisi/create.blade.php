@@ -8,7 +8,7 @@
         @slot('title') Form Kisi-kisi @endslot
     @endcomponent
 
-    <form action="{{ route('user.kisi-kisi.store') }}" method="POST">
+    <form action="{{ route('user.kisi-kisi-soal.store', ['userId' => $userId]) }}" method="POST">
         @csrf
         <div class="card mb-3">
             <div class="card-header">Informasi Umum</div>
@@ -159,7 +159,7 @@
         </div>
 
         <div class="text-end mb-4">
-            <a href="{{ route('user.kisi-kisi.index') }}" class="btn btn-secondary">Batal</a>
+            <a href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}" class="btn btn-secondary">Batal</a>
             <button class="btn btn-primary">Simpan Kisi-kisi</button>
         </div>
     </form>

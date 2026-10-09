@@ -2,6 +2,7 @@
 @section('title') Detail PD Keluar @endsection
 
 @section('css')
+    @include('kurikulum._styles')
 <style>
     .detail-label { font-weight: 600; color: var(--bs-secondary-color); min-width: 160px; }
     .detail-value { color: var(--bs-body-color); }
@@ -39,7 +40,7 @@
 @endphp
 
 @component('components.breadcrumb')
-    @slot('li_1') Akademik @endslot
+    @slot('li_1') Peserta Didik @endslot
     @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
     @slot('li_3') <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}">{{ $typeLabel }}</a> @endslot
     @slot('title') {{ $mutation->student_name }} @endslot
@@ -326,7 +327,7 @@
         <div class="card section-card sticky-top" style="top:1rem">
 
             {{-- Status Info --}}
-            <div class="card-header">
+            <div class="card-header border-bottom-dashed">
                 <h6 class="mb-0"><i class="ri-settings-3-line me-1"></i>Aksi &amp; Status</h6>
             </div>
             <div class="card-body p-0">

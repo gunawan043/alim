@@ -77,7 +77,7 @@
 @endphp
 
 @component('components.breadcrumb')
-    @slot('li_1') Akademik @endslot
+    @slot('li_1') Peserta Didik @endslot
     @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
     @slot('li_3') <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}">{{ $typeLabel }}</a> @endslot
     @slot('title') Ajukan {{ $typeLabel }} @endslot
@@ -104,7 +104,7 @@
         {{-- =============================================== --}}
         <div class="col-lg-5">
             <div class="card mb-3">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="mb-0"><i class="ri-edit-2-line me-1"></i>Formulir PD Keluar</h5>
                 </div>
                 <div class="card-body">

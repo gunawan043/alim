@@ -1,9 +1,13 @@
 @extends('layouts.master')
 @section('title') Pindahkan Santri @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
         @slot('title') Pindahkan Santri @endslot
     @endcomponent
@@ -18,6 +22,77 @@
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-line me-1"></i> <strong>Error:</strong> {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    {{-- STATISTIK --}}
+    @if($sourceStudyGroup)
+        @php $slotColor = ($statistics['remaining_slots'] ?? 0) > 0 ? 'success' : 'danger'; @endphp
+        <div class="row">
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="avatar-sm flex-shrink-0">
+                                <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-group-line text-primary"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Santri Rombel Asal</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ number_format($statistics['source_students'] ?? 0) }}</h3>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $sourceStudyGroup->full_name }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="avatar-sm flex-shrink-0">
+                                <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-arrow-left-right-line text-info"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Rombel Tujuan Tersedia</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ number_format($statistics['destinations'] ?? 0) }}</h3>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tingkat {{ $sourceStudyGroup->gradeLevel?->name ?? '-' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="avatar-sm flex-shrink-0">
+                                <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-stack-line text-warning"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Kapasitas Tujuan</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ number_format($statistics['total_capacity'] ?? 0) }}</h3>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ number_format($statistics['used_slots'] ?? 0) }} slot terpakai</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="avatar-sm flex-shrink-0">
+                                <span class="avatar-title bg-{{ $slotColor }}-subtle rounded fs-2"><i class="ri-user-add-line text-{{ $slotColor }}"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Slot Tersisa</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ number_format($statistics['remaining_slots'] ?? 0) }}</h3>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Kapasitas tersedia untuk pindahan</p>
+                    </div>
+                </div>
+            </div>
         </div>
     @endif
 
@@ -86,7 +161,7 @@
 
                 {{-- Konfigurasi Perpindahan --}}
                 <div class="card mb-3">
-                    <div class="card-header bg-light">
+                    <div class="card-header border-bottom-dashed">
                         <h5 class="mb-0"><i class="ri-settings-3-line me-1"></i>Konfigurasi Perpindahan</h5>
                     </div>
                     <div class="card-body">
@@ -143,7 +218,7 @@
 
                 {{-- Daftar Santri --}}
                 <div class="card mb-3">
-                    <div class="card-header bg-light">
+                    <div class="card-header border-bottom-dashed">
                         <div class="d-flex align-items-center justify-content-between">
                             <h5 class="mb-0">
                                 Santri di {{ $sourceStudyGroup->full_name }}
@@ -158,7 +233,7 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height:420px;overflow-y:auto;">
-                            <table class="table table-sm table-hover align-middle mb-0">
+                            <table class="table table-sm table-hover align-middle table-freeze mb-0">
                                 <thead class="table-light text-muted sticky-top" style="top:0;z-index:1">
                                     <tr>
                                         <th style="width:40px"></th>

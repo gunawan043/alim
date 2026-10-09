@@ -12,10 +12,7 @@ class OtherTeacherTaskController extends Controller
 {
     public function index(Request $request, string $userId)
     {
-        $query = OtherTeacherTask::with(['teacher', 'studyGroup', 'academicYear'])
-            ->where('academic_year_id', function ($q) {
-                $q->select('id')->from('academic_years')->where('is_active', true)->limit(1);
-            });
+        $query = OtherTeacherTask::with(['teacher', 'studyGroup', 'academicYear']);
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
@@ -24,11 +21,30 @@ class OtherTeacherTaskController extends Controller
         if ($request->filled('school_id')) {
             $query->where('school_id', $request->school_id);
         }
+
         if ($request->filled('academic_year_id')) {
             $query->where('academic_year_id', $request->academic_year_id);
+        } else {
+            // Default: tahun ajaran yang sedang aktif
+            $query->where('academic_year_id', function ($q) {
+                $q->select('id')->from('academic_years')->where('is_active', true)->limit(1);
+            });
         }
 
-        $tasks = $query->orderBy('teacher_id')->paginate(20)->withQueryString();
+        if (in_array($request->get('status'), ['aktif', 'nonaktif'], true)) {
+            $query->where('is_active', $request->get('status') === 'aktif');
+        }
+
+        // Statistik ringan dari query terfilter (tanpa order/paginate)
+        $stats = [
+            'total' => (clone $query)->count(),
+            'jenis' => (clone $query)->distinct()->count('task_name'),
+            'guru' => (clone $query)->distinct()->count('teacher_id'),
+        ];
+        $stats['aktif'] = (clone $query)->where('is_active', true)->count();
+        $stats['nonaktif'] = $stats['total'] - $stats['aktif'];
+
+        $tasks = (clone $query)->orderBy('teacher_id')->paginate(20)->withQueryString();
         $schools = School::orderBy('name')->get();
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
@@ -37,8 +53,11 @@ class OtherTeacherTaskController extends Controller
             ->orderBy('name')
             ->get();
 
+        $activeAcademicYearId = $request->input('academic_year_id')
+            ?: \App\Models\AcademicYear::where('is_active', true)->value('id');
+
         return view('other-teacher-tasks.index', compact(
-            'tasks', 'schools', 'academicYears', 'teachers', 'userId'
+            'tasks', 'schools', 'academicYears', 'teachers', 'userId', 'stats', 'activeAcademicYearId'
         ));
     }
 

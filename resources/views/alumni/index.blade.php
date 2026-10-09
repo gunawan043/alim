@@ -3,11 +3,12 @@
 
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
+    @include('kurikulum._styles')
 @endsection
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('title') Data Alumni @endslot
     @endcomponent
 
@@ -22,50 +23,87 @@
         </div>
     @endif
 
-    {{-- Stats Row --}}
-    <div class="row g-3 mb-3">
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
+    {{-- Statistik --}}
+    @php
+        $pctFilled = $totalAlumni > 0 ? round($tracerFilled / $totalAlumni * 100) : 0;
+        $pctVerified = $totalAlumni > 0 ? round($tracerVerified / $totalAlumni * 100) : 0;
+    @endphp
+    <div class="row">
+        {{-- 1. Total Alumni --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-user-follow-line text-primary"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Alumni</p>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Alumni</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalAlumni) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Tracer study persatuan pendidikan
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
+        {{-- 2. Tracer Terisi --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Tracer Terisi</p>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Tracer Terisi</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($tracerFilled) }}</h3>
                         </div>
                     </div>
+                    <div class="progress mb-1" style="height:6px;">
+                        <div class="progress-bar bg-success" style="width:{{ $pctFilled }}%"></div>
+                        <div class="progress-bar bg-secondary" style="width:{{ 100 - $pctFilled }}%"></div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label">{{ $pctFilled }}% dari {{ number_format($totalAlumni) }} alumni</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card h-100">
+        {{-- 3. Tracer Pending --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line text-warning"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Tracer Pending</p>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Tracer Pending</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($tracerPending) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Menunggu diisi alumni
+                    </p>
+                </div>
+            </div>
+        </div>
+        {{-- 4. Terverifikasi --}}
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-shield-check-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Terverifikasi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($tracerVerified) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-check-double-line me-1"></i>{{ $pctVerified }}% sudah diverifikasi
+                    </p>
                 </div>
             </div>
         </div>
@@ -101,6 +139,29 @@
                                 </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {{-- Filter Cepat --}}
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['tracer_status' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !request('tracer_status') ? 'active' : '' }}">
+                            <i class="ri-list-check-2"></i> Semua
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['tracer_status' => 'pending', 'page' => null]) }}"
+                           class="filter-badge {{ request('tracer_status') === 'pending' ? 'active' : '' }}">
+                            <i class="ri-time-line"></i> Pending
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['tracer_status' => 'filled', 'page' => null]) }}"
+                           class="filter-badge {{ request('tracer_status') === 'filled' ? 'active' : '' }}">
+                            <i class="ri-checkbox-circle-line"></i> Filled
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['tracer_status' => 'verified', 'page' => null]) }}"
+                           class="filter-badge {{ request('tracer_status') === 'verified' ? 'active' : '' }}">
+                            <i class="ri-shield-check-line"></i> Verified
+                        </a>
                     </div>
                 </div>
 
@@ -148,8 +209,8 @@
 
                     {{-- Table --}}
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>No</th>
                                     <th>Nama Lengkap</th>
@@ -233,11 +294,7 @@
                     </div>
 
                     {{-- Pagination --}}
-                    @if($alumni->hasPages())
-                        <div class="d-flex justify-content-end mt-3">
-                            {{ $alumni->withQueryString()->links('pagination::bootstrap-5') }}
-                        </div>
-                    @endif
+                    @include('shared._pagination', ['paginator' => $alumni])
                 </div>
             </div>
         </div>

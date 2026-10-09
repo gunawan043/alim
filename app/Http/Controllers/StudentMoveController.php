@@ -66,9 +66,24 @@ class StudentMoveController extends Controller
                 ->get(['id', 'name', 'nisn', 'gender', 'birth_place', 'birth_date']);
         }
 
+        // Statistik ringkas — dihitung dari koleksi yang sudah dimuat (tanpa query tambahan).
+        // Rombel asal & tujuan sudah ter-scope schoolContextId di atas.
+        $totalDestinationCapacity = (int) $availableDestinations->sum(fn ($sg) => (int) $sg->capacity);
+        $totalRemainingSlots = (int) $availableDestinations->sum(
+            fn ($sg) => max(0, (int) $sg->capacity - (int) $sg->studentCount)
+        );
+
+        $statistics = [
+            'source_students' => $students->count(),
+            'destinations' => $availableDestinations->count(),
+            'total_capacity' => $totalDestinationCapacity,
+            'remaining_slots' => $totalRemainingSlots,
+            'used_slots' => max(0, $totalDestinationCapacity - $totalRemainingSlots),
+        ];
+
         return view('student-move.index', compact(
             'userId', 'sourceStudyGroup', 'students',
-            'availableDestinations',
+            'availableDestinations', 'statistics',
         ));
     }
 

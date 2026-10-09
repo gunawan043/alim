@@ -36,9 +36,6 @@ class StudentMutationOutController extends Controller
                 ->orWhere('letter_number', 'like', "%{$q}%")
             );
         }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
         if ($request->filled('out_type')) {
             $query->where('out_type', $request->out_type);
         }
@@ -58,10 +55,27 @@ class StudentMutationOutController extends Controller
             $query->where('out_type', 'dropout');
         }
 
+        // Statistik status — dihitung dari base query setelah school scope, search,
+        // dan filter out_type (route/menu). Filter status baru diterapkan pada listing
+        // setelah clone agar kartu tetap menampilkan sebaran status (COUNT murah).
+        // Halaman Lulus/DO otomatis hanya menghitung out_type terkait dari route.
+        $statQuery = clone $query;
+        $statistics = [
+            'total' => (clone $statQuery)->count(),
+            'draft' => (clone $statQuery)->where('status', 'draft')->count(),
+            'submitted' => (clone $statQuery)->where('status', 'submitted')->count(),
+            'approved' => (clone $statQuery)->where('status', 'approved')->count(),
+            'rejected' => (clone $statQuery)->where('status', 'rejected')->count(),
+        ];
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
         $mutations = $query->paginate(15)->withQueryString();
         $schools = School::orderBy('name')->get();
 
-        return view($view, compact('mutations', 'schools', 'userId'));
+        return view($view, compact('mutations', 'schools', 'userId', 'statistics'));
     }
 
     public function create(Request $request)

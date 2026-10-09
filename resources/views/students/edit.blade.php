@@ -1,9 +1,13 @@
 @extends('layouts.master')
 @section('title') Edit {{ $student->name }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
         @slot('title') Edit {{ $student->name }} @endslot
     @endcomponent
@@ -39,7 +43,7 @@
             {{-- TAB 1: Identitas --}}
             <div class="tab-pane fade show active" id="tab-identitas" role="tabpanel">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Identitas Santri</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0">Identitas Santri</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -125,7 +129,7 @@
             {{-- TAB 2: Alamat --}}
             <div class="tab-pane fade" id="tab-alamat" role="tabpanel">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Alamat Lengkap</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0">Alamat Lengkap</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-12">
@@ -185,7 +189,7 @@
             {{-- TAB 3: Kesehatan --}}
             <div class="tab-pane fade" id="tab-kesehatan" role="tabpanel">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Data Kesehatan</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0">Data Kesehatan</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Tinggi Badan (cm)</label><input type="number" name="height" class="form-control" value="{{ old('height', $student->height) }}" min="0"></div>
@@ -243,7 +247,7 @@
             {{-- TAB 5: Pendaftaran --}}
             <div class="tab-pane fade" id="tab-pendaftaran" role="tabpanel">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Data Pendaftaran & Sekolah Asal</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0">Data Pendaftaran & Sekolah Asal</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Anak ke-</label><input type="number" name="child_number" class="form-control" value="{{ old('child_number', $student->child_number) }}" min="0"></div>
@@ -293,7 +297,7 @@
             {{-- TAB 6: Bank --}}
             <div class="tab-pane fade" id="tab-bank" role="tabpanel">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Informasi Bank</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0">Informasi Bank</h5></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-4"><label class="form-label">Nama Bank</label><input type="text" name="bank_name" class="form-control" value="{{ old('bank_name', $student->bank_name) }}"></div>

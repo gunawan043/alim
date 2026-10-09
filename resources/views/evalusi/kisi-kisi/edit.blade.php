@@ -8,7 +8,7 @@
         @slot('title') {{ $kisi->judul }} @endslot
     @endcomponent
 
-    <form action="{{ route('user.kisi-kisi.update', $kisi->id) }}" method="POST">
+    <form action="{{ route('user.kisi-kisi-soal.update', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="card mb-3">
@@ -86,7 +86,7 @@
         </div>
 
         <div class="text-end mb-4">
-            <a href="{{ route('user.kisi-kisi.index') }}" class="btn btn-secondary">Batal</a>
+            <a href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}" class="btn btn-secondary">Batal</a>
             <button class="btn btn-primary">Simpan Perubahan</button>
         </div>
     </form>

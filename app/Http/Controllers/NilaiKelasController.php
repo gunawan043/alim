@@ -691,8 +691,14 @@ class NilaiKelasController extends Controller
             ->get()
             ->keyBy('student_id');
 
+        $stats = [
+            'total_santri' => $students->count(),
+            'catatan_terisi' => $registrations->filter(fn ($r) => filled($r->homeroom_note))->count(),
+            'nilai_final' => $registrations->whereNotNull('final_score')->count(),
+        ];
+
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats',
         ));
     }
 

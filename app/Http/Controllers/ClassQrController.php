@@ -27,20 +27,36 @@ class ClassQrController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $activeAy = AcademicYear::where('is_active', true)->first();
 
-        $studyGroups = StudyGroup::with(['gradeLevel', 'homeroomTeacher:id,name'])
+        $allStudyGroups = StudyGroup::with(['gradeLevel', 'homeroomTeacher:id,name'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->orderBy('grade_level_id')
             ->orderBy('name')
             ->get();
 
-        $tokens = QrClassToken::whereIn('study_group_id', $studyGroups->pluck('id'))
+        $tokens = QrClassToken::whereIn('study_group_id', $allStudyGroups->pluck('id'))
             ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
             ->get()
             ->sortByDesc('last_regenerated_at')
             ->keyBy('study_group_id');
 
-        return view('teacher.qr.index', compact('studyGroups', 'tokens', 'activeAy', 'userId'));
+        $qrStatus = $request->input('qr_status');
+        if ($qrStatus === 'aktif') {
+            $studyGroups = $allStudyGroups->filter(fn ($sg) => $tokens->has($sg->id))->values();
+        } elseif ($qrStatus === 'belum') {
+            $studyGroups = $allStudyGroups->filter(fn ($sg) => ! $tokens->has($sg->id))->values();
+        } else {
+            $studyGroups = $allStudyGroups;
+        }
+
+        $statistics = [
+            'total' => $allStudyGroups->count(),
+            'aktif' => $tokens->count(),
+            'belum' => max(0, $allStudyGroups->count() - $tokens->count()),
+            'wali_kelas' => $allStudyGroups->whereNotNull('homeroom_teacher_id')->count(),
+        ];
+
+        return view('teacher.qr.index', compact('studyGroups', 'tokens', 'activeAy', 'userId', 'statistics'));
     }
 
     /**

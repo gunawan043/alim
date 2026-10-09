@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Cetak Rapor — {{ $studyGroup->name ?? '' }} @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @php
         $userId = request()->route('userId') ?? Auth::id();
@@ -19,6 +23,78 @@
         </div>
     @endif
 
+    @php
+        $stats = $stats ?? ['total_santri' => 0, 'catatan_terisi' => 0, 'nilai_final' => 0];
+    @endphp
+
+    {{-- STATISTIK --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-group-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Santri</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total_santri']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Santri aktif di {{ $studyGroup->name }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-chat-1-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Catatan Wali Terisi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['catatan_terisi']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-check-double-line me-1"></i>Dari {{ number_format($stats['total_santri']) }} santri</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-save-3-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Nilai Final Tersimpan</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['nilai_final']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tersimpan saat cetak rapor SAS</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-calendar-check-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Periode</p>
+                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ ucfirst($selectedSem) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-calendar-2-line me-1"></i>{{ $selectedAy?->name ?? 'Belum ada TA' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -30,6 +106,7 @@
                                 Cetak Rapor Santri
                             </h5>
                             <p class="text-muted mb-0" style="font-size:12px;">
+                                <span class="badge bg-primary-subtle text-primary">{{ $stats['total_santri'] }} santri</span>
                                 {{ $studyGroup->school?->name ?? '' }} — {{ $studyGroup->name }} — TA {{ $selectedAy?->name ?? '' }} Semester {{ ucfirst($selectedSem) }}
                             </p>
                         </div>
@@ -74,7 +151,7 @@
 
                     {{-- Student List --}}
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                        <table class="table table-hover align-middle table-freeze mb-0" style="font-size:13px;">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:40px;">No</th>

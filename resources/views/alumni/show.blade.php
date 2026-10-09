@@ -3,7 +3,7 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.alumni.index', ['userId' => $userId]) }}">Data Alumni</a> @endslot
         @slot('title') {{ $alumni->student->name ?? '-' }} @endslot
     @endcomponent
@@ -113,7 +113,7 @@
                 {{-- Tab: Identitas --}}
                 <div class="tab-pane fade show active" id="tab-identitas" role="tabpanel">
                     <div class="card">
-                        <div class="card-header"><h6 class="mb-0"><i class="ri-user-line me-2"></i>Data Identitas</h6></div>
+                        <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-user-line me-2"></i>Data Identitas</h6></div>
                         <div class="card-body">
                             <table class="table table-sm table-borderless">
                                 <tr><th class="text-muted" style="width:200px">Nama Lengkap</th><td>{{ $alumni->student->name ?? '-' }}</td></tr>
@@ -136,7 +136,7 @@
                 {{-- Tab: Alamat --}}
                 <div class="tab-pane fade" id="tab-alamat" role="tabpanel">
                     <div class="card">
-                        <div class="card-header"><h6 class="mb-0"><i class="ri-home-line me-2"></i>Data Alamat</h6></div>
+                        <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-home-line me-2"></i>Data Alamat</h6></div>
                         <div class="card-body">
                             <table class="table table-sm table-borderless">
                                 <tr><th class="text-muted" style="width:200px">Alamat</th><td>{{ $alumni->student->full_address ?: '-' }}</td></tr>
@@ -157,7 +157,7 @@
                 {{-- Tab: Keluarga --}}
                 <div class="tab-pane fade" id="tab-keluarga" role="tabpanel">
                     <div class="card">
-                        <div class="card-header"><h6 class="mb-0"><i class="ri-parent-line me-2"></i>Data Orang Tua / Wali</h6></div>
+                        <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-parent-line me-2"></i>Data Orang Tua / Wali</h6></div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4">
@@ -192,10 +192,10 @@
                 {{-- Tab: Tracer Study --}}
                 <div class="tab-pane fade" id="tab-tracer" role="tabpanel">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="ri-survey-line me-2"></i>Tracer Study</h6>
                             <a href="{{ route('user.alumni.edit', ['userId' => $userId, 'alumniUuid' => $alumni->id]) }}"
-                               class="btn btn-sm btn-warning">
+                               class="btn btn-warning btn-sm">
                                 <i class="ri-edit-line me-1"></i>Edit Tracer
                             </a>
                         </div>

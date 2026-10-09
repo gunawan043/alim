@@ -19,7 +19,7 @@
                 <a href="{{ route('user.paket-soal.create', $kisi->id) }}" class="btn btn-sm btn-success">
                     <i class="ri-file-list-3-line"></i> Buat Paket Soal
                 </a>
-                <a href="{{ route('user.kisi-kisi.edit', $kisi->id) }}" class="btn btn-sm btn-warning">
+                <a href="{{ route('user.kisi-kisi-soal.edit', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" class="btn btn-sm btn-warning">
                     <i class="ri-pencil-line"></i> Edit
                 </a>
             </div>

@@ -337,6 +337,157 @@ class PesertaDidikP0Test extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
+    // FASE 2 — SMOKE UI (pola gtk)
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_halaman_index_mutasi_tampil_dengan_pola_gtk(): void
+    {
+        foreach (['mutations-in', 'mutations-out', 'mutations-lulus', 'mutations-do'] as $prefix) {
+            $this->actingAs($this->user)
+                ->get("/{$this->user->id}/{$prefix}")
+                ->assertOk()
+                ->assertSee('Filter Cepat')
+                ->assertSee('card-animate');
+        }
+    }
+
+    public function test_halaman_pindah_santri_tampil_dengan_statistik(): void
+    {
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/student-move?study_group_id={$this->groupA->id}")
+            ->assertOk()
+            ->assertSee('Slot Tersisa')
+            ->assertSee('card-animate');
+    }
+
+    public function test_halaman_naik_kelas_index_dan_create(): void
+    {
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/student-promotions")
+            ->assertOk()
+            ->assertSee('Filter Cepat')
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/student-promotions/create")
+            ->assertOk();
+    }
+
+    public function test_halaman_naik_kelas_show_menampilkan_statistik(): void
+    {
+        $promotion = StudentPromotion::create([
+            'from_academic_year_id' => $this->ay->id,
+            'to_academic_year_id' => $this->ay->id,
+            'from_study_group_id' => $this->groupA->id,
+            'to_study_group_id' => $this->groupB->id,
+            'promotion_date' => now()->toDateString(),
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/student-promotions/{$promotion->id}")
+            ->assertOk()
+            ->assertSee('Total Siswa')
+            ->assertSee('card-animate');
+    }
+
+    public function test_halaman_alumni_tampil_dengan_pola_gtk(): void
+    {
+        $alumni = $this->makeAlumni($this->student, 'filled');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/alumni")
+            ->assertOk()
+            ->assertSee('Terverifikasi')
+            ->assertSee('Filter Cepat');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/alumni/{$alumni->id}")
+            ->assertOk();
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/alumni/statistics")
+            ->assertOk()
+            ->assertSee('Statistik Alumni');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/alumni/{$alumni->id}/edit")
+            ->assertOk();
+    }
+
+    public function test_halaman_mahrom_tampil_dengan_pola_gtk(): void
+    {
+        StudentMahrom::create([
+            'student_id' => $this->student->id,
+            'name' => 'Mahrom Uji UI',
+            'relationship' => 'ayah',
+            'is_primary' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/students/{$this->student->id}/mahrom")
+            ->assertOk()
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/students/mahroms")
+            ->assertOk()
+            ->assertSee('Filter Cepat')
+            ->assertSee('card-animate');
+    }
+
+    public function test_halaman_akademik_tu_tampil_dengan_pola_gtk(): void
+    {
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/other-teacher-tasks")
+            ->assertOk()
+            ->assertSee('Filter Cepat')
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/student-achievements?type=akademik")
+            ->assertOk()
+            ->assertSee('Filter Cepat')
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/absensi-gtk")
+            ->assertOk()
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/absensi/harian")
+            ->assertOk()
+            ->assertSee('card-animate');
+    }
+
+    public function test_halaman_sumatif_nilai_dan_qr_guru_tampil_dengan_pola_gtk(): void
+    {
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/kisi-kisi-soal")
+            ->assertOk()
+            ->assertSee('Filter Cepat')
+            ->assertSee('card-animate');
+
+        // bank-soal/paket-soal dibatasi policy (viewAny) — bukan akses TU murni;
+        // halamannya tetap diverifikasi via view:cache. Di sini cukup rute yang
+        // memang dapat diakses role TU.
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/schools/nilai")
+            ->assertOk()
+            ->assertSee('card-animate');
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/schools/nilai-kelas/{$this->groupA->id}/rapor")
+            ->assertOk()
+            ->assertSee('card-animate');
+
+        // QR Guru (waka-dashboard) khusus Waka/Kurikulum — diverifikasi via view:cache.
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────
 

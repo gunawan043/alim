@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Mahrom — {{ $student->name ?? 'Santri' }} @endsection
+
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Santri</a> @endslot
         @slot('li_3') <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $student->id]) }}">{{ $student->name ?? 'Santri' }}</a> @endslot
         @slot('title') Mahrom @endslot
@@ -23,13 +28,15 @@
         </div>
     @endif
 
-    {{-- Student Summary Header --}}
+    {{-- Ringkasan --}}
     @if(isset($student))
-    <div class="row g-3 mb-4">
+    @php $maxMahrom = config('alim.max_mahrom', 4); @endphp
+    <div class="row">
+        {{-- 1. Santri --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100 border border-primary-subtle">
+            <div class="card card-animate h-90 border border-primary-subtle">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             @if($student->photo_path)
                                 <img src="{{ asset('storage/' . $student->photo_path) }}" alt="{{ $student->name }}"
@@ -40,62 +47,71 @@
                                 </span>
                             @endif
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Santri</p>
-                            <h5 class="fw-bold mb-0">{{ $student->name }}</h5>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Santri</p>
+                            <h5 class="fw-bold ff-secondary mb-0">{{ $student->name }}</h5>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>{{ $student->nisn ? 'NISN ' . $student->nisn : 'Data mahrom santri' }}
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 2. Total Mahrom --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2">
-                                <i class="ri-shield-star-line text-primary"></i>
-                            </span>
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-parent-line text-primary"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Total Mahrom</p>
-                            <h3 class="fw-bold mb-0">{{ $mahroms->total() }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Mahrom</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($mahroms->total()) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Maks. {{ $maxMahrom }} per santri
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 3. Mahrom Utama --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="ri-star-line text-success"></i>
-                            </span>
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-star-line text-success"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Utama</p>
-                            <h3 class="fw-bold mb-0">{{ $primaryCount ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mahrom Utama</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($primaryCount ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Kontak utama informasi
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 4. Mahrom Aktif --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="ri-checkbox-circle-line text-info"></i>
-                            </span>
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-info"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Aktif</p>
-                            <h3 class="fw-bold mb-0">{{ $activeCount ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mahrom Aktif</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($activeCount ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Dapat menjenguk santri
+                    </p>
                 </div>
             </div>
         </div>
@@ -130,8 +146,8 @@
 
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Foto</th>
@@ -229,9 +245,7 @@
                         </table>
                     </div>
 
-                    @if($mahroms->hasPages())
-                        {{ $mahroms->withQueryString()->links() }}
-                    @endif
+                    @include('shared._pagination', ['paginator' => $mahroms])
 
                     <div class="mt-4 p-3 bg-light rounded">
                         <div class="d-flex align-items-start gap-2">

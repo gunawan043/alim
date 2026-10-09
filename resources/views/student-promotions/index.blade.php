@@ -1,9 +1,13 @@
 @extends('layouts.master')
 @section('title') Promosi Santri @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('title') Promosi Santri @endslot
     @endcomponent
 
@@ -18,9 +22,85 @@
         </div>
     @endif
 
+    @php
+        $total = $statistics['total'] ?? 0;
+        $draft = $statistics['draft'] ?? 0;
+        $completed = $statistics['completed'] ?? 0;
+        $cancelled = $statistics['cancelled'] ?? 0;
+        $pctCompleted = $total > 0 ? round($completed / $total * 100) : 0;
+    @endphp
+
+    {{-- STATISTIK --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-file-list-3-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Rencana</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($total) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Semua rencana promosi</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-draft-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Draft</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($draft) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Belum dieksekusi</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Selesai</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($completed) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $pctCompleted }}% dari total rencana</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-close-circle-line text-danger"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Dibatalkan/Gagal</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($cancelled) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tidak dieksekusi</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-12">
-            <div class="card">
+            <div class="card" id="promotionList">
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-4 align-items-center">
                         <div class="col-sm">
@@ -28,39 +108,53 @@
                             <p class="text-muted mb-0">Kelola kenaikan kelas, tinggal kelas, dan kelulusan massal.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.student-promotions.create', ['userId' => $userId]) }}"
-                               class="btn btn-success">
-                                <i class="ri-add-line align-bottom me-1"></i> Promosi Baru
-                            </a>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <form method="GET" action="{{ route('user.student-promotions.index', ['userId' => $userId]) }}"
+                                      class="d-flex flex-wrap align-items-center gap-2">
+                                    @if($statusFilter)
+                                        <input type="hidden" name="status" value="{{ $statusFilter }}">
+                                    @endif
+                                    <select name="academic_year" class="form-select" style="width:180px">
+                                        <option value="">Semua Tahun Ajaran</option>
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->id }}" {{ request('academic_year') == $ay->id ? 'selected' : '' }}>
+                                                {{ $ay->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ri-filter-line align-bottom me-1"></i>Filter
+                                    </button>
+                                    <a href="{{ route('user.student-promotions.index', ['userId' => $userId]) }}"
+                                       class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
+                                </form>
+                                <a href="{{ route('user.student-promotions.create', ['userId' => $userId]) }}"
+                                   class="btn btn-success">
+                                    <i class="ri-add-line align-bottom me-1"></i> Promosi Baru
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body">
-                    {{-- Filter --}}
-                    <form method="GET" class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <select name="academic_year" class="form-control">
-                                <option value="">Semua Tahun Ajaran</option>
-                                @foreach($academicYears as $ay)
-                                    <option value="{{ $ay->id }}" {{ request('academic_year') == $ay->id ? 'selected' : '' }}>
-                                        {{ $ay->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="ri-filter-line me-1"></i> Filter
-                            </button>
-                            <a href="{{ route('user.student-promotions.index', ['userId' => $userId]) }}"
-                               class="btn btn-light">Reset</a>
-                        </div>
-                    </form>
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !$statusFilter ? 'active' : '' }}">Semua</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'draft', 'page' => null]) }}"
+                           class="filter-badge {{ $statusFilter === 'draft' ? 'active' : '' }}">Draft</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'completed', 'page' => null]) }}"
+                           class="filter-badge {{ $statusFilter === 'completed' ? 'active' : '' }}">Selesai</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'cancelled', 'page' => null]) }}"
+                           class="filter-badge {{ $statusFilter === 'cancelled' ? 'active' : '' }}">Dibatalkan</a>
+                    </div>
+                </div>
 
+                <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light text-muted">
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>#</th>
                                     <th>Tahun Ajaran</th>
@@ -117,9 +211,7 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        {{ $promotions->withQueryString()->links() }}
-                    </div>
+                    @include('shared._pagination', ['paginator' => $promotions])
                 </div>
             </div>
         </div>

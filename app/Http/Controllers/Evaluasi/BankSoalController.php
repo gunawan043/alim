@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Evaluasi;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\BankSoal;
 use App\Models\School;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class BankSoalController extends Controller
@@ -19,20 +21,22 @@ class BankSoalController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = BankSoal::withCount(['soal' => fn ($q) => $q->where('status', 'approved')])
-            ->with(['school', 'subject', 'owner', 'creator'])
-            ->where('school_id', $schoolId);
-
         // Scope filtering: owner can see their own + public/internal_school banks
         Gate::authorize('viewAny', BankSoal::class);
-        $query->where(function ($q) use ($userId, $schoolId) {
-            $q->where('owner_user_id', $userId)
-                ->orWhere('is_public', true)
-                ->where(function ($q2) use ($schoolId) {
-                    $q2->where('shared_scope', 'internal_school')
-                        ->where('school_id', $schoolId);
-                });
-        });
+
+        $baseQuery = BankSoal::where('school_id', $schoolId)
+            ->where(function ($q) use ($userId, $schoolId) {
+                $q->where('owner_user_id', $userId)
+                    ->orWhere('is_public', true)
+                    ->where(function ($q2) use ($schoolId) {
+                        $q2->where('shared_scope', 'internal_school')
+                            ->where('school_id', $schoolId);
+                    });
+            });
+
+        $query = (clone $baseQuery)
+            ->withCount(['soal' => fn ($q) => $q->where('status', 'approved')])
+            ->with(['school', 'subject', 'owner', 'creator']);
 
         if ($request->filled('search')) {
             $query->where('nama', 'like', "%{$request->search}%");
@@ -49,12 +53,34 @@ class BankSoalController extends Controller
         if ($request->filled('is_public') !== null) {
             $query->where('is_public', (bool) $request->is_public);
         }
+        if ($request->filled('academic_year_id')) {
+            $query->where('academic_year_id', $request->academic_year_id);
+        }
 
         $banks = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
         $subjects = Subject::where('school_id', $schoolId)->orderBy('name')->get();
+        $academicYears = AcademicYear::where('school_id', $schoolId)->orWhereNull('school_id')->orderByDesc('name')->get();
+        $activeYear = $academicYears->firstWhere('is_active', true);
 
-        return view('evalusi.bank-soal.index', compact('banks', 'subjects', 'userId'));
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'soal' => DB::table('soal')
+                ->whereIn('bank_soal_id', (clone $baseQuery)->select('id'))
+                ->whereNull('deleted_at')
+                ->where('status', 'approved')
+                ->count(),
+            'publik' => (clone $baseQuery)->where(function ($q) {
+                $q->where('is_public', true)->orWhere('shared_scope', 'public_pool');
+            })->count(),
+            'tahun_ajaran_ini' => $activeYear
+                ? (clone $baseQuery)->where('academic_year_id', $activeYear->id)->count()
+                : 0,
+        ];
+
+        return view('evalusi.bank-soal.index', compact(
+            'banks', 'subjects', 'academicYears', 'statistics', 'activeYear', 'userId'
+        ));
     }
 
     /**

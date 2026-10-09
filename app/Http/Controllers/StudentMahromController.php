@@ -56,6 +56,7 @@ class StudentMahromController extends Controller
             'total' => StudentMahrom::query()->where($scopeSchool)->count(),
             'primary' => StudentMahrom::query()->where($scopeSchool)->where('is_primary', true)->count(),
             'active' => StudentMahrom::query()->where($scopeSchool)->where('is_active', true)->count(),
+            'students_with_mahrom' => StudentMahrom::query()->where($scopeSchool)->distinct()->count('student_id'),
         ];
 
         $relationships = [

@@ -193,6 +193,26 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **Mutasi Out**: relasi `Student::studyGroup` yang tidak ada diperbaiki (`currentClassHistory.studyGroup`), redirect/breadcrumb/label/aksi/print mengikuti jenis mutasi (Lulus / Drop Out / Mutasi Keluar), judul & nama file PDF per jenis, `head_nip` → `head_nupy`.
 - Test: `PesertaDidikP0Test` **13 test / 44 assertion**; regresi modul sehat **108 test / 854 assertion** lulus; `view:cache` sukses.
 
+## 23. Peserta Didik & Menu Akademik — Fase 2: UI Seragam Pola gtk
+- **Peserta Didik**:
+  - **Mutasi (4 index)**: Mutasi Masuk/Keluar/Lulus/Drop Out — stat cards Total/Draft/Diajukan/Disetujui/Ditolak, Filter Cepat status (+ jenis untuk Mutasi Keluar), tabel `table-freeze`, header `border-bottom-dashed`.
+  - **Pindahkan Santri**: stat Total Santri Rombel Asal, Rombel Tujuan, Kapasitas, Slot Tersisa.
+  - **Naik Kelas**: index (stat Total/Draft/Selesai/Dibatalkan + filter `status` baru), create (header/kartu ringkasan konsisten tanpa mengubah logika wizard), show (4 stat cards).
+  - **Alumni**: index (+kartu Terverifikasi, Filter Cepat tracer, `table-freeze`), show, statistics (kartu gtk + tabel freeze), edit (`@error` per field).
+  - **Mahrom**: index per-santri & global (stat cards, Filter Cepat status/hubungan).
+  - **Data Santri (index)**: `table-freeze` + baris Filter Cepat (Aktif / Pindahan Masuk-Keluar / Lulus / L-P / Penerima PIP); **breadcrumb 28 halaman diseragamkan ke "Peserta Didik"**; form create/edit/import diberi `kurikulum._styles` + `border-bottom-dashed`.
+- **Menu Akademik (Kepala TU & TU)**:
+  - **Tugas Tambahan**: stat cards + Filter Cepat status; **fix bug filter tahun ajaran** yang saling menimpa; **fix form tambah** kini mengirim `academic_year_id` (validasi wajib — store sebelumnya selalu gagal).
+  - **Prestasi Siswa**: stat cards (Juara 1/2/3, terverifikasi, tahun ini) + Filter Cepat; **fix bug** query quran/hadits selalu kosong (dua `where achievement_type` bertentangan).
+  - **Absensi GTK**: stat Total/Hadir/Terlambat/Tidak Hadir + `table-freeze`.
+  - **Absensi Harian**: stat Total/Hadir/Izin-Sakit/Alpa + Filter Cepat Hari Ini/Kemarin, Ganjil/Genap, Sudah/Belum tercatat.
+  - **Kisi-kisi**: UI index baru + stat cards; **fix bug route** `user.kisi-kisi.*` → `user.kisi-kisi-soal.*` (halaman sebelumnya gagal render `RouteNotFoundException`) termasuk signature controller `show/edit/update/destroy` yang menerima `$userId`.
+  - **Bank Soal / Paket Soal**: stat cards + Filter Cepat + `table-freeze` (Bank Soal kini mendukung filter tahun ajaran).
+  - **Data Nilai & Rapor**: stat cards + `table-freeze`.
+  - **QR Guru**: stat cards + Filter Cepat status QR.
+  - **Ekstrakurikuler**: grid card → tabel `table-freeze` + stat Total/Aktif/Pembina/Peserta.
+- Test: `PesertaDidikP0Test` diperluas menjadi **21 test / 95 assertion** (termasuk smoke UI Fase 2); regresi modul sehat **115 test / 898 assertion** lulus; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

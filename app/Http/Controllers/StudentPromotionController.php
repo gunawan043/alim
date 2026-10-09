@@ -25,30 +25,53 @@ class StudentPromotionController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = StudentPromotion::with([
-            'fromAcademicYear',
-            'toAcademicYear',
-            'fromStudyGroup',
-            'toStudyGroup',
-            'executedBy',
-        ])
+        $allowedStatuses = ['draft', 'processed', 'completed', 'cancelled'];
+        $statusFilter = $request->filled('status') && in_array($request->status, $allowedStatuses, true)
+            ? $request->status
+            : null;
+
+        // Query dasar (tanpa filter status) — sumber list & statistik.
+        // Statistik memakai clone + count agar murah dan tetap ter-scope schoolContextId.
+        $baseQuery = StudentPromotion::query();
+
+        if ($schoolId) {
+            $baseQuery->whereHas('fromStudyGroup', fn ($q) => $q->where('school_id', $schoolId));
+        }
+
+        if ($request->filled('academic_year')) {
+            $baseQuery->where('from_academic_year_id', $request->academic_year);
+        }
+
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'draft' => (clone $baseQuery)->where('status', 'draft')->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'cancelled' => (clone $baseQuery)->where('status', 'cancelled')->count(),
+        ];
+
+        $query = (clone $baseQuery)
+            ->with([
+                'fromAcademicYear',
+                'toAcademicYear',
+                'fromStudyGroup',
+                'toStudyGroup',
+                'executedBy',
+            ])
             ->withCount(['details as total_students'])
             ->withCount(['details as success_count' => fn ($q) => $q->where('status', 'success')])
             ->withCount(['details as failed_count' => fn ($q) => $q->where('status', 'failed')]);
 
-        if ($schoolId) {
-            $query->whereHas('fromStudyGroup', fn ($q) => $q->where('school_id', $schoolId));
-        }
-
-        if ($request->filled('academic_year')) {
-            $query->where('from_academic_year_id', $request->academic_year);
+        if ($statusFilter) {
+            $query->where('status', $statusFilter);
         }
 
         $promotions = $query->orderByDesc('created_at')->paginate(15)->withQueryString();
 
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
 
-        return view('student-promotions.index', compact('promotions', 'academicYears', 'userId'));
+        return view('student-promotions.index', compact(
+            'promotions', 'academicYears', 'userId', 'statistics', 'statusFilter'
+        ));
     }
 
     /**

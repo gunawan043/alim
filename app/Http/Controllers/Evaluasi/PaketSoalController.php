@@ -26,16 +26,43 @@ class PaketSoalController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = PaketSoal::with(['kisiKisi.subject', 'kisiKisi.gradeLevel', 'items'])
-            ->whereHas('kisiKisi', fn ($q) => $q->where('school_id', $schoolId));
+        $baseQuery = PaketSoal::whereHas('kisiKisi', fn ($q) => $q->where('school_id', $schoolId));
+
+        $query = (clone $baseQuery)->with(['kisiKisi.subject', 'kisiKisi.gradeLevel', 'items']);
 
         if ($request->filled('jenis_ujian')) {
             $query->whereHas('kisiKisi', fn ($q) => $q->where('jenis_ujian', $request->jenis_ujian));
         }
+        if ($request->filled('status')) {
+            if ($request->status === 'draft') {
+                $query->where('workflow_status', PaketSoal::WORKFLOW_DRAFT)->where('is_published', false);
+            } elseif ($request->status === 'review') {
+                $query->whereIn('workflow_status', [PaketSoal::WORKFLOW_REVIEW, PaketSoal::WORKFLOW_REVISI])
+                    ->where('is_published', false);
+            } elseif ($request->status === 'final') {
+                $query->where(function ($q) {
+                    $q->where('is_published', true)
+                        ->orWhereIn('workflow_status', [PaketSoal::WORKFLOW_APPROVED, PaketSoal::WORKFLOW_PUBLISHED]);
+                });
+            }
+        }
 
-        $pakets = $query->orderByDesc('updated_at')->paginate(15);
+        $pakets = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
-        return view('evalusi.paket-soal.index', compact('pakets'));
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'draft' => (clone $baseQuery)->where('workflow_status', PaketSoal::WORKFLOW_DRAFT)
+                ->where('is_published', false)->count(),
+            'review' => (clone $baseQuery)
+                ->whereIn('workflow_status', [PaketSoal::WORKFLOW_REVIEW, PaketSoal::WORKFLOW_REVISI])
+                ->where('is_published', false)->count(),
+            'final' => (clone $baseQuery)->where(function ($q) {
+                $q->where('is_published', true)
+                    ->orWhereIn('workflow_status', [PaketSoal::WORKFLOW_APPROVED, PaketSoal::WORKFLOW_PUBLISHED]);
+            })->count(),
+        ];
+
+        return view('evalusi.paket-soal.index', compact('pakets', 'statistics'));
     }
 
     /**

@@ -1,9 +1,13 @@
 @extends('layouts.master')
 @section('title') Detail Promosi Santri @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2')
             <a href="{{ route('user.student-promotions.index', ['userId' => $userId]) }}">Promosi Santri</a>
         @endslot
@@ -21,11 +25,89 @@
         </div>
     @endif
 
+    @php
+        $detailTotal = $promotion->details->count();
+        $detailSuccess = $promotion->details->where('status', 'success')->count();
+        $detailFailed = $promotion->details->where('status', 'failed')->count();
+        $detailPending = $promotion->details->where('status', 'pending')->count();
+        $pctSuccess = $detailTotal > 0 ? round($detailSuccess / $detailTotal * 100) : 0;
+        $pctFailed = $detailTotal > 0 ? round($detailFailed / $detailTotal * 100) : 0;
+        $pctPending = $detailTotal > 0 ? round($detailPending / $detailTotal * 100) : 0;
+    @endphp
+
+    {{-- ── STATISTIK PROMOSI ────────────────────────────────── --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-group-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Siswa</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($detailTotal) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $promotion->fromStudyGroup?->full_name ?? 'Rombel asal' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Sukses</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($detailSuccess) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $pctSuccess }}% dari total siswa</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-close-circle-line text-danger"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Gagal</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($detailFailed) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $pctFailed }}% dari total siswa</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Pending</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($detailPending) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $pctPending }}% menunggu diproses</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ── INFO PROMOSI ─────────────────────────────────────── --}}
     <div class="row">
-        <div class="col-lg-8">
+        <div class="col-lg-12">
             <div class="card mb-3">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <div class="d-flex align-items-center justify-content-between">
                         <h5 class="card-title mb-0"><i class="ri-arrow-up-line me-2"></i>Detail Promosi</h5>
                         <span class="badge bg-{{ $promotion->status_badge_color }}-subtle text-{{ $promotion->status_badge_color }}">
@@ -138,44 +220,11 @@
             </div>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="ri-bar-chart-line me-1"></i>Ringkasan</h6>
-                </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Total Siswa
-                            <span class="badge bg-primary rounded-pill">{{ $promotion->details->count() }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span class="text-success"><i class="ri-checkbox-circle-line me-1"></i>Berhasil</span>
-                            <span class="badge bg-success-subtle text-success rounded-pill">
-                                {{ $promotion->details->where('status', 'success')->count() }}
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span class="text-danger"><i class="ri-close-circle-line me-1"></i>Gagal</span>
-                            <span class="badge bg-danger-subtle text-danger rounded-pill">
-                                {{ $promotion->details->where('status', 'failed')->count() }}
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span class="text-secondary"><i class="ri-time-line me-1"></i>Pending</span>
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill">
-                                {{ $promotion->details->where('status', 'pending')->count() }}
-                            </span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
     </div>
 
     {{-- ── DAFTAR SISWA ──────────────────────────────────────── --}}
     <div class="card">
-        <div class="card-header bg-light">
+        <div class="card-header border-bottom-dashed">
             <div class="d-flex align-items-center justify-content-between">
                 <h5 class="mb-0">Daftar Siswa</h5>
                 @if($promotion->status === 'draft')
@@ -188,7 +237,7 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0">
+                <table class="table table-sm table-hover align-middle table-freeze mb-0">
                     <thead class="table-light text-muted">
                         <tr>
                             @if($promotion->status === 'draft')

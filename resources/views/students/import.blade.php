@@ -3,6 +3,7 @@
 @php $userId = request()->route('userId') ?? Auth::id(); @endphp
 
 @section('css')
+    @include('kurikulum._styles')
 <style>
 .import-hero {
     background: linear-gradient(135deg, #0d6efd08 0%, #19875408 100%);
@@ -61,7 +62,7 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
         @slot('title') Import Santri @endslot
     @endcomponent
@@ -199,7 +200,7 @@
 
             {{-- Langkah-langkah --}}
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0">
                         <i class="ri-guide-line me-1 text-primary"></i>Cara Import
                     </h5>
@@ -287,7 +288,7 @@
                 </div>
             @endif
             <div class="card">
-                <div class="card-header">
+                <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0">
                         <i class="ri-upload-2-line me-1 text-primary"></i>Unggah File Excel
                     </h5>

@@ -3,21 +3,32 @@
 
 @section('title', 'QR Kelas')
 
-@push('css')
-<style>
-    .qr-thumb { width: 52px; height: 52px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 3px; object-fit: contain; }
-    .table-freeze th, .table-freeze td { vertical-align: middle; }
-</style>
-@endpush
+@section('css')
+    @include('kurikulum._styles')
+    <style>
+        .qr-thumb { width: 52px; height: 52px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 3px; object-fit: contain; }
+    </style>
+@endsection
 
 @section('content')
-@php $userId = $userId ?? auth()->id(); @endphp
+@php
+    $userId = $userId ?? auth()->id();
+    $stats = $statistics ?? ['total' => 0, 'aktif' => 0, 'belum' => 0, 'wali_kelas' => 0];
+    $qrStatus = request('qr_status');
+@endphp
 
 @component('components.breadcrumb')
     @slot('li_1') Absensi Kehadiran @endslot
     @slot('li_2') QR Kelas @endslot
     @slot('title') QR Kelas @endslot
 @endcomponent
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <p class="text-muted small mb-0">
@@ -29,20 +40,91 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+{{-- STATISTIK --}}
+<div class="row">
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-animate h-90">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-building-4-line text-primary"></i></span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Kelas</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total']) }}</h3>
+                    </div>
+                </div>
+                <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Kelas aktif di satuan pendidikan</p>
+            </div>
+        </div>
     </div>
-@endif
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-animate h-90">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-qr-code-line text-success"></i></span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">QR Aktif</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['aktif']) }}</h3>
+                    </div>
+                </div>
+                <p class="text-muted mb-0 stat-label"><i class="ri-checkbox-circle-line me-1"></i>Siap dipindai guru</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-animate h-90">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line text-warning"></i></span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Belum Dibuat</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['belum']) }}</h3>
+                    </div>
+                </div>
+                <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>QR dibuat otomatis saat dicetak</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card card-animate h-90">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-user-star-line text-info"></i></span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Wali Kelas</p>
+                        <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['wali_kelas']) }}</h3>
+                    </div>
+                </div>
+                <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Kelas dengan wali kelas terdata</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="card">
-    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h5 class="card-title mb-0"><i class="ri-qr-code-line text-primary me-1"></i>Daftar QR per Kelas</h5>
         <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $studyGroups->count() }} kelas</span>
     </div>
+
+    <div class="card-header py-2 bg-light border-bottom">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+            <a href="{{ request()->fullUrlWithQuery(['qr_status' => null]) }}" class="filter-badge {{ ! $qrStatus ? 'active' : '' }}">Semua</a>
+            <a href="{{ request()->fullUrlWithQuery(['qr_status' => 'aktif']) }}" class="filter-badge {{ $qrStatus === 'aktif' ? 'active' : '' }}"><i class="ri-checkbox-circle-line"></i> QR Aktif</a>
+            <a href="{{ request()->fullUrlWithQuery(['qr_status' => 'belum']) }}" class="filter-badge {{ $qrStatus === 'belum' ? 'active' : '' }}"><i class="ri-time-line"></i> Belum Dibuat</a>
+        </div>
+    </div>
+
     <div class="table-responsive">
-        <table class="table table-hover table-freeze mb-0">
+        <table class="table table-hover align-middle table-freeze mb-0">
             <thead class="table-light">
                 <tr>
                     <th style="width:48px" class="text-center">No</th>

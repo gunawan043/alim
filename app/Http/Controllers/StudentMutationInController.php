@@ -37,6 +37,19 @@ class StudentMutationInController extends Controller
                 ->orWhere('letter_number', 'like', "%{$q}%")
             );
         }
+
+        // Statistik status — dihitung dari query yang sudah school-scoped & search-aware.
+        // Filter status baru diterapkan pada listing setelah clone agar kartu tetap
+        // menampilkan sebaran status (COUNT murah, tanpa memuat data).
+        $statQuery = clone $query;
+        $statistics = [
+            'total' => (clone $statQuery)->count(),
+            'draft' => (clone $statQuery)->where('status', 'draft')->count(),
+            'submitted' => (clone $statQuery)->where('status', 'submitted')->count(),
+            'approved' => (clone $statQuery)->where('status', 'approved')->count(),
+            'rejected' => (clone $statQuery)->where('status', 'rejected')->count(),
+        ];
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -44,7 +57,7 @@ class StudentMutationInController extends Controller
         $mutations = $query->paginate(15)->withQueryString();
         $schools = School::orderBy('name')->get();
 
-        return view('mutations-in.index', compact('mutations', 'schools', 'userId'));
+        return view('mutations-in.index', compact('mutations', 'schools', 'userId', 'statistics'));
     }
 
     public function create(Request $request)

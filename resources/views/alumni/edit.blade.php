@@ -3,7 +3,7 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.alumni.index', ['userId' => $userId]) }}">Data Alumni</a> @endslot
         @slot('li_3') <a href="{{ route('user.alumni.show', ['userId' => $userId, 'alumniUuid' => $alumni->id]) }}">{{ $alumni->student->name ?? '' }}</a> @endslot
         @slot('title') Tracer Study @endslot
@@ -17,7 +17,7 @@
             {{-- Left: Info + Contact --}}
             <div class="col-lg-4">
                 <div class="card mb-3">
-                    <div class="card-header"><h6 class="mb-0"><i class="ri-user-line me-2"></i>Info Alumni</h6></div>
+                    <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-user-line me-2"></i>Info Alumni</h6></div>
                     <div class="card-body">
                         <h5>{{ $alumni->student->name ?? '-' }}</h5>
                         <p class="text-muted mb-1">{{ $alumni->school->name ?? '-' }}</p>
@@ -39,7 +39,7 @@
 
                 {{-- Contact Info --}}
                 <div class="card mb-3">
-                    <div class="card-header"><h6 class="mb-0"><i class="ri-phone-line me-2"></i>Kontak &amp; Lainnya</h6></div>
+                    <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-phone-line me-2"></i>Kontak &amp; Lainnya</h6></div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Dapat Dihubungi</label>
@@ -52,13 +52,19 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Prestasi / Penghargaan</label>
-                            <textarea name="achievements" class="form-control" rows="3"
+                            <textarea name="achievements" class="form-control @error('achievements') is-invalid @enderror" rows="3"
                                       placeholder="Prestasi yang pernah diraih...">{{ old('achievements', $alumni->achievements) }}</textarea>
+                            @error('achievements')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="mb-0">
                             <label class="form-label">Catatan Tambahan</label>
-                            <textarea name="tracer_notes" class="form-control" rows="3"
+                            <textarea name="tracer_notes" class="form-control @error('tracer_notes') is-invalid @enderror" rows="3"
                                       placeholder="Catatan atau informasi tambahan...">{{ old('tracer_notes', $alumni->tracer_notes) }}</textarea>
+                            @error('tracer_notes')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -69,42 +75,57 @@
 
                 {{-- Melanjutkan Studi --}}
                 <div class="card mb-3">
-                    <div class="card-header">
+                    <div class="card-header border-bottom-dashed">
                         <h6 class="mb-0"><i class="ri-book-open-line me-2"></i>Melanjutkan Studi</h6>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Status <span class="text-danger">*</span></label>
-                                <select name="continuing_study_status" class="form-control" required>
+                                <select name="continuing_study_status" class="form-control @error('continuing_study_status') is-invalid @enderror" required>
                                     <option value="belum" {{ old('continuing_study_status', $alumni->continuing_study_status) === 'belum' ? 'selected' : '' }}>Belum</option>
                                     <option value="sedang" {{ old('continuing_study_status', $alumni->continuing_study_status) === 'sedang' ? 'selected' : '' }}>Sedang</option>
                                     <option value="sudah" {{ old('continuing_study_status', $alumni->continuing_study_status) === 'sudah' ? 'selected' : '' }}>Sudah</option>
                                 </select>
+                                @error('continuing_study_status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Nama Kampus / Institution</label>
-                                <input type="text" name="higher_education_institution" class="form-control"
+                                <input type="text" name="higher_education_institution" class="form-control @error('higher_education_institution') is-invalid @enderror"
                                        value="{{ old('higher_education_institution', $alumni->higher_education_institution) }}"
                                        placeholder="Contoh: Universitas XYZ">
+                                @error('higher_education_institution')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Program Studi / Jurusan</label>
-                                <input type="text" name="study_program" class="form-control"
+                                <input type="text" name="study_program" class="form-control @error('study_program') is-invalid @enderror"
                                        value="{{ old('study_program', $alumni->study_program) }}"
                                        placeholder="Contoh: Teknik Informatika">
+                                @error('study_program')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Kota</label>
-                                <input type="text" name="higher_education_city" class="form-control"
+                                <input type="text" name="higher_education_city" class="form-control @error('higher_education_city') is-invalid @enderror"
                                        value="{{ old('higher_education_city', $alumni->higher_education_city) }}"
                                        placeholder="Contoh: Jakarta">
+                                @error('higher_education_city')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Tahun Masuk</label>
-                                <input type="number" name="higher_education_year_start" class="form-control"
+                                <input type="number" name="higher_education_year_start" class="form-control @error('higher_education_year_start') is-invalid @enderror"
                                        value="{{ old('higher_education_year_start', $alumni->higher_education_year_start) }}"
                                        min="1990" max="2100" placeholder="2020">
+                                @error('higher_education_year_start')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -112,59 +133,83 @@
 
                 {{-- Bekerja --}}
                 <div class="card mb-3">
-                    <div class="card-header">
+                    <div class="card-header border-bottom-dashed">
                         <h6 class="mb-0"><i class="ri-briefcase-line me-2"></i>Bekerja</h6>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Status <span class="text-danger">*</span></label>
-                                <select name="working_status" class="form-control" required>
+                                <select name="working_status" class="form-control @error('working_status') is-invalid @enderror" required>
                                     <option value="belum" {{ old('working_status', $alumni->working_status) === 'belum' ? 'selected' : '' }}>Belum</option>
                                     <option value="sedang" {{ old('working_status', $alumni->working_status) === 'sedang' ? 'selected' : '' }}>Sedang</option>
                                     <option value="sudah" {{ old('working_status', $alumni->working_status) === 'sudah' ? 'selected' : '' }}>Sudah</option>
                                 </select>
+                                @error('working_status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Jabatan / Posisi</label>
-                                <input type="text" name="occupation" class="form-control"
+                                <input type="text" name="occupation" class="form-control @error('occupation') is-invalid @enderror"
                                        value="{{ old('occupation', $alumni->occupation) }}"
                                        placeholder="Contoh: Software Engineer">
+                                @error('occupation')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Nama Perusahaan / Instansi</label>
-                                <input type="text" name="company_name" class="form-control"
+                                <input type="text" name="company_name" class="form-control @error('company_name') is-invalid @enderror"
                                        value="{{ old('company_name', $alumni->company_name) }}"
                                        placeholder="Contoh: PT ABC Indonesia">
+                                @error('company_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Alamat Kantor</label>
-                                <textarea name="company_address" class="form-control" rows="2"
+                                <textarea name="company_address" class="form-control @error('company_address') is-invalid @enderror" rows="2"
                                           placeholder="Alamat lengkap perusahaan...">{{ old('company_address', $alumni->company_address) }}</textarea>
+                                @error('company_address')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Kota</label>
-                                <input type="text" name="company_city" class="form-control"
+                                <input type="text" name="company_city" class="form-control @error('company_city') is-invalid @enderror"
                                        value="{{ old('company_city', $alumni->company_city) }}"
                                        placeholder="Contoh: Bandung">
+                                @error('company_city')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">No. Telepon Kantor</label>
-                                <input type="text" name="company_phone" class="form-control"
+                                <input type="text" name="company_phone" class="form-control @error('company_phone') is-invalid @enderror"
                                        value="{{ old('company_phone', $alumni->company_phone) }}"
                                        placeholder="021-xxxxx">
+                                @error('company_phone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Gaji per Bulan (Rp)</label>
-                                <input type="number" name="monthly_income" class="form-control"
+                                <input type="number" name="monthly_income" class="form-control @error('monthly_income') is-invalid @enderror"
                                        value="{{ old('monthly_income', $alumni->monthly_income) }}"
                                        min="0" placeholder="5000000">
+                                @error('monthly_income')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Tahun Mulai Bekerja</label>
-                                <input type="number" name="working_year_start" class="form-control"
+                                <input type="number" name="working_year_start" class="form-control @error('working_year_start') is-invalid @enderror"
                                        value="{{ old('working_year_start', $alumni->working_year_start) }}"
                                        min="1990" max="2100" placeholder="2022">
+                                @error('working_year_start')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>

@@ -3,7 +3,7 @@
 
 @section('content')
 @component('components.breadcrumb')
-    @slot('li_1') Akademik @endslot
+    @slot('li_1') Peserta Didik @endslot
     @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
     @slot('li_3') <a href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}">PD Masuk</a> @endslot
     @slot('title') {{ $mutation->student_name }} @endslot
@@ -141,7 +141,7 @@
     {{-- Sidebar --}}
     <div class="col-lg-4">
         <div class="card sticky-top" style="top:1rem">
-            <div class="card-header"><h6 class="mb-0">Aksi & Status</h6></div>
+            <div class="card-header border-bottom-dashed"><h6 class="mb-0">Aksi & Status</h6></div>
             <div class="card-body p-0">
                 <div class="p-3 border-bottom">
                     <span class="badge bg-{{ $mutation->status_color }}-subtle text-{{ $mutation->status_color }} fs-6">

@@ -53,11 +53,14 @@ class StudentAchievementController extends Controller
             $hafalanCategory = 'hadits';
         }
 
+        $isHafalan = in_array($achievementType, ['hafalan_quran', 'hafalan_hadits'], true);
+
         $query = StudentAchievement::with(['student', 'academicYear', 'coach', 'creator'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('achievement_type', $achievementType)
-            ->when($achievementType === 'hafalan_quran' || $achievementType === 'hafalan_hadits', fn ($q) => $q->where('achievement_type', 'hafalan')
-                ->where('hafalan_category', $hafalanCategory)
+            ->when(
+                $isHafalan,
+                fn ($q) => $q->where('achievement_type', 'hafalan')->where('hafalan_category', $hafalanCategory),
+                fn ($q) => $q->where('achievement_type', $achievementType)
             );
 
         // Filters
@@ -85,6 +88,24 @@ class StudentAchievementController extends Controller
             );
         }
 
+        // Statistik ringan dari query terfilter (tanpa order/paginate)
+        $stats = [
+            'total' => (clone $query)->count(),
+            'juara_1' => (clone $query)->where('position', 'juara_1')->count(),
+            'juara_2' => (clone $query)->where('position', 'juara_2')->count(),
+            'juara_3' => (clone $query)->where('position', 'juara_3')->count(),
+            'mumtaz' => (clone $query)->where('position', 'mumtaz_murtafi')->count(),
+            'tahun_ini' => (clone $query)->whereYear('event_date', now()->year)->count(),
+            'jenis' => (clone $query)->distinct()->count('event_name'),
+            'terverifikasi' => (clone $query)->where('is_verified', true)->count(),
+            'levels' => (clone $query)
+                ->selectRaw('level, COUNT(*) as total')
+                ->groupBy('level')
+                ->orderByDesc('total')
+                ->pluck('total', 'level')
+                ->all(),
+        ];
+
         $achievements = $query->orderByDesc('event_date')
             ->orderByDesc('created_at')
             ->paginate(self::PER_PAGE)
@@ -105,7 +126,7 @@ class StudentAchievementController extends Controller
 
         return view('student-achievement.index', compact(
             'achievements', 'academicYears', 'studyGroups',
-            'userId', 'schoolId', 'achievementType', 'typeLabel',
+            'userId', 'schoolId', 'achievementType', 'typeLabel', 'stats',
         ));
     }
 

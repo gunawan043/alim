@@ -2,6 +2,7 @@
 @section('title') Data Nilai @endsection
 
 @section('css')
+@include('kurikulum._styles')
 <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
@@ -55,58 +56,71 @@
 
     {{-- Stats Cards --}}
     @if($selectedAcademicYearId && $selectedAy?->is_active)
-    <div class="row g-3 mb-3">
-        <div class="col-xl-4 col-md-4">
-            <div class="card h-100">
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="stats-icon bg-primary-subtle">
-                            <i class="bx bx-group text-primary"></i>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="bx bx-group text-primary"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Total Kelas</p>
-                            <h2 class="fw-bold ff-secondary mb-0">{{ number_format($totalKelas) }}</h2>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Kelas</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalKelas) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block">
-                        <i class="ri-user-line me-1"></i>{{ number_format($totalSiswa) }} siswa
-                    </small>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-book-open-line me-1"></i>Buku admin aktif semester ini</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-4">
-            <div class="card h-100">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="stats-icon bg-info-subtle">
-                            <i class="ri-book-open-line text-info"></i>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-user-line text-info"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mata Pelajaran</p>
-                            <h2 class="fw-bold ff-secondary mb-0">{{ number_format($totalMapel) }}</h2>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Santri</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalSiswa) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block">dari {{ $totalKelas }} kelas</small>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Santri aktif dari kelas terdaftar</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-4">
-            <div class="card h-100">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="stats-icon bg-warning-subtle">
-                            <i class="ri-calendar-check-line text-warning"></i>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-book-2-line text-success"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Tahun Ajaran</p>
-                            <h2 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $selectedAy->name }}</h2>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mata Pelajaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalMapel) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block">
+                    <p class="text-muted mb-0 stat-label"><i class="ri-stack-line me-1"></i>Dari {{ $totalKelas }} kelas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-calendar-check-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Tahun Ajaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $selectedAy->name }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label">
                         <i class="ri-stack-line me-1"></i>
-                        Semester <strong>{{ $selectedSemester === 'ganjil' ? 'Ganjil' : 'Genap' }}</strong>
-                        {{ $selectedGl ? "— $selectedGl" : '' }}
-                    </small>
+                        Semester {{ $selectedSemester === 'ganjil' ? 'Ganjil' : 'Genap' }}{{ $selectedGl ? " — $selectedGl" : '' }}
+                    </p>
                 </div>
             </div>
         </div>
@@ -131,6 +145,23 @@
                             </span>
                         </div>
                         @endif
+                    </div>
+                </div>
+
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil']) }}"
+                           class="filter-badge {{ $selectedSemester === 'ganjil' ? 'active' : '' }}"><i class="ri-file-list-line"></i> Ganjil</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap']) }}"
+                           class="filter-badge {{ $selectedSemester === 'genap' ? 'active' : '' }}"><i class="ri-file-list-2-line"></i> Genap</a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <a href="{{ request()->fullUrlWithQuery(['grade_level_id' => null]) }}"
+                           class="filter-badge {{ ! request('grade_level_id') ? 'active' : '' }}">Semua Tingkat</a>
+                        @foreach($gradeLevelIds as $gl)
+                            <a href="{{ request()->fullUrlWithQuery(['grade_level_id' => $gl->id]) }}"
+                               class="filter-badge {{ (string) request('grade_level_id') === (string) $gl->id ? 'active' : '' }}">{{ $gl->name }}</a>
+                        @endforeach
                     </div>
                 </div>
 
@@ -216,7 +247,7 @@
                     @endif
 
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle table-freeze mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:40px;text-align:center;">#</th>

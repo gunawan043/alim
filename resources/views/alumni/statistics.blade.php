@@ -1,79 +1,92 @@
 @extends('layouts.master')
 @section('title') Statistik Alumni @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.alumni.index', ['userId' => $userId]) }}">Data Alumni</a> @endslot
         @slot('title') Statistik @endslot
     @endcomponent
 
-    <div class="row g-3 mb-3">
+    <div class="row">
         {{-- Summary Cards --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-user-follow-line text-primary"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Total Alumni</p>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Alumni</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalTracer) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>{{ $byYear->count() }} tahun lulus terdata
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Tracer Terisi</p>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Tracer Terisi</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ $tracerFilledPct }}%</h3>
                         </div>
                     </div>
-                    <div class="progress" style="height:6px;">
+                    <div class="progress mb-1" style="height:6px;">
                         <div class="progress-bar bg-success" style="width:{{ $tracerFilledPct }}%"></div>
                         <div class="progress-bar bg-secondary" style="width:{{ 100 - $tracerFilledPct }}%"></div>
                     </div>
-                    <small class="text-muted">{{ $tracerStats->get('filled', 0) + $tracerStats->get('verified', 0) }} dari {{ $totalTracer }} data</small>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-verified-badge-line me-1"></i>{{ $tracerStats->get('filled', 0) + $tracerStats->get('verified', 0) }} dari {{ $totalTracer }} data · {{ $tracerVerified }} diverifikasi
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-book-open-line text-info"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Melanjutkan</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $studyStats->get('sudah', 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Melanjutkan</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($studyStats->get('sudah', 0)) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">{{ $studyStats->get('sedang', 0) }} masih studi</small>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-time-line me-1"></i>{{ number_format($studyStats->get('sedang', 0)) }} masih studi
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-briefcase-line text-warning"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Bekerja</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $workingStats->get('sudah', 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Bekerja</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($workingStats->get('sudah', 0)) }}</h3>
                         </div>
                     </div>
-                    <small class="text-muted">{{ $workingStats->get('sedang', 0) }} sedang bekerja</small>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-time-line me-1"></i>{{ number_format($workingStats->get('sedang', 0)) }} sedang bekerja
+                    </p>
                 </div>
             </div>
         </div>
@@ -83,11 +96,11 @@
         {{-- Per Tahun --}}
         <div class="col-xl-6">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0"><i class="ri-bar-chart-line me-2"></i>Jumlah Alumni per Tahun</h6></div>
+                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-bar-chart-line me-2"></i>Jumlah Alumni per Tahun</h6></div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>Tahun Lulus</th>
                                     <th class="text-center">Jumlah Alumni</th>
@@ -119,11 +132,11 @@
         @if($bySchool->count())
         <div class="col-xl-6">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0"><i class="ri-government-line me-2"></i>Per Satuan Pendidikan</h6></div>
+                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-government-line me-2"></i>Per Satuan Pendidikan</h6></div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>Satuan Pendidikan</th>
                                     <th class="text-center">Jumlah</th>
@@ -153,7 +166,7 @@
         {{-- Status Tracer --}}
         <div class="col-xl-4">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0"><i class="ri-checkbox-circle-line me-2"></i>Status Tracer Study</h6></div>
+                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-checkbox-circle-line me-2"></i>Status Tracer Study</h6></div>
                 <div class="card-body">
                     <div class="d-flex flex-column gap-3">
                         @php
@@ -184,7 +197,7 @@
         {{-- Studi Continuation --}}
         <div class="col-xl-4">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0"><i class="ri-book-open-line me-2"></i>Melanjutkan Studi</h6></div>
+                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-book-open-line me-2"></i>Melanjutkan Studi</h6></div>
                 <div class="card-body">
                     @php
                         $studyTotal = $studyStats->sum();
@@ -215,7 +228,7 @@
         {{-- Working Status --}}
         <div class="col-xl-4">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0"><i class="ri-briefcase-line me-2"></i>Status Bekerja</h6></div>
+                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-briefcase-line me-2"></i>Status Bekerja</h6></div>
                 <div class="card-body">
                     @php
                         $workTotal = $workingStats->sum();

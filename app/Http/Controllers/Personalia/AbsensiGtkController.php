@@ -14,22 +14,35 @@ class AbsensiGtkController extends Controller
 {
     public function index(Request $request, string $userId)
     {
-        $absensis = AbsensiGtk::with(['gtk', 'pembuat'])
+        $baseQuery = AbsensiGtk::query()
             ->when($request->get('gtk_id'), fn ($q, $g) => $q->where('gtk_id', $g))
             ->when($request->get('status'), fn ($q, $s) => $q->where('status', $s))
-            ->when($request->get('tanggal'), fn ($q, $t) => $q->whereDate('tanggal', $t))
+            ->when($request->get('tanggal'), fn ($q, $t) => $q->whereDate('tanggal', $t));
+
+        $absensis = (clone $baseQuery)->with(['gtk', 'pembuat'])
             ->orderBy('tanggal', 'desc')
             ->paginate(20);
 
         $gtkList = GtkProfile::orderBy('nama')->get();
 
+        // Agregat ringan dari query terfilter (bukan query per-baris)
+        $statusCounts = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $stats = [
-            'total' => AbsensiGtk::count(),
-            'hadir' => AbsensiGtk::where('status', 'hadir')->count(),
-            'sakit' => AbsensiGtk::where('status', 'sakit')->count(),
-            'izin' => AbsensiGtk::where('status', 'izin')->count(),
-            'alpa' => AbsensiGtk::where('status', 'alpa')->count(),
+            'total' => (int) $statusCounts->sum(),
+            'total_gtk' => (clone $baseQuery)->distinct()->count('gtk_id'),
+            'hadir' => (int) ($statusCounts['hadir'] ?? 0),
+            'sakit' => (int) ($statusCounts['sakit'] ?? 0),
+            'izin' => (int) ($statusCounts['izin'] ?? 0),
+            'alpa' => (int) ($statusCounts['alpa'] ?? 0),
+            'cuti' => (int) ($statusCounts['cuti'] ?? 0),
+            'dinas_luar' => (int) ($statusCounts['dinas_luar'] ?? 0),
+            'terlambat' => (clone $baseQuery)->where('status', 'hadir')->where('terlambat_menit', '>', 0)->count(),
         ];
+        $stats['tidak_hadir'] = $stats['sakit'] + $stats['izin'] + $stats['alpa'];
 
         return view('personalia.absensi-gtk.index', compact('userId', 'absensis', 'gtkList', 'stats'));
     }

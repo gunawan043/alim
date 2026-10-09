@@ -1,10 +1,45 @@
 @extends('layouts.master')
 @section('title') Absensi Harian Peserta Didik @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
+    @php
+        $userId = $userId ?? auth()->id();
+        $totalSantri = collect($rombelStats)->sum(fn ($s) => $s['total'] ?? 0);
+        $totalHadir = collect($rombelStats)->sum(fn ($s) => $s['hadir'] ?? 0);
+        $totalTerlambat = collect($rombelStats)->sum(fn ($s) => $s['terlambat'] ?? 0);
+        $totalIzin = collect($rombelStats)->sum(fn ($s) => $s['izin'] ?? 0);
+        $totalSakit = collect($rombelStats)->sum(fn ($s) => $s['sakit'] ?? 0);
+        $totalAlpa = collect($rombelStats)->sum(fn ($s) => $s['alpa'] ?? 0);
+        $totalRecorded = collect($rombelStats)->sum(fn ($s) => $s['recorded'] ?? 0);
+        $izinSakit = $totalIzin + $totalSakit;
+        $pctHadir = $totalSantri > 0 ? round($totalHadir / $totalSantri * 100) : 0;
+        $pctRecorded = $totalSantri > 0 ? round($totalRecorded / $totalSantri * 100) : 0;
+
+        $recordedFilter = request('recorded');
+        $displayGroups = $studyGroups->filter(function ($sg) use ($rombelStats, $recordedFilter) {
+            if (! $recordedFilter) {
+                return true;
+            }
+            $s = $rombelStats[$sg->id] ?? null;
+            $total = $s['total'] ?? 0;
+            $recorded = $s['recorded'] ?? 0;
+
+            return match ($recordedFilter) {
+                'lengkap' => $total > 0 && $recorded >= $total,
+                'belum' => $total > 0 && $recorded < $total,
+                'tanpa' => $total === 0,
+                default => true,
+            };
+        });
+    @endphp
+
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('title') Absensi Peserta Didik</span>
+        @slot('title') Absensi Peserta Didik @endslot
     @endcomponent
 
     @if(session('success'))
@@ -12,6 +47,85 @@
             {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+
+    {{-- STATISTIK --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-group-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Santri</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalSantri) }}</h3>
+                        </div>
+                    </div>
+                    <div class="progress mt-1" style="height:6px;">
+                        <div class="progress-bar bg-primary" style="width:{{ $pctRecorded }}%"></div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label mt-1"><i class="ri-edit-2-line me-1"></i>Tercatat {{ number_format($totalRecorded) }} ({{ $pctRecorded }}%)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Hadir</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalHadir) }}</h3>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <span class="badge bg-success-subtle text-success stat-label">{{ $pctHadir }}% santri</span>
+                        @if($totalTerlambat > 0)
+                            <span class="badge bg-warning-subtle text-warning stat-label"><i class="ri-timer-line me-1"></i>{{ number_format($totalTerlambat) }} terlambat</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-hospital-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Izin / Sakit</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($izinSakit) }}</h3>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <span class="badge bg-info-subtle text-info stat-label">Izin {{ number_format($totalIzin) }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary stat-label">Sakit {{ number_format($totalSakit) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-user-unfollow-line text-danger"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Alpa</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalAlpa) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tidak hadir tanpa keterangan</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-lg-12">
@@ -38,8 +152,35 @@
                     </div>
                 </div>
 
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['date' => now()->toDateString(), 'page' => null]) }}"
+                           class="filter-badge {{ $selectedDate->toDateString() === now()->toDateString() ? 'active' : '' }}">
+                            <i class="ri-calendar-check-line"></i> Hari Ini
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['date' => now()->subDay()->toDateString(), 'page' => null]) }}"
+                           class="filter-badge {{ $selectedDate->toDateString() === now()->subDay()->toDateString() ? 'active' : '' }}">
+                            <i class="ri-history-line"></i> Kemarin
+                        </a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil', 'page' => null]) }}"
+                           class="filter-badge {{ $selectedSemester === 'ganjil' ? 'active' : '' }}">Ganjil</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap', 'page' => null]) }}"
+                           class="filter-badge {{ $selectedSemester === 'genap' ? 'active' : '' }}">Genap</a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <a href="{{ request()->fullUrlWithQuery(['recorded' => null, 'page' => null]) }}"
+                           class="filter-badge {{ ! $recordedFilter ? 'active' : '' }}">Semua Rombel</a>
+                        <a href="{{ request()->fullUrlWithQuery(['recorded' => 'lengkap', 'page' => null]) }}"
+                           class="filter-badge {{ $recordedFilter === 'lengkap' ? 'active' : '' }}">Sudah Tercatat</a>
+                        <a href="{{ request()->fullUrlWithQuery(['recorded' => 'belum', 'page' => null]) }}"
+                           class="filter-badge {{ $recordedFilter === 'belum' ? 'active' : '' }}">Belum Tercatat</a>
+                    </div>
+                </div>
+
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
+                        <input type="hidden" name="recorded" value="{{ request('recorded') }}">
                         <div class="col-md-3">
                             <label class="form-label">Tanggal</label>
                             <input type="date" name="date" class="form-control"
@@ -64,24 +205,24 @@
                     </form>
 
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width:40px">#</th>
                                     <th>Rombel</th>
                                     <th class="text-center">Wali Kelas</th>
                                     <th class="text-center">Siswa</th>
-                                    <th class="text-center bg-success-subtle">Hadir</th>
-                                    <th class="text-center bg-warning-subtle">Terlambat</th>
-                                    <th class="text-center bg-info-subtle">Izin</th>
-                                    <th class="text-center bg-secondary-subtle">Sakit</th>
-                                    <th class="text-center bg-danger-subtle">Alpa</th>
+                                    <th class="text-center text-success"><i class="ri-checkbox-circle-line me-1"></i>Hadir</th>
+                                    <th class="text-center text-warning"><i class="ri-timer-line me-1"></i>Terlambat</th>
+                                    <th class="text-center text-info"><i class="ri-information-line me-1"></i>Izin</th>
+                                    <th class="text-center text-secondary"><i class="ri-hospital-line me-1"></i>Sakit</th>
+                                    <th class="text-center text-danger"><i class="ri-close-circle-line me-1"></i>Alpa</th>
                                     <th class="text-center">Tercatat</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($studyGroups as $idx => $sg)
+                                @forelse($displayGroups as $sg)
                                     @php
                                         $stats = $rombelStats[$sg->id] ?? null;
                                         $total = $stats['total'] ?? 0;
@@ -89,7 +230,7 @@
                                         $pct = $total > 0 ? round($recorded / $total * 100) : 0;
                                     @endphp
                                     <tr>
-                                        <td class="text-center text-muted">{{ $idx + 1 }}</td>
+                                        <td class="text-center text-muted">{{ $loop->iteration }}</td>
                                         <td>
                                             <a href="{{ route('user.absensi.harian.recap.detail', [
                                                 'userId' => $userId,
@@ -141,8 +282,15 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="text-center text-muted py-4">
-                                            <em>Tidak ada rombel ditemukan.</em>
+                                        <td colspan="11" class="text-center py-5">
+                                            <div class="text-muted">
+                                                <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
+                                                @if($recordedFilter)
+                                                    Tidak ada rombel pada filter ini.
+                                                @else
+                                                    Tidak ada rombel ditemukan.
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforelse

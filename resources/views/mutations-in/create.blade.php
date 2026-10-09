@@ -2,6 +2,7 @@
 @section('title') Ajukan PD Masuk @endsection
 
 @section('css')
+    @include('kurikulum._styles')
 <style>
     .letter-preview {
         border: 2px dashed #dee2e6;
@@ -33,7 +34,7 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
         @slot('li_3') <a href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}">PD Masuk</a> @endslot
         @slot('title') Ajukan PD Masuk @endslot
@@ -55,7 +56,7 @@
             {{-- KIRI: FORM --}}
             <div class="col-lg-5">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header border-bottom-dashed">
                         <h5 class="mb-0"><i class="ri-edit-2-line me-1"></i>Formulir PD Masuk</h5>
                     </div>
                     <div class="card-body">
@@ -232,7 +233,7 @@
             {{-- KANAN: PREVIEW SURAT --}}
             <div class="col-lg-7">
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0"><i class="ri-eye-line me-1"></i>Preview Surat Rekomendasi</h5></div>
+                    <div class="card-header border-bottom-dashed"><h5 class="mb-0"><i class="ri-eye-line me-1"></i>Preview Surat Rekomendasi</h5></div>
                     <div class="card-body p-0">
                         <div class="letter-preview" style="padding:15px;max-height:125vh;overflow-y:auto;">
                             @if($school?->kop_path && $school->kopsis_active)

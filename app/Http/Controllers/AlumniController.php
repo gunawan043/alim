@@ -65,10 +65,11 @@ class AlumniController extends Controller
             ->orderByDesc('graduation_year')
             ->pluck('graduation_year');
 
-        // Stats
+        // Stats (COUNT murah dari clone query terfilter)
         $totalAlumni = (clone $query)->count();
         $tracerFilled = (clone $query)->filledTracer()->count();
         $tracerPending = (clone $query)->pendingTracer()->count();
+        $tracerVerified = (clone $query)->where('tracer_status', 'verified')->count();
 
         // Paginated results
         $perPage = min(100, max(5, (int) $request->get('per_page', 15)));
@@ -79,7 +80,7 @@ class AlumniController extends Controller
 
         return view('alumni.index', compact(
             'alumni', 'schools', 'graduationYears',
-            'totalAlumni', 'tracerFilled', 'tracerPending',
+            'totalAlumni', 'tracerFilled', 'tracerPending', 'tracerVerified',
             'userId', 'schoolContextId',
         ));
     }
@@ -266,6 +267,7 @@ class AlumniController extends Controller
             ->pluck('count', 'tracer_status');
 
         $totalTracer = $tracerStats->sum();
+        $tracerVerified = $tracerStats->get('verified', 0);
         $tracerFilledPct = $totalTracer > 0 ? round(($tracerStats->get('filled', 0) + $tracerStats->get('verified', 0)) / $totalTracer * 100) : 0;
 
         // Study continuation
@@ -290,7 +292,7 @@ class AlumniController extends Controller
             ->get();
 
         return view('alumni.statistics', compact(
-            'byYear', 'tracerStats', 'tracerFilledPct',
+            'byYear', 'tracerStats', 'tracerFilledPct', 'tracerVerified',
             'studyStats', 'workingStats', 'bySchool',
             'totalTracer', 'userId', 'schoolContextId',
         ));

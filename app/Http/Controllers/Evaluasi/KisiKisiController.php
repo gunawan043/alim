@@ -21,8 +21,9 @@ class KisiKisiController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = KisiKisiSoal::with(['subject', 'gradeLevel', 'academicYear', 'items'])
-            ->where('school_id', $schoolId);
+        $baseQuery = KisiKisiSoal::where('school_id', $schoolId);
+
+        $query = (clone $baseQuery)->with(['subject', 'gradeLevel', 'academicYear', 'items']);
 
         if ($request->filled('subject_id')) {
             $query->where('subject_id', $request->subject_id);
@@ -33,6 +34,9 @@ class KisiKisiController extends Controller
         if ($request->filled('semester')) {
             $query->where('semester', $request->semester);
         }
+        if ($request->filled('is_active')) {
+            $query->where('is_active', (bool) $request->is_active);
+        }
 
         $kisis = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
@@ -40,7 +44,16 @@ class KisiKisiController extends Controller
         $gradeLevels = GradeLevel::where('school_id', $schoolId)->orWhereNull('school_id')->get();
         $years = AcademicYear::where('school_id', $schoolId)->orWhereNull('school_id')->get();
 
-        return view('evalusi.kisi-kisi.index', compact('kisis', 'subjects', 'gradeLevels', 'years'));
+        $activeYear = $years->firstWhere('is_active', true);
+
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'aktif' => (clone $baseQuery)->where('is_active', true)->count(),
+            'tahun_ajaran_ini' => $activeYear ? (clone $baseQuery)->where('academic_year_id', $activeYear->id)->count() : 0,
+            'jenis_ujian' => (clone $baseQuery)->distinct()->count('jenis_ujian'),
+        ];
+
+        return view('evalusi.kisi-kisi.index', compact('kisis', 'subjects', 'gradeLevels', 'years', 'statistics', 'activeYear'));
     }
 
     /**
@@ -105,14 +118,14 @@ class KisiKisiController extends Controller
                 KisiKisiItem::create($item);
             }
 
-            return redirect()->route('user.kisi-kisi.show', $kisi->id)->with('success', 'Kisi-kisi berhasil dibuat.');
+            return redirect()->route('user.kisi-kisi-soal.show', ['userId' => $userId, 'kisiUuid' => $kisi->id])->with('success', 'Kisi-kisi berhasil dibuat.');
         });
     }
 
     /**
      * Show kisi-kisi detail.
      */
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $kisi = KisiKisiSoal::with(['subject', 'gradeLevel', 'academicYear',
             'items.tujuanPembelajaran', 'items.kisiKisi'])
@@ -124,7 +137,7 @@ class KisiKisiController extends Controller
     /**
      * Edit form.
      */
-    public function edit(string $id)
+    public function edit(string $userId, string $id)
     {
         $kisi = KisiKisiSoal::with(['subject', 'gradeLevel', 'academicYear', 'items.tujuanPembelajaran'])
             ->findOrFail($id);
@@ -145,7 +158,7 @@ class KisiKisiController extends Controller
     /**
      * Update kisi-kisi and items.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $userId, string $id)
     {
         $validated = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
@@ -203,11 +216,11 @@ class KisiKisiController extends Controller
     /**
      * Delete kisi-kisi.
      */
-    public function destroy(string $id)
+    public function destroy(string $userId, string $id)
     {
         $kisi = KisiKisiSoal::findOrFail($id);
         $kisi->delete();
 
-        return redirect()->route('user.kisi-kisi.index')->with('success', 'Kisi-kisi dihapus.');
+        return redirect()->route('user.kisi-kisi-soal.index', ['userId' => $userId])->with('success', 'Kisi-kisi dihapus.');
     }
 }

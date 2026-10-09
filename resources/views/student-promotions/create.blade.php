@@ -1,9 +1,13 @@
 @extends('layouts.master')
 @section('title') Promosi Santri Baru @endsection
 
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2')
             <a href="{{ route('user.student-promotions.index', ['userId' => $userId]) }}">Promosi Santri</a>
         @endslot
@@ -23,7 +27,7 @@
         <div class="row">
             <div class="col-lg-8">
                 <div class="card mb-3">
-                    <div class="card-header">
+                    <div class="card-header border-bottom-dashed">
                         <h5 class="card-title mb-0"><i class="ri-settings-3-line me-2"></i>Konfigurasi Promosi</h5>
                     </div>
                     <div class="card-body">
@@ -141,33 +145,56 @@
 
             {{-- Ringkasan Opsi --}}
             <div class="col-lg-4">
-                <div class="card" style="top: 20px">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="ri-information-line me-1"></i>Pengaturan Opsi</h6>
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h6 class="mb-0"><i class="ri-information-line me-1"></i>Ringkasan Opsi</h6>
                     </div>
                     <div class="card-body">
-                        <ul class="list-unstyled mb-0 small">
-                            <li class="mb-2">
-                                <i class="ri-checkbox-circle-line text-success me-1"></i>
-                                <strong>Auto enroll</strong> — Siswa langsung dimasukan ke rombel baru
-                            </li>
-                            <li class="mb-2">
-                                <i class="ri-checkbox-circle-line text-success me-1"></i>
-                                <strong>Skip graduate</strong> — Siswa tingkat akhir otomatis diluluskan
-                            </li>
-                            <li class="mb-2">
-                                <i class="ri-checkbox-circle-line text-muted me-1"></i>
-                                <strong>Siswa non-aktif</strong> — Sertakan siswa dropout/transfer
-                            </li>
-                            <li class="mb-2">
-                                <i class="ri-arrow-up-line text-primary me-1"></i>
-                                <strong>Naik 1 level</strong> — Default: kelas 7→8, 8→9
-                            </li>
-                            <li class="mb-0">
-                                <i class="ri-user-follow-line text-warning me-1"></i>
-                                <strong>Per siswa</strong> — Aksi bisa diubah di daftar siswa
-                            </li>
-                        </ul>
+                        <div class="d-flex align-items-start gap-2 mb-3">
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-success-subtle rounded fs-16"><i class="ri-checkbox-circle-line text-success"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Auto Enroll</p>
+                                <p class="mb-0 small">Siswa langsung dimasukkan ke rombel baru.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-2 mb-3">
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-success-subtle rounded fs-16"><i class="ri-graduation-cap-line text-success"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Skip Graduate</p>
+                                <p class="mb-0 small">Siswa tingkat akhir otomatis diluluskan.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-2 mb-3">
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-secondary-subtle rounded fs-16"><i class="ri-user-unfollow-line text-secondary"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Siswa Non-Aktif</p>
+                                <p class="mb-0 small">Sertakan siswa dropout/transfer.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-2 mb-3">
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-primary-subtle rounded fs-16"><i class="ri-arrow-up-line text-primary"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Naik Level</p>
+                                <p class="mb-0 small">Default: kelas 7→8, 8→9.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-2">
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-warning-subtle rounded fs-16"><i class="ri-user-settings-line text-warning"></i></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Per Siswa</p>
+                                <p class="mb-0 small">Aksi bisa diubah di daftar siswa.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,7 +202,7 @@
 
         {{-- ── STEP 2: DAFTAR SISWA ─────────────────────────── --}}
         <div class="card" id="studentsCard" style="display: none">
-            <div class="card-header bg-light">
+            <div class="card-header border-bottom-dashed">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="mb-0">Daftar Santri</h5>
                     <div>
@@ -199,7 +226,7 @@
 
             <div class="card-body p-0">
                 <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-sm table-hover align-middle mb-0">
+                    <table class="table table-sm table-hover align-middle table-freeze mb-0">
                         <thead class="table-light text-muted sticky-top" style="top: 0; z-index: 1;">
                             <tr>
                                 <th style="width:40px"><input class="form-check-input" type="checkbox" id="checkAllTable"></th>

@@ -14,11 +14,12 @@ class EkstrakurikulerController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = Ekstrakurikuler::withCount(['anggotaAktif as jumlah_anggota'])->with('gtk:id,name', 'gtk.latestEmployment:id,nupy');
-
+        $baseQuery = Ekstrakurikuler::query();
         if ($schoolId) {
-            $query->where('school_id', $schoolId);
+            $baseQuery->where('school_id', $schoolId);
         }
+
+        $query = (clone $baseQuery)->withCount(['anggotaAktif as jumlah_anggota'])->with('gtk:id,name', 'gtk.latestEmployment:id,nupy');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -36,7 +37,16 @@ class EkstrakurikulerController extends Controller
         $ekskulList = $query->orderBy('nama')->paginate(15)->withQueryString();
         $gtkProfiles = GtkProfile::whereNotNull('name')->orderBy('name')->get();
 
-        return view('waka.ekstrakurikuler.index', compact('ekskulList', 'gtkProfiles'));
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'aktif' => (clone $baseQuery)->where('status', Ekstrakurikuler::STATUS_AKTIF)->count(),
+            'pembina' => (clone $baseQuery)->whereNotNull('gtk_id')->distinct()->count('gtk_id'),
+            'peserta' => EkstrakurikulerAnggota::whereIn('ekstrakurikuler_id', (clone $baseQuery)->select('id'))
+                ->where('status', EkstrakurikulerAnggota::STATUS_AKTIF)
+                ->count(),
+        ];
+
+        return view('waka.ekstrakurikuler.index', compact('ekskulList', 'gtkProfiles', 'statistics'));
     }
 
     public function create(Request $request)

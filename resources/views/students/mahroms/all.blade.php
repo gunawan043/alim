@@ -1,10 +1,15 @@
 @extends('layouts.master')
 @section('title') Data Mahrom — Semua Santri @endsection
+
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
 @php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Akademik @endslot
+        @slot('li_1') Peserta Didik @endslot
         @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Santri</a> @endslot
         @slot('li_3') Data Mahrom @endslot
         @slot('title') Semua Mahrom @endslot
@@ -23,74 +28,82 @@
         </div>
     @endif
 
-    {{-- Global Stats Header --}}
+    {{-- Statistik --}}
     @if(isset($stats))
-    <div class="row g-3 mb-4">
+    <div class="row">
+        {{-- 1. Total Mahrom --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2">
-                                <i class="ri-parent-line text-primary"></i>
-                            </span>
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-parent-line text-primary"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Total Mahrom</p>
-                            <h3 class="fw-bold mb-0">{{ $stats['total'] ?? $mahroms->total() }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Mahrom</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total'] ?? $mahroms->total()) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Seluruh santri
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 2. Mahrom Utama --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning-subtle rounded fs-2">
-                                <i class="ri-star-line text-warning"></i>
-                            </span>
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-star-line text-warning"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Utama</p>
-                            <h3 class="fw-bold mb-0">{{ $stats['primary'] ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mahrom Utama</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['primary'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Kontak utama informasi
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 3. Mahrom Aktif --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="ri-checkbox-circle-line text-success"></i>
-                            </span>
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Mahrom Aktif</p>
-                            <h3 class="fw-bold mb-0">{{ $stats['active'] ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mahrom Aktif</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['active'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Dapat menjenguk santri
+                    </p>
                 </div>
             </div>
         </div>
+        {{-- 4. Santri dengan Mahrom --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="ri-user-line text-info"></i>
-                            </span>
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-user-line text-info"></i></span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Santri dengan Mahrom</p>
-                            <h3 class="fw-bold mb-0">{{ $stats['students_with_mahrom'] ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Santri dengan Mahrom</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['students_with_mahrom'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>Santri terdata memiliki mahrom
+                    </p>
                 </div>
             </div>
         </div>
@@ -115,6 +128,34 @@
                     </div>
                 </div>
 
+                {{-- Filter Cepat --}}
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-user-heart-line me-1"></i>Status:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !request('status') ? 'active' : '' }}">
+                            <i class="ri-list-check-2"></i> Semua
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'active', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'active' ? 'active' : '' }}">
+                            <i class="ri-checkbox-circle-line"></i> Aktif
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => 'nonaktif', 'page' => null]) }}"
+                           class="filter-badge {{ request('status') === 'nonaktif' ? 'active' : '' }}">
+                            <i class="ri-close-circle-line"></i> Nonaktif
+                        </a>
+                        <span class="text-muted small ms-2 me-2">·</span>
+                        <span class="text-muted small fw-semibold me-2"><i class="ri-links-line me-1"></i>Hubungan:</span>
+                        <a href="{{ request()->fullUrlWithQuery(['relationship' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !request('relationship') ? 'active' : '' }}">Semua</a>
+                        @foreach(($relationships ?? []) as $key => $label)
+                            <a href="{{ request()->fullUrlWithQuery(['relationship' => $key, 'page' => null]) }}"
+                               class="filter-badge {{ request('relationship') === $key ? 'active' : '' }}">{{ $label }}</a>
+                        @endforeach
+                    </div>
+                </div>
+
                 <div class="card-body">
                     {{-- Search / Filter --}}
                     <form method="GET" action="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}" class="row g-2 mb-3">
@@ -130,10 +171,10 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <select name="is_active" class="form-select">
+                            <select name="status" class="form-select">
                                 <option value="">— Status —</option>
-                                <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Aktif</option>
-                                <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Nonaktif</option>
+                                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Aktif</option>
+                                <option value="nonaktif" {{ request('status') === 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
                             </select>
                         </div>
                         <div class="col-md-3 d-flex gap-2">
@@ -147,8 +188,8 @@
                     </form>
 
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
+                        <table class="table table-hover align-middle table-freeze mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Foto</th>
@@ -257,8 +298,8 @@
                         </table>
                     </div>
 
-                    {{-- Pagination (sama persis dengan halaman permits) --}}
-                    <x-pagination :paginator="$mahroms" />
+                    {{-- Pagination --}}
+                    @include('shared._pagination', ['paginator' => $mahroms])
 
                     <div class="mt-4 p-3 bg-light rounded">
                         <div class="d-flex align-items-start gap-2">
