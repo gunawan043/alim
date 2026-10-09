@@ -87,37 +87,68 @@
     </div>
 @else
     {{-- Statistik ringkas --}}
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-md-4">
-            <div class="card stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <span class="stat-icon bg-primary-subtle text-primary"><i class="ri-timer-line"></i></span>
-                    <div>
-                        <p class="stat-label text-muted">Total Slot</p>
-                        <div class="stat-value">{{ $stats['total'] }}</div>
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-timer-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Slot</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total']) }}</h3>
+                        </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Seluruh slot jam terdaftar</p>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <span class="stat-icon bg-warning-subtle text-warning"><i class="ri-cup-line"></i></span>
-                    <div>
-                        <p class="stat-label text-muted">Jam Istirahat</p>
-                        <div class="stat-value">{{ $stats['istirahat'] }}</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-book-open-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Slot KBM</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['kbm']) }}</h3>
+                        </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-check-double-line me-1"></i>Dipakai generator jadwal</p>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <span class="stat-icon bg-success-subtle text-success"><i class="ri-calendar-check-line"></i></span>
-                    <div>
-                        <p class="stat-label text-muted">Hari Terdefinisi</p>
-                        <div class="stat-value">{{ $stats['hari'] }} / 6</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-cup-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Jam Istirahat</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['istirahat']) }}</h3>
+                        </div>
                     </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Dilewati saat generate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-calendar-check-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Hari Terdefinisi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['hari'] }}<small class="fw-normal text-muted ms-1" style="font-size:12px;">/ 6</small></h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-calendar-2-line me-1"></i>Hari dengan slot jam</p>
                 </div>
             </div>
         </div>

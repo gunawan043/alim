@@ -55,7 +55,14 @@ class SubjectController extends Controller
 
         $schools = School::orderBy('name')->get();
 
-        return view('subjects.index', compact('subjects', 'schools', 'userId', 'grouped', 'kelompokLabels'));
+        $stats = [
+            'total' => $subjects->count(),
+            'aktif' => $subjects->where('is_active', true)->count(),
+            'nonaktif' => $subjects->where('is_active', false)->count(),
+            'total_jp' => (int) $subjects->sum('credit_hours'),
+        ];
+
+        return view('subjects.index', compact('subjects', 'schools', 'userId', 'grouped', 'kelompokLabels', 'stats'));
     }
 
     public function create(Request $request, string $userId)

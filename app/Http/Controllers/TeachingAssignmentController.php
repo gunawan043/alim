@@ -48,6 +48,13 @@ class TeachingAssignmentController extends Controller
             $query->whereHas('teacher', fn ($q) => $q->where('name', 'like', "%{$request->search}%"));
         }
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'guru' => (clone $query)->distinct()->count('teacher_id'),
+            'mapel' => (clone $query)->distinct()->count('subject_id'),
+            'jp' => (int) (clone $query)->sum('weekly_hours'),
+        ];
+
         $assignments = $query->orderBy('teacher_id')->orderBy('subject_id')->paginate(20)->withQueryString();
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $schools = School::orderBy('name')->get();
@@ -57,7 +64,7 @@ class TeachingAssignmentController extends Controller
         $teachers = User::whereIn('id', $teacherIds)->orderBy('name')->get();
 
         return view('teaching-assignments.index', compact(
-            'assignments', 'academicYears', 'schools', 'subjects', 'studyGroups', 'teachers', 'userId'
+            'assignments', 'academicYears', 'schools', 'subjects', 'studyGroups', 'teachers', 'stats', 'userId'
         ));
     }
 

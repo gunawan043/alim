@@ -20,10 +20,13 @@ class StudyGroupController extends Controller
         $query = StudyGroup::with(['school', 'academicYear', 'gradeLevel', 'homeroomTeacher'])
             ->where('is_active', true);
 
+        // Filter cepat: semua tahun ajaran vs semester aktif (default).
+        if (! $request->boolean('semua_ta') && ! $request->filled('academic_year_id')) {
+            $query->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
+        }
+
         if ($request->filled('academic_year_id')) {
             $query->where('academic_year_id', $request->academic_year_id);
-        } else {
-            $query->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
         }
 
         if ($schoolId) {
@@ -38,10 +41,23 @@ class StudyGroupController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+
+        // Statistik ringkas (mengikuti filter konteks/TA, bukan pencarian).
+        $statsGroupIds = (clone $query)->pluck('id');
+        $stats = [
+            'total' => $statsGroupIds->count(),
+            'santri' => StudentClassHistory::whereIn('study_group_id', $statsGroupIds)
+                ->where('is_active', true)
+                ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
+                ->count(),
+            'wali' => (clone $query)->whereNotNull('homeroom_teacher_id')->count(),
+            'kapasitas' => (int) (clone $query)->sum('capacity'),
+        ];
+
         $studyGroups = $query->orderBy('name')->paginate(15)->withQueryString();
 
         // Load student counts per study group
-        $activeYearId = AcademicYear::where('is_active', true)->value('id');
         $sgIds = $studyGroups->pluck('id');
         $counts = StudentClassHistory::whereIn('study_group_id', $sgIds)
             ->where('is_active', true)
@@ -60,7 +76,7 @@ class StudyGroupController extends Controller
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $isGlobalView = $request->attributes->get('isGlobalView') === true;
 
-        return view('study-groups.index', compact('studyGroups', 'schools', 'academicYears', 'userId', 'isGlobalView'));
+        return view('study-groups.index', compact('studyGroups', 'schools', 'academicYears', 'stats', 'userId', 'isGlobalView'));
     }
 
     public function create(Request $request, string $userId)

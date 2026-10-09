@@ -50,6 +50,7 @@ class JamPelajaranController extends Controller
 
         $stats = [
             'total' => $slots->count(),
+            'kbm' => $slots->where('is_break', 0)->count(),
             'istirahat' => $slots->where('is_break', 1)->count(),
             'hari' => $slotsByDay->keys()->count(),
         ];

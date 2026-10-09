@@ -28,7 +28,14 @@ class AcademicYearController extends Controller
 
         $academicYears = $query->orderBy('name', 'desc')->orderBy('semester')->paginate(15)->withQueryString();
 
-        return view('academic-years.index', compact('academicYears'));
+        $stats = [
+            'total' => AcademicYear::count(),
+            'aktif' => AcademicYear::where('is_active', true)->count(),
+            'ganjil' => AcademicYear::where('semester', 'ganjil')->count(),
+            'genap' => AcademicYear::where('semester', 'genap')->count(),
+        ];
+
+        return view('academic-years.index', compact('academicYears', 'stats'));
     }
 
     /**

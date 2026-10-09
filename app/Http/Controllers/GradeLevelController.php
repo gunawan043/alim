@@ -27,11 +27,21 @@ class GradeLevelController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%");
         }
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active === '1');
+        }
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'aktif' => (clone $query)->where('is_active', true)->count(),
+            'nonaktif' => (clone $query)->where('is_active', false)->count(),
+            'fase' => (clone $query)->whereNotNull('fase')->distinct()->count('fase'),
+        ];
 
         $gradeLevels = $query->orderBy('school_id')->orderBy('level')->paginate(15)->withQueryString();
         $schools = School::orderBy('name')->get();
 
-        return view('grade-levels.index', compact('gradeLevels', 'schools', 'userId', 'isGlobalView'));
+        return view('grade-levels.index', compact('gradeLevels', 'schools', 'stats', 'userId', 'isGlobalView'));
     }
 
     public function create(Request $request, string $userId)

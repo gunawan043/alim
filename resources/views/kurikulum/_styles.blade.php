@@ -21,6 +21,17 @@
 
     .stat-label { font-size: 11px; }
 
+    /* Kartu statistik — mengikuti gtk/index.blade.php */
+    .card-animate { transition: all 0.3s ease; }
+    .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+
     .table-freeze th,
     .table-freeze td { vertical-align: middle; }
+    .table-freeze thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
 </style>

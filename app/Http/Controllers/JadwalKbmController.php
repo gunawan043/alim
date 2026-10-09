@@ -41,7 +41,22 @@ class JadwalKbmController extends Controller
             ->get()
             ->groupBy('study_group_id');
 
-        return view('jadwal-kbm.index', compact('studyGroups', 'jadwals', 'activeAy'));
+        // Filter cepat: sudah / belum terjadwal.
+        $status = $request->input('status');
+        if ($status === 'terjadwal') {
+            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isNotEmpty())->values();
+        } elseif ($status === 'belum') {
+            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isEmpty())->values();
+        }
+
+        $stats = [
+            'rombel' => $studyGroups->count(),
+            'terjadwal' => $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isNotEmpty())->count(),
+            'slot' => (int) $studyGroups->sum(fn ($sg) => ($jadwals[$sg->id] ?? collect())->count()),
+            'guru' => $studyGroups->flatMap(fn ($sg) => ($jadwals[$sg->id] ?? collect())->pluck('teacher_id'))->filter()->unique()->count(),
+        ];
+
+        return view('jadwal-kbm.index', compact('studyGroups', 'jadwals', 'activeAy', 'stats', 'status'));
     }
 
     public function generateIndex(Request $request, string $userId)
