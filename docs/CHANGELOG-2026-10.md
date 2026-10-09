@@ -213,6 +213,21 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
   - **Ekstrakurikuler**: grid card → tabel `table-freeze` + stat Total/Aktif/Pembina/Peserta.
 - Test: `PesertaDidikP0Test` diperluas menjadi **21 test / 95 assertion** (termasuk smoke UI Fase 2); regresi modul sehat **115 test / 898 assertion** lulus; `view:cache` sukses.
 
+## 24. Peserta Didik — Fase 3: Import & Kualitas Data
+- **Import santri transaksional & aman** (`StudentImport`):
+  - Setiap baris dibungkus `DB::transaction` (siswa + riwayat rombel atomik — tidak ada data parsial).
+  - Validasi kolom wajib sebelum insert: NISN wajib, jenis kelamin harus L/P (kolom DB NOT NULL) → pesan error per baris yang jelas, bukan 500.
+  - **Kapasitas rombel diperiksa SEBELUM siswa dibuat** — baris dilewati dengan pesan `penuh`, tidak lagi membuat santri tanpa kelas.
+  - Duplikat dicek untuk **NISN/NIK (global) dan NIS (per sekolah)**; riwayat rombel memakai `updateOrCreate` kunci `(student_id, academic_year_id)` + nomor absen berurutan + dispatch `StudentAssignedToRombel`.
+  - Pesan error ke pengguna bersifat generik (detail SQL hanya ke log) — perilaku lama "Data truncated dianggap sukses" dihapus.
+- **`importProcess` aman**: nama file temp unik (`temp_import_<uuid>.xlsx`) dan **selalu dihapus** via `finally`; pesan gagal tidak lagi membocorkan `$e->getMessage()`; `importForm` mengirim `$studyGroups` sebagai Collection (fix fatal `isNotEmpty()`), view import memperbaiki klaim "65 kolom" dan `ReferenceError submitBtn` pada peringatan kapasitas.
+- **Validasi NIS unik per sekolah** (`Rule::unique` + `ignore` saat update) — input NIS duplikat kini ditolak dengan pesan validasi, bukan QueryException 500.
+- **Privasi NIK/No. KK**: modal password mati dihapus; NIK & No. KK pada modal identitas **di-mask** (Str::mask) dan tombol salin dihapus (nilai asli tidak lagi ada di DOM); NIK mahrom di-mask pada halaman show & show-global.
+- **Batas mahrom terpusat**: `config/alim.php` (`max_mahrom`, bisa di-override env `ALIM_MAX_MAHROM`) + `StudentMahrom::MAX_PER_STUDENT`; controller memakai nilai config dengan pesan dinamis.
+- **Kapasitas rombel pada Naik Kelas**: `StudentPromotionController::execute` (promote & retain) dan `BulkPromotionController::promote` memvalidasi kapasitas tujuan **sebelum menutup histori lama** — siswa gagal diproses tidak kehilangan rombel (tidak orphan); detail ditandai gagal dengan alasan.
+- **Filter lanjutan Data Santri lengkap**: modal "Filter Lanjutan" kini memuat agama, kabupaten/kota (kode), tingkat masuk, penerima PIP, dan status (transfer_in/transfer_out/graduate/dropped) — sebelumnya parameter sudah didukung controller tetapi tidak punya UI.
+- Test: `StudentImportTest` **5 test** (import valid + nomor absen, kolom wajib, duplikat NISN/NIS, rombel penuh) dan `PesertaDidikP0Test` bertambah (validasi NIS store/update, kapasitas bulk promotion) → total suite sehat **123 test / 931 assertion** lulus; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

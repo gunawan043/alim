@@ -16,6 +16,8 @@ use App\Models\StudentMutationOut;
 use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StudentController extends Controller
@@ -261,7 +263,7 @@ class StudentController extends Controller
         $data = $request->validate([
             'school_id' => $schoolId ? 'sometimes|exists:schools,id' : 'required|exists:schools,id',
             'nisn' => 'required|string|max:20|unique:students,nisn',
-            'nis' => 'nullable|string|max:20',
+            'nis' => ['nullable', 'string', 'max:20', Rule::unique('students', 'nis')->where('school_id', $schoolId ?? $request->input('school_id'))],
             'nik' => 'nullable|string|max:30|unique:students,nik',
             'no_kk' => 'nullable|string|max:30',
             'name' => 'required|string|max:255',
@@ -406,7 +408,7 @@ class StudentController extends Controller
         $data = $request->validate([
             'school_id' => 'required|exists:schools,id',
             'nisn' => 'required|string|max:20|unique:students,nisn,'.$santriUuid,
-            'nis' => 'nullable|string|max:20',
+            'nis' => ['nullable', 'string', 'max:20', Rule::unique('students', 'nis')->where('school_id', $request->input('school_id', $student->school_id))->ignore($santriUuid)],
             'nik' => 'nullable|string|max:30|unique:students,nik,'.$santriUuid,
             'no_kk' => 'nullable|string|max:30',
             'name' => 'required|string|max:255',
@@ -547,7 +549,7 @@ class StudentController extends Controller
             $schools = School::orderBy('name')->get();
         }
 
-        $studyGroups = [];
+        $studyGroups = collect();
         if ($schoolId) {
             $activeYear = AcademicYear::where('is_active', true)->first();
             $studyGroups = StudyGroup::with(['gradeLevel', 'school'])
@@ -606,6 +608,8 @@ class StudentController extends Controller
 
         $studyGroupId = $request->input('study_group_id');
 
+        $storedPath = null;
+
         try {
             \Log::info('[IMPORT-PROCESS] Creating StudentImport...');
             $import = new StudentImport($schoolId, $studyGroupId);
@@ -614,7 +618,7 @@ class StudentController extends Controller
             $originalName = $file->getClientOriginalName();
 
             // Paksa extension .xlsx agar PhpSpreadsheet bisa detect type
-            $storedPath = $file->storeAs('imports', 'temp_import.xlsx', 'local');
+            $storedPath = $file->storeAs('imports', 'temp_import_'.Str::uuid().'.xlsx', 'local');
             $fullPath = storage_path('app/'.$storedPath);
             \Log::info("[IMPORT-PROCESS] originalName={$originalName} stored={$fullPath}");
 
@@ -655,7 +659,11 @@ class StudentController extends Controller
 
             return redirect()
                 ->route('user.students.import-form', ['userId' => $userId])
-                ->with('error', 'Gagal import: '.$e->getMessage());
+                ->with('error', 'Gagal import: file tidak dapat diproses. Pastikan memakai template terbaru (.xlsx) dan kolom wajib terisi.');
+        } finally {
+            if ($storedPath) {
+                Storage::disk('local')->delete($storedPath);
+            }
         }
     }
 

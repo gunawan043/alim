@@ -212,7 +212,7 @@
                                 <div class="step-number">1</div>
                                 <div>
                                     <div class="fw-semibold mb-1">Unduh Template</div>
-                                    <p class="text-muted small mb-2">Download template Excel berisi 55 kolom sesuai format Dapodik/EMIS.</p>
+                                    <p class="text-muted small mb-2">Download template Excel berisi 65 kolom sesuai format Dapodik/EMIS.</p>
                                     <a href="{{ route('user.students.template', ['userId' => $userId]) }}"
                                        class="btn btn-sm btn-outline-success">
                                         <i class="ri-download-2-line me-1"></i> Download Template
@@ -413,8 +413,9 @@ function handleFileSelect(input) {
     var select = document.querySelector('select[name="study_group_id"]');
     var warnBox = document.getElementById('rombelCapacityWarning');
     var warnText = document.getElementById('capacityWarningText');
+    var submitBtn = document.getElementById('submitBtn');
 
-    if (!select || !warnBox) return;
+    if (!select || !warnBox || !submitBtn) return;
 
     function checkCapacity() {
         var opt = select.options[select.selectedIndex];

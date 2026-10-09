@@ -252,12 +252,6 @@ class BulkPromotionController extends Controller
                     continue;
                 }
 
-                // Tutup histori lama
-                StudentClassHistory::where('student_id', $studentId)
-                    ->where('academic_year_id', $fromAyId)
-                    ->where('is_active', true)
-                    ->update(['is_active' => false, 'leave_date' => $promotionDate]);
-
                 $student = Student::find($studentId);
 
                 // Mutasi keluar — jalur lifecycle resmi (status transfer_out + audit + notifikasi)
@@ -300,6 +294,22 @@ class BulkPromotionController extends Controller
                         ->exists();
 
                     if (! $alreadyEnrolled) {
+                        $retainCount = StudentClassHistory::where('study_group_id', $fromStudyGroup->id)
+                            ->where('academic_year_id', $toAyId)
+                            ->where('is_active', true)
+                            ->count();
+
+                        if ($fromStudyGroup->capacity > 0 && $retainCount >= $fromStudyGroup->capacity) {
+                            $results['failed']++;
+
+                            continue;
+                        }
+
+                        StudentClassHistory::where('student_id', $studentId)
+                            ->where('academic_year_id', $fromAyId)
+                            ->where('is_active', true)
+                            ->update(['is_active' => false, 'leave_date' => $promotionDate]);
+
                         $count = StudentClassHistory::where('study_group_id', $fromStudyGroup->id)
                             ->where('academic_year_id', $toAyId)
                             ->count();
@@ -343,7 +353,24 @@ class BulkPromotionController extends Controller
                             ->where('academic_year_id', $toAyId)
                             ->exists();
 
+                        $targetGroup = StudyGroup::find($targetSgId);
+                        $targetCount = StudentClassHistory::where('study_group_id', $targetSgId)
+                            ->where('academic_year_id', $toAyId)
+                            ->where('is_active', true)
+                            ->count();
+
+                        if (! $alreadyEnrolled && $targetGroup && $targetGroup->capacity > 0 && $targetCount >= $targetGroup->capacity) {
+                            $results['failed']++;
+
+                            continue;
+                        }
+
                         if (! $alreadyEnrolled) {
+                            StudentClassHistory::where('student_id', $studentId)
+                                ->where('academic_year_id', $fromAyId)
+                                ->where('is_active', true)
+                                ->update(['is_active' => false, 'leave_date' => $promotionDate]);
+
                             $count = StudentClassHistory::where('study_group_id', $targetSgId)
                                 ->where('academic_year_id', $toAyId)
                                 ->count();

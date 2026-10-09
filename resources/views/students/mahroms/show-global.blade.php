@@ -96,7 +96,7 @@
                             @if($mahrom->id_number)
                             <div class="col-6">
                                 <div class="text-muted small">NIK</div>
-                                <div class="fw-semibold"><code>{{ $mahrom->id_number }}</code></div>
+                                <div class="fw-semibold"><code>{{ $mahrom->id_number ? \Illuminate\Support\Str::mask($mahrom->id_number, '•', 4, -4) : '—' }}</code></div>
                             </div>
                             @endif
                         </div>
@@ -165,7 +165,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small">NIK</label>
-                            <div class="fw-semibold">{{ $mahrom->id_number ?? '—' }}</div>
+                            <div class="fw-semibold">{{ $mahrom->id_number ? \Illuminate\Support\Str::mask($mahrom->id_number, '•', 4, -4) : '—' }}</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small">Hubungan</label>

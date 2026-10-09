@@ -8,6 +8,9 @@ use Illuminate\Support\Str;
 
 class StudentMahrom extends Model
 {
+    /** Batas maksimal mahrom per santri (fallback config('alim.max_mahrom')). */
+    public const MAX_PER_STUDENT = 4;
+
     protected $keyType = 'string';
 
     public $incrementing = false;

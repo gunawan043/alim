@@ -340,6 +340,21 @@ class StudentPromotionController extends Controller
 
                 // Tinggal kelas (retain)
                 if ($detail->action === 'retain') {
+                    // Cek kapasitas rombel tujuan (rombel sama di TA baru) SEBELUM menutup histori
+                    if ($promotion->auto_enroll && $promotion->to_academic_year_id) {
+                        $retainGroup = $promotion->fromStudyGroup;
+                        $retainCount = StudentClassHistory::where('study_group_id', $promotion->from_study_group_id)
+                            ->where('academic_year_id', $promotion->to_academic_year_id)
+                            ->where('is_active', true)
+                            ->count();
+
+                        if ($retainGroup && $retainGroup->capacity > 0 && $retainCount >= $retainGroup->capacity) {
+                            $detail->update(['status' => 'failed', 'error_message' => 'Kapasitas rombel tujuan penuh (tinggal kelas).']);
+
+                            continue;
+                        }
+                    }
+
                     // Tutup histori lama
                     StudentClassHistory::where('student_id', $student->id)
                         ->where('academic_year_id', $promotion->from_academic_year_id)
@@ -373,16 +388,8 @@ class StudentPromotionController extends Controller
 
                 // Naik kelas (promote) — logic utama
                 if ($detail->action === 'promote') {
-                    // Tutup histori lama
-                    StudentClassHistory::where('student_id', $student->id)
-                        ->where('academic_year_id', $promotion->from_academic_year_id)
-                        ->where('is_active', true)
-                        ->update([
-                            'is_active' => false,
-                            'leave_date' => $promotionDate,
-                        ]);
+                    $targetStudyGroupId = null;
 
-                    // Auto-enroll ke rombel baru
                     if ($promotion->auto_enroll && $promotion->to_academic_year_id) {
                         // Target rombel ditentukan dari:
                         // 1. Jika to_study_group_id diset langsung → pakai itu
@@ -394,7 +401,6 @@ class StudentPromotionController extends Controller
                             $shift = $detail->override_grade_shift ?? $promotion->grade_shift;
                             $targetLevel = $fromLevel + $shift;
 
-                            // Cari rombel dengan level yang dimaksud di tahun ajaran baru
                             $targetGradeLevel = GradeLevel::where('school_id', $promotion->fromStudyGroup->school_id)
                                 ->where('level', $targetLevel)
                                 ->first();
@@ -407,50 +413,74 @@ class StudentPromotionController extends Controller
                             }
                         }
 
-                        if ($targetStudyGroupId) {
-                            // Cek apakah sudah ada di rombel tujuan (unique constraint)
-                            $alreadyEnrolled = StudentClassHistory::where('student_id', $student->id)
-                                ->where('academic_year_id', $promotion->to_academic_year_id)
-                                ->exists();
-
-                            if (! $alreadyEnrolled) {
-                                $promotedHistory = StudentClassHistory::create([
-                                    'student_id' => $student->id,
-                                    'study_group_id' => $targetStudyGroupId,
-                                    'academic_year_id' => $promotion->to_academic_year_id,
-                                    'is_active' => true,
-                                    'join_date' => $promotionDate,
-                                    'attendance_number' => StudentClassHistory::where('student_id', $student->id)
-                                        ->where('study_group_id', $promotion->from_study_group_id)
-                                        ->where('academic_year_id', $promotion->from_academic_year_id)
-                                        ->value('attendance_number'),
-                                ]);
-
-                                event(new StudentAssignedToRombel($promotedHistory));
-
-                                $toStudyGroup = StudyGroup::find($targetStudyGroupId);
-                                $toAcademicYear = AcademicYear::find($promotion->to_academic_year_id);
-
-                                StudentPromoted::dispatch(
-                                    $student,
-                                    $promotion->fromStudyGroup,
-                                    $toStudyGroup,
-                                    $promotion->fromAcademicYear,
-                                    $toAcademicYear,
-                                    $promotionDate->toDateString(),
-                                    auth()->id(),
-                                    'promotion',
-                                );
-                            } else {
-                                $detail->update(['status' => 'failed', 'error_message' => 'Siswa sudah terdaftar di rombel tujuan tahun ajaran baru.']);
-
-                                continue;
-                            }
-                        } else {
+                        if (! $targetStudyGroupId) {
                             $detail->update(['status' => 'failed', 'error_message' => 'Rombel tujuan tidak ditemukan di tahun ajaran baru.']);
 
                             continue;
                         }
+
+                        // Cek kapasitas rombel tujuan SEBELUM menutup histori lama
+                        $destinationGroup = StudyGroup::find($targetStudyGroupId);
+                        $destinationCount = StudentClassHistory::where('study_group_id', $targetStudyGroupId)
+                            ->where('academic_year_id', $promotion->to_academic_year_id)
+                            ->where('is_active', true)
+                            ->count();
+
+                        if ($destinationGroup && $destinationGroup->capacity > 0 && $destinationCount >= $destinationGroup->capacity) {
+                            $detail->update(['status' => 'failed', 'error_message' => 'Kapasitas rombel tujuan penuh.']);
+
+                            continue;
+                        }
+                    }
+
+                    // Tutup histori lama (setelah target & kapasitas tervalidasi)
+                    StudentClassHistory::where('student_id', $student->id)
+                        ->where('academic_year_id', $promotion->from_academic_year_id)
+                        ->where('is_active', true)
+                        ->update([
+                            'is_active' => false,
+                            'leave_date' => $promotionDate,
+                        ]);
+
+                    // Auto-enroll ke rombel baru
+                    if ($promotion->auto_enroll && $promotion->to_academic_year_id && $targetStudyGroupId) {
+                        $alreadyEnrolled = StudentClassHistory::where('student_id', $student->id)
+                            ->where('academic_year_id', $promotion->to_academic_year_id)
+                            ->exists();
+
+                        if ($alreadyEnrolled) {
+                            $detail->update(['status' => 'failed', 'error_message' => 'Siswa sudah terdaftar di rombel tujuan tahun ajaran baru.']);
+
+                            continue;
+                        }
+
+                        $promotedHistory = StudentClassHistory::create([
+                            'student_id' => $student->id,
+                            'study_group_id' => $targetStudyGroupId,
+                            'academic_year_id' => $promotion->to_academic_year_id,
+                            'is_active' => true,
+                            'join_date' => $promotionDate,
+                            'attendance_number' => StudentClassHistory::where('student_id', $student->id)
+                                ->where('study_group_id', $promotion->from_study_group_id)
+                                ->where('academic_year_id', $promotion->from_academic_year_id)
+                                ->value('attendance_number'),
+                        ]);
+
+                        event(new StudentAssignedToRombel($promotedHistory));
+
+                        $toStudyGroup = StudyGroup::find($targetStudyGroupId);
+                        $toAcademicYear = AcademicYear::find($promotion->to_academic_year_id);
+
+                        StudentPromoted::dispatch(
+                            $student,
+                            $promotion->fromStudyGroup,
+                            $toStudyGroup,
+                            $promotion->fromAcademicYear,
+                            $toAcademicYear,
+                            $promotionDate->toDateString(),
+                            auth()->id(),
+                            'promotion',
+                        );
                     }
 
                     $detail->update(['status' => 'success', 'notes' => 'Berhasil dipromosikan']);

@@ -109,10 +109,11 @@ class StudentMahromController extends Controller
     {
         $student = Student::findOrFail($santriUuid);
         $existingCount = StudentMahrom::where('student_id', $santriUuid)->count();
+        $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
 
-        if ($existingCount >= 4) {
+        if ($existingCount >= $maxMahrom) {
             return redirect()->route('user.students.mahroms.index', ['userId' => $userId, 'santriUuid' => $santriUuid])
-                ->with('error', 'Maksimal 4 mahrom per santri sudah tercapai.');
+                ->with('error', "Maksimal {$maxMahrom} mahrom per santri sudah tercapai.");
         }
 
         return view('students.mahroms.create', compact('student', 'userId'));
@@ -125,9 +126,10 @@ class StudentMahromController extends Controller
     {
         $student = Student::findOrFail($santriUuid);
         $existingCount = StudentMahrom::where('student_id', $santriUuid)->count();
+        $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
 
-        if ($existingCount >= 4) {
-            return back()->withInput()->withErrors(['max' => 'Maksimal 4 mahrom per santri.']);
+        if ($existingCount >= $maxMahrom) {
+            return back()->withInput()->withErrors(['max' => "Maksimal {$maxMahrom} mahrom per santri."]);
         }
 
         $data = $request->validate([
@@ -285,8 +287,9 @@ class StudentMahromController extends Controller
         ]);
 
         $existingCount = StudentMahrom::where('student_id', $data['student_id'])->count();
-        if ($existingCount >= 4) {
-            return back()->withInput()->withErrors(['student_id' => 'Santri terkait sudah memiliki 4 mahrom (maks). Hapus salah satu atau pilih Santri lain.']);
+        $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
+        if ($existingCount >= $maxMahrom) {
+            return back()->withInput()->withErrors(['student_id' => "Santri terkait sudah memiliki {$maxMahrom} mahrom (maks). Hapus salah satu atau pilih Santri lain."]);
         }
 
         $student = Student::findOrFail($data['student_id']);
@@ -398,8 +401,9 @@ class StudentMahromController extends Controller
         // Jika pindah ke Santri lain, cek kapasitas max 4.
         if ($data['student_id'] !== $mahrom->student_id) {
             $existingCount = StudentMahrom::where('student_id', $data['student_id'])->count();
-            if ($existingCount >= 4) {
-                return back()->withInput()->withErrors(['student_id' => 'Santri tujuan sudah memiliki 4 mahrom (maks).']);
+            $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
+            if ($existingCount >= $maxMahrom) {
+                return back()->withInput()->withErrors(['student_id' => "Santri tujuan sudah memiliki {$maxMahrom} mahrom (maks)."]);
             }
             $newStudent = Student::findOrFail($data['student_id']);
             // Validasi scoped-school (students.user_id selalu NULL, gunakan school_id)

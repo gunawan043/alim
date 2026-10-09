@@ -2,12 +2,14 @@
 
 namespace App\Imports;
 
+use App\Events\StudentAssignedToRombel;
 use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
@@ -179,87 +181,120 @@ class StudentImport implements ToCollection
         $this->buildRombelCache();
 
         $activeYearId = $this->academicYearId;
-        $overrideSgId = $this->overrideStudyGroupId;
 
         foreach ($rows as $idx => $row) {
             if ($idx < 5) {
                 continue;
             }
 
+            $rowNumber = $idx + 1;
             $nama = $this->cell($row, 1);
             if ($nama === '') {
                 continue;
             }
 
+            $nis = $this->cell($row, 2);
+            $gender = $this->normalizeGender($this->cell($row, 3));
             $nisn = $this->cell($row, 4);
             $nik = $this->cell($row, 7);
 
-            // Duplicate check
-            if ($nisn || $nik) {
-                $query = Student::query();
-                if ($nisn) {
-                    $query->orWhere('nisn', $nisn);
-                }
-                if ($nik) {
-                    $query->orWhere('nik', $nik);
-                }
-                $existing = $query->first();
+            // ── Kolom wajib (NOT NULL di DB) — beri error yang jelas, bukan 500 ──
+            if ($nisn === '') {
+                $this->errors[] = "Baris {$rowNumber} ({$nama}): NISN wajib diisi.";
 
-                if ($existing) {
-                    $this->duplicates[] = [
-                        'nisn' => $nisn ?: '-',
-                        'nik' => $nik ?: '-',
-                        'nama' => $existing->name,
-                        'sekolah' => $existing->school?->name ?? '-',
-                        'catatan' => 'Sudah ada — dilewati',
-                    ];
+                continue;
+            }
+            if ($gender === null) {
+                $this->errors[] = "Baris {$rowNumber} ({$nama}): jenis kelamin tidak valid (isi L/P).";
+
+                continue;
+            }
+
+            // ── Duplikat: NISN/NIK global, NIS per sekolah ──
+            $existing = Student::query()
+                ->where(function ($q) use ($nisn, $nik, $nis) {
+                    $q->where('nisn', $nisn);
+                    if ($nik !== '') {
+                        $q->orWhere('nik', $nik);
+                    }
+                    if ($nis !== '' && $this->schoolId) {
+                        $q->orWhere(fn ($q2) => $q2->where('school_id', $this->schoolId)->where('nis', $nis));
+                    }
+                })
+                ->first();
+
+            if ($existing) {
+                $this->duplicates[] = [
+                    'nisn' => $nisn ?: '-',
+                    'nik' => $nik ?: '-',
+                    'nama' => $existing->name,
+                    'sekolah' => $existing->school?->name ?? '-',
+                    'catatan' => 'Sudah ada — dilewati',
+                ];
+
+                continue;
+            }
+
+            // ── Rombel + kapasitas diperiksa SEBELUM siswa dibuat ──
+            $sgId = $this->resolveStudyGroupId($row, $rombelColIdx);
+            $studyGroup = $sgId ? StudyGroup::find($sgId) : null;
+
+            if ($sgId && $activeYearId && $studyGroup) {
+                $currentCount = StudentClassHistory::where('study_group_id', $sgId)
+                    ->where('academic_year_id', $activeYearId)
+                    ->where('is_active', true)
+                    ->count();
+
+                if ($studyGroup->capacity > 0 && $currentCount >= $studyGroup->capacity) {
+                    $this->errors[] = "Baris {$rowNumber} ({$nama}): kapasitas {$studyGroup->name} penuh ({$currentCount}/{$studyGroup->capacity}) — baris dilewati.";
 
                     continue;
                 }
             }
 
-            $data = $this->parseRow($row);
-
             try {
-                $student = Student::create($data);
-                $this->successCount++;
+                // Atomik per baris: siswa + riwayat rombel dibuat bersama,
+                // jika salah satu gagal tidak meninggalkan data parsial.
+                [$student, $history] = DB::transaction(function () use ($row, $sgId, $activeYearId) {
+                    $student = Student::create($this->parseRow($row));
 
-                // Resolve rombel per row
-                $sgId = $this->resolveStudyGroupId($row, $rombelColIdx);
+                    $history = null;
+                    if ($sgId && $activeYearId) {
+                        $nextNumber = StudentClassHistory::where('study_group_id', $sgId)
+                            ->where('academic_year_id', $activeYearId)
+                            ->where('is_active', true)
+                            ->count() + 1;
 
-                if ($sgId && $activeYearId) {
-                    $currentCount = StudentClassHistory::where('study_group_id', $sgId)
-                        ->where('is_active', true)
-                        ->count();
-                    $studyGroup = StudyGroup::find($sgId);
-                    $capacity = $studyGroup?->capacity ?? 0;
-
-                    if ($currentCount >= $capacity) {
-                        $this->errors[] = 'Baris '.($idx + 1)." ({$nama}): {$student->nisn} — kapasitas {$studyGroup?->name} penuh ({$currentCount}/{$capacity})";
-                    } else {
-                        StudentClassHistory::updateOrCreate(
+                        $history = StudentClassHistory::updateOrCreate(
                             [
                                 'student_id' => $student->id,
-                                'study_group_id' => $sgId,
                                 'academic_year_id' => $activeYearId,
                             ],
                             [
+                                'study_group_id' => $sgId,
                                 'is_active' => true,
                                 'join_date' => now()->toDateString(),
+                                'attendance_number' => $nextNumber,
                             ]
                         );
                     }
-                } elseif (! $rombelColIdx && ! $overrideSgId && $this->schoolId) {
-                    // No rombel info at all
-                    Log::warning('[StudentImport] Baris '.($idx + 1)." ({$nama}): tidak ada info rombel");
+
+                    return [$student, $history];
+                });
+
+                $this->successCount++;
+
+                if ($history) {
+                    StudentAssignedToRombel::dispatch($history);
                 }
             } catch (\Throwable $e) {
-                $code = $e->getCode();
-                if ($code === '01000' || str_contains($e->getMessage(), 'Data truncated')) {
-                    $this->successCount++;
-                } else {
-                    $this->errors[] = 'Baris '.($idx + 1)." ({$nama}): ".$e->getMessage();
-                }
+                Log::error('[StudentImport] Baris gagal', [
+                    'row' => $rowNumber,
+                    'nama' => $nama,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->errors[] = "Baris {$rowNumber} ({$nama}): data tidak valid — periksa format kolom (tanggal/angka/pilihan).";
             }
         }
 

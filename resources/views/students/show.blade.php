@@ -22,44 +22,6 @@
 @endsection
 
 @section('content')
-    <!-- MODAL VERIFIKASI PASSWORD (NIK / KK) -->
-    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="passwordModalLabel">
-                        <i class="ri-shield-keyhole-line me-2"></i>Verifikasi Identitas
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="passwordForm">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="alert alert-warning">
-                            <i class="ri-alarm-warning-line me-2"></i>
-                            Data NIK dan No. KK bersifat rahasia. Masukkan password Anda untuk mengakses informasi ini.
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="password" name="password" required placeholder="Masukkan password Anda">
-                            <div class="form-text">Password akun Anda diperlukan untuk memverifikasi identitas.</div>
-                        </div>
-                        <div id="passwordError" class="alert alert-danger d-none">
-                            <i class="ri-error-warning-line me-2"></i>
-                            <span id="errorMessage"></span>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary" id="submitPassword">
-                            <i class="ri-check-line me-1"></i> Verifikasi
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- MODAL DATA IDENTITAS TERBUKA -->
     <div class="modal fade" id="identityModal" tabindex="-1" aria-labelledby="identityModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -81,7 +43,7 @@
                                 <div class="card-body text-center">
                                     <div class="mb-2"><i class="ri-id-card-line fs-2 text-primary"></i></div>
                                     <h6 class="card-title mb-1">NIK</h6>
-                                    <div class="card-text"><code class="fs-5" id="nikData">{{ $student->nik ?? '–' }}</code></div>
+                                    <div class="card-text"><code class="fs-5" id="nikData">{{ $student->nik ? \Illuminate\Support\Str::mask($student->nik, '•', 4, -4) : '–' }}</code></div>
                                 </div>
                             </div>
                         </div>
@@ -90,23 +52,14 @@
                                 <div class="card-body text-center">
                                     <div class="mb-2"><i class="ri-home-4-line fs-2 text-success"></i></div>
                                     <h6 class="card-title mb-1">No. KK</h6>
-                                    <div class="card-text"><code class="fs-5" id="kkData">{{ $student->no_kk ?? '–' }}</code></div>
+                                    <div class="card-text"><code class="fs-5" id="kkData">{{ $student->no_kk ? \Illuminate\Support\Str::mask($student->no_kk, '•', 4, -4) : '–' }}</code></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="text-center mt-3">
-                        @if($student->nik)
-                        <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('nikData', 'NIK')">
-                            <i class="ri-file-copy-line me-1"></i> Salin NIK
-                        </button>
-                        @endif
-                        @if($student->no_kk)
-                        <button class="btn btn-outline-success btn-sm ms-2" onclick="copyToClipboard('kkData', 'No. KK')">
-                            <i class="ri-file-copy-line me-1"></i> Salin No. KK
-                        </button>
-                        @endif
-                    </div>
+                    <p class="text-muted small text-center mt-3 mb-0">
+                        <i class="ri-lock-line me-1"></i>NIK dan No. KK ditampilkan sebagian (masked) untuk keamanan data.
+                    </p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>

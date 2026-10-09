@@ -510,6 +510,52 @@
                                                         Non Alumni</option>
                                                 </select>
                                             </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Agama</label>
+                                                <select name="religion" class="form-select">
+                                                    <option value="">Semua Agama</option>
+                                                    @foreach (['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'] as $agama)
+                                                        <option value="{{ $agama }}"
+                                                            {{ request('religion') === $agama ? 'selected' : '' }}>
+                                                            {{ $agama }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Kabupaten/Kota (kode)</label>
+                                                <input type="text" name="city_code" class="form-control"
+                                                    maxlength="4" placeholder="Contoh: 3204"
+                                                    value="{{ request('city_code') }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Tingkat Masuk</label>
+                                                <input type="number" name="entry_grade_level" class="form-control"
+                                                    min="1" max="15" placeholder="Contoh: 7"
+                                                    value="{{ request('entry_grade_level') }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Penerima PIP</label>
+                                                <select name="is_pip_eligible" class="form-select">
+                                                    <option value="">Semua</option>
+                                                    <option value="1"
+                                                        {{ request('is_pip_eligible') === '1' ? 'selected' : '' }}>
+                                                        Layak PIP</option>
+                                                    <option value="0"
+                                                        {{ request('is_pip_eligible') === '0' ? 'selected' : '' }}>
+                                                        Tidak Layak</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Status</label>
+                                                <select name="status" class="form-select">
+                                                    <option value="">Semua Status</option>
+                                                    @foreach (['active' => 'Aktif', 'inactive' => 'Nonaktif', 'transfer_in' => 'Pindahan Masuk', 'transfer_out' => 'Pindahan Keluar', 'graduate' => 'Lulus', 'dropped' => 'Dropout'] as $value => $label)
+                                                        <option value="{{ $value }}"
+                                                            {{ request('status') === $value ? 'selected' : '' }}>
+                                                            {{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
                                         @endif
                                     </div>
                                 </div>

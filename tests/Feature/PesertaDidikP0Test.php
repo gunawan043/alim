@@ -487,6 +487,68 @@ class PesertaDidikP0Test extends TestCase
         // QR Guru (waka-dashboard) khusus Waka/Kurikulum — diverifikasi via view:cache.
     }
 
+    public function test_nis_duplikat_dalam_sekolah_ditolak_dengan_validasi(): void
+    {
+        $this->student->update(['nis' => '5001']);
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/students", [
+            'school_id' => $this->schoolA->id,
+            'nisn' => '777000111',
+            'nis' => '5001',
+            'name' => 'Duplikat NIS',
+            'gender' => 'L',
+        ])->assertSessionHasErrors('nis');
+
+        $this->assertSame(1, Student::count(), 'Santri duplikat tidak boleh tersimpan.');
+    }
+
+    public function test_update_nis_duplikat_ditolak_dengan_validasi(): void
+    {
+        $other = $this->makeStudent($this->schoolA, 'Santri Lain NIS', '777000222');
+        $other->update(['nis' => '5002']);
+
+        $this->actingAs($this->user)->put("/{$this->user->id}/students/{$this->student->id}", [
+            'school_id' => $this->schoolA->id,
+            'nisn' => $this->student->nisn,
+            'nis' => '5002',
+            'name' => $this->student->name,
+            'gender' => 'L',
+        ])->assertSessionHasErrors('nis');
+
+        $this->assertNotSame('5002', $this->student->fresh()->nis);
+    }
+
+    public function test_bulk_promotion_mempertahankan_histori_saat_kapasitas_penuh(): void
+    {
+        $this->groupB->update(['capacity' => 1]);
+
+        $penghuni = $this->makeStudent($this->schoolA, 'Penghuni 7B', '777000333');
+        StudentClassHistory::create([
+            'student_id' => $penghuni->id,
+            'study_group_id' => $this->groupB->id,
+            'academic_year_id' => $this->ay->id,
+            'is_active' => true,
+            'join_date' => now()->toDateString(),
+            'attendance_number' => 1,
+        ]);
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/bulk-promotion/promote", [
+            'from_study_group_id' => $this->groupA->id,
+            'to_academic_year_id' => $this->ay->id,
+            'to_study_group_id' => $this->groupB->id,
+            'promotion_date' => now()->toDateString(),
+            'student_ids' => [$this->student->id],
+            'student_actions' => [$this->student->id => 'promote'],
+        ])->assertStatus(302);
+
+        $history = StudentClassHistory::where('student_id', $this->student->id)
+            ->where('academic_year_id', $this->ay->id)
+            ->first();
+
+        $this->assertTrue((bool) $history->is_active, 'Histori lama tidak boleh ditutup saat rombel tujuan penuh.');
+        $this->assertSame($this->groupA->id, $history->study_group_id);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────
