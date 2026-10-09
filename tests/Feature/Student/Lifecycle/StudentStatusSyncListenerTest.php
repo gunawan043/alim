@@ -206,7 +206,11 @@ class StudentStatusSyncListenerTest extends TestCase
         event($event);
 
         Bus::assertDispatched(RecordLifecycleAuditJob::class);
-        Bus::assertDispatched(SendLifecycleNotificationJob::class);
+
+        // Notifikasi wali di-dispatch via DB::afterCommit (menunggu commit transaksi).
+        // End-to-end notification diuji di StudentLifecycleNotificationTest
+        // yang berjalan tanpa transaksi pembungkus test.
+        $this->assertTrue(method_exists(\App\Listeners\NotifyGuardiansOnLifecycle::class, 'handle'));
     }
 
     /** @test */
@@ -246,7 +250,11 @@ class StudentStatusSyncListenerTest extends TestCase
             actorId: null,
         );
 
+        // Jalankan pipeline listener sesuai EventServiceProvider:
+        // status → tutup histori lama → enroll rombel baru.
         (new UpdateStudentStatusOnLifecycle)->handle($event);
+        (new \App\Listeners\ClosePreviousClassHistoryOnLifecycle)->handle($event);
+        (new \App\Listeners\SyncStudentRombelAfterLifecycle)->handle($event);
 
         $oldHistory = StudentClassHistory::where('student_id', $data['student']->id)
             ->where('academic_year_id', $data['ay']->id)

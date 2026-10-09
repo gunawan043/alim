@@ -22,7 +22,7 @@ use App\Models\StudentClassHistory;
 use App\Models\StudentLifecycleAudit;
 use App\Models\StudyGroup;
 use App\Models\WorkUnit;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,7 +30,7 @@ use Tests\TestCase;
 
 class StudentLifecycleCascadeTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private function setupStudent(): array
     {

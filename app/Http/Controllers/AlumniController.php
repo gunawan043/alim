@@ -183,6 +183,27 @@ class AlumniController extends Controller
     }
 
     /**
+     * Verifikasi massal tracer study terpilih (status filled → verified).
+     */
+    public function bulkVerify(Request $request)
+    {
+        $schoolContextId = $request->attributes->get('schoolContextId');
+
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'string',
+        ]);
+
+        $count = Alumni::query()
+            ->when($schoolContextId, fn ($q) => $q->bySchool($schoolContextId))
+            ->whereIn('id', $data['ids'])
+            ->where('tracer_status', 'filled')
+            ->update(['tracer_status' => 'verified']);
+
+        return back()->with($count > 0 ? 'success' : 'error', "{$count} tracer study diverifikasi.");
+    }
+
+    /**
      * Export alumni data.
      */
     public function export(Request $request)

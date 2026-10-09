@@ -35,12 +35,15 @@ class StudentMutationOut extends Model
         'destination_school_name', 'destination_school_address',
         'reason', 'notes',
         'requested_by', 'approved_by', 'approved_at', 'rejection_reason',
+        'submitted_at', 'rejected_by', 'rejected_at',
     ];
 
     protected $casts = [
         'established_date' => 'date',
         'student_birth_date' => 'date',
         'approved_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'graduation_year' => 'integer',
     ];
 

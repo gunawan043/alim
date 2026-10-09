@@ -39,6 +39,7 @@ class StudentMutationIn extends Model
         'origin_school_name', 'origin_school_address', 'origin_school_city',
         'reason', 'notes',
         'requested_by', 'approved_by', 'approved_at', 'rejection_reason',
+        'submitted_at', 'rejected_by', 'rejected_at',
         // Student data (non-prefixed)
         'phone', 'mobile_phone', 'email',
         'residence_type', 'transportation', 'distance_to_school',
@@ -60,6 +61,8 @@ class StudentMutationIn extends Model
         'established_date' => 'date',
         'student_birth_date' => 'date',
         'approved_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'entry_date' => 'date',
         'graduation_date' => 'date',
         'is_kps_receiver' => 'boolean',

@@ -249,7 +249,7 @@ class StudentMutationOutController extends Controller
             return back()->with('error', 'Hanya data berstatus draft yang dapat diajukan.');
         }
 
-        $mutation->update(['status' => 'submitted']);
+        $mutation->update(['status' => 'submitted', 'submitted_at' => now()]);
 
         return back()->with('success', $this->typeLabel($mutation->out_type).' berhasil diajukan.');
     }
@@ -266,6 +266,69 @@ class StudentMutationOutController extends Controller
             return back()->with('error', 'Mutasi tanpa santri terdaftar tidak dapat disetujui. Lengkapi data santri terlebih dahulu.');
         }
 
+        $this->approveMutation($mutation);
+
+        return back()->with('success', $this->typeLabel($mutation->out_type).' berhasil disetujui.');
+    }
+
+    /**
+     * Aksi massal: submit / approve / reject untuk data terpilih.
+     * Melayani semua jenis (mutasi keluar, lulus, drop out).
+     */
+    public function bulk(Request $request, string $userId)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:submit,approve,reject',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'string',
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
+
+        $schoolContextId = $request->attributes->get('schoolContextId');
+
+        $mutations = StudentMutationOut::query()
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->whereIn('id', $data['ids'])
+            ->get();
+
+        $processed = 0;
+        $skipped = 0;
+
+        foreach ($mutations as $mutation) {
+            $final = in_array($mutation->status, ['approved', 'rejected'], true);
+
+            if ($data['action'] === 'submit' && $mutation->status === 'draft') {
+                $mutation->update(['status' => 'submitted', 'submitted_at' => now()]);
+                $processed++;
+            } elseif ($data['action'] === 'approve' && ! $final && $mutation->student) {
+                $this->approveMutation($mutation);
+                $processed++;
+            } elseif ($data['action'] === 'reject' && ! $final) {
+                $mutation->update([
+                    'status' => 'rejected',
+                    'rejection_reason' => $data['rejection_reason'] ?? 'Ditolak massal',
+                    'rejected_by' => Auth::id(),
+                    'rejected_at' => now(),
+                ]);
+                $processed++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $message = "Aksi massal: {$processed} data diproses";
+        if ($skipped > 0) {
+            $message .= ", {$skipped} dilewati (status/santri tidak sesuai)";
+        }
+
+        return back()->with($processed > 0 ? 'success' : 'error', $message.'.');
+    }
+
+    /**
+     * Inti approval (dipakai tombol tunggal & aksi massal).
+     */
+    private function approveMutation(StudentMutationOut $mutation): void
+    {
         DB::transaction(function () use ($mutation) {
             $mutation->update([
                 'status' => 'approved',
@@ -287,8 +350,6 @@ class StudentMutationOutController extends Controller
             $mutation->established_date?->toDateString() ?? now()->toDateString(),
             auth()->id(),
         );
-
-        return back()->with('success', $this->typeLabel($mutation->out_type).' berhasil disetujui.');
     }
 
     public function reject(Request $request, string $userId, string $mutationUuid)
@@ -302,6 +363,8 @@ class StudentMutationOutController extends Controller
         $mutation->update([
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
+            'rejected_by' => Auth::id(),
+            'rejected_at' => now(),
         ]);
 
         return back()->with('success', $this->typeLabel($mutation->out_type).' ditolak.');

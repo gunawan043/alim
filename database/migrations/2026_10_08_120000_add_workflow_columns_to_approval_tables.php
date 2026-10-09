@@ -49,13 +49,25 @@ return new class extends Migration
 
     public function down(): void
     {
+        // SQLite tidak dapat menghapus kolom selama masih ada index yang
+        // mereferensikannya — lepas index terlebih dahulu (aman lintas driver).
         Schema::table('approval_actions', function (Blueprint $table) {
             if (Schema::hasColumn('approval_actions', 'user_id')) {
+                try {
+                    $table->dropIndex(['user_id']);
+                } catch (\Throwable) {
+                }
                 $table->dropColumn('user_id');
             }
         });
 
         Schema::table('approval_requests', function (Blueprint $table) {
+            if (Schema::hasColumn('approval_requests', 'approval_flow_id')) {
+                try {
+                    $table->dropIndex(['approval_flow_id']);
+                } catch (\Throwable) {
+                }
+            }
             foreach (['current_step_id', 'requestable_id', 'requestable_type', 'approval_flow_id'] as $column) {
                 if (Schema::hasColumn('approval_requests', $column)) {
                     $table->dropColumn($column);
@@ -64,6 +76,12 @@ return new class extends Migration
         });
 
         Schema::table('approval_flows', function (Blueprint $table) {
+            if (Schema::hasColumn('approval_flows', 'code')) {
+                try {
+                    $table->dropUnique(['code']);
+                } catch (\Throwable) {
+                }
+            }
             foreach (['code', 'is_active'] as $column) {
                 if (Schema::hasColumn('approval_flows', $column)) {
                     $table->dropColumn($column);

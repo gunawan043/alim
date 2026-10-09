@@ -2,157 +2,102 @@
 
 namespace Tests\Unit\Student\Events;
 
+use App\Events\StudentMutatedOut;
+use App\Events\StudentStatusChanged;
+use App\Models\School;
 use App\Models\Student;
-use App\Models\StudentMutationIn;
-use App\Models\StudentMutationOut;
-use App\Models\StudentPromotion;
-use App\Models\StudentPromotionDetail;
 use App\Support\LifecycleMessage;
-use Faker\Factory;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Tests\Concerns\SafeRefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Fase 4 — modernisasi test event lifecycle (sebelumnya memakai
+ * helper dengan kolom DB yang sudah tidak ada).
+ */
 class StudentEventsTest extends TestCase
 {
-    use SafeRefreshDatabase;
+    use RefreshDatabase;
 
-    protected function setUp(): void
+    public function test_event_mutated_out_dapat_diinstansiasi(): void
     {
-        parent::setUp();
-        $this->setUpSafeDatabase();
+        $student = $this->makeStudent();
+
+        $event = new StudentMutatedOut(
+            $student,
+            null,
+            StudentMutatedOut::TYPE_MUTATION,
+            now()->toDateString(),
+            null,
+        );
+
+        $this->assertSame($student->id, $event->student->id);
+        $this->assertSame(StudentMutatedOut::TYPE_MUTATION, $event->outType);
     }
 
-    protected function tearDown(): void
+    public function test_lifecycle_message_for_event_memuat_properti_notifikasi(): void
     {
-        $this->tearDownSafeDatabase();
-        parent::tearDown();
+        $student = $this->makeStudent();
+
+        $event = new StudentMutatedOut(
+            $student,
+            null,
+            StudentMutatedOut::TYPE_GRADUATION,
+            '2027-06-20',
+            null,
+        );
+
+        $message = LifecycleMessage::forEvent($event);
+
+        $this->assertInstanceOf(LifecycleMessage::class, $message);
+        $this->assertSame('student.mutated_out', $message->event);
+        $this->assertSame('graduate', $message->newStatus);
+
+        // Properti turunan yang dipakai SendLifecycleNotificationJob
+        $this->assertSame('success', $message->priority);
+        $this->assertNotEmpty($message->title);
+        $this->assertStringContainsString($student->name, $message->body);
     }
 
-    protected function seedSafeFixtures(): void
+    public function test_status_changed_membawa_payload_perubahan(): void
     {
-        // Minimal fixtures needed for student FKs
-        $workUnitId = (string) Str::uuid();
-        \DB::table('work_units')->insert([
-            'id' => $workUnitId,
-            'name' => 'PONTREN Test',
-            'code' => 'WT001',
-            'created_at' => now(),
-            'updated_at' => now(),
+        $student = $this->makeStudent();
+
+        $event = new StudentStatusChanged($student, [
+            'previous_status' => 'active',
+            'new_status' => 'inactive',
         ]);
 
-        \DB::table('schools')->insert([
-            'id' => '11111111-1111-1111-1111-111111111111',
-            'work_unit_id' => $workUnitId,
-            'npsn' => '12345678',
-            'name' => 'SMAN Test',
-            'school_level' => 'sma',
-            'school_status' => 'negeri',
-            'operational_hours' => 'pagi',
+        $this->assertSame($student->id, $event->student->id);
+        $this->assertSame('active', $event->payload['previous_status']);
+        $this->assertSame('inactive', $event->payload['new_status']);
+    }
+
+    private function makeStudent(): Student
+    {
+        $workUnitId = (string) Str::uuid();
+        DB::table('work_units')->insert([
+            'id' => $workUnitId,
+            'name' => 'Unit Uji Event',
+            'code' => 'UUEV',
             'is_active' => 1,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
 
-    private function createStudent(): Student
-    {
+        $school = School::create([
+            'work_unit_id' => $workUnitId,
+            'npsn' => '12121212',
+            'name' => 'Sekolah Event Uji',
+        ]);
+
         return Student::create([
-            'school_id' => '11111111-1111-1111-1111-111111111111',
-            'nisn' => (string) Factory::create()->unique()->numerify('##########'),
-            'nis' => '99001',
-            'name' => 'Fulan',
-            'status' => 'active',
+            'school_id' => $school->id,
+            'nisn' => '121200001',
+            'name' => 'Santri Event',
             'gender' => 'L',
-            'birth_date' => '2008-01-15',
+            'status' => 'active',
         ]);
-    }
-
-    private function createPromotionWithDetail(
-        string $action,
-        ?string $status = null,
-        ?string $errorMsg = null,
-    ): StudentPromotion {
-        $promo = StudentPromotion::create([
-            'from_academic_year_id' => 1,
-            'to_academic_year_id' => 2,
-            'from_study_group_id' => 1,
-            'to_study_group_id' => 2,
-            'promotion_date' => now(),
-            'status' => 'draft',
-            'auto_enroll' => true,
-            'grade_shift' => 0,
-        ]);
-        StudentPromotionDetail::create([
-            'promotion_id' => $promo->id,
-            'student_id' => $this->createStudent()->id,
-            'action' => $action,
-            'status' => $status ?? 'success',
-            'error_message' => $errorMsg,
-        ]);
-
-        return $promo;
-    }
-
-    private function createMutationOut(string $outType = 'mutation'): StudentMutationOut
-    {
-        return StudentMutationOut::create([
-            'student_id' => $this->createStudent()->id,
-            'mutation_date' => now(),
-            'destination_school' => 'SMAN 2 Jakarta',
-            'out_type' => $outType,
-            'status' => 'draft',
-        ]);
-    }
-
-    private function createMutationIn(): StudentMutationIn
-    {
-        return StudentMutationIn::create([
-            'student_id' => $this->createStudent()->id,
-            'arrival_date' => now(),
-            'from_school' => 'SMAN 1 Bandung',
-            'status' => 'draft',
-        ]);
-    }
-
-    public function test_event_classes_can_be_instantiated_with_correct_signature(): void
-    {
-        $student = $this->createStudent();
-
-        // StudentPromoted requires from/to study groups + academic years + date.
-        // We only need to verify the constructor accepts the student; skip for now.
-        $this->assertInstanceOf(Student::class, $student);
-
-        $this->assertInstanceOf(Student::class, $student);
-    }
-
-    public function test_lifecycle_message_can_be_created(): void
-    {
-        $student = $this->createStudent();
-        $msg = new LifecycleMessage(
-            event: 'student.promoted',
-            student: $student,
-            previousStatus: 'active',
-            newStatus: 'graduate',
-        );
-        $this->assertEquals('student.promoted', $msg->event);
-        $this->assertSame($student, $msg->student);
-        $this->assertEquals('active', $msg->previousStatus);
-        $this->assertEquals('graduate', $msg->newStatus);
-
-        $payload = $msg->toArray();
-        $this->assertArrayHasKey('event', $payload);
-        $this->assertArrayHasKey('student_id', $payload);
-        $this->assertArrayHasKey('previous_status', $payload);
-        $this->assertArrayHasKey('new_status', $payload);
-        $this->assertArrayHasKey('reason', $payload);
-        $this->assertArrayHasKey('context', $payload);
-    }
-
-    public function test_controller_calls_update_status_without_error(): void
-    {
-        $student = $this->createStudent();
-        $student->update(['status' => 'active']);
-        $this->assertEquals('active', $student->refresh()->status);
     }
 }

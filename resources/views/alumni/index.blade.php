@@ -208,10 +208,19 @@
                     </form>
 
                     {{-- Table --}}
+                    <div class="card-header py-2 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-semibold"><i class="ri-checkbox-multiple-line me-1"></i>Aksi Massal:</span>
+                        <button type="button" class="btn btn-sm btn-success" onclick="runBulkVerify()">
+                            <i class="ri-check-double-line me-1"></i>Verifikasi Terpilih
+                        </button>
+                        <span class="small text-muted" id="bulkCount">0 dipilih</span>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle table-freeze mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th class="text-center" style="width:36px"><input type="checkbox" id="bulkAll" class="form-check-input"></th>
                                     <th>No</th>
                                     <th>Nama Lengkap</th>
                                     <th>NISN</th>
@@ -227,6 +236,7 @@
                             <tbody>
                                 @forelse($alumni as $i => $a)
                                     <tr>
+                                        <td class="text-center"><input type="checkbox" class="bulk-check form-check-input" name="ids[]" value="{{ $a->id }}" form="bulkVerifyForm"></td>
                                         <td>{{ $alumni->firstItem() + $i }}</td>
                                         <td>
                                             <span class="fw-semibold">{{ $a->student->name ?? '-' }}</span>
@@ -299,4 +309,25 @@
             </div>
         </div>
     </div>
+
+<form method="POST" id="bulkVerifyForm" action="{{ route('user.alumni.bulk-verify', ['userId' => $userId]) }}" class="d-none">
+    @csrf
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var all = document.getElementById('bulkAll');
+    var countEl = document.getElementById('bulkCount');
+    function boxes() { return Array.prototype.slice.call(document.querySelectorAll('.bulk-check')); }
+    function refresh() { if (countEl) countEl.textContent = boxes().filter(function (b) { return b.checked; }).length + ' dipilih'; }
+    if (all) all.addEventListener('change', function () { boxes().forEach(function (b) { b.checked = all.checked; }); refresh(); });
+    document.addEventListener('change', function (e) { if (e.target && e.target.classList && e.target.classList.contains('bulk-check')) refresh(); });
+    window.runBulkVerify = function () {
+        var checked = boxes().filter(function (b) { return b.checked; });
+        if (!checked.length) { alert('Pilih minimal satu alumni.'); return; }
+        if (!confirm('Verifikasi ' + checked.length + ' tracer study terpilih?')) return;
+        document.getElementById('bulkVerifyForm').submit();
+    };
+});
+</script>
 @endsection

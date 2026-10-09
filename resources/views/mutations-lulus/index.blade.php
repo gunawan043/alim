@@ -160,10 +160,23 @@
                         </div>
                     </form>
 
+                    <div class="card-header py-2 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-semibold"><i class="ri-checkbox-multiple-line me-1"></i>Aksi Massal:</span>
+                        <select id="bulkAction" class="form-select form-select-sm" style="width:150px">
+                            <option value="">Pilih aksi...</option>
+                            <option value="submit">Ajukan</option>
+                            <option value="approve">Setujui</option>
+                            <option value="reject">Tolak</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="runBulkAction()">Terapkan</button>
+                        <span class="small text-muted" id="bulkCount">0 dipilih</span>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle table-freeze mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th class="text-center" style="width:36px"><input type="checkbox" id="bulkAll" class="form-check-input"></th>
                                     <th>No</th>
                                     <th>Nama Santri</th>
                                     <th>NISN</th>
@@ -177,6 +190,7 @@
                             <tbody>
                                 @forelse($mutations as $i => $m)
                                     <tr>
+                                        <td class="text-center"><input type="checkbox" class="bulk-check form-check-input" name="ids[]" value="{{ $m->id }}" form="bulkForm"></td>
                                         <td>{{ $mutations->firstItem() + $i }}</td>
                                         <td>
                                             <span class="fw-semibold">{{ $m->student_name }}</span>
@@ -251,4 +265,32 @@
             </div>
         </div>
     </div>
+
+<form method="POST" id="bulkForm" action="{{ route('user.mutations-lulus.bulk', ['userId' => $userId]) }}" class="d-none">
+    @csrf
+    <input type="hidden" name="action" id="bulkActionInput">
+    <input type="hidden" name="rejection_reason" id="bulkReasonInput">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var all = document.getElementById('bulkAll');
+    var countEl = document.getElementById('bulkCount');
+    function boxes() { return Array.prototype.slice.call(document.querySelectorAll('.bulk-check')); }
+    function refresh() { if (countEl) countEl.textContent = boxes().filter(function (b) { return b.checked; }).length + ' dipilih'; }
+    if (all) all.addEventListener('change', function () { boxes().forEach(function (b) { b.checked = all.checked; }); refresh(); });
+    document.addEventListener('change', function (e) { if (e.target && e.target.classList && e.target.classList.contains('bulk-check')) refresh(); });
+    window.runBulkAction = function () {
+        var action = document.getElementById('bulkAction').value;
+        var checked = boxes().filter(function (b) { return b.checked; });
+        if (!action) { alert('Pilih aksi terlebih dahulu.'); return; }
+        if (!checked.length) { alert('Pilih minimal satu data.'); return; }
+        var reason = action === 'reject' ? (prompt('Alasan penolakan (opsional):') || '') : '';
+        if (!confirm(checked.length + ' data akan diproses massal. Lanjutkan?')) return;
+        document.getElementById('bulkActionInput').value = action;
+        document.getElementById('bulkReasonInput').value = reason;
+        document.getElementById('bulkForm').submit();
+    };
+});
+</script>
 @endsection

@@ -1366,6 +1366,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
                 Route::get('/hijri-convert', [StudentMutationOutController::class, 'hijriConvert'])->name('hijri-convert');
+                Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
@@ -1380,6 +1381,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/create', [StudentMutationOutController::class, 'create'])->name('create');
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
+                Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
@@ -1394,6 +1396,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/create', [StudentMutationOutController::class, 'create'])->name('create');
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
+                Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
@@ -1409,6 +1412,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [StudentMutationInController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationInController::class, 'findStudent'])->name('find-student');
                 Route::get('/hijri-convert', [StudentMutationInController::class, 'hijriConvert'])->name('hijri-convert');
+                Route::post('/bulk', [StudentMutationInController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationInController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationInController::class, 'submit'])->name('submit');
                 Route::post('/{mutationUuid}/approve', [StudentMutationInController::class, 'approve'])->name('approve');
@@ -2017,6 +2021,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [AlumniController::class, 'index'])->name('index');
                 Route::get('/statistics', [AlumniController::class, 'statistics'])->name('statistics');
                 Route::get('/export', [AlumniController::class, 'export'])->name('export');
+                Route::post('/bulk-verify', [AlumniController::class, 'bulkVerify'])->name('bulk-verify');
                 // Wildcard di bawah literal
                 Route::get('/{alumniUuid}', [AlumniController::class, 'show'])->name('show');
                 Route::get('/{alumniUuid}/edit', [AlumniController::class, 'edit'])->name('edit');

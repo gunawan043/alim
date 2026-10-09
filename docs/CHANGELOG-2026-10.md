@@ -228,6 +228,23 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - **Filter lanjutan Data Santri lengkap**: modal "Filter Lanjutan" kini memuat agama, kabupaten/kota (kode), tingkat masuk, penerima PIP, dan status (transfer_in/transfer_out/graduate/dropped) — sebelumnya parameter sudah didukung controller tetapi tidak punya UI.
 - Test: `StudentImportTest` **5 test** (import valid + nomor absen, kolom wajib, duplikat NISN/NIS, rombel penuh) dan `PesertaDidikP0Test` bertambah (validasi NIS store/update, kapasitas bulk promotion) → total suite sehat **123 test / 931 assertion** lulus; `view:cache` sukses.
 
+## 25. Peserta Didik — Fase 4: Integritas Lanjutan (State Machine, Bulk, Notifikasi, Test Bersih)
+- **Audit state machine mutasi**: migrasi `2026_10_09_230000` menambah `submitted_at`, `rejected_by`, `rejected_at` pada `student_mutations_in/out`; controller mengisi kolom tersebut (submit/approve/reject) dan model fillable/casts diselaraskan — jejak workflow draft → submitted → approved/rejected kini lengkap.
+- **Aksi massal**:
+  - Endpoint `POST .../bulk` untuk **Mutasi Masuk, Mutasi Keluar, Lulus, Drop Out** — aksi Ajukan/Setujui/Tolak dengan **state guard** (data final dilewati), scope sekolah, dan pesan hasil "N diproses, M dilewati".
+  - Inti approval diekstrak ke `approveMutation()` sehingga tombol tunggal & massal memakai jalur yang sama (event lifecycle tetap terpicu).
+  - UI: checkbox per baris + select-all + bar "Aksi Massal" di 4 halaman index mutasi; **Alumni: Verifikasi Terpilih** (hanya `filled` → `verified`, endpoint `alumni/bulk-verify`).
+- **Notifikasi wali end-to-end terbukti**: test baru `StudentLifecycleNotificationTest` (DatabaseMigrations, tanpa transaksi pembungkus agar `DB::afterCommit` benar-benar jalan) memverifikasi kelulusan → notifikasi masuk `notifications_universal` untuk wali aktif + alumni + audit row.
+- **Perbaikan migrasi lama**: `2026_10_08_120000` `down()` kini SQLite-safe (drop index sebelum drop kolom; dropUnique `code`) — `migrate:rollback`/`DatabaseMigrations` tidak lagi gagal.
+- **Pembersihan test usang** (sebelumnya selalu gagal karena `mysql_test`/kolom lama):
+  - `StudentLifecycleCascadeTest` & `StudentAssignedToRombelEventTest`: `DatabaseTransactions/SafeRefreshDatabase` → `RefreshDatabase` + seed di `setUp`.
+  - `ExtendStudentStatusEnumTest`: ditambah `RefreshDatabase` (kolom sudah diselaraskan sejak Fase 1).
+  - `StudentEventsTest`: ditulis ulang — helper berkolom usang (`mutation_date`, `arrival_date`, dll.) dibuang, kini menguji konstruktor event + `LifecycleMessage::forEvent` (termasuk properti notifikasi `priority/title/body`).
+  - `StudentStatusSyncListenerTest`: disesuaikan dengan pipeline listener sebenarnya (status → tutup histori → enroll) dan perilaku `afterCommit` untuk notifikasi.
+  - Trait `tests/Concerns/SafeRefreshDatabase.php` (hardcoded `mysql_test` + `db:safe-wipe`) dihapus karena tidak lagi dipakai.
+  - Hasil: `tests/Feature/Student`, `tests/Unit/Student`, dan `StudentAssignedToRombelEventTest` **28 test lulus** (sebelumnya 19+ gagal).
+- Test suite sehat total: **155 test / 1.044 assertion** lulus; `view:cache` sukses; migrasi diterapkan di MySQL dev.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

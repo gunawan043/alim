@@ -549,6 +549,110 @@ class PesertaDidikP0Test extends TestCase
         $this->assertSame($this->groupA->id, $history->study_group_id);
     }
 
+    public function test_aksi_massal_mutasi_masuk_mengikuti_state_machine(): void
+    {
+        $m1 = StudentMutationIn::create([
+            'student_id' => $this->student->id,
+            'school_id' => $this->schoolA->id,
+            'student_name' => $this->student->name,
+            'status' => 'draft',
+            'established_date' => now()->toDateString(),
+        ]);
+        $m2 = StudentMutationIn::create([
+            'school_id' => $this->schoolA->id,
+            'student_name' => 'Calon Santri Baru',
+            'student_nisn' => '777100001',
+            'student_gender' => 'L',
+            'status' => 'draft',
+            'established_date' => now()->toDateString(),
+        ]);
+
+        // Ajukan massal
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-in/bulk", [
+            'action' => 'submit',
+            'ids' => [$m1->id, $m2->id],
+        ])->assertStatus(302)->assertSessionHas('success');
+
+        $this->assertSame('submitted', $m1->fresh()->status);
+        $this->assertNotNull($m1->fresh()->submitted_at);
+
+        // Setujui salah satu, tolak lainnya
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-in/bulk", [
+            'action' => 'approve',
+            'ids' => [$m1->id],
+        ])->assertStatus(302);
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-in/bulk", [
+            'action' => 'reject',
+            'ids' => [$m2->id],
+            'rejection_reason' => 'Berkas tidak lengkap',
+        ])->assertStatus(302);
+
+        $this->assertSame('approved', $m1->fresh()->status);
+        $m2->refresh();
+        $this->assertSame('rejected', $m2->status);
+        $this->assertSame('Berkas tidak lengkap', $m2->rejection_reason);
+        $this->assertNotNull($m2->rejected_by);
+        $this->assertNotNull($m2->rejected_at);
+
+        // Data yang sudah final dilewati saat diproses ulang.
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-in/bulk", [
+            'action' => 'approve',
+            'ids' => [$m1->id, $m2->id],
+        ])->assertStatus(302)->assertSessionHas('error');
+    }
+
+    public function test_aksi_massal_mutasi_keluar_menjalankan_lifecycle(): void
+    {
+        $studentKedua = $this->makeStudent($this->schoolA, 'Santri Mutasi Dua', '777100002');
+
+        $m1 = StudentMutationOut::create([
+            'student_id' => $this->student->id,
+            'school_id' => $this->schoolA->id,
+            'out_type' => 'mutation',
+            'student_name' => $this->student->name,
+            'status' => 'draft',
+            'established_date' => now()->toDateString(),
+        ]);
+        $m2 = StudentMutationOut::create([
+            'student_id' => $studentKedua->id,
+            'school_id' => $this->schoolA->id,
+            'out_type' => 'mutation',
+            'student_name' => $studentKedua->name,
+            'status' => 'draft',
+            'established_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-out/bulk", [
+            'action' => 'submit',
+            'ids' => [$m1->id, $m2->id],
+        ])->assertStatus(302);
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/mutations-out/bulk", [
+            'action' => 'approve',
+            'ids' => [$m1->id, $m2->id],
+        ])->assertStatus(302);
+
+        $this->assertSame('approved', $m1->fresh()->status);
+        $this->assertSame('transfer_out', $this->student->fresh()->status);
+        $this->assertSame('transfer_out', $studentKedua->fresh()->status);
+    }
+
+    public function test_bulk_verifikasi_alumni_hanya_memproses_yang_filled(): void
+    {
+        $a1 = $this->makeAlumni($this->student, 'filled');
+        $a2 = $this->makeAlumni($this->makeStudent($this->schoolA, 'Alumni Dua', '777100003'), 'filled');
+        $a3 = $this->makeAlumni($this->makeStudent($this->schoolA, 'Alumni Tiga', '777100004'), 'pending');
+
+        $this->actingAs($this->user)->post("/{$this->user->id}/alumni/bulk-verify", [
+            'ids' => [$a1->id, $a2->id, $a3->id],
+        ])->assertStatus(302)->assertSessionHas('success');
+
+        $this->assertSame('verified', $a1->fresh()->tracer_status);
+        $this->assertSame('verified', $a2->fresh()->tracer_status);
+        $this->assertSame('pending', $a3->fresh()->tracer_status, 'Alumni pending tidak boleh terverifikasi massal.');
+    }
+
     // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────

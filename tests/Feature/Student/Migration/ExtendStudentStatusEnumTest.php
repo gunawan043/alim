@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Student\Migration;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ExtendStudentStatusEnumTest extends TestCase
 {
+    use RefreshDatabase;
+
     /** @test */
     public function students_table_exists(): void
     {

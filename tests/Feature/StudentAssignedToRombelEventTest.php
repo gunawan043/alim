@@ -14,13 +14,13 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Tests\Concerns\SafeRefreshDatabase;
 use Tests\TestCase;
 
 class StudentAssignedToRombelEventTest extends TestCase
 {
-    use SafeRefreshDatabase;
+    use RefreshDatabase;
 
     protected string $workUnitId;
 
@@ -33,13 +33,7 @@ class StudentAssignedToRombelEventTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpSafeDatabase();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->tearDownSafeDatabase();
-        parent::tearDown();
+        $this->seedSafeFixtures();
     }
 
     protected function seedSafeFixtures(): void
