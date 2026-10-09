@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StudentStatusChanged;
 use App\Exports\StudentTemplateExport;
 use App\Imports\StudentImport;
 use App\Models\AcademicYear;
@@ -336,9 +337,10 @@ class StudentController extends Controller
             'bank_account_number' => 'nullable|string|max:50',
             'bank_account_name' => 'nullable|string|max:255',
             // Status
-            'status' => 'nullable|in:active,inactive,graduate,dropped,transfer',
+            'status' => 'nullable|in:active,inactive,graduate,dropped,transfer_in,transfer_out',
             'graduation_year' => 'nullable|integer|min:1900|max:2100',
             'graduation_date' => 'nullable|date',
+            'photo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         // Handle photo upload
@@ -372,6 +374,8 @@ class StudentController extends Controller
                 },
             ])->findOrFail($santriUuid);
 
+        $this->authorizeStudentAccess($request, $student);
+
         // User asrama hanya boleh mengakses Santri yang mondok (active DormitoryResident).
         if ($user && $user->isDormitoryUser() && ! $student->activeDormitoryResident()->exists()) {
             abort(403, 'Anda hanya dapat melihat data Santri yang tinggal di asrama.');
@@ -387,6 +391,7 @@ class StudentController extends Controller
         \Log::info("STUDENT_EDIT_CONTROLLER: uuid={$santriUuid}");
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
+        $this->authorizeStudentAccess($request, $student);
         $schools = School::orderBy('name')->get();
 
         return view('students.edit', compact('student', 'schools', 'userId'));
@@ -396,6 +401,7 @@ class StudentController extends Controller
     {
         $this->abortIfDormitoryUser($request);
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
+        $this->authorizeStudentAccess($request, $student);
 
         $data = $request->validate([
             'school_id' => 'required|exists:schools,id',
@@ -465,9 +471,11 @@ class StudentController extends Controller
             'bank_name' => 'nullable|string|max:100',
             'bank_account_number' => 'nullable|string|max:50',
             'bank_account_name' => 'nullable|string|max:255',
-            'status' => 'nullable|in:active,inactive,graduate,dropped,transfer',
+            'status' => 'nullable|in:active,inactive,graduate,dropped,transfer_in,transfer_out',
             'graduation_year' => 'nullable|integer|min:1900|max:2100',
             'graduation_date' => 'nullable|date',
+            'photo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'remove_photo' => 'nullable|boolean',
         ]);
 
         // Handle photo upload
@@ -486,7 +494,21 @@ class StudentController extends Controller
             $data['photo_path'] = null;
         }
 
+        $previousStatus = $student->getOriginal('status');
+
         $student->update($data);
+
+        // Perubahan status manual (graduate/dropped/transfer) harus menjalankan
+        // efek lifecycle: tutup rombel, buat alumni, audit, notifikasi wali.
+        if ($previousStatus !== $student->status) {
+            StudentStatusChanged::dispatch($student, [
+                'previous_status' => $previousStatus,
+                'new_status' => $student->status,
+                'actor_id' => $request->user()?->id,
+                'graduation_date' => $data['graduation_date'] ?? $student->graduation_date?->toDateString(),
+                'graduation_year' => $data['graduation_year'] ?? $student->graduation_year,
+            ]);
+        }
 
         return redirect()->route('user.students.show', ['userId' => $request->route('userId'), 'santriUuid' => $student->id])
             ->with('success', 'Data siswa berhasil diperbarui.');
@@ -497,6 +519,7 @@ class StudentController extends Controller
         $this->abortIfDormitoryUser($request);
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
+        $this->authorizeStudentAccess($request, $student);
         if ($student->photo_path) {
             Storage::disk('public')->delete($student->photo_path);
         }
@@ -680,6 +703,19 @@ class StudentController extends Controller
      * Pertahanan tambahan: tolak user asrama (admin/kepala/staf asrama) dari
      * aksi tulis terkait data Santri. Hanya CRUD Mahrom yang diizinkan.
      */
+    /**
+     * Batasi akses data santri ke satuan pendidikan pengguna (kecuali global view).
+     */
+    private function authorizeStudentAccess(Request $request, Student $student): void
+    {
+        $schoolContextId = $request->attributes->get('schoolContextId');
+        $isGlobalView = $request->attributes->get('isGlobalView') === true;
+
+        if ($schoolContextId && ! $isGlobalView && $student->school_id !== $schoolContextId) {
+            abort(404, 'Data santri tidak ditemukan pada satuan pendidikan Anda.');
+        }
+    }
+
     private function abortIfDormitoryUser(Request $request): void
     {
         $user = $request->user();

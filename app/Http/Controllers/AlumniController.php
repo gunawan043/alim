@@ -7,6 +7,7 @@ use App\Models\Alumni;
 use App\Models\School;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Dompdf\Dompdf;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AlumniController extends Controller
@@ -23,6 +24,13 @@ class AlumniController extends Controller
         $schools = $schoolContextId
             ? School::where('id', $schoolContextId)->get()
             : School::orderBy('name')->get();
+
+        // Sinkronisasi pengaman (opsional via ?sync=1) dijalankan sebelum query
+        // agar statistik & hasil halaman langsung akurat.
+        if ($request->boolean('sync')) {
+            $created = $this->syncMissingGraduates($schoolContextId);
+            session()->flash('success', "Sinkronisasi selesai: {$created} data alumni baru dibuat.");
+        }
 
         // Build query
         $query = Alumni::with(['student', 'school']);
@@ -63,16 +71,11 @@ class AlumniController extends Controller
         $tracerPending = (clone $query)->pendingTracer()->count();
 
         // Paginated results
+        $perPage = min(100, max(5, (int) $request->get('per_page', 15)));
         $alumni = $query->orderByDesc('graduation_year')
-            ->orderBy('graduation_year')
-            ->orderBy('graduation_year')
-            ->paginate($request->get('per_page', 15))
+            ->orderBy('student_id')
+            ->paginate($perPage)
             ->withQueryString();
-
-        // Also sync any missing graduates → alumni on each index load (safety net)
-        if ($request->get('sync', false)) {
-            $this->syncMissingGraduates($schoolContextId);
-        }
 
         return view('alumni.index', compact(
             'alumni', 'schools', 'graduationYears',
@@ -144,8 +147,11 @@ class AlumniController extends Controller
             'tracer_notes' => 'nullable|string|max:1000',
         ]);
 
-        $validated['tracer_status'] = 'filled';
-        $validated['tracer_filled_at'] = now();
+        // Jangan turunkan status yang sudah diverifikasi.
+        if ($alumni->tracer_status !== 'verified') {
+            $validated['tracer_status'] = 'filled';
+        }
+        $validated['tracer_filled_at'] = $alumni->tracer_filled_at ?? now();
         $validated['is_contactable'] = $request->boolean('is_contactable');
 
         $alumni->update($validated);
@@ -215,12 +221,20 @@ class AlumniController extends Controller
 
     private function exportPdf($alumni)
     {
-        $pdf = \PDF::loadView('alumni.export-pdf', [
+        $html = view('alumni.export-pdf', [
             'alumni' => $alumni,
             'date' => now()->locale('id')->translatedFormat('d F Y'),
-        ]);
+        ])->render();
 
-        return $pdf->download('data-alumni-'.date('Y-m-d').'.pdf');
+        $dompdf = new Dompdf;
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="data-alumni-'.date('Y-m-d').'.pdf"',
+        ]);
     }
 
     /**
@@ -286,7 +300,7 @@ class AlumniController extends Controller
      * Auto-sync: ensure all graduates have alumni records.
      * Called on index() as safety net.
      */
-    public function syncMissingGraduates(?string $schoolContextId = null): void
+    public function syncMissingGraduates(?string $schoolContextId = null): int
     {
         $graduatesQuery = Student::where('status', 'graduate')
             ->whereNotNull('graduation_year');
@@ -297,8 +311,9 @@ class AlumniController extends Controller
 
         $graduates = $graduatesQuery->get();
 
+        $created = 0;
         foreach ($graduates as $student) {
-            Alumni::firstOrCreate(
+            $alumni = Alumni::firstOrCreate(
                 ['student_id' => $student->id],
                 [
                     'school_id' => $student->school_id,
@@ -308,6 +323,12 @@ class AlumniController extends Controller
                     'tracer_status' => 'pending',
                 ]
             );
+
+            if ($alumni->wasRecentlyCreated) {
+                $created++;
+            }
         }
+
+        return $created;
     }
 }

@@ -1091,9 +1091,9 @@
                                     <div class="mb-4"><i class="ri-group-line text-muted" style="font-size: 5rem;"></i></div>
                                     <h5 class="text-muted mb-3">Belum Ada Riwayat Kelas</h5>
                                     <p class="text-muted mb-4">Santri ini belum terdaftar di rombel manapun.</p>
-                                    <a href="{{ route('user.student-class-histories.create', ['userId' => $userId, 'student_id' => $student->id]) }}"
+                                    <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}"
                                        class="btn btn-primary">
-                                        <i class="ri-add-line me-1"></i> Tambah ke Rombel
+                                        <i class="ri-group-line me-1"></i> Kelola Rombel
                                     </a>
                                 </div>
                             @endif

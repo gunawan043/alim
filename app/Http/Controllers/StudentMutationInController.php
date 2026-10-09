@@ -12,6 +12,7 @@ use App\Models\StudyGroup;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Pharaonic\Hijri\Hijri;
 
 class StudentMutationInController extends Controller
@@ -54,6 +55,19 @@ class StudentMutationInController extends Controller
         $schoolContextId = $request->attributes->get('schoolContextId');
         $school = $schoolContextId ? School::find($schoolContextId) : null;
 
+        // Prefill dari halaman Data Santri: mutasi masuk untuk santri yang sudah terdaftar
+        // (mis. pindah sekolah internal) tidak boleh membuat baris Student baru.
+        $student = null;
+        if ($request->filled('student_id')) {
+            $student = Student::query()
+                ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+                ->find($request->student_id);
+        }
+        if ($request->filled('student_id') && ! $student) {
+            return redirect()->route('user.mutations-in.index', ['userId' => $userId])
+                ->with('error', 'Santri tidak ditemukan pada satuan pendidikan Anda.');
+        }
+
         $headEmployment = null;
         if ($schoolContextId && $school?->principal_user_id) {
             $headEmployment = GtkEmployment::with('user')
@@ -71,10 +85,10 @@ class StudentMutationInController extends Controller
         // Auto-generate NIS untuk sekolah ini
         $maxNis = Student::where('school_id', $schoolContextId)->max('nis');
         $nextNis = $maxNis ? (intval($maxNis) + 1) : 1;
-        $defaultNis = str_pad($nextNis, 4, '0', STR_PAD_LEFT);
+        $defaultNis = $student?->nis ?? str_pad($nextNis, 4, '0', STR_PAD_LEFT);
 
         return view('mutations-in.create', compact(
-            'schools', 'userId', 'schoolContextId', 'school',
+            'schools', 'userId', 'schoolContextId', 'school', 'student',
             'defaultHeadName', 'defaultHeadNupy', 'defaultHeadTitle',
             'defaultDate', 'defaultDateHijri', 'defaultNis'
         ));
@@ -118,6 +132,15 @@ class StudentMutationInController extends Controller
 
         if (empty($data['student_id'])) {
             unset($data['student_id']);
+        } elseif (! Student::where('id', $data['student_id'])
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->exists()) {
+            return redirect()->back()->withInput()->with('error', 'Santri terpilih tidak ditemukan pada satuan pendidikan Anda.');
+        }
+
+        // Satuan pendidikan aktif selalu menjadi pemilik data mutasi.
+        if ($schoolContextId) {
+            $data['school_id'] = $schoolContextId;
         }
 
         try {
@@ -136,15 +159,20 @@ class StudentMutationInController extends Controller
 
     public function show(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::with(['student', 'school', 'requestedBy', 'approvedBy'])
-            ->findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid)
+            ->load(['student', 'school', 'requestedBy', 'approvedBy']);
 
         return view('mutations-in.show', compact('mutation', 'userId'));
     }
 
     public function submit(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
+
+        if ($mutation->status !== 'draft') {
+            return back()->with('error', 'Hanya data berstatus draft yang dapat diajukan.');
+        }
+
         $mutation->update(['status' => 'submitted']);
 
         return back()->with('success', 'PD Masuk berhasil diajukan.');
@@ -152,7 +180,12 @@ class StudentMutationInController extends Controller
 
     public function approve(Request $request, string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::with('student')->findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid)->load('student');
+
+        if (in_array($mutation->status, ['approved', 'rejected'], true)) {
+            return back()->with('error', 'Data mutasi ini sudah diproses sebelumnya.');
+        }
+
         $mutation->update([
             'status' => 'approved',
             'approved_by' => Auth::id(),
@@ -180,13 +213,20 @@ class StudentMutationInController extends Controller
             'status' => 'active',
         ];
 
-        if ($mutation->student_id && $mutation->student) {
-            $mutation->student->update($studentData);
-            $student = $mutation->student;
-        } else {
+        $student = DB::transaction(function () use ($mutation, $studentData) {
+            if ($mutation->student_id && $mutation->student) {
+                // Perbarui hanya nilai yang terisi — kolom wajib (gender dll.)
+                // tidak boleh tertimpa null dari form mutasi.
+                $mutation->student->update(array_filter($studentData, fn ($v) => $v !== null));
+
+                return $mutation->student;
+            }
+
             $student = Student::create($studentData);
             $mutation->update(['student_id' => $student->id]);
-        }
+
+            return $student;
+        });
 
         $targetStudyGroup = null;
         $targetAcademicYear = null;
@@ -203,12 +243,12 @@ class StudentMutationInController extends Controller
         }
 
         StudentMutatedIn::dispatch(
-            student: $student,
-            mutation: $mutation,
-            enrollInStudyGroup: $targetStudyGroup,
-            enrollInAcademicYear: $targetAcademicYear,
-            joinDate: $mutation->established_date?->toDateString() ?? now()->toDateString(),
-            actorId: auth()->id(),
+            $student,
+            $mutation,
+            $targetStudyGroup,
+            $targetAcademicYear,
+            $mutation->established_date?->toDateString() ?? now()->toDateString(),
+            auth()->id(),
         );
 
         return back()->with('success', 'PD Masuk berhasil disetujui. Santri sudah masuk ke Data Santri.');
@@ -216,7 +256,12 @@ class StudentMutationInController extends Controller
 
     public function reject(Request $request, string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
+
+        if (in_array($mutation->status, ['approved', 'rejected'], true)) {
+            return back()->with('error', 'Data mutasi ini sudah diproses sebelumnya.');
+        }
+
         $mutation->update([
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
@@ -227,7 +272,7 @@ class StudentMutationInController extends Controller
 
     public function destroy(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
         if ($mutation->status !== 'draft') {
             return back()->with('error', 'Data yang sudah diajukan tidak bisa dihapus.');
         }
@@ -239,7 +284,7 @@ class StudentMutationInController extends Controller
 
     public function print(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationIn::with(['student', 'school'])->findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid)->load(['student', 'school']);
         $school = $mutation->school;
         $html = view('mutations-in.print.pdf', compact('mutation', 'userId', 'school'))->render();
         $dompdf = new Dompdf;
@@ -248,6 +293,18 @@ class StudentMutationInController extends Controller
         $dompdf->render();
 
         return $dompdf->stream('Surat-Rekomendasi-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
+    }
+
+    /**
+     * Batasi akses data mutasi ke satuan pendidikan pengguna.
+     */
+    private function findScopedMutation(string $mutationUuid): StudentMutationIn
+    {
+        $schoolContextId = request()->attributes->get('schoolContextId');
+
+        return StudentMutationIn::query()
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->findOrFail($mutationUuid);
     }
 
     private function toHijri(string $date): string
@@ -281,7 +338,8 @@ class StudentMutationInController extends Controller
     public function findStudent(Request $request)
     {
         $keyword = $request->get('q', '');
-        $query = Student::query();
+        $schoolContextId = $request->attributes->get('schoolContextId');
+        $query = Student::query()->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId));
         if ($keyword) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")

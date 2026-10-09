@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Extends students.status enum to include:
@@ -17,7 +18,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // MySQL-only: SQLite does not support MODIFY COLUMN
+        if (DB::getDriverName() === 'sqlite') {
+            // SQLite tidak mendukung MODIFY COLUMN — rebuild tabel via change().
+            DB::table('students')->where('status', 'transfer')->update(['status' => 'transfer_out']);
+            Schema::table('students', function ($table) {
+                $table->enum('status', ['active', 'inactive', 'graduate', 'dropped', 'transfer_in', 'transfer_out'])
+                    ->default('active')
+                    ->change();
+            });
+
+            return;
+        }
+
         if (DB::getDriverName() !== 'mysql') {
             return;
         }

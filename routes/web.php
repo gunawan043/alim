@@ -160,6 +160,7 @@ use App\Http\Controllers\StudentHealthPermitController;
 use App\Http\Controllers\StudentImmunizationController;
 // use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\StudentMahromController;
+use App\Http\Controllers\StudentPhotoController;
 use App\Http\Controllers\StudentMedicineInventoryController;
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
@@ -226,6 +227,7 @@ use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\WakaController;
 use App\Http\Controllers\WaliAsramaDashboardController;
+use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
 use App\Http\Middleware\EnsurePermission;
@@ -1334,6 +1336,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/mahroms/{mahromUuid}/edit', [StudentMahromController::class, 'globalEdit'])->name('mahroms.globalEdit');
                 Route::put('/mahroms/{mahromUuid}', [StudentMahromController::class, 'globalUpdate'])->name('mahroms.globalUpdate');
                 Route::delete('/mahroms/{mahromUuid}', [StudentMahromController::class, 'globalDestroy'])->name('mahroms.globalDestroy');
+                // Foto santri (upload/hapus via AJAX)
+                Route::post('/{santriUuid}/photo', [StudentPhotoController::class, 'upload'])->name('photo.upload');
+                Route::delete('/{santriUuid}/photo', [StudentPhotoController::class, 'destroy'])->name('photo.destroy');
+                // Data wali (ayah/ibu/wali) — sebelumnya view orphan tanpa route
+                Route::get('/{santriUuid}/wali/edit', [WaliSantriController::class, 'edit'])->name('wali.edit');
+                Route::put('/{santriUuid}/wali', [WaliSantriController::class, 'update'])->name('wali.update');
+
                 Route::get('/{santriUuid}', [StudentController::class, 'show'])->name('show');
                 Route::get('/{santriUuid}/edit', [StudentController::class, 'edit'])->name('edit')->middleware('dormitory.restrict:students');
                 Route::put('/{santriUuid}', [StudentController::class, 'update'])->name('update')->middleware('dormitory.restrict:students');
@@ -1348,20 +1357,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{santriUuid}/mahrom/{mahromUuid}/edit', [StudentMahromController::class, 'edit'])->name('mahroms.edit');
                 Route::put('/{santriUuid}/mahrom/{mahromUuid}', [StudentMahromController::class, 'update'])->name('mahroms.update');
                 Route::delete('/{santriUuid}/mahrom/{mahromUuid}', [StudentMahromController::class, 'destroy'])->name('mahroms.destroy');
-            });
-
-            // ── MUTASI MASUK ───────────────────────────────────────
-            Route::prefix('mutations-in')->name('mutations-in.')->group(function () {
-                Route::get('/', [StudentMutationInController::class, 'index'])->name('index');
-                Route::get('/create', [StudentMutationInController::class, 'create'])->name('create');
-                Route::post('/', [StudentMutationInController::class, 'store'])->name('store');
-                Route::get('/hijri-convert', [StudentMutationInController::class, 'hijriConvert'])->name('hijri-convert');
-                Route::get('/{mutationUuid}', [StudentMutationInController::class, 'show'])->name('show');
-                Route::post('/{mutationUuid}/submit', [StudentMutationInController::class, 'submit'])->name('submit');
-                Route::post('/{mutationUuid}/approve', [StudentMutationInController::class, 'approve'])->name('approve');
-                Route::post('/{mutationUuid}/reject', [StudentMutationInController::class, 'reject'])->name('reject');
-                Route::delete('/{mutationUuid}', [StudentMutationInController::class, 'destroy'])->name('destroy');
-                Route::get('/{mutationUuid}/print', [StudentMutationInController::class, 'print'])->name('print');
             });
 
             // ── MUTASI KELUAR ──────────────────────────────────────
@@ -1413,6 +1408,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/create', [StudentMutationInController::class, 'create'])->name('create');
                 Route::post('/', [StudentMutationInController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationInController::class, 'findStudent'])->name('find-student');
+                Route::get('/hijri-convert', [StudentMutationInController::class, 'hijriConvert'])->name('hijri-convert');
                 Route::get('/{mutationUuid}', [StudentMutationInController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationInController::class, 'submit'])->name('submit');
                 Route::post('/{mutationUuid}/approve', [StudentMutationInController::class, 'approve'])->name('approve');

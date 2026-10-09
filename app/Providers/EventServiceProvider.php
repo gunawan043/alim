@@ -50,6 +50,7 @@ use App\Events\StudentGraduated;
 use App\Events\StudentMutatedIn;
 use App\Events\StudentMutatedOut;
 use App\Events\StudentPromoted;
+use App\Events\StudentStatusChanged;
 use App\Events\StudyGroupSubjectChanged;
 use App\Events\SubjectAssignedToStudyGroup;
 use App\Events\TeachingAssignmentChanged;
@@ -65,6 +66,8 @@ use App\Listeners\Boarding\SyncBoardingHealthToAttendance;
 use App\Listeners\Boarding\SyncBoardingLeaveToAttendance;
 use App\Listeners\Boarding\SyncHealthToClinic;
 use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
+use App\Listeners\CreateAlumniOnGraduation;
+use App\Listeners\HandleManualStudentStatusUpdate;
 use App\Listeners\DeactivateStudentAcademicRecordsListener;
 use App\Listeners\NotifyGuardiansOnLifecycle;
 use App\Listeners\NotifySarprasOfQuotation;
@@ -148,6 +151,7 @@ class EventServiceProvider extends ServiceProvider
         StudentGraduated::class => [
             UpdateStudentStatusOnLifecycle::class,
             ClosePreviousClassHistoryOnLifecycle::class,
+            CreateAlumniOnGraduation::class,
             NotifyGuardiansOnLifecycle::class,
             AuditLifecycleChange::class,
         ],
@@ -155,8 +159,13 @@ class EventServiceProvider extends ServiceProvider
         StudentMutatedOut::class => [
             UpdateStudentStatusOnLifecycle::class,
             ClosePreviousClassHistoryOnLifecycle::class,
+            CreateAlumniOnGraduation::class,
             NotifyGuardiansOnLifecycle::class,
             AuditLifecycleChange::class,
+        ],
+
+        StudentStatusChanged::class => [
+            HandleManualStudentStatusUpdate::class,
         ],
 
         StudentMutatedIn::class => [

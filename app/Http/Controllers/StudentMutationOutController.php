@@ -10,6 +10,7 @@ use App\Models\StudentMutationOut;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Pharaonic\Hijri\Hijri;
 
 class StudentMutationOutController extends Controller
@@ -74,7 +75,13 @@ class StudentMutationOutController extends Controller
 
         $student = null;
         if ($request->filled('student_id')) {
-            $student = Student::with(['school', 'studyGroup'])->find($request->student_id);
+            $student = Student::with(['school', 'currentClassHistory.studyGroup'])
+                ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+                ->find($request->student_id);
+        }
+        if ($request->filled('student_id') && ! $student) {
+            return redirect()->route('user.mutations-out.index', ['userId' => $userId])
+                ->with('error', 'Santri tidak ditemukan pada satuan pendidikan Anda.');
         }
 
         // Ambil NUPY & nama kepala sekolah
@@ -179,6 +186,23 @@ class StudentMutationOutController extends Controller
         // Ensure empty student_id becomes null to avoid FK constraint violation
         if (empty($data['student_id'])) {
             unset($data['student_id']);
+        } elseif (! Student::where('id', $data['student_id'])
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->exists()) {
+            return redirect()->back()->withInput()->with('error', 'Santri terpilih tidak ditemukan pada satuan pendidikan Anda.');
+        }
+
+        // Satuan pendidikan aktif selalu menjadi pemilik data mutasi.
+        if ($schoolContextId) {
+            $data['school_id'] = $schoolContextId;
+        }
+
+        // Jenis mutasi mengikuti konteks menu (Lulus / Drop Out / Mutasi Keluar).
+        $routeName = (string) $request->route()->getName();
+        if (str_contains($routeName, 'mutations-lulus')) {
+            $data['out_type'] = 'graduation';
+        } elseif (str_contains($routeName, 'mutations-do')) {
+            $data['out_type'] = 'dropout';
         }
 
         try {
@@ -191,80 +215,100 @@ class StudentMutationOutController extends Controller
             return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: '.$e->getMessage());
         }
 
-        return redirect()->route('user.mutations-out.show', ['userId' => $userId, 'mutationUuid' => $mutation->id])
-            ->with('success', 'PD Keluar berhasil disimpan.');
+        return redirect()->route($this->showRouteName($mutation->out_type), ['userId' => $userId, 'mutationUuid' => $mutation->id])
+            ->with('success', 'Data '.$this->typeLabel($mutation->out_type).' berhasil disimpan.');
     }
 
     public function show(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::with(['student', 'school', 'requestedBy', 'approvedBy'])
-            ->findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid)
+            ->load(['student', 'school', 'requestedBy', 'approvedBy']);
 
         return view('mutations-out.show', compact('mutation', 'userId'));
     }
 
     public function submit(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
+
+        if ($mutation->status !== 'draft') {
+            return back()->with('error', 'Hanya data berstatus draft yang dapat diajukan.');
+        }
+
         $mutation->update(['status' => 'submitted']);
 
-        return back()->with('success', 'PD Keluar berhasil diajukan.');
+        return back()->with('success', $this->typeLabel($mutation->out_type).' berhasil diajukan.');
     }
 
     public function approve(Request $request, string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::with('student')->findOrFail($mutationUuid);
-        $mutation->update([
-            'status' => 'approved',
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
+        $mutation = $this->findScopedMutation($mutationUuid)->load('student');
 
-        if ($mutation->student) {
-            $outType = match ($mutation->out_type) {
-                'graduation' => StudentMutatedOut::TYPE_GRADUATION,
-                'dropout' => StudentMutatedOut::TYPE_DROPOUT,
-                default => StudentMutatedOut::TYPE_MUTATION,
-            };
-
-            StudentMutatedOut::dispatch(
-                student: $mutation->student,
-                mutation: $mutation,
-                outType: $outType,
-                leaveDate: $mutation->established_date?->toDateString() ?? now()->toDateString(),
-                actorId: auth()->id(),
-            );
+        if (in_array($mutation->status, ['approved', 'rejected'], true)) {
+            return back()->with('error', 'Data mutasi ini sudah diproses sebelumnya.');
         }
 
-        return back()->with('success', 'PD Keluar berhasil disetujui.');
+        if (! $mutation->student) {
+            return back()->with('error', 'Mutasi tanpa santri terdaftar tidak dapat disetujui. Lengkapi data santri terlebih dahulu.');
+        }
+
+        DB::transaction(function () use ($mutation) {
+            $mutation->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+            ]);
+        });
+
+        $outType = match ($mutation->out_type) {
+            'graduation' => StudentMutatedOut::TYPE_GRADUATION,
+            'dropout' => StudentMutatedOut::TYPE_DROPOUT,
+            default => StudentMutatedOut::TYPE_MUTATION,
+        };
+
+        StudentMutatedOut::dispatch(
+            $mutation->student,
+            $mutation,
+            $outType,
+            $mutation->established_date?->toDateString() ?? now()->toDateString(),
+            auth()->id(),
+        );
+
+        return back()->with('success', $this->typeLabel($mutation->out_type).' berhasil disetujui.');
     }
 
     public function reject(Request $request, string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
+
+        if (in_array($mutation->status, ['approved', 'rejected'], true)) {
+            return back()->with('error', 'Data mutasi ini sudah diproses sebelumnya.');
+        }
+
         $mutation->update([
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
 
-        return back()->with('success', 'PD Keluar ditolak.');
+        return back()->with('success', $this->typeLabel($mutation->out_type).' ditolak.');
     }
 
     public function destroy(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid);
         if ($mutation->status !== 'draft') {
             return back()->with('error', 'Data yang sudah diajukan tidak bisa dihapus.');
         }
+        $outType = $mutation->out_type;
         $mutation->delete();
 
-        return redirect()->route('user.mutations-out.index', ['userId' => $userId])
-            ->with('success', 'PD Keluar berhasil dihapus.');
+        return redirect()->route($this->indexRouteName($outType), ['userId' => $userId])
+            ->with('success', 'Data '.$this->typeLabel($outType).' berhasil dihapus.');
     }
 
     public function print(string $userId, string $mutationUuid)
     {
-        $mutation = StudentMutationOut::with(['student', 'school'])->findOrFail($mutationUuid);
+        $mutation = $this->findScopedMutation($mutationUuid)->load(['student', 'school']);
         $school = $mutation->school;
         $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school'))->render();
         $dompdf = new Dompdf;
@@ -272,7 +316,52 @@ class StudentMutationOutController extends Controller
         $dompdf->setPaper('A4');
         $dompdf->render();
 
-        return $dompdf->stream('Surat-Pindah-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
+        $prefix = match ($mutation->out_type) {
+            'graduation' => 'Surat-Kelulusan',
+            'dropout' => 'Surat-Keterangan-DO',
+            default => 'Surat-Pindah',
+        };
+
+        return $dompdf->stream($prefix.'-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
+    }
+
+    /**
+     * Batasi akses data mutasi ke satuan pendidikan pengguna.
+     */
+    private function findScopedMutation(string $mutationUuid): StudentMutationOut
+    {
+        $schoolContextId = request()->attributes->get('schoolContextId');
+
+        return StudentMutationOut::query()
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->findOrFail($mutationUuid);
+    }
+
+    private function showRouteName(?string $outType): string
+    {
+        return match ($outType) {
+            'graduation' => 'user.mutations-lulus.show',
+            'dropout' => 'user.mutations-do.show',
+            default => 'user.mutations-out.show',
+        };
+    }
+
+    private function indexRouteName(?string $outType): string
+    {
+        return match ($outType) {
+            'graduation' => 'user.mutations-lulus.index',
+            'dropout' => 'user.mutations-do.index',
+            default => 'user.mutations-out.index',
+        };
+    }
+
+    private function typeLabel(?string $outType): string
+    {
+        return match ($outType) {
+            'graduation' => 'Kelulusan',
+            'dropout' => 'Drop Out',
+            default => 'Mutasi Keluar',
+        };
     }
 
     private function toHijri(string $date): string
@@ -307,7 +396,8 @@ class StudentMutationOutController extends Controller
     public function findStudent(Request $request)
     {
         $keyword = $request->get('q', '');
-        $query = Student::query();
+        $schoolContextId = $request->attributes->get('schoolContextId');
+        $query = Student::query()->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId));
         if ($keyword) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")

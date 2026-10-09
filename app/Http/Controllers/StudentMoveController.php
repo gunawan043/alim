@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
+use App\Models\StudentLifecycleAudit;
 use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,14 +18,16 @@ class StudentMoveController extends Controller
      */
     public function index(Request $request, string $userId)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
-        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
-
         // Source study group (where students are currently)
         $sourceStudyGroup = null;
         if ($request->filled('study_group_id')) {
             $sourceStudyGroup = StudyGroup::with(['gradeLevel', 'school', 'homeroomTeacher'])
                 ->find($request->study_group_id);
+        }
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($sourceStudyGroup && $schoolId && $sourceStudyGroup->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
         }
 
         // Get available destination rombel options
@@ -40,10 +42,10 @@ class StudentMoveController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get()
-                ->map(function ($sg) use ($activeAcademicYear) {
+                ->map(function ($sg) use ($sourceStudyGroup) {
                     $sg->studentCount = StudentClassHistory::where('study_group_id', $sg->id)
+                        ->where('academic_year_id', $sourceStudyGroup->academic_year_id)
                         ->where('is_active', true)
-                        ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                         ->count();
 
                     return $sg;
@@ -54,8 +56,8 @@ class StudentMoveController extends Controller
         $students = collect([]);
         if ($sourceStudyGroup) {
             $studentIds = StudentClassHistory::where('study_group_id', $sourceStudyGroup->id)
+                ->where('academic_year_id', $sourceStudyGroup->academic_year_id)
                 ->where('is_active', true)
-                ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
                 ->pluck('student_id');
 
             $students = Student::whereIn('id', $studentIds)
@@ -92,7 +94,7 @@ class StudentMoveController extends Controller
         $destSg = StudyGroup::with(['gradeLevel', 'school'])->findOrFail($validated['destination_study_group_id']);
 
         // Security: school scoping
-        if ($schoolId && $sourceSg->school_id !== $schoolId) {
+        if ($schoolId && ($sourceSg->school_id !== $schoolId || $destSg->school_id !== $schoolId)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -111,79 +113,91 @@ class StudentMoveController extends Controller
             return back()->withInput()->with('error', 'Rombel asal dan tujuan tidak boleh sama.');
         }
 
-        // Capacity check: destination rombel capacity
-        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
-        $currentDestCount = StudentClassHistory::where('study_group_id', $destSg->id)
+        $ayId = $sourceSg->academic_year_id;
+        $studentIds = array_values(array_unique($validated['student_ids']));
+
+        // Pastikan SEMUA santri terpilih benar-benar aktif di rombel asal (gagal total, bukan skip diam-diam).
+        $validHistories = StudentClassHistory::query()
+            ->whereIn('student_id', $studentIds)
+            ->where('study_group_id', $sourceSg->id)
+            ->where('academic_year_id', $ayId)
             ->where('is_active', true)
-            ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+            ->get()
+            ->keyBy('student_id');
+
+        $activeStudentIds = Student::whereIn('id', $studentIds)
+            ->where('status', 'active')
+            ->pluck('id')
+            ->all();
+
+        $invalid = collect($studentIds)->filter(
+            fn ($id) => ! $validHistories->has($id) || ! in_array($id, $activeStudentIds, true)
+        );
+
+        if ($invalid->isNotEmpty()) {
+            return back()->withInput()->with(
+                'error',
+                $invalid->count().' santri terpilih tidak ditemukan sebagai anggota aktif rombel asal. Muat ulang halaman lalu pilih ulang.'
+            );
+        }
+
+        // Capacity check: destination rombel (tahun ajaran yang sama)
+        $currentDestCount = StudentClassHistory::where('study_group_id', $destSg->id)
+            ->where('academic_year_id', $ayId)
+            ->where('is_active', true)
             ->count();
 
-        $movingCount = count($validated['student_ids']);
+        $movingCount = count($studentIds);
         $availableSlots = max(0, $destSg->capacity - $currentDestCount);
 
         if ($movingCount > $availableSlots) {
-            $sisa = $availableSlots;
-
-            return back()->withInput()->with('error', "Rombel tujuan hanya memiliki {$sisa} slot tersisa.Anda mencoba memindahkan {$movingCount} santri. Kurangi jumlah yang dipilih atau pilih rombel lain.");
+            return back()->withInput()->with(
+                'error',
+                "Rombel tujuan hanya memiliki {$availableSlots} slot tersisa. Anda mencoba memindahkan {$movingCount} santri. Kurangi jumlah yang dipilih atau pilih rombel lain."
+            );
         }
 
         $moveDate = $validated['move_date'];
         $notes = $validated['notes'] ?? 'Pindahan rombel tingkat sama';
-        $results = ['success' => 0, 'skipped' => 0];
+        $actorId = $request->user()?->id;
 
-        DB::transaction(function () use (
-            $sourceSg, $destSg, $activeAcademicYear, $moveDate, $notes,
-            $validated, &$results
-        ) {
-            foreach ($validated['student_ids'] as $studentId) {
-                // Check if student is currently in source rombel
-                $currentHistory = StudentClassHistory::where('student_id', $studentId)
-                    ->where('study_group_id', $sourceSg->id)
-                    ->where('is_active', true)
-                    ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
-                    ->first();
+        DB::transaction(function () use ($sourceSg, $destSg, $ayId, $moveDate, $notes, $validHistories, $studentIds, $currentDestCount, $actorId) {
+            $nextNumber = $currentDestCount;
 
-                if (! $currentHistory) {
-                    $results['skipped']++;
+            foreach ($studentIds as $studentId) {
+                $history = $validHistories->get($studentId);
+                $nextNumber++;
 
-                    continue;
-                }
-
-                // Deactivate old history
-                $currentHistory->update([
-                    'is_active' => false,
-                    'leave_date' => $moveDate,
-                ]);
-
-                // Create new history in destination rombel
-                $newCount = StudentClassHistory::where('study_group_id', $destSg->id)
-                    ->where('academic_year_id', $activeAcademicYear->id)
-                    ->count();
-
-                StudentClassHistory::create([
-                    'student_id' => $studentId,
+                // Pindahkan baris history yang SAMA (unique student+academic_year),
+                // bukan menonaktifkan lalu membuat baris baru.
+                $history->update([
                     'study_group_id' => $destSg->id,
-                    'academic_year_id' => $activeAcademicYear->id,
-                    'is_active' => true,
                     'join_date' => $moveDate,
-                    'attendance_number' => $newCount + 1,
-                    'notes' => $notes,
+                    'attendance_number' => $nextNumber,
+                    'notes' => trim(($history->notes ? $history->notes.' | ' : '').$notes),
                 ]);
 
-                $results['success']++;
+                StudentLifecycleAudit::create([
+                    'event' => 'student.moved_rombel',
+                    'student_id' => $studentId,
+                    'school_id' => $sourceSg->school_id,
+                    'actor_id' => $actorId,
+                    'payload' => [
+                        'from_sg' => $sourceSg->id,
+                        'to_sg' => $destSg->id,
+                        'academic_year_id' => $ayId,
+                        'move_date' => $moveDate,
+                    ],
+                    'occurred_at' => now(),
+                ]);
             }
         });
-
-        $msg = "Pindahkan Santri selesai. {$results['success']} santri berhasil dipindahkan ke {$destSg->full_name}.";
-        if ($results['skipped'] > 0) {
-            $msg .= " {$results['skipped']} dilewati (tidak ditemukan di rombel asal).";
-        }
 
         return redirect()
             ->route('user.students.index', [
                 'userId' => $userId,
-                'study_group_id' => $sourceSg->id,
+                'study_group_id' => $destSg->id,
             ])
-            ->with('success', $msg);
+            ->with('success', "Pindahkan Santri selesai. {$movingCount} santri berhasil dipindahkan ke {$destSg->full_name}.");
     }
 }

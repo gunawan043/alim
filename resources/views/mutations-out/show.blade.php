@@ -25,10 +25,23 @@
 @endsection
 
 @section('content')
+@php
+    $routePrefix = match ($mutation->out_type) {
+        'graduation' => 'mutations-lulus',
+        'dropout' => 'mutations-do',
+        default => 'mutations-out',
+    };
+    $typeLabel = match ($mutation->out_type) {
+        'graduation' => 'Kelulusan',
+        'dropout' => 'Drop Out',
+        default => 'Mutasi Keluar',
+    };
+@endphp
+
 @component('components.breadcrumb')
     @slot('li_1') Akademik @endslot
     @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
-    @slot('li_3') <a href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}">PD Keluar</a> @endslot
+    @slot('li_3') <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}">{{ $typeLabel }}</a> @endslot
     @slot('title') {{ $mutation->student_name }} @endslot
 @endcomponent
 
@@ -72,7 +85,7 @@
             </div>
         </div>
         <div class="col-auto">
-            <a href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
+            <a href="{{ route("user.{$routePrefix}.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
                 <i class="ri-arrow-left-line me-1"></i>Kembali
             </a>
         </div>
@@ -299,7 +312,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label detail-label">NUPY</label>
-                            <div class="detail-value"><code>{{ $mutation->head_nip ?: '-' }}</code></div>
+                            <div class="detail-value"><code>{{ $mutation->head_nupy ?: '-' }}</code></div>
                         </div>
                     </div>
                 </div>
@@ -331,7 +344,7 @@
                         </div>
                     </div>
                     <div class="p-3">
-                        <form action="{{ route('user.mutations-out.submit', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST" class="mb-2">
+                        <form action="{{ route("user.{$routePrefix}.submit', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST" class="mb-2">
                             @csrf
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="ri-send-plane-line me-1"></i>Ajukan
@@ -356,7 +369,7 @@
                         </div>
                     </div>
                     <div class="p-3">
-                        <form action="{{ route('user.mutations-out.approve', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST" class="mb-2">
+                        <form action="{{ route("user.{$routePrefix}.approve', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST" class="mb-2">
                             @csrf
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="ri-checkbox-circle-line me-1"></i>Setujui
@@ -383,7 +396,7 @@
                         </div>
                     </div>
                     <div class="p-3">
-                        <a href="{{ route('user.mutations-out.print', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}"
+                        <a href="{{ route("user.{$routePrefix}.print', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}"
                             class="btn btn-success w-100" target="_blank">
                             <i class="ri-printer-line me-1"></i>Cetak Surat
                         </a>
@@ -436,7 +449,7 @@
                 <h5 class="modal-title"><i class="ri-close-circle-line me-1 text-danger"></i>Tolak PD Keluar</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('user.mutations-out.reject', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST">
+            <form action="{{ route("user.{$routePrefix}.reject', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <label class="form-label">Alasan Penolakan</label>
@@ -465,7 +478,7 @@
             </div>
             <div class="modal-footer justify-content-center gap-2">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                <form action="{{ route('user.mutations-out.destroy', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST">
+                <form action="{{ route("user.{$routePrefix}.destroy', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-danger">Ya, Hapus!</button>
                 </form>

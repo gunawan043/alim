@@ -209,6 +209,12 @@ class StudentPromotionController extends Controller
      */
     public function updateDetail(Request $request, string $userId, string $id, string $detailId)
     {
+        $promotion = $this->findScopedPromotion($request, $id);
+
+        if (in_array($promotion->status, ['completed', 'cancelled'], true)) {
+            return back()->with('error', 'Aksi siswa hanya dapat diubah pada promosi berstatus draft.');
+        }
+
         $detail = StudentPromotionDetail::where('promotion_id', $id)
             ->where('id', $detailId)
             ->firstOrFail();
@@ -247,6 +253,10 @@ class StudentPromotionController extends Controller
             return back()->with('error', 'Promosi ini sudah pernah dieksekusi.');
         }
 
+        if ($promotion->status === 'cancelled') {
+            return back()->with('error', 'Promosi yang sudah dibatalkan tidak dapat dieksekusi.');
+        }
+
         $request->validate([
             'confirmed' => 'required|accepted',
         ]);
@@ -278,12 +288,12 @@ class StudentPromotionController extends Controller
 
                     if (in_array($fromLevel, $finalLevels)) {
                         StudentGraduated::dispatch(
-                            student: $student,
-                            fromStudyGroup: $promotion->fromStudyGroup,
-                            fromAcademicYear: $promotion->fromAcademicYear,
-                            graduationDate: $promotionDate->toDateString(),
-                            graduationYear: $promotionDate->format('Y'),
-                            actorId: auth()->id(),
+                            $student,
+                            $promotion->fromStudyGroup,
+                            $promotion->fromAcademicYear,
+                            $promotionDate->toDateString(),
+                            $promotionDate->format('Y'),
+                            auth()->id(),
                         );
                         $detail->update(['status' => 'success', 'notes' => 'Diluluskan (tingkat akhir)']);
 
@@ -294,11 +304,11 @@ class StudentPromotionController extends Controller
                 // Mutasi keluar
                 if ($detail->action === 'mutate_out') {
                     StudentMutatedOut::dispatch(
-                        student: $student,
-                        mutation: $promotion,
-                        outType: StudentMutatedOut::TYPE_MUTATION,
-                        leaveDate: $promotionDate->toDateString(),
-                        actorId: auth()->id(),
+                        $student,
+                        $promotion,
+                        StudentMutatedOut::TYPE_MUTATION,
+                        $promotionDate->toDateString(),
+                        auth()->id(),
                     );
                     $detail->update(['status' => 'success', 'notes' => 'Mutasi keluar']);
 
@@ -399,14 +409,14 @@ class StudentPromotionController extends Controller
                                 $toAcademicYear = AcademicYear::find($promotion->to_academic_year_id);
 
                                 StudentPromoted::dispatch(
-                                    student: $student,
-                                    fromStudyGroup: $promotion->fromStudyGroup,
-                                    toStudyGroup: $toStudyGroup,
-                                    fromAcademicYear: $promotion->fromAcademicYear,
-                                    toAcademicYear: $toAcademicYear,
-                                    promotionDate: $promotionDate->toDateString(),
-                                    actorId: auth()->id(),
-                                    source: 'promotion',
+                                    $student,
+                                    $promotion->fromStudyGroup,
+                                    $toStudyGroup,
+                                    $promotion->fromAcademicYear,
+                                    $toAcademicYear,
+                                    $promotionDate->toDateString(),
+                                    auth()->id(),
+                                    'promotion',
                                 );
                             } else {
                                 $detail->update(['status' => 'failed', 'error_message' => 'Siswa sudah terdaftar di rombel tujuan tahun ajaran baru.']);
@@ -444,11 +454,27 @@ class StudentPromotionController extends Controller
     }
 
     /**
+     * Batasi akses promosi ke satuan pendidikan pengguna.
+     */
+    private function findScopedPromotion(Request $request, string $id): StudentPromotion
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $promotion = StudentPromotion::with('fromStudyGroup')->findOrFail($id);
+
+        if ($schoolId && $promotion->fromStudyGroup?->school_id !== $schoolId) {
+            abort(403);
+        }
+
+        return $promotion;
+    }
+
+    /**
      * ── CANCEL PROMOSI ──────────────────────────────────────
      */
     public function cancel(Request $request, string $userId, string $id)
     {
-        $promotion = StudentPromotion::findOrFail($id);
+        $promotion = $this->findScopedPromotion($request, $id);
 
         if ($promotion->status === 'completed') {
             return back()->with('error', 'Promosi yang sudah selesai tidak dapat dibatalkan.');
@@ -464,7 +490,7 @@ class StudentPromotionController extends Controller
      */
     public function destroy(Request $request, string $userId, string $id)
     {
-        $promotion = StudentPromotion::findOrFail($id);
+        $promotion = $this->findScopedPromotion($request, $id);
 
         if ($promotion->status === 'completed') {
             return back()->with('error', 'Promosi yang sudah selesai tidak dapat dihapus.');

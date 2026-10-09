@@ -343,7 +343,8 @@
                                     <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Nonaktif</option>
                                     <option value="graduate" {{ old('status') === 'graduate' ? 'selected' : '' }}>Lulus</option>
                                     <option value="dropped" {{ old('status') === 'dropped' ? 'selected' : '' }}>Dropout</option>
-                                    <option value="transfer" {{ old('status') === 'transfer' ? 'selected' : '' }}>Pindah</option>
+                                    <option value="transfer_in" {{ old('status') === 'transfer_in' ? 'selected' : '' }}>Pindahan Masuk</option>
+                                    <option value="transfer_out" {{ old('status') === 'transfer_out' ? 'selected' : '' }}>Pindahan Keluar</option>
                                 </select>
                             </div>
                             <div class="col-md-3">

@@ -14,8 +14,18 @@ class StudentMahromController extends Controller
      */
     public function globalIndex(Request $request, string $userId)
     {
+        $schoolContextId = $request->attributes->get('schoolContextId');
+        $isGlobalView = $request->attributes->get('isGlobalView') === true;
+
+        $scopeSchool = function ($q) use ($schoolContextId) {
+            if ($schoolContextId && ! request()->boolean('isGlobalView')) {
+                $q->whereHas('student', fn ($sq) => $sq->where('school_id', $schoolContextId));
+            }
+        };
+
         $query = StudentMahrom::query()
-            ->with(['student']);
+            ->with(['student'])
+            ->where($scopeSchool);
 
         // Search by mahrom name / phone / id_number
         if ($search = trim((string) $request->query('q', ''))) {
@@ -33,7 +43,7 @@ class StudentMahromController extends Controller
 
         // Filter status aktif
         if ($request->filled('status')) {
-            $query->where('is_active', $request->string('status') === 'active');
+            $query->where('is_active', $request->input('status') === 'active');
         }
 
         $mahroms = $query
@@ -43,9 +53,9 @@ class StudentMahromController extends Controller
             ->withQueryString();
 
         $stats = [
-            'total' => StudentMahrom::count(),
-            'primary' => StudentMahrom::where('is_primary', true)->count(),
-            'active' => StudentMahrom::where('is_active', true)->count(),
+            'total' => StudentMahrom::query()->where($scopeSchool)->count(),
+            'primary' => StudentMahrom::query()->where($scopeSchool)->where('is_primary', true)->count(),
+            'active' => StudentMahrom::query()->where($scopeSchool)->where('is_active', true)->count(),
         ];
 
         $relationships = [
@@ -330,6 +340,10 @@ class StudentMahromController extends Controller
     public function globalShow(Request $request, string $userId, string $mahromUuid)
     {
         $mahrom = StudentMahrom::with(['student', 'student.activeDormitoryResident.room'])->findOrFail($mahromUuid);
+
+        if (! $mahrom->student || ! $this->canAccessStudent($mahrom->student)) {
+            abort(404);
+        }
 
         return view('students.mahroms.show-global', compact('mahrom', 'userId'));
     }

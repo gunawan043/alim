@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StudentGraduated;
+use App\Events\StudentMutatedOut;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
@@ -228,9 +230,7 @@ class BulkPromotionController extends Controller
             abort(403);
         }
 
-        $fromAyId = AcademicYear::where('is_active', true)
-            ->where('school_id', $fromStudyGroup->school_id)
-            ->value('id');
+        $fromAyId = AcademicYear::where('is_active', true)->value('id');
 
         $toAyId = $validated['to_academic_year_id'];
         $promotionDate = $validated['promotion_date'];
@@ -260,21 +260,34 @@ class BulkPromotionController extends Controller
 
                 $student = Student::find($studentId);
 
-                // Mutasi keluar
+                // Mutasi keluar — jalur lifecycle resmi (status transfer_out + audit + notifikasi)
                 if ($action === 'mutate_out') {
-                    $student->update(['status' => 'transfer']);
+                    StudentMutatedOut::dispatch(
+                        $student,
+                        null,
+                        StudentMutatedOut::TYPE_MUTATION,
+                        $promotionDate,
+                        auth()->id(),
+                    );
                     $results['success']++;
 
                     continue;
                 }
 
-                // Lulus
+                // Lulus — jalur lifecycle resmi (status graduate + alumni + audit)
                 if ($action === 'graduate') {
-                    $student->update([
-                        'status' => 'graduate',
-                        'graduation_year' => date('Y'),
-                        'graduation_date' => $promotionDate,
-                    ]);
+                    $fromAy = AcademicYear::find($fromAyId);
+                    if ($fromAy) {
+                        StudentGraduated::dispatch(
+                            $student,
+                            $fromStudyGroup,
+                            $fromAy,
+                            $promotionDate,
+                            substr($promotionDate, 0, 4),
+                            auth()->id(),
+                            'bulk-promotion',
+                        );
+                    }
                     $results['success']++;
 
                     continue;

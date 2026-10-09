@@ -75,24 +75,31 @@
 
                         {{-- Data Santri --}}
                         <h6 class="text-muted mb-2" style="font-size:10px;text-transform:uppercase">Data Santri</h6>
+                        @if($student ?? null)
+                            <input type="hidden" name="student_id" value="{{ $student->id }}">
+                            <div class="alert alert-info py-2 small">
+                                <i class="ri-link me-1"></i>Mutasi untuk santri terdaftar:
+                                <strong>{{ $student->name }}</strong> ({{ $student->nisn ?: $student->nis ?: 'tanpa NISN' }}).
+                                Data santri akan <strong>diperbarui</strong>, bukan dibuat baru.
+                            </div>
+                        @endif
                         <div class="mb-2">
                             <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                            <input type="text" name="student_name" id="f-student-name" class="form-control" value="{{ old('student_name') }}" required>
+                            <input type="text" name="student_name" id="f-student-name" class="form-control" value="{{ old('student_name', $student->name ?? '') }}" required>
                         </div>
                         <input type="hidden" name="student_nis" id="f-nis" value="{{ old('student_nis', $defaultNis) }}">
                         <div class="row g-2 mb-2">
                             <div class="col-6">
                                 <label class="form-label">NISN</label>
-                                <input type="text" name="student_nisn" id="f-nisn" class="form-control" value="{{ old('student_nisn') }}">
+                                <input type="text" name="student_nisn" id="f-nisn" class="form-control" value="{{ old('student_nisn', $student->nisn ?? '') }}">
                             </div>
                             <div class="col-6">
                                 <label class="form-label">Tempat Lahir</label>
-                                <input type="text" name="student_birth_place" id="f-birth-place" class="form-control" value="{{ old('student_birth_place') }}">
+                                <input type="text" name="student_birth_place" id="f-birth-place" class="form-control" value="{{ old('student_birth_place', $student->birth_place ?? '') }}">
                             </div>
-                        </div>
                             <div class="col-6">
                                 <label class="form-label">Tanggal Lahir</label>
-                                <input type="date" name="student_birth_date" id="f-birth-date" class="form-control" value="{{ old('student_birth_date') }}">
+                                <input type="date" name="student_birth_date" id="f-birth-date" class="form-control" value="{{ old('student_birth_date', $student?->birth_date?->format('Y-m-d') ?? '') }}">
                             </div>
                         </div>
                         <div class="row g-2 mb-2">
@@ -100,8 +107,8 @@
                                 <label class="form-label">Jenis Kelamin</label>
                                 <select name="student_gender" id="f-gender" class="form-select">
                                     <option value="">—</option>
-                                    <option value="L" {{ old('student_gender') === 'L' ? 'selected' : '' }}>Laki-laki</option>
-                                    <option value="P" {{ old('student_gender') === 'P' ? 'selected' : '' }}>Perempuan</option>
+                                    <option value="L" {{ old('student_gender', $student->gender ?? null) === 'L' ? 'selected' : '' }}>Laki-laki</option>
+                                    <option value="P" {{ old('student_gender', $student->gender ?? null) === 'P' ? 'selected' : '' }}>Perempuan</option>
                                 </select>
                             </div>
                             <div class="col-6">

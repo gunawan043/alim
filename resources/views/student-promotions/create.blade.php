@@ -270,6 +270,10 @@
 $(function () {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
+    // URL ber-prefix userId (route internal) — memperbaiki AJAX 404 pada wizard.
+    const urlGradeLevelsTemplate = "{{ route('user.api.grade-levels.by-academic-year', ['userId' => $userId, 'academicYearId' => '__AY__']) }}";
+    const urlAssignedTemplate = "{{ route('user.api.study-groups.students.assigned', ['userId' => $userId, 'studyGroupId' => '__SG__']) }}";
+
     // ── Load rombel saat tahun ajaran asal berubah ───────────
     $('#fromAcademicYear, #toAcademicYear').on('change', function () {
         const fromAyId = $('#fromAcademicYear').val();
@@ -283,7 +287,7 @@ $(function () {
 
         if (!fromAyId) return;
 
-        let url = `/api/grade-levels/by-academic-year/${fromAyId}`;
+        let url = urlGradeLevelsTemplate.replace('__AY__', fromAyId);
         if (schoolId) url += `?school_id=${schoolId}`;
 
         $.get(url, function (data) {
@@ -315,7 +319,7 @@ $(function () {
         $tbody.html('<tr><td colspan="6" class="text-center py-4"><i class="ri-loader-line spin"></i> Memuat...</td></tr>');
         $('#studentsCard').show();
 
-        const url = `/api/study-groups/${sgId}/students/assigned?academic_year_id=${ayId}`;
+        const url = urlAssignedTemplate.replace('__SG__', sgId) + `?academic_year_id=${ayId}`;
         $.get(url, function (res) {
             const students = res.students || res.data || [];
             renderStudents(students);
@@ -387,7 +391,7 @@ $(function () {
             return;
         }
 
-        let url = `/api/grade-levels/by-academic-year/${toAyId}`;
+        let url = urlGradeLevelsTemplate.replace('__AY__', toAyId);
         if (schoolId) url += `?school_id=${schoolId}`;
 
         $.get(url, function (data) {

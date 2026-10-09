@@ -28,10 +28,12 @@
                 · Diisi {{ $alumni->tracer_filled_at->locale('id')->diffForHumans() }}
             @endif
             @if($alumni->tracer_status === 'filled')
-                <a href="{{ route('user.alumni.verify', ['userId' => $userId, 'alumniUuid' => $alumni->id]) }}"
-                   class="btn btn-sm btn-{{ $alumni->tracer_status === 'verified' ? 'success' : 'outline-success' }} ms-2">
-                    <i class="ri-check-line me-1"></i>Verifikasi
-                </a>
+                <form method="POST" action="{{ route('user.alumni.verify', ['userId' => $userId, 'alumniUuid' => $alumni->id]) }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-success ms-2">
+                        <i class="ri-check-line me-1"></i>Verifikasi
+                    </button>
+                </form>
             @endif
         </div>
     </div>

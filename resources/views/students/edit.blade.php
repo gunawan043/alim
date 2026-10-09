@@ -272,12 +272,15 @@
                                 <textarea name="pip_reason" class="form-control mt-1" rows="1" placeholder="Alasan PIP">{{ old('pip_reason', $student->pip_reason) }}</textarea>
                             </div>
                             <div class="col-md-3"><label class="form-label">Status</label>
-                                <select name="status" class="form-control">
-                                    @foreach(['active','inactive','graduate','dropped','transfer'] as $st)
+                                <select name="status" class="form-select">
+                                    @foreach(['active','inactive','graduate','dropped','transfer_in','transfer_out'] as $st)
                                         <option value="{{ $st }}" {{ old('status', $student->status) === $st ? 'selected' : '' }}>
-                                            {{ ['active'=>'Aktif','inactive'=>'Nonaktif','graduate'=>'Lulus','dropped'=>'Dropout','transfer'=>'Pindah'][$st] }}
+                                            {{ ['active'=>'Aktif','inactive'=>'Nonaktif','graduate'=>'Lulus','dropped'=>'Dropout','transfer_in'=>'Pindahan Masuk','transfer_out'=>'Pindahan Keluar'][$st] }}
                                         </option>
                                     @endforeach
+                                    @if(! in_array($student->status, ['active','inactive','graduate','dropped','transfer_in','transfer_out'], true))
+                                        <option value="{{ $student->status }}" selected>{{ ucfirst($student->status) }} (nilai lama)</option>
+                                    @endif
                                 </select>
                             </div>
                             <div class="col-md-3"><label class="form-label">Tahun Lulus</label><input type="number" name="graduation_year" class="form-control" value="{{ old('graduation_year', $student->graduation_year) }}" min="1900" max="2100"></div>

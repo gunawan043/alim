@@ -131,7 +131,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">NUPY</label>
-                        <div><code>{{ $mutation->head_nip ?: '-' }}</code></div>
+                        <div><code>{{ $mutation->head_nupy ?: '-' }}</code></div>
                     </div>
                 </div>
             </div>

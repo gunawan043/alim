@@ -56,7 +56,9 @@ class Student extends Model
         // Bank
         'bank_name', 'bank_account_number', 'bank_account_name',
         // Status
-        'status', 'graduation_year', 'graduation_date',
+        'status', 'graduation_year', 'graduation_date', 'alumni_year',
+        // Media
+        'photo_path',
     ];
 
     protected $casts = [

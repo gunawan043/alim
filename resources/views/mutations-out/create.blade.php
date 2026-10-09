@@ -69,11 +69,18 @@
 </style>
 
 @section('content')
+@php
+    $isLulus = request()->routeIs('user.mutations-lulus.*');
+    $isDo = request()->routeIs('user.mutations-do.*');
+    $routePrefix = $isLulus ? 'mutations-lulus' : ($isDo ? 'mutations-do' : 'mutations-out');
+    $typeLabel = $isLulus ? 'Kelulusan' : ($isDo ? 'Drop Out' : 'Mutasi Keluar');
+@endphp
+
 @component('components.breadcrumb')
     @slot('li_1') Akademik @endslot
     @slot('li_2') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Data Santri</a> @endslot
-    @slot('li_3') <a href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}">PD Keluar</a> @endslot
-    @slot('title') Ajukan PD Keluar @endslot
+    @slot('li_3') <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}">{{ $typeLabel }}</a> @endslot
+    @slot('title') Ajukan {{ $typeLabel }} @endslot
 @endcomponent
 
 @if($errors->any())
@@ -87,7 +94,7 @@
     </div>
 @endif
 
-<form method="POST" action="{{ route('user.mutations-out.store', ['userId' => $userId]) }}" id="form-out">
+<form method="POST" action="{{ route("user.{$routePrefix}.store", ['userId' => $userId]) }}" id="form-out">
     @csrf
     <input type="hidden" name="submit_now" value="0" id="submit-flag">
 
@@ -182,7 +189,7 @@
                     <hr class="my-3">
 
                     {{-- Data Orang Tua/Wali --}}
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-12"><label class="form-label">Nama Orang Tua/Wali</label>
                             <input type="text" name="parent_name" id="f-parent-name" class="form-control"
                                 value="{{ old('parent_name') }}" placeholder="Nama lengkap orang tua/wali">
@@ -253,11 +260,11 @@
                     <input type="hidden" name="student_birth_place" id="s-birth-place" value="{{ old('student_birth_place', $student?->birth_place ?? '') }}">
                     <input type="hidden" name="student_address" id="s-address" value="{{ old('student_address', $student?->address ?? '') }}">
                     <input type="hidden" name="student_previous_school" id="s-prev-school" value="{{ old('student_previous_school', $student?->previous_school ?? '') }}">
-                    <input type="hidden" name="student_current_class" id="s-class" value="{{ old('student_current_class', $student?->studyGroup?->name ?? '') }}">
+                    <input type="hidden" name="student_current_class" id="s-class" value="{{ old('student_current_class', $student?->currentClassHistory?->studyGroup?->full_name ?? $student?->currentClassHistory?->studyGroup?->name ?? '') }}">
                 </div>
                 <div class="card-footer">
                     <div class="d-flex justify-content-between">
-                        <a href="/{{ $userId }}/mutations-out"
+                        <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}"
                            class="btn btn-light"><i class="ri-arrow-left-line me-1"></i> Batal</a>
                         <div>
                             <button type="button" class="btn btn-secondary" onclick="submitForm(false)">
