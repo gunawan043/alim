@@ -245,6 +245,17 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
   - Hasil: `tests/Feature/Student`, `tests/Unit/Student`, dan `StudentAssignedToRombelEventTest` **28 test lulus** (sebelumnya 19+ gagal).
 - Test suite sehat total: **155 test / 1.044 assertion** lulus; `view:cache` sukses; migrasi diterapkan di MySQL dev.
 
+## 26. Tahap 1 — Fondasi Kebijakan: Rumpun Mata Pelajaran & Guard Paket/Kunci
+- **Entitas resmi rumpun** (migrasi `2026_10_09_240000`): tabel `subject_groups` (kode, nama, `coordinator_task_name`, pola nama mapel, urutan) + kolom `subjects.subject_group_id` (queryable, dapat ditimpa admin). Seed 5 rumpun: **Umum, Agama, Hadits, Bahasa Arab, Tahfidz**; prioritas pola Tahfidz > Hadits > Bahasa Arab > Agama > Umum; **backfill otomatis** saat migrasi + command `alim:sync-subject-groups` (dengan opsi `--force`).
+- **`SubjectGroupResolver`**: pemetaan nama mapel → rumpun; **keanggotaan guru dari `TeachingAssignment` aktif** (mendukung multi-kelas & multi-rumpun — satu akun tidak diikat satu mapel/kelas); **koordinator dari tugas tambahan** (`gtk_additional_tasks.nama_tugas`, mis. "Koordinator Guru Umum"); daftar guru per rumpun & user koordinator per rumpun.
+- **Observer `SubjectGroupAssignmentObserver`** memetakan mapel baru/berubah otomatis; **fix bug halt event**: closure `creating` di `Subject::boot()` mengembalikan nilai sehingga `event(... until)` berhenti sebelum observer lain dipanggil — kini tidak mengembalikan nilai (semua observer `creating` pada model tersebut berjalan).
+- **Permission assignment-driven**: `SubjectGroupPermissionProvider` menghasilkan `subject-group.{code}.member` (dari penugasan) dan `subject-group.{code}.coordinator` (dari tugas tambahan); `PermissionRebuildObserver` diperluas untuk `TeachingAssignment`, `Subject`, `SubjectGroup`, dan `GtkAdditionalTask` agar snapshot dibangun ulang saat penugasan berubah.
+- **Reviewer serumpun sesuai kebijakan**: **koordinator rumpun = reviewer utama** (prioritas pertama), lalu guru mapel yang sama, fallback mapel lintas tahun ajaran, lalu fallback guru lain dalam rumpun yang sama — penulis tetap dikecualikan, maksimum 4 (mekanisme existing dipertahankan).
+- **Guard publish paket**: paket hanya dapat dipublikasikan setelah `workflow Approved` (publish dari draft tidak lagi memungkinkan) — menutup celah paket "final" tanpa approval.
+- **Kunci jawaban dipisah dari hak melihat**: `KurikulumAccess::canViewAllAnswerKeys()` hanya tim kurikulum/Waka/Kepala (TU **tidak otomatis**, sesuai kebutuhan tugas); `compare` kini memasking kunci/pembahasan **per sisi** (hak atas satu soal tidak membuka kunci soal pasangannya).
+- Test: `SubjectGroupPolicyTest` **9 test / 52 assertion** (pemetaan rumpun, keanggotaan multi-rumpun, koordinator, reviewer utama & fallback, guard publish, masking kunci); regresi **136 test / 1.013 assertion** lulus; `view:cache` sukses; migrasi + backfill diterapkan di MySQL dev.
+- **Sisa Tahap 1 (increment berikutnya)**: policy per model (BankSoal/Soal/Paket/Perangkat/Nilai/Absensi), sweep scope+guard P0 menyeluruh (kisi-kisi, repository reuse/detail, nilai, kehadiran, API internal), dan UI pengelolaan master rumpun/penugasan koordinator.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.

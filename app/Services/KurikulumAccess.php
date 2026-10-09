@@ -57,6 +57,18 @@ class KurikulumAccess
         return $this->isKurikulumTeam($user) || $this->isTataUsaha($user);
     }
 
+    /**
+     * Hak melihat kunci jawaban/pembahasan lintas bank.
+     *
+     * Kebijakan: TU tidak otomatis memperoleh kunci — hanya sesuai kebutuhan
+     * tugas administrasi (diberikan lewat izin khusus). Kurikulum/Waka/Kepala
+     * (tim kurikulum) memperolehnya sesuai kewenangan organisasi.
+     */
+    public function canViewAllAnswerKeys(User $user): bool
+    {
+        return $this->isKurikulumTeam($user);
+    }
+
     public function teachesSubject(User $user, string $subjectId, string $academicYearId, ?string $schoolId = null): bool
     {
         return TeachingAssignment::query()

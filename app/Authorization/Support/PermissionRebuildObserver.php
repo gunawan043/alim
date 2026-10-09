@@ -7,7 +7,11 @@ namespace App\Authorization\Support;
 use App\Authorization\Jobs\BuildSnapshotJob;
 use App\Authorization\Models\RevokedPermission;
 use App\Models\GTKEmployment;
+use App\Models\GtkAdditionalTask;
 use App\Models\Permission;
+use App\Models\Subject;
+use App\Models\SubjectGroup;
+use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -57,6 +61,12 @@ final class PermissionRebuildObserver
             $model instanceof User => [(string) $model->getKey()],
             $model instanceof Permission => $this->extractUserIdsFromModel($model),
             $model instanceof GTKEmployment || $model instanceof RevokedPermission => $this->extractUserIdFromForeignKey($model),
+            $model instanceof TeachingAssignment => collect([$model->teacher_id, $model->getOriginal('teacher_id')])
+                ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
+            $model instanceof GtkAdditionalTask => collect([$model->user_id, $model->getOriginal('user_id')])
+                ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
+            $model instanceof Subject => $this->userIdsForSubject($model),
+            $model instanceof SubjectGroup => $this->userIdsForSubjectGroup($model),
             default => [],
         };
 
@@ -64,6 +74,47 @@ final class PermissionRebuildObserver
             BuildSnapshotJob::dispatch($userId)
                 ->onQueue(config('authorization.rebuild_queue.name', 'authorization-rebuild'))
                 ->afterCommit();
+        }
+    }
+
+    /**
+     * Guru yang mengampu sebuah mapel (dipakai saat mapel berpindah rumpun).
+     *
+     * @return array<int, string>
+     */
+    private function userIdsForSubject(Subject $subject): array
+    {
+        try {
+            return TeachingAssignment::query()
+                ->where('subject_id', $subject->getKey())
+                ->pluck('teacher_id')
+                ->unique()
+                ->map(fn ($id) => (string) $id)
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Semua guru/koordinator dalam sebuah rumpun.
+     *
+     * @return array<int, string>
+     */
+    private function userIdsForSubjectGroup(SubjectGroup $group): array
+    {
+        try {
+            $resolver = app(\App\Services\SubjectGroupResolver::class);
+
+            return collect($resolver->teacherIdsForGroup($group))
+                ->merge($resolver->coordinatorUserIdsForGroup($group))
+                ->unique()
+                ->map(fn ($id) => (string) $id)
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
         }
     }
 

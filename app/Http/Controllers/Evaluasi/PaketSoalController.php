@@ -151,6 +151,17 @@ class PaketSoalController extends Controller
     {
         $paket = PaketSoal::findOrFail($paketUuid);
 
+        // Kebijakan approval: paket hanya boleh dipublikasikan setelah
+        // disetujui seluruh reviewer (workflow Approved). Publish dari draft
+        // tidak lagi memungkinkan agar paket "final" tidak melewati approval.
+        if ($paket->workflow_status === PaketSoal::WORKFLOW_PUBLISHED || $paket->is_published) {
+            return back()->with('error', 'Paket ini sudah dipublikasikan.');
+        }
+
+        if ($paket->workflow_status !== PaketSoal::WORKFLOW_APPROVED) {
+            return back()->with('error', 'Paket hanya dapat dipublikasikan setelah disetujui seluruh reviewer (status Approved).');
+        }
+
         if ($paket->jumlah_soal_aktual === 0) {
             return back()->with('error', 'Paket tidak memiliki soal. Tambahkan soal sebelum publish.');
         }

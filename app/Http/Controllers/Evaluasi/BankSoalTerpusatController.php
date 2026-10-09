@@ -240,7 +240,12 @@ class BankSoalTerpusatController extends Controller
         $compared = Soal::with(['options', 'bankSoal.subject', 'bankSoal.academicYear', 'creator:id,name'])->findOrFail($comparedId);
 
         $user = $request->user();
-        $canSeeSolution = $this->canSeeSolution($user, $soal) || $this->canSeeSolution($user, $compared);
+
+        // Hak kunci dihitung PER SISI — hak atas salah satu soal tidak
+        // membuka kunci/pembahasan soal pasangannya.
+        $canSeeSoal = $this->canSeeSolution($user, $soal);
+        $canSeeCompared = $this->canSeeSolution($user, $compared);
+        $canSeeSolution = $canSeeSoal || $canSeeCompared;
 
         $result = $this->similarity->compare($soal, $compared);
 
@@ -249,8 +254,8 @@ class BankSoalTerpusatController extends Controller
             'level' => $result['level'],
             'level_label' => SoalSimilarity::LEVEL_OPTIONS[$result['level']] ?? $result['level'],
             'solution_visible' => $canSeeSolution,
-            'soal' => $this->soalPayload($soal, $canSeeSolution),
-            'compared' => $this->soalPayload($compared, $canSeeSolution) + [
+            'soal' => $this->soalPayload($soal, $canSeeSoal),
+            'compared' => $this->soalPayload($compared, $canSeeCompared) + [
                 'subject' => $compared->bankSoal?->subject?->name,
                 'academic_year' => $compared->bankSoal?->academicYear?->name,
                 'semester' => $compared->bankSoal?->semester,
@@ -305,7 +310,7 @@ class BankSoalTerpusatController extends Controller
     private function canSeeSolution($user, Soal $soal): bool
     {
         return $user->id === $soal->dibuat_oleh
-            || app(KurikulumAccess::class)->canAccessAllBankSoal($user)
+            || app(KurikulumAccess::class)->canViewAllAnswerKeys($user)
             || $soal->reviewAssignments()->where('reviewer_id', $user->id)->exists();
     }
 

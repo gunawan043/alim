@@ -18,13 +18,16 @@ class Subject extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->id = $m->id ?: (string) Str::uuid();
+        });
     }
 
     protected $fillable = [
         'school_id',
         'code',
         'name',
+        'subject_group_id',
         'category',
         'credit_hours',
         'description',
@@ -34,6 +37,14 @@ class Subject extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class, 'school_id');
+    }
+
+    /**
+     * Rumpun mata pelajaran (entitas resmi lembaga).
+     */
+    public function subjectGroup(): BelongsTo
+    {
+        return $this->belongsTo(SubjectGroup::class, 'subject_group_id');
     }
 
     public function adminBooks(): HasMany

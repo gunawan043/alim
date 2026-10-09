@@ -143,6 +143,10 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
             HomeroomAssignment::class,
             CoordinatorAssignment::class,
             StructuralAssignment::class,
+            \App\Models\TeachingAssignment::class,
+            \App\Models\Subject::class,
+            \App\Models\SubjectGroup::class,
+            \App\Models\GtkAdditionalTask::class,
         ];
         foreach ($assignmentModels as $assignmentModel) {
             if (class_exists($assignmentModel)) {

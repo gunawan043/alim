@@ -54,6 +54,7 @@ use App\Models\GradeLevel;
 use App\Models\GtkEmployment;
 use App\Models\Student;
 use App\Models\StudyGroup;
+use App\Models\Subject;
 use App\Models\StudyGroupSubject;
 use App\Observers\BoardingPolicyObserver;
 use App\Observers\DokumenIsoObserver;
@@ -61,6 +62,7 @@ use App\Observers\DormitoryStaffAssignmentObserver;
 use App\Observers\GtkEmploymentObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
+use App\Observers\SubjectGroupAssignmentObserver;
 use App\Services\Boarding\BoardingApprovalService;
 use App\Services\Boarding\HealthWorkflowService;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -230,6 +232,7 @@ class AppServiceProvider extends ServiceProvider
         StudyGroup::observe(StudyGroupObserver::class);
         DokumenIso::observe(DokumenIsoObserver::class);
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
+        Subject::observe(SubjectGroupAssignmentObserver::class);
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);

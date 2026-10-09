@@ -8,6 +8,7 @@ use App\Models\ReviewAssignment;
 use App\Models\Soal;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
+use App\Services\SubjectGroupResolver;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -192,9 +193,32 @@ class ReviewWorkflowService
             ->when($context['academic_year_id'], fn ($q) => $q->where('academic_year_id', $context['academic_year_id']))
             ->when($context['grade_level_id'], fn ($q) => $q->whereHas('studyGroup', fn ($q2) => $q2->where('grade_level_id', $context['grade_level_id'])));
 
-        $ids = $this->extractTeacherIds($base, $submitter, $limit);
+        $subjectTeacherIds = $this->extractTeacherIds($base, $submitter, $limit);
 
-        // Fallback: mapel sama lintas tahun ajaran (tetap lintas satuan pendidikan).
+        // Kebijakan Tahap 1: koordinator rumpun adalah reviewer utama
+        // (ditetapkan lewat tugas tambahan), bukan approver final otomatis.
+        $resolver = app(SubjectGroupResolver::class);
+        $group = $subject ? $resolver->groupForSubject($subject) : null;
+
+        $coordinatorIds = [];
+        if ($group) {
+            $coordinatorIds = collect($resolver->coordinatorUserIdsForGroup($group))
+                ->map(fn ($id) => (string) $id)
+                ->reject(fn ($id) => $id === (string) $submitter->id)
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
+        }
+
+        $ids = collect($coordinatorIds)
+            ->merge($subjectTeacherIds)
+            ->unique()
+            ->take($limit)
+            ->values()
+            ->all();
+
+        // Fallback 1: mapel sama lintas tahun ajaran (tetap lintas satuan pendidikan).
         if ($ids === []) {
             $ids = $this->extractTeacherIds(
                 TeachingAssignment::query()
@@ -203,6 +227,18 @@ class ReviewWorkflowService
                 $submitter,
                 $limit
             );
+        }
+
+        // Fallback 2: guru lain dalam rumpun yang sama (mapel berbeda satu rumpun).
+        if ($ids === [] && $group) {
+            $ids = collect($resolver->teacherIdsForGroup($group))
+                ->map(fn ($id) => (string) $id)
+                ->reject(fn ($id) => $id === (string) $submitter->id)
+                ->unique()
+                ->sort()
+                ->take($limit)
+                ->values()
+                ->all();
         }
 
         return $ids;
