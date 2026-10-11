@@ -294,8 +294,7 @@ class BankSoalTerpusatController extends Controller
 
     /**
      * Data perbandingan soal (comparison view) — JSON.
-     * Kunci jawaban & pembahasan hanya untuk pengguna berwenang
-     * (penyusun salah satu soal, reviewer yang ditugaskan, Waka/Kurikulum/TU/KSP).
+     * Kunci & pembahasan hanya untuk guru serumpun (per sisi) dan kurikulum.
      */
     public function compare(Request $request, string $userId, string $soalId, string $comparedId)
     {
@@ -373,14 +372,14 @@ class BankSoalTerpusatController extends Controller
     }
 
     /**
-     * Pengguna berwenang melihat kunci & pembahasan soal:
-     * penyusun soal, reviewer yang ditugaskan, atau tim lintas satuan (Waka/Kurikulum/TU/KSP).
+     * Kebijakan kunci jawaban: hanya guru SERUMPUN (mapel satu rumpun, aktif)
+     * dan tim kurikulum. Pihak lain hanya pelihat — kunci/pembahasan disamarkan.
      */
     private function canSeeSolution($user, Soal $soal): bool
     {
-        return $user->id === $soal->dibuat_oleh
-            || app(KurikulumAccess::class)->canViewAllAnswerKeys($user)
-            || $soal->reviewAssignments()->where('reviewer_id', $user->id)->exists();
+        $subject = $soal->bankSoal?->subject;
+
+        return app(KurikulumAccess::class)->canViewAnswerKeys($user, $subject);
     }
 
     private function soalPayload(Soal $item, bool $canSeeSolution): array

@@ -151,21 +151,143 @@
                         {{-- TAB: Notifications --}}
                         @if($tab === 'notifications')
                             <div class="row g-4">
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" name="email_notifications" value="1"
-                                            id="email-notif" {{ ($settings['email_notifications'] ?? '1') == '1' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="email-notif">Aktifkan Notifikasi Email</label>
+                                <div class="col-lg-4">
+                                    <div class="card h-100">
+                                        <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-notification-3-line me-1"></i>Notifikasi Umum</h6></div>
+                                        <div class="card-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="email_notifications" value="1"
+                                                    id="email-notif" {{ ($settings['email_notifications'] ?? '1') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="email-notif">Notifikasi Email</label>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="whatsapp_notifications" value="1"
+                                                    id="wa-notif" {{ ($settings['whatsapp_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="wa-notif">Notifikasi WhatsApp</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="push_notifications" value="1"
+                                                    id="push-notif" {{ ($settings['push_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="push-notif">Push Notifications</label>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" name="whatsapp_notifications" value="1"
-                                            id="wa-notif" {{ ($settings['whatsapp_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="wa-notif">Aktifkan Notifikasi WhatsApp</label>
+                                </div>
+
+                                <div class="col-lg-8">
+                                    <div class="card h-100">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-whatsapp-line me-1"></i>Gateway WhatsApp (tanpa API resmi)</h6>
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" name="check_device" value="1" class="btn btn-sm btn-soft-info">
+                                                    <i class="ri-signal-tower-line me-1"></i>Cek Status Device
+                                                </button>
+                                                <button type="submit" name="test_wa" value="1" class="btn btn-sm btn-soft-success">
+                                                    <i class="ri-send-plane-line me-1"></i>Uji Kirim ke Nomor Pusat
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Status Gateway</label>
+                                                    <select name="wa_enabled" class="form-select form-select-sm">
+                                                        <option value="1" {{ ($settings['wa_enabled'] ?? '1') == '1' ? 'selected' : '' }}>Aktif</option>
+                                                        <option value="0" {{ ($settings['wa_enabled'] ?? '1') == '0' ? 'selected' : '' }}>Nonaktif</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Provider</label>
+                                                    <select name="wa_provider" class="form-select form-select-sm">
+                                                        @foreach(['log' => 'Log / Gratis (wa.me manual)', 'fonnte' => 'Fonnte', 'wablas' => 'Wablas', 'generic' => 'Generic Webhook'] as $value => $label)
+                                                            <option value="{{ $value }}" {{ ($settings['wa_provider'] ?? 'log') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Mode Penerima</label>
+                                                    <select name="wa_delivery_mode" class="form-select form-select-sm">
+                                                        <option value="central" {{ ($settings['wa_delivery_mode'] ?? 'central') === 'central' ? 'selected' : '' }}>Terpusat — nomor admin ALIM</option>
+                                                        <option value="guardian" {{ ($settings['wa_delivery_mode'] ?? '') === 'guardian' ? 'selected' : '' }}>Ke wali santri</option>
+                                                        <option value="both" {{ ($settings['wa_delivery_mode'] ?? '') === 'both' ? 'selected' : '' }}>Keduanya</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Nomor Admin ALIM (pusat)</label>
+                                                    <input type="text" name="wa_central_number" class="form-control form-control-sm" value="{{ $settings['wa_central_number'] ?? '' }}" placeholder="08xxxxxxxxxx">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">API Token</label>
+                                                    <input type="text" name="wa_api_token" class="form-control form-control-sm" value="{{ $settings['wa_api_token'] ?? '' }}" placeholder="token Fonnte/Wablas">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">API URL (opsional)</label>
+                                                    <input type="text" name="wa_api_url" class="form-control form-control-sm" value="{{ $settings['wa_api_url'] ?? '' }}" placeholder="https://api.fonnte.com/send">
+                                                </div>
+                                                <input type="hidden" name="wa_sender" value="{{ $settings['wa_sender'] ?? '' }}">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="push_notifications" value="1"
-                                            id="push-notif" {{ ($settings['push_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="push-notif">Aktifkan Push Notifications</label>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-file-text-line me-1"></i>Template Pesan</h6>
+                                            <small class="text-muted">Biarkan kosong untuk memakai template bawaan. Placeholder: {santri} {waktu} {penjemput} {tujuan} {estimasi} {catatan} {mapel} {rombel} {judul} {tanggal}</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                @foreach(['picked_up' => 'Dijemput', 'returned' => 'Kembali ke asrama', 'sick' => 'Sakit', 'rapor' => 'Rapor siap', 'holiday' => 'Libur/Jadwal', 'permit_approved' => 'Izin disetujui', 'permit_rejected' => 'Izin ditolak', 'violation' => 'Pelanggaran', 'overdue' => 'Belum kembali (overdue)', 'achievement' => 'Prestasi', 'announcement' => 'Pengumuman', 'visit' => 'Kunjungan'] as $tkey => $tlabel)
+                                                    <div class="col-md-6">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <label class="form-label small mb-1">{{ $tlabel }}</label>
+                                                            <div class="form-check form-switch mb-1">
+                                                                <input class="form-check-input" type="checkbox" name="wa_event_{{ $tkey }}" value="1"
+                                                                    {{ ($settings['wa_event_'.$tkey] ?? '1') == '1' ? 'checked' : '' }}>
+                                                                <label class="form-check-label small">Aktif</label>
+                                                            </div>
+                                                        </div>
+                                                        <textarea name="wa_template_{{ $tkey }}" rows="3" class="form-control form-control-sm"
+                                                            placeholder="{{ config('whatsapp.templates.'.$tkey) }}">{{ $settings['wa_template_'.$tkey] ?? '' }}</textarea>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-history-line me-1"></i>Riwayat Pengiriman Terakhir</h6></div>
+                                        <div class="card-body">
+                                            @if(!empty($waLogs) && $waLogs->count() > 0)
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered align-middle mb-0">
+                                                        <thead class="table-light"><tr><th>Waktu</th><th>Nomor</th><th>Event</th><th>Status</th><th>Pratinjau</th><th>Kirim Manual</th></tr></thead>
+                                                        <tbody>
+                                                            @foreach($waLogs as $log)
+                                                                <tr>
+                                                                    <td class="small">{{ \Illuminate\Support\Carbon::parse($log->created_at)->format('d/m H:i') }}</td>
+                                                                    <td class="small">{{ $log->phone }}</td>
+                                                                    <td class="small">{{ $log->event ?? '-' }}</td>
+                                                                    <td><span class="badge bg-{{ $log->status === 'sent' ? 'success' : ($log->status === 'logged' ? 'info' : 'danger') }}-subtle text-{{ $log->status === 'sent' ? 'success' : ($log->status === 'logged' ? 'info' : 'danger') }}">{{ $log->status }}</span></td>
+                                                                    <td class="small">{{ \Illuminate\Support\Str::limit($log->message, 70) }}@if(!empty($log->error))<div class="text-danger" style="font-size:0.7rem">{{ \Illuminate\Support\Str::limit($log->error, 90) }}</div>@endif</td>
+                                                                    <td class="text-center">
+                                                                        <a href="https://wa.me/{{ $log->phone }}?text={{ rawurlencode((string) $log->message) }}"
+                                                                           target="_blank" rel="noopener" class="btn btn-sm btn-soft-success" title="Buka WhatsApp untuk kirim manual">
+                                                                            <i class="ri-whatsapp-line"></i>
+                                                                        </a>
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @else
+                                                <p class="text-muted small mb-0">Belum ada riwayat pengiriman.</p>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>

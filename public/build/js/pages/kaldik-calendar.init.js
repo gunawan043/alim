@@ -134,9 +134,16 @@ File: Kaldik Calendar init js
 
     // Convert kaldik event to FullCalendar format with custom color
     function toFullCalendarEvent(item) {
-        // Use T00:00:00 to avoid UTC midnight shifting in UTC+7 timezone
+        // FullCalendar memakai konvensi end EKSKLUSIF untuk all-day event.
+        // Data tersimpan adalah tanggal akhir INKLUSIF → tambah 1 hari di sini,
+        // dan form edit menguranginya 1 hari (sudah ada) agar konsisten.
         var eventStart = item.start ? new Date(item.start + 'T00:00:00') : null;
-        var eventEnd = item.end ? new Date(item.end + 'T23:59:59') : null;
+        var eventEnd = null;
+
+        if (item.end) {
+            eventEnd = new Date(item.end + 'T00:00:00');
+            eventEnd.setDate(eventEnd.getDate() + 1);
+        }
         return {
             id: item.id,
             title: item.title,
@@ -430,15 +437,12 @@ File: Kaldik Calendar init js
         filtered.forEach(function(e) {
             var color = e.extendedProps && e.extendedProps.color;
             if (!color) return;
-            var start = e.start; // Y-m-d string
-            var end = e.end;     // Y-m-d string (FullCalendar already +1 day)
-            // Subtract 1 from end to get true inclusive end
-            var endParts = end ? end.split('-') : start.split('-');
-            var endY = parseInt(endParts[0]);
-            var endM = parseInt(endParts[1]) - 1;
-            var endD = parseInt(endParts[2]) - 1;
-            var endDate = new Date(endY, endM, endD);
-            var startDate = new Date(parseInt(start.split('-')[0]), parseInt(start.split('-')[1]) - 1, parseInt(start.split('-')[2]));
+            var start = e.start;          // Y-m-d (data mentah, INKLUSIF)
+            var end = e.end || e.start;   // Y-m-d (INKLUSIF — jangan dikurangi)
+            var sp = start.split('-');
+            var ep = end.split('-');
+            var startDate = new Date(parseInt(sp[0]), parseInt(sp[1]) - 1, parseInt(sp[2]));
+            var endDate = new Date(parseInt(ep[0]), parseInt(ep[1]) - 1, parseInt(ep[2]));
             for (var d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 var key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
                 if (!dateColorMap[key]) dateColorMap[key] = color;

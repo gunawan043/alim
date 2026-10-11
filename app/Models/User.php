@@ -620,10 +620,45 @@ class User extends Authenticatable
             return true;
         }
 
-        return DormitoryStaffAssignment::active()
+        if (DormitoryStaffAssignment::active()
             ->where('user_id', $this->id)
             ->where('dormitory_id', $dormitoryId)
-            ->exists();
+            ->exists()) {
+            return true;
+        }
+
+        // Staf Perizinan: akses lintas asrama SESUAI GENDER (saling backup).
+        $scope = $this->perizinanGenderScope();
+
+        return $scope !== null
+            && $dormitory !== null
+            && in_array($dormitory->gender, [$scope, 'campuran'], true);
+    }
+
+    /**
+     * Gender scope Staf Perizinan (putra/putri) dari role/jabatan;
+     * fallback dari asrama yang sudah ditugaskan. Null = bukan staf perizinan.
+     */
+    public function perizinanGenderScope(): ?string
+    {
+        $haystack = mb_strtolower(implode(' ', $this->effectiveRoles()).' '.($this->employment?->jabatan ?? ''));
+
+        if (! str_contains($haystack, 'perizinan')) {
+            return null;
+        }
+
+        if (str_contains($haystack, 'putri')) {
+            return 'putri';
+        }
+
+        if (str_contains($haystack, 'putra')) {
+            return 'putra';
+        }
+
+        return Dormitory::query()
+            ->whereIn('id', DormitoryStaffAssignment::active()->where('user_id', $this->id)->pluck('dormitory_id'))
+            ->whereIn('gender', ['putra', 'putri'])
+            ->value('gender');
     }
 
     /**
@@ -633,9 +668,21 @@ class User extends Authenticatable
      */
     public function accessibleDormitoryIds(): array
     {
-        return DormitoryStaffAssignment::active()
+        $assigned = DormitoryStaffAssignment::active()
             ->where('user_id', $this->id)
-            ->pluck('dormitory_id')
-            ->toArray();
+            ->pluck('dormitory_id');
+
+        $scope = $this->perizinanGenderScope();
+
+        if ($scope) {
+            $assigned = $assigned->merge(
+                Dormitory::query()
+                    ->whereIn('gender', [$scope, 'campuran'])
+                    ->where('is_active', true)
+                    ->pluck('id')
+            );
+        }
+
+        return $assigned->unique()->values()->toArray();
     }
 }

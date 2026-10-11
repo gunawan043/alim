@@ -123,7 +123,8 @@ function isActivePimpinan($routeName, $pattern) {
     </a>
     <div class="collapse menu-dropdown{{ isActivePimpinan($currentRoute, 'user.kurikulum.') ? ' show' : '' }}" id="pimpinan_kurikulum">
         <ul class="nav nav-sm flex-column">
-            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.index') ? ' active' : '' }}" href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Peta Kurikulum</a></li>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.index') ? ' active' : '' }}" href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Peta Kurikulum</a>
+            <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.rumpun.') ? ' active' : '' }}" href="{{ route('user.kurikulum.rumpun.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Master Rumpun</a></li></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.cp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Capaian Pembelajaran</a></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.tp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">Tujuan Pembelajaran</a></li>
             <li class="nav-item"><a class="nav-link{{ isActivePimpinan($currentRoute, 'user.kurikulum.atp.') ? ' active' : '' }}" href="{{ route('user.kurikulum.atp.index', ['userId' => $userId]) }}" style="font-size:0.85rem">ATP</a></li>

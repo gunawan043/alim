@@ -712,6 +712,14 @@ class NilaiKelasController extends Controller
         $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
+        // Kebijakan: catatan rapor hanya wali kelas atau tim kurikulum.
+        $user = $request->user();
+        $isWali = (string) ($studyGroup->homeroom_teacher_id ?? '') === (string) $user?->id;
+
+        if (! $isWali && ! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            abort(403, 'Catatan rapor hanya dapat diisi wali kelas atau tim kurikulum.');
+        }
+
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;

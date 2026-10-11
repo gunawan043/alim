@@ -17,14 +17,14 @@
     @slot('title') Koordinator Kurikulum @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Total Mapel" :value="$totalMapel" icon="ri-book-line" color="primary" />
     <x-dashboards.stat-card label="Progress Silabus" :value="$progressSilabus . '%'" icon="ri-percent-line" color="success" />
     <x-dashboards.stat-card label="Paket Soal Pending" :value="$paketSoalPending" icon="ri-file-list-3-line" color="warning" />
     <x-dashboards.stat-card label="Ujian Mendatang (14 Hari)" :value="$ujianMendatang" icon="ri-calendar-schedule-line" color="info" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- TRACKER SILABUS --}}
     <div class="col-xl-8">
         <div class="card h-100">

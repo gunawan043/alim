@@ -18,14 +18,14 @@
     @slot('title') Wali Kelas @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Total Santri Kelas" :value="$totalSantri" icon="ri-group-line" color="primary" />
     <x-dashboards.stat-card label="Hadir Hari Ini" :value="$hadirPercent . '%'" icon="ri-checkbox-circle-line" color="success" />
     <x-dashboards.stat-card label="Rata-rata Nilai" :value="number_format($nilaiRata, 1, ',', '.')" icon="ri-bar-chart-fill" color="warning" />
     <x-dashboards.stat-card label="Perlu Perhatian" :value="$perluPerhatian" icon="ri-alert-line" color="danger" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- PRESENSI KELAS HARI INI --}}
     <div class="col-xl-8">
         <div class="card h-100">

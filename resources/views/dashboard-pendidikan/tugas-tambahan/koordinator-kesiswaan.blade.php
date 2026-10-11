@@ -17,14 +17,14 @@
     @slot('title') Koordinator Kesiswaan @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Total Santri Aktif" :value="$totalSantri" icon="ri-group-line" color="primary" />
     <x-dashboards.stat-card label="Pelanggaran Bulan Ini" :value="$pelanggaran" icon="ri-alert-line" color="danger" />
     <x-dashboards.stat-card label="Ekstrakurikuler Aktif" :value="$ekskulAktif" icon="ri-trophy-line" color="success" />
     <x-dashboards.stat-card label="Izin Keluar Pending" :value="$izinPending" icon="ri-mail-unread-line" color="warning" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- LIVE FEED PELANGGARAN --}}
     <div class="col-xl-8">
         <div class="card h-100">

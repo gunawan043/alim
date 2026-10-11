@@ -26,9 +26,10 @@ class GtkAdditionalTaskController extends Controller
 
         $tasks = $query->orderBy('user_id')->orderBy('nama_tugas')->paginate(20)->withQueryString();
 
-        $teacherIds = usersHavingPermission('general_teacher.readable');
-        $teachers = User::whereIn('id', $teacherIds)
-            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
@@ -46,28 +47,41 @@ class GtkAdditionalTaskController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $teacherIds = usersHavingPermission('general_teacher.readable');
-        $teachers = User::whereIn('id', $teacherIds)
-            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
-        $defaultTasks = [
-            'Kesiswawan',
-            'Waka Kurikulum',
-            'Waka Kesiswaan',
-            'Waka Sarana & Prasarana',
-            'Coordinator Bahasa Arab',
-            'Coordinator OSIS',
-            'Coordinator Ekstrakurikuler',
-            'Wali Kelas',
-            'Guru BK',
-            'Koordinator Laboratorium',
-            'Koordinator Perpustakaan',
-        ];
+        // Master nama tugas (dropdown) — fallback daftar bawaan bila master kosong.
+        $defaultTasks = \App\Models\AdditionalTaskType::query()
+            ->active()
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->pluck('nama')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($defaultTasks)) {
+            $defaultTasks = [
+                'Kesiswawan',
+                'Waka Kurikulum',
+                'Waka Kesiswaan',
+                'Waka Sarana & Prasarana',
+                'Coordinator Bahasa Arab',
+                'Coordinator OSIS',
+                'Coordinator Ekstrakurikuler',
+                'Wali Kelas',
+                'Guru BK',
+                'Koordinator Laboratorium',
+                'Koordinator Perpustakaan',
+            ];
+        }
 
         return view('gtk-additional-tasks.create', compact('teachers', 'decrees', 'defaultTasks', 'userId'));
     }
@@ -119,16 +133,26 @@ class GtkAdditionalTaskController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $teacherIds = usersHavingPermission('general_teacher.readable');
-        $teachers = User::whereIn('id', $teacherIds)
-            ->when($schoolId, fn ($q) => $q->whereHas('employments', fn ($eq) => $eq->where('school_id', $schoolId)))
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('issued_date')->get();
 
-        return view('gtk-additional-tasks.edit', compact('task', 'teachers', 'decrees', 'userId'));
+        $defaultTasks = \App\Models\AdditionalTaskType::query()
+            ->active()
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->pluck('nama')
+            ->unique()
+            ->values()
+            ->all();
+
+        return view('gtk-additional-tasks.edit', compact('task', 'teachers', 'decrees', 'userId', 'defaultTasks'));
     }
 
     public function update(Request $request, string $userId, string $id)

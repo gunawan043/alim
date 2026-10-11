@@ -10,9 +10,9 @@
     @endcomponent
 
     {{-- STATISTIK --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -28,7 +28,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -44,7 +44,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -60,7 +60,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -95,22 +95,22 @@
                         </div>
                         <div class="col-sm-auto">
                             <form method="GET" action="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
-                                <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                <select name="academic_year_id" class="form-select form-select-sm" style="width:160px" onchange="this.form.submit()">
                                     @foreach($academicYears as $ay)
                                         <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
                                     @endforeach
                                 </select>
-                                <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
+                                <select name="semester" class="form-select form-select-sm" style="width:120px" onchange="this.form.submit()">
                                     <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                                     <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
                                 </select>
-                                <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
+                                <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-refresh-line"></i></a>
                             </form>
                         </div>
                     </div>
                 </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle table-freeze mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Mapel</th>

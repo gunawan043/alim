@@ -96,7 +96,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Wali Kelas</label>
-                                <select name="homeroom_teacher_id" id="homeroom_teacher_id" class="form-select">
+                                <select name="homeroom_teacher_id" id="homeroom_teacher_id" class="form-select js-select2-wali">
                                     <option value="">— Pilih Wali Kelas —</option>
                                     @foreach($teachers as $t)
                                         <option value="{{ $t->id }}" {{ old('homeroom_teacher_id') == $t->id ? 'selected' : '' }}>
@@ -182,11 +182,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += `<option value="${t.id}">${t.name}</option>`;
             });
             teacherSelect.innerHTML = html;
+            if (window.jQuery && $.fn.select2) { $(teacherSelect).trigger('change'); }
         } catch(e) {
             teacherSelect.innerHTML = '<option value="">Gagal memuat wali kelas</option>';
         } finally {
             teacherSelect.disabled = false;
         }
+    }
+
+    // Muat data awal bila sekolah sudah terpilih (mis. akun satuan pendidikan).
+    const initialSchool = schoolSelect?.value;
+    if (initialSchool) {
+        loadGradeLevels(initialSchool);
+        loadTeachers(initialSchool);
+    }
+
+    if (window.jQuery && $.fn.select2) {
+        $('.js-select2-wali').select2({ width: '100%', placeholder: '— Cari / Pilih Wali Kelas —', allowClear: true });
     }
 
     schoolSelect?.addEventListener('change', async function() {

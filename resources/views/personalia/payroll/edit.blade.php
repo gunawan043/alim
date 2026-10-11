@@ -81,7 +81,7 @@
                     <hr class="my-4">
 
                     <h6 class="fw-semibold text-dark mb-3"><i class="ri-money-dollar-circle-line me-1"></i> Komponen Gaji</h6>
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-md-6">
                             <label class="form-label">Gaji Pokok (Rp) <span class="text-danger">*</span></label>
                             <input type="number" name="gaji_pokok" class="form-control" placeholder="0" min="0">

@@ -39,7 +39,7 @@ $shifts = \App\Models\Shift::where('is_active',true)->get();
     </div>
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-xl-3 col-md-4 col-sm-6">
         <div class="card stat-card border-start border-4 border-primary">
             <div class="card-body py-2">

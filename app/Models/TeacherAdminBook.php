@@ -32,6 +32,8 @@ class TeacherAdminBook extends Model
         'teaching_id',
         'kktp_id',
         'is_active',
+        'locked_at',
+        'locked_by',
         'nr_final_weight_rs',
         'nr_final_weight_sts',
         'nr_final_weight_sas',
@@ -43,7 +45,16 @@ class TeacherAdminBook extends Model
         'nr_final_weight_sts' => 'float',
         'nr_final_weight_sas' => 'float',
         'sumatif_columns' => 'array',
+        'locked_at' => 'datetime',
     ];
+
+    /**
+     * Nilai final buku terkunci — perubahan hanya setelah dibuka kurikulum.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
 
     public function teacher(): BelongsTo
     {

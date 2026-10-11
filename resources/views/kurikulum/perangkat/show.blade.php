@@ -67,7 +67,14 @@
         </div>
     @endif
 
-    @if(! $canEdit)
+    @if($perangkat->isLocked())
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-lock-line me-1"></i>
+            RPM ini sudah <strong>final dan terkunci</strong>. Revisi dilakukan dengan membuat <strong>versi baru</strong> —
+            dokumen ini tetap tersimpan sebagai riwayat.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @elseif(! $canEdit)
         <div class="alert alert-info alert-dismissible fade show" role="alert">
             <i class="ri-team-line me-1"></i>
             Ini <strong>RPM bersama serumpun</strong> (mapel &amp; jenjang/fase sama). Anda dapat melihat dan mencetaknya;
@@ -75,6 +82,62 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
+
+    {{-- Tahap 2: alur dokumen, approval rumpun, versi & penguncian --}}
+    @php
+        $wf = $perangkat->workflow_status ?? 'draft';
+        $wfBadge = [
+            'draft' => 'bg-secondary-subtle text-secondary',
+            'review' => 'bg-warning-subtle text-warning',
+            'revisi' => 'bg-danger-subtle text-danger',
+            'approved' => 'bg-success-subtle text-success',
+        ][$wf] ?? 'bg-secondary-subtle text-secondary';
+    @endphp
+    <div class="card mb-3">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <span class="badge {{ $wfBadge }} p-2">
+                    <i class="ri-git-branch-line me-1"></i>{{ \App\Models\PerangkatPembelajaran::WORKFLOW_OPTIONS[$wf] ?? $wf }}
+                </span>
+                <span class="badge bg-dark-subtle text-dark p-2 ms-1">v{{ $perangkat->version ?? 1 }}</span>
+                @if($perangkat->isLocked())
+                    <span class="badge bg-success-subtle text-success p-2 ms-1"><i class="ri-lock-line me-1"></i>Terkunci (final)</span>
+                @endif
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                @if($myReviewAssignment)
+                    <form method="POST" action="{{ route('user.review-soal.decide', ['userId' => $userId, 'assignmentId' => $myReviewAssignment->id]) }}" class="d-flex gap-2">
+                        @csrf
+                        <button type="submit" name="status" value="approved" class="btn btn-sm btn-success">
+                            <i class="ri-check-line me-1"></i>Setujui
+                        </button>
+                        <button type="submit" name="status" value="revision" class="btn btn-sm btn-outline-danger">
+                            <i class="ri-arrow-go-back-line me-1"></i>Minta Perbaikan
+                        </button>
+                    </form>
+                @endif
+                @if($canSubmitReview)
+                    <form method="POST" action="{{ route('user.kurikulum.perangkat.submit-review', ['userId' => $userId, 'id' => $perangkat->id]) }}">
+                        @csrf
+                        <button class="btn btn-sm btn-primary"><i class="ri-send-plane-line me-1"></i>Ajukan Approval Rumpun</button>
+                    </form>
+                @endif
+                @if($canCreateVersion)
+                    <form method="POST" action="{{ route('user.kurikulum.perangkat.new-version', ['userId' => $userId, 'id' => $perangkat->id]) }}"
+                          onsubmit="return confirm('Buat versi baru dari RPM ini? Dokumen lama tetap tersimpan sebagai riwayat.');">
+                        @csrf
+                        <button class="btn btn-sm btn-soft-warning"><i class="ri-git-branch-line me-1"></i>Buat Versi Baru</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+        @if(($workflowProgress['total'] ?? 0) > 0)
+            <div class="card-footer bg-light-subtle small text-muted">
+                Approval anggota rumpun: <strong>{{ $workflowProgress['approved'] }}/{{ $workflowProgress['total'] }}</strong> menyetujui
+                · {{ $workflowProgress['pending'] }} menunggu · {{ $workflowProgress['revision'] }} minta perbaikan
+            </div>
+        @endif
+    </div>
 
     <form method="POST" action="{{ route('user.kurikulum.perangkat.update', ['userId' => $userId, 'id' => $perangkat->id]) }}">
         @csrf @method('PUT')
@@ -206,5 +269,50 @@
             @csrf @method('DELETE')
             <button class="btn btn-soft-danger btn-sm"><i class="ri-delete-bin-line align-bottom me-1"></i> Hapus RPM</button>
         </form>
+    @endif
+
+    {{-- Riwayat versi (revisi = versi baru; dokumen lama tetap tersimpan) --}}
+    @if(($versions ?? collect())->count() > 1)
+        <div class="card mt-3">
+            <div class="card-header border-bottom-dashed">
+                <h5 class="card-title mb-0"><i class="ri-history-line text-primary me-1"></i>Riwayat Versi</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Versi</th>
+                                <th>Judul</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Dibuat</th>
+                                <th class="text-end" style="width:90px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($versions as $version)
+                                <tr class="{{ $version->id === $perangkat->id ? 'table-primary' : '' }}">
+                                    <td class="fw-semibold">v{{ $version->version }}</td>
+                                    <td class="small">{{ $version->judul }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary-subtle text-secondary">
+                                            {{ \App\Models\PerangkatPembelajaran::WORKFLOW_OPTIONS[$version->workflow_status] ?? $version->workflow_status }}
+                                        </span>
+                                        @if($version->is_current)
+                                            <span class="badge bg-primary-subtle text-primary">Aktif</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center small text-muted">{{ $version->created_at?->format('d/m/Y H:i') }}</td>
+                                    <td class="text-end">
+                                        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $version->id]) }}"
+                                           class="btn btn-sm btn-soft-primary"><i class="ri-eye-line"></i></a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     @endif
 @endsection

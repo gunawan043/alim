@@ -20,7 +20,7 @@
 </div>
 
 {{-- Statistics Cards --}}
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-xl-3 col-md-6">
         <div class="card h-100">
             <div class="card-body">
@@ -87,7 +87,7 @@
 </div>
 
 {{-- Gender Distribution --}}
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-xl-6">
         <div class="card h-100">
             <div class="card-header">

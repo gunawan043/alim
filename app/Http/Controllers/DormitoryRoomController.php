@@ -50,6 +50,43 @@ class DormitoryRoomController extends Controller
         return view('dormitory.rooms.index', compact('dormitory', 'rooms', 'wings', 'userId', 'occupied', 'totalCapacity'));
     }
 
+    /**
+     * Halaman PENEMPATAN KAMAR: alur tarik data santri belum berkamar →
+     * pilih kamar → tempatkan; serta kelola penghuni per kamar.
+     */
+    public function placement(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = \App\Models\Dormitory::findOrFail($asramaUuid);
+
+        $rooms = \App\Models\DormitoryRoom::with(['residents' => function ($q) {
+                $q->where('is_active', true)->with('student:id,name,nisn,gender');
+            }])
+            ->where('dormitory_id', $asramaUuid)
+            ->orderBy('code')
+            ->get();
+
+        $activeYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
+
+        $assignedIds = \App\Models\DormitoryResident::where('is_active', true)
+            ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
+            ->pluck('student_id');
+
+        $belumBerkamar = \App\Models\Student::where('school_id', $dormitory->school_id)
+            ->where('status', 'active')
+            ->whereNotIn('id', $assignedIds)
+            ->where(fn ($q) => $q->where('boarding_status', 'boarding')->orWhereNull('boarding_status'))
+            ->when(in_array($dormitory->gender, ['putra', 'putri'], true),
+                fn ($q) => $q->where('gender', $dormitory->gender === 'putra' ? 'L' : 'P'))
+            ->count();
+
+        return view('dormitory.rooms.placement', [
+            'userId' => $userId,
+            'dormitory' => $dormitory,
+            'rooms' => $rooms,
+            'belumBerkamar' => $belumBerkamar,
+        ]);
+    }
+
     public function create(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);

@@ -8,6 +8,54 @@ use Illuminate\Support\Str;
 
 class DormitoryPermit extends Model
 {
+    // ── State machine izin (satu sumber kebenaran) ────────────────
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_OVERDUE = 'overdue';
+
+    public const STATUS_PICKED_UP = 'picked_up';
+
+    public const STATUS_RETURNED = 'returned';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    /**
+     * Transisi status yang sah: pending → approved/rejected → (scan keluar)
+     * picked_up → (scan kembali) returned. Returned/rejected bersifat terminal.
+     */
+    public const TRANSITIONS = [
+        self::STATUS_PENDING => [self::STATUS_APPROVED, self::STATUS_REJECTED],
+        self::STATUS_APPROVED => [self::STATUS_OVERDUE, self::STATUS_REJECTED, self::STATUS_PICKED_UP, self::STATUS_RETURNED],
+        self::STATUS_OVERDUE => [self::STATUS_REJECTED, self::STATUS_PICKED_UP, self::STATUS_RETURNED],
+        self::STATUS_PICKED_UP => [self::STATUS_RETURNED],
+        self::STATUS_RETURNED => [],
+        self::STATUS_REJECTED => [],
+    ];
+
+    public function canTransitionTo(string $newStatus): bool
+    {
+        if ($newStatus === $this->status) {
+            return true; // idempoten
+        }
+
+        return in_array($newStatus, self::TRANSITIONS[$this->status] ?? [], true);
+    }
+
+    /** Fase naskah izin untuk tampilan: menunggu | di luar | kembali | selesai. */
+    public function phase(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING => 'menunggu',
+            self::STATUS_APPROVED, self::STATUS_OVERDUE => 'di_luar',
+            self::STATUS_PICKED_UP => 'kembali',
+            self::STATUS_RETURNED => 'selesai',
+            self::STATUS_REJECTED => 'ditolak',
+            default => $this->status,
+        };
+    }
+
     protected $table = 'dormitory_permits';
 
     protected $keyType = 'string';

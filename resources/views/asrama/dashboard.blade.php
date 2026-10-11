@@ -22,7 +22,7 @@
 @endcomponent
 
 {{-- ROW 1: Overview --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Total Santri --}}
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card h-100" style="border-left-color: #0d6efd;">
@@ -97,7 +97,7 @@
 </div>
 
 {{-- ROW 2: Recent Violations + Quick Actions --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Recent Violations --}}
     <div class="col-xl-8">
         <div class="card stat-card h-100">

@@ -269,7 +269,22 @@ final class BoardingRulesEngine
             }
 
             $rangeStart = QuotaPeriod::rangeBound($period);
-            $rangeEnd = $rangeStart->copy()->addDay(); // first day of next range unit
+
+            // Defensif: pastikan Carbon (mis. semester_starts bisa berupa string).
+            if (! $rangeStart instanceof \Carbon\CarbonImmutable && ! $rangeStart instanceof \Carbon\Carbon) {
+                $rangeStart = \Carbon\CarbonImmutable::parse((string) $rangeStart);
+            }
+
+            // BUGFIX: rentang harus satu periode penuh (bukan +1 hari) agar
+            // kuota bulanan/semester/tahun tidak salah hitung.
+            $rangeEnd = match ($period) {
+                QuotaPeriod::WEEKLY => $rangeStart->copy()->addWeek(),
+                QuotaPeriod::MONTHLY => $rangeStart->copy()->addMonth(),
+                QuotaPeriod::SEMESTER => $rangeStart->copy()->addMonths(6),
+                QuotaPeriod::YEARLY => $rangeStart->copy()->addYear(),
+                QuotaPeriod::DAILY => $rangeStart->copy()->addDay(),
+                default => $rangeStart->copy()->addMonth(),
+            };
 
             return BoardingTimelineEvent::where('student_id', $studentId)
                 ->whereIn('event_type', $allowedTypes)

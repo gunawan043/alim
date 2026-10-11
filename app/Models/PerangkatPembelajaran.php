@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -38,6 +40,22 @@ class PerangkatPembelajaran extends Model
     const STATUS_OPTIONS = [
         self::STATUS_DRAFT => 'Draft',
         self::STATUS_FINAL => 'Final',
+    ];
+
+    // ── Tahap 2: alur dokumen (terpisah dari status kunci `final`) ─────
+    const WORKFLOW_DRAFT = 'draft';
+
+    const WORKFLOW_REVIEW = 'review';
+
+    const WORKFLOW_REVISI = 'revisi';
+
+    const WORKFLOW_APPROVED = 'approved';
+
+    const WORKFLOW_OPTIONS = [
+        self::WORKFLOW_DRAFT => 'Draft',
+        self::WORKFLOW_REVIEW => 'Menunggu Review',
+        self::WORKFLOW_REVISI => 'Perlu Perbaikan',
+        self::WORKFLOW_APPROVED => 'Disetujui',
     ];
 
     const TIPE_UMUM = 'umum';
@@ -148,7 +166,10 @@ class PerangkatPembelajaran extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->id = $m->id ?: (string) Str::uuid();
+            $m->root_id = $m->root_id ?: $m->id;
+        });
     }
 
     protected $fillable = [
@@ -164,6 +185,16 @@ class PerangkatPembelajaran extends Model
         'judul',
         'tipe',
         'status',
+        'workflow_status',
+        'root_id',
+        'parent_id',
+        'version',
+        'is_current',
+        'submitted_at',
+        'approved_at',
+        'approved_by',
+        'locked_at',
+        'locked_by',
         'desain',
         'catatan',
         'created_by',
@@ -171,6 +202,11 @@ class PerangkatPembelajaran extends Model
 
     protected $casts = [
         'desain' => 'array',
+        'is_current' => 'boolean',
+        'version' => 'integer',
+        'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'locked_at' => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -213,6 +249,72 @@ class PerangkatPembelajaran extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // ── Tahap 2: versi & alur persetujuan ────────────────────────────
+
+    public function reviewAssignments(): MorphMany
+    {
+        return $this->morphMany(ReviewAssignment::class, 'reviewable');
+    }
+
+    public function root(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'root_id');
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(self::class, 'root_id')->orderBy('version');
+    }
+
+    /**
+     * Final terkunci: tidak dapat diubah/dihapus; revisi = versi baru.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null || $this->status === self::STATUS_FINAL;
+    }
+
+    public function isEditable(): bool
+    {
+        return ! $this->isLocked();
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->workflow_status === self::WORKFLOW_APPROVED;
+    }
+
+    /**
+     * Buat versi baru dari dokumen (revisi) — dokumen lama tetap tersimpan.
+     */
+    public function createNewVersion(): self
+    {
+        /** @var self $new */
+        $new = $this->replicate(['created_at', 'updated_at', 'deleted_at']);
+        $new->id = (string) Str::uuid();
+        $new->parent_id = $this->id;
+        $new->root_id = $this->root_id ?: $this->id;
+        $new->version = ($this->version ?: 1) + 1;
+        $new->is_current = true;
+        $new->status = self::STATUS_DRAFT;
+        $new->workflow_status = self::WORKFLOW_DRAFT;
+        $new->submitted_at = null;
+        $new->approved_at = null;
+        $new->approved_by = null;
+        $new->locked_at = null;
+        $new->locked_by = null;
+        $new->save();
+
+        $this->forceFill(['is_current' => false])->saveQuietly();
+
+        return $new->fresh();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

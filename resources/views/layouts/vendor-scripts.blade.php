@@ -22,8 +22,8 @@
 </script>
 
 {{-- app.js HARUS dimuat terakhir — berisi init simplebar, hamburger toggle, sidebar logic, dark mode, dll --}}
-<script src="{{ URL::asset('build/js/app.js') }}"></script>
-<script src="{{ URL::asset('build/js/pages/notifications.init.js') }}"></script>
+<script src="{{ URL::asset('build/js/app.js').'?v='.(@filemtime(public_path('build/js/app.js')) ?: '1') }}"></script>
+<script src="{{ URL::asset('build/js/pages/notifications.init.js') }}?v={{ @filemtime(public_path('build/js/pages/notifications.init.js')) ?: '1' }}"></script>
 
 @yield('script')
 @yield('script-bottom')

@@ -240,4 +240,67 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
+<div class="modal fade" id="visitQuotaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning-subtle">
+                <h5 class="modal-title"><i class="ri-alert-line me-1"></i>Kuota Kunjungan Habis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="visitQuotaText" class="mb-0">Jatah kunjungan santri ini sudah habis untuk periode ini.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('visitForm');
+    if (!form) return;
+
+    const modalEl = document.getElementById('visitQuotaModal');
+    const textEl = document.getElementById('visitQuotaText');
+    const quotaUrl = "{{ route('user.asrama.visits.quota.check', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
+    let passed = false;
+
+    form.addEventListener('submit', async function (e) {
+        if (passed) { passed = false; return; }
+        e.preventDefault();
+
+        const studentId = document.getElementById('studentSelect')?.value;
+        if (!studentId) { form.submit(); return; }
+
+        try {
+            const res = await fetch(quotaUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ student_id: studentId })
+            });
+            const data = await res.json();
+
+            if (data.is_banned || (data.remaining !== null && data.remaining <= 0)) {
+                textEl.textContent = data.is_banned
+                    ? 'Kunjungan sedang dinonaktifkan oleh kebijakan asrama.'
+                    : ('Jatah kunjungan santri ini sudah habis untuk ' + (data.period_label_id || 'periode ini')
+                        + ' (terpakai ' + data.used + ' dari ' + data.quota + ').');
+                new bootstrap.Modal(modalEl).show();
+                return;
+            }
+        } catch (err) {
+            // Jika pengecekan gagal, biarkan server yang memblokir (kuota tetap dijaga).
+        }
+
+        passed = true;
+        form.submit();
+    });
+});
+</script>
 @endsection

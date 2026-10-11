@@ -35,7 +35,7 @@ class AdditionalTaskTypeSeeder extends Seeder
                 ],
             ],
             [
-                'jenis_gtk' => 'Asrama',
+                'jenis_gtk' => 'Keasramaan',
                 'tasks' => [
                     'Wali Kamar',
                     'Wali Asrama',
@@ -51,7 +51,7 @@ class AdditionalTaskTypeSeeder extends Seeder
                 ],
             ],
             [
-                'jenis_gtk' => 'Humas Personalia',
+                'jenis_gtk' => 'Humas',
                 'tasks' => [
                     'Koordinator Alumni',
                 ],
@@ -59,7 +59,10 @@ class AdditionalTaskTypeSeeder extends Seeder
         ];
 
         foreach ($data as $section) {
-            $jenisGtk = DB::table('jenis_gtk')->where('nama', $section['jenis_gtk'])->first();
+            $jenisGtk = DB::table('jenis_gtk')
+                ->where('nama', $section['jenis_gtk'])
+                ->orWhere('nama', 'like', '%'.$section['jenis_gtk'].'%')
+                ->first();
 
             if (! $jenisGtk) {
                 $this->command->warn("JenisGtk '{$section['jenis_gtk']}' not found, skipping...");

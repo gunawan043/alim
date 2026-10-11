@@ -152,6 +152,7 @@ class SchoolController extends Controller
             'website' => 'nullable|string|max:100',
             'school_level' => 'required|in:sd,smp,sma,smk',
             'school_status' => 'required|in:negeri,swasta',
+            'boarding_type' => 'nullable|in:boarding,non_boarding,both',
             'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
             'principal_name' => 'nullable|string|max:255',

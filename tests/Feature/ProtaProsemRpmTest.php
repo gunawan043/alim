@@ -211,16 +211,20 @@ class ProtaProsemRpmTest extends TestCase
             ->assertSee('Merefleksikan')
             ->assertSee('Penutup');
 
-        // RPM Agama — struktur tanpa bagian umum.
-        $this->post("/{$this->guru1->id}/kurikulum/perangkat", [
-            'atp_id' => $atp->id,
+        // RPM Agama — struktur tanpa bagian umum, pada KONTEKS BERBEDA
+        // (kebijakan satu RPM per konteks: mapel Fisika, penyusun guru3).
+        $atpFisika = $this->makeAtp(40, 20, $this->fisika);
+
+        $this->actingAs($this->guru3);
+        $this->post("/{$this->guru3->id}/kurikulum/perangkat", [
+            'atp_id' => $atpFisika->id,
             'judul' => 'RPM Agama',
             'tipe' => 'agama',
         ])->assertStatus(302);
 
         $agama = PerangkatPembelajaran::where('tipe', 'agama')->firstOrFail();
 
-        $this->get("/{$this->guru1->id}/kurikulum/perangkat/{$agama->id}")
+        $this->get("/{$this->guru3->id}/kurikulum/perangkat/{$agama->id}")
             ->assertOk()
             ->assertSee('Kemitraan Pembelajaran')
             ->assertDontSee('Profil Lulusan');
@@ -346,11 +350,13 @@ class ProtaProsemRpmTest extends TestCase
         app(PekanEfektifService::class)->generate($this->school->id, $this->ay->id, 1);
     }
 
-    private function makeAtp(int $jp1, int $jp2): AlurTujuanPembelajaran
+    private function makeAtp(int $jp1, int $jp2, ?Subject $subject = null): AlurTujuanPembelajaran
     {
+        $subject = $subject ?? $this->math;
+
         $cp = CapaianPembelajaran::create([
             'school_id' => $this->school->id,
-            'subject_id' => $this->math->id,
+            'subject_id' => $subject->id,
             'fase' => 'D',
             'elemen' => 'Bilangan',
             'deskripsi' => 'CP Matematika fase D.',
@@ -362,7 +368,7 @@ class ProtaProsemRpmTest extends TestCase
         $tp1 = TujuanPembelajaran::create([
             'school_id' => $this->school->id,
             'capaian_pembelajaran_id' => $cp->id,
-            'subject_id' => $this->math->id,
+            'subject_id' => $subject->id,
             'grade_level_id' => $this->grade->id,
             'academic_year_id' => $this->ay->id,
             'semester' => 'ganjil',
@@ -379,7 +385,7 @@ class ProtaProsemRpmTest extends TestCase
         $tp2 = TujuanPembelajaran::create([
             'school_id' => $this->school->id,
             'capaian_pembelajaran_id' => $cp->id,
-            'subject_id' => $this->math->id,
+            'subject_id' => $subject->id,
             'grade_level_id' => $this->grade->id,
             'academic_year_id' => $this->ay->id,
             'semester' => 'ganjil',
@@ -397,7 +403,7 @@ class ProtaProsemRpmTest extends TestCase
             'school_id' => $this->school->id,
             'academic_year_id' => $this->ay->id,
             'semester' => 'ganjil',
-            'subject_id' => $this->math->id,
+            'subject_id' => $subject->id,
             'grade_level_id' => $this->grade->id,
             'fase' => 'D',
             'teacher_id' => $this->guru1->id,

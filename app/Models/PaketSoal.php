@@ -25,6 +25,7 @@ class PaketSoal extends Model
         'is_acak_urutan_soal', 'is_acak_opsi',
         'jumlah_soal_aktual', 'total_bobot_aktual',
         'waktu_pengerjaan_menit', 'instruksi_umum',
+        'komposisi', 'snapshot_at',
         'is_published', 'published_by', 'published_at',
         'workflow_status', 'approved_at', 'approved_by',
         'similarity_checked_at', 'similarity_summary', 'distributed_at',
@@ -60,6 +61,8 @@ class PaketSoal extends Model
         'approved_at' => 'datetime',
         'similarity_checked_at' => 'datetime',
         'similarity_summary' => 'array',
+        'komposisi' => 'array',
+        'snapshot_at' => 'datetime',
         'distributed_at' => 'datetime',
         'jumlah_soal_aktual' => 'integer',
         'total_bobot_aktual' => 'decimal:2',
@@ -143,6 +146,14 @@ class PaketSoal extends Model
     {
         return in_array($this->workflow_status, [self::WORKFLOW_APPROVED, self::WORKFLOW_PUBLISHED], true)
             && $this->is_published;
+    }
+
+    /**
+     * Butir paket sudah dibekukan menjadi naskah.
+     */
+    public function hasSnapshot(): bool
+    {
+        return $this->snapshot_at !== null;
     }
 
     /**

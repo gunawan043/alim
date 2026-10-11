@@ -126,7 +126,7 @@ class StudyGroupSubjectController extends Controller
             ->orderBy('name')
             ->get();
 
-        $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+        $teachers = User::whereIn('id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId))
             ->orderBy('name')
             ->get();
 
@@ -289,7 +289,7 @@ class StudyGroupSubjectController extends Controller
             ->firstOrFail();
 
         // Load teachers from the same school
-        $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $studyGroup->school_id))
+        $teachers = User::whereIn('id', \App\Services\SchoolGroupService::userIdsForSchool($studyGroup->school_id))
             ->orderBy('name')
             ->get();
 

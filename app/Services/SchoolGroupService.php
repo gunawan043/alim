@@ -191,6 +191,36 @@ class SchoolGroupService
      * Get the school that a user is currently associated with via gtk_employments.
      * Returns null if user has no school assignment.
      */
+    /**
+     * ID user (GTK) yang tertaut ke satu satuan pendidikan.
+     * Tautan nyata di data: gtk_work_unit → work unit sekolah,
+     * dan/atau gtk_employments.school_id (bila terisi).
+     *
+     * @return array<int, string>
+     */
+    public static function userIdsForSchool(?string $schoolId): array
+    {
+        if (! $schoolId) {
+            return [];
+        }
+
+        $workUnitId = School::whereKey($schoolId)->value('work_unit_id');
+
+        $ids = collect();
+
+        if ($workUnitId) {
+            $ids = $ids->merge(
+                \App\Models\GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id')
+            );
+        }
+
+        $ids = $ids->merge(
+            \App\Models\GtkEmployment::where('school_id', $schoolId)->pluck('user_id')
+        );
+
+        return $ids->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
+    }
+
     public static function getUserSchool(User $user): ?School
     {
         // Try gtk_employments first (most specific)

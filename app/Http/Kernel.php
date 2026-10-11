@@ -7,6 +7,7 @@ use App\Http\Middleware\BindOrganizationContext;
 use App\Http\Middleware\CheckIpBlocked;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureEmployeeAccess;
+use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
@@ -121,5 +122,6 @@ class Kernel extends HttpKernel
         'permission' => RequirePermission::class,
         'permission-all' => RequirePermission::class,
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
+        'kurikulum.access' => EnsureKurikulumModuleAccess::class,
     ];
 }

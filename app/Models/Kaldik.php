@@ -54,6 +54,8 @@ class Kaldik extends Model
 
     const TYPE_MID_SEMESTER = 'mid_semester';
 
+    const TYPE_PROGRAM_BERSAMA = 'program_bersama';
+
     const TYPE_LAINNYA = 'lainnya';
 
     const TYPE_LIBUR = 'libur';
@@ -80,6 +82,7 @@ class Kaldik extends Model
         self::TYPE_UJIAN => 'Ujian / Sumatif',
         self::TYPE_KEGIATAN => 'Kegiatan Sekolah',
         self::TYPE_HARI_EFEKTIF => 'Hari Efektif',
+        self::TYPE_PROGRAM_BERSAMA => 'Program Bersama',
         self::TYPE_LAINNYA => 'Lainnya',
     ];
 

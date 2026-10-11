@@ -11,6 +11,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\KurikulumAccess;
+use App\Services\Evaluasi\ReviewWorkflowService;
 use Illuminate\Http\Request;
 
 /**
@@ -46,6 +47,11 @@ class PerangkatPembelajaranController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
+            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+                // Guru: hanya RPM mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->when($request->filled('study_group_id'), fn ($q) => $q->where('study_group_id', $request->study_group_id))
             ->orderByDesc('created_at')
@@ -72,7 +78,7 @@ class PerangkatPembelajaranController extends Controller
             ->bySemester($semester)
             ->orderBy('subject_id');
 
-        if (! $isKurikulumTeam) {
+        if (! $this->access->isKurikulumEditor($user)) {
             $taughtSubjectIds = TeachingAssignment::query()
                 ->where('teacher_id', $user->id)
                 ->where('academic_year_id', $academicYearId)
@@ -129,6 +135,23 @@ class PerangkatPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::with('subject')->findOrFail($validated['atp_id']);
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
 
+        // Kebijakan Tahap 2: SATU dokumen current per konteks akademik
+        // (mapel + jenjang + tahun ajaran + semester). Revisi = versi baru.
+        $existing = PerangkatPembelajaran::query()
+            ->where('school_id', $atp->school_id)
+            ->where('academic_year_id', $atp->academic_year_id)
+            ->where('semester', $atp->semester)
+            ->where('subject_id', $atp->subject_id)
+            ->where('grade_level_id', $atp->grade_level_id)
+            ->where('is_current', true)
+            ->first();
+
+        if ($existing) {
+            return redirect()
+                ->route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $existing->id])
+                ->with('error', 'RPM untuk konteks ini sudah ada — gunakan "Versi Baru" untuk revisi, bukan membuat dokumen kedua.');
+        }
+
         PerangkatPembelajaran::create([
             'school_id' => $atp->school_id,
             'academic_year_id' => $atp->academic_year_id,
@@ -169,15 +192,42 @@ class PerangkatPembelajaranController extends Controller
             ->get(['id', 'name']);
 
         $isOwner = $this->isOwner($request, $perangkat);
-        $canEdit = $isOwner || $this->access->isKurikulumTeam($request->user());
+        $canEdit = $perangkat->isEditable() && ($isOwner
+            || $this->access->isKurikulumEditor($request->user())
+            || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId));
 
-        return view('kurikulum.perangkat.show', compact('userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit'));
+        $workflowService = app(ReviewWorkflowService::class);
+        $workflowProgress = $workflowService->progress($perangkat);
+        $versions = PerangkatPembelajaran::query()
+            ->where('root_id', $perangkat->root_id ?: $perangkat->id)
+            ->orderByDesc('version')
+            ->get();
+        $myReviewAssignment = $perangkat->reviewAssignments()
+            ->where('reviewer_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->first();
+        $canSubmitReview = $canEdit
+            && $perangkat->workflow_status !== PerangkatPembelajaran::WORKFLOW_REVIEW;
+        $canCreateVersion = ($isOwner
+            || $this->access->isKurikulumEditor($request->user())
+            || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId))
+            && $perangkat->isLocked();
+
+        return view('kurikulum.perangkat.show', compact(
+            'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
+            'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion'
+        ));
     }
 
     public function update(Request $request, string $userId, string $id)
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
+
+        // Final terkunci: revisi harus melalui versi baru.
+        if ($perangkat->isLocked()) {
+            abort(403, 'RPM sudah final dan terkunci — gunakan "Versi Baru" untuk revisi.');
+        }
 
         $validated = $request->validate([
             'judul' => 'required|string|max:255',
@@ -189,17 +239,34 @@ class PerangkatPembelajaranController extends Controller
             'desain.*' => 'nullable|string|max:5000',
         ]);
 
+        // Final = kunci: hanya tim kurikulum, atau melalui approval kolektif
+        // seluruh anggota rumpun (kebijakan Tahap 2).
+        if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL
+            && ! $this->access->isKurikulumEditor($request->user())) {
+            return back()->with('error', 'Penetapan final RPM dilakukan oleh tim kurikulum atau melalui approval anggota rumpun.');
+        }
+
         // Bagian desain yang tidak dikirim tetap dipertahankan (merge, bukan overwrite).
         $desain = $perangkat->mergeDesain($validated['desain'] ?? []);
 
-        $perangkat->update([
+        $payload = [
             'judul' => $validated['judul'],
             'study_group_id' => $validated['study_group_id'] ?? null,
             'tipe' => $validated['tipe'] ?? $perangkat->tipe,
             'status' => $validated['status'],
             'catatan' => $validated['catatan'] ?? null,
             'desain' => $desain,
-        ]);
+        ];
+
+        if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL) {
+            $payload['workflow_status'] = PerangkatPembelajaran::WORKFLOW_APPROVED;
+            $payload['approved_at'] = $perangkat->approved_at ?: now();
+            $payload['approved_by'] = $perangkat->approved_by ?: $request->user()->id;
+            $payload['locked_at'] = $perangkat->locked_at ?: now();
+            $payload['locked_by'] = $perangkat->locked_by ?: $request->user()->id;
+        }
+
+        $perangkat->update($payload);
 
         return back()->with('success', 'RPM / perangkat pembelajaran berhasil disimpan.');
     }
@@ -209,11 +276,56 @@ class PerangkatPembelajaranController extends Controller
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
 
+        if ($perangkat->isLocked()) {
+            abort(403, 'RPM final terkunci dan menjadi riwayat — tidak dapat dihapus.');
+        }
+
         $perangkat->delete();
 
         return redirect()
             ->route('user.kurikulum.perangkat.index', ['userId' => $userId])
             ->with('success', 'Perangkat pembelajaran berhasil dihapus.');
+    }
+
+    /**
+     * Ajukan RPM untuk approval kolektif anggota rumpun (bukan koordinator tunggal).
+     */
+    public function submitReview(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::findOrFail($id);
+        $this->authorizeEdit($request, $perangkat);
+
+        if ($perangkat->isLocked()) {
+            return back()->with('error', 'RPM sudah final dan terkunci — buat versi baru untuk revisi.');
+        }
+
+        if ($perangkat->workflow_status === PerangkatPembelajaran::WORKFLOW_REVIEW) {
+            return back()->with('error', 'RPM sedang dalam proses review.');
+        }
+
+        $workflow = app(ReviewWorkflowService::class);
+        $assignments = $workflow->submit(
+            $perangkat,
+            $request->user(),
+            $workflow->resolveRumpunApprovers($perangkat, $request->user())
+        );
+
+        return back()->with('success', 'RPM diajukan untuk approval ('.count($assignments).' anggota rumpun).');
+    }
+
+    /**
+     * Revisi = versi baru. Dokumen lama tetap tersimpan sebagai riwayat.
+     */
+    public function newVersion(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::findOrFail($id);
+        $this->authorizeEdit($request, $perangkat);
+
+        $new = $perangkat->createNewVersion();
+
+        return redirect()
+            ->route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $new->id])
+            ->with('success', 'Versi baru (v'.$new->version.') dibuat — dokumen lama tetap menjadi riwayat.');
     }
 
     private function authorizeManage(Request $request, string $subjectId, string $academicYearId, ?string $schoolId): void
@@ -235,8 +347,7 @@ class PerangkatPembelajaranController extends Controller
         }
 
         $user = $request->user();
-        $allowed = $this->access->isKurikulumTeam($user)
-            || $this->access->teachesSubject($user, $perangkat->subject_id, $perangkat->academic_year_id, $schoolId)
+        $allowed = $this->access->canViewSubjectDocs($user, $perangkat->subject_id, $schoolId, $perangkat->academic_year_id)
             || $this->isOwner($request, $perangkat);
 
         if (! $allowed) {
@@ -252,8 +363,12 @@ class PerangkatPembelajaranController extends Controller
     {
         $this->authorizeView($request, $perangkat);
 
-        if (! $this->isOwner($request, $perangkat) && ! $this->access->isKurikulumTeam($request->user())) {
-            abort(403, 'Hanya penyusun RPM atau tim kurikulum yang dapat mengubah RPM ini.');
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if (! $this->isOwner($request, $perangkat)
+            && ! $this->access->isKurikulumEditor($request->user())
+            && ! $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId)) {
+            abort(403, 'Hanya penyusun RPM, pemegang izin edit, atau tim kurikulum yang dapat mengubah RPM ini.');
         }
     }
 

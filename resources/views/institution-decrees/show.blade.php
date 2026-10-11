@@ -81,7 +81,7 @@
     </div>
 
     {{-- Matriks Pembagian Tugas Mengajar --}}
-    @if($decree->decree_type === 'SK Pembagian Tugas')
+    @if($decree->decree_type === 'SK Pembagian Tugas' || $decree->teachingAssignments->isNotEmpty())
     <div class="row mt-3">
         <div class="col-lg-12">
             <div class="card">

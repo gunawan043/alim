@@ -45,7 +45,7 @@
     </div>
 
     {{-- Stats --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-md-3">
             <div class="stat-pill bg-primary-subtle">
                 <div class="icon bg-primary text-white"><i class="ri-user-line"></i></div>

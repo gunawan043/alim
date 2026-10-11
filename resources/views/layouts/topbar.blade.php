@@ -2,6 +2,14 @@
 {{-- Pusher config (dibaca oleh notifications.init.js) --}}
 <meta name="pusher-key" content="{{ config('broadcasting.connections.pusher.key') }}">
 <meta name="pusher-cluster" content="{{ config('broadcasting.connections.pusher.options.cluster') }}">
+@php
+    $notifUnreadCount = 0;
+    if (auth()->check()) {
+        try {
+            $notifUnreadCount = app(\App\Services\NotificationUniversalService::class)->getUnreadCount(auth()->id());
+        } catch (\Throwable) { $notifUnreadCount = 0; }
+    }
+@endphp
 <header id="page-topbar">
     <div class="layout-width">
         <div class="navbar-header">
@@ -37,6 +45,14 @@
                     </span>
                 </button>
 
+                {{-- Pencarian global: menu, fitur, & santri --}}
+                <div class="alim-search d-none d-md-block position-relative ms-2 mt-3 flex-grow-1" style="min-width:300px;">
+                    <span class="alim-search-icon"><i class="ri-search-line"></i></span>
+                    <input type="search" id="globalSearchInput" class="alim-search-input"
+                           placeholder="Cari menu, fitur, atau santri…" autocomplete="off">
+                    <div id="globalSearchResults" class="alim-search-panel d-none"></div>
+                </div>
+
             </div>
 
             <div class="d-flex align-items-center">
@@ -65,9 +81,8 @@
                             aria-haspopup="true"
                             aria-expanded="false">
                         <i class='bx bx-bell fs-22'></i>
-                        <span class="position-absolute topbar-badge translate-middle rounded-pill bg-danger notif-badge-count d-none"
-                              id="notif-badge-count">
-                            0
+                        <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger {{ $notifUnreadCount > 0 ? '' : 'd-none' }}"
+                              id="notif-badge-count">{{ $notifUnreadCount }}
                             <span class="visually-hidden">unread messages</span>
                         </span>
                     </button>
@@ -215,4 +230,99 @@
             </div>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('globalSearchInput');
+        const results = document.getElementById('globalSearchResults');
+        if (!input || !results) return;
+
+        let timer = null;
+
+        function render(groupTitle, icon, items) {
+            if (!items || !items.length) return '';
+            let html = '<div class="alim-search-group"><i class="' + icon + '"></i> ' + groupTitle + '</div>';
+            items.forEach(function (item) {
+                html += '<a class="alim-search-item" href="' + item.url + '">' +
+                    '<div class="alim-search-label">' + item.label + '</div>' +
+                    (item.meta ? '<div class="alim-search-meta">' + item.meta + '</div>' : '') +
+                    '</a>';
+            });
+            return html;
+        }
+
+        input.addEventListener('input', function () {
+            const q = input.value.trim();
+            clearTimeout(timer);
+
+            if (q.length < 2) { results.classList.add('d-none'); results.innerHTML = ''; return; }
+
+            timer = setTimeout(function () {
+                results.innerHTML = '<div class="alim-search-loading"><span class="spinner-border spinner-border-sm me-2"></span>Mencari…</div>';
+                results.classList.remove('d-none');
+
+                fetch("{{ route('user.search', ['userId' => auth()->id()]) }}?q=" + encodeURIComponent(q), {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(function (data) {
+                    const total = (data.menus ? data.menus.length : 0) + (data.students ? data.students.length : 0);
+                    let html = render('Menu & Fitur', 'ri-apps-2-line', data.menus) + render('Santri', 'ri-user-3-line', data.students);
+
+                    if (!html) {
+                        html = '<div class="alim-search-empty"><i class="ri-search-eye-line"></i> Tidak ada hasil untuk “' + q + '”.</div>';
+                    } else {
+                        html += '<div class="alim-search-footer">' + total + ' hasil · tekan Enter untuk membuka hasil pertama</div>';
+                    }
+
+                    results.innerHTML = html;
+                    results.classList.remove('d-none');
+                })
+                .catch(function () {
+                    results.innerHTML = '<div class="dropdown-item text-danger small">Pencarian gagal. Coba lagi.</div>';
+                    results.classList.remove('d-none');
+                });
+            }, 250);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!results.contains(e.target) && e.target !== input) { results.classList.add('d-none'); }
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const first = results.querySelector('a.dropdown-item');
+                if (first) { window.location = first.getAttribute('href'); }
+            }
+            if (e.key === 'Escape') { results.classList.add('d-none'); }
+        });
+    });
+    </script>
+
+    
+
+    <style>
+        .notif-item { transition: background .15s ease; border-left: 3px solid transparent; }
+        .notif-item:hover { background: rgba(10,95,158,.06); }
+        .notif-item.notif-unread { background: rgba(10,95,158,.05); border-left-color: #0a5f9e; }
+        .notif-deleted { opacity: .55; }
+        .notif-list-scroll { max-height: 380px; overflow-y: auto; }
+    </style>
+
+    <style>
+        .alim-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-80%); color:#94a3b8; font-size:16px; }
+        .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; font-size:.85rem; transition:all .15s ease; }
+        .alim-search-input:focus { outline:none; border-color:#0a5f9e; background:#fff; box-shadow:0 0 0 3px rgba(10,95,158,.12); }
+        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,.16); z-index:2000; max-height:420px; overflow:auto; padding:.4rem; border:1px solid #eef2f7; }
+        .alim-search-group { padding:.5rem .7rem .25rem; font-size:.66rem; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
+        .alim-search-group i { margin-right:4px; }
+        .alim-search-item { display:block; padding:.5rem .7rem; border-radius:9px; color:#1e293b; text-decoration:none; transition:background .12s ease; }
+        .alim-search-item:hover { background:rgba(10,95,158,.07); }
+        .alim-search-label { font-size:.82rem; font-weight:600; }
+        .alim-search-meta { font-size:.72rem; color:#94a3b8; }
+        .alim-search-loading, .alim-search-empty { padding:.85rem .7rem; font-size:.8rem; color:#94a3b8; text-align:center; }
+        .alim-search-empty i { font-size:22px; display:block; margin-bottom:4px; }
+        .alim-search-footer { border-top:1px solid #eef2f7; margin-top:.35rem; padding:.45rem .7rem; font-size:.68rem; color:#94a3b8; text-align:center; }
+        .topbar-badge, .notif-badge-count { min-width:18px; height:18px; line-height:18px; font-size:10px; padding:0 5px; }
+    </style>
 </header>

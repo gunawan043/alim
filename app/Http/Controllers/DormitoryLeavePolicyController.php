@@ -33,11 +33,37 @@ class DormitoryLeavePolicyController extends Controller
             ->get()
             ->keyBy('permit_type');
 
+        $visitPolicy = app(\App\Services\Boarding\VisitWorkflowService::class)
+            ->resolvePolicyForDormitory($asramaUuid);
+
         return view('dormitory.leave-policies.index', [
             'dormitory' => $dormitory,
             'userId' => $userId,
             'policies' => $policies,
+            'visitPolicy' => $visitPolicy,
         ]);
+    }
+
+    /**
+     * Simpan kebijakan kunjungan PER ASRAMA (Kepala/Wakil Kepala Asrama).
+     */
+    public function updateVisitPolicy(Request $request, string $userId, string $asramaUuid): RedirectResponse
+    {
+        $this->authorizeQuotaManager($asramaUuid);
+
+        $data = $request->validate([
+            'visit_strategy' => 'required|in:unrestricted,quota,banned',
+            'visit_quota' => 'nullable|integer|min:0|max:9999',
+            'visit_quota_period' => 'nullable|required_with:visit_quota|in:weekly,monthly,semester,yearly',
+            'max_visitors_per_visit' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        app(\App\Services\Boarding\VisitWorkflowService::class)
+            ->saveDormitoryPolicy($asramaUuid, $data);
+
+        return redirect()
+            ->route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', 'Kebijakan kunjungan asrama berhasil disimpan.');
     }
 
     /**
@@ -94,6 +120,8 @@ class DormitoryLeavePolicyController extends Controller
      */
     public function storeOrUpdate(Request $request, string $userId, string $asramaUuid): RedirectResponse
     {
+        $this->authorizeQuotaManager($asramaUuid);
+
         $validPermitCodes = PermitType::pluck('code')->toArray();
         $validPermitCodes[] = '__default__';
 
@@ -142,6 +170,8 @@ class DormitoryLeavePolicyController extends Controller
      */
     public function applyDefaults(Request $request, string $userId, string $asramaUuid): RedirectResponse
     {
+        $this->authorizeQuotaManager($asramaUuid);
+
         $defaults = DormitoryLeavePolicy::where('dormitory_id', $asramaUuid)
             ->where('permit_type', '__default__')
             ->first();
@@ -165,5 +195,17 @@ class DormitoryLeavePolicyController extends Controller
 
         return redirect()->route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Default berhasil diterapkan ke semua jenis izin.');
+    }
+
+    /**
+     * Hanya Kepala Asrama / Wakil Kepala Asrama yang boleh mengubah kuota.
+     */
+    private function authorizeQuotaManager(string $dormitoryId): void
+    {
+        $user = auth()->user();
+
+        if (! $user || ! app(\App\Services\Boarding\DormitoryPolicyAccess::class)->canManageQuota($user, $dormitoryId)) {
+            abort(403, 'Hanya Kepala Asrama atau Wakil Kepala Asrama yang dapat mengubah pengaturan kuota.');
+        }
     }
 }

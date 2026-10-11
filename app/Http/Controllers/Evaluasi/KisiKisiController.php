@@ -70,7 +70,7 @@ class KisiKisiController extends Controller
 
         $subjects = Subject::where('school_id', $schoolId)->orWhereNull('school_id')->get();
         $gradeLevels = GradeLevel::where('school_id', $schoolId)->orWhereNull('school_id')->get();
-        $years = AcademicYear::where('school_id', $schoolId)->orWhereNull('school_id')->get();
+        $years = AcademicYear::orderByDesc('name')->get();
 
         $activeYear = $years->firstWhere('is_active', true);
 
@@ -93,7 +93,7 @@ class KisiKisiController extends Controller
 
         $subjects = Subject::where('school_id', $schoolId)->orWhereNull('school_id')->orderBy('name')->get();
         $gradeLevels = GradeLevel::where('school_id', $schoolId)->orWhereNull('school_id')->get();
-        $years = AcademicYear::where('school_id', $schoolId)->orWhereNull('school_id')->get();
+        $years = AcademicYear::orderByDesc('name')->get();
         $banks = BankSoal::where('school_id', $schoolId)->with('subject')->get();
 
         $jenisUjian = [

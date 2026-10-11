@@ -9,7 +9,7 @@
 @endcomponent
 
 {{-- SUMMARY CARDS --}}
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-md-3">
         <div class="card card-body text-center">
             <p class="text-muted small mb-1">Total Aset</p>

@@ -22,7 +22,17 @@ class AdminPresensiSiswa extends Model
 
     protected $fillable = [
         'presensi_mapel_id', 'student_id', 'status', 'notes',
+        'source', 'source_ref', 'auto_filled',
     ];
+
+    protected $casts = [
+        'auto_filled' => 'boolean',
+    ];
+
+    public function isAutoFilled(): bool
+    {
+        return (bool) $this->auto_filled;
+    }
 
     public function presensiMapel(): BelongsTo
     {

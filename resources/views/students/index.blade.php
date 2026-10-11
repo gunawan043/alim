@@ -415,6 +415,16 @@
                             </select>
                         </div>
 
+                            <div class="col-md-3">
+                                <label class="form-label">Status Boarding</label>
+                                <select name="boarding_status" class="form-select">
+                                    <option value="">Semua</option>
+                                    <option value="boarding" {{ request('boarding_status') === 'boarding' ? 'selected' : '' }}>Boarding</option>
+                                    <option value="non_boarding" {{ request('boarding_status') === 'non_boarding' ? 'selected' : '' }}>Non-Boarding</option>
+                                    <option value="__none" {{ request('boarding_status') === '__none' ? 'selected' : '' }}>Belum Ditentukan</option>
+                                </select>
+                            </div>
+
                         <div class="col-md-auto">
                             <button type="submit" class="btn btn-primary">
                                 <i class="ri-search-line me-1"></i> Filter

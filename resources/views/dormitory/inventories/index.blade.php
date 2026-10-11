@@ -43,10 +43,10 @@
     {{-- ============================================================
          STATS CARDS — template perizinan (permits)
     ============================================================ --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         {{-- 1. Total Item --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -68,7 +68,7 @@
 
         {{-- 2. Kondisi Baik --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -90,7 +90,7 @@
 
         {{-- 3. Kondisi Rusak --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -112,7 +112,7 @@
 
         {{-- 4. Perlu Perbaikan --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">

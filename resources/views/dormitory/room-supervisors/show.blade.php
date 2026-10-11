@@ -114,7 +114,7 @@
 
         {{-- Statistik & daftar penghuni kamar --}}
         <div class="col-lg-8">
-            <div class="row g-3 mb-3">
+            <div class="row">
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body py-3 text-center">

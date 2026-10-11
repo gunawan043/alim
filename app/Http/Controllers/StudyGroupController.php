@@ -55,7 +55,7 @@ class StudyGroupController extends Controller
             'kapasitas' => (int) (clone $query)->sum('capacity'),
         ];
 
-        $studyGroups = $query->orderBy('name')->paginate(15)->withQueryString();
+        $studyGroups = $query->orderedByGrade()->paginate(15)->withQueryString();
 
         // Load student counts per study group
         $sgIds = $studyGroups->pluck('id');
@@ -86,8 +86,11 @@ class StudyGroupController extends Controller
         if ($schoolId) {
             $schools = School::where('id', $schoolId)->get();
             $gradeLevels = GradeLevel::where('school_id', $schoolId)->orderBy('level')->get();
-            $teachers = User::whereHas('employment')
-                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+            $teacherIds = \App\Services\SchoolGroupService::userIdsForSchool($schoolId);
+            $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+            $teachers = User::query()
+                ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+                ->when(! empty($teacherIds), fn ($q) => $q->whereIn('users.id', $teacherIds))
                 ->orderBy('name')->get();
         } else {
             $schools = School::orderBy('name')->get();
@@ -178,8 +181,11 @@ class StudyGroupController extends Controller
         $schools = School::orderBy('name')->get();
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $gradeLevels = GradeLevel::where('school_id', $studyGroup->school_id)->orderBy('level')->get();
-        $teachers = User::whereHas('employment')
-            ->whereHas('employment', fn ($q) => $q->where('school_id', $studyGroup->school_id))
+        $teacherIds = \App\Services\SchoolGroupService::userIdsForSchool($studyGroup->school_id);
+        $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+        $teachers = User::query()
+            ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when(! empty($teacherIds), fn ($q) => $q->whereIn('users.id', $teacherIds))
             ->orderBy('name')->get();
         $schoolContext = $schoolId ? School::find($schoolId) : null;
 
@@ -244,7 +250,16 @@ class StudyGroupController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $studyGroup->delete();
+        try {
+            app(\App\Services\StudyGroupService::class)->deleteSafely($studyGroup);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Hapus rombel gagal: '.$e->getMessage(), [
+                'study_group_id' => $id,
+            ]);
+
+            return redirect()->route('user.study-groups.index', ['userId' => $userId])
+                ->with('error', 'Rombel tidak dapat dihapus karena masih terkait data lain (jadwal/riwayat). Periksa kembali.');
+        }
 
         return redirect()->route('user.study-groups.index', ['userId' => $userId])
             ->with('success', 'Rombel berhasil dihapus.');

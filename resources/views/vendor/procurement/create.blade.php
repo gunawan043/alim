@@ -10,7 +10,7 @@
         <form method="POST" action="{{ route('vendor.procurement.store') }}">
             @csrf
 
-            <div class="row g-3 mb-3">
+            <div class="row">
                 <div class="col-md-6">
                     <label class="form-label">Tujuan</label>
                     <input type="text" name="purpose" class="form-control" required placeholder="Contoh: Pembelian ATK untuk semester genap">
@@ -30,7 +30,7 @@
                 </div>
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row">
                 <div class="col-md-4">
                     <label class="form-label">Metode Pengadaan</label>
                     <select name="procurement_method" class="form-select" required>

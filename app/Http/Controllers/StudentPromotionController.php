@@ -495,6 +495,26 @@ class StudentPromotionController extends Controller
                 'executed_by' => auth()->id(),
                 'executed_at' => $now,
             ]);
+
+            // Kebijakan Tahap 3: naik kelas → buku nilai tahun ajaran lama
+            // dibekukan permanen (arsip). Guru/kelas berikutnya memulai
+            // buku kosong di tahun ajaran baru.
+            $oldSchoolId = $promotion->fromStudyGroup?->school_id;
+
+            if ($oldSchoolId && $promotion->from_academic_year_id) {
+                \App\Models\TeacherAdminBook::query()
+                    ->where('school_id', $oldSchoolId)
+                    ->where('academic_year_id', $promotion->from_academic_year_id)
+                    ->whereNull('locked_at')
+                    ->update(['locked_at' => $now, 'locked_by' => auth()->id()]);
+
+                app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit(
+                    $promotion,
+                    'books_archived_after_promotion',
+                    auth()->user(),
+                    ['academic_year_id' => $promotion->from_academic_year_id]
+                );
+            }
         });
 
         $promotion->refresh();

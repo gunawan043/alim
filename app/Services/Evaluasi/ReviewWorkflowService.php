@@ -4,6 +4,7 @@ namespace App\Services\Evaluasi;
 
 use App\Models\AuditLog;
 use App\Models\PaketSoal;
+use App\Models\PerangkatPembelajaran;
 use App\Models\ReviewAssignment;
 use App\Models\Soal;
 use App\Models\Subject;
@@ -202,7 +203,10 @@ class ReviewWorkflowService
 
         $coordinatorIds = [];
         if ($group) {
-            $coordinatorIds = collect($resolver->coordinatorUserIdsForGroup($group))
+            // Koordinator rumpun per SATUAN PENDIDIKAN (tugas tambahan).
+            // Bukan koordinator lintas satuan; kolaborasi lintas satuan
+            // tetap via guru mapel yang sama.
+            $coordinatorIds = collect($resolver->coordinatorUserIdsForGroup($group, $context['school_id'] ?? null))
                 ->map(fn ($id) => (string) $id)
                 ->reject(fn ($id) => $id === (string) $submitter->id)
                 ->unique()
@@ -245,6 +249,45 @@ class ReviewWorkflowService
     }
 
     /**
+     * Approver final KEBIJAKAN = SELURUH anggota rumpun (keputusan kolektif).
+     *
+     * Approval paket/RPM bukan milik koordinator tunggal: semua anggota rumpun
+     * yang ditetapkan harus menyetujui sebelum dokumen dinyatakan APPROVED.
+     * Koordinator satuan asal tetap didahulukan sebagai pemimpin kolektif.
+     * Pengaju/penulis dikecualikan; bila rumpun belum beranggota, fallback ke
+     * penelaah serumpun agar alur tidak buntu.
+     *
+     * @return array<int, string>
+     */
+    public function resolveRumpunApprovers(Model $reviewable, User $submitter, ?int $limit = null): array
+    {
+        $context = $this->academicContext($reviewable);
+        $resolver = app(SubjectGroupResolver::class);
+        $group = $context['subject_id'] ? $resolver->groupForSubject($context['subject_id']) : null;
+
+        if (! $group) {
+            return $this->resolveSerumpunReviewers($reviewable, $submitter, $limit);
+        }
+
+        $members = collect($resolver->teacherIdsForGroup($group));
+
+        if ($members->isEmpty()) {
+            return $this->resolveSerumpunReviewers($reviewable, $submitter, $limit);
+        }
+
+        $coordinators = collect($resolver->coordinatorUserIdsForGroup($group, $context['school_id'] ?? null));
+
+        $ordered = $coordinators
+            ->merge($members)
+            ->map(fn ($id) => (string) $id)
+            ->reject(fn ($id) => $id === (string) $submitter->id)
+            ->unique()
+            ->values();
+
+        return $limit ? $ordered->take($limit)->values()->all() : $ordered->all();
+    }
+
+    /**
      * @return array{subject_id: ?string, grade_level_id: ?string, academic_year_id: ?string, semester: ?string}
      */
     public function academicContext(Model $reviewable): array
@@ -257,6 +300,7 @@ class ReviewWorkflowService
                 'grade_level_id' => $bank?->grade_level_id,
                 'academic_year_id' => $bank?->academic_year_id,
                 'semester' => $bank?->semester,
+                'school_id' => $bank?->school_id,
             ];
         }
 
@@ -268,10 +312,21 @@ class ReviewWorkflowService
                 'grade_level_id' => $kisi?->grade_level_id,
                 'academic_year_id' => $kisi?->academic_year_id,
                 'semester' => $kisi?->semester,
+                'school_id' => $kisi?->school_id,
             ];
         }
 
-        return ['subject_id' => null, 'grade_level_id' => null, 'academic_year_id' => null, 'semester' => null];
+        if ($reviewable instanceof PerangkatPembelajaran) {
+            return [
+                'subject_id' => $reviewable->subject_id,
+                'grade_level_id' => $reviewable->grade_level_id,
+                'academic_year_id' => $reviewable->academic_year_id,
+                'semester' => $reviewable->semester,
+                'school_id' => $reviewable->school_id,
+            ];
+        }
+
+        return ['subject_id' => null, 'grade_level_id' => null, 'academic_year_id' => null, 'semester' => null, 'school_id' => null];
     }
 
     /**
@@ -313,6 +368,39 @@ class ReviewWorkflowService
                 'approved_at' => $workflow === Soal::WORKFLOW_APPROVED ? ($reviewable->approved_at ?: now()) : null,
                 'approved_by' => $workflow === Soal::WORKFLOW_APPROVED ? ($approvedBy ?: $reviewable->approved_by) : null,
             ])->save();
+
+            return;
+        }
+
+        // Tahap 2: RPM — approval kolektif anggota rumpun; final dikunci.
+        if ($reviewable instanceof PerangkatPembelajaran) {
+            $map = [
+                Soal::WORKFLOW_APPROVED => PerangkatPembelajaran::WORKFLOW_APPROVED,
+                Soal::WORKFLOW_REVISI => PerangkatPembelajaran::WORKFLOW_REVISI,
+                Soal::WORKFLOW_REVIEW => PerangkatPembelajaran::WORKFLOW_REVIEW,
+                Soal::WORKFLOW_DRAFT => PerangkatPembelajaran::WORKFLOW_DRAFT,
+            ];
+
+            $payload = ['workflow_status' => $map[$workflow] ?? $workflow];
+
+            if ($workflow === Soal::WORKFLOW_REVIEW) {
+                $payload['submitted_at'] = $reviewable->submitted_at ?: now();
+            }
+
+            if ($workflow === Soal::WORKFLOW_REVISI) {
+                $payload['approved_at'] = null;
+                $payload['approved_by'] = null;
+            }
+
+            if ($workflow === Soal::WORKFLOW_APPROVED) {
+                $payload['approved_at'] = $reviewable->approved_at ?: now();
+                $payload['approved_by'] = $approvedBy ?: $reviewable->approved_by;
+                $payload['status'] = PerangkatPembelajaran::STATUS_FINAL;
+                $payload['locked_at'] = $reviewable->locked_at ?: now();
+                $payload['locked_by'] = $approvedBy ?: $reviewable->locked_by;
+            }
+
+            $reviewable->forceFill($payload)->save();
 
             return;
         }

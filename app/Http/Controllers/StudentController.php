@@ -61,6 +61,14 @@ class StudentController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+
+        if ($request->filled('boarding_status')) {
+            if ($request->boarding_status === '__none') {
+                $query->whereNull('boarding_status');
+            } else {
+                $query->where('boarding_status', $request->boarding_status);
+            }
+        }
         if ($request->filled('province_code')) {
             $query->where('province_code', $request->province_code);
         }
@@ -288,6 +296,7 @@ class StudentController extends Controller
             'email' => 'nullable|email|max:100',
             // Tempat tinggal
             'residence_type' => 'nullable|in:milik_orangtua,sewa,asrama,panti,lainnya',
+            'boarding_status' => 'nullable|in:boarding,non_boarding',
             'transportation' => 'nullable|in:jalan_kaki,sepeda,motor,mobil,angkutan_umum,antar_jemput',
             'distance_to_school' => 'nullable|numeric|min:0',
             // Kesehatan
@@ -430,6 +439,7 @@ class StudentController extends Controller
             'mobile_phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'residence_type' => 'nullable|in:milik_orangtua,sewa,asrama,panti,lainnya',
+            'boarding_status' => 'nullable|in:boarding,non_boarding',
             'transportation' => 'nullable|in:jalan_kaki,sepeda,motor,mobil,angkutan_umum,antar_jemput',
             'distance_to_school' => 'nullable|numeric|min:0',
             'height' => 'nullable|integer|min:0',

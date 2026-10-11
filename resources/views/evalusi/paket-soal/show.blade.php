@@ -12,9 +12,13 @@
         <div class="card-header d-flex justify-content-between">
             <div>
                 <strong>{{ $paket->judul }}</strong>
-                <span class="badge bg-{{ $paket->is_published ? 'success' : 'warning' }} ms-2">
-                    {{ $paket->is_published ? 'Published' : 'Draft' }}
+                @php $wfBadge = ['draft' => 'warning', 'review' => 'info', 'revisi' => 'danger', 'approved' => 'success', 'published' => 'success'][$paket->workflow_status] ?? 'secondary'; @endphp
+                <span class="badge bg-{{ $wfBadge }} ms-2">
+                    {{ \App\Models\PaketSoal::WORKFLOW_OPTIONS[$paket->workflow_status] ?? $paket->workflow_status }}
                 </span>
+                @if($paket->hasSnapshot())
+                    <span class="badge bg-dark-subtle text-dark ms-1"><i class="ri-lock-line me-1"></i>Naskah final</span>
+                @endif
                 <span class="badge bg-info ms-1">{{ $paket->kode_paket }}</span>
             </div>
             <div>
@@ -56,6 +60,64 @@
         </div>
     </div>
 
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="ri-list-check-3 text-primary me-1"></i>Komposisi Naskah</h5>
+            @if(!empty($komposisi))
+                <span class="badge bg-{{ $validasiNaskah['ok'] ? 'success' : 'warning' }}-subtle text-{{ $validasiNaskah['ok'] ? 'success' : 'warning' }}">
+                    {{ $validasiNaskah['ok'] ? 'Komposisi terpenuhi' : implode('; ', $validasiNaskah['errors']) }}
+                </span>
+            @endif
+        </div>
+        <div class="card-body">
+            @if($bisaKelolaNaskah)
+                <form method="POST" action="{{ route('user.paket-soal.komposisi.simpan', ['paketUuid' => $paket->id]) }}" class="mb-3">
+                    @csrf @method('PUT')
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2">
+                            <thead class="table-light"><tr><th>Jenis Butir</th><th style="width:130px">Jumlah</th><th style="width:130px">Bobot</th></tr></thead>
+                            <tbody>
+                                @for($i = 0; $i < max(3, count($komposisi)); $i++)
+                                    @php $row = $komposisi[$i] ?? []; @endphp
+                                    <tr>
+                                        <td>
+                                            <select name="komposisi[{{ $i }}][jenis]" class="form-select form-select-sm">
+                                                <option value="">— pilih jenis —</option>
+                                                @foreach(\App\Services\Evaluasi\PaketNaskahService::JENIS_LABEL as $jenis => $label)
+                                                    <option value="{{ $jenis }}" {{ ($row['jenis'] ?? '') === $jenis ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td><input type="number" name="komposisi[{{ $i }}][jumlah]" min="1" max="100" class="form-control form-control-sm" value="{{ $row['jumlah'] ?? '' }}"></td>
+                                        <td><input type="number" step="0.01" name="komposisi[{{ $i }}][bobot]" min="0" max="100" class="form-control form-control-sm" value="{{ $row['bobot'] ?? '' }}"></td>
+                                    </tr>
+                                @endfor
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-sm btn-primary"><i class="ri-save-line me-1"></i>Simpan Komposisi</button>
+                </form>
+                <form method="POST" action="{{ route('user.paket-soal.komposisi.generate', ['paketUuid' => $paket->id]) }}"
+                      onsubmit="return confirm('Isi ulang butir dari komposisi? Butir paket saat ini akan diganti.');">
+                    @csrf
+                    <button class="btn btn-sm btn-soft-success"><i class="ri-magic-line me-1"></i>Generate Butir dari Komposisi</button>
+                    <span class="small text-muted ms-2">Mendukung pilihan ganda, kompleks, benar/salah, menjodohkan, isian, dan uraian/esai.</span>
+                </form>
+            @elseif(!empty($komposisi))
+                <ul class="list-unstyled mb-0 small">
+                    @foreach($komposisi as $row)
+                        <li class="d-flex justify-content-between border-bottom py-1">
+                            <span>{{ \App\Services\Evaluasi\PaketNaskahService::JENIS_LABEL[$row['jenis']] ?? $row['jenis'] }}</span>
+                            <span class="text-muted">{{ $row['jumlah'] }} butir · bobot {{ number_format((float) $row['bobot'], 2) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="text-muted small mb-0">Komposisi naskah belum disusun.</p>
+            @endif
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">Daftar Soal dalam Paket ({{ $paket->items->count() }})</div>
         <div class="card-body">
@@ -64,19 +126,20 @@
                     <tr>
                         <th style="width:50px">#</th>
                         <th>Pertanyaan</th>
-                        <th>Tipe</th>
+                        <th>Jenis</th>
                         <th>TP</th>
                         <th>Bobot</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($paket->items as $idx => $item)
+                    @foreach($paket->items->sortBy('urutan')->values() as $idx => $item)
+                    @php $konten = $item->kontenFinal(); @endphp
                     <tr>
-                        <td>{{ $idx + 1 }}</td>
-                        <td>{{ Str::limit($item->soal->pertanyaan ?? '-', 100) }}</td>
-                        <td>{{ strtoupper($item->soal->tipe_soal ?? '-') }}</td>
-                        <td>{{ Str::limit($item->soal->tujuanPembelajaran->deskripsi ?? $item->soal->tp_id ?? '-', 40) }}</td>
-                        <td>{{ number_format($item->bobot_override ?? $item->soal->bobot_default ?? 0, 2) }}</td>
+                        <td>{{ $konten['nomor'] ?? $idx + 1 }}</td>
+                        <td>{{ Str::limit(strip_tags($konten['pertanyaan'] ?? '-'), 100) }}</td>
+                        <td>{{ \App\Services\Evaluasi\PaketNaskahService::JENIS_LABEL[$konten['jenis'] ?? ''] ?? strtoupper($konten['jenis'] ?? '-') }}</td>
+                        <td>{{ $konten['tp_id'] ? Str::limit($konten['tp_id'], 40) : '-' }}</td>
+                        <td>{{ number_format((float) ($konten['bobot'] ?? 0), 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

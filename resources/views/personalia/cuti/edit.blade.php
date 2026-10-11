@@ -48,7 +48,7 @@
                         </select>
                         @error('cuti_template_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-md-6">
                             <label class="form-label">Tanggal Mulai <span class="text-danger">*</span></label>
                             <input type="date" name="tanggal_mulai" class="form-control @error('tanggal_mulai') is-invalid @enderror"

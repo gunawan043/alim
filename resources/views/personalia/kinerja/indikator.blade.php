@@ -45,7 +45,7 @@ $totalBobot = \App\Models\KinerjaIndikator::sum('bobot_persen') ?? 0;
     </div>
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-xl-3 col-md-6">
         <div class="card stat-card border-start border-4 border-primary">
             <div class="card-body py-2">

@@ -13,6 +13,7 @@ use App\Models\PaketSoalDistribution;
 use App\Models\PaketSoalItem;
 use App\Models\School;
 use App\Models\Soal;
+use App\Services\Evaluasi\PaketNaskahService;
 use App\Services\Evaluasi\PaketQualityGateService;
 use App\Services\Evaluasi\ReviewWorkflowService;
 use Illuminate\Http\Request;
@@ -189,6 +190,7 @@ class PaketSoalController extends Controller
             }
 
             $paket->recomputeTotals();
+            app(PaketNaskahService::class)->sinkronMeta($paket);
 
             return redirect()
                 ->route('user.paket-soal.show', $paket->id)
@@ -207,7 +209,13 @@ class PaketSoalController extends Controller
 
         $this->authorizePaket($request, $paket, false);
 
-        return view('evalusi.paket-soal.show', compact('paket'));
+        $naskah = app(PaketNaskahService::class);
+        $komposisi = $paket->komposisi ?? [];
+        $validasiNaskah = $naskah->validasi($paket);
+        $bisaKelolaNaskah = ! $paket->is_published && ! $paket->hasSnapshot()
+            && in_array($paket->workflow_status, [PaketSoal::WORKFLOW_DRAFT, PaketSoal::WORKFLOW_REVISI], true);
+
+        return view('evalusi.paket-soal.show', compact('paket', 'komposisi', 'validasiNaskah', 'bisaKelolaNaskah'));
     }
 
     /**
@@ -234,9 +242,20 @@ class PaketSoalController extends Controller
             return back()->with('error', 'Paket tidak memiliki soal. Tambahkan soal sebelum publish.');
         }
 
+        // Naskah: komposisi harus terpenuhi, lalu butir dibekukan (snapshot).
+        $naskah = app(PaketNaskahService::class);
+        $validasi = $naskah->validasi($paket);
+
+        if (! $validasi['ok']) {
+            return back()->with('error', 'Komposisi naskah belum terpenuhi — '.implode('; ', $validasi['errors']).'.');
+        }
+
+        $naskah->snapshot($paket);
+        $paket->refresh();
+
         $paket->publish($request->user()?->id);
 
-        return back()->with('success', 'Paket soal berhasil dipublish.');
+        return back()->with('success', 'Paket soal berhasil dipublish (naskah butir dibekukan).');
     }
 
     /**
@@ -247,9 +266,21 @@ class PaketSoalController extends Controller
         $paket = PaketSoal::findOrFail($paketUuid);
 
         $this->authorizePaket($request, $paket);
-        $paket->update(['is_published' => false, 'published_at' => null]);
 
-        return back()->with('success', 'Paket soal di-unpublish.');
+        if ($paket->workflow_status !== PaketSoal::WORKFLOW_PUBLISHED && ! $paket->is_published) {
+            return back()->with('error', 'Paket belum dipublikasikan.');
+        }
+
+        // State machine: unpublish mengembalikan paket ke Approved (naskah
+        // snapshot tetap tersimpan sebagai riwayat versi final).
+        $paket->update([
+            'is_published' => false,
+            'published_at' => null,
+            'published_by' => null,
+            'workflow_status' => PaketSoal::WORKFLOW_APPROVED,
+        ]);
+
+        return back()->with('success', 'Paket soal di-unpublish (kembali ke status Approved).');
     }
 
     /**
@@ -260,10 +291,19 @@ class PaketSoalController extends Controller
         return DB::transaction(function () use ($paketUuid, $request) {
             $paket = PaketSoal::with('kisiKisi.items')->findOrFail($paketUuid);
 
-        $this->authorizePaket($request, $paket);
+            $this->authorizePaket($request, $paket);
 
             if ($paket->is_published) {
                 return back()->with('error', 'Paket sudah dipublish. Unpublish terlebih dahulu untuk re-roll.');
+            }
+
+            if ($paket->hasSnapshot()) {
+                return back()->with('error', 'Butir paket sudah dibekukan sebagai naskah — re-roll tidak lagi tersedia.');
+            }
+
+            // State machine: pilih ulang hanya pada draft / perlu perbaikan.
+            if (! in_array($paket->workflow_status, [PaketSoal::WORKFLOW_DRAFT, PaketSoal::WORKFLOW_REVISI], true)) {
+                return back()->with('error', 'Paket sedang dalam proses approval — pilih ulang soal tidak tersedia.');
             }
 
             $paket->items()->delete();
@@ -287,6 +327,7 @@ class PaketSoalController extends Controller
             }
 
             $paket->recomputeTotals();
+            app(PaketNaskahService::class)->sinkronMeta($paket);
 
             return back()->with('success', 'Soal dipilih ulang secara acak.');
         });
@@ -300,6 +341,12 @@ class PaketSoalController extends Controller
         $paket = PaketSoal::findOrFail($paketUuid);
 
         $this->authorizePaket($request, $paket);
+
+        // Naskah final tidak boleh dihapus — riwayat paket harus utuh.
+        if ($paket->is_published || $paket->workflow_status === PaketSoal::WORKFLOW_PUBLISHED) {
+            return back()->with('error', 'Paket final tidak dapat dihapus. Unpublish dan batalkan approval bila perlu.');
+        }
+
         $paket->delete();
 
         return redirect()->route('user.paket-soal.index')->with('success', 'Paket soal dihapus.');
@@ -373,6 +420,21 @@ class PaketSoalController extends Controller
             return back()->with('error', 'Paket belum memiliki soal.');
         }
 
+        // State machine: ajukan approval hanya dari draft / perlu perbaikan.
+        if (! in_array($paket->workflow_status, [PaketSoal::WORKFLOW_DRAFT, PaketSoal::WORKFLOW_REVISI], true)) {
+            return back()->with('error', 'Paket sudah dalam proses approval atau final — pengajuan ulang tidak diperlukan.');
+        }
+
+        if ($paket->hasSnapshot()) {
+            return back()->with('error', 'Butir paket sudah dibekukan sebagai naskah final.');
+        }
+
+        // Naskah: komposisi wajib terpenuhi sebelum diajukan.
+        $validasi = app(PaketNaskahService::class)->validasi($paket);
+        if (! $validasi['ok']) {
+            return back()->with('error', 'Komposisi naskah belum terpenuhi — '.implode('; ', $validasi['errors']).'.');
+        }
+
         $notApproved = $paket->items->filter(fn ($item) => ! $item->soal?->isApproved())->count();
         if ($notApproved > 0) {
             return back()->with('error', "{$notApproved} soal belum tervalidasi — hanya soal approved yang boleh masuk paket final.");
@@ -382,9 +444,16 @@ class PaketSoalController extends Controller
             app(PaketQualityGateService::class)->run($paket);
         }
 
-        $assignments = app(ReviewWorkflowService::class)->submit($paket, $request->user());
+        // Kebijakan: approval final paket oleh SELURUH anggota rumpun (kolektif),
+        // bukan koordinator tunggal — review/telaah tetap terpisah.
+        $workflow = app(ReviewWorkflowService::class);
+        $assignments = $workflow->submit(
+            $paket,
+            $request->user(),
+            $workflow->resolveRumpunApprovers($paket, $request->user())
+        );
 
-        return back()->with('success', 'Paket diajukan untuk approval ('.count($assignments).' reviewer serumpun).');
+        return back()->with('success', 'Paket diajukan untuk approval ('.count($assignments).' approver anggota rumpun).');
     }
 
     /**
@@ -452,6 +521,100 @@ class PaketSoalController extends Controller
         });
 
         return back()->with('success', 'Paket didistribusikan ke '.count($recipients).' penerima langsung melalui sistem.');
+    }
+
+    /**
+     * Simpan komposisi naskah paket (jenis/jumlah/bobot/urutan).
+     */
+    public function simpanKomposisi(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
+
+        if ($paket->is_published || $paket->hasSnapshot()) {
+            return back()->with('error', 'Naskah final terkunci — komposisi tidak dapat diubah.');
+        }
+
+        // Baris kosong diabaikan (form menampilkan beberapa baris sekaligus).
+        $rows = collect($request->input('komposisi', []))
+            ->filter(fn ($row) => ! empty($row['jenis']))
+            ->values()
+            ->all();
+        $request->merge(['komposisi' => $rows]);
+
+        $validated = $request->validate([
+            'komposisi' => 'required|array|min:1',
+            'komposisi.*.jenis' => 'required|string|in:'.implode(',', PaketNaskahService::JENIS_VALID),
+            'komposisi.*.jumlah' => 'required|integer|min:1|max:100',
+            'komposisi.*.bobot' => 'required|numeric|min:0|max:100',
+        ]);
+
+        app(PaketNaskahService::class)->simpanKomposisi($paket, $validated['komposisi']);
+
+        return back()->with('success', 'Komposisi naskah tersimpan.');
+    }
+
+    /**
+     * Isi butir paket dari komposisi (mendukung pg/mcc/bs/jodoh/isian/uraian).
+     */
+    public function generateKomposisi(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket);
+
+        if ($paket->is_published || $paket->hasSnapshot()) {
+            return back()->with('error', 'Naskah final terkunci — butir tidak dapat dibuat ulang.');
+        }
+
+        if (! in_array($paket->workflow_status, [PaketSoal::WORKFLOW_DRAFT, PaketSoal::WORKFLOW_REVISI], true)) {
+            return back()->with('error', 'Paket sedang dalam proses approval — generate tidak tersedia.');
+        }
+
+        if (empty($paket->komposisi)) {
+            return back()->with('error', 'Komposisi naskah belum disimpan.');
+        }
+
+        $created = app(PaketNaskahService::class)->generateDariKomposisi($paket);
+
+        if ($created === 0) {
+            return back()->with('error', 'Tidak ada soal approved yang cocok dengan komposisi pada bank.');
+        }
+
+        return back()->with('success', "Naskah diisi: {$created} butir sesuai komposisi.");
+    }
+
+    /**
+     * Penerima menandai paket sudah diterima (fase distribusi `received`).
+     */
+    public function terimaDistribusi(Request $request, string $userId, string $paketUuid, string $distributionId)
+    {
+        $paket = PaketSoal::findOrFail($paketUuid);
+        $distribution = PaketSoalDistribution::query()
+            ->where('paket_soal_id', $paket->id)
+            ->findOrFail($distributionId);
+
+        if (! $distribution->recipient_user_id
+            || (string) $distribution->recipient_user_id !== (string) $request->user()?->id) {
+            abort(403, 'Hanya penerima paket yang dapat menandai diterima.');
+        }
+
+        if ($distribution->isReceived()) {
+            return back()->with('success', 'Paket ini sudah Anda tandai diterima.');
+        }
+
+        $distribution->update([
+            'status' => PaketSoalDistribution::STATUS_RECEIVED,
+            'received_at' => now(),
+            'received_by' => $request->user()->id,
+        ]);
+
+        app(ReviewWorkflowService::class)->audit($paket, 'distribution_received', $request->user(), [
+            'distribution_id' => $distribution->id,
+        ]);
+
+        return back()->with('success', 'Paket ditandai sudah diterima.');
     }
 
     /**

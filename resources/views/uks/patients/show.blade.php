@@ -96,7 +96,7 @@
              DIAGNOSIS & MEDICINE
         ============================================================ --}}
         <div class="col-xl-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0">
                         <i class="ri-stethoscope-line align-bottom me-1 text-info"></i>
@@ -142,7 +142,7 @@
              VITALS
         ============================================================ --}}
         <div class="col-xl-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0">
                         <i class="ri-pulse-line align-bottom me-1 text-primary"></i>
@@ -319,7 +319,7 @@
         ============================================================ --}}
         @if($patient->medicationLogs && $patient->medicationLogs->count() > 0)
             <div class="@if($allCareEvents->count() > 0) col-lg-4 @else col-12 @endif">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                         <h5 class="card-title mb-0">
                             <i class="ri-capsule-line align-bottom me-1 text-success"></i>

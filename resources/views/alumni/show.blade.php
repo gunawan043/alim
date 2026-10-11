@@ -200,7 +200,47 @@
                             </a>
                         </div>
                         <div class="card-body">
-                            {{-- Study Section --}}
+                            {{-- Riwayat Nilai & Rapor (arsip) --}}
+                    @if(($riwayat ?? collect())->isNotEmpty())
+                        <div class="card mb-3">
+                            <div class="card-header border-bottom-dashed">
+                                <h6 class="mb-0"><i class="ri-file-chart-line me-2"></i>Riwayat Nilai & Rapor</h6>
+                                <small class="text-muted">Arsip buku nilai per tahun ajaran &amp; semester — hanya-baca.</small>
+                            </div>
+                            <div class="card-body">
+                                @foreach($riwayat as $periode)
+                                    <div class="mb-3">
+                                        <div class="fw-semibold mb-1">
+                                            {{ $periode['academic_year'] }} — Semester {{ $periode['semester'] }}
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-1">
+                                                <thead class="table-light">
+                                                    <tr><th>Mata Pelajaran</th><th class="text-center">STS</th><th class="text-center">SAS</th><th class="text-center">Formatif</th><th class="text-center">Nilai Akhir</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($periode['mapel'] as $m)
+                                                        <tr>
+                                                            <td>{{ $m['subject'] ?? '—' }}</td>
+                                                            <td class="text-center">{{ $m['sts'] ?? '—' }}</td>
+                                                            <td class="text-center">{{ $m['sas'] ?? '—' }}</td>
+                                                            <td class="text-center">{{ $m['formatif'] ?? '—' }}</td>
+                                                            <td class="text-center fw-semibold">{{ $m['nr_final'] ?? '—' }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        @if($periode['catatan'])
+                                            <div class="small text-muted"><i class="ri-chat-quote-line me-1"></i>Catatan wali kelas: {{ $periode['catatan'] }}</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Study Section --}}
                             <h6 class="text-primary mb-3"><i class="ri-book-open-line me-1"></i>Melanjutkan Studi</h6>
                             <div class="row mb-4">
                                 <div class="col-md-4">

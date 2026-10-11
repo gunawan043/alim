@@ -42,15 +42,7 @@ class VisitWorkflowService
         $student = ! empty($data['student_id']) ? Student::find($data['student_id']) : null;
 
         if ($student) {
-            $policy = BoardingPolicy::query()
-                ->select('boarding_policies.*')
-                ->join('dormitory_policy_assignments', 'dormitory_policy_assignments.boarding_policy_id', '=', 'boarding_policies.id')
-                ->where('dormitory_policy_assignments.target_id', $dormitoryId)
-                ->where('dormitory_policy_assignments.policy_assignment_type', 'dormitory')
-                ->where('boarding_policies.is_active', true)
-                ->orderByDesc('dormitory_policy_assignments.priority')
-                ->orderByDesc('dormitory_policy_assignments.effective_from')
-                ->first();
+            $policy = $this->resolvePolicyForDormitory($dormitoryId);
 
             $context = DefaultBoardingContext::visitRequest($student, Dormitory::find($dormitoryId), $policy);
 
@@ -78,6 +70,101 @@ class VisitWorkflowService
         $data['created_by'] = auth()->id();
 
         return DB::transaction(fn () => DormitoryVisitLog::create($data));
+    }
+
+
+    /**
+     * Kebijakan boarding aktif untuk sebuah asrama (prioritas assignment).
+     */
+    public function resolvePolicyForDormitory(string $dormitoryId): ?BoardingPolicy
+    {
+        return BoardingPolicy::query()
+            ->select('boarding_policies.*')
+            ->join('dormitory_policy_assignments', 'dormitory_policy_assignments.boarding_policy_id', '=', 'boarding_policies.id')
+            ->where('dormitory_policy_assignments.target_id', $dormitoryId)
+            ->where('dormitory_policy_assignments.policy_assignment_type', 'dormitory')
+            ->where('boarding_policies.is_active', true)
+            ->orderByDesc('dormitory_policy_assignments.priority')
+            ->orderByDesc('dormitory_policy_assignments.effective_from')
+            ->first();
+    }
+
+    /**
+     * Simpan kebijakan KUNJUNGAN khusus asrama (per asrama, bukan global).
+     * Membuat/memperbarui BoardingPolicy milik asrama + assignment-nya.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function saveDormitoryPolicy(string $dormitoryId, array $data): BoardingPolicy
+    {
+        $policy = $this->resolvePolicyForDormitory($dormitoryId);
+
+        if (! $policy) {
+            $policy = BoardingPolicy::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'code' => 'VISIT-'.strtoupper(substr($dormitoryId, 0, 8)),
+                'name' => 'Kebijakan Kunjungan Asrama',
+                'is_active' => true,
+            ]);
+
+            \Illuminate\Support\Facades\DB::table('dormitory_policy_assignments')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'boarding_policy_id' => $policy->id,
+                'target_id' => $dormitoryId,
+                'policy_assignment_type' => 'dormitory',
+                'priority' => 1,
+                'effective_from' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $policy->forceFill([
+            'visit_strategy' => $data['visit_strategy'],
+            'visit_quota' => $data['visit_quota'] ?? null,
+            'visit_quota_period' => $data['visit_quota_period'] ?? 'monthly',
+            'max_visitors_per_visit' => $data['max_visitors_per_visit'] ?? null,
+            'is_active' => true,
+        ])->save();
+
+        return $policy->fresh();
+    }
+
+    /**
+     * Informasi kuota kunjungan keluarga per santri (per periode kebijakan) —
+     * dipakai panel jatah & modal limit di UI.
+     *
+     * @return array<string, mixed>
+     */
+    public function inspectQuotaForVisit(string $studentId, string $dormitoryId): array
+    {
+        $policy = $this->resolvePolicyForDormitory($dormitoryId);
+        $strategy = $policy?->visit_strategy ?? 'unrestricted';
+        $period = $policy?->visit_quota_period ?? 'monthly';
+        $quota = $policy?->visit_quota;
+
+        $used = 0;
+        if ($policy && $strategy === 'quota') {
+            $used = $this->engine->countUsageForCurrentPeriod($studentId, 'visit', $dormitoryId, $period);
+        }
+
+        return [
+            'strategy' => $strategy,
+            'quota' => $quota !== null ? (int) $quota : null,
+            'used' => (int) $used,
+            'period' => $period,
+            'remaining' => $quota !== null ? max(0, (int) $quota - (int) $used) : null,
+            'is_unrestricted' => $strategy === 'unrestricted',
+            'is_banned' => $strategy === 'banned',
+            'max_visitors' => $policy?->max_visitors_per_visit,
+            'period_label_id' => match ($period) {
+                'weekly' => 'minggu ini',
+                'monthly' => 'bulan ini',
+                'semester' => 'semester ini',
+                'yearly' => 'tahun ini',
+                default => 'periode ini',
+            },
+        ];
     }
 
     public function approve(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog
@@ -132,6 +219,27 @@ class VisitWorkflowService
 
             return $visit;
         });
+
+        // Notifikasi WA wali + in-app petugas asrama (di luar transaksi).
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyVisit($visit, 'approved');
+
+            app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($visit->dormitory_id, [
+                'module' => 'dormitory',
+                'reference_type' => 'dormitory_visit',
+                'reference_id' => $visit->id,
+                'type' => 'info',
+                'action' => 'visit_approved',
+                'title' => 'Kunjungan disetujui: '.($visit->student?->name ?? '-'),
+                'message' => 'Pengunjung '.($visit->visitor_name ?? '-').' dijadwalkan '
+                    .($visit->expected_arrival_datetime?->format('d/m/Y H:i') ?? '-').'.',
+                'priority' => 'low',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif kunjungan gagal: '.$e->getMessage());
+        }
+
+        return $visit;
     }
 
     public function checkIn(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog

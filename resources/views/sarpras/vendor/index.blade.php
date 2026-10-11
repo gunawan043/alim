@@ -11,7 +11,7 @@
         </a>
     </div>
     <div class="card-body">
-        <div class="row g-3 mb-3">
+        <div class="row">
             <div class="col-md-4">
                 <input type="text" id="search" class="form-control" placeholder="Cari nama, kode, NPWP...">
             </div>

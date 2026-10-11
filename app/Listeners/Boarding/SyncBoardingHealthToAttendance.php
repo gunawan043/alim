@@ -30,6 +30,7 @@ class SyncBoardingHealthToAttendance
                 endDate: $endDate,
                 source: 'boarding_health',
                 sourceId: $event->permit->id,
+                status: 'sakit',
             );
 
             IntegrationEventLog::record(

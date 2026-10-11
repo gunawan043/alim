@@ -9,12 +9,14 @@ use App\Models\CapaianPembelajaran;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
+use App\Models\KurikulumEditGrant;
 use App\Models\PerangkatPembelajaran;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
+use App\Models\SubjectGroup;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
@@ -360,10 +362,10 @@ class KurikulumPembelajaranTest extends TestCase
             $this->assertArrayHasKey($key, $desain);
         }
 
-        // Simpan isian desain.
+        // Simpan isian desain (draft — finalisasi bukan hak penyusun).
         $this->put("/{$this->guru->id}/kurikulum/perangkat/{$perangkat->id}", [
             'judul' => 'Perangkat Matematika 7A',
-            'status' => 'final',
+            'status' => 'draft',
             'desain' => [
                 'pertanyaan_pemantik' => 'Mengapa bilangan negatif diperlukan dalam kehidupan nyata?',
                 'pemahaman_bermakna' => 'Bilangan membantu kita memahami dan menjelaskan dunia.',
@@ -378,8 +380,17 @@ class KurikulumPembelajaranTest extends TestCase
             ],
         ])->assertStatus(302);
 
+        // Final = kunci; ditetapkan tim kurikulum (atau via approval kolektif rumpun).
+        $this->actingAs($this->kurikulum);
+        $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
+            'judul' => 'Perangkat Matematika 7A',
+            'status' => 'final',
+        ])->assertStatus(302);
+
+        $this->actingAs($this->guru);
         $perangkat->refresh();
         $this->assertSame('final', $perangkat->status);
+        $this->assertNotNull($perangkat->locked_at);
         $this->assertSame('Mengapa bilangan negatif diperlukan dalam kehidupan nyata?', $perangkat->desainValue('pertanyaan_pemantik'));
 
         $this->get("/{$this->guru->id}/kurikulum/perangkat/{$perangkat->id}")
@@ -406,6 +417,226 @@ class KurikulumPembelajaranTest extends TestCase
         $this->get("/{$this->guru->id}/kurikulum/tp")->assertOk()->assertSee('Tujuan Pembelajaran');
         $this->get("/{$this->guru->id}/kurikulum/atp")->assertOk()->assertSee('Alur Tujuan Pembelajaran');
         $this->get("/{$this->guru->id}/kurikulum/perangkat")->assertOk()->assertSee('Perangkat Pembelajaran');
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // KEBIJAKAN AKSES (menu & dokumen)
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_tu_tidak_bisa_akses_modul_kurikulum(): void
+    {
+        $tu = $this->makeExtraUser('Staf TU Kurikulum', 'tu.kurikulum@test.local', 'Staf Tata Usaha');
+
+        $this->actingAs($tu)
+            ->get("/{$tu->id}/kurikulum")
+            ->assertStatus(403);
+
+        $this->actingAs($tu)
+            ->get("/{$tu->id}/kurikulum/perangkat")
+            ->assertStatus(403);
+
+        $this->actingAs($tu)
+            ->get("/{$tu->id}/kurikulum/rumpun")
+            ->assertStatus(403);
+    }
+
+    public function test_ksp_melihat_semua_tetapi_tidak_mengelola(): void
+    {
+        $ksp = $this->makeExtraUser('Kepala Satuan Pendidikan', 'ksp@test.local', 'Kepala Satuan Pendidikan');
+
+        $this->actingAs($ksp)
+            ->get("/{$ksp->id}/kurikulum")
+            ->assertOk()
+            ->assertSee('Peta Kurikulum')
+            ->assertSee('Matematika')
+            ->assertSee('Fisika');
+
+        $this->actingAs($ksp)
+            ->get("/{$ksp->id}/kurikulum/tp")
+            ->assertOk();
+
+        // KSP bukan editor: menambah CP ditolak.
+        $this->actingAs($ksp)
+            ->post("/{$ksp->id}/kurikulum/cp", [
+                'subject_id' => $this->math->id,
+                'fase' => 'D',
+                'elemen' => 'Bilangan',
+                'deskripsi' => 'CP oleh KSP (tidak sah).',
+            ])->assertStatus(403);
+
+        // Master rumpun: boleh dilihat, tidak boleh dikelola.
+        $this->actingAs($ksp)
+            ->get("/{$ksp->id}/kurikulum/rumpun")
+            ->assertOk();
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum/rumpun")
+            ->assertStatus(403);
+    }
+
+    public function test_peta_kurikulum_guru_hanya_mapel_yang_diampu(): void
+    {
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum")
+            ->assertOk()
+            ->assertSee('Matematika')
+            ->assertDontSee('Fisika');
+    }
+
+    public function test_guru_melihat_cp_serumpun_dan_bukan_mapel_lain(): void
+    {
+        $umum = SubjectGroup::firstOrCreate(['code' => 'umum'], ['name' => 'Umum', 'sort_order' => 1, 'is_active' => true]);
+        $agama = SubjectGroup::firstOrCreate(['code' => 'agama'], ['name' => 'Agama', 'sort_order' => 2, 'is_active' => true]);
+
+        $this->math->update(['subject_group_id' => $umum->id]);
+        $this->fisika->update(['subject_group_id' => $umum->id]);
+
+        $hadits = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'HDS',
+            'name' => 'Hadits',
+            'category' => 'nasional',
+            'is_active' => true,
+            'subject_group_id' => $agama->id,
+        ]);
+
+        // CP dibuat tim kurikulum untuk mapel serumpun (Fisika) & mapel lain (Hadits).
+        $this->actingAs($this->kurikulum);
+        $this->post("/{$this->kurikulum->id}/kurikulum/cp", [
+            'subject_id' => $this->fisika->id,
+            'fase' => 'D',
+            'elemen' => 'Fisika',
+            'deskripsi' => 'CP_FISIKA_SERUMPUN',
+        ])->assertStatus(302);
+        $this->post("/{$this->kurikulum->id}/kurikulum/cp", [
+            'subject_id' => $hadits->id,
+            'fase' => 'D',
+            'elemen' => 'Hadits',
+            'deskripsi' => 'CP_HADITS_LAIN',
+        ])->assertStatus(302);
+
+        // Guru Matematika: melihat CP serumpun (Fisika), bukan mapel di luar rumpun (Hadits).
+        $this->actingAs($this->guru);
+        $this->get("/{$this->guru->id}/kurikulum/cp")
+            ->assertOk()
+            ->assertSee('CP_FISIKA_SERUMPUN')
+            ->assertDontSee('CP_HADITS_LAIN');
+    }
+
+    public function test_permintaan_akses_edit_harus_disetujui_sebelum_mengelola(): void
+    {
+        $umum = SubjectGroup::firstOrCreate(['code' => 'umum'], ['name' => 'Umum', 'sort_order' => 1, 'is_active' => true]);
+        $this->math->update(['subject_group_id' => $umum->id]);
+        $this->fisika->update(['subject_group_id' => $umum->id]);
+
+        $serumpun = $this->makeExtraUser('Guru Serumpun Fisika', 'serumpun.fisika@test.local', 'Guru Mapel');
+        $this->assignTeaching($serumpun, $this->math); // bagian rumpun Umum (tidak mengampu Fisika)
+
+        // Halaman tersedia & sebelum disetujui tidak bisa mengelola TP Fisika.
+        $this->actingAs($serumpun)
+            ->get("/{$serumpun->id}/kurikulum/akses-edit")
+            ->assertOk()
+            ->assertSee('Permintaan Akses Edit');
+
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/tp", [
+                'subject_id' => $this->fisika->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'kode_tp' => 'TP.FS0',
+                'deskripsi' => 'TP fisika sebelum izin (tidak sah).',
+                'alokasi_waktu' => 4,
+            ])->assertStatus(403);
+
+        // Ajukan permintaan.
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/akses-edit", [
+                'subject_id' => $this->fisika->id,
+                'academic_year_id' => $this->ay->id,
+                'reason' => 'Ikut menyusun TP & ATP Fisika serumpun.',
+            ])->assertStatus(302);
+
+        $grant = KurikulumEditGrant::firstOrFail();
+        $this->assertSame(KurikulumEditGrant::STATUS_PENDING, $grant->status);
+
+        // Guru Matematika (bukan editor, bukan pengampu Fisika) tidak boleh memutuskan.
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/kurikulum/akses-edit/{$grant->id}/approve")
+            ->assertStatus(403);
+
+        // Tim kurikulum menyetujui.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/akses-edit/{$grant->id}/approve")
+            ->assertStatus(302);
+        $this->assertSame(KurikulumEditGrant::STATUS_APPROVED, $grant->fresh()->status);
+
+        // Setelah disetujui: boleh mengelola TP Fisika.
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/tp", [
+                'subject_id' => $this->fisika->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'kode_tp' => 'TP.FS1',
+                'deskripsi' => 'TP fisika oleh pemegang izin edit.',
+                'alokasi_waktu' => 6,
+            ])->assertStatus(302);
+
+        // Akses dicabut kembali → tidak bisa mengelola lagi.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/akses-edit/{$grant->id}/revoke")
+            ->assertStatus(302);
+        $this->assertSame(KurikulumEditGrant::STATUS_REVOKED, $grant->fresh()->status);
+
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/tp", [
+                'subject_id' => $this->fisika->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'kode_tp' => 'TP.FS2',
+                'deskripsi' => 'TP fisika setelah dicabut (tidak sah).',
+                'alokasi_waktu' => 4,
+            ])->assertStatus(403);
+    }
+
+    public function test_pengampu_mapel_dapat_menyetujui_permintaan_mapelnya(): void
+    {
+        $umum = SubjectGroup::firstOrCreate(['code' => 'umum'], ['name' => 'Umum', 'sort_order' => 1, 'is_active' => true]);
+        $this->math->update(['subject_group_id' => $umum->id]);
+        $this->fisika->update(['subject_group_id' => $umum->id]);
+
+        $serumpun = $this->makeExtraUser('Guru Serumpun Matematika', 'serumpun.math@test.local', 'Guru Mapel');
+        $this->assignTeaching($serumpun, $this->fisika); // bagian rumpun Umum (tidak mengampu Matematika)
+
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/akses-edit", [
+                'subject_id' => $this->math->id,
+                'academic_year_id' => $this->ay->id,
+                'reason' => 'Membantu menyusun ATP Matematika.',
+            ])->assertStatus(302);
+
+        $grant = KurikulumEditGrant::firstOrFail();
+
+        // Pengampu Matematika (guru) melihat & menyetujui permintaan mapelnya.
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum/akses-edit")
+            ->assertOk()
+            ->assertSee('Guru Serumpun Matematika');
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/kurikulum/akses-edit/{$grant->id}/approve")
+            ->assertStatus(302);
+        $this->assertSame(KurikulumEditGrant::STATUS_APPROVED, $grant->fresh()->status);
+
+        // Pemegang izin dapat mengelola TP Matematika.
+        $this->actingAs($serumpun)
+            ->post("/{$serumpun->id}/kurikulum/tp", [
+                'subject_id' => $this->math->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'kode_tp' => 'TP.MT.X1',
+                'deskripsi' => 'TP matematika oleh pemegang izin (keroyokan).',
+                'alokasi_waktu' => 8,
+            ])->assertStatus(302);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -646,5 +877,54 @@ class KurikulumPembelajaranTest extends TestCase
             'created_at' => now(),
             'archived_at' => null,
         ]);
+    }
+
+    private function assignTeaching(User $user, Subject $subject): void
+    {
+        $decreeId = DB::table('institution_decrees')->value('id') ?: (string) Str::uuid();
+
+        TeachingAssignment::create([
+            'decree_id' => $decreeId,
+            'teacher_id' => $user->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $this->group->id,
+            'subject_id' => $subject->id,
+            'weekly_hours' => 0,
+            'status' => 'active',
+        ]);
+    }
+
+    private function makeExtraUser(string $name, string $email, string $jabatan): User
+    {
+        $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
+
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $user->assignRole($role);
+        $this->seedPermissionSnapshot($user, ['jadwalkbm.read']);
+
+        Schema::disableForeignKeyConstraints();
+
+        try {
+            DB::table('gtk_employments')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'school_id' => $this->school->id,
+                'status_kepegawaian' => 'GTY',
+                'jenis_gtk' => 'Pendidik / Guru',
+                'jabatan' => $jabatan,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
+
+        return $user;
     }
 }

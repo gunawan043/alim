@@ -118,7 +118,7 @@
                     @else
                         <span class="badge bg-warning-subtle text-warning">Tahun ajaran aktif belum ditetapkan</span>
                     @endif
-                    <span class="text-muted small ms-2">Generator menyusun slot dari SK guru &amp; master Jam Pelajaran.</span>
+                    <span class="text-muted small ms-2">Generator menyusun jadwal <strong>seluruh sekolah</strong> dari penugasan mengajar (SK guru) &amp; master Jam Pelajaran.</span>
                 </p>
             </div>
             <div class="col-lg-auto">
@@ -127,7 +127,7 @@
                         <i class="ri-timer-line me-1"></i> Jam Pelajaran
                     </a>
                     <a href="{{ route('user.jadwal-kbm.generate', ['userId' => $userId]) }}" class="btn btn-primary">
-                        <i class="ri-magic-line me-1"></i> Generate Jadwal
+                        <i class="ri-magic-line me-1"></i> Generate Jadwal Sekolah
                     </a>
                 </div>
             </div>
@@ -228,7 +228,7 @@
 document.querySelectorAll('.js-generate-single').forEach(function (form) {
     form.addEventListener('submit', function (e) {
         var name = form.querySelector('button[data-name]')?.dataset.name || 'rombel ini';
-        if (! confirm('Generate jadwal untuk ' + name + ' berdasarkan SK guru aktif?')) {
+        if (! confirm('Generate ulang jadwal untuk ' + name + ' berdasarkan penugasan mengajar?')) {
             e.preventDefault();
         }
     });

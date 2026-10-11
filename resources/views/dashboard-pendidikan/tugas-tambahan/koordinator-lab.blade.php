@@ -19,14 +19,14 @@
     @slot('title') Koordinator Laboratorium @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Lab Aktif" :value="$labAktif" icon="ri-flask-line" color="primary" />
     <x-dashboards.stat-card label="Aset Rusak Ringan" :value="$asetRusakRingan" icon="ri-tools-line" color="warning" />
     <x-dashboards.stat-card label="Peminjaman Hari Ini" :value="$peminjamanHariIni" icon="ri-arrow-right-up-line" color="info" />
     <x-dashboards.stat-card label="Jadwal Lab Sore" :value="$jadwalSore" icon="ri-time-line" color="success" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- STATUS RUANG LAB --}}
     <div class="col-xl-6">
         <div class="card h-100">

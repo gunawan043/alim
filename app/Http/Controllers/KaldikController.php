@@ -230,7 +230,60 @@ class KaldikController extends Controller
         $validated['is_active'] = $request->boolean('is_active');
         $validated['created_by'] = $user->id;
 
+        // Legenda default: libur → merah, dst. (dapat ditimpa settings).
+        $validated['color'] = $validated['color'] ?? kaldik_default_color($validated['type'] ?? null);
+
         $kaldik = Kaldik::create($validated);
+
+        // Notifikasi IN-APP GTK: per satuan kerja, fallback GLOBAL bila
+        // tidak ada satuan kerja (mis. dibuat oleh Super Admin).
+        try {
+            // Kaldik PONDOK (kategori kaldik) = global: semua GTK seluruh satuan
+            // kerja termasuk Super Admin. Agenda = satuan kerja terkait.
+            $targetWorkUnit = $kaldik->work_unit_id;
+
+            if ($kaldik->category === Kaldik::CATEGORY_AGENDA && ! $targetWorkUnit) {
+                $targetWorkUnit = $user->gtkWorkUnits()?->where('is_primary', true)->value('work_unit_id')
+                    ?? $user->gtkWorkUnits()?->value('work_unit_id');
+            }
+
+            $payload = [
+                'module' => 'kaldik',
+                'reference_type' => 'kaldik',
+                'reference_id' => $kaldik->id,
+                'type' => 'info',
+                'action' => 'kaldik_created',
+                'title' => 'Kaldik: '.$kaldik->name,
+                'message' => 'Agenda '.($kaldik->type ?? 'kegiatan').' tanggal '
+                    .($kaldik->start_date?->format('d/m/Y') ?? '-').' telah ditambahkan ke kalender pendidikan.',
+                'action_url' => route('user.kaldik.index', ['userId' => $user->id]),
+                'action_text' => 'Lihat Kaldik',
+                'priority' => 'medium',
+            ];
+
+            app(\App\Services\NotificationUniversalService::class)->notifyGtk($targetWorkUnit, $payload);
+
+            // Pembuat selalu menerima (mis. Super Admin membuat agenda satuan lain).
+            $alreadyNotified = \App\Models\NotificationUniversal::query()
+                ->where('user_id', $user->id)
+                ->where('reference_id', $kaldik->id)
+                ->exists();
+
+            if (! $alreadyNotified) {
+                app(\App\Services\NotificationUniversalService::class)->send($user->id, $payload);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif Kaldik gagal: '.$e->getMessage());
+        }
+
+        // Notifikasi WA untuk libur (mode terpusat nomor admin ALIM).
+        if (($validated['type'] ?? null) === Kaldik::TYPE_LIBUR) {
+            try {
+                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyHoliday($kaldik);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('WA notif libur gagal: '.$e->getMessage());
+            }
+        }
 
         // ── KIRIM NOTIFIKASI ────────────────────────────────
         $this->sendNotification($kaldik, $user);
@@ -286,6 +339,11 @@ class KaldikController extends Controller
      */
     public function update(Request $request, string $userId, string $kaldikId)
     {
+        // Warna otomatis dari jenis (legenda default) bila tidak diisi.
+        if ($request->filled('type') && ! $request->filled('color')) {
+            $request->merge(['color' => kaldik_default_color($request->input('type'))]);
+        }
+
         $kaldik = Kaldik::findOrFail($kaldikId);
         $isGlobal = $this->isGlobalUser($request);
         $user = $request->user();
@@ -320,6 +378,36 @@ class KaldikController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
         $kaldik->update($validated);
+
+        // Notifikasi IN-APP GTK: agenda Kaldik diperbarui.
+        if ($kaldik->wasChanged(['name', 'start_date', 'end_date', 'type'])) {
+            try {
+                $user = auth()->user();
+                $targetWorkUnit = $kaldik->work_unit_id;
+
+                if ($kaldik->category === Kaldik::CATEGORY_AGENDA && ! $targetWorkUnit) {
+                    $targetWorkUnit = $user?->gtkWorkUnits()?->where('is_primary', true)->value('work_unit_id')
+                        ?? $user?->gtkWorkUnits()?->value('work_unit_id');
+                }
+
+                app(\App\Services\NotificationUniversalService::class)->notifyGtk($targetWorkUnit, [
+                    'module' => 'kaldik',
+                    'reference_type' => 'kaldik',
+                    'reference_id' => $kaldik->id,
+                    'type' => 'info',
+                    'action' => 'kaldik_updated',
+                    'title' => 'Kaldik diperbarui: '.$kaldik->name,
+                    'message' => 'Agenda '.($kaldik->type ?? 'kegiatan').' tanggal '
+                        .($kaldik->start_date?->format('d/m/Y') ?? '-').' telah diperbarui.',
+                    'action_url' => route('user.kaldik.index', ['userId' => $userId]),
+                    'action_text' => 'Lihat Kaldik',
+                    'priority' => 'medium',
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Notif Kaldik update gagal: '.$e->getMessage());
+            }
+        }
+
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Berhasil diperbarui.']);

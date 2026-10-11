@@ -96,7 +96,9 @@ class AlumniController extends Controller
             ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
             ->findOrFail($alumniUuid);
 
-        return view('alumni.show', compact('alumni', 'userId'));
+        $riwayat = $this->buildRiwayat($alumni->student_id);
+
+        return view('alumni.show', compact('alumni', 'userId', 'riwayat'));
     }
 
     /**
@@ -353,5 +355,55 @@ class AlumniController extends Controller
         }
 
         return $created;
+    }
+
+    /**
+     * Riwayat nilai & rapor alumni dari arsip buku nilai per TA/semester.
+     * Data hanya-baca (tahun ajaran lampau sudah terkunci/arsip).
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function buildRiwayat(?string $studentId)
+    {
+        if (! $studentId) {
+            return collect();
+        }
+
+        $sumatif = \App\Models\NilaiSumatif::with(['adminBook.subject', 'adminBook.academicYear'])
+            ->where('student_id', $studentId)
+            ->get();
+
+        $formatif = \App\Models\NilaiFormatif::with(['adminBook.subject', 'adminBook.academicYear'])
+            ->where('student_id', $studentId)
+            ->get()
+            ->keyBy('admin_book_id');
+
+        $catatan = \App\Models\RaportRegistration::query()
+            ->where('student_id', $studentId)
+            ->get();
+
+        return $sumatif
+            ->groupBy(fn ($n) => ($n->adminBook?->academicYear?->name ?? 'Tanpa TA').'|'.ucfirst((string) $n->semester))
+            ->map(function ($rows, $key) use ($formatif, $catatan) {
+                [$tahunAjaran, $semester] = array_pad(explode('|', (string) $key), 2, '');
+
+                return [
+                    'academic_year' => $tahunAjaran,
+                    'semester' => $semester,
+                    'mapel' => $rows->map(function ($n) use ($formatif) {
+                        $fmt = $formatif->get($n->admin_book_id);
+
+                        return [
+                            'subject' => $n->adminBook?->subject?->name,
+                            'sts' => $n->sts,
+                            'sas' => $n->sas,
+                            'formatif' => $fmt?->nr_final,
+                            'nr_final' => $n->nr_final,
+                        ];
+                    })->values(),
+                    'catatan' => $catatan->firstWhere('semester', strtolower((string) $semester))?->homeroom_note,
+                ];
+            })
+            ->values();
     }
 }

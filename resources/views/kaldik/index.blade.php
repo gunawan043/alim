@@ -200,15 +200,18 @@
                         <div class="card-body py-2 px-3">
                             <div class="small fw-semibold text-uppercase mb-2" style="font-size:0.7rem;color:#64748b;letter-spacing:0.5px">Legenda</div>
                             <div class="d-flex flex-column gap-1">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="legend-dot" style="background:#3B82F6"></span>
-                                    <span class="small fw-medium">Kaldik</span>
-                                    <span class="text-muted small" style="font-size:0.7rem">— kegiatan pondok</span>
+                                <div class="small text-muted" style="font-size:0.7rem">
+                                    Warna mengikuti <strong>jenis</strong> kegiatan secara otomatis:
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="legend-dot" style="background:#F59E0B"></span>
-                                    <span class="small fw-medium">Agenda</span>
-                                    <span class="text-muted small" style="font-size:0.7rem">— kegiatan satuan kerja</span>
+                                @foreach(kaldik_legend() as $legendType => $meta)
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="legend-dot" style="background:{{ $meta['color'] }}"></span>
+                                        <span class="small fw-medium">{{ $meta['label'] }}</span>
+                                        <span class="text-muted small" style="font-size:0.7rem">{{ $meta['color'] }}</span>
+                                    </div>
+                                @endforeach
+                                <div class="small text-muted mt-1" style="font-size:0.7rem">
+                                    Kategori: <strong>Kaldik</strong> = kegiatan pondok · <strong>Agenda</strong> = kegiatan satuan kerja.
                                 </div>
                             </div>
                         </div>
@@ -532,5 +535,35 @@
         window.KALDIK_CSRF_TOKEN = "{{ csrf_token() }}";
         window.KALDIK_USER_ID = "{{ $userId }}";
     </script>
-    <script src="{{ URL::asset('build/js/pages/kaldik-calendar.init.js') }}"></script>
+    <script src="{{ URL::asset('build/js/pages/kaldik-calendar.init.js').'?v='.(@filemtime(public_path('build/js/pages/kaldik-calendar.init.js')) ?: '1') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const legend = @json(kaldik_legend());
+    const typeSelect = document.getElementById('event-type');
+    if (!typeSelect) return;
+
+    function applyDefaultColor() {
+        const color = (legend[typeSelect.value] && legend[typeSelect.value].color) ? legend[typeSelect.value].color : null;
+        const tag = document.getElementById('event-color-tag');
+
+        if (!color) { return; }
+
+        const radios = document.querySelectorAll('input[name="event-color"]');
+        radios.forEach(function (r) {
+            if ((r.value || '').toUpperCase() === color.toUpperCase()) { r.checked = true; }
+        });
+
+        // Warna mengikuti jenis secara otomatis (tidak perlu pilih 2x).
+        if (tag) { tag.textContent = color; }
+        const swatches = document.querySelector('.color-swatches');
+        if (swatches) { swatches.classList.add('d-none'); }
+        const row = document.getElementById('event-color-row');
+        if (row) { row.style.display = 'flex'; }
+    }
+
+    typeSelect.addEventListener('change', applyDefaultColor);
+    if (!document.querySelector('input[name="event-color"]:checked')) { applyDefaultColor(); }
+});
+</script>
 @endsection

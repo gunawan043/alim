@@ -134,7 +134,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Makassar'), // WITA (UTC+8)
 
     /*
     |--------------------------------------------------------------------------

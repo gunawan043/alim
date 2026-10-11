@@ -807,4 +807,33 @@ class AbsensiHarianController extends Controller
         echo '</table></body></html>';
         exit;
     }
+
+    /**
+     * Verifikasi kesesuaian baris presensi harian (hasil sinkronisasi/manual).
+     * Hanya wali kelas rombel atau petugas berwenang (TU/Waka).
+     */
+    public function verify(Request $request, string $userId, string $recordId)
+    {
+        $record = AdminPresensiHarian::findOrFail($recordId);
+
+        if (! $this->isAdminOrWaka() && ! $this->isWaliKelasOf($request, $record->study_group_id)) {
+            abort(403, 'Hanya wali kelas rombel atau petugas berwenang yang dapat memverifikasi.');
+        }
+
+        $schoolId = $this->getSchoolId($request);
+        $record->loadMissing('studyGroup');
+
+        if ($schoolId && $record->studyGroup && (string) $record->studyGroup->school_id !== (string) $schoolId) {
+            abort(404, 'Data tidak ditemukan pada satuan pendidikan Anda.');
+        }
+
+        $record->forceFill([
+            'verified_at' => now(),
+            'verified_by' => $request->user()?->id,
+        ])->save();
+
+        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($record, 'attendance_verified', $request->user());
+
+        return back()->with('success', 'Kesesuaian presensi ditandai terverifikasi.');
+    }
 }

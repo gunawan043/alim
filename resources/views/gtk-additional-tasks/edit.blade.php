@@ -52,8 +52,16 @@
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label">Nama Tugas <span class="text-danger">*</span></label>
-                                <input type="text" name="nama_tugas" class="form-control"
-                                       value="{{ old('nama_tugas', $task->nama_tugas) }}"
+                                <select name="nama_tugas" class="form-control js-select2" required>
+                                    <option value="">-- Pilih Tugas Tambahan --</option>
+                                    @foreach(($defaultTasks ?? []) as $dt)
+                                        <option value="{{ $dt }}" {{ old('nama_tugas', $task->nama_tugas) == $dt ? 'selected' : '' }}>{{ $dt }}</option>
+                                    @endforeach
+                                    {{-- Tetap tampilkan nilai lama yang tidak ada di master --}}
+                                    @if($task->nama_tugas && ! in_array($task->nama_tugas, $defaultTasks ?? [], true))
+                                        <option value="{{ $task->nama_tugas }}" selected>{{ $task->nama_tugas }}</option>
+                                    @endif
+                                </select>nama_tugas) }}"
                                        required>
                             </div>
                             <div class="col-md-4">
@@ -90,4 +98,9 @@
             </div>
         </div>
     </form>
+@push('scripts')
+<script>
+    $(function () { $('.js-select2').select2({ width: '100%' }); });
+</script>
+@endpush
 @endsection

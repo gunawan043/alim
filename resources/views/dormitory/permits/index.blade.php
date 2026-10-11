@@ -133,10 +133,10 @@
     @endphp
 
     {{-- STATISTICS CARDS (gaya GTK) --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         {{-- 1. Total Izin --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -158,7 +158,7 @@
 
         {{-- 2. Menunggu Persetujuan --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -180,7 +180,7 @@
 
         {{-- 3. Izin Aktif (Approved + Picked-up + Overdue) --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -207,7 +207,7 @@
 
         {{-- 4. Terlambat --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -264,6 +264,13 @@
                 <span class="filter-badge">
                     <i class="ri-time-line text-info"></i> Izin bulan ini: <strong>{{ number_format($stats['approved'] + $stats['overdue'] ?? 0) }}</strong>
                 </span>
+                @if(!empty($visitQuotaInfo))
+                    <span class="filter-badge">
+                        <i class="ri-group-line text-success"></i> Kunjungan {{ $visitQuotaInfo['period_label_id'] }}:
+                        <strong>{{ $visitQuotaInfo['used'] }}/{{ $visitQuotaInfo['quota'] ?? '∞' }}</strong>
+                        @if($visitQuotaInfo['remaining'] !== null) · sisa {{ $visitQuotaInfo['remaining'] }} @endif
+                    </span>
+                @endif
                 @if(request('quota_student'))
                     @php
                         $studentId = request('quota_student');

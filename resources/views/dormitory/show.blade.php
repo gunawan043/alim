@@ -21,10 +21,10 @@
     @endif
 
     {{-- Quick Actions --}}
-    <div class="row g-3 mb-4">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
             <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="text-decoration-none">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-team-line text-primary"></i></span></div>
@@ -39,7 +39,7 @@
         </div>
         <div class="col-xl-3 col-md-6">
             <a href="{{ route('user.asrama.attendance.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="text-decoration-none">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-info"></i></span></div>
@@ -53,7 +53,7 @@
             </a>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-hotel-line text-warning"></i></span></div>
@@ -66,7 +66,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-secondary-subtle rounded fs-2"><i class="ri-layout-column-line text-secondary"></i></span></div>

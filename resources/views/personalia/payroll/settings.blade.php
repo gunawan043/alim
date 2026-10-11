@@ -104,7 +104,7 @@
                 <p class="text-muted small mb-3">Pengaturan tarif iuran BPJS Ketenagakerjaan dan Kesehatan.</p>
 
                 <h6 class="fw-semibold text-dark mb-2">BPJS Ketenagakerjaan</h6>
-                <div class="row g-3 mb-3">
+                <div class="row">
                     <div class="col-6">
                         <label class="form-label small text-muted">JHT Employer (%)</label>
                         <input type="number" class="form-control form-control-sm" value="3.7" step="0.1">
@@ -126,7 +126,7 @@
                 <hr class="my-3">
 
                 <h6 class="fw-semibold text-dark mb-2">BPJS Kesehatan</h6>
-                <div class="row g-3 mb-3">
+                <div class="row">
                     <div class="col-6">
                         <label class="form-label small text-muted">Employer (%)</label>
                         <input type="number" class="form-control form-control-sm" value="4" step="0.1">

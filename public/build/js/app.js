@@ -1320,7 +1320,7 @@ File: Main Js File
                         getElementUsingTagname("data-theme", "galaxy");
                         sessionStorage.setItem("data-theme", "galaxy");
                         document.documentElement.setAttribute("data-theme", "galaxy");
-                        document.getElementById("body-img").style.display = "block";
+                        var __bi = document.getElementById("body-img"); if (__bi) { __bi.style.display = "block"; }
                         break;
                     case "material":
                         getElementUsingTagname("data-theme", "material");
@@ -1944,7 +1944,7 @@ File: Main Js File
                 if (ele == 'data-theme') {
                     // Dispatch the resize event on the window object
                     document.documentElement.setAttribute("data-theme", x.value);
-                    document.getElementById("body-img").style.display = (x.value === "galaxy") ? "block" : "none";
+                    var __bi2 = document.getElementById("body-img"); if (__bi2) { __bi2.style.display = (x.value === "galaxy") ? "block" : "none"; }
                     if (x.value === "galaxy") {
                         document.documentElement.setAttribute("data-sidebar", "dark");
                         document.documentElement.setAttribute("data-bs-theme", "dark");

@@ -28,7 +28,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Wali Kamar (Pegawai GTK) <span class="text-danger">*</span></label>
-                        <select name="user_id" class="form-select js-example-basic-single" required>
+                        <select name="user_id" class="form-select js-select2" required>
                             <option value="">-- Pilih Pegawai --</option>
                             @foreach($gtkUsers as $u)
                                 <option value="{{ $u->id }}" {{ old('user_id', $supervisor->user_id) === $u->id ? 'selected' : '' }}>
@@ -39,7 +39,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Kamar <span class="text-danger">*</span></label>
-                        <select name="room_id" class="form-select" required>
+                        <select name="room_id" class="form-select js-select2" required>
                             <option value="">-- Pilih Kamar --</option>
                             @foreach($rooms as $r)
                                 <option value="{{ $r->id }}" {{ old('room_id', $supervisor->room_id) === $r->id ? 'selected' : '' }}>
@@ -131,4 +131,9 @@
             });
         });
     </script>
+@push('scripts')
+<script>
+    $(function () { $('.js-select2').select2({ width: '100%' }); });
+</script>
+@endpush
 @endsection

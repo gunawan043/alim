@@ -9,6 +9,7 @@ use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
 use App\Models\PenghargaanAkademik;
 use App\Models\StudentClassHistory;
+use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Services\SumatifHarianService;
@@ -166,6 +167,15 @@ class NilaiController extends Controller
 
         $this->authorizeAdminBookScope($request, $adminBook);
 
+        if ($adminBook->isLocked()) {
+            abort(403, 'Buku nilai sudah dikunci final — hubungi tim kurikulum untuk membuka.');
+        }
+
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+        if ($activeYearId && (string) $adminBook->academic_year_id !== (string) $activeYearId) {
+            abort(403, 'Buku tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
+        }
+
         $service = app(SumatifHarianService::class);
 
         foreach ($request->nilai as $studentId => $data) {
@@ -256,6 +266,15 @@ class NilaiController extends Controller
 
         $this->authorizeAdminBookScope($request, $adminBook);
 
+        if ($adminBook->isLocked()) {
+            abort(403, 'Buku nilai sudah dikunci final — hubungi tim kurikulum untuk membuka.');
+        }
+
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+        if ($activeYearId && (string) $adminBook->academic_year_id !== (string) $activeYearId) {
+            abort(403, 'Buku tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
+        }
+
         $request->validate([
             'sumatif' => 'required|array',
             'formatif' => 'required|array',
@@ -325,5 +344,66 @@ class NilaiController extends Controller
         }
 
         return redirect()->back()->with('success', 'Nilai SAS berhasil disimpan.');
+    }
+
+    /**
+     * Kunci nilai final (wali kelas rombel atau tim kurikulum), ber-audit.
+     */
+    public function lockBook(Request $request, string $userId, string $adminBookId)
+    {
+        $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
+        $adminBook = TeacherAdminBook::findOrFail($bookId);
+
+        $this->ensureSchoolScope($request, $adminBook->school_id, 'Buku nilai tidak ditemukan pada satuan pendidikan Anda.');
+
+        $user = $request->user();
+        $studyGroup = StudyGroup::find($adminBook->study_group_id);
+        $isWali = $studyGroup && (string) $studyGroup->homeroom_teacher_id === (string) $user?->id;
+
+        if (! $isWali && ! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+            abort(403, 'Hanya wali kelas atau tim kurikulum yang dapat mengunci nilai final.');
+        }
+
+        if ($adminBook->isLocked()) {
+            return back()->with('error', 'Buku nilai sudah terkunci.');
+        }
+
+        $adminBook->forceFill(['locked_at' => now(), 'locked_by' => $user?->id])->save();
+
+        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($adminBook, 'book_locked', $user);
+
+        // Notifikasi WA: nilai final & rapor siap ditinjau (mode terpusat/wali).
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyRaporReady($adminBook);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif rapor gagal: '.$e->getMessage());
+        }
+
+        return back()->with('success', 'Nilai final dikunci. Perubahan hanya setelah dibuka kurikulum.');
+    }
+
+    /**
+     * Buka kunci nilai (hanya tim kurikulum), ber-audit.
+     */
+    public function unlockBook(Request $request, string $userId, string $adminBookId)
+    {
+        $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
+        $adminBook = TeacherAdminBook::findOrFail($bookId);
+
+        $this->ensureSchoolScope($request, $adminBook->school_id, 'Buku nilai tidak ditemukan pada satuan pendidikan Anda.');
+
+        if (! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($request->user())) {
+            abort(403, 'Pembukaan kunci nilai hanya oleh tim kurikulum.');
+        }
+
+        if (! $adminBook->isLocked()) {
+            return back()->with('error', 'Buku nilai belum terkunci.');
+        }
+
+        $adminBook->forceFill(['locked_at' => null, 'locked_by' => null])->save();
+
+        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($adminBook, 'book_unlocked', $request->user());
+
+        return back()->with('success', 'Kunci nilai dibuka (tercatat pada audit).');
     }
 }

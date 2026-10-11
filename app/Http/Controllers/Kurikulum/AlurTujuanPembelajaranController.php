@@ -54,6 +54,11 @@ class AlurTujuanPembelajaranController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
+            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
+                // Guru: hanya ATP mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->when($request->filled('grade_level_id'), fn ($q) => $q->where('grade_level_id', $request->grade_level_id))
             ->orderBy('subject_id')
@@ -63,18 +68,9 @@ class AlurTujuanPembelajaranController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
-                // Guru hanya menyusun ATP untuk mapel yang diampu.
-                $taught = TeachingAssignment::query()
-                    ->where('teacher_id', $request->user()->id)
-                    ->where('academic_year_id', $academicYearId)
-                    ->where('status', 'active')
-                    ->when($schoolId, fn ($q2) => $q2->where('school_id', $schoolId))
-                    ->pluck('subject_id')
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                $q->whereIn('id', $taught ?: ['-']);
+                // Guru: mapel yang diampu / serumpun (penyusunan tetap dibatasi editor/pengampu).
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+                $q->whereIn('id', $viewable ?: ['-']);
             })
             ->orderBy('name')
             ->get(['id', 'name', 'code']);

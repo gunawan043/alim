@@ -36,6 +36,7 @@ class SyncBoardingLeaveToAttendance
                 endDate: $event->permit->expected_return_datetime,
                 source: 'boarding_leave',
                 sourceId: $event->permit->id,
+                status: 'izin',
             );
 
             IntegrationEventLog::record(

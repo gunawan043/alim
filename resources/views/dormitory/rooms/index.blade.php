@@ -28,7 +28,7 @@
     {{-- Stats --}}
     <div class="row g-3 mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -43,7 +43,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -58,7 +58,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -73,7 +73,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -104,6 +104,9 @@
                             </a>
                             <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Kamar
+                            </a>
+                            <a href="{{ route('user.asrama.rooms.placement', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-soft-success ms-1">
+                                <i class="ri-layout-grid-line align-bottom me-1"></i> Penempatan Kamar
                             </a>
                         </div>
                     </div>

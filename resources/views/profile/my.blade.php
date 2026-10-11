@@ -722,7 +722,7 @@
                             </div>
                             <div class="row g-3">
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">
@@ -746,7 +746,7 @@
                                 </div>
 
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">
@@ -764,7 +764,7 @@
                                 </div>
 
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">
@@ -788,7 +788,7 @@
                                 </div>
 
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">
@@ -806,7 +806,7 @@
                                 </div>
 
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">
@@ -832,7 +832,7 @@
                                 </div>
 
                                 <div class="col-xl-2 col-md-4 col-6">
-                                    <div class="card card-animate h-100">
+                                    <div class="card card-animate h-90">
                                         <div class="card-body py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-sm flex-shrink-0">

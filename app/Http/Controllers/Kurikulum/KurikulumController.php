@@ -35,7 +35,20 @@ class KurikulumController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('created_at')->get();
-        $activeAy = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
+
+        // Default TA: TA yang punya penugasan (data operasional) → TA aktif → terbaru.
+        $ayWithAssignments = TeachingAssignment::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('status', 'active')
+            ->selectRaw('academic_year_id, COUNT(*) as total')
+            ->groupBy('academic_year_id')
+            ->orderByDesc('total')
+            ->pluck('academic_year_id')
+            ->first();
+
+        $activeAy = ($ayWithAssignments ? $academicYears->firstWhere('id', $ayWithAssignments) : null)
+            ?? $academicYears->firstWhere('is_active', true)
+            ?? $academicYears->first();
 
         $academicYearId = $request->input('academic_year_id', $activeAy?->id);
         $academicYear = $academicYears->firstWhere('id', $academicYearId);
@@ -53,9 +66,17 @@ class KurikulumController extends Controller
 
         $rows = collect();
 
+        // Filter per tingkat (Kelas 1, 2, 3, …) — "Semua Tingkat" bila kosong.
+        $gradeLevelId = $request->input('grade_level_id');
+        $gradeLevelOptions = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->orderBy('level')
+            ->get(['id', 'name']);
+
         if ($academicYearId) {
             $gradeLevels = GradeLevel::query()
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->when($gradeLevelId, fn ($q) => $q->where('id', $gradeLevelId))
                 ->orderBy('level')
                 ->get();
 
@@ -73,6 +94,24 @@ class KurikulumController extends Controller
                 ->where('is_active', true)
                 ->get()
                 ->groupBy('grade_level_id');
+
+            // Peta Kurikulum = "Kurikulum Saya" untuk guru: hanya mapel yang diampu.
+            // Tim kurikulum / KSP / Wakil melihat semua mapel sekolah.
+            if (! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($request->user())) {
+                $taught = TeachingAssignment::query()
+                    ->where('teacher_id', $request->user()->id)
+                    ->where('academic_year_id', $academicYearId)
+                    ->where('status', 'active')
+                    ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                    ->pluck('subject_id')
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $gradeSubjects = $gradeSubjects->map(
+                    fn ($items) => $items->whereIn('subject_id', $taught ?: ['-'])
+                );
+            }
 
             $subjectIds = $gradeSubjects->flatten()->pluck('subject_id')->filter()->unique()->values()->all();
 
@@ -149,7 +188,9 @@ class KurikulumController extends Controller
             'semester',
             'mingguEfektif',
             'ringkasan',
-            'rows'
+            'rows',
+            'gradeLevelOptions',
+            'gradeLevelId'
         ));
     }
 }

@@ -13,7 +13,7 @@
     <div class="card-body">
         <form method="POST" action="{{ route('sarpras.po.store') }}" id="poForm">
             @csrf
-            <div class="row g-3 mb-3">
+            <div class="row">
                 <div class="col-md-3">
                     <label class="form-label">PO Number (Auto)</label>
                     <input type="text" class="form-control" value="{{ $generatedPoNumber }}" readonly>

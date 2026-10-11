@@ -62,7 +62,6 @@ use App\Observers\DormitoryStaffAssignmentObserver;
 use App\Observers\GtkEmploymentObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
-use App\Observers\SubjectGroupAssignmentObserver;
 use App\Services\Boarding\BoardingApprovalService;
 use App\Services\Boarding\HealthWorkflowService;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -95,6 +94,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event as EventDispatcher;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Observers\DormitoryResidentObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\View;
@@ -150,6 +150,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Models\DormitoryResident::observe(DormitoryResidentObserver::class);
         Schema::defaultStringLength(191);
 
         // ── System Super Admin bootstrap ───────────────────────────
@@ -232,11 +233,16 @@ class AppServiceProvider extends ServiceProvider
         StudyGroup::observe(StudyGroupObserver::class);
         DokumenIso::observe(DokumenIsoObserver::class);
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
-        Subject::observe(SubjectGroupAssignmentObserver::class);
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);
         DormitoryStaffAssignment::observe(DormitoryStaffAssignmentObserver::class);
+
+        // Penugasan mengajar → provisioning buku nilai/SGS + notifikasi + pindah kepemilikan.
+        \App\Models\TeachingAssignment::observe(\App\Observers\TeachingAssignmentObserver::class);
+        \App\Models\OtherTeacherTask::observe(\App\Observers\OtherTeacherTaskObserver::class);
+        \App\Models\GtkAdditionalTask::observe(\App\Observers\GtkAdditionalTaskObserver::class);
+        \App\Models\InstitutionDecree::observe(\App\Observers\InstitutionDecreeObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
         $engine = BoardingRulesEngine::getInstance();

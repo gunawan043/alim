@@ -3,6 +3,7 @@
 
 @section('css')
     @include('kurikulum._styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endsection
 
 @section('content')
@@ -156,15 +157,31 @@
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ old('academic_year_id', $activeAcademicYearId) }}">
                         <div class="col-md-3">
-                            <select name="teacher_id" class="form-control" required>
-                                <option value="">-- Pilih Guru --</option>
+                            <select name="teacher_id" class="form-control js-select2" required>
+                                <option value="">-- Cari / Pilih Guru --</option>
                                 @foreach($teachers as $t)
                                     <option value="{{ $t->id }}">{{ $t->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <input type="text" name="task_name" class="form-control" placeholder="Nama Tugas (cth: Wali Kelas 7A)" required>
+                            <select name="task_name" id="taskName" class="form-control js-select2" required>
+                                <option value="">-- Pilih Tugas Tambahan --</option>
+                                @foreach($taskTypes as $type)
+                                    <option value="{{ $type->nama }}" data-code="{{ $type->kode }}"
+                                            data-needs-rombel="{{ str_contains(mb_strtolower($type->nama), 'wali kelas') ? '1' : '0' }}"
+                                            {{ old('task_name') == $type->nama ? 'selected' : '' }}>{{ $type->nama }}</option>
+                                @endforeach
+                            </select>
+                            <input type="hidden" name="task_code" id="taskCode" value="{{ old('task_code') }}">
+                            <div id="rombelWrap" class="mt-2" style="display: none;">
+                                <select name="study_group_id" id="rombelSelect" class="form-control js-select2">
+                                    <option value="">-- Pilih Rombel / Kelas --</option>
+                                    @foreach(($studyGroups ?? collect()) as $sg)
+                                        <option value="{{ $sg->id }}" {{ old('study_group_id') == $sg->id ? 'selected' : '' }}>{{ $sg->full_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div class="col-md-2">
                             <input type="number" name="weekly_hours" class="form-control" placeholder="Jam/Minggu" min="0" max="40" required>
@@ -196,7 +213,12 @@
                                 @forelse($tasks as $task)
                                     <tr>
                                         <td class="fw-medium">{{ $task->teacher?->name ?? '-' }}</td>
-                                        <td>{{ $task->task_name }}</td>
+                                        <td>
+                                            {{ $task->task_name }}
+                                            @if($task->studyGroup)
+                                                <span class="badge bg-primary-subtle text-primary ms-1">{{ $task->studyGroup->name }}</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">{{ $task->weekly_hours }} JP</td>
                                         <td class="text-center">
                                             @if($task->is_active)
@@ -234,4 +256,25 @@
             </div>
         </div>
     </div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(function () {
+        $('.js-select2').select2({ width: '100%' });
+
+        function syncRombel() {
+            const needsRombel = String($('#taskName').find(':selected').data('needs-rombel')) === '1';
+            $('#rombelWrap').toggle(needsRombel);
+            $('#rombelSelect').prop('required', needsRombel);
+            if (!needsRombel) { $('#rombelSelect').val(null).trigger('change'); }
+        }
+
+        $('#taskName').on('change', function () {
+            $('#taskCode').val($(this).find(':selected').data('code') || '');
+            syncRombel();
+        }).trigger('change');
+    });
+</script>
+@endpush
 @endsection

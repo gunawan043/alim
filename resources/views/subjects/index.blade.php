@@ -19,7 +19,7 @@
 @php
     $userId = $userId ?? auth()->id();
     $currentUser = auth()->user();
-    $canViewAllSchools = $currentUser && $currentUser->hasPermissionTo('subject-all-access');
+    $canViewAllSchools = request()->attributes->get('isGlobalView') === true;
 @endphp
 
 @component('components.breadcrumb')
@@ -39,6 +39,16 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
+
+<div class="alert alert-info d-flex align-items-start gap-2">
+    <i class="ri-information-line fs-5"></i>
+    <div class="small">
+        <strong>Mapel dikelola per satuan pendidikan</strong> — nama mapel yang sama (mis. "Adab") wajar muncul beberapa kali
+        bila Anda melihat lebih dari satu sekolah. Untuk gambaran <strong>mapel apa saja yang diajarkan di tiap tingkat</strong>
+        (Kelas 1 s/d 6, VII–IX, X–XII) beserta JP-nya, lihat
+        <a href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="fw-semibold">Peta Kurikulum</a>.
+    </div>
+</div>
 
 {{-- STATISTIK --}}
 <div class="row">
@@ -132,6 +142,14 @@
                     <div class="col-lg-auto">
                         <div class="d-flex flex-wrap align-items-center gap-2">
                             <form method="GET" action="{{ route('user.subjects.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                @if($canViewAllSchools && ($schools ?? collect())->count() > 1)
+                                    <select name="school_id" class="form-select" style="width:200px" onchange="this.form.submit()">
+                                        <option value="">Semua Sekolah</option>
+                                        @foreach($schools as $school)
+                                            <option value="{{ $school->id }}" {{ request('school_id') === $school->id ? 'selected' : '' }}>{{ $school->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
                                 <input type="text" name="search" class="form-control" style="width:190px"
                                     placeholder="Cari mata pelajaran..." value="{{ request('search') }}">
                                 <select name="category" class="form-select" style="width:140px" onchange="this.form.submit()">

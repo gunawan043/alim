@@ -65,56 +65,98 @@
 
 @include('jadwal-kbm._report')
 
-@if($jadwals->isEmpty())
+@php
+    $slotNumbers = collect();
+    foreach ($masterSlots as $daySlots) { $slotNumbers = $slotNumbers->merge($daySlots->pluck('slot_number')); }
+    foreach ($jadwals as $dayRows) { $slotNumbers = $slotNumbers->merge($dayRows->pluck('slot_index')); }
+    $slotNumbers = $slotNumbers->unique()->sort()->values();
+
+    $slotMeta = [];
+    foreach ($slotNumbers as $no) {
+        foreach ($days as $dayNumber => $dayName) {
+            $ms = ($masterSlots[$dayNumber] ?? collect())->firstWhere('slot_number', $no);
+            if ($ms) {
+                $slotMeta[$no] = [
+                    'start' => substr((string) $ms->time_start, 0, 5),
+                    'end' => substr((string) $ms->time_end, 0, 5),
+                    'is_break' => (bool) $ms->is_break,
+                ];
+                break;
+            }
+        }
+    }
+@endphp
+
+@if($slotNumbers->isNotEmpty())
+    @if($jadwals->isEmpty())
+        <div class="alert alert-info small">
+            <i class="ri-information-line me-1"></i>
+            Belum ada mapel terjadwal untuk TA ini — klik <strong>Generate Jadwal Sekolah</strong>.
+            Baris istirahat/kegiatan di bawah mengikuti master Jam Pelajaran sekolah.
+        </div>
+    @endif
+
+    <div class="card">
+        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="ri-calendar-2-line me-1"></i>Tabel Jadwal — {{ $studyGroup->full_name ?? $studyGroup->name }}</h5>
+            <span class="text-muted small">Kolom = hari · Baris = jam pelajaran</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle mb-0" style="min-width:900px">
+                <thead class="table-light text-center align-middle">
+                    <tr>
+                        <th style="width:80px">Jam Ke-</th>
+                        <th style="width:110px">Waktu</th>
+                        @foreach($days as $dayNumber => $dayName)
+                            <th style="min-width:150px">{{ $dayName }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($slotNumbers as $no)
+                        @php
+                            $meta = $slotMeta[$no] ?? null;
+                            $isBreakRow = $meta['is_break'] ?? false;
+                        @endphp
+                        <tr style="{{ $isBreakRow ? 'background:#fff8e1;' : '' }}">
+                            <td class="text-center fw-semibold">{{ $isBreakRow ? '-' : $no }}</td>
+                            <td class="text-center text-nowrap" style="font-size:12px">
+                                {{ $meta ? $meta['start'].' – '.$meta['end'] : '—' }}
+                            </td>
+                            @foreach($days as $dayNumber => $dayName)
+                                @php
+                                    $ms = ($masterSlots[$dayNumber] ?? collect())->firstWhere('slot_number', $no);
+                                    $cell = ($jadwals[$dayNumber] ?? collect())->firstWhere('slot_index', $no);
+                                @endphp
+                                <td class="text-center">
+                                    @if($ms && $ms->is_break)
+                                        <span class="fst-italic text-muted" style="font-size:12px">{{ $ms->label ?: 'Istirahat' }}</span>
+                                    @elseif($cell)
+                                        <div class="fw-medium" style="font-size:12px">{{ $cell->subject?->name ?? '-' }}</div>
+                                        <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? '' }}</div>
+                                    @elseif($ms)
+                                        <span class="text-light">–</span>
+                                    @else
+                                        <span class="text-light">·</span>
+                                    @endif
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+@else
     <div class="card">
         <div class="card-body text-center py-5">
             <div class="text-muted mb-2"><i class="ri-calendar-close-line" style="font-size:2.5rem;opacity:.4"></i></div>
             <h6 class="fw-semibold">Belum ada jadwal untuk rombel ini</h6>
-            <p class="text-muted small mb-3">Generate jadwal berdasarkan SK guru yang sudah disusun.</p>
+            <p class="text-muted small mb-3">Generate jadwal berdasarkan penugasan mengajar yang sudah disusun.</p>
             <a href="{{ route('user.jadwal-kbm.generate', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
                 <i class="ri-magic-line me-1"></i>Generate Jadwal
             </a>
         </div>
-    </div>
-@else
-    <div class="row g-3">
-        @foreach($days as $dayNumber => $dayName)
-            @php $dayJadwals = $jadwals[$dayNumber] ?? collect(); @endphp
-            @if($dayJadwals->isNotEmpty())
-                <div class="col-xl-6">
-                    <div class="card day-card h-100">
-                        <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
-                            <h6 class="card-title mb-0">{{ $dayName }}</h6>
-                            <span class="badge bg-primary-subtle text-primary">{{ $dayJadwals->count() }} jam</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width:42px" class="text-center">Jam</th>
-                                        <th>Waktu</th>
-                                        <th>Mata Pelajaran</th>
-                                        <th>Guru</th>
-                                        <th>Ruang</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($dayJadwals as $jadwal)
-                                        <tr>
-                                            <td class="text-center">{{ $jadwal->slot_index }}</td>
-                                            <td class="time-cell">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
-                                            <td class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</td>
-                                            <td>{{ $jadwal->teacher?->name ?? '-' }}</td>
-                                            <td>{{ $jadwal->room ?? '-' }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            @endif
-        @endforeach
     </div>
 @endif
 @endsection

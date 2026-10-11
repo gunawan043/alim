@@ -247,3 +247,78 @@ if (! function_exists('menu_allowed')) {
         return $access->canAccessByRoles($roleNames);
     }
 }
+
+if (! function_exists('school_supports_boarding')) {
+    /**
+     * Satuan pendidikan pada konteks aktif mendukung modul asrama?
+     * Tanpa konteks (global/Super Admin) → true (fail-open).
+     */
+    function school_supports_boarding(): bool
+    {
+        $schoolId = request()->attributes->get('schoolContextId');
+
+        if (! $schoolId) {
+            return true;
+        }
+
+        $school = \App\Models\School::find($schoolId);
+
+        return $school ? $school->supportsBoarding() : true;
+    }
+}
+
+if (! function_exists('kaldik_legend')) {
+    /**
+     * Legenda Kaldik (label + warna default per jenis).
+     *
+     * @return array<string, array{label: string, color: string}>
+     */
+    function kaldik_legend(): array
+    {
+        $legend = config('kaldik.legend', []);
+
+        foreach ($legend as $type => &$meta) {
+            if (function_exists('setting')) {
+                $override = setting('kaldik_legend_'.$type, null);
+                if (is_string($override) && $override !== '') {
+                    $meta['color'] = $override;
+                }
+            }
+        }
+
+        return $legend;
+    }
+}
+
+if (! function_exists('kaldik_default_color')) {
+    /**
+     * Warna default untuk satu jenis Kaldik (fallback abu-abu).
+     */
+    function kaldik_default_color(?string $type): string
+    {
+        $legend = kaldik_legend();
+
+        return $legend[$type]['color'] ?? '#64748B';
+    }
+}
+
+if (! function_exists('setting')) {
+    /**
+     * Ambil nilai system_settings (cache 5 menit).
+     * `$default` dikembalikan bila key tidak ada / tabel belum siap.
+     */
+    function setting(string $key, mixed $default = null): mixed
+    {
+        try {
+            $map = \Illuminate\Support\Facades\Cache::remember(
+                'system_settings_map',
+                300,
+                fn () => \Illuminate\Support\Facades\DB::table('system_settings')->pluck('value', 'key')->toArray()
+            );
+        } catch (\Throwable) {
+            return $default;
+        }
+
+        return $map[$key] ?? $default;
+    }
+}

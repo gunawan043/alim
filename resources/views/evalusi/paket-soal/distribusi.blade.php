@@ -128,7 +128,22 @@
                                 <div class="fw-semibold">{{ $distribution->recipient_role }}</div>
                                 <div class="small text-muted">{{ $distribution->recipient_name ?? '—' }}</div>
                             </div>
-                            <span class="badge bg-success-subtle text-success"><i class="ri-check-line me-1"></i>Diterima sistem</span>
+                            @if($distribution->isReceived())
+                                <div class="text-end">
+                                    <span class="badge bg-success-subtle text-success"><i class="ri-check-double-line me-1"></i>Diterima</span>
+                                    <div class="small text-muted">{{ $distribution->received_at?->format('d/m/Y H:i') }}</div>
+                                </div>
+                            @else
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-info-subtle text-info"><i class="ri-send-plane-line me-1"></i>Terkirim</span>
+                                    @if((string) $distribution->recipient_user_id === (string) auth()->id())
+                                        <form method="POST" action="{{ route('user.paket-soal.distribusi.terima', ['paketUuid' => $paket->id, 'distributionId' => $distribution->id]) }}">
+                                            @csrf @method('PUT')
+                                            <button class="btn btn-sm btn-soft-success"><i class="ri-check-line me-1"></i>Tandai Diterima</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <p class="text-muted small mb-0">Belum didistribusikan. Paket final akan dikirim ke: Tata Usaha, Waka, Kurikulum, Koordinator, dan KSP.</p>

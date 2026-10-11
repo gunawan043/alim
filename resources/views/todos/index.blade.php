@@ -123,7 +123,7 @@
         {{-- Stats Row --}}
         <div class="row mb-3">
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -140,7 +140,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -157,7 +157,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -174,7 +174,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -421,7 +421,7 @@
                                   rows="2" placeholder="Detail tugas..."></textarea>
                     </div>
 
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-6">
                             <label class="form-label">Penanggung Jawab</label>
                             <select class="form-select" id="f-owner" name="owner_id" data-choices>
@@ -441,7 +441,7 @@
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-4">
                             <label class="form-label">Prioritas</label>
                             <select class="form-select" id="f-priority" name="priority" data-choices>
@@ -467,7 +467,7 @@
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-4">
                             <label class="form-label">Jam</label>
                             <input type="time" class="form-control" id="f-due-time" name="due_time">
@@ -484,7 +484,7 @@
                                placeholder="urgent, laporan (pisahkan dengan koma)">
                     </div>
 
-                    <div class="row g-3 mb-3">
+                    <div class="row">
                         <div class="col-auto">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="f-pinned" name="is_pinned" value="1">

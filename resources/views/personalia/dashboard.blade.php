@@ -23,10 +23,10 @@
 @endcomponent
 
 {{-- ROW 1: Overview Stats GTK --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Total GTK --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-primary-subtle">
@@ -44,7 +44,7 @@
 
     {{-- Guru --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-success-subtle">
@@ -62,7 +62,7 @@
 
     {{-- Tendik --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-warning-subtle">
@@ -80,7 +80,7 @@
 
     {{-- Akan Pensiun --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-danger-subtle">
@@ -98,10 +98,10 @@
 </div>
 
 {{-- ROW 2: GTK by Gender + Quick Actions --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- GTK by Gender --}}
     <div class="col-xl-4 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-header">
                 <h5 class="card-title mb-0"><i class="ri-pie-chart-line text-primary me-1"></i> GTK berdasarkan Jenis Kelamin</h5>
             </div>
@@ -135,7 +135,7 @@
 
     {{-- GTK by Work Unit --}}
     <div class="col-xl-8 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-header">
                 <h5 class="card-title mb-0"><i class="ri-government-line text-primary me-1"></i> GTK berdasarkan Satuan Kerja</h5>
             </div>
@@ -170,10 +170,10 @@
 </div>
 
 {{-- ROW 3: GTK Akan Pensiun + GTK Baru + Quick Actions --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- GTK Akan Pensiun --}}
     <div class="col-xl-6 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="ri-alarm-warning-fill text-danger me-1"></i>
@@ -230,7 +230,7 @@
 
     {{-- GTK Terbaru + Quick Actions --}}
     <div class="col-xl-6 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="ri-user-add-line text-success me-1"></i>

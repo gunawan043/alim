@@ -1,26 +1,21 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SIDEBAR: SATUAN PENDIDIKAN
-     ───────────────────────────────────────────────────────────────────────────
-     Role    : Satuan Pendidikan
-     Jabatan : 13 — Kepala, Wakil, 5 Guru, Kepala TU, TU, Bendahara,
-                      Koor Kurikulum, Koor Kesiswaan, Koor Ekskul
-     Tugas   : 14 — Wali Kelas, Koor Mapel (5), Tim Kurikulum, Tim Kesiswaan,
-                    Pembina Ekskul, Koor Lab, Koor Sarpras Sekolah
+     SIDEBAR: SATUAN PENDIDIKAN (STRUKTUR BARU — hasil restrukturisasi)
      ───────────────────────────────────────────────────────────────────────────
      Struktur:
-       • Section "Menu"          → semua (dengan link ke Profil Sekolah)
-       • Section "Dashboard"     → multi per jabatan + tugas
-       • Section "Manajemen Sekolah" → Kepala & Wakil
-       • Section "Monitoring Kehadiran" → Wakil & Koor Kurikulum
-       • Section "Absensi QR"    → Guru & struktural
-       • Section "KBM Saya"      → Guru
-       • Section "Wali Kelas"    → tugas Wali Kelas
-       • Section "Koor Mapel"    → tugas Koor Guru
-       • Section "GTK & Peserta Didik" → Kepala TU & TU  ← NEW (nested dari sidebar lama)
-       • Section "Akademik"      → Kepala TU & TU  ← NEW (dari sidebar lama)
-       • Section "Administrasi"  → Kepala TU & TU
-       • Section "Pendukung"     → Kepala TU & TU
-       • Section "Laporan"       → Kepala, Wakil, Kepala TU
+       1. Menu                → semua (Dashboard root, Profil, Sekolah, Notifikasi, Approval)
+       2. Dashboard           → sesuai jabatan & tugas (multi dashboard)
+       3. KBM Saya            → Guru: Buku Nilai, Absensi, Jadwal, Jurnal, Modul Ajar
+       4. Kesiswaan           → Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi
+       5. Akademik            → Kurikulum, Plotting, SK, Jadwal, Jam, Kaldik, Asesmen
+       6. GTK & Tugas         → Data GTK, Pengajuan, Tugas Tambahan, Kinerja, Koor Mapel
+       7. Ekstrakurikuler
+       8. Laboratorium & Sarpras
+       9. Keuangan Sekolah
+      10. Administrasi        → Surat Menyurat, Dokumen ISO
+      11. Monitoring Kehadiran
+      12. Absensi Kehadiran   → QR & manual + rekap
+      13. Referensi           → Kalender Pendidikan (semua)
+      14. Laporan
      ═══════════════════════════════════════════════════════════════════════════ --}}
 
 @php
@@ -139,7 +134,6 @@
     </a>
 </li>
 
-{{-- Satuan Pendidikan — link ke Profil Sekolah (dari sidebar lama) --}}
 <li class="nav-item">
     @if($sekolahId)
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.show']) ? ' active' : '' }}"
@@ -169,18 +163,6 @@
     </a>
 </li>
 @endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     REFERENSI — dapat dilihat SEMUA user (kalender sumber data akademik)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-<li class="menu-title"><span>Referensi</span></li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
-       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
-        <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
-    </a>
-</li>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 2 — DASHBOARD (multi per jabatan & tugas)
@@ -305,106 +287,7 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 3 — MANAJEMEN SEKOLAH (Kepala & Wakil)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isStruktural)
-    <li class="menu-title"><span>Manajemen Sekolah</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.institution-decrees.']) ? ' active' : '' }}"
-           href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">
-            <i class="ri-file-paper-2-line"></i><span>SK & Keputusan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dokumen-iso.']) ? ' active' : '' }}"
-           href="{{ route('user.dokumen-iso.index', ['userId' => $userId]) }}">
-            <i class="ri-folder-shield-2-line"></i><span>Dokumen Mutu (ISO)</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.rapor-gtk.', 'user.kinerja.']) ? ' active' : '' }}"
-           href="{{ route('user.rapor-gtk.tahunan', ['userId' => $userId]) }}">
-            <i class="ri-file-chart-line"></i><span>Supervisi & Kinerja GTK</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 4 — MONITORING KEHADIRAN (Wakil & Koor Kurikulum)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isWakil || $isKoorKurik || $isKepala)
-    <li class="menu-title"><span>Monitoring Kehadiran</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard']) ? ' active' : '' }}"
-           href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
-            <i class="ri-dashboard-2-line"></i><span>Kehadiran Guru Per Jam</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
-           href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
-            <i class="ri-history-line"></i><span>Riwayat Kehadiran Guru</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kehadiran.pergantian-jam']) ? ' active' : '' }}"
-           href="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}">
-            <i class="ri-refresh-line"></i><span>Rekap Pergantian Jam</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 5 — ABSENSI QR (Guru wajib; Manual restricted)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuru || $isStruktural || $isAdminTU || $isKoordinator)
-    <li class="menu-title"><span>Absensi Kehadiran</span></li>
-
-    @if($showAll || $isGuru || $isStruktural)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.scan']) ? ' active' : '' }}"
-           href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}">
-            <i class="ri-qr-scan-2-line"></i><span>Scan QR Kehadiran</span>
-        </a>
-    </li>
-    @endif
-
-    @if($showAll || $isGuru || $isStruktural || $isAdminTU)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
-           href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
-            <i class="ri-history-line"></i><span>Riwayat Kehadiran</span>
-        </a>
-    </li>
-    @endif
-
-    @if($showAll || $isStruktural || $isAdminTU || $isKoorKurik)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.qr.']) ? ' active' : '' }}"
-           href="{{ route('user.qr.index', ['userId' => $userId]) }}">
-            <i class="ri-qr-code-line"></i><span>QR Kelas</span>
-        </a>
-    </li>
-    @endif
-
-    @if($showAll || $canManualAbsen)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.manual']) ? ' active' : '' }}"
-           href="{{ route('user.teacher-qr.manual', ['userId' => $userId]) }}">
-            <i class="ri-keyboard-line"></i><span>Absen Manual Guru</span>
-        </a>
-    </li>
-    @endif
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 6 — KBM SAYA (Guru)
+     SECTION 3 — KBM SAYA (Guru)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($showAll || $isGuru)
     <li class="menu-title"><span>KBM Saya</span></li>
@@ -427,6 +310,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
            href="{{ route('user.jadwal-kbm.for-teacher', ['userId' => $userId, 'teacherId' => $userId]) }}">
             <i class="ri-time-line"></i><span>Jadwal Mengajar Saya</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
+           href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
+            <i class="ri-article-line"></i><span>Jurnal Pembelajaran</span>
         </a>
     </li>
 
@@ -472,15 +362,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
-                        Realisasi Pembelajaran
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
+                        Modul Ajar (RPM)
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
-                        RPM / Perangkat
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.akses-edit.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}">
+                        Permintaan Akses Edit
                     </a>
                 </li>
                 <li class="nav-item">
@@ -495,134 +385,230 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 7 — WALI KELAS
+     SECTION 4 — KESISWAAN
+     Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isWaliKelas)
-    <li class="menu-title"><span>Wali Kelas</span></li>
+@if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan || $isWaliKelas)
+    <li class="menu-title"><span>Kesiswaan</span></li>
 
+    {{-- Santri (TU/Struktural/Tim Kesiswaan) --}}
+    @if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan)
     <li class="nav-item">
-        <span class="nav-link text-muted" style="font-size:0.8rem">
-            <i class="ri-information-line me-1"></i>
-            Kelas: <strong>{{ $waliKelasGroups->pluck('name')->join(', ') ?: '-' }}</strong>
-        </span>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-            <i class="ri-table-line"></i><span>Konsolidasi Nilai Kelas</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.index', 'user.students.show']) ? ' active' : '' }}"
+           href="{{ route('user.students.index', ['userId' => $userId]) }}">
+            <i class="ri-team-line"></i><span>Data Santri</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.recap']) ? ' active' : '' }}"
-           href="{{ route('user.absensi.harian.recap', ['userId' => $userId]) }}">
-            <i class="ri-bar-chart-2-line"></i><span>Rekap Absensi Kelas</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) ? ' active' : '' }}"
+           href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
+            <i class="ri-parent-line"></i><span>Data Mahrom</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.']) ? ' active' : '' }}"
-           href="{{ route('user.violation-points.index', ['userId' => $userId]) }}">
-            <i class="ri-error-warning-line"></i><span>Pelanggaran Kelas</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.import-form']) ? ' active' : '' }}"
+           href="{{ route('user.students.import-form', ['userId' => $userId]) }}">
+            <i class="ri-upload-2-line"></i><span>Import Data Santri</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.index']) ? ' active' : '' }}"
-           href="{{ $waliKelasGroups->isNotEmpty()
-                ? route('user.students.index', ['userId' => $userId, 'study_group_id' => $waliKelasGroups->first()->id])
-                : route('user.students.index', ['userId' => $userId]) }}">
-            <i class="ri-user-heart-line"></i><span>Santri Kelas Saya</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.alumni.']) ? ' active' : '' }}"
+           href="{{ route('user.alumni.index', ['userId' => $userId]) }}">
+            <i class="ri-group-2-line"></i><span>Data Alumni</span>
         </a>
     </li>
-@endif
+    @endif
 
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 8 — KOORDINATOR MAPEL
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isKoorMapel)
-    <li class="menu-title"><span>Koordinasi Mapel</span></li>
-
+    {{-- Rombel: TU/Struktural/Tim Kesiswaan + Wali Kelas (daftar kelasnya) --}}
+    @if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan)
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-question-line"></i><span>Bank Soal Kelompok</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.study-groups.']) ? ' active' : '' }}"
+           href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">
+            <i class="ri-layout-grid-line"></i><span>Pengaturan Rombel</span>
         </a>
     </li>
+    @endif
 
+    @if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan)
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-list-unordered"></i><span>Kisi-Kisi Bersama</span>
+        <a class="nav-link" href="#tu_rombel_list" data-bs-toggle="collapse" role="button"
+           aria-expanded="{{ $currentRoute === 'user.students.index' && request('study_group_id') ? 'true' : 'false' }}"
+           aria-controls="tu_rombel_list">
+            <i class="ri-list-check-2"></i><span>Santri per Rombel</span>
         </a>
+        <div class="collapse{{ $currentRoute === 'user.students.index' && request('study_group_id') ? ' show' : '' }}"
+             id="tu_rombel_list">
+            <ul class="nav nav-sm flex-column ps-2">
+                @forelse($sidebarStudyGroups as $sg)
+                    <li class="nav-item">
+                        <a class="nav-link{{ $currentRoute === 'user.students.index' && request('study_group_id') == $sg->id ? ' active' : '' }}"
+                           href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $sg->id]) }}"
+                           style="font-size:0.82rem">
+                            {{ $sg->full_name }}
+                            @if($sg->homeroomTeacher)
+                                <span class="text-muted ms-1" style="font-size:0.72rem">({{ $sg->homeroomTeacher->name }})</span>
+                            @endif
+                        </a>
+                    </li>
+                @empty
+                    <li class="nav-item">
+                        <span class="nav-link text-muted" style="font-size:0.8rem">Belum ada rombel</span>
+                    </li>
+                @endforelse
+            </ul>
+        </div>
     </li>
+    @endif
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-stack-line"></i><span>Paket Soal Sumatif</span>
-        </a>
-    </li>
-
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.kktp.index', ['userId' => $userId]) }}">
-            <i class="ri-ruler-2-line"></i><span>Standar Penilaian Mapel</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kinerja.']) ? ' active' : '' }}"
-           href="{{ route('user.kinerja.index', ['userId' => $userId]) }}">
-            <i class="ri-line-chart-line"></i><span>Evaluasi Guru Mapel</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 8b — BANK SOAL TERPUSAT (Guru, Koor Mapel, Kurikulum, Waka/KSP, TU)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuru || $isKoorMapel || $isTimKurikulumG || $isAdminTU)
-    <li class="menu-title"><span>Bank Soal Terpusat</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-add-circle-line"></i><span>Bank Soal &amp; Input Soal</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
-           href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-            <i class="ri-archive-2-line"></i><span>Repository Soal</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
-           href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-git-pull-request-line"></i><span>Review Soal Serumpun</span>
-        </a>
-    </li>
-
-    @if($showAll || $isAdminTU)
+    {{-- Mutasi (TU & struktural) --}}
+    @if($showAll || $isAdminTU || $isStruktural)
         <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
-               href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
-                <i class="ri-printer-line"></i><span>TU — Cetak Paket Final</span>
+            <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? ' active' : '' }}"
+               href="#tu_mutasi_pd" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? 'true' : 'false' }}"
+               aria-controls="tu_mutasi_pd">
+                <i class="ri-swap-box-line"></i><span>Mutasi PD</span><span class="menu-arrow"></span>
             </a>
+            <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? ' show' : '' }}"
+                 id="tu_mutasi_pd">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.']) ? ' active' : '' }}"
+                           href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}">
+                            Mutasi Masuk
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-out.']) ? ' active' : '' }}"
+                           href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}">
+                            Mutasi Keluar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-do.']) ? ' active' : '' }}"
+                           href="{{ route('user.mutations-do.index', ['userId' => $userId]) }}">
+                            Drop Out
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-lulus.']) ? ' active' : '' }}"
+                           href="{{ route('user.mutations-lulus.index', ['userId' => $userId]) }}">
+                            Lulus
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.student-move.']) ? ' active' : '' }}"
+                           href="{{ route('user.student-move.index', ['userId' => $userId]) }}">
+                            Pindahkan Santri
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    @endif
+
+    {{-- Wali Kelas --}}
+    @if($showAll || $isWaliKelas)
+        <li class="nav-item">
+            <span class="nav-link text-muted" style="font-size:0.8rem">
+                <i class="ri-information-line me-1"></i>
+                Kelas: <strong>{{ $waliKelasGroups->pluck('name')->join(', ') ?: '-' }}</strong>
+            </span>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
+               href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
+                <i class="ri-table-line"></i><span>Konsolidasi Nilai Kelas</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.recap']) ? ' active' : '' }}"
+               href="{{ route('user.absensi.harian.recap', ['userId' => $userId]) }}">
+                <i class="ri-bar-chart-2-line"></i><span>Rekap Absensi Kelas</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.index']) ? ' active' : '' }}"
+               href="{{ $waliKelasGroups->isNotEmpty()
+                    ? route('user.students.index', ['userId' => $userId, 'study_group_id' => $waliKelasGroups->first()->id])
+                    : route('user.students.index', ['userId' => $userId]) }}">
+                <i class="ri-user-heart-line"></i><span>Santri Kelas Saya</span>
+            </a>
+        </li>
+    @endif
+
+    {{-- Kedisiplinan --}}
+    @if($showAll || $isKoorKesiswa || $isTimKesiswaan || $isAdminTU || $isStruktural)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.dashboard']) ? ' active' : '' }}"
+               href="{{ route('user.violation-points.dashboard', ['userId' => $userId]) }}">
+                <i class="ri-dashboard-2-line"></i><span>Dashboard Kedisiplinan</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.index', 'user.violation-points.create', 'user.violation-points.show']) ? ' active' : '' }}"
+               href="{{ route('user.violation-points.index', ['userId' => $userId]) }}">
+                <i class="ri-error-warning-line"></i><span>Poin Pelanggaran</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.recap']) ? ' active' : '' }}"
+               href="{{ route('user.violation-points.recap', ['userId' => $userId]) }}">
+                <i class="ri-bar-chart-2-line"></i><span>Rekap Pelanggaran</span>
+            </a>
+        </li>
+    @endif
+
+    {{-- Prestasi --}}
+    @if($showAll || $isKoorKesiswa || $isTimKesiswaan || $isAdminTU || $isWaliKelas || $isStruktural)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' active' : '' }}"
+               href="#tu_prestasi" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? 'true' : 'false' }}"
+               aria-controls="tu_prestasi">
+                <i class="ri-trophy-line"></i><span>Prestasi Santri</span><span class="menu-arrow"></span>
+            </a>
+            <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' show' : '' }}"
+                 id="tu_prestasi">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link{{ request('type') !== 'quran' && request('type') !== 'hadits' ? ' active' : '' }}"
+                           href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'akademik']) }}">
+                            Prestasi Akademik
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ request('type') === 'quran' ? ' active' : '' }}"
+                           href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'quran']) }}">
+                            Hafalan Qur'an
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ request('type') === 'hadits' ? ' active' : '' }}"
+                           href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'hadits']) }}">
+                            Hafalan Hadits
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
     @endif
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 9 — KURIKULUM (Koor Kurikulum & Tim Kurikulum)
+     SECTION 5 — AKADEMIK
+     Kurikulum, Plotting, SK, Jadwal, Jam, Kaldik, Asesmen
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isTimKurikulumG)
-    <li class="menu-title"><span>Kurikulum</span></li>
+@if($showAll || $isTimKurikulumG || $isAdminTU)
+    <li class="menu-title"><span>Akademik</span></li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.academic-years.']) ? ' active' : '' }}"
@@ -639,9 +625,23 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.grade-levels.']) ? ' active' : '' }}"
+           href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">
+            <i class="ri-layout-grid-fill"></i><span>Data Kelas &amp; Mapel</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teaching-assignments.']) ? ' active' : '' }}"
            href="{{ route('user.teaching-assignments.index', ['userId' => $userId]) }}">
             <i class="ri-user-star-line"></i><span>Plotting Guru Mengajar</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.institution-decrees.']) ? ' active' : '' }}"
+           href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">
+            <i class="ri-file-paper-2-line"></i><span>SK &amp; Keputusan</span>
         </a>
     </li>
 
@@ -715,19 +715,99 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
-                        Realisasi Pembelajaran
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
+                        Modul Ajar (RPM)
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
-                        Perangkat Pembelajaran
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.akses-edit.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}">
+                        Permintaan Akses Edit
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.rumpun.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.rumpun.index', ['userId' => $userId]) }}">
+                        Master Rumpun
                     </a>
                 </li>
             </ul>
         </div>
+    </li>
+
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 5b — BANK SOAL & ASESMEN (Guru, Koor Mapel, Kurikulum, TU)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isGuru || $isKoorMapel || $isTimKurikulumG || $isAdminTU)
+    <li class="menu-title"><span>Bank Soal &amp; Asesmen</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
+           href="#sp_asesmen" data-bs-toggle="collapse" role="button"
+           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
+           aria-controls="sp_asesmen">
+            <i class="ri-file-edit-line"></i><span>Bank Soal &amp; Asesmen</span><span class="menu-arrow"></span>
+        </a>
+        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
+             id="sp_asesmen">
+            <ul class="nav nav-sm flex-column">
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}">
+                        Kisi-Kisi Soal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
+                        Bank Soal &amp; Input Soal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+                        Repository Soal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
+                        Review Soal Serumpun
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
+                       href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
+                        Paket Soal Sumatif
+                    </a>
+                </li>
+                @if($showAll || $isAdminTU)
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
+                           href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
+                            TU — Cetak Paket Final
+                        </a>
+                    </li>
+                @endif
+            </ul>
+        </div>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
+           href="{{ route('user.schools.kktp.index', ['userId' => $userId]) }}">
+            <i class="ri-ruler-2-line"></i><span>KKTP</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai.']) ? ' active' : '' }}"
+           href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">
+            <i class="ri-survey-line"></i><span>Data Nilai</span>
+        </a>
     </li>
 
     <li class="nav-item">
@@ -755,121 +835,16 @@
             </ul>
         </div>
     </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.kktp.index', ['userId' => $userId]) }}">
-            <i class="ri-ruler-2-line"></i><span>KKTP</span>
-        </a>
-    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 10 — KESISWAAN (Koor Kesiswaan & Tim Kesiswaan)
+     SECTION 6 — GTK & TUGAS
+     Data GTK, Pengajuan, Tugas Tambahan, Kinerja, Koordinasi Mapel
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isKoorKesiswa || $isTimKesiswaan)
-    <li class="menu-title"><span>Kesiswaan</span></li>
+@if($showAll || $isAdminTU || $isStruktural || $isKoordinator || $isTimKurikulumG || $isKoorMapel)
+    <li class="menu-title"><span>GTK &amp; Tugas</span></li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.dashboard']) ? ' active' : '' }}"
-           href="{{ route('user.violation-points.dashboard', ['userId' => $userId]) }}">
-            <i class="ri-dashboard-2-line"></i><span>Dashboard Kedisiplinan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.index', 'user.violation-points.create', 'user.violation-points.show']) ? ' active' : '' }}"
-           href="{{ route('user.violation-points.index', ['userId' => $userId]) }}">
-            <i class="ri-error-warning-line"></i><span>Poin Pelanggaran</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.recap']) ? ' active' : '' }}"
-           href="{{ route('user.violation-points.recap', ['userId' => $userId]) }}">
-            <i class="ri-bar-chart-2-line"></i><span>Rekap Pelanggaran</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' active' : '' }}"
-           href="{{ route('user.student-achievement.index', ['userId' => $userId]) }}">
-            <i class="ri-trophy-line"></i><span>Prestasi Santri</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 11 — EKSTRAKURIKULER (Koor Ekskul & Pembina Ekskul)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isKoorEkskul || $isPembinaEkskul) && menu_allowed('ekstrakurikuler'))
-    <li class="menu-title"><span>Ekstrakurikuler</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
-           href="{{ route('waka.ekstrakurikuler.index') }}">
-            <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
-           href="{{ route('user.kalender-kegiatan.akademik', ['userId' => $userId]) }}">
-            <i class="ri-calendar-event-line"></i><span>Agenda Kegiatan Ekskul</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 12 — LAB & SARPRAS SEKOLAH
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isKoorLab || $isKoorSarpras) && menu_allowed('sarpras'))
-    <li class="menu-title"><span>Laboratorium & Sarpras</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.dashboard']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.dashboard') }}">
-            <i class="ri-dashboard-2-line"></i><span>Dashboard Sarpras</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.ruang.index') }}">
-            <i class="ri-door-open-line"></i><span>Ruang & Laboratorium</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.aset.index') }}">
-            <i class="ri-archive-2-line"></i><span>Inventaris Aset</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.kerusakan.index') }}">
-            <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.pengadaan.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.pengadaan.index') }}">
-            <i class="ri-shopping-bag-3-line"></i><span>Permintaan Pengadaan</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 13 — GTK & PESERTA DIDIK (Kepala TU & TU)
-     Menu: Data GTK, Pengajuan GTK, Peserta Didik (nested), Pelanggaran
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU)
-    <li class="menu-title"><span>GTK & Peserta Didik</span></li>
-
-    {{-- Data GTK --}}
+    @if($showAll || $isAdminTU || $isStruktural || $isTimKurikulumG || $isKoorMapel)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.indexguru', 'user.gtk.indextendik']) ? ' active' : '' }}"
            href="#tu_gtk" data-bs-toggle="collapse" role="button"
@@ -895,405 +870,156 @@
             </ul>
         </div>
     </li>
+    @endif
 
-    {{-- Pengajuan GTK --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? ' active' : '' }}"
-           href="#tu_pengajuan_gtk" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? 'true' : 'false' }}"
-           aria-controls="tu_pengajuan_gtk">
-            <i class="ri-file-add-line"></i><span>Pengajuan GTK</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? ' show' : '' }}"
-             id="tu_pengajuan_gtk">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-requests.index']) ? ' active' : '' }}"
-                       href="{{ route('user.gtk-requests.index', ['userId' => $userId]) }}">
-                        Data Pengajuan
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-requests.create']) ? ' active' : '' }}"
-                       href="{{ route('user.gtk-requests.create', ['userId' => $userId]) }}">
-                        Buat Pengajuan GTK
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </li>
+    @if($showAll || $isAdminTU)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? ' active' : '' }}"
+               href="#tu_pengajuan_gtk" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? 'true' : 'false' }}"
+               aria-controls="tu_pengajuan_gtk">
+                <i class="ri-file-add-line"></i><span>Pengajuan GTK</span><span class="menu-arrow"></span>
+            </a>
+            <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.gtk-requests.']) ? ' show' : '' }}"
+                 id="tu_pengajuan_gtk">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-requests.index']) ? ' active' : '' }}"
+                           href="{{ route('user.gtk-requests.index', ['userId' => $userId]) }}">
+                            Data Pengajuan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-requests.create']) ? ' active' : '' }}"
+                           href="{{ route('user.gtk-requests.create', ['userId' => $userId]) }}">
+                            Buat Pengajuan GTK
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    @endif
 
-    {{-- Peserta Didik (nested dropdown dari sidebar lama) --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.grade-levels.', 'user.study-groups.', 'user.students.', 'user.mutations-', 'user.student-move.']) ? ' active' : '' }}"
-           href="#tu_peserta_didik" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.grade-levels.', 'user.study-groups.', 'user.students.', 'user.mutations-', 'user.student-move.']) ? 'true' : 'false' }}"
-           aria-controls="tu_peserta_didik">
-            <i class="ri-team-line"></i><span>Peserta Didik</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.grade-levels.', 'user.study-groups.', 'user.students.', 'user.mutations-', 'user.student-move.']) ? ' show' : '' }}"
-             id="tu_peserta_didik">
-            <ul class="nav nav-sm flex-column">
-                {{-- Data Kelas --}}
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.grade-levels.']) ? ' active' : '' }}"
-                       href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">
-                        Data Kelas
-                    </a>
-                </li>
-
-                {{-- Pengaturan Rombel --}}
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.study-groups.']) ? ' active' : '' }}"
-                       href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">
-                        Pengaturan Rombel
-                    </a>
-                </li>
-
-                {{-- Rombel Dinamis (nested) --}}
-                <li class="nav-item">
-                    <a class="nav-link" href="#tu_rombel_list" data-bs-toggle="collapse" role="button"
-                       aria-expanded="{{ $currentRoute === 'user.students.index' && request('study_group_id') ? 'true' : 'false' }}"
-                       aria-controls="tu_rombel_list">
-                        Rombel
-                    </a>
-                    <div class="collapse{{ $currentRoute === 'user.students.index' && request('study_group_id') ? ' show' : '' }}"
-                         id="tu_rombel_list">
-                        <ul class="nav nav-sm flex-column ps-2">
-                            @forelse($sidebarStudyGroups as $sg)
-                                <li class="nav-item">
-                                    <a class="nav-link{{ $currentRoute === 'user.students.index' && request('study_group_id') == $sg->id ? ' active' : '' }}"
-                                       href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $sg->id]) }}"
-                                       style="font-size:0.82rem">
-                                        {{ $sg->full_name }}
-                                        @if($sg->homeroomTeacher)
-                                            <span class="text-muted ms-1" style="font-size:0.72rem">({{ $sg->homeroomTeacher->name }})</span>
-                                        @endif
-                                    </a>
-                                </li>
-                            @empty
-                                <li class="nav-item">
-                                    <span class="nav-link text-muted" style="font-size:0.8rem">Belum ada rombel</span>
-                                </li>
-                            @endforelse
-                        </ul>
-                    </div>
-                </li>
-
-                {{-- Mutasi PD (nested) --}}
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? ' active' : '' }}"
-                       href="#tu_mutasi_pd" data-bs-toggle="collapse" role="button"
-                       aria-expanded="{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? 'true' : 'false' }}"
-                       aria-controls="tu_mutasi_pd">
-                        Mutasi PD
-                    </a>
-                    <div class="collapse{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.', 'user.student-move.']) ? ' show' : '' }}"
-                         id="tu_mutasi_pd">
-                        <ul class="nav nav-sm flex-column ps-2">
-                            <li class="nav-item">
-                                <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.']) ? ' active' : '' }}"
-                                   href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}"
-                                   style="font-size:0.82rem">
-                                    Mutasi Masuk
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-out.']) ? ' active' : '' }}"
-                                   href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}"
-                                   style="font-size:0.82rem">
-                                    Mutasi Keluar
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-do.']) ? ' active' : '' }}"
-                                   href="{{ route('user.mutations-do.index', ['userId' => $userId]) }}"
-                                   style="font-size:0.82rem">
-                                    Drop Out
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-lulus.']) ? ' active' : '' }}"
-                                   href="{{ route('user.mutations-lulus.index', ['userId' => $userId]) }}"
-                                   style="font-size:0.82rem">
-                                    Lulus
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link{{ isActiveAny($currentRoute, ['user.student-move.']) ? ' active' : '' }}"
-                                   href="{{ route('user.student-move.index', ['userId' => $userId]) }}"
-                                   style="font-size:0.82rem">
-                                    Pindahkan Santri
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-
-                {{-- Data Santri & Mahrom --}}
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.index', 'user.students.show']) ? ' active' : '' }}"
-                       href="{{ route('user.students.index', ['userId' => $userId]) }}">
-                        Data Santri
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) ? ' active' : '' }}"
-                       href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
-                        Data Mahrom
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.import-form']) ? ' active' : '' }}"
-                       href="{{ route('user.students.import-form', ['userId' => $userId]) }}">
-                        Import Data Santri
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.alumni.']) ? ' active' : '' }}"
-                       href="{{ route('user.alumni.index', ['userId' => $userId]) }}">
-                        Data Alumni
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </li>
-
-    {{-- Data Pelanggaran --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.violation-points.']) ? ' active' : '' }}"
-           href="#tu_pelanggaran" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.violation-points.']) ? 'true' : 'false' }}"
-           aria-controls="tu_pelanggaran">
-            <i class="ri-spam-line"></i><span>Data Pelanggaran</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.violation-points.']) ? ' show' : '' }}"
-             id="tu_pelanggaran">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.violation-points.index']) ? ' active' : '' }}"
-                       href="{{ route('user.violation-points.index', ['userId' => $userId]) }}">
-                        Poin Pelanggaran
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.violation-points.dashboard']) ? ' active' : '' }}"
-                       href="{{ route('user.violation-points.dashboard', ['userId' => $userId]) }}">
-                        Dashboard Pelanggaran
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.violation-points.recap']) ? ' active' : '' }}"
-                       href="{{ route('user.violation-points.recap', ['userId' => $userId]) }}">
-                        Rekap Poin Siswa
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 14 — AKADEMIK (Kepala TU & TU)
-     Menu: Mapel, Penugasan, Tugas Tambahan, Sumatif, Nilai, Absensi, Prestasi, Ekskul
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU)
-    <li class="menu-title"><span>Akademik</span></li>
-
-    {{-- Mata Pelajaran --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.subjects.']) ? ' active' : '' }}"
-           href="{{ route('user.subjects.index', ['userId' => $userId]) }}">
-            <i class="ri-book-open-line"></i><span>Mata Pelajaran</span>
-        </a>
-    </li>
-
-    {{-- Penugasan Mengajar --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teaching-assignments.']) ? ' active' : '' }}"
-           href="{{ route('user.teaching-assignments.index', ['userId' => $userId]) }}">
-            <i class="ri-user-star-line"></i><span>Penugasan Mengajar</span>
-        </a>
-    </li>
-
-    {{-- Tugas Tambahan Guru --}}
+    @if($showAll || $isAdminTU || $isStruktural || $isTimKurikulumG)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.other-teacher-tasks.']) ? ' active' : '' }}"
            href="{{ route('user.other-teacher-tasks.index', ['userId' => $userId]) }}">
             <i class="ri-user-settings-line"></i><span>Tugas Tambahan</span>
         </a>
     </li>
+    @endif
 
-    {{-- Pelaksanaan Sumatif --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
-           href="#tu_sumatif" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
-           aria-controls="tu_sumatif">
-            <i class="ri-file-edit-line"></i><span>Pelaksanaan Sumatif</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
-             id="tu_sumatif">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}">
-                        Kisi-Kisi Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
-                        Bank Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
-                        Soal Sumatif
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </li>
+    @if($showAll || $isStruktural)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.rapor-gtk.', 'user.kinerja.']) ? ' active' : '' }}"
+               href="{{ route('user.rapor-gtk.tahunan', ['userId' => $userId]) }}">
+                <i class="ri-file-chart-line"></i><span>Supervisi &amp; Kinerja GTK</span>
+            </a>
+        </li>
+    @endif
 
-    {{-- Data Nilai --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">
-            <i class="ri-survey-line"></i><span>Data Nilai</span>
-        </a>
-    </li>
+    @if($showAll || $isKoorMapel)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kinerja.']) ? ' active' : '' }}"
+               href="{{ route('user.kinerja.index', ['userId' => $userId]) }}">
+                <i class="ri-line-chart-line"></i><span>Evaluasi Guru Mapel</span>
+            </a>
+        </li>
+    @endif
+@endif
 
-    {{-- Absensi --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.', 'user.absensi-gtk.', 'user.teacher-qr.']) ? ' active' : '' }}"
-           href="#tu_absensi" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.absensi.', 'user.absensi-gtk.', 'user.teacher-qr.']) ? 'true' : 'false' }}"
-           aria-controls="tu_absensi">
-            <i class="ri-contacts-book-line"></i><span>Absensi</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.absensi.', 'user.absensi-gtk.', 'user.teacher-qr.']) ? ' show' : '' }}"
-             id="tu_absensi">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.absensi-gtk.']) ? ' active' : '' }}"
-                       href="{{ route('user.absensi-gtk.index', ['userId' => $userId]) }}">
-                        Absensi GTK
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
-                       href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
-                        Absensi Peserta Didik
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard']) ? ' active' : '' }}"
-                       href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
-                        Dashboard Absensi QR
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
-                       href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
-                        Riwayat Absensi QR
-                    </a>
-                </li>
-                @if(canPermission('teacher-attendance_manual') || (method_exists(auth()->user(), 'hasPermissionTo') && auth()->user()->hasPermissionTo('teacher-attendance_manual')))
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.teacher-qr.manual']) ? ' active' : '' }}"
-                       href="{{ route('user.teacher-qr.manual', ['userId' => $userId]) }}">
-                        Absen Manual
-                    </a>
-                </li>
-                @endif
-            </ul>
-        </div>
-    </li>
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 7 — EKSTRAKURIKULER
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if(($showAll || $isKoorEkskul || $isPembinaEkskul || $isAdminTU) && menu_allowed('ekstrakurikuler'))
+    <li class="menu-title"><span>Ekstrakurikuler</span></li>
 
-    {{-- Data Prestasi --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' active' : '' }}"
-           href="#tu_prestasi" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? 'true' : 'false' }}"
-           aria-controls="tu_prestasi">
-            <i class="ri-trophy-line"></i><span>Data Prestasi</span><span class="menu-arrow"></span>
-        </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' show' : '' }}"
-             id="tu_prestasi">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ request('type') !== 'quran' && request('type') !== 'hadits' ? ' active' : '' }}"
-                       href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'akademik']) }}">
-                        Prestasi Akademik
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ request('type') === 'quran' ? ' active' : '' }}"
-                       href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'quran']) }}">
-                        Hafalan Qur'an
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ request('type') === 'hadits' ? ' active' : '' }}"
-                       href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => 'hadits']) }}">
-                        Hafalan Hadits
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </li>
-
-    {{-- Ekstrakurikuler --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
            href="{{ route('waka.ekstrakurikuler.index') }}">
-            <i class="ri-basketball-line"></i><span>Ekstrakurikuler</span>
+            <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
+           href="{{ route('user.kalender-kegiatan.akademik', ['userId' => $userId]) }}">
+            <i class="ri-calendar-event-line"></i><span>Agenda Kegiatan Ekskul</span>
         </a>
     </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 15 — ADMINISTRASI (Kepala TU & TU)
+     SECTION 8 — LABORATORIUM & SARPRAS
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU)
-    <li class="menu-title"><span>Administrasi</span></li>
+@if(($showAll || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras'))) || $isAdminTU)
+    <li class="menu-title"><span>Laboratorium &amp; Sarpras</span></li>
 
-    {{-- Jadwal KBM --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.institution-decrees.', 'user.jadwal-kbm.', 'user.kehadiran.pergantian-jam']) ? ' active' : '' }}"
-           href="#tu_jadwal_kbm" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.institution-decrees.', 'user.jadwal-kbm.', 'user.kehadiran.pergantian-jam']) ? 'true' : 'false' }}"
-           aria-controls="tu_jadwal_kbm">
-            <i class="ri-git-repository-line"></i><span>Jadwal KBM</span><span class="menu-arrow"></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.dashboard']) ? ' active' : '' }}"
+           href="{{ $sarprasDashboardRoute }}">
+            <i class="ri-dashboard-2-line"></i><span>Dashboard Sarpras</span>
         </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.institution-decrees.', 'user.jadwal-kbm.', 'user.kehadiran.pergantian-jam']) ? ' show' : '' }}"
-             id="tu_jadwal_kbm">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.institution-decrees.']) ? ' active' : '' }}"
-                       href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">
-                        SK Pembagian Tugas
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.']) ? ' active' : '' }}"
-                       href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}">
-                        Jadwal Pelajaran
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kehadiran.pergantian-jam']) ? ' active' : '' }}"
-                       href="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}">
-                        Rekap Pergantian Jam
-                    </a>
-                </li>
-            </ul>
-        </div>
     </li>
 
-    {{-- Surat Menyurat --}}
+    @if($showAll || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')))
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"
+           href="{{ route('sarpras.user.ruang.index') }}">
+            <i class="ri-door-open-line"></i><span>Ruang &amp; Laboratorium</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) ? ' active' : '' }}"
+           href="{{ route('sarpras.user.aset.index') }}">
+            <i class="ri-archive-2-line"></i><span>Inventaris Aset</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
+           href="{{ route('sarpras.user.kerusakan.index') }}">
+            <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.pengadaan.']) ? ' active' : '' }}"
+           href="{{ route('sarpras.user.pengadaan.index') }}">
+            <i class="ri-shopping-bag-3-line"></i><span>Permintaan Pengadaan</span>
+        </a>
+    </li>
+    @endif
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 9 — KEUANGAN SEKOLAH (Bendahara)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isBendahara)
+    <li class="menu-title"><span>Keuangan Sekolah</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.keuangan']) ? ' active' : '' }}"
+           href="{{ route('user.laporan.keuangan', ['userId' => $userId]) }}">
+            <i class="ri-file-chart-2-line"></i><span>Laporan Keuangan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll-slip.']) ? ' active' : '' }}"
+           href="{{ route('user.payroll-slip.index', ['userId' => $userId]) }}">
+            <i class="ri-receipt-line"></i><span>Slip Gaji</span>
+        </a>
+    </li>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 10 — ADMINISTRASI (TU & Struktural)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isAdminTU || $isStruktural)
+    <li class="menu-title"><span>Administrasi</span></li>
+
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.surat-masuk.', 'waka.surat-keluar.']) ? ' active' : '' }}"
            href="#tu_surat" data-bs-toggle="collapse" role="button"
@@ -1320,94 +1046,106 @@
         </div>
     </li>
 
-    {{-- Dokumen ISO --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dokumen-iso.']) ? ' active' : '' }}"
            href="{{ route('user.dokumen-iso.index', ['userId' => $userId]) }}">
-            <i class="ri-file-text-line"></i><span>Dokumen ISO</span>
+            <i class="ri-folder-shield-2-line"></i><span>Dokumen Mutu (ISO)</span>
         </a>
     </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 16 — KEUANGAN SEKOLAH (Bendahara Sekolah)
+     SECTION 11 — MONITORING KEHADIRAN (Wakil, Koor Kurikulum, Kepala, TU)
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isBendahara)
-    <li class="menu-title"><span>Keuangan Sekolah</span></li>
+@if($showAll || $isWakil || $isKoorKurik || $isKepala || $isAdminTU)
+    <li class="menu-title"><span>Monitoring Kehadiran</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.keuangan']) ? ' active' : '' }}"
-           href="{{ route('user.laporan.keuangan', ['userId' => $userId]) }}">
-            <i class="ri-file-chart-2-line"></i><span>Laporan Keuangan</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard']) ? ' active' : '' }}"
+           href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
+            <i class="ri-dashboard-2-line"></i><span>Kehadiran Guru Per Jam</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll-slip.']) ? ' active' : '' }}"
-           href="{{ route('user.payroll-slip.index', ['userId' => $userId]) }}">
-            <i class="ri-receipt-line"></i><span>Slip Gaji</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kehadiran.pergantian-jam']) ? ' active' : '' }}"
+           href="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}">
+            <i class="ri-refresh-line"></i><span>Rekap Pergantian Jam</span>
         </a>
     </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 17 — PENDUKUNG (Kepala TU & TU)
+     SECTION 12 — ABSENSI KEHADIRAN (QR & manual + rekap)
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU)
-    <li class="menu-title"><span>Pendukung</span></li>
+@if($showAll || $isGuru || $isStruktural || $isAdminTU || $isKoordinator)
+    <li class="menu-title"><span>Absensi Kehadiran</span></li>
 
-    {{-- Agenda Kegiatan --}}
+    @if($showAll || $isGuru || $isStruktural)
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
-           href="#tu_agenda" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.kaldik.']) ? 'true' : 'false' }}"
-           aria-controls="tu_agenda">
-            <i class="ri-task-line"></i><span>Agenda Kegiatan</span><span class="menu-arrow"></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.scan']) ? ' active' : '' }}"
+           href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}">
+            <i class="ri-qr-scan-2-line"></i><span>Scan QR Kehadiran</span>
         </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' show' : '' }}"
-             id="tu_agenda">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{{ $currentRoute === 'user.kaldik.index' && !request('category') ? ' active' : '' }}"
-                       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
-                        Semua
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ $currentRoute === 'user.kaldik.index' && request('category') === 'kaldik' ? ' active' : '' }}"
-                       href="{{ route('user.kaldik.index', ['userId' => $userId, 'category' => 'kaldik']) }}">
-                        Kaldik
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ $currentRoute === 'user.kaldik.index' && request('category') === 'agenda' ? ' active' : '' }}"
-                       href="{{ route('user.kaldik.index', ['userId' => $userId, 'category' => 'agenda']) }}">
-                        Agenda Kegiatan
-                    </a>
-                </li>
-            </ul>
-        </div>
     </li>
+    @endif
 
-    {{-- Sarana Prasarana --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.']) ? ' active' : '' }}"
-           href="{{ $sarprasDashboardRoute }}">
-            <i class="ri-community-line"></i><span>Sarana Prasarana</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
+           href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
+            <i class="ri-history-line"></i><span>Riwayat Kehadiran Saya</span>
         </a>
     </li>
 
-    {{-- Data Alumni --}}
+    @if($showAll || $isStruktural || $isAdminTU || $isKoorKurik)
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.alumni.']) ? ' active' : '' }}"
-           href="{{ route('user.alumni.index', ['userId' => $userId]) }}">
-            <i class="ri-group-2-line"></i><span>Data Alumni</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.qr.']) ? ' active' : '' }}"
+           href="{{ route('user.qr.index', ['userId' => $userId]) }}">
+            <i class="ri-qr-code-line"></i><span>QR Kelas</span>
         </a>
     </li>
+    @endif
+
+    @if($showAll || $isAdminTU)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi-gtk.']) ? ' active' : '' }}"
+           href="{{ route('user.absensi-gtk.index', ['userId' => $userId]) }}">
+            <i class="ri-contacts-book-line"></i><span>Absensi GTK</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
+           href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-check-line"></i><span>Absensi Peserta Didik</span>
+        </a>
+    </li>
+    @endif
+
+    @if($showAll || $canManualAbsen)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.manual']) ? ' active' : '' }}"
+           href="{{ route('user.teacher-qr.manual', ['userId' => $userId]) }}">
+            <i class="ri-keyboard-line"></i><span>Absen Manual Guru</span>
+        </a>
+    </li>
+    @endif
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 18 — LAPORAN (Kepala, Wakil, Kepala TU)
+     SECTION 13 — REFERENSI (semua user)
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+<li class="menu-title"><span>Referensi</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
+       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
+    </a>
+</li>
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 14 — LAPORAN (Kepala, Wakil, Kepala TU)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if(($showAll || $isKepala || $isWakil || $isKepalaTU) && menu_allowed('laporan'))
     <li class="menu-title"><span>Laporan</span></li>

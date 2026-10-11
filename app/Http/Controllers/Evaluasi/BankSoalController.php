@@ -112,7 +112,7 @@ class BankSoalController extends Controller
         $banks = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
         $subjects = Subject::where('school_id', $schoolId)->orderBy('name')->get();
-        $academicYears = AcademicYear::where('school_id', $schoolId)->orWhereNull('school_id')->orderByDesc('name')->get();
+        $academicYears = AcademicYear::orderByDesc('name')->get();
         $activeYear = $academicYears->firstWhere('is_active', true);
 
         $statistics = [

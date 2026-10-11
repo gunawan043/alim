@@ -17,14 +17,14 @@
     @slot('title') Koordinator Guru @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Total Guru" :value="$totalGuruKoor" icon="ri-user-line" color="primary" />
     <x-dashboards.stat-card label="Guru Absen Hari Ini" :value="$guruAbsen" icon="ri-user-unfollow-line" color="danger" />
     <x-dashboards.stat-card label="Jadwal Berlangsung" :value="$jadwalBerlangsung" icon="ri-play-circle-line" color="success" />
     <x-dashboards.stat-card label="Kehadiran Bulanan" :value="$kehadiranPct . '%'" icon="ri-checkbox-circle-line" color="info" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- JADWAL MENGAJAR HARI INI --}}
     <div class="col-xl-8">
         <div class="card h-100">

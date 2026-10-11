@@ -23,7 +23,7 @@
 @endcomponent
 
 {{-- ROW 1: Overview Stats --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Total Santri --}}
     <div class="col-xl-2 col-md-6">
         <div class="card stat-card h-100" style="border-left-color: #0d6efd;">
@@ -92,7 +92,7 @@
 </div>
 
 {{-- ROW 2: Occupancy Rate + Recent Permits --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Occupancy Rate --}}
     <div class="col-xl-4">
         <div class="card stat-card h-100">

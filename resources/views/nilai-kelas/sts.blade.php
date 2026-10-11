@@ -31,7 +31,7 @@
 
     {{-- Stats Cards --}}
     @if($selectedAy)
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
             <div class="card h-100">
                 <div class="card-body py-3">

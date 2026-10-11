@@ -59,7 +59,7 @@ class GradeLevelApiController extends Controller
             abort(403, 'Akses lintas satuan pendidikan ditolak.');
         }
 
-        $teachers = User::whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+        $teachers = User::whereIn('id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId))
             ->orderBy('name')
             ->get(['id', 'name']);
 

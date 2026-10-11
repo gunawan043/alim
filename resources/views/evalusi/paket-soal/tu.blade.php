@@ -26,27 +26,27 @@
         <i class="ri-information-line me-1"></i>TU menerima paket final langsung dari sistem dan hanya mengelola <strong>operasional produksi</strong> (jumlah cetak, status, tanggal, petugas). Isi soal tidak dapat diubah.
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100"><div class="card-body py-3">
+            <div class="card card-animate h-90"><div class="card-body py-3">
                 <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Paket Final</p>
                 <h3 class="fw-bold ff-secondary mb-0">{{ $stats['total'] }}</h3>
             </div></div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100"><div class="card-body py-3">
+            <div class="card card-animate h-90"><div class="card-body py-3">
                 <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Didistribusikan</p>
                 <h3 class="fw-bold ff-secondary mb-0 text-success">{{ $stats['didistribusikan'] }}</h3>
             </div></div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100"><div class="card-body py-3">
+            <div class="card card-animate h-90"><div class="card-body py-3">
                 <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Lembar Cetak</p>
                 <h3 class="fw-bold ff-secondary mb-0 text-primary">{{ number_format($stats['total_cetak']) }}</h3>
             </div></div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100"><div class="card-body py-3">
+            <div class="card card-animate h-90"><div class="card-body py-3">
                 <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Produksi Selesai</p>
                 <h3 class="fw-bold ff-secondary mb-0">{{ $stats['selesai'] }}</h3>
             </div></div>

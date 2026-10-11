@@ -103,6 +103,14 @@
                                 <input type="text" name="school_status" class="form-control" value="{{ old('school_status', $school->school_status) }}" required>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label">Tipe Satuan Pendidikan (Boarding)</label>
+                                <select name="boarding_type" class="form-select">
+                                    <option value="non_boarding" {{ old('boarding_type', $school->boarding_type) === 'non_boarding' ? 'selected' : '' }}>Non-Boarding</option>
+                                    <option value="boarding" {{ old('boarding_type', $school->boarding_type) === 'boarding' ? 'selected' : '' }}>Boarding</option>
+                                    <option value="both" {{ old('boarding_type', $school->boarding_type) === 'both' ? 'selected' : '' }}>Boarding &amp; Non-Boarding</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Aktif</label>
                                 <div class="form-check form-switch mt-2">
                                     <input {{ $value }} class="form-check-input" type="checkbox" name="is_active" value="1" {{ old('is_active', $school->is_active) ? 'checked' : '' }}>

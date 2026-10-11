@@ -38,6 +38,8 @@ class BoardingPolicyController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeGlobalPolicyManager();
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:64|unique:boarding_policies,code',
@@ -84,6 +86,8 @@ class BoardingPolicyController extends Controller
 
     public function updateQuota(Request $request, string $id)
     {
+        $this->authorizeGlobalPolicyManager();
+
         $policy = BoardingPolicy::findOrFail($id);
 
         $validated = $request->validate([
@@ -172,6 +176,8 @@ class BoardingPolicyController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $this->authorizeGlobalPolicyManager();
+
         $policy = BoardingPolicy::findOrFail($id);
 
         $validated = $request->validate([
@@ -231,11 +237,26 @@ class BoardingPolicyController extends Controller
 
     public function destroy(string $id)
     {
+        $this->authorizeGlobalPolicyManager();
+
         $policy = BoardingPolicy::findOrFail($id);
         $policy->assignments()->delete();
         $policy->delete();
 
         return redirect()->route('user.boarding-policies.index')
             ->with('success', 'Kebijakan asrama berhasil dihapus.');
+    }
+
+    /**
+     * Kebijakan boarding GLOBAL bukan jalur operasional — per asrama dipakai
+     * kebijakan kunjungan/izin per-asrama. Perubahan global hanya Super/System Admin.
+     */
+    private function authorizeGlobalPolicyManager(): void
+    {
+        $user = auth()->user();
+
+        if (! $user || (! $user->isSystemAdmin() && ! (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()))) {
+            abort(403, 'Kebijakan global hanya dapat diubah oleh Super Admin. Gunakan pengaturan per asrama.');
+        }
     }
 }

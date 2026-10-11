@@ -45,19 +45,51 @@ class OtherTeacherTaskController extends Controller
         $stats['nonaktif'] = $stats['total'] - $stats['aktif'];
 
         $tasks = (clone $query)->orderBy('teacher_id')->paginate(20)->withQueryString();
-        $schools = School::orderBy('name')->get();
+
+        // Privasi antar sekolah: selain Super Admin/Pimpinan, batasi ke satuan sendiri.
+        $isGlobalView = $request->attributes->get('isGlobalView') === true;
+        $scopeSchoolId = $isGlobalView ? null : $schoolId;
+
+        $schools = $scopeSchoolId ? School::where('id', $scopeSchoolId)->get() : School::orderBy('name')->get();
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+            ->when($scopeSchoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($scopeSchoolId)))
             ->orderBy('name')
             ->get();
 
         $activeAcademicYearId = $request->input('academic_year_id')
             ?: \App\Models\AcademicYear::where('is_active', true)->value('id');
 
+        // Master nama tugas tambahan — hanya yang relevan untuk satuan pendidikan.
+        $taskTypes = \App\Models\AdditionalTaskType::query()
+            ->active()
+            ->whereHas('jenisGtk', fn ($q) => $q->where('nama', 'like', '%Satuan Pendidikan%'))
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'kode']);
+
+        // Rombel untuk tugas berbasis kelas (mis. Wali Kelas) — TA aktif, fallback semua.
+        $studyGroups = \App\Models\StudyGroup::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
+            ->with('gradeLevel:id,name')
+            ->orderedByGrade()
+            ->get();
+
+        if ($studyGroups->isEmpty()) {
+            $studyGroups = \App\Models\StudyGroup::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->where('is_active', true)
+                ->with('gradeLevel:id,name')
+                ->orderBy('name')
+                ->get();
+        }
+
         return view('other-teacher-tasks.index', compact(
-            'tasks', 'schools', 'academicYears', 'teachers', 'userId', 'stats', 'activeAcademicYearId'
+            'tasks', 'schools', 'academicYears', 'teachers', 'userId', 'stats', 'activeAcademicYearId', 'taskTypes', 'studyGroups'
         ));
     }
 
@@ -83,6 +115,18 @@ class OtherTeacherTaskController extends Controller
             $data['school_id'] = $schoolId;
         }
 
+        // Tugas berbasis kelas (mis. Wali Kelas) wajib memilih rombel; rombel harus milik sekolah.
+        if (str_contains(mb_strtolower($data['task_name']), 'wali kelas') && empty($data['study_group_id'])) {
+            return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
+        }
+
+        if (! empty($data['study_group_id'])) {
+            $owner = \App\Models\StudyGroup::whereKey($data['study_group_id'])->value('school_id');
+            if ($owner && ! empty($data['school_id']) && (string) $owner !== (string) $data['school_id']) {
+                abort(403, 'Rombel harus berada di satuan pendidikan Anda.');
+            }
+        }
+
         OtherTeacherTask::create($data);
 
         return back()->with('success', 'Tugas lain berhasil ditambahkan.');
@@ -105,6 +149,12 @@ class OtherTeacherTaskController extends Controller
         ];
 
         $data = $request->validate($rules);
+
+        // Tugas berbasis kelas (mis. Wali Kelas) wajib memilih rombel.
+        if (str_contains(mb_strtolower($data['task_name']), 'wali kelas') && empty($data['study_group_id'])) {
+            return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
+        }
+
         $task->update($data);
 
         return back()->with('success', 'Tugas lain berhasil diperbarui.');

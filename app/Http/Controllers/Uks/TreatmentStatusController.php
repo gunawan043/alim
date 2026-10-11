@@ -102,6 +102,44 @@ class TreatmentStatusController extends Controller
             'reason' => $validated['reason'] ?? null,
         ]);
 
+        // Tahap 3: keterkaitan UKS → kehadiran akademik pada hari yang sama.
+        // Sakit selama perawatan/observasi; kembali hadir saat dipulangkan.
+        $careStatuses = [
+            UksPatient::STATUS_WAITING, UksPatient::STATUS_TREATED, UksPatient::STATUS_OBSERVATION,
+            UksPatient::STATUS_INPATIENT, UksPatient::STATUS_RESTING_UKS,
+            UksPatient::STATUS_REFERRAL_CLINIC, UksPatient::STATUS_REFERRAL_HOSPITAL,
+        ];
+        $dischargedStatuses = [
+            UksPatient::STATUS_COMPLETED, UksPatient::STATUS_RETURN_DORM, UksPatient::STATUS_RETURN_SCHOOL,
+            UksPatient::STATUS_PICKED_UP, UksPatient::STATUS_LEAVING,
+        ];
+
+        if ($patient->student_id) {
+            $attendanceSync = app(\App\Services\AcademicAttendanceSyncService::class);
+
+            if (in_array($newStatus, $careStatuses, true)) {
+                $attendanceSync->markAsAbsent(
+                    $patient->student_id, now(), now(),
+                    \App\Services\AcademicAttendanceSyncService::SOURCE_UPS, $patient->id, 'sakit'
+                );
+
+                // Notifikasi WA wali santri: santri sakit (masuk perawatan).
+                try {
+                    if ($patient->student) {
+                        app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                            ->notifySick($patient->student, $validated['reason'] ?? null, 'uks');
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('WA notif sakit gagal: '.$e->getMessage());
+                }
+            } elseif (in_array($newStatus, $dischargedStatuses, true)) {
+                $attendanceSync->markAsPresent(
+                    $patient->student_id, now(),
+                    \App\Services\AcademicAttendanceSyncService::SOURCE_RETURN, $patient->id
+                );
+            }
+        }
+
         // ── Otomatis bebaskan bed saat status bukan lagi rawat/istirahat
         if (
             in_array($newStatus, [

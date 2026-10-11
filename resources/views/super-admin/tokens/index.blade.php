@@ -11,7 +11,7 @@
     @endcomponent
 
     {-- Statistik ringkas --}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-6 col-md-4">
             <div class="card">
                 <div class="card-body py-3 d-flex align-items-center gap-3">

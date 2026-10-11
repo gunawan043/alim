@@ -49,12 +49,18 @@ class ProsemController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
+            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+                // Guru: hanya PROSEM mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->orderBy('subject_id')
             ->get();
 
-        // PROTA yang belum punya PROSEM (mapel diampu atau semua untuk tim kurikulum).
+        // PROTA yang belum punya PROSEM (mapel diampu atau semua untuk editor kurikulum).
         $isKurikulumTeam = $this->access->isKurikulumTeam($user);
+        $isKurikulumEditor = $this->access->isKurikulumEditor($user);
 
         $protaQuery = Prota::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase'])
@@ -64,7 +70,7 @@ class ProsemController extends Controller
             ->bySemester($semester)
             ->whereDoesntHave('prosem');
 
-        if (! $isKurikulumTeam) {
+        if (! $isKurikulumEditor) {
             $taught = $this->taughtSubjectIds($user, $academicYearId, $schoolId);
             $protaQuery->whereIn('subject_id', $taught ?: ['-']);
         }
@@ -193,7 +199,7 @@ class ProsemController extends Controller
 
         $user = $request->user();
         $isOwner = $prosem->created_by === $user->id || $prosem->teacher_id === $user->id;
-        $canEdit = $isOwner || $this->access->isKurikulumTeam($user);
+        $canEdit = $isOwner || $this->access->isKurikulumEditor($user);
 
         $teachers = $this->teachersForSchool($prosem->school_id);
 
@@ -375,8 +381,7 @@ class ProsemController extends Controller
         }
 
         $user = $request->user();
-        $allowed = $this->access->isKurikulumTeam($user)
-            || $this->access->teachesSubject($user, $prosem->subject_id, $prosem->academic_year_id, $schoolId)
+        $allowed = $this->access->canViewSubjectDocs($user, $prosem->subject_id, $schoolId, $prosem->academic_year_id)
             || $prosem->created_by === $user->id
             || $prosem->teacher_id === $user->id;
 
@@ -392,7 +397,7 @@ class ProsemController extends Controller
         $user = $request->user();
         $isOwner = $prosem->created_by === $user->id || $prosem->teacher_id === $user->id;
 
-        if (! $isOwner && ! $this->access->isKurikulumTeam($user)) {
+        if (! $isOwner && ! $this->access->isKurikulumEditor($user)) {
             abort(403, 'Hanya penyusun PROSEM atau tim kurikulum yang dapat mengubahnya.');
         }
     }

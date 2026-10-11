@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AbsensiHarianController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\AcademicIntegrationController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AdminAsramaDashboardController;
@@ -221,6 +222,7 @@ use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
 use App\Http\Controllers\Kurikulum\ProsemController;
 use App\Http\Controllers\Kurikulum\ProtaController;
 use App\Http\Controllers\Kurikulum\RealisasiPembelajaranController;
+use App\Http\Controllers\Kurikulum\SubjectGroupController;
 use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
@@ -390,6 +392,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{id}/mark-read', [NotificationUniversalController::class, 'markAsRead'])->name('mark-read');
                 Route::post('/mark-all-read', [NotificationUniversalController::class, 'markAllRead'])->name('mark-all-read');
                 Route::delete('/{id}', [NotificationUniversalController::class, 'destroy'])->name('destroy');
+                Route::get('/unread-count', [NotificationUniversalController::class, 'unreadCount'])->name('unread-count');
+                Route::get('/page', [\App\Http\Controllers\NotificationPageController::class, 'index'])->name('page');
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -429,6 +433,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{adminBookId}/sts', [NilaiController::class, 'storeSts'])->name('sts.store');
                     Route::get('/{adminBookId}/sas', [NilaiController::class, 'sas'])->name('sas');
                     Route::post('/{adminBookId}/sas', [NilaiController::class, 'storeSas'])->name('sas.store');
+                    Route::post('/{adminBookId}/kunci', [NilaiController::class, 'lockBook'])->name('kunci');
+                    Route::post('/{adminBookId}/buka-kunci', [NilaiController::class, 'unlockBook'])->name('buka-kunci');
                 });
 
                 // ── NILAI KELAS — untuk Admin TU / Waka / Wali Kelas / Kepsek
@@ -604,8 +610,28 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── KURIKULUM & PERANGKAT PEMBELAJARAN ────────────────
             // Kalender → Pekan Efektif → JP Efektif → Kurikulum → CP → TP → ATP → Perangkat
-            Route::prefix('kurikulum')->name('kurikulum.')->group(function () {
+            Route::prefix('kurikulum')->name('kurikulum.')->middleware('kurikulum.access')->group(function () {
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
+
+                // Master Rumpun Mata Pelajaran & penetapan koordinator (Kebijakan Akademik)
+                Route::prefix('rumpun')->name('rumpun.')->group(function () {
+                    Route::get('/', [SubjectGroupController::class, 'index'])->name('index');
+                    Route::get('/lintas-satuan', [SubjectGroupController::class, 'crossSchool'])->name('cross-school');
+                    Route::get('/{groupId}', [SubjectGroupController::class, 'show'])->name('show');
+                    Route::put('/{groupId}/mapel', [SubjectGroupController::class, 'attachSubjects'])->name('subjects.attach');
+                    Route::delete('/{groupId}/mapel/{subjectId}', [SubjectGroupController::class, 'detachSubject'])->name('subjects.detach');
+                    Route::post('/{groupId}/koordinator', [SubjectGroupController::class, 'assignCoordinator'])->name('coordinator.assign');
+                    Route::put('/{groupId}/koordinator/{taskId}', [SubjectGroupController::class, 'deactivateCoordinator'])->name('coordinator.deactivate');
+                });
+
+                // ── PERMINTAAN AKSES EDIT (keroyokan terkendali) ──
+                Route::prefix('akses-edit')->name('akses-edit.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'index'])->name('index');
+                    Route::post('/', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'store'])->name('store');
+                    Route::post('/{id}/approve', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'approve'])->name('approve');
+                    Route::post('/{id}/reject', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'reject'])->name('reject');
+                    Route::post('/{id}/revoke', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'revoke'])->name('revoke');
+                });
 
                 Route::prefix('cp')->name('cp.')->group(function () {
                     Route::get('/', [CapaianPembelajaranController::class, 'index'])->name('index');
@@ -640,6 +666,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{id}', [PerangkatPembelajaranController::class, 'show'])->name('show');
                     Route::put('/{id}', [PerangkatPembelajaranController::class, 'update'])->name('update');
                     Route::delete('/{id}', [PerangkatPembelajaranController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/submit-review', [PerangkatPembelajaranController::class, 'submitReview'])->name('submit-review');
+                    Route::post('/{id}/new-version', [PerangkatPembelajaranController::class, 'newVersion'])->name('new-version');
                 });
 
                 // ── PROTA — Program Tahunan ───────────────────────
@@ -1088,6 +1116,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('subjects')->name('subjects.')->group(function () {
                 Route::get('/', [SubjectController::class, 'index'])->name('index');
                 Route::get('/create', [SubjectController::class, 'create'])->name('create');
+                Route::get('/pemadatan/create', [SubjectController::class, 'createPemadatan'])->name('pemadatan.create');
+                Route::post('/pemadatan', [SubjectController::class, 'storePemadatan'])->name('pemadatan.store');
                 Route::post('/', [SubjectController::class, 'store'])->name('store');
                 Route::get('/{id}', [SubjectController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [SubjectController::class, 'edit'])->name('edit');
@@ -1133,6 +1163,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('teaching-assignments')->name('teaching-assignments.')->group(function () {
                 Route::get('/', [TeachingAssignmentController::class, 'index'])->name('index');
                 Route::get('/create', [TeachingAssignmentController::class, 'create'])->name('create');
+                Route::get('/bulk', [TeachingAssignmentController::class, 'bulkCreate'])->name('bulk-create');
+                Route::post('/bulk', [TeachingAssignmentController::class, 'bulkStore'])->name('bulk-store');
                 Route::post('/', [TeachingAssignmentController::class, 'store'])->name('store');
                 // Matriks (literal, harus sebelum /{id})
                 Route::get('/matrix/{decree_id}/edit', [TeachingAssignmentController::class, 'editMatrix'])->name('edit-matrix');
@@ -1282,6 +1314,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/submit-approval', [PaketSoalController::class, 'submitApproval'])->name('submit-approval');
                 Route::get('/{paketUuid}/distribusi', [PaketSoalController::class, 'distribution'])->name('distribusi');
                 Route::post('/{paketUuid}/distribute', [PaketSoalController::class, 'distribute'])->name('distribute');
+                Route::put('/{paketUuid}/komposisi', [PaketSoalController::class, 'simpanKomposisi'])->name('komposisi.simpan');
+                Route::post('/{paketUuid}/komposisi/generate', [PaketSoalController::class, 'generateKomposisi'])->name('komposisi.generate');
+                Route::put('/{paketUuid}/distribusi/{distributionId}/terima', [PaketSoalController::class, 'terimaDistribusi'])->name('distribusi.terima');
             });
 
             // ── BANK SOAL TERPUSAT (LINTAS SATUAN PENDIDIKAN) ───────
@@ -1319,6 +1354,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── STUDENTS ───────────────────────────────────────────
+            // ── PENCARIAN GLOBAL (TOPBAR) ─────────────────────────
+            Route::get('/search', [GlobalSearchController::class, 'index'])->name('search')->withoutMiddleware([EnsurePermission::class]);
+
             Route::prefix('students')->name('students.')->group(function () {
                 Route::get('/', [StudentController::class, 'index'])->name('index');
                 Route::get('/create', [StudentController::class, 'create'])->name('create')->middleware('dormitory.restrict:students');
@@ -1448,12 +1486,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/recap', [AbsensiHarianController::class, 'recap'])->name('recap');
                 Route::get('/{studentUuid}', [AbsensiHarianController::class, 'show'])->name('show');
                 Route::get('/{studentUuid}/export', [AbsensiHarianController::class, 'exportStudent'])->name('export.student');
+                Route::post('/{recordId}/verifikasi', [AbsensiHarianController::class, 'verify'])->name('verifikasi');
             });
 
             // ═══════════════════════════════════════════════════════════════
             //  PENGELOLAAN ASRAMA (MASTER — CRUD Standalone)
             // ═══════════════════════════════════════════════════════════════
-            Route::prefix('dormitory-master')->name('dormitory-master.')->group(function () {
+            Route::prefix('dormitory-master')->name('dormitory-master.')->middleware(\App\Http\Middleware\EnsureBoardingSchool::class)->group(function () {
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
                 Route::get('/create', [DormitoryMasterController::class, 'create'])->name('create');
                 Route::post('/', [DormitoryMasterController::class, 'store'])->name('store');
@@ -1605,7 +1644,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ═══════════════════════════════════════════════════════════════
             //  ASRAMA / DORMITORY
             // ═══════════════════════════════════════════════════════════════
-            Route::prefix('asrama')->name('asrama.')->group(function () {
+            Route::prefix('asrama')->name('asrama.')->middleware(\App\Http\Middleware\EnsureBoardingSchool::class)->group(function () {
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
@@ -1631,12 +1670,22 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/kamar/buat', [DormitoryRoomController::class, 'create'])->name('rooms.create');
                 Route::post('/{asramaUuid}/kamar', [DormitoryRoomController::class, 'store'])->name('rooms.store');
                 Route::get('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'show'])->name('rooms.show');
+                Route::get('/{asramaUuid}/penempatan', [DormitoryRoomController::class, 'placement'])->name('rooms.placement');
                 Route::get('/{asramaUuid}/kamar/{roomUuid}/edit', [DormitoryRoomController::class, 'edit'])->name('rooms.edit');
                 Route::put('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'update'])->name('rooms.update');
                 Route::delete('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'destroy'])->name('rooms.destroy');
 
                 // ── ROOM API ─────────────────────────────────────────────
                 Route::get('/{asramaUuid}/kamar/{roomUuid}/penghuni-tersedia', [DormitoryRoomApiController::class, 'availableResidents'])->name('api.rooms.available-residents');
+                Route::get('/{asramaUuid}/santri-tersedia', [DormitoryRoomApiController::class, 'pullableStudents'])->name('api.pullable-students');
+                Route::post('/{asramaUuid}/kamar/{roomUuid}/tempatkan-santri', [DormitoryRoomApiController::class, 'assignStudents'])->name('api.rooms.assign-students');
+                Route::get('/{asramaUuid}/santri/status-boarding', [DormitoryRoomApiController::class, 'studentsStatus'])->name('api.boarding-status');
+                Route::post('/{asramaUuid}/santri/status-boarding', [DormitoryRoomApiController::class, 'updateBoardingStatus'])->name('api.boarding-status.update');
+                Route::post('/{asramaUuid}/penghuni/{residentId}/berhenti-mondok', [DormitoryRoomApiController::class, 'checkoutResident'])->name('api.residents.checkout');
+                Route::post('/{asramaUuid}/penghuni/{residentId}/pindah-kamar', [DormitoryRoomApiController::class, 'requestMove'])->name('api.residents.request-move');
+                Route::get('/{asramaUuid}/mutasi-kamar-tertunda', [DormitoryRoomApiController::class, 'pendingMoves'])->name('api.room-moves.pending');
+                Route::post('/{asramaUuid}/mutasi-kamar/{moveId}/setujui', [DormitoryRoomApiController::class, 'approveMove'])->name('api.room-moves.approve');
+                Route::post('/{asramaUuid}/mutasi-kamar/{moveId}/tolak', [DormitoryRoomApiController::class, 'rejectMove'])->name('api.room-moves.reject');
                 Route::post('/{asramaUuid}/kamar/{roomUuid}/penghuni-massal', [DormitoryRoomApiController::class, 'bulkAddResidents'])->name('api.rooms.bulk-add-residents');
                 Route::post('/{asramaUuid}/kamar/{roomUuid}/penghuni-keluar', [DormitoryRoomApiController::class, 'removeResident'])->name('api.rooms.remove-resident');
 
@@ -1709,6 +1758,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/izin/pengaturan/{permitType}', [DormitoryLeavePolicyController::class, 'show'])->name('leave-policies.show');
                 Route::post('/{asramaUuid}/izin/pengaturan', [DormitoryLeavePolicyController::class, 'storeOrUpdate'])->name('leave-policies.store');
                 Route::post('/{asramaUuid}/izin/pengaturan/apply-defaults', [DormitoryLeavePolicyController::class, 'applyDefaults'])->name('leave-policies.apply-defaults');
+                Route::post('/{asramaUuid}/izin/pengaturan/kunjungan', [DormitoryLeavePolicyController::class, 'updateVisitPolicy'])->name('leave-policies.visit');
 
                 // ── JENIS IZIN (PERMIT TYPES) CRUD ───────────────────────
                 Route::get('/{asramaUuid}/izin/pengaturan/permit-types', [PermitTypeController::class, 'index'])->name('permit-types.index');
@@ -1783,6 +1833,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/kunjungan', [DormitoryVisitLogController::class, 'index'])->name('visits.index');
                 Route::get('/{asramaUuid}/kunjungan/aju', [DormitoryVisitLogController::class, 'create'])->name('visits.create');
                 Route::post('/{asramaUuid}/kunjungan', [DormitoryVisitLogController::class, 'store'])->name('visits.store');
+                Route::post('/{asramaUuid}/kunjungan/quota-check', [DormitoryVisitLogController::class, 'quotaCheck'])->name('visits.quota.check');
                 Route::get('/{asramaUuid}/kunjungan/{visitUuid}', [DormitoryVisitLogController::class, 'show'])->name('visits.show');
                 Route::get('/{asramaUuid}/kunjungan/{visitUuid}/card', [DormitoryVisitLogController::class, 'card'])->name('visits.card');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/approve', [DormitoryVisitLogController::class, 'approve'])->name('visits.approve');
@@ -1802,6 +1853,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/laporan', [DormitoryReportController::class, 'index'])->name('reports.index');
                 Route::get('/{asramaUuid}/laporan/presensi', [DormitoryReportController::class, 'attendance'])->name('reports.attendance');
                 Route::get('/{asramaUuid}/laporan/perizinan', [DormitoryReportController::class, 'permits'])->name('reports.permits');
+                Route::get('/{asramaUuid}/laporan/perizinan/excel', [DormitoryReportController::class, 'permitsExcel'])->name('reports.permits.excel');
                 Route::get('/{asramaUuid}/laporan/pelanggaran', [DormitoryReportController::class, 'violations'])->name('reports.violations');
                 Route::get('/{asramaUuid}/laporan/penghargaan', [DormitoryReportController::class, 'rewards'])->name('reports.rewards');
                 Route::get('/{asramaUuid}/laporan/inventaris', [DormitoryReportController::class, 'inventoriesHtml'])->name('reports.inventories');
@@ -2167,6 +2219,15 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 Route::get('/password-reset-logs', [PasswordResetLogController::class, 'index'])->name('password-reset-logs.index');
+
+                Route::prefix('struktur-kurikulum')->name('curriculum-structure.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'index'])->name('index');
+                    Route::get('/per-jenjang', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'matrix'])->name('matrix');
+                    Route::post('/terapkan', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'apply'])->name('apply');
+                    Route::post('/mapel', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'storeSubject'])->name('subject.store');
+                    Route::put('/mapel/{code}', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'updateSubject'])->name('subject.update');
+                    Route::delete('/mapel/{code}', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'destroySubject'])->name('subject.destroy');
+                });
 
                 Route::prefix('system-settings')->name('system-settings.')->group(function () {
                     Route::get('/', [SystemSettingController::class, 'index'])->name('index');

@@ -98,6 +98,21 @@ class DormitoryVisitLogController extends Controller
         return view('dormitory.visits.create', compact('dormitory', 'students', 'userId'));
     }
 
+    /**
+     * Cek kuota kunjungan keluarga per santri (JSON) — panel jatah & modal limit.
+     */
+    public function quotaCheck(Request $request, string $userId, string $asramaUuid)
+    {
+        $data = $request->validate([
+            'student_id' => 'required|string',
+        ]);
+
+        $info = app(\App\Services\Boarding\VisitWorkflowService::class)
+            ->inspectQuotaForVisit($data['student_id'], $asramaUuid);
+
+        return response()->json($info);
+    }
+
     public function store(StoreVisitRequest $request, string $userId, string $asramaUuid)
     {
         $data = $request->validated();
@@ -339,6 +354,17 @@ class DormitoryVisitLogController extends Controller
                 "Check-out {$visit->visitor_name} berhasil via scan.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'checked_out']
+            );
+        }
+
+        if ($visit->status === 'checked_out') {
+            $waktu = $visit->check_out_at?->format('d/m/Y H:i') ?? '-';
+
+            return $this->scanResponse(
+                $request,
+                "KARTU KADALUARSA — kunjungan untuk santri ".($visit->student?->name ?? '-')." telah selesai (check-out pada {$waktu}). QR Code kartu kunjungan ini tidak berlaku lagi.",
+                false,
+                ['visitor_name' => $visit->visitor_name, 'status' => 'expired', 'checked_out_at' => $waktu]
             );
         }
 

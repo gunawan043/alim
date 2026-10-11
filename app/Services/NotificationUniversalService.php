@@ -36,6 +36,7 @@ class NotificationUniversalService
     {
         $notification = NotificationUniversal::create([
             'user_id' => $userId,
+            'work_unit_id' => $data['work_unit_id'] ?? null,
             'module' => $data['module'] ?? 'system',
             'reference_type' => $data['reference_type'] ?? null,
             'reference_id' => $data['reference_id'] ?? null,
@@ -60,6 +61,78 @@ class NotificationUniversalService
     /**
      * Send notification to multiple users
      */
+    /**
+     * Kirim ke seluruh pengguna pada satu SATUAN KERJA (work unit).
+     */
+    /**
+     * ID pengguna pada satu satuan kerja — gabungan pivot gtk_work_unit
+     * dan kepegawaian (gtk_employments.school_id → schools.work_unit_id).
+     *
+     * @return array<int, string>
+     */
+    public function userIdsForWorkUnit(string $workUnitId): array
+    {
+        $viaPivot = \App\Models\User::query()
+            ->whereHas('gtkWorkUnits', fn ($q) => $q->where('work_unit_id', $workUnitId))
+            ->pluck('id');
+
+        $viaSchool = \App\Models\User::query()
+            ->whereHas('employment.school', fn ($q) => $q->where('work_unit_id', $workUnitId))
+            ->pluck('id');
+
+        return $viaPivot->merge($viaSchool)->unique()->values()->all();
+    }
+
+    /**
+     * Notifikasi petugas asrama (kepala + staf aktif) untuk satu asrama.
+     */
+    public function notifyDormitoryStaff(string $dormitoryId, array $data): int
+    {
+        $dormitory = \App\Models\Dormitory::withTrashed()->find($dormitoryId);
+
+        if (! $dormitory) {
+            return 0;
+        }
+
+        $ids = \App\Models\DormitoryStaffAssignment::query()
+            ->where('dormitory_id', $dormitoryId)
+            ->where('status', 'active')
+            ->pluck('user_id');
+
+        if ($dormitory->head_id) {
+            $ids->push($dormitory->head_id);
+        }
+
+        return count($this->sendToMany($ids->unique()->values()->all(), $data));
+    }
+
+    /**
+     * Notifikasi GTK generik: per satuan kerja, atau GLOBAL (semua pengguna
+     * aktif) bila satuan kerja tidak diketahui — mis. dibuat Super Admin.
+     */
+    public function notifyGtk(?string $workUnitId, array $data): int
+    {
+        if ($workUnitId) {
+            $ids = $this->userIdsForWorkUnit($workUnitId);
+
+            return count($this->sendToMany($ids, $data + ['work_unit_id' => $workUnitId]));
+        }
+
+        $ids = \App\Models\User::query()->where('is_active', true)->pluck('id')->all();
+
+        return count($this->sendToMany($ids, $data));
+    }
+
+    public function sendToWorkUnit(string $workUnitId, array $data)
+    {
+        $userIds = \App\Models\User::query()
+            ->whereHas('gtkWorkUnits', fn ($q) => $q->where('work_unit_id', $workUnitId))
+            ->pluck('id')
+            ->all();
+
+        return $this->sendToMany($userIds, $data + ['work_unit_id' => $workUnitId]);
+    }
+
     public function sendToMany($userIds, array $data)
     {
         $notifications = [];
@@ -71,6 +144,7 @@ class NotificationUniversalService
                 $insertData[] = [
                     'id' => Str::uuid(),
                     'user_id' => $userId,
+                    'work_unit_id' => $data['work_unit_id'] ?? null,
                     'module' => $data['module'] ?? 'system',
                     'reference_type' => $data['reference_type'] ?? null,
                     'reference_id' => $data['reference_id'] ?? null,
@@ -281,9 +355,10 @@ class NotificationUniversalService
     /**
      * Get unread count for user
      */
-    public function getUnreadCount($userId)
+    public function getUnreadCount($userId, ?string $workUnitId = null)
     {
         return NotificationUniversal::where('user_id', $userId)
+            ->when($workUnitId, fn ($q) => $q->where(fn ($qq) => $qq->whereNull('work_unit_id')->orWhere('work_unit_id', $workUnitId)))
             ->where('is_read', false)
             ->where('is_archived', false)
             ->notExpired()

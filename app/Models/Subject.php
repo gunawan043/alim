@@ -29,10 +29,22 @@ class Subject extends Model
         'name',
         'subject_group_id',
         'category',
+        'source',
         'credit_hours',
         'description',
         'is_active',
     ];
+
+    /**
+     * Boleh diajar lebih dari satu guru pada rombel yang sama?
+     * Kebijakan: hanya Tahfidz (hafalan) & Hadits — karena berkaitan dengan hafalan.
+     */
+    public function allowsMultipleTeachers(): bool
+    {
+        $haystack = mb_strtolower(($this->name ?? '').' '.($this->code ?? ''));
+
+        return (bool) preg_match('/(tahfidz|tahfiz|hafalan|hadits|hadist)/', $haystack);
+    }
 
     public function school(): BelongsTo
     {

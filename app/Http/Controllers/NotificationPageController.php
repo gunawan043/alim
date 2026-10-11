@@ -37,6 +37,7 @@ class NotificationPageController extends Controller
             'notifications' => $notifications,
             'filters' => $filters,
             'stats' => $stats,
+            'userId' => $userId,
         ]);
     }
 

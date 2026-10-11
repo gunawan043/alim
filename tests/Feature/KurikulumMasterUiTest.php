@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
+use App\Models\InstitutionDecree;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -122,6 +123,427 @@ class KurikulumMasterUiTest extends TestCase
             ->get("/{$this->kurikulum->id}/teaching-assignments?status=active")
             ->assertOk()
             ->assertSee('Guru Matematika');
+    }
+
+    public function test_dropdown_penugasan_tidak_bocor_lintas_sekolah(): void
+    {
+        $otherSchool = School::create([
+            'work_unit_id' => $this->school->work_unit_id,
+            'name' => 'SMP Sekolah Lain',
+            'npsn' => '99999999',
+            'school_level' => 'smp',
+            'is_active' => true,
+        ]);
+
+        Subject::create([
+            'school_id' => $otherSchool->id,
+            'code' => 'BHS-ASING',
+            'name' => 'Bahasa Sekolah Lain',
+            'is_active' => true,
+        ]);
+
+        // Satuan pendidikan biasa: dropdown hanya mapel sekolahnya sendiri.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/create")
+            ->assertOk()
+            ->assertSee('Matematika')
+            ->assertDontSee('Bahasa Sekolah Lain');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/bulk")
+            ->assertOk()
+            ->assertSee('Input Massal')
+            ->assertDontSee('Bahasa Sekolah Lain');
+    }
+
+    public function test_input_massal_penugasan_membuat_sk_otomatis(): void
+    {
+        $fisika = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'FIS',
+            'name' => 'Fisika',
+            'credit_hours' => 4,
+            'is_active' => true,
+        ]);
+
+        // Halaman bulk menampilkan pilihan guru & rombel (regression: dropdown kosong).
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/bulk")
+            ->assertOk()
+            ->assertSee('Input Massal')
+            ->assertSee('Guru Matematika')
+            ->assertSee($this->group->name);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    [
+                        'teacher_id' => $this->guru->id,
+                        'subject_id' => $fisika->id,
+                        'study_group_id' => $this->group->id,
+                        'weekly_hours' => 4,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        // SK otomatis dibuat + penugasan tersimpan.
+        $this->assertDatabaseHas('institution_decrees', [
+            'school_id' => $this->school->id,
+            'decree_type' => 'SK Pembagian Tugas',
+            'title' => 'SK Pembagian Tugas (Input Massal)',
+        ]);
+
+        $this->assertSame(2, TeachingAssignment::where('school_id', $this->school->id)->count());
+    }
+
+    public function test_mapel_tidak_boleh_digandakan_kecuali_tahfidz_dan_hadits(): void
+    {
+        $fiqih = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'FQH',
+            'name' => 'Fiqih',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        // Guru pertama mengajar Fiqih di rombel tsb → tersimpan.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    ['teacher_id' => $this->guru->id, 'subject_id' => $fiqih->id, 'study_group_id' => $this->group->id, 'weekly_hours' => 2],
+                ],
+            ])->assertRedirect();
+
+        $afterFirst = TeachingAssignment::where('school_id', $this->school->id)->count();
+
+        // Guru lain untuk mapel & rombel yang sama → ditolak (tidak bertambah).
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    ['teacher_id' => $this->kurikulum->id, 'subject_id' => $fiqih->id, 'study_group_id' => $this->group->id, 'weekly_hours' => 2],
+                ],
+            ])->assertRedirect();
+
+        $this->assertSame($afterFirst, TeachingAssignment::where('school_id', $this->school->id)->count());
+
+        // Pengecualian: Tahfidz boleh diajar lebih dari satu guru di rombel yang sama.
+        $tahfidz = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'THF',
+            'name' => "Tahfidzul Qur'an",
+            'credit_hours' => 4,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    ['teacher_id' => $this->guru->id, 'subject_id' => $tahfidz->id, 'study_group_id' => $this->group->id, 'weekly_hours' => 4],
+                    ['teacher_id' => $this->kurikulum->id, 'subject_id' => $tahfidz->id, 'study_group_id' => $this->group->id, 'weekly_hours' => 4],
+                ],
+            ])->assertRedirect();
+
+        $this->assertSame($afterFirst + 2, TeachingAssignment::where('school_id', $this->school->id)->count());
+    }
+
+    public function test_dropdown_pencarian_dan_master_nama_tugas_tambahan(): void
+    {
+        $jenis = \App\Models\JenisGtk::create(['nama' => 'Satuan Pendidikan Uji', 'is_active' => true, 'urutan' => 1]);
+
+        \App\Models\AdditionalTaskType::create([
+            'jenis_gtk_id' => $jenis->id,
+            'nama' => 'Wali Kelas Uji',
+            'kode' => 'WKU',
+            'urutan' => 1,
+            'is_active' => true,
+        ]);
+
+        // Halaman Tugas Tambahan: nama tugas kini dropdown dari master + pencarian nama guru.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/other-teacher-tasks")
+            ->assertOk()
+            ->assertSee('Wali Kelas Uji')
+            ->assertSee('js-select2')
+            ->assertSee('select2');
+
+        // Input massal & form penugasan: dropdown pencarian nama.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/bulk")
+            ->assertOk()
+            ->assertSee('select2');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/teaching-assignments/create")
+            ->assertOk()
+            ->assertSee('js-search-select');
+    }
+
+    public function test_tugas_tambahan_satuan_terfilter_dan_wali_kelas_wajib_rombel(): void
+    {
+        $jenisSatuan = \App\Models\JenisGtk::create(['nama' => 'Tenaga Kependidikan Satuan Pendidikan Uji', 'is_active' => true, 'urutan' => 1]);
+        $jenisAsrama = \App\Models\JenisGtk::create(['nama' => 'Tenaga Pengasuhan & Keasramaan Uji', 'is_active' => true, 'urutan' => 2]);
+
+        \App\Models\AdditionalTaskType::create(['jenis_gtk_id' => $jenisSatuan->id, 'nama' => 'Wali Kelas', 'kode' => 'wali-kelas', 'urutan' => 1, 'is_active' => true]);
+        \App\Models\AdditionalTaskType::create(['jenis_gtk_id' => $jenisAsrama->id, 'nama' => 'Wali Kamar', 'kode' => 'wali-kamar', 'urutan' => 1, 'is_active' => true]);
+
+        // Hanya tugas yang relevan di satuan pendidikan yang tampil.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/other-teacher-tasks")
+            ->assertOk()
+            ->assertSee('Wali Kelas')
+            ->assertDontSee('Wali Kamar');
+
+        // Wali Kelas tanpa rombel → ditolak dengan pesan.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/other-teacher-tasks", [
+                'teacher_id' => $this->guru->id,
+                'academic_year_id' => $this->ay->id,
+                'task_name' => 'Wali Kelas',
+                'task_code' => 'wali-kelas',
+                'weekly_hours' => 2,
+            ])
+            ->assertSessionHas('error');
+
+        // Dengan rombel → tersimpan & rombel tampil di daftar.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/other-teacher-tasks", [
+                'teacher_id' => $this->guru->id,
+                'academic_year_id' => $this->ay->id,
+                'task_name' => 'Wali Kelas',
+                'task_code' => 'wali-kelas',
+                'study_group_id' => $this->group->id,
+                'weekly_hours' => 2,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('other_teacher_tasks', [
+            'teacher_id' => $this->guru->id,
+            'task_name' => 'Wali Kelas',
+            'study_group_id' => $this->group->id,
+        ]);
+    }
+
+    public function test_data_gtk_tampil_untuk_satuan_via_work_unit(): void
+    {
+        // Data nyata: school_id kepegawaian kosong; tautan guru lewat Work Unit.
+        $workUnitId = School::whereKey($this->school->id)->value('work_unit_id');
+
+        if (! $workUnitId) {
+            $workUnitId = (string) Str::uuid();
+            School::whereKey($this->school->id)->update(['work_unit_id' => $workUnitId]);
+        }
+
+        DB::table('gtk_employments')->where('user_id', $this->guru->id)->update(['school_id' => null]);
+
+        DB::table('gtk_work_unit')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $this->guru->id,
+            'work_unit_id' => $workUnitId,
+            'jabatan' => 'GURU UMUM',
+            'is_primary' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Daftar Guru (jenis_gtk "Pendidik / Guru") menampilkan guru dari work unit sekolah.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/gtk/guru")
+            ->assertOk()
+            ->assertSee('Guru Matematika');
+
+        // Daftar semua GTK juga menampilkan.
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/gtk")
+            ->assertOk()
+            ->assertSee('Guru Matematika');
+    }
+
+    public function test_generate_jadwal_default_ta_berpenugasan_dan_seluruh_rombel_terpilih(): void
+    {
+        // TA aktif lain tanpa penugasan — halaman harus tetap memilih TA yang punya penugasan.
+        AcademicYear::where('is_active', true)->update(['is_active' => false]);
+        AcademicYear::create([
+            'name' => '2030/2031',
+            'semester' => 'ganjil',
+            'is_active' => true,
+            'start_date' => '2030-07-01',
+            'end_date' => '2031-06-30',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/jadwal-kbm/generate")
+            ->assertOk()
+            ->assertSee('Generate Jadwal Sekolah')
+            ->assertSee('1 mapel')
+            ->assertDontSee('Belum ada penugasan');
+    }
+
+    public function test_penugasan_membuat_buku_nilai_dan_notifikasi_individu(): void
+    {
+        $fisika = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'FIS-B',
+            'name' => 'Fisika B',
+            'credit_hours' => 4,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    [
+                        'teacher_id' => $this->guru->id,
+                        'subject_id' => $fisika->id,
+                        'study_group_id' => $this->group->id,
+                        'weekly_hours' => 4,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        // Observer penugasan kini membuat BUKU NILAI untuk guru.
+        $this->assertDatabaseHas('teacher_admin_books', [
+            'subject_id' => $fisika->id,
+            'study_group_id' => $this->group->id,
+            'teacher_id' => $this->guru->id,
+        ]);
+
+        // Notifikasi individu ke guru penerima penugasan.
+        $this->assertDatabaseHas('notifications_universal', [
+            'user_id' => $this->guru->id,
+            'action' => 'teaching_assignment_created',
+        ]);
+    }
+
+    public function test_buku_nilai_berpindah_kepemilikan_saat_guru_diganti(): void
+    {
+        $ipa = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'IPA-B',
+            'name' => 'IPA B',
+            'credit_hours' => 4,
+            'is_active' => true,
+        ]);
+
+        // Guru A ditugaskan.
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/teaching-assignments/bulk", [
+                'academic_year_id' => $this->ay->id,
+                'rows' => [
+                    ['teacher_id' => $this->guru->id, 'subject_id' => $ipa->id, 'study_group_id' => $this->group->id, 'weekly_hours' => 4],
+                ],
+            ])->assertRedirect();
+
+        $book = \App\Models\TeacherAdminBook::where('subject_id', $ipa->id)->firstOrFail();
+        $this->assertSame($this->guru->id, $book->teacher_id);
+
+        $assignment = \App\Models\TeachingAssignment::where('subject_id', $ipa->id)->firstOrFail();
+
+        // Tengah tahun: guru diganti ke guru B — buku harus BERPINDAH tanpa reset data.
+        $this->actingAs($this->kurikulum)
+            ->put("/{$this->kurikulum->id}/teaching-assignments/{$assignment->id}", [
+                'academic_year_id' => $this->ay->id,
+                'study_group_id' => $this->group->id,
+                'subject_id' => $ipa->id,
+                'teacher_id' => $this->kurikulum->id,
+                'role' => 'guru_mapel',
+                'weekly_hours' => 4,
+                'status' => 'active',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($this->kurikulum->id, $book->fresh()->teacher_id);
+    }
+
+    public function test_command_penugasan_otomatis_dari_mapel_rombel(): void
+    {
+        $seni = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'SNB',
+            'name' => 'Seni Budaya',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        \App\Models\StudyGroupSubject::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $this->group->id,
+            'subject_id' => $seni->id,
+            'weekly_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        $this->artisan('akademik:assign-teachers', [
+            '--school' => $this->school->id,
+            '--ay' => $this->ay->id,
+        ])->assertExitCode(0);
+
+        // Penugasan dibuat untuk mapel–rombel baru + tautan SGS ikut terisi.
+        $this->assertDatabaseHas('teaching_assignments', [
+            'school_id' => $this->school->id,
+            'study_group_id' => $this->group->id,
+            'subject_id' => $seni->id,
+            'teacher_id' => $this->guru->id,
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('study_group_subjects', [
+            'study_group_id' => $this->group->id,
+            'subject_id' => $seni->id,
+            'teacher_id' => $this->guru->id,
+        ]);
+    }
+
+    public function test_hapus_rombel_aman_walau_punya_jadwal(): void
+    {
+        // Jadwal dengan FK restriktif — sebelumnya menghalangi hapus rombel.
+        DB::table('jadwal_kbms')->insert([
+            'id' => (string) Str::uuid(),
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $this->group->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->guru->id,
+            'day_of_week' => 1,
+            'slot_index' => 1,
+            'start_time' => '07:30:00',
+            'end_time' => '08:05:00',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->delete("/{$this->kurikulum->id}/study-groups/{$this->group->id}")
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('study_groups', ['id' => $this->group->id]);
+        $this->assertDatabaseMissing('jadwal_kbms', ['study_group_id' => $this->group->id]);
+    }
+
+    public function test_halaman_detail_dan_cetak_sk_tampil_matriks(): void
+    {
+        $decree = InstitutionDecree::firstOrFail();
+        $decree->update(['decree_type' => 'SK Pembagian Tugas']);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/institution-decrees/{$decree->id}")
+            ->assertOk()
+            ->assertSee('Matriks Pembagian Tugas Mengajar')
+            ->assertSee('Guru Matematika');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/institution-decrees/{$decree->id}/print")
+            ->assertOk()
+            ->assertSee('LAMPIRAN');
     }
 
     public function test_halaman_jadwal_pelajaran_tampil_dan_filter_terjadwal(): void

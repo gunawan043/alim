@@ -83,6 +83,12 @@ class DormitoryReturnController extends Controller
             actualReturnDatetime: $data['actual_return_datetime'],
         );
 
+        // Tahap 3: kepulangan asrama → kehadiran kembali "hadir" pada tanggal kembali.
+        $returnedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+        if ($returnedPermit && $returnedPermit->student) {
+            \App\Events\Boarding\LeaveReturned::dispatch($returnedPermit, $returnedPermit->student, null);
+        }
+
         return back()->with('success', 'Kepulangan '.($data['student_name'] ?? 'santri').' berhasil dicatat.');
     }
 

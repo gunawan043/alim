@@ -51,13 +51,12 @@
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label">Nama Tugas <span class="text-danger">*</span></label>
-                                <input type="text" name="nama_tugas" class="form-control" value="{{ old('nama_tugas') }}"
-                                       required placeholder="Contoh: Wali Kelas VII A" list="default-tasks">
-                                <datalist id="default-tasks">
+                                <select name="nama_tugas" class="form-control js-select2" required>
+                                    <option value="">-- Pilih Tugas Tambahan --</option>
                                     @foreach($defaultTasks as $dt)
-                                        <option value="{{ $dt }}">
+                                        <option value="{{ $dt }}" {{ old('nama_tugas') == $dt ? 'selected' : '' }}>{{ $dt }}</option>
                                     @endforeach
-                                </datalist>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Jam per Minggu (JP)</label>
@@ -106,4 +105,9 @@
             </div>
         </div>
     </form>
+@push('scripts')
+<script>
+    $(function () { $('.js-select2').select2({ width: '100%' }); });
+</script>
+@endpush
 @endsection

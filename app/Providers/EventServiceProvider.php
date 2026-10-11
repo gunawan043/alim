@@ -65,10 +65,12 @@ use App\Listeners\Boarding\RecordRecoveredOnTimeline;
 use App\Listeners\Boarding\SyncBoardingHealthToAttendance;
 use App\Listeners\Boarding\SyncBoardingLeaveToAttendance;
 use App\Listeners\Boarding\SyncHealthToClinic;
+use App\Listeners\CloseDormitoryResidentOnStudentExit;
 use App\Listeners\ClosePreviousClassHistoryOnLifecycle;
 use App\Listeners\CreateAlumniOnGraduation;
 use App\Listeners\HandleManualStudentStatusUpdate;
 use App\Listeners\DeactivateStudentAcademicRecordsListener;
+use App\Listeners\NotifyDormitoryOnStudentMutatedIn;
 use App\Listeners\NotifyGuardiansOnLifecycle;
 use App\Listeners\NotifySarprasOfQuotation;
 use App\Listeners\NotifyVendorsOfRfq;
@@ -80,6 +82,7 @@ use App\Listeners\RecordPoTransition;
 use App\Listeners\RecordQualityCheckTransition;
 use App\Listeners\RecordQuotationTransition;
 use App\Listeners\RecordVendorRatingTransition;
+use App\Listeners\SendLoginNotification;
 use App\Listeners\Sarpras\HandleLowStockEvent;
 use App\Listeners\Sarpras\NotifyAssetMoved;
 use App\Listeners\Sarpras\NotifyMaintenanceLifecycle;
@@ -149,6 +152,7 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         StudentGraduated::class => [
+            CloseDormitoryResidentOnStudentExit::class,
             UpdateStudentStatusOnLifecycle::class,
             ClosePreviousClassHistoryOnLifecycle::class,
             CreateAlumniOnGraduation::class,
@@ -157,6 +161,7 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         StudentMutatedOut::class => [
+            CloseDormitoryResidentOnStudentExit::class,
             UpdateStudentStatusOnLifecycle::class,
             ClosePreviousClassHistoryOnLifecycle::class,
             CreateAlumniOnGraduation::class,
@@ -169,6 +174,7 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         StudentMutatedIn::class => [
+            NotifyDormitoryOnStudentMutatedIn::class,
             UpdateStudentStatusOnLifecycle::class,
             SyncStudentRombelAfterLifecycle::class,
             NotifyGuardiansOnLifecycle::class,

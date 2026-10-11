@@ -35,16 +35,19 @@
     @endif
 
     {{-- Info Buku + Ringkasan Realisasi --}}
-    <div class="card border-primary mb-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center g-2">
-                <div class="col-md-auto">
-                    <p class="mb-n1 btn btn-primary btn-sm" style="font-size: 10px;"><i class="ri-book-2-line me-1"></i>{{ $adminBook->subject->name ?? '-' }}</p>
-                    <p class="mb-n1 btn btn-secondary btn-sm"><i class="ri-team-line me-1"></i>{{ $adminBook->studyGroup->name }}</p>
-                    <p class="mb-n1 btn btn-dark btn-sm"><i class="ri-calendar-line me-1"></i>{{ ucfirst($adminBook->semester) }}</p>
-                    <p class="mb-n1 btn btn-warning btn-sm"><i class="ri-government-line me-1"></i>{{ $adminBook->academicYear->name ?? '-' }}</p>
+    <div class="card border-primary-subtle mb-3">
+        <div class="card-body py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <h5 class="card-title mb-2"><i class="ri-article-line me-1 text-primary"></i>Jurnal Pembelajaran</h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge bg-primary-subtle text-primary"><i class="ri-book-2-line me-1"></i>{{ $adminBook->subject->name ?? '-' }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>{{ $adminBook->studyGroup->name }}</span>
+                        <span class="badge bg-dark-subtle text-dark"><i class="ri-calendar-line me-1"></i>Semester {{ ucfirst($adminBook->semester) }}</span>
+                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-2-line me-1"></i>{{ $adminBook->academicYear->name ?? '-' }}</span>
+                    </div>
                 </div>
-                <div class="col-md d-flex justify-content-md-end align-items-center gap-2">
+                <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2">
                     <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $adminBook->academic_year_id, 'semester' => $adminBook->semester]) }}" class="btn btn-soft-primary btn-sm">
                         <i class="ri-line-chart-line me-1"></i> Realisasi
                     </a>
@@ -60,45 +63,76 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row mb-3">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate mb-0">
+            <div class="card card-animate h-90 mb-0">
                 <div class="card-body py-3">
-                    <p class="text-uppercase fw-medium text-muted mb-1 fs-13">Realisasi TP</p>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="progress flex-grow-1" style="height:6px">
-                            <div class="progress-bar {{ $progress >= 100 ? 'bg-success' : 'bg-warning' }}" style="width: {{ min(100, $progress) }}%"></div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title {{ $progress >= 100 ? 'bg-success-subtle' : 'bg-warning-subtle' }} rounded fs-2">
+                                <i class="{{ $progress >= 100 ? 'ri-checkbox-circle-line text-success' : 'ri-line-chart-line text-warning' }}"></i>
+                            </span>
                         </div>
-                        <span class="small fw-semibold">{{ $realizedCount }}/{{ $plannedTpCount }}</span>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Realisasi TP</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $realizedCount }}/{{ $plannedTpCount }}<small class="fw-normal text-muted fs-13 ms-1">TP</small></h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height:5px">
+                        <div class="progress-bar {{ $progress >= 100 ? 'bg-success' : 'bg-warning' }}" style="width: {{ min(100, $progress) }}%"></div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate mb-0">
+            <div class="card card-animate h-90 mb-0">
                 <div class="card-body py-3">
-                    <p class="text-uppercase fw-medium text-muted mb-1 fs-13">Jurnal Pertemuan</p>
-                    <h4 class="fs-18 fw-semibold mb-0 text-info">{{ $journals->count() }} <span class="fs-13 text-muted">pertemuan</span></h4>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-article-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Jurnal Pertemuan</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $journals->count() }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-history-line me-1"></i>Pertemuan tercatat</p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate mb-0">
+            <div class="card card-animate h-90 mb-0">
                 <div class="card-body py-3">
-                    <p class="text-uppercase fw-medium text-muted mb-1 fs-13">Asesmen Formatif</p>
-                    <h4 class="fs-18 fw-semibold mb-0 {{ $formatifCount > 0 ? 'text-success' : 'text-muted' }}">
-                        {{ $formatifCount > 0 ? $formatifCount.' siswa' : 'Belum ada' }}
-                    </h4>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title {{ $formatifCount > 0 ? 'bg-success-subtle' : 'bg-secondary-subtle' }} rounded fs-2">
+                                <i class="ri-draft-line {{ $formatifCount > 0 ? 'text-success' : 'text-secondary' }}"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Asesmen Formatif</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $formatifCount > 0 ? $formatifCount : '—' }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-user-line me-1"></i>{{ $formatifCount > 0 ? 'siswa dinilai' : 'Belum ada nilai' }}</p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate mb-0">
+            <div class="card card-animate h-90 mb-0">
                 <div class="card-body py-3">
-                    <p class="text-uppercase fw-medium text-muted mb-1 fs-13">Nilai Sumatif</p>
-                    <h4 class="fs-18 fw-semibold mb-0 {{ $sumatifCount > 0 ? 'text-success' : 'text-muted' }}">
-                        {{ $sumatifCount > 0 ? $sumatifCount.' siswa' : 'Belum ada' }}
-                    </h4>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title {{ $sumatifCount > 0 ? 'bg-success-subtle' : 'bg-secondary-subtle' }} rounded fs-2">
+                                <i class="ri-file-list-3-line {{ $sumatifCount > 0 ? 'text-success' : 'text-secondary' }}"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Nilai Sumatif</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $sumatifCount > 0 ? $sumatifCount : '—' }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-user-line me-1"></i>{{ $sumatifCount > 0 ? 'siswa dinilai' : 'Belum ada nilai' }}</p>
                 </div>
             </div>
         </div>
@@ -121,7 +155,10 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('user.schools.guru-mapel.w2.store', ['userId' => $userId, 'adminBookId' => $adminBook->id]) }}">
                         @csrf
-                        <div class="row g-3 mb-3">
+                        <h6 class="text-uppercase text-muted fw-semibold mb-3" style="font-size:.75rem;letter-spacing:.03em;">
+                            <i class="ri-calendar-check-line me-1"></i>Pertemuan
+                        </h6>
+                        <div class="row">
                             <div class="col-md-3">
                                 <label class="form-label fw-semibold">Minggu ke-</label>
                                 <input type="number" name="meeting_number" class="form-control"
@@ -142,8 +179,11 @@
                             </div>
                         </div>
 
-                        {{-- Rencana: PROSEM → TP → RPM (dari data yang sama, tanpa input ulang) --}}
-                        <div class="row g-3 mb-3">
+                        <hr class="my-3">
+                        <h6 class="text-uppercase text-muted fw-semibold mb-3" style="font-size:.75rem;letter-spacing:.03em;">
+                            <i class="ri-route-line me-1"></i>Rencana Pembelajaran (PROSEM → TP → RPM)
+                        </h6>
+                        <div class="row">
                             <div class="col-md-5">
                                 <label class="form-label fw-semibold">Rencana Pekan (PROSEM)</label>
                                 <select name="prosem_item_id" id="prosem_item" class="form-select" onchange="applyProsem()">
@@ -186,6 +226,10 @@
                             </div>
                         </div>
 
+                        <hr class="my-3">
+                        <h6 class="text-uppercase text-muted fw-semibold mb-3" style="font-size:.75rem;letter-spacing:.03em;">
+                            <i class="ri-article-line me-1"></i>Materi &amp; Verifikasi
+                        </h6>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Materi Pembelajaran</label>
                             <textarea name="material" id="material" class="form-control" rows="4"
@@ -209,11 +253,11 @@
                         </div>
                     </form>
 
+                    <hr class="my-4">
+                    <h6 class="text-muted fw-semibold mb-3"><i class="ri-history-line me-1"></i> Riwayat Jurnal &amp; Realisasi TP</h6>
                     @if($journals->isNotEmpty())
-                        <hr class="my-4">
-                        <h6 class="text-muted fw-semibold mb-3"><i class="ri-history-line me-1"></i> Riwayat Jurnal &amp; Realisasi TP</h6>
                         <div class="table-responsive">
-                            <table class="table table-nowrap align-middle mb-0">
+                            <table class="table table-nowrap table-hover align-middle table-freeze mb-0">
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th style="width:40px">#</th>
@@ -262,6 +306,11 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                        </div>
+                    @else
+                        <div class="alert alert-light border text-center text-muted small mb-0">
+                            <i class="ri-information-line me-1"></i>
+                            Belum ada jurnal untuk buku ini — isi pertemuan pertama pada form di atas.
                         </div>
                     @endif
                 </div>

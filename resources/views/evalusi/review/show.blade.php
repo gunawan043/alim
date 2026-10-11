@@ -5,13 +5,14 @@
     @php
         $userId = $userId ?? auth()->id();
         $isSoal = $reviewable instanceof \App\Models\Soal;
+        $isPerangkat = $reviewable instanceof \App\Models\PerangkatPembelajaran;
         $bank = $isSoal ? $reviewable->bankSoal : null;
-        $kisi = ! $isSoal ? $reviewable->kisiKisi : null;
+        $kisi = (! $isSoal && ! $isPerangkat) ? $reviewable->kisiKisi : null;
     @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">Review</a> @endslot
-        @slot('title') {{ $isSoal ? 'Tinjau Soal' : 'Tinjau Paket Soal' }} @endslot
+        @slot('title') {{ $isSoal ? 'Tinjau Soal' : ($isPerangkat ? 'Tinjau RPM' : 'Tinjau Paket Soal') }} @endslot
     @endcomponent
 
     @if(session('success'))
@@ -38,7 +39,9 @@
                     @php
                         $wLabel = $isSoal
                             ? (\App\Models\Soal::WORKFLOW_OPTIONS[$reviewable->workflow_status] ?? $reviewable->workflow_status)
-                            : (\App\Models\PaketSoal::WORKFLOW_OPTIONS[$reviewable->workflow_status] ?? $reviewable->workflow_status);
+                            : ($isPerangkat
+                                ? (\App\Models\PerangkatPembelajaran::WORKFLOW_OPTIONS[$reviewable->workflow_status] ?? $reviewable->workflow_status)
+                                : (\App\Models\PaketSoal::WORKFLOW_OPTIONS[$reviewable->workflow_status] ?? $reviewable->workflow_status));
                     @endphp
                     <h4 class="fw-bold ff-secondary mb-0">{{ $wLabel }}</h4>
                 </div>
@@ -81,6 +84,9 @@
                         @if($isSoal)
                             <i class="ri-question-line text-primary me-1"></i>Soal — {{ $bank?->subject?->name ?? '-' }}
                             <span class="badge bg-info-subtle text-info ms-1">{{ $bank?->gradeLevel?->name ?? 'Semua Kelas' }}</span>
+                        @elseif($isPerangkat)
+                            <i class="ri-file-text-line text-primary me-1"></i>RPM — {{ $reviewable->judul }}
+                            <span class="badge bg-info-subtle text-info ms-1">{{ $reviewable->subject?->name ?? '-' }}</span>
                         @else
                             <i class="ri-stack-line text-primary me-1"></i>Paket — {{ $reviewable->judul }}
                         @endif
@@ -136,6 +142,20 @@
                                 <div class="small">{!! $reviewable->pembahasan !!}</div>
                             </div>
                         @endif
+                    @elseif($isPerangkat)
+                        <table class="table table-sm">
+                            <tr><th style="width:140px">Konteks</th><td>
+                                {{ $reviewable->subject?->name ?? '—' }} · {{ $reviewable->gradeLevel?->name ?? 'Semua Kelas' }}
+                                · {{ $reviewable->academicYear?->name ?? '—' }} · {{ ucfirst($reviewable->semester) }}
+                            </td></tr>
+                            <tr><th>Penyusun</th><td>{{ $reviewable->teacher?->name ?? $reviewable->creator?->name ?? '—' }}</td></tr>
+                            <tr><th>Tipe</th><td>{{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$reviewable->tipe] ?? $reviewable->tipe }}</td></tr>
+                            <tr><th>Versi</th><td>v{{ $reviewable->version }} · {{ \App\Models\PerangkatPembelajaran::WORKFLOW_OPTIONS[$reviewable->workflow_status] ?? $reviewable->workflow_status }}</td></tr>
+                        </table>
+                        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $reviewable->id]) }}"
+                           class="btn btn-soft-primary btn-sm" target="_blank">
+                            <i class="ri-external-link-line me-1"></i>Buka RPM Lengkap
+                        </a>
                     @else
                         <table class="table table-sm">
                             <thead class="table-light"><tr><th style="width:40px">#</th><th>Soal</th><th class="text-center">Status Soal</th></tr></thead>

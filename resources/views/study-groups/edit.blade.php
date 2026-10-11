@@ -88,7 +88,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Wali Kelas</label>
-                                <select name="homeroom_teacher_id" class="form-select">
+                                <select name="homeroom_teacher_id" id="homeroom_teacher_id_edit" class="form-select js-select2-wali">
                                     <option value="">— Pilih Wali Kelas —</option>
                                     @foreach($teachers as $t)
                                         <option value="{{ $t->id }}" {{ old('homeroom_teacher_id', $studyGroup->homeroom_teacher_id) == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
@@ -134,4 +134,11 @@
             </div>
         </div>
     </form>
+@push('scripts')
+<script>
+    $(function () {
+        $('.js-select2-wali').select2({ width: '100%', placeholder: '— Cari / Pilih Wali Kelas —', allowClear: true });
+    });
+</script>
+@endpush
 @endsection

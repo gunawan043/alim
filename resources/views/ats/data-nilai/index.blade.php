@@ -65,11 +65,11 @@
 @endif
 
 {{-- ===================== STATS CARDS ===================== --}}
-<div class="row g-3 mb-3">
+<div class="row">
 
     {{-- 1. Total Pelamar --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="avatar-sm flex-shrink-0">
@@ -92,7 +92,7 @@
 
     {{-- 2. Progress Penilaian --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="avatar-sm flex-shrink-0">
@@ -115,7 +115,7 @@
 
     {{-- 3. Lulus Seleksi --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="avatar-sm flex-shrink-0">
@@ -141,7 +141,7 @@
 
     {{-- 4. Ringkasan Tab --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="avatar-sm flex-shrink-0">

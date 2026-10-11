@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Evaluasi;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaketSoal;
+use App\Models\PerangkatPembelajaran;
 use App\Models\ReviewAssignment;
 use App\Models\Soal;
 use App\Services\Evaluasi\ReviewWorkflowService;
@@ -31,6 +32,7 @@ class ReviewSoalController extends Controller
 
         $soalIds = $assignments->where('reviewable_type', Soal::class)->pluck('reviewable_id');
         $paketIds = $assignments->where('reviewable_type', PaketSoal::class)->pluck('reviewable_id');
+        $perangkatIds = $assignments->where('reviewable_type', PerangkatPembelajaran::class)->pluck('reviewable_id');
 
         $soals = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'creator:id,name'])
             ->whereIn('id', $soalIds)->get()->keyBy('id');
@@ -38,13 +40,16 @@ class ReviewSoalController extends Controller
         $pakets = PaketSoal::with(['kisiKisi.subject:id,name', 'kisiKisi.gradeLevel:id,name'])
             ->whereIn('id', $paketIds)->get()->keyBy('id');
 
-        $assignments->each(function (ReviewAssignment $assignment) use ($soals, $pakets) {
-            $assignment->setRelation(
-                'reviewable',
-                $assignment->reviewable_type === Soal::class
-                    ? $soals->get($assignment->reviewable_id)
-                    : $pakets->get($assignment->reviewable_id)
-            );
+        $perangkats = PerangkatPembelajaran::with(['subject:id,name', 'gradeLevel:id,name'])
+            ->whereIn('id', $perangkatIds)->get()->keyBy('id');
+
+        $assignments->each(function (ReviewAssignment $assignment) use ($soals, $pakets, $perangkats) {
+            $assignment->setRelation('reviewable', match ($assignment->reviewable_type) {
+                Soal::class => $soals->get($assignment->reviewable_id),
+                PaketSoal::class => $pakets->get($assignment->reviewable_id),
+                PerangkatPembelajaran::class => $perangkats->get($assignment->reviewable_id),
+                default => null,
+            });
         });
 
         $stats = [
@@ -85,6 +90,8 @@ class ReviewSoalController extends Controller
                 ->get();
         } elseif ($reviewable instanceof PaketSoal) {
             $reviewable->load(['items.soal.options', 'kisiKisi.subject', 'kisiKisi.gradeLevel', 'kisiKisi.academicYear']);
+        } elseif ($reviewable instanceof PerangkatPembelajaran) {
+            $reviewable->load(['subject', 'gradeLevel', 'academicYear', 'teacher', 'creator']);
         }
 
         return view('evalusi.review.show', compact('userId', 'assignment', 'reviewable', 'progress', 'similarities'));

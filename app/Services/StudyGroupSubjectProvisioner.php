@@ -153,19 +153,33 @@ class StudyGroupSubjectProvisioner
             return null;
         }
 
-        return TeacherAdminBook::updateOrCreate(
-            [
-                'teacher_id' => $this->teacherId,
-                'subject_id' => $this->subjectId,
-                'study_group_id' => $this->studyGroupId,
-                'academic_year_id' => $this->academicYearId,
-                'semester' => $semester,
-            ],
-            [
-                'school_id' => $this->schoolId,
-                'is_active' => true,
-            ]
-        );
+        // Kebijakan Tahap 3: SATU buku per konteks akademik
+        // (mapel + rombel + TA + semester). Multi-guru memakai buku yang sama;
+        // teacher_id hanya penanda penyusun pertama dan tidak ditimpa.
+        $book = TeacherAdminBook::query()
+            ->where('subject_id', $this->subjectId)
+            ->where('study_group_id', $this->studyGroupId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('semester', $semester)
+            ->first();
+
+        if ($book) {
+            if (! $book->school_id && $this->schoolId) {
+                $book->forceFill(['school_id' => $this->schoolId])->save();
+            }
+
+            return $book;
+        }
+
+        return TeacherAdminBook::create([
+            'teacher_id' => $this->teacherId,
+            'subject_id' => $this->subjectId,
+            'study_group_id' => $this->studyGroupId,
+            'school_id' => $this->schoolId,
+            'academic_year_id' => $this->academicYearId,
+            'semester' => $semester,
+            'is_active' => true,
+        ]);
     }
 
     // ── Step 2 — KKTP context link ────────────────────────────────

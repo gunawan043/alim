@@ -62,7 +62,7 @@
 </div>
 
 {{-- Stat Cards --}}
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-sm-6 col-xl-3">
         <div class="card stat-card" style="border-left:3px solid #2e7d32;">
             <div class="card-body py-3">

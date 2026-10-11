@@ -25,6 +25,11 @@ class CapaianPembelajaranController extends Controller
         $query = CapaianPembelajaran::query()
             ->with(['subject:id,name,code', 'creator:id,name'])
             ->forSchool($schoolId)
+            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId) {
+                // Guru: hanya CP mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->when($request->filled('fase'), fn ($q) => $q->where('fase', $request->fase))
             ->orderBy('fase')
@@ -36,6 +41,10 @@ class CapaianPembelajaranController extends Controller
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
+            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId) {
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId);
+                $q->whereIn('id', $viewable ?: ['-']);
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
@@ -140,7 +149,7 @@ class CapaianPembelajaranController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        if (! $this->access->isKurikulumTeam($request->user())) {
+        if (! $this->access->isKurikulumEditor($request->user())) {
             abort(403, 'Hanya tim kurikulum yang dapat mengelola Capaian Pembelajaran.');
         }
     }

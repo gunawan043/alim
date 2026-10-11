@@ -23,11 +23,26 @@ class AdminPresensiHarian extends Model
     protected $fillable = [
         'study_group_id', 'academic_year_id', 'semester',
         'attendance_date', 'student_id', 'status', 'notes',
+        'source', 'source_ref', 'auto_filled', 'verified_at', 'verified_by',
     ];
 
     protected $casts = [
         'attendance_date' => 'date',
+        'auto_filled' => 'boolean',
+        'verified_at' => 'datetime',
     ];
+
+    /** Terisi otomatis dari modul lain (UKS/asrama/mapel). */
+    public function isAutoFilled(): bool
+    {
+        return (bool) $this->auto_filled;
+    }
+
+    /** Sudah dicek kesesuaiannya oleh pihak berwenang. */
+    public function isVerified(): bool
+    {
+        return $this->verified_at !== null;
+    }
 
     protected $appends = ['status_text'];
 

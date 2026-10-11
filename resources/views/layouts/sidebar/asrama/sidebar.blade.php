@@ -81,6 +81,14 @@ $isKepalaAsrama = in_array($currentUserJob, [
 ]);
 @endphp
 
+@if(! school_supports_boarding())
+    <div class="alert alert-warning m-3 small">
+        <i class="ri-information-line me-1"></i>
+        Modul asrama tidak tersedia untuk satuan pendidikan <strong>non-boarding</strong>.
+    </div>
+@else
+
+
 
 {{-- ================================================================
      MENU
@@ -678,3 +686,4 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <span>Kalender Pendidikan</span>
     </a>
 </li>
+@endif

@@ -19,6 +19,40 @@ class GtkEmploymentObserver
         if ($employment->wasChanged('jabatan_id')) {
             $this->syncRoles($employment);
         }
+
+        // Notifikasi individu saat jabatan/jenis/status kepegawaian berubah.
+        if ($employment->wasChanged(['jabatan', 'jenis_gtk', 'status_kepegawaian'])) {
+            $this->notifyEmploymentChange($employment);
+        }
+    }
+
+    /**
+     * Kirim notifikasi ke GTK yang datanya diperbarui.
+     */
+    protected function notifyEmploymentChange(GtkEmployment $employment): void
+    {
+        try {
+            if (! $employment->user_id || auth()->id() === $employment->user_id) {
+                return;
+            }
+
+            app(\App\Services\NotificationUniversalService::class)->send($employment->user_id, [
+                'module' => 'kepegawaian',
+                'reference_type' => GtkEmployment::class,
+                'reference_id' => $employment->id,
+                'type' => 'info',
+                'action' => 'employment_updated',
+                'priority' => 'medium',
+                'title' => 'Data Kepegawaian Diperbarui',
+                'message' => 'Jabatan Anda kini: '.($employment->jabatan ?: '-').'.'
+                    .($employment->status_kepegawaian ? ' Status: '.$employment->status_kepegawaian.'.' : ''),
+                'work_unit_id' => optional($employment->school)->work_unit_id,
+                'action_url' => route('user.gtk.index', ['userId' => $employment->user_id]),
+                'action_text' => 'Lihat Data GTK',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif kepegawaian gagal: '.$e->getMessage());
+        }
     }
 
     public function deleted(GtkEmployment $employment): void

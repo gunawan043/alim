@@ -929,9 +929,9 @@ class LeaveWorkflowService
                     continue;
                 }
                 $phone = preg_replace('/[^0-9]/', '', $phone);
-                \Log::channel('daily')->info('[EMERGENCY WA] Would send to '.$phone.': '.$msg);
-                // TODO: Integrate with WhatsApp API provider (e.g. Fonnte, Twilio, Wablas)
-                // $this->sendWhatsAppMessage($phone, $msg);
+                $sent = app(\App\Services\Notifications\WhatsAppGatewayService::class)
+                    ->send($phone, $msg, ['event' => 'emergency_leave', 'reference_type' => 'dormitory_permit', 'reference_id' => $permit->id]);
+                \Log::channel('daily')->info('[EMERGENCY WA] '.($sent ? 'Terkirim' : 'Gagal').' ke '.$phone.': '.$msg);
             }
         } catch (\Throwable $e) {
             \Log::channel('daily')->error('[EMERGENCY WA] Notification failed: '.$e->getMessage());

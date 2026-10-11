@@ -63,9 +63,9 @@
             </div>
         @endif
 
-        <div class="row g-3 mb-3">
+        <div class="row">
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -81,7 +81,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -97,7 +97,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -113,7 +113,7 @@
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="card card-animate h-100">
+                <div class="card card-animate h-90">
                     <div class="card-body py-3">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <div class="avatar-sm flex-shrink-0">
@@ -197,7 +197,7 @@
                             <input type="hidden" name="semester" value="{{ $semester }}">
                             <select name="study_group_id" class="form-select form-select-sm" onchange="this.form.submit()">
                                 @foreach($studyGroups as $group)
-                                    <option value="{{ $group->id }}" {{ $selectedGroup?->id === $group->id ? 'selected' : '' }}>{{ $group->name }}</option>
+                                    <option value="{{ $group->id }}" {{ $selectedGroup?->id === $group->id ? 'selected' : '' }}>{{ $group->full_name ?? $group->name }}</option>
                                 @endforeach
                             </select>
                         </form>

@@ -34,7 +34,7 @@ class Student extends Model
         // Kontak
         'phone', 'mobile_phone', 'email',
         // Tempat tinggal
-        'residence_type', 'transportation', 'distance_to_school', 'latitude', 'longitude',
+        'residence_type', 'boarding_status', 'transportation', 'distance_to_school', 'latitude', 'longitude',
         // Kesehatan
         'height', 'weight', 'head_circumference', 'sibling_count',
         // Ayah

@@ -17,14 +17,14 @@
     @slot('title') Koordinator Sarpras @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Gedung Kondisi Baik" :value="$gedungBaik" icon="ri-building-line" color="success" />
     <x-dashboards.stat-card label="Aset Rusak Berat" :value="$asetRusakBerat" icon="ri-error-warning-line" color="danger" />
     <x-dashboards.stat-card label="Maintenance Mendatang" :value="$maintenanceJangkaDekat" icon="ri-tools-line" color="warning" />
     <x-dashboards.stat-card label="Pengadaan Pending" :value="$pengadaanPending" icon="ri-shopping-cart-2-line" color="info" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- OVERVIEW GEDUNG --}}
     <div class="col-xl-6">
         <div class="card h-100">

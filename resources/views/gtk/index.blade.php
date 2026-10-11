@@ -120,11 +120,11 @@
         $pctAdPondok = $totalJenis > 0 ? round($tenagaAdministrasiPondok / $totalJenis * 100) : 0;
     @endphp
 
-    <div class="row g-3 mb-3">
+    <div class="row">
 
         {{-- 1. Total GTK --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -154,7 +154,7 @@
 
         {{-- 2. Distribusi Jenis GTK --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -207,12 +207,12 @@
 
         {{-- 3. Status Kepegawaian --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
                             <span class="avatar-title bg-warning-subtle rounded fs-2">
-                                <i class="ri-id-card-line text-warning"></i>
+                                <i class="ri-folder-user-line text-warning"></i>
                             </span>
                         </div>
                         <div>
@@ -241,7 +241,7 @@
                             @endif
                         @endforeach
                         @if (empty(array_filter($statusCounts)))
-                            <span class="text-muted" style="font-size:11px;">Belum ada data status</span>
+                            <span class="text-muted" style="font-size:11px; line-height: 3.4">Belum ada data status</span> <br>
                         @endif
                     </div>
                     @if (!empty($pendidikanTertinggi))
@@ -263,7 +263,7 @@
 
         {{-- 4. Jenis Kelamin & Aktif/Nonaktif --}}
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -290,15 +290,11 @@
                             P {{ $pctP }}% <i class="ri-women-line ms-1"></i>
                         </span>
                     </div>
-                    <div class="progress" style="height:5px;">
+                    <div class="progress" style="height:12px;">
+                        <i class="ri-checkbox-circle-fill text-success me-1"></i>{{ $ratioAktif }}% aktif
                         <div class="progress-bar bg-success" style="width:{{ $ratioAktif }}%"></div>
                         <div class="progress-bar bg-danger" style="width:{{ 100 - $ratioAktif }}%"></div>
                     </div>
-                    <small class="text-muted d-block mt-1" style="font-size:11px;">
-                        <i class="ri-checkbox-circle-fill text-success me-1"></i>{{ $ratioAktif }}% aktif
-                        <span class="mx-1">&middot;</span>
-                        <i class="ri-close-circle-fill text-danger me-1"></i>{{ 100 - $ratioAktif }}% nonaktif
-                    </small>
                 </div>
             </div>
         </div>

@@ -298,4 +298,45 @@
 @include('dormitory.leave-policies.permit-type-success-modal') {{-- Modal sukses --}}
 @include('dormitory.leave-policies.permit-type-scripts') {{-- Scripts --}}
 
+
+<div class="card mt-3">
+    <div class="card-header border-bottom-dashed">
+        <h6 class="mb-0"><i class="ri-group-line me-2"></i>Kebijakan Kunjungan Keluarga (Per Asrama)</h6>
+        <small class="text-muted">Hanya Kepala Asrama / Wakil Kepala Asrama yang dapat mengubah.</small>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ route('user.asrama.leave-policies.visit', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
+            @csrf
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Strategi</label>
+                    <select name="visit_strategy" class="form-select">
+                        @foreach(['unrestricted' => 'Tidak Terbatas', 'quota' => 'Berbasis Kuota', 'banned' => 'Dinonaktifkan'] as $value => $label)
+                            <option value="{{ $value }}" {{ ($visitPolicy->visit_strategy ?? 'unrestricted') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Kuota</label>
+                    <input type="number" name="visit_quota" min="0" class="form-control" value="{{ $visitPolicy->visit_quota ?? '' }}" placeholder="mis. 2">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Periode Kuota</label>
+                    <select name="visit_quota_period" class="form-select">
+                        @foreach(['weekly' => 'Mingguan', 'monthly' => 'Bulanan', 'semester' => 'Semester', 'yearly' => 'Tahunan'] as $value => $label)
+                            <option value="{{ $value }}" {{ ($visitPolicy->visit_quota_period ?? 'monthly') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Maks. Pengunjung</label>
+                    <input type="number" name="max_visitors_per_visit" min="1" class="form-control" value="{{ $visitPolicy->max_visitors_per_visit ?? '' }}" placeholder="mis. 5">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100"><i class="ri-save-line me-1"></i>Simpan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection

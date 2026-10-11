@@ -9,9 +9,9 @@ use App\Models\BankSoal;
 use App\Models\GradeLevel;
 use App\Models\GtkAdditionalTask;
 use App\Models\KisiKisiSoal;
+use App\Models\OtherTeacherTask;
 use App\Models\PaketSoal;
 use App\Models\PaketSoalItem;
-use App\Models\ReviewAssignment;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\Soal;
@@ -31,11 +31,12 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Tahap 1 — Fondasi Kebijakan: Rumpun Mata Pelajaran.
+ * Tahap 1 — Fondasi Kebijakan: Rumpun Mata Pelajaran (master resmi, 4 rumpun).
  *
- * Mencakup: master rumpun, pemetaan mapel→rumpun, keanggotaan guru dari
- * assignment, koordinator dari tugas tambahan, reviewer koordinator utama,
- * fallback rumpun, guard publish paket, dan masking kunci per sisi.
+ * Mencakup: master rumpun, pemetaan mapel→rumpun (tanpa regex runtime),
+ * keanggotaan guru dari assignment, koordinator per satuan pendidikan via
+ * tugas tambahan, reviewer koordinator utama, fallback rumpun, guard publish,
+ * dan masking kunci per sisi.
  */
 class SubjectGroupPolicyTest extends TestCase
 {
@@ -65,6 +66,8 @@ class SubjectGroupPolicyTest extends TestCase
 
     private User $koordinatorUmum;
 
+    private User $kurikulum;
+
     private User $tu;
 
     protected function setUp(): void
@@ -83,64 +86,59 @@ class SubjectGroupPolicyTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
-    // MASTER RUMPUN & PEMETAAN
+    // MASTER RUMPUN & PEMETAAN (OTORITAS MASTER, BUKAN REGEX)
     // ─────────────────────────────────────────────────────────────
 
-    public function test_master_rumpun_tersedia_dan_resolver_memetakan_mapel(): void
+    public function test_master_rumpun_resmi_empat_dan_pemetaan_dari_master(): void
     {
-        $this->assertSame(5, SubjectGroup::count());
+        $this->assertSame(4, SubjectGroup::count());
         $this->assertSame(
-            ['agama', 'bahasa_arab', 'hadits', 'tahfidz', 'umum'],
+            ['agama', 'bahasa', 'tahfidz', 'umum'],
             SubjectGroup::orderBy('sort_order')->pluck('code')->sort()->values()->all()
         );
 
-        $map = [
-            'Matematika' => 'umum',
-            'Fisika' => 'umum',
-            'Fiqih' => 'agama',
-            'SKI' => 'agama',
-            'Hadits Arbain' => 'hadits',
-            'Tahfidz Al-Quran' => 'tahfidz',
-            'Bahasa Arab' => 'bahasa_arab',
-        ];
+        // Otoritas = subject_group_id (master), bukan pola nama:
+        // mapel bernama "Hadits Fiqih" yang dipetakan admin ke Bahasa
+        // HARUS terbaca sebagai Bahasa.
+        $odd = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'ODD1',
+            'name' => 'Hadits Fiqih',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+        $this->mapSubject($odd, 'bahasa');
 
-        foreach ($map as $name => $expectedCode) {
-            $subject = Subject::create([
-                'school_id' => $this->school->id,
-                'code' => strtoupper(substr($name, 0, 3)).rand(10, 99),
-                'name' => $name,
-                'credit_hours' => 2,
-                'is_active' => true,
-            ]);
+        $resolver = app(SubjectGroupResolver::class);
+        $this->assertSame('bahasa', $resolver->groupForSubject($odd)?->code);
 
-            $this->assertNotNull($subject->subject_group_id, "Mapel {$name} harus otomatis dipetakan.");
-            $this->assertSame(
-                $expectedCode,
-                $subject->subjectGroup->code,
-                "Mapel {$name} harus masuk rumpun {$expectedCode}."
-            );
-        }
-
-        // Prioritas: Tahfidz tidak boleh jatuh ke Agama yang lebih umum.
-        $tahfidz = Subject::where('name', 'Tahfidz Al-Quran')->firstOrFail();
-        $this->assertSame('tahfidz', $tahfidz->subjectGroup->code);
+        // Mapel yang belum dipetakan tidak memiliki rumpun (tanpa fallback regex).
+        $unmapped = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'UNM1',
+            'name' => 'Tahfidz Al-Quran',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+        $this->assertNull($resolver->groupForSubject($unmapped));
     }
 
-    public function test_command_sync_memetakan_ulang_mapel_tanpa_rumpun(): void
+    public function test_command_default_hanya_laporan_dan_apply_suggestions_aksi_admin(): void
     {
         $subject = Subject::create([
             'school_id' => $this->school->id,
-            'code' => 'BIO01',
+            'code' => 'BIO99',
             'name' => 'Biologi',
             'credit_hours' => 2,
             'is_active' => true,
         ]);
 
-        // Simulasikan data lama tanpa rumpun.
-        DB::table('subjects')->where('id', $subject->id)->update(['subject_group_id' => null]);
-
+        // Default: tidak mengubah apa pun.
         $this->artisan('alim:sync-subject-groups')->assertExitCode(0);
+        $this->assertNull($subject->fresh()->subject_group_id);
 
+        // Aksi admin eksplisit: terapkan saran pola.
+        $this->artisan('alim:sync-subject-groups', ['--apply-suggestions' => true])->assertExitCode(0);
         $this->assertSame('umum', $subject->fresh()->subjectGroup->code);
     }
 
@@ -152,31 +150,34 @@ class SubjectGroupPolicyTest extends TestCase
     {
         $resolver = app(SubjectGroupResolver::class);
 
-        // Guru Matematika (Umum) + Hadits → dua rumpun sesuai penugasan,
-        // tidak mendapat akses otomatis ke rumpun lain (mis. Tahfidz).
+        // Guru Matematika (Umum) + Hadits (Agama per kebijakan) → dua rumpun,
+        // tidak otomatis mendapat rumpun lain (mis. Tahfidz/Bahasa).
         $codes = $resolver->groupsForTeacher($this->guruMath)->pluck('code')->sort()->values()->all();
-        $this->assertSame(['hadits', 'umum'], $codes);
+        $this->assertSame(['agama', 'umum'], $codes);
 
-        // Guru Fisika → hanya Umum.
         $this->assertSame(['umum'], $resolver->groupsForTeacher($this->guruFisika)->pluck('code')->all());
 
-        // Provider permission menghasilkan permission rumpun yang benar.
         $permissions = collect(app(SubjectGroupPermissionProvider::class)->provide($this->guruMath->id))
             ->pluck('permission')
             ->all();
 
         $this->assertContains('subject-group.umum.member', $permissions);
-        $this->assertContains('subject-group.hadits.member', $permissions);
+        $this->assertContains('subject-group.agama.member', $permissions);
         $this->assertNotContains('subject-group.tahfidz.member', $permissions);
+        $this->assertNotContains('subject-group.bahasa.member', $permissions);
     }
 
-    public function test_koordinator_rumpun_dari_tugas_tambahan(): void
+    public function test_koordinator_rumpun_ditetapkan_lewat_tugas_tambahan_per_satuan(): void
     {
         $resolver = app(SubjectGroupResolver::class);
         $umum = SubjectGroup::where('code', 'umum')->firstOrFail();
 
-        $this->assertTrue($resolver->isCoordinatorOf($this->koordinatorUmum, $umum));
-        $this->assertFalse($resolver->isCoordinatorOf($this->guruMath, $umum));
+        // Sumber resmi: other_teacher_tasks (school-scoped).
+        $this->assertTrue($resolver->isCoordinatorOf($this->koordinatorUmum, $umum, $this->school->id));
+        $this->assertFalse($resolver->isCoordinatorOf($this->guruMath, $umum, $this->school->id));
+
+        // Satuan pendidikan lain tidak melihat koordinator ini.
+        $this->assertFalse($resolver->isCoordinatorOf($this->koordinatorUmum, $umum, (string) Str::uuid()));
 
         $permissions = collect(app(SubjectGroupPermissionProvider::class)->provide($this->koordinatorUmum->id))
             ->pluck('permission')
@@ -184,21 +185,31 @@ class SubjectGroupPolicyTest extends TestCase
 
         $this->assertContains('subject-group.umum.coordinator', $permissions);
         $this->assertSame([], $resolver->groupsForTeacher($this->koordinatorUmum)->all(), 'Koordinator murni tidak otomatis menjadi member pengampu.');
+
+        // Kompatibilitas legacy: tugas tambahan berbasis SK tetap terbaca.
+        $legacy = $this->makeUser('Koor Legacy', 'koor.legacy@rumpun.test');
+        GtkAdditionalTask::create([
+            'user_id' => $legacy->id,
+            'nama_tugas' => 'Koordinator Guru Hadits',
+            'hours_per_week' => 2,
+        ]);
+        $agama = SubjectGroup::where('code', 'agama')->firstOrFail();
+        $this->assertTrue($resolver->isCoordinatorOf($legacy, $agama, $this->school->id));
     }
 
     // ─────────────────────────────────────────────────────────────
     // REVIEWER SERUMPUN
     // ─────────────────────────────────────────────────────────────
 
-    public function test_koordinator_rumpun_menjadi_reviewer_utama(): void
+    public function test_koordinator_rumpun_satuan_menjadi_reviewer_utama(): void
     {
         $soal = $this->makeSoal($this->bankMath(), $this->guruMath, 'Berapa hasil 12 x 3?');
 
         $reviewers = app(ReviewWorkflowService::class)->resolveSerumpunReviewers($soal, $this->guruMath);
 
         $this->assertNotEmpty($reviewers);
-        $this->assertSame($this->koordinatorUmum->id, $reviewers[0], 'Koordinator rumpun harus menjadi reviewer utama.');
-        $this->assertContains($this->guruMath2->id, $reviewers, 'Guru mapel sama tetap menjadi reviewer.');
+        $this->assertSame($this->koordinatorUmum->id, $reviewers[0], 'Koordinator rumpun satuan pendidikan asal soal harus menjadi reviewer utama.');
+        $this->assertContains($this->guruMath2->id, $reviewers);
         $this->assertNotContains($this->guruFisika->id, $reviewers, 'Guru mapel lain (rumpun sama) tidak dipakai selama ada guru mapel yang sama.');
         $this->assertNotContains($this->guruMath->id, $reviewers, 'Penulis tidak boleh menjadi reviewer.');
     }
@@ -214,7 +225,8 @@ class SubjectGroupPolicyTest extends TestCase
 
         // Tidak ada guru SKI lain → fallback guru rumpun Agama (Fiqih).
         $this->assertContains($this->guruFiqih->id, $reviewers);
-        $this->assertNotContains($this->guruMath->id, $reviewers);
+        // Guru rumpun lain (Umum) tidak ikut fallback Agama.
+        $this->assertNotContains($this->guruFisika->id, $reviewers);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -232,6 +244,39 @@ class SubjectGroupPolicyTest extends TestCase
 
         $this->assertSame(PaketSoal::WORKFLOW_DRAFT, $paket->fresh()->workflow_status);
         $this->assertFalse((bool) $paket->fresh()->is_published);
+    }
+
+    public function test_approval_paket_dilakukan_semua_anggota_rumpun(): void
+    {
+        $paket = $this->makePaket();
+        $workflow = app(ReviewWorkflowService::class);
+
+        // Approver = seluruh anggota rumpun (koordinator lebih dahulu),
+        // bukan rumpun lain dan bukan pengaju.
+        $approvers = $workflow->resolveRumpunApprovers($paket, $this->tu);
+        $this->assertSame($this->koordinatorUmum->id, $approvers[0]);
+        $this->assertCount(4, $approvers);
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/paket-soal/{$paket->id}/submit-approval")
+            ->assertStatus(302)
+            ->assertSessionHas('success');
+
+        $assigned = $paket->fresh()->reviewAssignments()->pluck('reviewer_id')->all();
+
+        sort($assigned);
+        $expected = [$this->koordinatorUmum->id, $this->guruMath->id, $this->guruMath2->id, $this->guruFisika->id];
+        sort($expected);
+
+        $this->assertSame($expected, $assigned, 'Approver paket = semua anggota rumpun Umum.');
+        $this->assertNotContains($this->guruFiqih->id, $assigned, 'Rumpun Agama tidak menjadi approver paket Umum.');
+
+        // Kolektif: semua harus menyetujui sebelum APPROVED.
+        foreach ($paket->fresh()->reviewAssignments()->get() as $assignment) {
+            $workflow->decide($paket, $assignment->id, $assignment->reviewer, \App\Models\ReviewAssignment::STATUS_APPROVED);
+        }
+
+        $this->assertSame(PaketSoal::WORKFLOW_APPROVED, $paket->fresh()->workflow_status);
     }
 
     public function test_paket_approved_dapat_dipublikasikan(): void
@@ -256,31 +301,90 @@ class SubjectGroupPolicyTest extends TestCase
     // MASKING KUNCI PER SISI
     // ─────────────────────────────────────────────────────────────
 
+    public function test_kunci_jawaban_hanya_serumpun_dan_kurikulum(): void
+    {
+        $soal = $this->makeSoal($this->bankMath(), $this->guruMath, 'Soal matematika dengan kunci.', 'approved');
+
+        // Serumpun (Fisika ⊂ rumpun Umum) → kunci terlihat.
+        $this->actingAs($this->guruFisika)
+            ->getJson("/{$this->guruFisika->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.options.0.correct', true);
+
+        // Rumpun lain (Fiqih ⊂ Agama) → pelihat; pertanyaan tetap tampil, kunci disamarkan.
+        $this->actingAs($this->guruFiqih)
+            ->getJson("/{$this->guruFiqih->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', false)
+            ->assertJsonPath('soal.options.0.correct', null)
+            ->assertJsonPath('soal.pembahasan', null);
+
+        // TU → pelihat (bukan serumpun, bukan kurikulum).
+        $this->actingAs($this->tu)
+            ->getJson("/{$this->tu->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', false)
+            ->assertJsonPath('soal.options.0.correct', null);
+
+        // Kurikulum → kunci terlihat.
+        $this->actingAs($this->kurikulum)
+            ->getJson("/{$this->kurikulum->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertOk()
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.options.0.correct', true);
+    }
+
     public function test_compare_masking_kunci_dihitung_per_sisi(): void
     {
-        $soalSaya = $this->makeSoal($this->bankMath(), $this->tu, 'Soal milik TU dengan kunci rahasia.', 'approved');
-        $soalLain = $this->makeSoal($this->makeBank(Subject::where('name', 'Fisika')->firstOrFail()), $this->guruFisika, 'Soal milik guru fisika dengan kunci rahasia.', 'approved');
+        $soalFiqih = $this->makeSoal($this->makeBank($this->fiqihBank()), $this->guruFiqih, 'Soal fiqih dengan kunci rahasia.', 'approved');
+        $soalFisika = $this->makeSoal($this->makeBank(Subject::where('name', 'Fisika')->firstOrFail()), $this->guruFisika, 'Soal fisika dengan kunci rahasia.', 'approved');
 
-        // TU adalah penulis soal pertama (bukan soal kedua).
-        $this->actingAs($this->tu)
-            ->getJson("/{$this->tu->id}/bank-soal-terpusat/{$soalSaya->id}/compare/{$soalLain->id}")
+        // Guru Fiqih (Agama): kunci sisi Fiqih terlihat, sisi Fisika (Umum) disamarkan.
+        $this->actingAs($this->guruFiqih)
+            ->getJson("/{$this->guruFiqih->id}/bank-soal-terpusat/{$soalFiqih->id}/compare/{$soalFisika->id}")
             ->assertOk()
             ->assertJsonPath('soal.options.0.correct', true)
             ->assertJsonPath('compared.options.0.correct', null)
             ->assertJsonPath('compared.pembahasan', null);
 
-        // Pihak ketiga: kedua sisi tertutup.
-        $this->actingAs($this->guruFiqih)
-            ->getJson("/{$this->guruFiqih->id}/bank-soal-terpusat/{$soalSaya->id}/compare/{$soalLain->id}")
+        // Guru Fisika (Umum): kebalikannya.
+        $this->actingAs($this->guruFisika)
+            ->getJson("/{$this->guruFisika->id}/bank-soal-terpusat/{$soalFiqih->id}/compare/{$soalFisika->id}")
+            ->assertOk()
+            ->assertJsonPath('soal.options.0.correct', null)
+            ->assertJsonPath('compared.options.0.correct', true);
+
+        // TU: keduanya pelihat.
+        $this->actingAs($this->tu)
+            ->getJson("/{$this->tu->id}/bank-soal-terpusat/{$soalFiqih->id}/compare/{$soalFisika->id}")
             ->assertOk()
             ->assertJsonPath('solution_visible', false)
             ->assertJsonPath('soal.options.0.correct', null)
             ->assertJsonPath('compared.options.0.correct', null);
+
+        // Kurikulum: keduanya terlihat.
+        $this->actingAs($this->kurikulum)
+            ->getJson("/{$this->kurikulum->id}/bank-soal-terpusat/{$soalFiqih->id}/compare/{$soalFisika->id}")
+            ->assertOk()
+            ->assertJsonPath('soal.options.0.correct', true)
+            ->assertJsonPath('compared.options.0.correct', true);
     }
 
     // ─────────────────────────────────────────────────────────────
     // FIXTURE & HELPERS
     // ─────────────────────────────────────────────────────────────
+
+    private function mapSubject(Subject $subject, string $groupCode): void
+    {
+        $group = SubjectGroup::where('code', $groupCode)->firstOrFail();
+        $subject->forceFill(['subject_group_id' => $group->id])->saveQuietly();
+    }
+
+    private function fiqihBank(): Subject
+    {
+        return Subject::where('name', 'Fiqih')->firstOrFail();
+    }
 
     private function bankMath(): BankSoal
     {
@@ -449,6 +553,13 @@ class SubjectGroupPolicyTest extends TestCase
         $ski = Subject::create(['school_id' => $this->school->id, 'code' => 'SKI', 'name' => 'SKI', 'credit_hours' => 2, 'is_active' => true]);
         $hadits = Subject::create(['school_id' => $this->school->id, 'code' => 'HDS', 'name' => 'Hadits Arbain', 'credit_hours' => 2, 'is_active' => true]);
 
+        // Pemetaan master eksplisit (bukan regex).
+        $this->mapSubject($math, 'umum');
+        $this->mapSubject($fisika, 'umum');
+        $this->mapSubject($fiqih, 'agama');
+        $this->mapSubject($ski, 'agama');
+        $this->mapSubject($hadits, 'agama');
+
         $decreeId = (string) Str::uuid();
         DB::table('institution_decrees')->insert([
             'id' => $decreeId,
@@ -469,7 +580,8 @@ class SubjectGroupPolicyTest extends TestCase
         $this->guruFisika = $this->makeUser('Guru Fisika', 'guru.fisika@rumpun.test');
         $this->guruFiqih = $this->makeUser('Guru Fiqih', 'guru.fiqih@rumpun.test');
         $this->guruSki = $this->makeUser('Guru SKI', 'guru.ski@rumpun.test');
-        $this->koordinatorUmum = $this->makeUser('Koordinator Guru Umum', 'koor.umum@rumpun.test', 'Guru Mapel');
+        $this->koordinatorUmum = $this->makeUser('Koordinator Guru Umum', 'koor.umum@rumpun.test');
+        $this->kurikulum = $this->makeUser('Koor Kurikulum Rumpun', 'koor.kurikulum@rumpun.test', 'Koordinator Kurikulum');
         $this->tu = $this->makeUser('TU Rumpun', 'tu.rumpun@rumpun.test', 'Staf Tata Usaha');
 
         $assign = function (User $teacher, Subject $subject, StudyGroup $group) use ($decreeId) {
@@ -485,7 +597,6 @@ class SubjectGroupPolicyTest extends TestCase
             ]);
         };
 
-        // Multi-penugasan: matematika di dua kelas + hadits; fisika beda guru.
         $assign($this->guruMath, $math, $this->group7a);
         $assign($this->guruMath, $math, $this->group7b);
         $assign($this->guruMath, $hadits, $this->group7a);
@@ -494,15 +605,17 @@ class SubjectGroupPolicyTest extends TestCase
         $assign($this->guruFiqih, $fiqih, $this->group7a);
         $assign($this->guruSki, $ski, $this->group7b);
 
-        // Koordinator rumpun via tugas tambahan resmi.
-        GtkAdditionalTask::create([
-            'user_id' => $this->koordinatorUmum->id,
-            'work_unit_id' => $workUnitId,
-            'nama_tugas' => 'Koordinator Guru Umum',
-            'hours_per_week' => 2,
+        // Koordinator rumpun resmi: tugas tambahan per satuan pendidikan.
+        OtherTeacherTask::create([
+            'teacher_id' => $this->koordinatorUmum->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'task_name' => 'Koordinator Guru Umum',
+            'task_code' => 'umum',
+            'weekly_hours' => 0,
+            'is_active' => true,
         ]);
 
-        // Bank matematika utama (dipakai reviewer test).
         BankSoal::create([
             'school_id' => $this->school->id,
             'subject_id' => $math->id,

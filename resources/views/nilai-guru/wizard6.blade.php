@@ -56,7 +56,7 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('user.schools.guru-mapel.w6.store', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]) }}">
                         @csrf
-                        <div class="row g-3 mb-3">
+                        <div class="row">
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">Hari / Tanggal</label>
                                 <input type="date" name="note_date" class="form-control"

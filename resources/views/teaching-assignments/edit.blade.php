@@ -55,7 +55,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Guru / GTK <span class="text-danger">*</span></label>
-                                <select name="teacher_id" class="form-select" required>
+                                <select name="teacher_id" class="form-select js-search-select" required>
                                     @foreach($teachers as $t)
                                         <option value="{{ $t->id }}" {{ old('teacher_id', $assignment->teacher_id) == $t->id ? 'selected' : '' }}>{{ $t->name }}
                                             ({{ $t->getRoleNames()->first() ?? 'GTK' }})
@@ -91,6 +91,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">Jam Pelajaran / Minggu <span class="text-danger">*</span></label>
                                 <input type="number" name="weekly_hours" class="form-control" value="{{ old('weekly_hours', $assignment->weekly_hours) }}" min="0" max="40" required>
+                                <div class="form-text">Terisi otomatis dari <strong>struktur kurikulum</strong> (JP per minggu) — tetap bisa disesuaikan.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Status</label>
@@ -128,4 +129,34 @@
             </div>
         </div>
     </form>
+
+    @php $sgGrades = $studyGroups->mapWithKeys(fn ($sg) => [$sg->id => $sg->grade_level_id]); @endphp
+    <script>
+    (function () {
+        const GLS_HOURS = @json($glsHours);
+        const SG_GRADE = @json($sgGrades);
+        const subjectSelect = document.querySelector('select[name="subject_id"]');
+        const groupSelect = document.querySelector('select[name="study_group_id"]');
+        const hoursInput = document.querySelector('input[name="weekly_hours"]');
+        if (!subjectSelect || !groupSelect || !hoursInput) return;
+
+        function fillHours() {
+            const grade = SG_GRADE[groupSelect.value];
+            const key = subjectSelect.value + '|' + grade;
+            if (subjectSelect.value && grade && Object.prototype.hasOwnProperty.call(GLS_HOURS, key)) {
+                hoursInput.value = GLS_HOURS[key];
+            }
+        }
+
+        subjectSelect.addEventListener('change', fillHours);
+        groupSelect.addEventListener('change', fillHours);
+    })();
+    </script>
+@push('scripts')
+<script>
+    $(function () {
+        $('.js-search-select').select2({ width: '100%' });
+    });
+</script>
+@endpush
 @endsection

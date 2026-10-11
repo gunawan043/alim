@@ -16,7 +16,7 @@ $ttd = $stats['time_to_hire'] ?? ['average_days'=>0,'median_days'=>0,'min_days'=
 @endComponent
 
 {{-- ── Top Stats Row ── --}}
-<div class="row g-3 mb-3">
+<div class="row">
 <div class="col-md-3 col-sm-6">
         <div class="card border-start border-primary border-0 shadow-sm h-100">
             <div class="card-body py-2 px-3">
@@ -72,7 +72,7 @@ $ttd = $stats['time_to_hire'] ?? ['average_days'=>0,'median_days'=>0,'min_days'=
 </div>
 
 {{-- ── Charts Row ── --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Hiring Funnel --}}
     <div class="col-lg-8">
         <div class="card shadow-sm">

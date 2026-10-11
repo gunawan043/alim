@@ -68,6 +68,17 @@ class StudyGroup extends Model
 
     // ── Accessors ────────────────────────────────────────────────
 
+    /**
+     * Urut alami: tingkat (level) lalu nama rombel (1A, 1B, 2A, …).
+     */
+    public function scopeOrderedByGrade($query)
+    {
+        // Subquery — tanpa join agar tidak menimbulkan kolom ambigu pada paginate/count.
+        return $query
+            ->orderByRaw('(SELECT level FROM grade_levels WHERE grade_levels.id = study_groups.grade_level_id) ASC')
+            ->orderBy('study_groups.name');
+    }
+
     public function getFullNameAttribute(): string
     {
         return $this->gradeLevel

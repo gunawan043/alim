@@ -282,7 +282,16 @@ class BankSoalTerpusatTest extends TestCase
 
         $assignments = ReviewAssignment::where('reviewable_type', PaketSoal::class)
             ->where('reviewable_id', $paket->id)->get();
-        $this->assertCount(2, $assignments);
+
+        // Kebijakan: approval final paket oleh SELURUH anggota rumpun (kolektif),
+        // bukan koordinator/serumpun prioritas. Guru A (pengaju) dikecualikan.
+        $this->assertCount(3, $assignments);
+
+        $reviewerIds = $assignments->pluck('reviewer_id')->all();
+        $this->assertNotContains($this->guruA->id, $reviewerIds, 'Pengaju tidak menjadi approver.');
+        $this->assertContains($this->guruB->id, $reviewerIds);
+        $this->assertContains($this->guruD->id, $reviewerIds);
+        $this->assertContains($this->guruC->id, $reviewerIds, 'Anggota rumpun lain (mapel beda satu rumpun) ikut approval.');
 
         // 3) Semua reviewer setuju → approved
         foreach ($assignments as $assignment) {
@@ -786,19 +795,24 @@ class BankSoalTerpusatTest extends TestCase
             ['label' => 'B', 'teks_opsi' => 'Pengecoh', 'is_correct' => false],
         ]);
 
-        // Guru C: bukan penyusun, bukan reviewer, bukan tim lintas satuan → kunci disembunyikan.
+        // Guru C: guru SERUMPUN (Fisika ⊂ Umum) → kunci terlihat (kebijakan serumpun).
         $this->actingAs($this->guruC);
         $this->getJson("/{$this->guruC->id}/bank-soal-terpusat/{$soalGuruA->id}/compare/{$soalGuruB->id}")
             ->assertOk()
-            ->assertJsonPath('solution_visible', false)
-            ->assertJsonPath('soal.pembahasan', null)
-            ->assertJsonPath('soal.options.0.correct', null)
-            ->assertJsonPath('compared.options.0.correct', null);
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.options.0.correct', true);
 
         $this->getJson("/{$this->guruC->id}/bank-soal-terpusat/{$soalGuruA->id}/detail")
             ->assertOk()
+            ->assertJsonPath('solution_visible', true)
+            ->assertJsonPath('soal.pembahasan', 'Pembahasan rahasia A.');
+
+        // TU: bukan serumpun, bukan kurikulum → pelihat (kunci disamarkan).
+        $this->actingAs($this->tu);
+        $this->getJson("/{$this->tu->id}/bank-soal-terpusat/{$soalGuruA->id}/detail")
+            ->assertOk()
             ->assertJsonPath('solution_visible', false)
-            ->assertJsonPath('soal.pembahasan', null);
+            ->assertJsonPath('soal.options.0.correct', null);
 
         // Penyusun melihat kunci soal sendiri.
         $this->actingAs($this->guruA);
@@ -1014,6 +1028,14 @@ class BankSoalTerpusatTest extends TestCase
         $this->mathA = Subject::create(['school_id' => $this->schoolA->id, 'code' => 'MAT', 'name' => 'Matematika', 'credit_hours' => 5, 'is_active' => true]);
         $this->mathB = Subject::create(['school_id' => $this->schoolB->id, 'code' => 'MAT', 'name' => 'Matematika', 'credit_hours' => 5, 'is_active' => true]);
         $this->fisikaB = Subject::create(['school_id' => $this->schoolB->id, 'code' => 'FIS', 'name' => 'Fisika', 'credit_hours' => 3, 'is_active' => true]);
+
+        // Pemetaan master rumpun eksplisit (kebijakan: otoritas master, bukan regex).
+        $umumGroup = \App\Models\SubjectGroup::where('code', 'umum')->value('id');
+        if ($umumGroup) {
+            foreach ([$this->mathA, $this->mathB, $this->fisikaB] as $subject) {
+                $subject->forceFill(['subject_group_id' => $umumGroup])->saveQuietly();
+            }
+        }
 
         $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
 

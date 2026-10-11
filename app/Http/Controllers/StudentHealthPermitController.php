@@ -216,6 +216,9 @@ class StudentHealthPermitController extends Controller
             'approval_note' => $validated['approval_note'] ?? null,
         ]);
 
+        // Tahap 3: teruskan ke sinkronisasi kehadiran akademik (status: sakit).
+        \App\Events\Boarding\HealthPermitApproved::dispatch($permit->fresh(), $permit->student);
+
         // Fire the integration event so attendance sync, timeline, and
         // broadcasting listeners all fire correctly.
         $student = Student::find($permit->student_id);

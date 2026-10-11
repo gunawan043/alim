@@ -95,7 +95,8 @@ class SumatifHarianService
             }
 
             $isLegacy = in_array($id, self::LEGACY_IDS, true);
-            if (! $isLegacy && ! Str::isUuid($id)) {
+            // Terima UUID maupun ID aman lain (frontend lama memakai "col-...").
+            if (! $isLegacy && ! preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $id)) {
                 continue;
             }
 
@@ -233,8 +234,14 @@ class SumatifHarianService
             $values = $this->valuesFor($row, $columns);
         }
 
+        if (array_key_exists('sts_murni', $input)) {
+            $row->sts_murni = $this->numericOrNull($input['sts_murni']);
+        }
         if (array_key_exists('sts', $input)) {
             $row->sts = $this->numericOrNull($input['sts']);
+        }
+        if (array_key_exists('sas_murni', $input)) {
+            $row->sas_murni = $this->numericOrNull($input['sas_murni']);
         }
         if (array_key_exists('sas', $input)) {
             $row->sas = $this->numericOrNull($input['sas']);

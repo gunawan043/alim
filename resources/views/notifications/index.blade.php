@@ -124,7 +124,7 @@
 
                 {{-- Filter Panel --}}
                 <div class="notif-filter-panel border-top border-bottom py-3 px-4 bg-light d-none" id="notifFilterPanel">
-                    <form method="GET" action="{{ route('user.notifications.index') }}"
+                    <form method="GET" action="{{ route('user.notifications.page', ['userId' => $userId]) }}"
                           class="row g-3 align-items-end">
                         <div class="col-md-2">
                             <label class="form-label small fw-medium">Modul</label>
@@ -171,7 +171,7 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="bx bx-search me-1"></i> Filter
                             </button>
-                            <a href="{{ route('user.notifications.index') }}"
+                            <a href="{{ route('user.notifications.page', ['userId' => $userId]) }}"
                                class="btn btn-sm btn-outline-secondary">
                                 <i class="bx bx-reset"></i> Reset
                             </a>

@@ -67,7 +67,7 @@ class WakaController extends Controller
 
         if ($schoolId) {
             $studentQuery->where('school_id', $schoolId);
-            $gtkQuery->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $gtkQuery->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $totalStudents = (clone $studentQuery)->count();
@@ -192,7 +192,7 @@ class WakaController extends Controller
     {
         $query = User::query();
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $total = (clone $query)
@@ -200,11 +200,14 @@ class WakaController extends Controller
             ->count();
 
         $guru = (clone $query)
-            ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'guru'))
+            ->whereHas('employment', fn ($q) => $q->where(function ($qq) {
+                $qq->where('jenis_gtk', 'like', '%guru%')->orWhere('jenis_gtk', 'like', '%pendidik%');
+            }))
             ->count();
 
         $tendik = (clone $query)
-            ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId)->where('jenis_gtk', 'tendik'))
+            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'not like', '%guru%')
+                ->where('jenis_gtk', 'not like', '%pendidik%'))
             ->count();
 
         return ['total' => $total, 'guru' => $guru, 'tendik' => $tendik];

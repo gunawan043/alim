@@ -29,8 +29,7 @@ class JadwalKbmController extends Controller
         $studyGroups = StudyGroup::with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->orderBy('grade_level_id')
-            ->orderBy('name')
+            ->orderedByGrade()
             ->get();
 
         $jadwals = JadwalKbm::with('studyGroup.gradeLevel', 'teacher')
@@ -64,20 +63,28 @@ class JadwalKbmController extends Controller
         $this->authorizeGenerate($request);
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $activeAy = AcademicYear::where('is_active', true)->first();
 
-        $studyGroups = StudyGroup::with('gradeLevel')
+        $studyGroups = StudyGroup::with('gradeLevel', 'homeroomTeacher')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->orderBy('grade_level_id')
             ->orderBy('name')
             ->get();
 
-        // Ringkasan assignment (SK guru) per rombel — sumber JP yang akan digenerate.
+        // Pilih TA: ikuti pilihan pengguna → TA yang punya penugasan → TA aktif → pertama.
+        $academicYears = AcademicYear::orderByDesc('name')->get();
+        $selectedAy = $this->resolveAy($request, $studyGroups, $academicYears);
+
+        $semester = $request->input('semester', $selectedAy?->semester ?? 'ganjil');
+        if (! in_array($semester, ['ganjil', 'genap'], true)) {
+            $semester = 'ganjil';
+        }
+
+        // Ringkasan penugasan mengajar (SK guru) per rombel — sumber JP yang akan digenerate.
         $assignmentSummary = collect();
-        if ($activeAy && $studyGroups->isNotEmpty()) {
+        if ($selectedAy && $studyGroups->isNotEmpty()) {
             $assignmentSummary = TeachingAssignment::query()
-                ->where('academic_year_id', $activeAy->id)
+                ->where('academic_year_id', $selectedAy->id)
                 ->where('status', 'active')
                 ->whereIn('study_group_id', $studyGroups->pluck('id'))
                 ->selectRaw('study_group_id, COUNT(*) as total_subjects, COALESCE(SUM(weekly_hours), 0) as total_hours')
@@ -89,7 +96,7 @@ class JadwalKbmController extends Controller
         // Tugas mengajar tambahan (data pendukung, bukan sumber JP generator).
         $otherTasks = OtherTeacherTask::with(['teacher:id,name', 'studyGroup:id,name'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
+            ->when($selectedAy, fn ($q) => $q->where('academic_year_id', $selectedAy->id))
             ->where('is_active', true)
             ->orderBy('task_name')
             ->get();
@@ -98,25 +105,71 @@ class JadwalKbmController extends Controller
             ? DB::table('class_schedule_slots')->where('school_id', $schoolId)->where('is_active', 1)->count()
             : 0;
 
+        $readyCount = $assignmentSummary->count();
+
         return view('jadwal-kbm.generate', compact(
             'studyGroups',
-            'activeAy',
+            'academicYears',
+            'selectedAy',
+            'semester',
             'assignmentSummary',
             'otherTasks',
-            'masterSlotCount'
+            'masterSlotCount',
+            'readyCount'
         ));
+    }
+
+    /**
+     * Tentukan Tahun Ajaran untuk halaman generate:
+     * pilihan pengguna → TA dengan penugasan terbanyak → TA aktif → pertama.
+     */
+    private function resolveAy(Request $request, $studyGroups, $academicYears): ?AcademicYear
+    {
+        if ($request->filled('academic_year_id')) {
+            $found = $academicYears->firstWhere('id', $request->academic_year_id);
+            if ($found) {
+                return $found;
+            }
+        }
+
+        if ($studyGroups->isNotEmpty()) {
+            $withAssignments = TeachingAssignment::query()
+                ->where('status', 'active')
+                ->whereIn('study_group_id', $studyGroups->pluck('id'))
+                ->selectRaw('academic_year_id, COUNT(*) as total')
+                ->groupBy('academic_year_id')
+                ->orderByDesc('total')
+                ->pluck('academic_year_id');
+
+            if ($withAssignments->isNotEmpty()) {
+                $found = $academicYears->firstWhere('id', $withAssignments->first());
+                if ($found) {
+                    return $found;
+                }
+            }
+        }
+
+        return $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
     }
 
     public function generate(JadwalKbmGenerateRequest $request, string $userId, JadwalGeneratorService $generator)
     {
         $data = $request->validated();
 
-        $results = $generator->generateBulk(
-            $data['study_group_ids'],
-            $data['academic_year_id'],
-            $data['semester'],
-            (bool) ($data['overwrite'] ?? false)
-        );
+        try {
+            $results = $generator->generateBulk(
+                $data['study_group_ids'],
+                $data['academic_year_id'],
+                $data['semester'],
+                (bool) ($data['overwrite'] ?? false)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Generate jadwal gagal: '.$e->getMessage(), [
+                'study_group_ids' => $data['study_group_ids'],
+            ]);
+
+            return back()->with('error', 'Generate jadwal gagal: '.$e->getMessage());
+        }
 
         $report = $this->buildReport($results);
 
@@ -144,13 +197,18 @@ class JadwalKbmController extends Controller
         $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
-        $activeAy = AcademicYear::where('is_active', true)->first();
-        abort_unless($activeAy, 422, 'Tahun ajaran aktif tidak ditemukan.');
+        $activeGroups = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->get();
 
-        $semester = $request->input('semester', $activeAy->semester ?? 'ganjil');
+        $academicYears = AcademicYear::orderByDesc('name')->get();
+        $selectedAy = $this->resolveAy($request, $activeGroups, $academicYears);
+        abort_unless($selectedAy, 422, 'Tahun ajaran tidak ditemukan.');
+
+        $semester = $request->input('semester', $selectedAy->semester ?? 'ganjil');
         $overwrite = $request->boolean('overwrite', true);
 
-        $result = $generator->generateForStudyGroup($studyGroup->id, $activeAy->id, $semester, $overwrite);
+        $result = $generator->generateForStudyGroup($studyGroup->id, $selectedAy->id, $semester, $overwrite);
         $report = $this->buildReport(collect([$result]));
 
         $redirect = redirect()
@@ -170,11 +228,23 @@ class JadwalKbmController extends Controller
         $this->authorizeView($request);
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $activeAy = AcademicYear::where('is_active', true)->first();
+        $academicYears = AcademicYear::orderByDesc('name')->get();
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
+
+        // TA: yang punya jadwal untuk rombel ini → yang punya penugasan → TA aktif.
+        $ayWithJadwal = JadwalKbm::where('study_group_id', $studyGroupId)
+            ->selectRaw('academic_year_id, COUNT(*) as total')
+            ->groupBy('academic_year_id')
+            ->orderByDesc('total')
+            ->pluck('academic_year_id')
+            ->first();
+
+        $activeAy = $ayWithJadwal
+            ? ($academicYears->firstWhere('id', $ayWithJadwal) ?? AcademicYear::find($ayWithJadwal))
+            : $this->resolveAy($request, collect([$studyGroup]), $academicYears);
 
         $jadwals = JadwalKbm::with(['teacher', 'subject'])
             ->where('study_group_id', $studyGroupId)
@@ -184,9 +254,21 @@ class JadwalKbmController extends Controller
             ->get()
             ->groupBy('day_of_week');
 
+        // Master slot sekolah (dipakai untuk baris istirahat/kegiatan + waktu).
+        $masterSlots = collect();
+        if ($schoolId) {
+            $masterSlots = DB::table('class_schedule_slots')
+                ->where('school_id', $schoolId)
+                ->where('is_active', 1)
+                ->orderBy('day_of_week')
+                ->orderBy('slot_number')
+                ->get(['day_of_week', 'slot_number', 'label', 'time_start', 'time_end', 'is_break'])
+                ->groupBy('day_of_week');
+        }
+
         $days = $this->days();
 
-        return view('jadwal-kbm.show', compact('studyGroup', 'jadwals', 'days', 'activeAy'));
+        return view('jadwal-kbm.show', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'masterSlots'));
     }
 
     public function edit(Request $request, string $userId, string $studyGroupId)

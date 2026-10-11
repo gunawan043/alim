@@ -18,14 +18,14 @@
     @slot('title') Bendahara Sekolah @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Saldo Kas" :value="$saldoKas" icon="ri-wallet-3-line" color="primary" />
     <x-dashboards.stat-card label="Pengeluaran Hari Ini" :value="$pengeluaranHariIni" icon="ri-arrow-down-double-line" color="danger" />
     <x-dashboards.stat-card label="Pemasukan Hari Ini" :value="$pemasukanHariIni" icon="ri-arrow-up-double-line" color="success" />
     <x-dashboards.stat-card label="Tagihan Pending" :value="$tagihanPending" icon="ri-file-list-3-line" color="warning" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- ARUS KAS --}}
     <div class="col-xl-8">
         <div class="card h-100">

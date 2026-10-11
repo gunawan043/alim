@@ -50,12 +50,18 @@ class ProtaController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
+            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+                // Guru: hanya PROTA mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->orderBy('subject_id')
             ->get();
 
-        // Sumber ATP yang bisa dijadikan PROTA (mapel yang diampu atau semua untuk tim kurikulum).
+        // Sumber ATP yang bisa dijadikan PROTA (mapel yang diampu atau semua untuk editor kurikulum).
         $isKurikulumTeam = $this->access->isKurikulumTeam($user);
+        $isKurikulumEditor = $this->access->isKurikulumEditor($user);
 
         $atpQuery = AlurTujuanPembelajaran::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase'])
@@ -64,7 +70,7 @@ class ProtaController extends Controller
             ->byAcademicYear($academicYearId)
             ->bySemester($semester);
 
-        if (! $isKurikulumTeam) {
+        if (! $isKurikulumEditor) {
             $taught = $this->taughtSubjectIds($user, $academicYearId, $schoolId);
             $atpQuery->whereIn('subject_id', $taught ?: ['-']);
         }
@@ -305,8 +311,7 @@ class ProtaController extends Controller
         }
 
         $user = $request->user();
-        $allowed = $this->access->isKurikulumTeam($user)
-            || $this->access->teachesSubject($user, $prota->subject_id, $prota->academic_year_id, $schoolId)
+        $allowed = $this->access->canViewSubjectDocs($user, $prota->subject_id, $schoolId, $prota->academic_year_id)
             || $prota->created_by === $user->id
             || $prota->teacher_id === $user->id;
 
@@ -322,7 +327,7 @@ class ProtaController extends Controller
         $user = $request->user();
         $isOwner = $prota->created_by === $user->id || $prota->teacher_id === $user->id;
 
-        if (! $isOwner && ! $this->access->isKurikulumTeam($user)) {
+        if (! $isOwner && ! $this->access->isKurikulumEditor($user)) {
             abort(403, 'Hanya penyusun PROTA atau tim kurikulum yang dapat mengubahnya.');
         }
     }

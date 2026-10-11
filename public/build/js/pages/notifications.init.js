@@ -42,7 +42,7 @@
     function playSound(type) {
         if (notifSound.src && notifSound.readyState >= 2) {
             notifSound.currentTime = 0;
-            notifSound.volume = 0.4;
+            notifSound.volume = 1.0;
             notifSound.play().catch(() => {});
             return;
         }
@@ -57,6 +57,42 @@
     }
 
     loadSound('/sounds/notification.mp3');
+
+    // Buka izin autoplay browser pada interaksi pertama pengguna
+    function unlockAudio() {
+        try {
+            notifSound.muted = true;
+            notifSound.play().then(function () {
+                notifSound.pause();
+                notifSound.currentTime = 0;
+                notifSound.muted = false;
+            }).catch(function () { notifSound.muted = false; });
+        } catch (e) { notifSound.muted = false; }
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+    }
+    document.addEventListener('click', unlockAudio, { once: true });
+
+    // Izin notifikasi desktop (sekali, saat interaksi pertama).
+    function requestDesktopPermission() {
+        try {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        } catch (e) {}
+        document.removeEventListener('click', requestDesktopPermission);
+    }
+    document.addEventListener('click', requestDesktopPermission, { once: true });
+
+    function showDesktopNotification(title, body) {
+        try {
+            if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+                new Notification(title || 'Notifikasi ALIM', { body: body || '' });
+            }
+        } catch (e) {}
+    }
+    document.addEventListener('keydown', unlockAudio, { once: true });
+
 
     // ── Toast notification ─────────────────────────────────────
     function showToast({ title, message, type = 'info', action_url }) {
@@ -230,6 +266,8 @@
     }
 
     // ── Load notifications ──────────────────────────────────────
+    let lastUnreadCount = null;
+
     function loadNotifications() {
         fetchJSON(getApiUrl('notifications'))
             .then(res => {
@@ -238,7 +276,27 @@
                 const all    = res.data?.data || [];
                 const unread = res.unread_count || 0;
 
+                // Notifikasi baru terdeteksi saat polling → bunyi + toast.
+                if (lastUnreadCount !== null && unread > lastUnreadCount && all.length) {
+                    const newest = all[0];
+                    playSound(newest.type || 'info');
+                    showDesktopNotification(newest.title || 'Notifikasi baru', newest.message || '');
+                    showToast({
+                        title: newest.title || 'Notifikasi baru',
+                        message: newest.message || '',
+                        type: newest.type || 'info',
+                        action_url: newest.action_url,
+                    });
+                }
+                lastUnreadCount = unread;
+
                 updateBadges(unread);
+
+                // Hindari render ulang bila tidak ada perubahan (tanpa kedip).
+                const hash = JSON.stringify(all.map(n => [n.id, n.is_read])) + '|' + unread;
+                if (hash === lastPayloadHash) { return; }
+                lastPayloadHash = hash;
+
                 renderList(allList, all.slice(0, 15));
 
                 const unreadItems = all.filter(n => !n.is_read).slice(0, 15);
@@ -336,7 +394,7 @@
 
     // ── "View all" links ────────────────────────────────────────
     document.querySelectorAll('.notif-all-link').forEach(link => {
-        link.setAttribute('href', '/notifications');
+        link.setAttribute('href', '/' + (window.userId || '') + '/notifications/page');
     });
 
     // ── Tab badge update ─────────────────────────────────────────
@@ -424,6 +482,26 @@
         notifDropdown.addEventListener('shown.bs.dropdown', loadNotifications);
     }
 
-    setInterval(loadNotifications, 30000);
+        // ── Polling adaptif (mirip WA Web: cepat saat tab aktif) ────────
+    let pollTimer = null;
+    let lastPayloadHash = null;
+
+    function scheduleNextPoll() {
+        clearTimeout(pollTimer);
+        const delay = document.hidden ? 30000 : 5000; // 5 dtk saat aktif, 30 dtk saat sembunyi
+        pollTimer = setTimeout(function () {
+            loadNotifications();
+            scheduleNextPoll();
+        }, delay);
+    }
+
+    // Muat ulang segera saat tab kembali terlihat / jendela fokus.
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { loadNotifications(); scheduleNextPoll(); }
+    });
+    window.addEventListener('focus', function () { loadNotifications(); });
+    window.addEventListener('online', function () { loadNotifications(); });
+
+    scheduleNextPoll();
 
 })();

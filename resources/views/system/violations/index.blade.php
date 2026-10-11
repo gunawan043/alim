@@ -15,7 +15,7 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-100 border-start border-dark">
                 <div class="card-body py-3">

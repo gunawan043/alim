@@ -42,6 +42,11 @@ class TujuanPembelajaranController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
+            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
+                // Guru: hanya TP mapel yang diampu / serumpun.
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+                $q->whereIn('subject_id', $viewable ?: ['-']);
+            })
             ->when($subjectId, fn ($q) => $q->where('subject_id', $subjectId))
             ->when($request->filled('grade_level_id'), fn ($q) => $q->where('grade_level_id', $request->grade_level_id))
             ->when($request->filled('fase'), fn ($q) => $q->where('fase', $request->fase))
@@ -54,6 +59,10 @@ class TujuanPembelajaranController extends Controller
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
+            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
+                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+                $q->whereIn('id', $viewable ?: ['-']);
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
@@ -86,7 +95,7 @@ class TujuanPembelajaranController extends Controller
             'deskripsi' => \Illuminate\Support\Str::limit($cp->deskripsi, 70),
         ])->values();
 
-        $isKurikulumTeam = $this->access->isKurikulumTeam($request->user());
+        $isKurikulumEditor = $this->access->isKurikulumEditor($request->user());
         $taughtSubjectIds = TeachingAssignment::query()
             ->where('teacher_id', $request->user()->id)
             ->where('academic_year_id', $academicYearId)
@@ -96,6 +105,19 @@ class TujuanPembelajaranController extends Controller
             ->unique()
             ->values()
             ->all();
+
+        // Pemegang izin edit (permintaan disetujui) juga dianggap mampu mengelola.
+        $grantedSubjectIds = \App\Models\KurikulumEditGrant::query()
+            ->where('requested_by', $request->user()->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('status', \App\Models\KurikulumEditGrant::STATUS_APPROVED)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->pluck('subject_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $taughtSubjectIds = array_values(array_unique(array_merge($taughtSubjectIds, $grantedSubjectIds)));
 
         $tpUpdateUrlTemplate = route('user.kurikulum.tp.update', ['userId' => $userId, 'id' => '__ID__']);
 
@@ -111,7 +133,7 @@ class TujuanPembelajaranController extends Controller
             'cpOptions',
             'cpOptionsJson',
             'usedTpIds',
-            'isKurikulumTeam',
+            'isKurikulumEditor',
             'taughtSubjectIds',
             'tpUpdateUrlTemplate'
         ));

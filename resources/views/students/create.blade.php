@@ -194,6 +194,14 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label">Status Boarding</label>
+                                <select name="boarding_status" class="form-select">
+                                    <option value="">— belum ditentukan —</option>
+                                    <option value="boarding" {{ old('boarding_status', $student->boarding_status ?? '') === 'boarding' ? 'selected' : '' }}>Boarding (Mukim/Asrama)</option>
+                                    <option value="non_boarding" {{ old('boarding_status', $student->boarding_status ?? '') === 'non_boarding' ? 'selected' : '' }}>Non-Boarding (Pulang)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Transportasi</label>
                                 <select name="transportation" class="form-control">
                                     <option value="jalan_kaki" {{ old('transportation','jalan_kaki') === 'jalan_kaki' ? 'selected' : '' }}>Jalan Kaki</option>

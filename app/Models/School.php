@@ -38,6 +38,7 @@ class School extends Model
         'website',
         'school_level',
         'school_status',
+        'boarding_type',
         'accreditation',
         'accreditation_year',
         'principal_name',
@@ -67,6 +68,14 @@ class School extends Model
         'bank_an',
         'npwp',
     ];
+
+    /**
+     * Satuan pendidikan mendukung modul asrama? (boarding/both)
+     */
+    public function supportsBoarding(): bool
+    {
+        return $this->boarding_type !== 'non_boarding';
+    }
 
     protected $casts = [
         'established_date' => 'date',

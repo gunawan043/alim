@@ -29,7 +29,7 @@ $userId = request()->route('userId') ?? auth()->id();
     ],
 ])
 
-<div class="row g-3 mb-3">
+<div class="row">
     @php
         $byJenis = $items->groupBy('jenis');
     @endphp

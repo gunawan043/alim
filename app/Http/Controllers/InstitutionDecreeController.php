@@ -81,9 +81,11 @@ class InstitutionDecreeController extends Controller
         $studyGroups = collect();
 
         if ($selectedSchoolId) {
-            $teacherIds = usersHavingPermission('general_teacher.readable');
-            $teachers = User::whereIn('id', $teacherIds)
-                ->whereHas('employments', fn ($q) => $q->where('school_id', $selectedSchoolId))
+            // Guru: GTK yang tertaut ke sekolah (work unit/kepegawaian); jangan bergantung izin khusus.
+            $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
+            $teachers = User::query()
+                ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
+                ->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($selectedSchoolId))
                 ->orderBy('name')->get();
 
             $subjects = Subject::where('is_active', true)
@@ -203,16 +205,100 @@ class InstitutionDecreeController extends Controller
         }
     }
 
+    /**
+     * Data matriks pembagian tugas (dipakai halaman detail & cetak SK).
+     */
+    private function buildDecreeMatrixData(InstitutionDecree $decree): array
+    {
+        $teacherIds = app(\App\Services\TeacherRosterService::class)->idsForSchool($decree->school_id);
+
+        $teachers = User::whereIn('id', $teacherIds)
+            ->whereHas('employments', fn ($q) => $q->where('school_id', $decree->school_id))
+            ->orderBy('name')
+            ->get();
+
+        $subjects = Subject::query()
+            ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
+            ->orderBy('name')
+            ->get();
+
+        $studyGroups = collect();
+        if ($decree->school_id && $decree->academic_year_id) {
+            $studyGroups = StudyGroup::with('gradeLevel')
+                ->where('school_id', $decree->school_id)
+                ->where('academic_year_id', $decree->academic_year_id)
+                ->where('is_active', true)
+                ->get()
+                ->sortBy(fn ($sg) => [$sg->gradeLevel->level ?? 0, $sg->name])
+                ->values();
+        }
+
+        $activeAssignments = $decree->teachingAssignments->where('status', 'active');
+
+        $matrix = [];
+        foreach ($activeAssignments as $assignment) {
+            $matrix[$assignment->teacher_id][$assignment->subject_id][$assignment->study_group_id] = $assignment->weekly_hours;
+        }
+
+        $sortedGrades = $studyGroups->groupBy(fn ($sg) => $sg->gradeLevel->level ?? 0)->sortKeys();
+
+        $otherTeacherTasks = OtherTeacherTask::query()
+            ->where('academic_year_id', $decree->academic_year_id)
+            ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
+            ->get()
+            ->groupBy('teacher_id');
+
+        $teacherRows = [];
+        foreach ($teachers as $teacher) {
+            $tAssignments = $activeAssignments->where('teacher_id', $teacher->id);
+            if ($tAssignments->isEmpty()) {
+                continue;
+            }
+
+            $taskHours = (float) $otherTeacherTasks->get($teacher->id, collect())->sum('weekly_hours');
+
+            $bySubject = $tAssignments->groupBy('subject_id');
+            $firstSubjectId = $bySubject->keys()->first();
+
+            foreach ($bySubject as $subjectId => $subjectAssignments) {
+                $rowHours = [];
+                $totalHours = 0;
+                foreach ($studyGroups as $sg) {
+                    $hours = $matrix[$teacher->id][$subjectId][$sg->id] ?? null;
+                    $rowHours[$sg->id] = $hours;
+                    if ($hours) {
+                        $totalHours += $hours;
+                    }
+                }
+
+                $teacherRows[] = [
+                    'teacher' => $teacher,
+                    'subject' => $subjects->get($subjectId),
+                    'hours' => $rowHours,
+                    'total' => $totalHours,
+                    'teachingHours' => $totalHours,
+                    'totalHours' => $totalHours + (int) $taskHours,
+                    'is_first_subject' => $subjectId === $firstSubjectId,
+                ];
+            }
+        }
+
+        return compact('teachers', 'subjects', 'studyGroups', 'sortedGrades', 'teacherRows', 'matrix', 'otherTeacherTasks');
+    }
+
     public function show(Request $request, string $userId, string $id)
     {
         try {
-            $decree = InstitutionDecree::with('academicYear', 'school', 'signer')->findOrFail($id);
+            $decree = InstitutionDecree::with(['academicYear', 'school', 'signer', 'teachingAssignments'])->findOrFail($id);
 
             if ($request->wantsJson()) {
                 return response()->json(['data' => $decree]);
             }
 
-            return view('institution-decrees.show', compact('decree', 'userId'));
+            return view('institution-decrees.show', array_merge(
+                ['decree' => $decree, 'userId' => $userId],
+                $this->buildDecreeMatrixData($decree)
+            ));
         } catch (\Throwable $e) {
             Log::error('InstitutionDecree show failed', [
                 'decree_id' => $id,
@@ -226,9 +312,12 @@ class InstitutionDecreeController extends Controller
     public function print(Request $request, string $userId, string $id)
     {
         try {
-            $decree = InstitutionDecree::with('academicYear', 'school', 'signer')->findOrFail($id);
+            $decree = InstitutionDecree::with(['academicYear', 'school', 'signer', 'teachingAssignments'])->findOrFail($id);
 
-            return view('institution-decrees.print', compact('decree', 'userId'));
+            return view('institution-decrees.print', array_merge(
+                ['decree' => $decree, 'userId' => $userId],
+                $this->buildDecreeMatrixData($decree)
+            ));
         } catch (\Throwable $e) {
             Log::error('InstitutionDecree print failed', [
                 'decree_id' => $id,

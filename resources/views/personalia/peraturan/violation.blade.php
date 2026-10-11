@@ -27,7 +27,7 @@
     ],
 ])
 
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-md-3">
         <div class="card stat-card border-start border-4 border-secondary">
             <div class="card-body">

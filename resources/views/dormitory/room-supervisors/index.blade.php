@@ -34,7 +34,7 @@
     {{-- Stats --}}
     <div class="row g-3 mb-4">
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -49,7 +49,7 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -64,7 +64,7 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-sm flex-shrink-0">

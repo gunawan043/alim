@@ -41,6 +41,41 @@ class NotificationUniversalController extends Controller
             $query->whereDate('created_at', '<=', $request->to_date);
         }
 
+        // ── Topbar (AJAX): notifikasi MILIK pengguna aktif + scope satuan kerja ──
+        if ($request->wantsJson() || $request->ajax()) {
+            $workUnitId = $this->userWorkUnitId();
+
+            $scoped = \App\Models\NotificationUniversal::query()
+                ->where('user_id', auth()->id())
+                ->when($workUnitId, fn ($q) => $q->where(fn ($qq) => $qq->whereNull('work_unit_id')->orWhere('work_unit_id', $workUnitId)))
+                ->where('is_archived', false)
+                ->notExpired()
+                ->orderByDesc('created_at')
+                ->limit(30)
+                ->get();
+
+            $items = $scoped->map(fn ($n) => [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'module' => $n->module,
+                    'type' => $n->type,
+                    'priority' => $n->priority,
+                    'is_read' => (bool) $n->is_read,
+                    'is_deleted' => (bool) $n->is_archived,
+                    'action_url' => $n->action_url,
+                    'action_text' => $n->action_text,
+                    'created_at' => optional($n->created_at)->toIso8601String(),
+                ])->values();
+
+            return response()->json([
+                'success' => true,
+                'notifications' => $items,
+                'data' => ['data' => $items],
+                'unread_count' => $scoped->where('is_read', false)->count(),
+            ]);
+        }
+
         $notifications = $query->orderBy('created_at', 'desc')->paginate(20);
         $users = User::orderBy('name')->get();
         $modules = NotificationUniversal::distinct()->whereNotNull('module')->pluck('module');
@@ -101,23 +136,36 @@ class NotificationUniversalController extends Controller
 
     public function markAsRead(string $id)
     {
-        $notification = NotificationUniversal::findOrFail($id);
-        $notification->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
+        // Hanya pemilik notifikasi yang dapat menandai dibaca.
+        $notification = NotificationUniversal::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        if (! $notification->is_read) {
+            $notification->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+        }
 
         return response()->json(['success' => true]);
     }
 
     public function markAllRead()
     {
-        NotificationUniversal::where('is_read', false)->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
+        // PER AKUN: hanya notifikasi milik pengguna aktif yang ditandai.
+        $updated = app(\App\Services\NotificationUniversalService::class)
+            ->markAllAsRead(auth()->id());
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'updated' => $updated]);
+    }
+
+    public function unreadCount()
+    {
+        $count = app(\App\Services\NotificationUniversalService::class)
+            ->getUnreadCount(auth()->id(), $this->userWorkUnitId());
+
+        return response()->json(['success' => true, 'count' => $count, 'unread_count' => $count]);
     }
 
     public function destroy(Request $request, string $id)
@@ -128,5 +176,16 @@ class NotificationUniversalController extends Controller
 
         return redirect()->route('user.sa.notifications.index', ['userId' => $userId])
             ->with('success', 'Notifikasi berhasil dihapus.');
+    }
+
+    /**
+     * Satuan kerja pengguna aktif (scope notifikasi).
+     */
+    private function userWorkUnitId(): ?string
+    {
+        $user = auth()->user();
+
+        return $user?->gtkWorkUnits()?->where('is_primary', true)->value('work_unit_id')
+            ?? $user?->gtkWorkUnits()?->value('work_unit_id');
     }
 }

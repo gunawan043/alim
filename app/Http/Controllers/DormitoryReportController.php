@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Maatwebsite\Excel\Facades\Excel;
+
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryAttendance;
 use App\Models\DormitoryInventory;
+use App\Exports\DormitoryPermitsExport;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryReward;
@@ -154,6 +157,39 @@ class DormitoryReportController extends Controller
 
             fclose($fp);
         });
+    }
+
+    /**
+     * Laporan perizinan — Excel rapi & terstruktur (bulk per periode).
+     */
+    public function permitsExcel(Request $request, string $userId, string $asramaUuid)
+    {
+        $this->validate($request, [
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2020',
+            'permit_type' => 'nullable|string|max:50',
+            'status' => 'nullable|string|max:50',
+            'student_id' => 'nullable|string|max:50',
+        ]);
+
+        $dormitory = $this->enforceScope($asramaUuid);
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+
+        $records = DormitoryPermit::with(['student:id,name,nisn', 'room:id,code,name'])
+            ->where('dormitory_id', $asramaUuid)
+            ->when($request->filled('permit_type'), fn ($q) => $q->where('permit_type', $request->permit_type))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('student_id'), fn ($q) => $q->where('student_id', $request->student_id))
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->orderBy('created_at')
+            ->get();
+
+        return Excel::download(
+            new DormitoryPermitsExport($records, $dormitory, $month, $year),
+            'laporan_perizinan_'.$dormitory->code.'_'.$month.'_'.$year.'.xlsx'
+        );
     }
 
     // ── Laporan Pelanggaran (CSV) ─────────────────────────────────

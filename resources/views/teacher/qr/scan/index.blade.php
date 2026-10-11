@@ -99,7 +99,7 @@
 @endif
 
 {{-- Statistik ringkas --}}
-<div class="row g-3 mb-3">
+<div class="row">
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">

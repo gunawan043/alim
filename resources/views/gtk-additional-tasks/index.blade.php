@@ -35,7 +35,7 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-4">
-                            <select name="teacher_id" class="form-control">
+                            <select name="teacher_id" class="form-control js-select2">
                                 <option value="">Semua Guru</option>
                                 @foreach($teachers as $t)
                                     <option value="{{ $t->id }}" {{ request('teacher_id') == $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
@@ -121,4 +121,9 @@
             </div>
         </div>
     </div>
+@push('scripts')
+<script>
+    $(function () { $('.js-select2').select2({ width: '100%' }); });
+</script>
+@endpush
 @endsection

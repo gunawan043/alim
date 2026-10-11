@@ -229,7 +229,7 @@
     @endphp
 
     {{-- ====== ROW 1: HERO + KPI GRID ====== --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-8">
             <div class="ats-hero h-100 d-flex flex-column justify-content-between">
                 <div>
@@ -315,7 +315,7 @@
     </div>
 
     {{-- ====== ROW 2: 4 KPI SMALL CARDS ====== --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-md-6 col-xl-3">
             <div class="card kpi-card" style="--bar: #405189; --pct: 100%;">
                 <div class="card-body">
@@ -413,7 +413,7 @@
     </div>
 
     {{-- ====== ROW 3: TREND CHART + STATUS DISTRIBUTION + HIRING FUNNEL ====== --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         {{-- TREND --}}
         <div class="col-xl-7">
             <div class="card mini-card h-100">
@@ -508,7 +508,7 @@
     </div>
 
     {{-- ====== ROW 4: STATUS DISTRIBUTION + TOP JOBS ====== --}}
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-4">
             <div class="card mini-card h-100">
                 <div class="card-body">

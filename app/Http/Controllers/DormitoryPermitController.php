@@ -125,6 +125,13 @@ class DormitoryPermitController extends Controller
             }
         }
 
+        // Kuota kunjungan keluarga per santri (kebijakan boarding) — panel jatah.
+        $visitQuotaInfo = null;
+        if ($request->filled('quota_student')) {
+            $visitQuotaInfo = app(\App\Services\Boarding\VisitWorkflowService::class)
+                ->inspectQuotaForVisit($request->quota_student, $asramaUuid);
+        }
+
         // Ringkasan policy per permit type (untuk badge di header index)
         $policies = DormitoryLeavePolicy::where('dormitory_id', $asramaUuid)
             ->get()
@@ -132,7 +139,7 @@ class DormitoryPermitController extends Controller
 
         return view('dormitory.permits.index', compact(
             'dormitory', 'permits', 'userId', 'stats', 'activeYear',
-            'residents', 'quotaInfo', 'policies'
+            'residents', 'quotaInfo', 'policies', 'visitQuotaInfo'
         ));
     }
 
@@ -292,11 +299,74 @@ class DormitoryPermitController extends Controller
             note: $data['approval_note'] ?? null,
         );
 
+        // Tahap 3: izin pulang mengisi kehadiran harian/mapel otomatis (status: izin).
+        $approvedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+        if ($approvedPermit && $approvedPermit->student) {
+            \App\Events\Boarding\LeaveApproved::dispatch($approvedPermit, $approvedPermit->student, $data['approval_note'] ?? null);
+        }
+
+        // Notifikasi IN-APP petugas asrama: izin disetujui.
+        try {
+            if ($approvedPermit && $approvedPermit->student) {
+                app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
+                    'module' => 'dormitory',
+                    'reference_type' => 'dormitory_permit',
+                    'reference_id' => $approvedPermit->id,
+                    'type' => 'success',
+                    'action' => 'permit_approved',
+                    'title' => 'Izin disetujui: '.$approvedPermit->student->name,
+                    'message' => 'Izin '.($approvedPermit->permit_type ?? '-').' disetujui. Berangkat '
+                        .($approvedPermit->departure_datetime?->format('d/m/Y H:i') ?? '-').'.',
+                    'priority' => 'medium',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif asrama approve gagal: '.$e->getMessage());
+        }
+
+        // Notifikasi WA wali: izin disetujui (mode terpusat/wali).
+        try {
+            if ($approvedPermit && $approvedPermit->student) {
+                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPermitApproved($approvedPermit);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif approve gagal: '.$e->getMessage());
+        }
+
         return back()->with('success', 'Izin berhasil disetujui dan notifikasi ke wali telah dikirim.');
     }
 
     public function reject(RejectPermitRequest $request, string $userId, string $asramaUuid, string $permitUuid)
     {
+        // Notifikasi IN-APP petugas asrama: izin ditolak.
+        try {
+            $rejectedPermitForStaff = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+            if ($rejectedPermitForStaff && $rejectedPermitForStaff->student) {
+                app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
+                    'module' => 'dormitory',
+                    'reference_type' => 'dormitory_permit',
+                    'reference_id' => $rejectedPermitForStaff->id,
+                    'type' => 'warning',
+                    'action' => 'permit_rejected',
+                    'title' => 'Izin ditolak: '.$rejectedPermitForStaff->student->name,
+                    'message' => 'Pengajuan izin '.($rejectedPermitForStaff->permit_type ?? '-').' tidak disetujui.',
+                    'priority' => 'medium',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif asrama reject gagal: '.$e->getMessage());
+        }
+
+        // Notifikasi WA wali: izin belum disetujui.
+        try {
+            $rejectedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+            if ($rejectedPermit && $rejectedPermit->student) {
+                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPermitRejected($rejectedPermit, $request->input('approval_note') ?? $request->input('note'));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif reject gagal: '.$e->getMessage());
+        }
+
         $data = $request->validated();
 
         $this->leave->reject(
@@ -359,6 +429,12 @@ class DormitoryPermitController extends Controller
             dormitoryId: $asramaUuid,
             actualReturnDatetime: $data['actual_return_datetime'],
         );
+
+        // Tahap 3: kepulangan asrama → kehadiran kembali "hadir".
+        $returnedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+        if ($returnedPermit && $returnedPermit->student) {
+            \App\Events\Boarding\LeaveReturned::dispatch($returnedPermit, $returnedPermit->student, null);
+        }
 
         // Catat bahwa permit selesai (bukan overdue)
         return back()->with('success', 'Kedatangan santri berhasil dicatat.');
@@ -666,8 +742,8 @@ class DormitoryPermitController extends Controller
 
             $user = $request->user();
 
-            // --- First scan: catat penjemputan (status approved/overdue, belum pernah dipindai) ---
-            if (($permit->status === 'approved' || $permit->status === 'overdue') && is_null($permit->pickup_scanned_at)) {
+            // --- Fase 1: scan keluar — approved/overdue → picked_up -----------
+            if (($permit->status === 'approved' || $permit->status === 'overdue') && is_null($permit->pickup_scanned_at) && $permit->canTransitionTo('picked_up')) {
                 $pickerName = $permit->companion_name ?? '';
                 $pickerRelation = $permit->companion_relation ?? '';
 
@@ -675,8 +751,10 @@ class DormitoryPermitController extends Controller
                 $permit->pickup_scanned_at = $scanTime;
                 $permit->pickup_scanned_by = $user?->id;
                 $permit->last_actioned_by = $user?->id;
-                $permit->status = 'picked_up';
+                $permit->status = DormitoryPermit::STATUS_PICKED_UP;
+                $permit->secondary_status = 'di_luar';
                 $permit->scanned_at = $scanTime;
+                $permit->last_actioned_by = $user?->id;
                 $permit->pickup_details = array_merge($permit->pickup_details ?? [], [
                     'mode' => 'manual_scan',
                     'scanned_at' => $scanTime->toDateTimeString(),
@@ -686,6 +764,13 @@ class DormitoryPermitController extends Controller
                     'note' => $request->input('note', ''),
                 ]);
                 $permit->save();
+
+                // Notifikasi WA wali santri: santri dijemput.
+                try {
+                    app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPickedUp($permit);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('WA notif picked_up gagal: '.$e->getMessage());
+                }
 
                 $studentName = $permit->student?->name ?? 'Santri';
                 $pickerDisplay = $pickerName !== ''
@@ -701,14 +786,15 @@ class DormitoryPermitController extends Controller
                 );
             }
 
-            // --- Second scan: catat kepulangan ke asrama (sudah dijemput, belum pulang) ---
-            if ($permit->status === 'picked_up' && is_null($permit->return_scanned_at)) {
+            // --- Fase 2: scan kembali — picked_up → returned ------------------
+            if ($permit->status === 'picked_up' && is_null($permit->return_scanned_at) && $permit->canTransitionTo('returned')) {
                 $scanTime = now();
                 $permit->return_scanned_at = $scanTime;
                 $permit->return_scanned_by = $user?->id;
                 $permit->actual_return_datetime = $scanTime;
                 $permit->last_actioned_by = $user?->id;
-                $permit->status = 'returned';
+                $permit->status = DormitoryPermit::STATUS_RETURNED;
+                $permit->secondary_status = 'kembali';
                 $permit->return_details = array_merge($permit->return_details ?? [], [
                     'mode' => 'manual_scan',
                     'scanned_at' => $scanTime->toDateTimeString(),
@@ -716,6 +802,13 @@ class DormitoryPermitController extends Controller
                     'note' => $request->input('note', ''),
                 ]);
                 $permit->save();
+
+                // Notifikasi WA wali santri: santri kembali ke asrama.
+                try {
+                    app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyReturned($permit);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('WA notif returned gagal: '.$e->getMessage());
+                }
 
                 $studentName = $permit->student?->name ?? 'Santri';
 
@@ -728,13 +821,16 @@ class DormitoryPermitController extends Controller
                 );
             }
 
-            // Check if permit already completed (status returned and return scanned)
-            if ($permit->status === 'returned' && ! is_null($permit->return_scanned_at)) {
+            // Kartu KADALUARSA: santri sudah kembali → QR tidak berlaku lagi.
+            if ($permit->status === 'returned' || ! is_null($permit->return_scanned_at)) {
+                $nama = $permit->student?->name ?? 'Santri';
+                $waktu = $permit->actual_return_datetime?->format('d/m/Y H:i') ?? '-';
+
                 return $this->scanResponse(
                     $request,
-                    'Izin ini telah selesai (santri sudah kembali ke asrama). QR Code tidak lagi berlaku.',
-                    true,
-                    ['student_name' => $permit->student?->name ?? 'Santri', 'status' => 'returned'],
+                    "KARTU KADALUARSA — {$nama} sudah kembali ke asrama pada {$waktu}. QR Code kartu perizinan ini tidak berlaku lagi.",
+                    false,
+                    ['student_name' => $nama, 'status' => 'expired', 'returned_at' => $waktu],
                     null
                 );
             }
@@ -843,17 +939,8 @@ class DormitoryPermitController extends Controller
         $oldStatus = $permit->status;
         $newStatus = $request->input('status');
 
-        // Validasi transisi status (state machine 2 fase: approved/overdue -> picked_up -> returned)
-        $allowedTransitions = [
-            'pending' => ['pending', 'approved', 'rejected'],
-            'approved' => ['approved', 'overdue', 'rejected', 'picked_up', 'returned'],
-            'overdue' => ['overdue', 'rejected', 'picked_up', 'returned'],
-            'picked_up' => ['picked_up', 'returned', 'rejected'],
-            'returned' => ['returned'],
-            'rejected' => ['rejected'],
-        ];
-
-        if (! in_array($newStatus, $allowedTransitions[$oldStatus] ?? [])) {
+        // Validasi transisi status memakai SATU sumber kebenaran (model).
+        if (! $permit->canTransitionTo($newStatus)) {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,

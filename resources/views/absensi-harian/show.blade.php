@@ -164,6 +164,14 @@
                                         ];
                                         $cfg = $statusConfig[$rec->status] ?? ['badge' => 'bg-dark', 'text' => $rec->status];
                                         $hari = \Carbon\Carbon::parse($rec->attendance_date)->locale('id')->dayName;
+
+                                        // Verifikasi kesesuaian: wali kelas rombel atau petugas berwenang.
+                                        $petugas = auth()->check() && (
+                                            canPermission('absensi-admin-tu') || canPermission('absensi-tata-usaha')
+                                            || canPermission('absensi-wakil-kepala-sekolah') || canPermission('absensi-kepala-sekolah')
+                                            || canPermission('absensi-kepala-sekolah-pondok') || canPermission('absensi-wadir-1') || canPermission('absensi-wadir-2')
+                                        );
+                                        $bolehVerifikasi = $petugas || (string) ($rec->studyGroup?->homeroom_teacher_id ?? '') === (string) auth()->id();
                                     @endphp
                                     <tr>
                                         <td class="text-center">{{ $records->firstItem() + $idx }}</td>
@@ -172,6 +180,21 @@
                                         <td>{{ $rec->studyGroup?->full_name ?? '-' }}</td>
                                         <td class="text-center">
                                             <span class="badge {{ $cfg['badge'] }}">{{ $cfg['text'] }}</span>
+                                            @if($rec->isAutoFilled())
+                                                <span class="badge bg-light text-dark border ms-1" title="Terisi otomatis dari {{ $rec->source }} — mohon dicek kesesuaiannya">
+                                                    <i class="ri-magic-line"></i> Otomatis
+                                                </span>
+                                            @endif
+                                            @if($rec->isVerified())
+                                                <span class="badge bg-success-subtle text-success ms-1"><i class="ri-check-double-line"></i> Terverifikasi</span>
+                                            @elseif($bolehVerifikasi)
+                                                <form method="POST" action="{{ route('user.absensi.harian.verifikasi', ['userId' => $userId, 'recordId' => $rec->id]) }}" class="d-inline ms-1">
+                                                    @csrf
+                                                    <button class="btn btn-sm btn-soft-success py-0 px-1" title="Tandai sudah dicek kesesuaiannya">
+                                                        <i class="ri-check-line"></i> Verifikasi
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </td>
                                         <td>{{ $rec->notes ?: '-' }}</td>
                                     </tr>

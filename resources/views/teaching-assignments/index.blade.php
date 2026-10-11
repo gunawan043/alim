@@ -117,6 +117,9 @@
                                 <a href="{{ route('user.institution-decrees.index', ['userId' => $userId, 'type' => 'SK Pembagian Tugas']) }}" class="btn btn-soft-secondary">
                                     <i class="ri-file-list-3-line align-bottom me-1"></i> Lihat SK
                                 </a>
+                                <a href="{{ route('user.teaching-assignments.bulk-create', ['userId' => $userId]) }}" class="btn btn-warning">
+                                    <i class="ri-table-line align-bottom me-1"></i> Input Massal (Tabel)
+                                </a>
                                 <a href="{{ route('user.teaching-assignments.create', ['userId' => $userId]) }}" class="btn btn-success">
                                     <i class="ri-add-line align-bottom me-1"></i> Tambah Penugasan
                                 </a>

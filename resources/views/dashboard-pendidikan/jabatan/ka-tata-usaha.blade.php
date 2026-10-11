@@ -18,7 +18,7 @@
     @slot('title') Kepala Tata Usaha @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Surat Masuk Hari Ini" :value="$suratMasuk" icon="ri-mail-open-line" color="primary" />
     <x-dashboards.stat-card label="Surat Keluar Hari Ini" :value="$suratKeluar" icon="ri-send-plane-line" color="success" />
     <x-dashboards.stat-card label="Dokumen GTK Expiring" :value="$dokumenExpiring" icon="ri-alert-line" color="danger" />
@@ -27,7 +27,7 @@
     <x-dashboards.stat-card label="Mutasi Keluar Pending" :value="$mutasiKeluarPending" icon="ri-logout-box-line" color="danger" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- ANTRIAN SURAT MASUK --}}
     <div class="col-xl-8">
         <div class="card h-100">

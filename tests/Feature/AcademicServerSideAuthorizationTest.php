@@ -177,15 +177,20 @@ class AcademicServerSideAuthorizationTest extends TestCase
 
     public function test_scope_buku_nilai_mengikuti_penugasan_dan_sekolah(): void
     {
-        $book = TeacherAdminBook::create([
-            'teacher_id' => $this->guruA->id,
-            'subject_id' => $this->mathA->id,
-            'study_group_id' => $this->groupA1->id,
-            'school_id' => $this->schoolA->id,
-            'academic_year_id' => $this->ay->id,
-            'semester' => 'ganjil',
-            'is_active' => true,
-        ]);
+        // Idempoten: observer penugasan kini otomatis membuat buku untuk konteks ini.
+        $book = TeacherAdminBook::firstOrCreate(
+            [
+                'teacher_id' => $this->guruA->id,
+                'subject_id' => $this->mathA->id,
+                'study_group_id' => $this->groupA1->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+            ],
+            [
+                'school_id' => $this->schoolA->id,
+                'is_active' => true,
+            ]
+        );
 
         $probe = new class extends Controller
         {
@@ -415,6 +420,13 @@ class AcademicServerSideAuthorizationTest extends TestCase
 
         $this->mathA = Subject::create(['school_id' => $this->schoolA->id, 'code' => 'MAT', 'name' => 'Matematika', 'credit_hours' => 4, 'is_active' => true]);
         $this->mathB = Subject::create(['school_id' => $this->schoolB->id, 'code' => 'MAT', 'name' => 'Matematika', 'credit_hours' => 4, 'is_active' => true]);
+
+        // Pemetaan master eksplisit (otoritas rumpun, bukan regex).
+        $umumGroup = \App\Models\SubjectGroup::where('code', 'umum')->value('id');
+        if ($umumGroup) {
+            $this->mathA->forceFill(['subject_group_id' => $umumGroup])->saveQuietly();
+            $this->mathB->forceFill(['subject_group_id' => $umumGroup])->saveQuietly();
+        }
 
         $this->decreeId = (string) Str::uuid();
         DB::table('institution_decrees')->insert([

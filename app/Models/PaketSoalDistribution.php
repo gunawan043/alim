@@ -38,11 +38,19 @@ class PaketSoalDistribution extends Model
         'note',
         'distributed_at',
         'distributed_by',
+        'received_at',
+        'received_by',
     ];
 
     protected $casts = [
         'distributed_at' => 'datetime',
+        'received_at' => 'datetime',
     ];
+
+    public function isReceived(): bool
+    {
+        return $this->status === self::STATUS_RECEIVED;
+    }
 
     public function paketSoal(): BelongsTo
     {

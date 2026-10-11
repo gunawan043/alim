@@ -48,7 +48,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -93,7 +93,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -104,7 +104,7 @@ class GtkWizardController extends Controller
         $gtkList = $query->paginate($perPage)->withQueryString();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
-        $statistics = $this->getStatistics();
+        $statistics = $this->getStatistics($schoolId);
 
         $satuanKerja = $request->filled('satuan_kerja')
             ? WorkUnit::find($request->satuan_kerja)
@@ -123,14 +123,18 @@ class GtkWizardController extends Controller
         if ($request->ajax() || $request->wantsJson() || $request->has('format')) {
             $query = User::with(['gtkProfile', 'employment'])
                 ->whereHas('employment', function ($q) {
-                    // Tendik = BUKAN Tenaga Pendidik Pondok / Guru
-                    $q->whereNotIn('jenis_gtk', ['Tenaga Pendidik Pondok', 'Guru']);
+                    // Tendik = BUKAN pendidik/guru
+                    $q->where(function ($qq) {
+                        $qq->where('jenis_gtk', 'not like', '%guru%')
+                            ->where('jenis_gtk', 'not like', '%pendidik%')
+                            ->where(fn ($q3) => $q3->whereNull('jabatan')->orWhere('jabatan', 'not like', '%guru%'));
+                    });
                 });
 
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -169,8 +173,12 @@ class GtkWizardController extends Controller
             'gtkProfile.addresses',
             'educations',
         ])->whereHas('employment', function ($q) {
-            // Tendik = BUKAN Tenaga Pendidik Pondok / Guru
-            $q->whereNotIn('jenis_gtk', ['Tenaga Pendidik Pondok', 'Guru']);
+            // Tendik = BUKAN pendidik/guru
+            $q->where(function ($qq) {
+                $qq->where('jenis_gtk', 'not like', '%guru%')
+                    ->where('jenis_gtk', 'not like', '%pendidik%')
+                    ->where(fn ($q3) => $q3->whereNull('jabatan')->orWhere('jabatan', 'not like', '%guru%'));
+            });
         });
 
         $this->applyFilters($query, $request);
@@ -178,7 +186,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -189,7 +197,7 @@ class GtkWizardController extends Controller
         $gtkList = $query->paginate($perPage)->withQueryString();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
-        $statistics = $this->getStatistics();
+        $statistics = $this->getStatistics($schoolId);
 
         $satuanKerja = $request->filled('satuan_kerja')
             ? WorkUnit::find($request->satuan_kerja)
@@ -208,14 +216,18 @@ class GtkWizardController extends Controller
         if ($request->ajax() || $request->wantsJson() || $request->has('format')) {
             $query = User::with(['gtkProfile', 'employment'])
                 ->whereHas('employment', function ($q) {
-                    // Guru = Tenaga Pendidik Pondok / Guru
-                    $q->whereIn('jenis_gtk', ['Tenaga Pendidik Pondok', 'Guru']);
+                    // Guru = pendidik/guru (nilai jenis_gtk nyata: "Pendidik / Guru", dsb.)
+                    $q->where(function ($qq) {
+                        $qq->where('jenis_gtk', 'like', '%guru%')
+                            ->orWhere('jenis_gtk', 'like', '%pendidik%')
+                            ->orWhere('jabatan', 'like', '%guru%');
+                    });
                 });
 
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -254,8 +266,12 @@ class GtkWizardController extends Controller
             'gtkProfile.addresses',
             'educations',
         ])->whereHas('employment', function ($q) {
-            // Guru = Tenaga Pendidik Pondok / Guru
-            $q->whereIn('jenis_gtk', ['Tenaga Pendidik Pondok', 'Guru']);
+            // Guru = pendidik/guru (nilai jenis_gtk nyata: "Pendidik / Guru", dsb.)
+            $q->where(function ($qq) {
+                $qq->where('jenis_gtk', 'like', '%guru%')
+                    ->orWhere('jenis_gtk', 'like', '%pendidik%')
+                    ->orWhere('jabatan', 'like', '%guru%');
+            });
         });
 
         $this->applyFilters($query, $request);
@@ -263,7 +279,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -274,7 +290,7 @@ class GtkWizardController extends Controller
         $gtkList = $query->paginate($perPage)->withQueryString();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
-        $statistics = $this->getStatistics();
+        $statistics = $this->getStatistics($schoolId);
 
         $satuanKerja = $request->filled('satuan_kerja')
             ? WorkUnit::find($request->satuan_kerja)
@@ -552,7 +568,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         if (! empty($request->input('search.value'))) {
@@ -948,7 +964,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         if ($request->filled('search')) {
@@ -1073,19 +1089,19 @@ class GtkWizardController extends Controller
         return $query->orderBy('name');
     }
 
-    private function getStatistics(): array
+    private function getStatistics(?string $schoolId = null): array
     {
         // Determine scope: global view vs per-school
         $isGlobalView = canPermission('gtk-wizard-global-view') || canPermission('view_global_school_data');
 
-        $baseQuery = function () use ($isGlobalView) {
+        $baseQuery = function () use ($isGlobalView, $schoolId) {
             $query = User::whereHas('employment');
 
             if (! $isGlobalView) {
-                // Scope ke school context (sama dengan index() method)
-                $schoolId = optional(Auth::user()->employment)->school_id;
-                if ($schoolId) {
-                    $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+                // Scope ke school context (work unit / kepegawaian)
+                $scopedSchoolId = $schoolId ?: optional(\App\Services\SchoolGroupService::getUserSchool(Auth::user()))->id;
+                if ($scopedSchoolId) {
+                    $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($scopedSchoolId));
                 }
             }
 
@@ -2553,7 +2569,7 @@ class GtkWizardController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');

@@ -17,14 +17,14 @@
     @slot('title') Koordinator Ekstrakurikuler @endslot
 @endcomponent
 
-<div class="row g-3 mb-3">
+<div class="row">
     <x-dashboards.stat-card label="Ekskul Dibina" :value="$ekskulDiampu" icon="ri-trophy-line" color="primary" />
     <x-dashboards.stat-card label="Total Anggota Aktif" :value="$totalAnggota" icon="ri-group-line" color="success" />
     <x-dashboards.stat-card label="Pertemuan Hari Ini" :value="$pertemuanHariIni" icon="ri-play-circle-line" color="info" />
     <x-dashboards.stat-card label="Acara Mendatang" :value="$acaraMendatang" icon="ri-calendar-event-line" color="warning" />
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- DAFTAR EKLAKSUL --}}
     <div class="col-xl-8">
         <div class="card h-100">

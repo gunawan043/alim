@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
 use Illuminate\Http\Request;
@@ -78,6 +79,65 @@ class SubjectController extends Controller
         return view('subjects.create', compact('schools', 'userId', 'schoolContext'));
     }
 
+    /**
+     * Form tambah MAPEL PEMADATAN (diatur satuan pendidikan sendiri).
+     */
+    public function createPemadatan(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $grades = \App\Models\GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->orderBy('level')
+            ->get(['id', 'level', 'name', 'fase']);
+
+        return view('subjects.pemadatan', compact('userId', 'grades', 'schoolId'));
+    }
+
+    /**
+     * Simpan mapel pemadatan + alokasi jam per tingkat (bebas diatur sekolah).
+     */
+    public function storePemadatan(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $data = $request->validate([
+            'code' => 'required|string|max:20',
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string|max:500',
+            'allocations' => 'nullable|array',
+            'allocations.*' => 'nullable|integer|min:0|max:40',
+        ]);
+
+        $subject = \App\Models\Subject::updateOrCreate(
+            ['school_id' => $schoolId, 'code' => strtoupper($data['code'])],
+            [
+                'name' => $data['name'],
+                'category' => 'lokal',
+                'source' => 'pemadatan',
+                'description' => $data['description'] ?? null,
+                'is_active' => true,
+            ]
+        );
+
+        foreach (($data['allocations'] ?? []) as $gradeLevelId => $hours) {
+            $hours = (int) $hours;
+
+            if ($hours <= 0) {
+                \App\Models\GradeLevelSubject::where('grade_level_id', $gradeLevelId)->where('subject_id', $subject->id)->delete();
+                continue;
+            }
+
+            \App\Models\GradeLevelSubject::updateOrCreate(
+                ['grade_level_id' => $gradeLevelId, 'subject_id' => $subject->id, 'track' => null],
+                ['allocation_hours' => $hours, 'is_active' => true]
+            );
+        }
+
+        return redirect()->route('user.subjects.index', ['userId' => $userId])
+            ->with('success', 'Mapel pemadatan "'.$subject->name.'" berhasil disimpan.');
+    }
+
     public function store(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -139,6 +199,19 @@ class SubjectController extends Controller
 
     public function update(Request $request, string $userId, string $id)
     {
+        // Kebijakan: mapel PONDOK → satuan pendidikan hanya boleh mengubah NAMA;
+        // alokasi jam & kredit terkunci (hanya Super Admin yang boleh).
+        $subject = \App\Models\Subject::findOrFail($id);
+        $user = auth()->user();
+        $isSuper = $user && ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
+
+        if (! $isSuper && ($subject->source ?? 'pondok') === 'pondok') {
+            $request->merge([
+                'credit_hours' => $subject->credit_hours,
+                'category' => $subject->category,
+            ]);
+        }
+
         $subject = Subject::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 

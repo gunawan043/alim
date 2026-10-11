@@ -107,7 +107,9 @@
                                         </button>
                                     </th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">RS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_rs ?? 50.0 }}%</small></th>
+                                    <th rowspan="2" style="vertical-align:middle;min-width:75px;text-align:center;">Nilai Murni<br>STS</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">STS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sts ?? 25.0 }}%</small></th>
+                                    <th rowspan="2" style="vertical-align:middle;min-width:75px;text-align:center;">Nilai Murni<br>SAS</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">SAS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sas ?? 25.0 }}%</small></th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">RSA</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">NR Murni</th>
@@ -141,8 +143,10 @@
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rs-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rs ?? '-' }}</span>
                                     </td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts_murni]" value="{{ $n->sts_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sts" title="Nilai hasil ujian STS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" title="Wajib isi Nilai Murni STS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas_murni]" value="{{ $n->sas_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sas" title="Nilai hasil ujian SAS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" title="Wajib isi Nilai Murni SAS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rsa-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rsa ?? '-' }}</span>
                                     </td>
@@ -199,6 +203,7 @@
                     <ol class="mb-0 ps-3">
                         <li class="mb-2">Isi nilai <strong>Sumatif Harian</strong> (kolom dapat ditambah melalui tombol <strong>Kelola Kolom</strong>), <strong>STS</strong>, dan <strong>SAS</strong> untuk setiap siswa (0–100).</li>
                         <li class="mb-2"><strong>RS</strong> = rata-rata semua kolom Sumatif Harian yang terisi; <strong>RSA</strong> dan <strong>NR Murni</strong> dihitung otomatis.</li>
+                        <li class="mb-2"><strong>Nilai Murni STS/SAS</strong> = nilai <em>hasil ujian</em> (tanpa ditambah elemen penilaian lain). Kolom <strong>STS</strong> &amp; <strong>SAS</strong> terkunci sampai Nilai Murni terisi.</li>
                         <li class="mb-2"><strong>NR Final</strong> = RS×bobot RS + STS×bobot STS + SAS×bobot SAS (aturan sama dengan Leger & Rapor).</li>
                         <li>Klik <strong>Simpan Nilai</strong> atau biarkan tersimpan otomatis (autosave) saat berpindah sel.</li>
                     </ol>
@@ -462,11 +467,19 @@ function kolomRender() {
     }).join('');
 }
 
+function kolomUuid() {
+    if (window.crypto && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 function kolomAdd() {
-    const id = (window.crypto && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : 'col-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-    kolomData.push({ id: id, label: 'Sumatif Baru', legacy: false });
+    kolomData.push({ id: kolomUuid(), label: 'Sumatif Baru', legacy: false });
     kolomRender();
 }
 
@@ -500,8 +513,14 @@ function kolomSave() {
             columns: kolomData.map(function (c) { return { id: c.id, label: c.label }; }),
         }),
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+
+        if (! res.ok) {
+            status.textContent = data.message || ('Gagal menyimpan kolom (HTTP ' + res.status + ')');
+            return;
+        }
+
         if (data.success) {
             window.location.reload();
         } else {
@@ -515,5 +534,34 @@ document.getElementById('kolomModal')?.addEventListener('show.bs.modal', functio
     kolomRender();
     document.getElementById('kolom-status').textContent = '';
 });
+
+// ─── Gerbang Nilai Murni: STS/SAS terkunci sampai Nilai Murni terisi ───
+function applyMurniGate() {
+    document.querySelectorAll('#form-nilai tbody tr').forEach(function (row) {
+        [['murni-sts', 'input-sts'], ['murni-sas', 'input-sas']].forEach(function (pair) {
+            const murni = row.querySelector('.' + pair[0]);
+            const target = row.querySelector('.' + pair[1]);
+            if (!murni || !target) return;
+
+            const locked = murni.value === '';
+            target.readOnly = locked;
+            target.classList.toggle('bg-light', locked);
+
+            // Bantu isi otomatis dengan nilai murni (tetap bisa disesuaikan).
+            if (!locked && target.value === '') {
+                target.value = murni.value;
+            }
+        });
+    });
+}
+
+document.addEventListener('input', function (e) {
+    if (e.target.classList && (e.target.classList.contains('murni-sts') || e.target.classList.contains('murni-sas'))) {
+        applyMurniGate();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', applyMurniGate);
+applyMurniGate();
 </script>
 @endpush

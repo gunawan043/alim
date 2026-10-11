@@ -58,10 +58,10 @@
 </div>
 
 {{-- ROW 1: Overview Stats --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Total Santri --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-primary-subtle">
@@ -79,7 +79,7 @@
 
     {{-- Di Rombel --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-success-subtle">
@@ -104,7 +104,7 @@
 
     {{-- GTK --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-info-subtle">
@@ -125,7 +125,7 @@
 
     {{-- Mutasi Bulan Ini --}}
     <div class="col-xl-3 col-md-6">
-        <div class="card card-animate h-100">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon bg-warning-subtle">
@@ -148,7 +148,7 @@
 </div>
 
 {{-- ROW 2: Distribusi Per Tingkat + Kapasitas Rombel --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Distribusi Per Tingkat --}}
     <div class="col-xl-5">
         <div class="card h-100">
@@ -274,7 +274,7 @@
 </div>
 
 {{-- ROW 3: Mutasi + Pelanggaran + Prestasi --}}
-<div class="row g-3 mb-3">
+<div class="row">
     {{-- Mutasi Masuk --}}
     <div class="col-xl-4">
         <div class="card h-100">

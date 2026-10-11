@@ -52,11 +52,11 @@
         $pctBlood      = $total > 0 ? round($totalWithBlood / $total * 100) : 0;
     @endphp
 
-    <div class="row g-3 mb-3">
+    <div class="row">
 
         <!-- Total Santri -->
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -86,7 +86,7 @@
 
         <!-- Golongan Darah -->
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -118,7 +118,7 @@
 
         <!-- Kelengkapan Data -->
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
@@ -146,7 +146,7 @@
 
         <!-- Aksi Cepat -->
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">

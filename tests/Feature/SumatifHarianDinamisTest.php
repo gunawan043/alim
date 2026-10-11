@@ -373,6 +373,9 @@ class SumatifHarianDinamisTest extends TestCase
 
         $this->actingAs($this->teacher);
 
+        // Kebijakan Tahap 3: catatan rapor = wali kelas. Tetapkan guru sebagai wali rombel.
+        $this->studyGroup->forceFill(['homeroom_teacher_id' => $this->teacher->id])->save();
+
         // Halaman rapor index + tombol catatan wali kelas
         $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor?academic_year_id={$this->ay->id}&semester=ganjil")
             ->assertOk()

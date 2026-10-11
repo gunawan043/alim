@@ -20,9 +20,9 @@
         </div>
     @endif
 
-    <div class="row g-3 mb-3">
+    <div class="row">
         <div class="col-xl-4 col-md-4">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-time-line text-warning"></i></span></div>
@@ -36,7 +36,7 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-4">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-check-double-line text-success"></i></span></div>
@@ -50,7 +50,7 @@
             </div>
         </div>
         <div class="col-xl-4 col-md-4">
-            <div class="card card-animate h-100">
+            <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-error-warning-line text-danger"></i></span></div>
@@ -86,14 +86,22 @@
                         @php
                             $reviewable = $assignment->reviewable;
                             $isSoal = $assignment->reviewable_type === \App\Models\Soal::class;
+                            $isPerangkat = $assignment->reviewable_type === \App\Models\PerangkatPembelajaran::class;
                             $meta = ['pending' => ['Menunggu', 'bg-warning-subtle text-warning'], 'approved' => ['Disetujui', 'bg-success-subtle text-success'], 'revision' => ['Perlu Perbaikan', 'bg-danger-subtle text-danger']][$assignment->status] ?? ['-', 'bg-secondary-subtle text-secondary'];
                         @endphp
                         <tr>
-                            <td><span class="badge {{ $isSoal ? 'bg-primary-subtle text-primary' : 'bg-info-subtle text-info' }}">{{ $isSoal ? 'Soal' : 'Paket Soal' }}</span></td>
+                            <td>
+                                <span class="badge {{ $isSoal ? 'bg-primary-subtle text-primary' : ($isPerangkat ? 'bg-success-subtle text-success' : 'bg-info-subtle text-info') }}">
+                                    {{ $isSoal ? 'Soal' : ($isPerangkat ? 'RPM' : 'Paket Soal') }}
+                                </span>
+                            </td>
                             <td class="small">
                                 @if($isSoal)
                                     {{ $reviewable?->bankSoal?->subject?->name ?? '—' }}
                                     · {{ $reviewable?->bankSoal?->gradeLevel?->name ?? 'Semua Kelas' }}
+                                @elseif($isPerangkat)
+                                    {{ $reviewable?->subject?->name ?? '—' }}
+                                    · {{ $reviewable?->gradeLevel?->name ?? 'Semua Kelas' }}
                                 @else
                                     {{ $reviewable?->kisiKisi?->subject?->name ?? '—' }}
                                     · {{ $reviewable?->kisiKisi?->gradeLevel?->name ?? 'Semua Kelas' }}
