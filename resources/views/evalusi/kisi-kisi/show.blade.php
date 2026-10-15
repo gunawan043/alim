@@ -1,4 +1,5 @@
 @extends('layouts.master')
+@php $userId = $userId ?? request()->route('userId') ?? auth()->id(); @endphp
 @section('title') {{ $kisi->judul }} @endsection
 
 @section('content')
@@ -16,7 +17,7 @@
                 <span class="badge bg-secondary">{{ ucfirst($kisi->semester) }}</span>
             </div>
             <div>
-                <a href="{{ route('user.paket-soal.create', $kisi->id) }}" class="btn btn-sm btn-success">
+                <a href="{{ route('user.paket-soal.create', ['userId' => $userId, 'kisiKisiId' => $kisi->id]) }}" class="btn btn-sm btn-success">
                     <i class="ri-file-list-3-line"></i> Buat Paket Soal
                 </a>
                 <a href="{{ route('user.kisi-kisi-soal.edit', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" class="btn btn-sm btn-warning">

@@ -366,12 +366,14 @@
         </a>
     </li>
 
+    @if(canPermission('teacher-attendance_view'))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard', 'user.teacher-qr.history']) ? ' active' : '' }}"
            href="{{ $humasUrl('user.teacher-qr.waka-dashboard') }}">
             <i class="ri-qr-scan-line"></i><span>Kehadiran QR Guru</span>
         </a>
     </li>
+    @endif
 
     @if(canPermission('teacher-attendance_manual'))
     <li class="nav-item">

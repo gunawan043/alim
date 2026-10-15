@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController;
 use App\Http\Controllers\Api\Mobile\V1\ForgotPasswordController;
 use App\Http\Controllers\Api\Mobile\V1\JadwalController;
 use App\Http\Controllers\Api\Mobile\V1\KalenderController;
+use App\Http\Controllers\Api\Mobile\V1\LjkController as MobileLjkController;
 use App\Http\Controllers\Api\Mobile\V1\MobileMahromController;
 use App\Http\Controllers\Api\Mobile\V1\NotificationController;
 use App\Http\Controllers\Api\Mobile\V1\PermitController;
@@ -24,6 +25,14 @@ use App\Http\Controllers\Api\Mobile\V1\StudentController;
 use App\Http\Controllers\Api\Mobile\V1\TahfidzController;
 use App\Http\Controllers\Api\Mobile\V1\VersionController;
 use App\Http\Controllers\Api\Mobile\V1\WaliSantriController;
+use App\Http\Controllers\Api\Pos\V1\DivisiController as PosDivisiController;
+use App\Http\Controllers\Api\Pos\V1\JabatanController as PosJabatanController;
+use App\Http\Controllers\Api\Pos\V1\JenisGtkController as PosJenisGtkController;
+use App\Http\Controllers\Api\Pos\V1\KepegawaianController as PosKepegawaianController;
+use App\Http\Controllers\Api\Pos\V1\KoneksiController as PosKoneksiController;
+use App\Http\Controllers\Api\Pos\V1\SantriController as PosSantriController;
+use App\Http\Controllers\Api\Pos\V1\SatuanKerjaController as PosSatuanKerjaController;
+use App\Http\Controllers\Api\Pos\V1\SekolahController as PosSekolahController;
 use App\Http\Controllers\Api\Sarpras\AssetPassportController;
 use App\Http\Controllers\Api\Sarpras\RepairRequestController;
 use App\Http\Controllers\Api\Sarpras\SarprasDashboardController;
@@ -197,6 +206,15 @@ Route::middleware(['auth:sanctum', 'organization.context'])->get('/user', functi
     return $request->user();
 });
 
+// ── LJK SMART SCANNER (mobile guru) ─────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'organization.context'])->prefix('mobile/v1/ljk')->name('mobile.ljk.')->group(function () {
+    Route::get('exams', [MobileLjkController::class, 'exams'])->name('exams');
+    Route::get('exams/{exam}', [MobileLjkController::class, 'examDetail'])->name('exam.detail');
+    Route::post('exams/{exam}/scans', [MobileLjkController::class, 'scan'])->name('scan');
+    Route::get('scans/{scan}', [MobileLjkController::class, 'scanDetail'])->name('scan.detail');
+    Route::patch('scans/{scan}/answers/{answer}', [MobileLjkController::class, 'correct'])->name('correct');
+});
+
 // ── SARPRAS / ASSET MOBILE API v1 ────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'organization.context'])->prefix('sarpras')->group(function () {
 
@@ -335,4 +353,33 @@ Route::middleware(['auth:sanctum', 'organization.context'])->prefix('sarpras/v2'
         Route::get('pull', [SarprasMobileSyncController::class, 'pull']);
         Route::post('push', [SarprasMobileSyncController::class, 'push']);
     });
+});
+
+// ── POS / KASIR INTEGRATION API v1 ───────────────────────────────────────────
+// Read-only master data for the external POS (kasir) application.
+// Auth: static API key via `X-API-KEY` header (env: POS_API_KEY).
+Route::middleware('pos.api-key')->prefix('pos/v1')->group(function () {
+    // ── TES KONEKSI ──────────────────────────────────────────────────────
+    Route::get('ping', [PosKoneksiController::class, 'ping']);
+
+    // ── SATUAN KERJA ─────────────────────────────────────────────────────
+    Route::get('satuan-kerja', [PosSatuanKerjaController::class, 'index']);
+    Route::get('satuan-kerja/{id}', [PosSatuanKerjaController::class, 'show']);
+
+    // ── KEPEGAWAIAN (GTK) ────────────────────────────────────────────────
+    Route::get('kepegawaian', [PosKepegawaianController::class, 'index']);
+    Route::get('kepegawaian/{id}', [PosKepegawaianController::class, 'show']);
+
+    // ── MASTER ORGANISASI ────────────────────────────────────────────────
+    Route::get('divisi', [PosDivisiController::class, 'index']);
+    Route::get('jabatan', [PosJabatanController::class, 'index']);
+    Route::get('jenis-gtk', [PosJenisGtkController::class, 'index']);
+
+    // ── PROFIL SEKOLAH / LEMBAGA ─────────────────────────────────────────
+    Route::get('sekolah', [PosSekolahController::class, 'index']);
+    Route::get('sekolah/{id}', [PosSekolahController::class, 'show']);
+
+    // ── SANTRI ───────────────────────────────────────────────────────────
+    Route::get('santri', [PosSantriController::class, 'index']);
+    Route::get('santri/{id}', [PosSantriController::class, 'show']);
 });

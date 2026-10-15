@@ -111,6 +111,10 @@
                             </p>
                         </div>
                         <div class="col-sm-auto">
+                            <a href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas']) }}"
+                               class="btn btn-success btn-sm me-1" target="_blank">
+                                <i class="ri-printer-line me-1"></i> Cetak Rapor Massal (1 PDF)
+                            </a>
                             <a href="{{ route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
                                class="btn btn-outline-secondary btn-sm">
                                 <i class="ri-arrow-left-line me-1"></i> Kembali
@@ -176,7 +180,7 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-xs">
                                                     <span class="avatar-title rounded-circle bg-primary text-white" style="font-size:10px;">
-                                                        {{ strtoupper(substr($student->name, 0, 1)) }}
+                                                        {{ strtoupper(mb_substr(($__w = preg_split('/\s+/', trim((string) $student->name)))[0] ?? '', 0, 1) . (count($__w) > 1 ? mb_substr($__w[count($__w) - 1], 0, 1) : mb_substr($__w[0] ?? '', 1, 1))) }}
                                                     </span>
                                                 </div>
                                                 <span class="fw-semibold">{{ $student->name }}</span>

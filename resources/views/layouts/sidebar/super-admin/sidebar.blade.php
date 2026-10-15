@@ -269,7 +269,7 @@
             <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.', 'user.sa.curriculum-structure.']) ? ' active' : '' }}"
                    href="{{ route('user.sa.curriculum-structure.matrix', ['userId' => $userId]) }}">
-                    <i class="ri-book-open-line me-1"></i> Kurikulum Pembelajaran
+                    <i class="ri-book-open-line me-1"></i> Struktur Kurikulum
                 </a>
             </li>
             <li class="nav-item">
@@ -510,6 +510,11 @@
        href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'notifications']) }}">
         <i class="ri-whatsapp-line"></i> <span>WA Gateway</span>
     </a>
+
+    <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'pos-api' ? ' active' : '' }}"
+       href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'pos-api']) }}">
+        <i class="ri-plug-line"></i> <span>Integrasi POS</span>
+    </a>
 </li>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -596,13 +601,6 @@
      SECTION 7 — DATA GLOBAL (monitoring lintas modul)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Data Global</span></li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.curriculum-structure.']) ? ' active' : '' }}"
-       href="{{ route('user.sa.curriculum-structure.index', ['userId' => $userId]) }}">
-        <i class="ri-layout-grid-line"></i><span>Struktur Kurikulum</span>
-    </a>
-</li>
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.approvals.']) ? ' active' : '' }}"

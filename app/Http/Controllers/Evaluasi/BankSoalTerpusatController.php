@@ -127,8 +127,15 @@ class BankSoalTerpusatController extends Controller
         if ($scope === 'saya') {
             $baseQuery->where('dibuat_oleh', $user->id);
         } elseif ($scope === 'serumpun') {
+            // "Serumpun" = rumpun mapel kewenangan guru (bukan sekadar nama/subject_id sama).
+            $groupIds = app(\App\Services\SubjectGroupResolver::class)
+                ->groupsForTeacher($user)
+                ->pluck('id')
+                ->all();
+
             $baseQuery->where('dibuat_oleh', '<>', $user->id)
-                ->when($mySubjectIds !== [], fn ($q) => $q->whereHas('bankSoal', fn ($b) => $b->whereIn('subject_id', $mySubjectIds)));
+                ->when($groupIds !== [], fn ($q) => $q->whereHas('bankSoal.subject', fn ($sub) => $sub->whereIn('subject_group_id', $groupIds)))
+                ->when($groupIds === [], fn ($q) => $q->whereRaw('1 = 0'));
         } elseif ($scope === 'terverifikasi') {
             $baseQuery->where(function ($q) {
                 $q->where('workflow_status', Soal::WORKFLOW_APPROVED)->orWhere('status', 'approved');

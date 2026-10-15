@@ -16,17 +16,23 @@
         </div>
     @endif
 
-    {{-- Info Buku — full width atas --}}
-    <div class="card border-primary mb-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center g-2">
-                <div class="col-md-auto">
-                    <p class="mb-n1 btn btn-primary btn-sm" style="font-size: 10px;"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</p>
-                    <p class="mb-n1 btn btn-secondary btn-sm"><i class="ri-team-line me-1"></i>{{ $book['adminBook']->studyGroup->name }}</p>
-                    <p class="mb-n1 btn btn-dark btn-sm"><i class="ri-calendar-line me-1"></i>{{ ucfirst($book['adminBook']->semester) }}</p>
-                    <p class="mb-n1 btn btn-warning btn-sm"><i class="ri-government-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</p>
+    {{-- Info Buku (gaya kartu Jurnal) --}}
+    <div class="card border-primary-subtle mb-3">
+        <div class="card-body py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <h5 class="card-title mb-2"><i class="ri-article-line me-1 text-primary"></i>Buku Nilai — Catatan Guru</h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge bg-primary-subtle text-primary"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>Kelas - {{ $book['adminBook']->studyGroup->name }}</span>
+                        <span class="badge bg-dark-subtle text-dark"><i class="ri-calendar-line me-1"></i>Semester {{ ucfirst($book['adminBook']->semester) }}</span>
+                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-2-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</span>
+                    </div>
                 </div>
-                <div class="col-md d-flex justify-content-md-end">
+                <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $book['adminBook']->academic_year_id, 'semester' => $book['adminBook']->semester]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-line-chart-line me-1"></i> Realisasi
+                    </a>
                     <select class="form-select form-select-sm" style="width:auto;" onchange="location.href=this.value">
                         @foreach($books as $b)
                             <option value="{{ route('user.schools.guru-mapel.w6', ['userId' => $userId, 'adminBookId' => $b->id]) }}" {{ $b->id == $book['adminBook']->id ? 'selected' : '' }}>
@@ -87,7 +93,7 @@
                         <hr class="my-4">
                         <h6 class="text-muted fw-semibold mb-3"><i class="ri-history-line me-1"></i> Riwayat Catatan</h6>
                         <div class="table-responsive">
-                            <table class="table table-nowrap align-middle mb-0">
+                            <table class="table table-nowrap align-middle mb-0 js-tools-table">
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th style="width:40px">#</th>
@@ -127,4 +133,5 @@
             </div>
         </div>
     </div>
+    @include('nilai-guru.partials.table-tools')
 @endsection

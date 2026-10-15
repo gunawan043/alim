@@ -1,12 +1,10 @@
 <?php
 
 use App\Http\Controllers\AbsensiHarianController;
-use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\AcademicIntegrationController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AdminAsramaDashboardController;
 use App\Http\Controllers\AdminTUDashboardController;
-use App\Http\Controllers\Akademik\KktpController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
@@ -24,6 +22,7 @@ use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ClassQrController;
+use App\Http\Controllers\Dashboard\AsramaDashboardController as RoleAsramaDashboardController;
 // use App\Http\Controllers\Dashboard\BendaharaDashboardController;
 // use App\Http\Controllers\Dashboard\GuruDashboardController;
 // use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
@@ -37,6 +36,13 @@ use App\Http\Controllers\ClassQrController;
 // use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
 // use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
 // use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
+use App\Http\Controllers\Dashboard\KeuanganDashboardController;
+use App\Http\Controllers\Dashboard\PersonaliaDashboardController as RolePersonaliaDashboardController;
+use App\Http\Controllers\Dashboard\PimpinanDashboardController;
+use App\Http\Controllers\Dashboard\SatuanPendidikanDashboardController;
+use App\Http\Controllers\Dashboard\TahfidzDashboardController;
+use App\Http\Controllers\Dashboard\UksDashboardController as RoleUksDashboardController;
+use App\Http\Controllers\Dashboard\UnitRumahTanggaDashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
@@ -66,8 +72,12 @@ use App\Http\Controllers\Evaluasi\PaketSoalController;
 use App\Http\Controllers\Evaluasi\PaketSoalTuController;
 use App\Http\Controllers\Evaluasi\ReviewSoalController;
 use App\Http\Controllers\Evaluasi\SoalController;
+use App\Http\Controllers\Ljk\LjkController;
+use App\Http\Controllers\Ljk\LjkResultController;
+use App\Http\Controllers\Ljk\LjkScanController;
 use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\GtkAdditionalTaskController;
@@ -86,12 +96,25 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JenjangKarirController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
+use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
+use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
+use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
+use App\Http\Controllers\Kurikulum\KurikulumController;
+use App\Http\Controllers\Kurikulum\KurikulumEditGrantController;
+use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
+use App\Http\Controllers\Kurikulum\ProsemController;
+use App\Http\Controllers\Kurikulum\ProtaController;
+use App\Http\Controllers\Kurikulum\RealisasiPembelajaranController;
+use App\Http\Controllers\Kurikulum\SubjectGroupController;
+use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
+use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OtherTeacherTaskController;
+use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
 use App\Http\Controllers\PengasuhDashboardController;
 use App\Http\Controllers\PensionController;
 use App\Http\Controllers\PermitTypeController;
@@ -111,6 +134,7 @@ use App\Http\Controllers\Personalia\PersonaliaDashboardController;
 use App\Http\Controllers\Personalia\RaporGtkController;
 use App\Http\Controllers\PositionProposalController;
 use App\Http\Controllers\ProfileController;
+// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\RecruitmentPipelineController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomSupervisorController;
@@ -132,12 +156,12 @@ use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
 use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
-// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairVsReplaceController;
+// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
 use App\Http\Controllers\Sarpras\SarprasSparepartController;
@@ -159,14 +183,13 @@ use App\Http\Controllers\StudentHealthCheckupController;
 use App\Http\Controllers\StudentHealthMetricController;
 use App\Http\Controllers\StudentHealthPermitController;
 use App\Http\Controllers\StudentImmunizationController;
-// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\StudentMahromController;
-use App\Http\Controllers\StudentPhotoController;
 use App\Http\Controllers\StudentMedicineInventoryController;
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
 use App\Http\Controllers\StudentMutationInController;
 use App\Http\Controllers\StudentMutationOutController;
+use App\Http\Controllers\StudentPhotoController;
 use App\Http\Controllers\StudentPromotionController;
 use App\Http\Controllers\StudentRoomHistoryController;
 use App\Http\Controllers\StudentTimelineController;
@@ -176,6 +199,7 @@ use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AuditLogController;
+use App\Http\Controllers\SuperAdmin\CurriculumStructureController;
 use App\Http\Controllers\SuperAdmin\FailedJobController;
 use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
 use App\Http\Controllers\SuperAdmin\PasswordResetLogController;
@@ -199,11 +223,6 @@ use App\Http\Controllers\Uks\PatientController;
 use App\Http\Controllers\Uks\SchedulingController;
 use App\Http\Controllers\Uks\StudentHealthController;
 use App\Http\Controllers\Uks\TreatmentStatusController;
-use App\Http\Controllers\Dashboard\UnitRumahTanggaDashboardController;
-use App\Http\Controllers\Dashboard\PersonaliaDashboardController as RolePersonaliaDashboardController;
-use App\Http\Controllers\Dashboard\TahfidzDashboardController;
-use App\Http\Controllers\Dashboard\UksDashboardController as RoleUksDashboardController;
-use App\Http\Controllers\Uks\UksDashboardController;
 use App\Http\Controllers\UserKalkulasiNilaiController;
 use App\Http\Controllers\UserLaporanController;
 use App\Http\Controllers\UserSecurityController;
@@ -213,17 +232,6 @@ use App\Http\Controllers\ViolationPointController;
 use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
-use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
-use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
-use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
-use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
-use App\Http\Controllers\Kurikulum\KurikulumController;
-use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
-use App\Http\Controllers\Kurikulum\ProsemController;
-use App\Http\Controllers\Kurikulum\ProtaController;
-use App\Http\Controllers\Kurikulum\RealisasiPembelajaranController;
-use App\Http\Controllers\Kurikulum\SubjectGroupController;
-use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
@@ -232,16 +240,14 @@ use App\Http\Controllers\WaliAsramaDashboardController;
 use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
+use App\Http\Middleware\EnsureBoardingSchool;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Dashboard\AsramaDashboardController as RoleAsramaDashboardController;
-use App\Http\Controllers\Dashboard\KeuanganDashboardController;
-use App\Http\Controllers\Dashboard\PimpinanDashboardController;
-use App\Http\Controllers\Dashboard\SatuanPendidikanDashboardController;
+
 /*
 |--------------------------------------------------------------------------
 | GLOBAL ROUTE PATTERNS
@@ -314,7 +320,6 @@ Route::prefix('portal')->name('portal.')->group(function () {
     Route::post('/{token}/visit', [GuardianPortalController::class, 'submitVisit'])->name('visit');
     Route::post('/{token}/health', [GuardianPortalController::class, 'submitHealth'])->name('health');
 });
-
 
 Route::middleware('guest')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
@@ -393,7 +398,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/mark-all-read', [NotificationUniversalController::class, 'markAllRead'])->name('mark-all-read');
                 Route::delete('/{id}', [NotificationUniversalController::class, 'destroy'])->name('destroy');
                 Route::get('/unread-count', [NotificationUniversalController::class, 'unreadCount'])->name('unread-count');
-                Route::get('/page', [\App\Http\Controllers\NotificationPageController::class, 'index'])->name('page');
+                Route::get('/page', [NotificationPageController::class, 'index'])->name('page');
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -442,18 +447,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/', [NilaiKelasController::class, 'index'])->name('index');
                     Route::get('/{studyGroupId}/sts', [NilaiKelasController::class, 'sts'])->name('sts');
                     Route::post('/{studyGroupId}/sts', [NilaiKelasController::class, 'stsStore'])->name('sts.store');
+                    Route::post('/{studyGroupId}/sts/kolom', [NilaiKelasController::class, 'stsColumns'])->name('sts.kolom');
                     Route::get('/{studyGroupId}/leger/cetak', [NilaiKelasController::class, 'legerCetak'])->name('leger.cetak');
                     Route::get('/{studyGroupId}/leger/download', [NilaiKelasController::class, 'legerDownload'])->name('leger.download');
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
                     Route::post('/{studyGroupId}/rapor/{studentId}/catatan', [NilaiKelasController::class, 'raporNote'])->name('rapor.note');
                     Route::get('/{studyGroupId}/rapor/{studentId}/cetak', [NilaiKelasController::class, 'raporCetak'])->name('rapor.cetak');
-                });
-
-                // ── KKTP / KKM — untuk Admin TU / Waka / Kepsek
-                Route::prefix('kktp')->name('kktp.')->group(function () {
-                    Route::get('/', [KktpController::class, 'index'])->name('index');
-                    Route::post('/', [KktpController::class, 'store'])->name('store');
-                    Route::post('/generate', [KktpController::class, 'generate'])->name('generate');
+                    Route::get('/{studyGroupId}/rapor/cetak-massal', [NilaiKelasController::class, 'raporCetakMassal'])->name('rapor.cetak-massal');
                 });
 
                 // ── GURU MAPEL — Buku Admin Guru
@@ -471,6 +471,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
                     Route::get('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4'])->name('w4');
                     Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
+                    Route::post('/{adminBookId}/w4/kolom', [NilaiGuruController::class, 'wizard4Columns'])->name('w4.kolom');
                     Route::get('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5'])->name('w5');
                     Route::post('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5Store'])->name('w5.store');
                     Route::get('/{adminBookId}/w6', [NilaiGuruController::class, 'wizard6'])->name('w6');
@@ -612,6 +613,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // Kalender → Pekan Efektif → JP Efektif → Kurikulum → CP → TP → ATP → Perangkat
             Route::prefix('kurikulum')->name('kurikulum.')->middleware('kurikulum.access')->group(function () {
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
+                Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
 
                 // Master Rumpun Mata Pelajaran & penetapan koordinator (Kebijakan Akademik)
                 Route::prefix('rumpun')->name('rumpun.')->group(function () {
@@ -626,11 +628,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 // ── PERMINTAAN AKSES EDIT (keroyokan terkendali) ──
                 Route::prefix('akses-edit')->name('akses-edit.')->group(function () {
-                    Route::get('/', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'index'])->name('index');
-                    Route::post('/', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'store'])->name('store');
-                    Route::post('/{id}/approve', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'approve'])->name('approve');
-                    Route::post('/{id}/reject', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'reject'])->name('reject');
-                    Route::post('/{id}/revoke', [\App\Http\Controllers\Kurikulum\KurikulumEditGrantController::class, 'revoke'])->name('revoke');
+                    Route::get('/', [KurikulumEditGrantController::class, 'index'])->name('index');
+                    Route::post('/', [KurikulumEditGrantController::class, 'store'])->name('store');
+                    Route::post('/{id}/approve', [KurikulumEditGrantController::class, 'approve'])->name('approve');
+                    Route::post('/{id}/reject', [KurikulumEditGrantController::class, 'reject'])->name('reject');
+                    Route::post('/{id}/revoke', [KurikulumEditGrantController::class, 'revoke'])->name('revoke');
                 });
 
                 Route::prefix('cp')->name('cp.')->group(function () {
@@ -1340,6 +1342,34 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/print-jobs', [PaketSoalTuController::class, 'storePrintJob'])->name('print-jobs.store');
                 Route::put('/{paketUuid}/print-jobs/{jobId}', [PaketSoalTuController::class, 'updatePrintJob'])->name('print-jobs.update');
             });
+
+            // ── LJK SMART SCANNER (lembar jawaban + kamera HP) ──────
+            Route::prefix('ljk')->name('ljk.')->group(function () {
+                Route::get('/', [LjkController::class, 'index'])->name('index');
+                Route::get('/create', [LjkController::class, 'create'])->name('create');
+                Route::post('/', [LjkController::class, 'store'])->name('store');
+
+                // Gambar scan privat (3 segmen — di atas /{ljkUuid} agar tidak bentrok).
+                Route::get('/scan/gambar/{scanUuid}', [LjkScanController::class, 'image'])->name('scan.image');
+
+                Route::get('/{ljkUuid}', [LjkController::class, 'show'])->name('show');
+                Route::get('/{ljkUuid}/soal', [LjkController::class, 'questions'])->name('soal');
+                Route::get('/{ljkUuid}/soal/pdf', [LjkController::class, 'soalPdf'])->name('soal.pdf');
+                Route::get('/{ljkUuid}/pdf', [LjkController::class, 'pdf'])->name('pdf');
+                Route::get('/{ljkUuid}/preview', [LjkController::class, 'preview'])->name('preview');
+                Route::get('/{ljkUuid}/kandidat', [LjkController::class, 'candidates'])->name('candidates');
+                Route::post('/{ljkUuid}/batal', [LjkController::class, 'cancel'])->name('cancel');
+
+                Route::get('/{ljkUuid}/scan', [LjkScanController::class, 'page'])->name('scan');
+                Route::post('/{ljkUuid}/scan', [LjkScanController::class, 'store'])->name('scan.store');
+
+                Route::get('/{ljkUuid}/hasil', [LjkResultController::class, 'index'])->name('hasil');
+                Route::get('/{ljkUuid}/hasil/{participantUuid}', [LjkResultController::class, 'participant'])->name('hasil.peserta');
+                Route::post('/{ljkUuid}/jawaban/{answerUuid}/review', [LjkResultController::class, 'review'])->name('review');
+                Route::post('/{ljkUuid}/final', [LjkResultController::class, 'finalize'])->name('finalize');
+                Route::post('/{ljkUuid}/sinkron', [LjkResultController::class, 'sync'])->name('sync');
+                Route::get('/{ljkUuid}/koreksi', [LjkResultController::class, 'corrections'])->name('corrections');
+            });
             // ── STUDENT PROMOTIONS ────────────────────────────────
             Route::prefix('student-promotions')->name('student-promotions.')->group(function () {
                 Route::get('/', [StudentPromotionController::class, 'index'])->name('index');
@@ -1492,7 +1522,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ═══════════════════════════════════════════════════════════════
             //  PENGELOLAAN ASRAMA (MASTER — CRUD Standalone)
             // ═══════════════════════════════════════════════════════════════
-            Route::prefix('dormitory-master')->name('dormitory-master.')->middleware(\App\Http\Middleware\EnsureBoardingSchool::class)->group(function () {
+            Route::prefix('dormitory-master')->name('dormitory-master.')->middleware(EnsureBoardingSchool::class)->group(function () {
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
                 Route::get('/create', [DormitoryMasterController::class, 'create'])->name('create');
                 Route::post('/', [DormitoryMasterController::class, 'store'])->name('store');
@@ -1644,7 +1674,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ═══════════════════════════════════════════════════════════════
             //  ASRAMA / DORMITORY
             // ═══════════════════════════════════════════════════════════════
-            Route::prefix('asrama')->name('asrama.')->middleware(\App\Http\Middleware\EnsureBoardingSchool::class)->group(function () {
+            Route::prefix('asrama')->name('asrama.')->middleware(EnsureBoardingSchool::class)->group(function () {
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
@@ -2221,12 +2251,16 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/password-reset-logs', [PasswordResetLogController::class, 'index'])->name('password-reset-logs.index');
 
                 Route::prefix('struktur-kurikulum')->name('curriculum-structure.')->group(function () {
-                    Route::get('/', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'index'])->name('index');
-                    Route::get('/per-jenjang', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'matrix'])->name('matrix');
-                    Route::post('/terapkan', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'apply'])->name('apply');
-                    Route::post('/mapel', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'storeSubject'])->name('subject.store');
-                    Route::put('/mapel/{code}', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'updateSubject'])->name('subject.update');
-                    Route::delete('/mapel/{code}', [\App\Http\Controllers\SuperAdmin\CurriculumStructureController::class, 'destroySubject'])->name('subject.destroy');
+                    // Alamat lama (hub) dialihkan ke halaman matriks — satu halaman, tanpa duplikasi.
+                    Route::get('/', fn () => redirect()->route(
+                        'user.sa.curriculum-structure.matrix',
+                        ['userId' => request()->route('userId')]
+                    ))->name('index');
+                    Route::get('/per-jenjang', [CurriculumStructureController::class, 'matrix'])->name('matrix');
+                    Route::post('/terapkan', [CurriculumStructureController::class, 'apply'])->name('apply');
+                    Route::post('/mapel', [CurriculumStructureController::class, 'storeSubject'])->name('subject.store');
+                    Route::put('/mapel/{code}', [CurriculumStructureController::class, 'updateSubject'])->name('subject.update');
+                    Route::delete('/mapel/{code}', [CurriculumStructureController::class, 'destroySubject'])->name('subject.destroy');
                 });
 
                 Route::prefix('system-settings')->name('system-settings.')->group(function () {

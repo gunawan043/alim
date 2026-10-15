@@ -63,6 +63,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="{{ URL::asset('build/js/sidebar-scroll.js') }}"></script>
+    {{-- Skrip khusus halaman: @yield('script') dirender di vendor-scripts (jangan ganda!) --}}
+    @stack('script')
     @stack('scripts')
     @yield('js')
 </body>

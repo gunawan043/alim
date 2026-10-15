@@ -47,6 +47,7 @@ function isActivePimpinan($routeName, $pattern) {
     </a>
 </li>
 
+@if(canPermission('teacher-attendance_view'))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.teacher-qr.waka-dashboard') ? ' active' : '' }}"
        href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
@@ -54,7 +55,9 @@ function isActivePimpinan($routeName, $pattern) {
         <span>Kehadiran Guru Per Jam</span>
     </a>
 </li>
+@endif
 
+@if(canPermission('teacher-attendance_view'))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.teacher-qr.history') ? ' active' : '' }}"
        href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
@@ -62,6 +65,7 @@ function isActivePimpinan($routeName, $pattern) {
         <span>Riwayat Kehadiran Guru</span>
     </a>
 </li>
+@endif
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePimpinan($currentRoute, 'user.kehadiran.pergantian-jam') ? ' active' : '' }}"

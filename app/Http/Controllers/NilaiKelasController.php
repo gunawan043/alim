@@ -5,20 +5,27 @@ namespace App\Http\Controllers;
 use App\Exports\LegerExport;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
+use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
+use App\Models\PembiasaanPagi;
+use App\Models\PenghargaanAkademik;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\SubjectKktp;
+use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -30,15 +37,36 @@ class NilaiKelasController extends Controller
      */
     public function index(string $userId)
     {
+        $request = request();
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        // Wali kelas → langsung ke rombelnya
         $studyGroup = StudyGroup::where('homeroom_teacher_id', $userId)
             ->where('is_active', true)
+            ->orderedByGrade()
             ->first();
 
         if ($studyGroup) {
-            return redirect()->route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $studyGroup->uuid]);
+            return redirect()->route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
         }
 
-        abort(404);
+        // KSP / Waka / Kurikulum / TU → rombel pertama TA aktif (kelas bisa diganti di halaman leger)
+        if (self::legerAccessFor($userId) === 'full') {
+            $ay = AcademicYear::where('is_active', true)->orderByDesc('name')->first()
+                ?? AcademicYear::orderByDesc('name')->first();
+
+            $group = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->when($ay, fn ($q) => $q->where('academic_year_id', $ay->id))
+                ->where('is_active', true)
+                ->orderedByGrade()
+                ->first();
+
+            if ($group) {
+                return redirect()->route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $group->id]);
+            }
+        }
+
+        abort(403, 'Leger hanya untuk wali kelas, KSP, Waka, Kurikulum, dan TU.');
     }
 
     /**
@@ -51,19 +79,15 @@ class NilaiKelasController extends Controller
     public function sts(Request $request, string $userId, string $studyGroupId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $user = User::find($userId);
-
-        $isPrivileged = $user && (
-            canPermission('nilaikelas-admin-tu') ||
-            canPermission('nilaikelas-wakil-kepala-sekolah') ||
-            canPermission('nilaikelas-kepala-sekolah-pondok') ||
-            canPermission('nilaikelas-kepala-sekolah')
-        );
 
         // Study group
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
+
+        // Hak akses leger: full (KSP/Waka/Kurikulum/TU) atau wali kelas ybs; guru lain ditolak.
+        $legerAccess = $this->assertLegerAccess($userId, $studyGroup);
+        $isPrivileged = $legerAccess === 'full';
 
         // Tahun ajaran aktif
         $academicYears = AcademicYear::where('is_active', true)->orderByDesc('name')->get();
@@ -73,6 +97,13 @@ class NilaiKelasController extends Controller
 
         // Semester
         $selectedSemester = $request->filled('semester') ? $request->semester : 'ganjil';
+
+        // Wizard leger: sheet STS (default) atau SAS.
+        $legerMode = in_array($request->input('leger'), ['sts', 'sas'], true) ? $request->input('leger') : 'sts';
+
+        // Semester terpilih belum punya buku? → salin struktur dari semester lain (mis. genap dari ganjil).
+        $autoProvisionedBooks = $this->ensureBooksForSemester($schoolId, $studyGroupId, $selectedAyId, $selectedSemester, $userId);
+
 
         // Semua mapel di kelas ini (dari TeacherAdminBook) + sorting: Agama → Arab → Hadits → Umum
         $subjectMap = TeacherAdminBook::with('subject')
@@ -89,6 +120,9 @@ class NilaiKelasController extends Controller
             ->filter()
             ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
+
+        // Jumlah mapel grup AGAMA (kategori 1–3: Agama/Arab/Hadits) untuk header grup di leger
+        $agamaCount = $subjectMap->filter(fn ($s) => $this->subjectGroup((string) $s->name) <= 3)->count();
 
         // Admin book yang aktif (mapel pertama jadi default tab)
         $firstBook = TeacherAdminBook::with('subject')
@@ -115,6 +149,9 @@ class NilaiKelasController extends Controller
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->find($selectedBookId)
             : $firstBook;
+
+        // Pembagi RS seragam per kelas (ditampilkan & dipakai hitungan live di tab Mapel).
+        $rsDivisor = $activeBook ? app(SumatifHarianService::class)->rsDivisor($activeBook) : 1;
 
         // Siswa di kelas ini
         $students = StudentClassHistory::with('student')
@@ -147,6 +184,25 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Sheet per-mapel: data Formatif & Penghargaan (read-only) untuk mapel aktif
+        $formatifMap = [];
+        $penghargaanMap = [];
+        if ($activeBook && ! empty($studentIds)) {
+            $formatifMap = NilaiFormatif::where('admin_book_id', $activeBook->id)
+                ->whereIn('student_id', $studentIds)
+                ->where('semester', $selectedSemester)
+                ->get()
+                ->keyBy('student_id')
+                ->all();
+
+            $penghargaanMap = PenghargaanAkademik::where('admin_book_id', $activeBook->id)
+                ->whereIn('student_id', $studentIds)
+                ->where('semester', $selectedSemester)
+                ->get()
+                ->keyBy('student_id')
+                ->all();
+        }
+
         // Admin books map (subject_id → book)
         $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
@@ -158,6 +214,52 @@ class NilaiKelasController extends Controller
                 ->where('is_active', true)
                 ->first(),
         ]);
+
+        // Sheet Leger SAS: Pembiasaan Pagi + Tahfidz (Juz/Halaqoh) per santri
+        $pembiasaanMap = [];
+        $tahfidzJuzMap = [];
+        $halaqohMap = [];
+        if ($legerMode === 'sas' && ! empty($studentIds)) {
+            $bookIds = $bookMap->pluck('id')->filter()->values()->all();
+
+            if (! empty($bookIds)) {
+                $pembiasaanMap = PembiasaanPagi::whereIn('admin_book_id', $bookIds)
+                    ->whereIn('student_id', $studentIds)
+                    ->where('semester', $selectedSemester)
+                    ->orderBy('updated_at')
+                    ->get()
+                    ->keyBy('student_id');
+            }
+
+            if ($selectedAyId) {
+                $tahfidzJuzMap = TahfidzJuzProgress::whereIn('student_id', $studentIds)
+                    ->where('academic_year_id', $selectedAyId)
+                    ->orderBy('juz_number')
+                    ->get()
+                    ->keyBy('student_id');
+
+                $halaqohMap = DB::table('tahfidz_group_members as m')
+                    ->join('tahfidz_groups as g', 'g.id', '=', 'm.tahfidz_group_id')
+                    ->whereIn('m.student_id', $studentIds)
+                    ->where('m.academic_year_id', $selectedAyId)
+                    ->where('m.status', 'aktif')
+                    ->orderBy('m.join_date')
+                    ->select('m.student_id', 'g.name')
+                    ->get()
+                    ->keyBy('student_id');
+            }
+        }
+
+        // Pemilih kelas untuk TU/struktural: daftar rombel sekolah pada TA terpilih
+        $schoolGroups = collect();
+        if ($isPrivileged) {
+            $schoolGroups = StudyGroup::with('gradeLevel')
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->where('academic_year_id', $selectedAyId)
+                ->where('is_active', true)
+                ->orderedByGrade()
+                ->get();
+        }
 
         // PRESENSI: hitung S / I / A per siswa di semester ini
         $presensiMap = [];
@@ -178,6 +280,8 @@ class NilaiKelasController extends Controller
         }
 
         // Peringkat & Predikat (per siswa): aggregate STS per mapel → rata-rata kelas
+        $legerCol = $legerMode === 'sas' ? 'sas' : 'sts';
+
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
@@ -189,8 +293,8 @@ class NilaiKelasController extends Controller
                     continue;
                 }
                 $n = $nilaiMap[$sid][$book->id] ?? null;
-                if ($n && $n->sts !== null) {
-                    $total += $n->sts;
+                if ($n && $n->{$legerCol} !== null) {
+                    $total += $n->{$legerCol};
                     $count++;
                 }
             }
@@ -221,7 +325,8 @@ class NilaiKelasController extends Controller
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
-            'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap'
+            'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
+            'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor'
         ));
     }
 
@@ -232,6 +337,8 @@ class NilaiKelasController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
+        $this->assertLegerAccess($userId, StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId));
+
         // ── TAB MAPEL: simpan per mapel (SH dinamis + STS) ──
         if ($request->tab === 'mapel' && $request->filled('admin_book_id')) {
             $bookId = is_numeric($request->admin_book_id) ? (int) $request->admin_book_id : $request->admin_book_id;
@@ -240,6 +347,33 @@ class NilaiKelasController extends Controller
             $nilaiData = $request->input('nilai', []);
             $savedRows = [];
             $service = app(SumatifHarianService::class);
+
+            // Aturan: Nilai Murni STS/SAS (hasil ujian) WAJIB diisi sebelum kolom STS/SAS diisi.
+            $policyErrors = [];
+            foreach ((array) $nilaiData as $studentId => $row) {
+                $existingRow = NilaiSumatif::where('admin_book_id', $bookId)
+                    ->where('student_id', $studentId)
+                    ->where('semester', $adminBook->semester)
+                    ->first();
+
+                $hasSts = isset($row['sts']) && $row['sts'] !== '' && $row['sts'] !== null;
+                $hasSas = isset($row['sas']) && $row['sas'] !== '' && $row['sas'] !== null;
+                $hasStsMurni = (isset($row['sts_murni']) && $row['sts_murni'] !== '' && $row['sts_murni'] !== null)
+                    || ($existingRow?->sts_murni !== null);
+                $hasSasMurni = (isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null)
+                    || ($existingRow?->sas_murni !== null);
+
+                if ($hasSts && ! $hasStsMurni) {
+                    $policyErrors["nilai.{$studentId}.sts"] = 'Isi Nilai Murni STS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS.';
+                }
+                if ($hasSas && ! $hasSasMurni) {
+                    $policyErrors["nilai.{$studentId}.sas"] = 'Isi Nilai Murni SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom SAS.';
+                }
+            }
+
+            if (! empty($policyErrors)) {
+                throw ValidationException::withMessages($policyErrors);
+            }
 
             foreach ($nilaiData as $studentId => $data) {
                 $input = [
@@ -256,6 +390,41 @@ class NilaiKelasController extends Controller
                     $input['sh'] = $data['sh'];
                 }
 
+                if (array_key_exists('sts_murni', $data)) {
+                    $input['sts_murni'] = $data['sts_murni'];
+                }
+                if (array_key_exists('sas', $data)) {
+                    $input['sas'] = $data['sas'];
+                }
+                if (array_key_exists('sas_murni', $data)) {
+                    $input['sas_murni'] = $data['sas_murni'];
+                }
+
+                // S6 otomatis = rata-rata Penilaian Asesmen Formatif (bila sudah ada).
+                $formatifRow = NilaiFormatif::where('admin_book_id', $bookId)
+                    ->where('student_id', $studentId)
+                    ->where('semester', $adminBook->semester)
+                    ->first();
+                if ($formatifRow && $formatifRow->nr_final !== null) {
+                    $fmtS6 = (float) $formatifRow->nr_final;
+                    $input['s6'] = $fmtS6;
+                    if (isset($input['sh']) && is_array($input['sh'])) {
+                        $input['sh']['s6'] = $fmtS6;
+                    }
+                } else {
+                    // Tidak ada formatif → jangan hapus S6 yang sudah tersimpan.
+                    $existingS6 = NilaiSumatif::where('admin_book_id', $bookId)
+                        ->where('student_id', $studentId)
+                        ->where('semester', $adminBook->semester)
+                        ->value('s6');
+                    if ($existingS6 !== null) {
+                        $input['s6'] = (float) $existingS6;
+                        if (isset($input['sh']) && is_array($input['sh'])) {
+                            $input['sh']['s6'] = (float) $existingS6;
+                        }
+                    }
+                }
+
                 $row = $service->upsertSumatif($adminBook, (string) $studentId, $input);
 
                 $savedRows[] = [
@@ -263,6 +432,10 @@ class NilaiKelasController extends Controller
                     'book_id' => $bookId,
                     'rs' => $row->rs !== null ? (float) $row->rs : null,
                     'sts' => $row->sts !== null ? (float) $row->sts : null,
+                    'sas' => $row->sas !== null ? (float) $row->sas : null,
+                    'rsa' => $row->rsa !== null ? (float) $row->rsa : null,
+                    'nr_murni' => $row->nr_murni !== null ? (float) $row->nr_murni : null,
+                    'nr_final' => $row->nr_final !== null ? (float) $row->nr_final : null,
                 ];
             }
 
@@ -283,7 +456,7 @@ class NilaiKelasController extends Controller
         }
 
         // ── TAB LEGER: simpan STS langsung ke semua mapel ──
-        if ($request->tab === 'leger' && $request->filled('leger_sts')) {
+        if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm'))) {
             $selectedAyId = $request->academic_year_id;
             $selectedSem = $request->semester ?? 'ganjil';
 
@@ -299,6 +472,7 @@ class NilaiKelasController extends Controller
 
             // ── Simpan KKTP inline (jika ada) ──
             if ($request->filled('leger_kkm')) {
+                $request->validate(['leger_kkm.*' => 'nullable|numeric|min:0|max:100']);
                 foreach ($request->leger_kkm as $bookId => $kkmVal) {
                     $book = $allBooks->get($bookId);
                     if (! $book || $kkmVal === null) {
@@ -334,7 +508,7 @@ class NilaiKelasController extends Controller
             }
 
             $savedRows = [];
-            foreach ($request->leger_sts as $studentId => $books) {
+            foreach (($request->leger_sts ?? []) as $studentId => $books) {
                 foreach ($books as $bookId => $fields) {
                     $book = $allBooks->get((string) $bookId);
                     if (! $book) {
@@ -372,7 +546,7 @@ class NilaiKelasController extends Controller
                 return response()->json([
                     'success' => true,
                     'saved_rows' => $savedRows,
-                    'message' => 'Leger disimpan.',
+                    'message' => $request->filled('leger_sts') ? 'Leger disimpan.' : 'KKTP disimpan.',
                 ]);
             }
 
@@ -392,6 +566,34 @@ class NilaiKelasController extends Controller
     }
 
     /**
+     * Kelola kolom Sumatif Harian dari halaman Leger/Mapel (tambah/rename/hapus/urut).
+     */
+    public function stsColumns(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $this->assertLegerAccess($userId, StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId));
+
+        $book = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('study_group_id', $studyGroupId)
+            ->findOrFail($request->input('admin_book_id'));
+
+        $validated = $request->validate([
+            'columns' => 'required|array|min:1',
+            'columns.*.id' => 'required|string|max:64',
+            'columns.*.label' => 'required|string|max:60',
+        ]);
+
+        $columns = app(SumatifHarianService::class)->saveColumns($book, $validated['columns']);
+
+        return response()->json([
+            'success' => true,
+            'columns' => $columns,
+            'message' => 'Kolom sumatif disimpan.',
+        ]);
+    }
+
+    /**
      * Cetak Leger — print-ready view (tanpa input)
      */
     public function legerCetak(Request $request, string $userId, string $studyGroupId)
@@ -401,6 +603,8 @@ class NilaiKelasController extends Controller
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
+
+        $this->assertLegerAccess($userId, $studyGroup);
 
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
@@ -535,6 +739,8 @@ class NilaiKelasController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
+        $this->assertLegerAccess($userId, $studyGroup);
+
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
@@ -668,6 +874,8 @@ class NilaiKelasController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
+        $this->assertLegerAccess($userId, $studyGroup);
+
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
@@ -712,11 +920,13 @@ class NilaiKelasController extends Controller
         $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
+        $this->assertLegerAccess($userId, $studyGroup);
+
         // Kebijakan: catatan rapor hanya wali kelas atau tim kurikulum.
         $user = $request->user();
         $isWali = (string) ($studyGroup->homeroom_teacher_id ?? '') === (string) $user?->id;
 
-        if (! $isWali && ! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+        if (! $isWali && ! app(KurikulumAccess::class)->isKurikulumTeam($user)) {
             abort(403, 'Catatan rapor hanya dapat diisi wali kelas atau tim kurikulum.');
         }
 
@@ -762,10 +972,108 @@ class NilaiKelasController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
+        $this->assertLegerAccess($userId, $studyGroup);
+
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
 
         $student = Student::findOrFail($studentId);
+
+        $santri = $this->buildSantriRapor($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
+
+        $kopBase64 = $this->schoolKopBase64($studyGroup->school);
+
+        $html = view('nilai-kelas.rapor-cetak', compact(
+            'santri', 'studyGroup', 'kopBase64',
+        ))->render();
+
+        $options = new Options;
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'Rapor-'.str_replace(' ', '-', $student->name)
+            .'-'.str_replace(' ', '-', $studyGroup->name)
+            .'-'.strtoupper($selectedSem)
+            .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Pastikan buku nilai untuk semester terpilih tersedia pada rombel+TA ini.
+     * Jika kosong (mis. semester genap belum di-set), struktur disalin dari semester lain.
+     * Idempoten — hanya menambah buku yang belum ada.
+     */
+    private function ensureBooksForSemester(?string $schoolId, ?string $studyGroupId, ?string $ayId, string $semester, string $userId): int
+    {
+        if (! $studyGroupId || ! $ayId) {
+            return 0;
+        }
+
+        $base = TeacherAdminBook::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $ayId);
+
+        if ((clone $base)->where('semester', $semester)->exists()) {
+            return 0;
+        }
+
+        $sources = (clone $base)->where('semester', '!=', $semester)->where('is_active', true)->get();
+        if ($sources->isEmpty()) {
+            return 0;
+        }
+
+        $created = 0;
+        foreach ($sources as $src) {
+            $exists = TeacherAdminBook::where('subject_id', $src->subject_id)
+                ->where('study_group_id', $src->study_group_id)
+                ->where('academic_year_id', $src->academic_year_id)
+                ->where('semester', $semester)
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            TeacherAdminBook::create([
+                'teacher_id' => $src->teacher_id,
+                'subject_id' => $src->subject_id,
+                'study_group_id' => $src->study_group_id,
+                'school_id' => $src->school_id,
+                'academic_year_id' => $src->academic_year_id,
+                'semester' => $semester,
+                'kktp_id' => $src->kktp_id,
+                'is_active' => true,
+            ]);
+
+            $created++;
+        }
+
+        return $created;
+    }
+
+    /**
+     * Susun data satu santri untuk dokumen rapor (dipakai cetak per-santri & massal).
+     */
+    private function buildSantriRapor(
+        ?string $schoolId,
+        StudyGroup $studyGroup,
+        ?AcademicYear $selectedAy,
+        string $selectedAyId,
+        string $selectedSem,
+        string $jenis,
+        Student $student
+    ): array {
+        $studentId = $student->id;
+        $studyGroupId = $studyGroup->id;
 
         // Semua mapel di kelas ini
         $subjectMap = TeacherAdminBook::with('subject')
@@ -866,7 +1174,8 @@ class NilaiKelasController extends Controller
             );
         }
 
-        $santri[$studentId] = [
+        return [
+            $studentId => [
             'Nama' => $student->name,
             'NIS' => $student->nis ?? '-',
             'NISN' => $student->nisn ?? '-',
@@ -882,23 +1191,74 @@ class NilaiKelasController extends Controller
             'Izin' => $iCount,
             'Alpa' => $aCount,
             'CatatanWali' => $catatanWali,
+            ],
         ];
+    }
 
-        // Baca kop surat dari storage (school->kop_path)
-        $kopBase64 = null;
-        $school = $studyGroup->school;
-        if ($school && $school->kop_path) {
-            $kopAbsolute = storage_path('app/public/'.$school->kop_path);
-            if (file_exists($kopAbsolute)) {
-                $ext = pathinfo($kopAbsolute, PATHINFO_EXTENSION) ?: 'png';
-                $mime = $ext === 'jpg' || $ext === 'jpeg' ? 'image/jpeg' : 'image/png';
-                $kopBase64 = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($kopAbsolute));
-            }
+    /**
+     * Kop surat sekolah (base64) untuk dokumen PDF.
+     */
+    private function schoolKopBase64(?School $school): ?string
+    {
+        if (! $school || ! $school->kop_path) {
+            return null;
         }
 
-        $html = view('nilai-kelas.rapor-cetak', compact(
-            'santri', 'studyGroup', 'kopBase64',
-        ))->render();
+        $kopAbsolute = storage_path('app/public/'.$school->kop_path);
+        if (! file_exists($kopAbsolute)) {
+            return null;
+        }
+
+        $ext = strtolower(pathinfo($kopAbsolute, PATHINFO_EXTENSION) ?: 'png');
+        $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode(file_get_contents($kopAbsolute));
+    }
+
+    /**
+     * Cetak Rapor Massal — satu PDF berisi seluruh santri rombel (halaman terpisah per santri).
+     */
+    public function raporCetakMassal(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : AcademicYear::where('is_active', true)->first()?->id;
+        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+        $jenis = $request->input('jenis') === 'sts' ? 'sts' : 'sas';
+
+        $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $this->assertLegerAccess($userId, $studyGroup);
+
+        $selectedAy = AcademicYear::orderByDesc('name')->get()->firstWhere('id', $selectedAyId);
+
+        $students = StudentClassHistory::with('student')
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('is_active', true)
+            ->orderBy('attendance_number')
+            ->get();
+
+        abort_if($students->isEmpty(), 404, 'Belum ada santri aktif di rombel ini.');
+
+        $santri = [];
+        foreach ($students as $history) {
+            $student = $history->student;
+            if (! $student) {
+                continue;
+            }
+
+            $santri += $this->buildSantriRapor($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
+        }
+
+        $html = view('nilai-kelas.rapor-cetak', [
+            'santri' => $santri,
+            'studyGroup' => $studyGroup,
+            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
+        ])->render();
 
         $options = new Options;
         $options->set('isRemoteEnabled', true);
@@ -908,8 +1268,7 @@ class NilaiKelasController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'Rapor-'.str_replace(' ', '-', $student->name)
-            .'-'.str_replace(' ', '-', $studyGroup->name)
+        $filename = 'Rapor-MASSAL-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 
@@ -944,25 +1303,96 @@ class NilaiKelasController extends Controller
     /**
      * Sort order mapel: Agama → Arab → Hadits → Umum
      */
-    private function subjectSortOrder(string $name, string $category): array
+    /**
+     * Hak akses modul Leger & Rapor:
+     *  - 'full' : KSP, Waka, Kurikulum (koor/tim), TU — semua kelas.
+     *  - 'wali' : wali kelas ybs — hanya kelasnya.
+     *  - 'none' : guru non-wali dsb — tidak boleh membuka leger.
+     */
+    public static function legerAccessFor(string $userId, ?StudyGroup $studyGroup = null): string
+    {
+        $user = User::find($userId);
+        if (! $user) {
+            return 'none';
+        }
+
+        if ((method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return 'full';
+        }
+
+        if (canPermission('nilaikelas-admin-tu')
+            || canPermission('nilaikelas-wakil-kepala-sekolah')
+            || canPermission('nilaikelas-kepala-sekolah-pondok')
+            || canPermission('nilaikelas-kepala-sekolah')) {
+            return 'full';
+        }
+
+        // Jabatan dibaca dari semua sumber (employment utama, semua employments, relasi jabatan)
+        // + varian nama TU agar akun TU tidak salah ditolak 403.
+        if (\App\Support\UserJabatan::hasAny($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala tata usaha',
+            'tata usaha',
+            'staf tata usaha',
+            'koordinator kurikulum',
+            'kepala tu sekolah',
+            'tu sekolah',
+            'staf tu sekolah',
+            'tata usaha sekolah',
+        ])) {
+            return 'full';
+        }
+
+        $tugas = method_exists($user, 'tugasTambahan')
+            ? $user->tugasTambahan->pluck('nama')->all()
+            : [];
+        if (in_array('Tim Kurikulum', $tugas, true) || in_array('Koordinator Kurikulum', $tugas, true)) {
+            return 'full';
+        }
+
+        if ($studyGroup && (string) $studyGroup->homeroom_teacher_id === $userId) {
+            return 'wali';
+        }
+
+        return 'none';
+    }
+
+    private function assertLegerAccess(string $userId, StudyGroup $studyGroup): string
+    {
+        $access = self::legerAccessFor($userId, $studyGroup);
+        abort_unless(
+            in_array($access, ['full', 'wali'], true),
+            403,
+            'Leger hanya untuk wali kelas, KSP, Waka, Kurikulum, dan TU.'
+        );
+
+        return $access;
+    }
+
+    /**
+     * Kelompok mapel: 1–3 = Agama/B.Arab/Hadits (grup AGAMA), 4 = Umum.
+     */
+    private function subjectGroup(string $name): int
     {
         $nameLower = strtolower($name);
 
-        // Agensi: mapel agama
-        $isAgama = preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits)/i', $nameLower);
-        $isArab = preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower);
-        $isHadits = preg_match('/(hadits|hadist)/i', $nameLower);
-
-        if ($isAgama) {
-            $group = 1;
-        } elseif ($isArab) {
-            $group = 2;
-        } elseif ($isHadits) {
-            $group = 3;
-        } else {
-            $group = 4;
+        if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits)/i', $nameLower)) {
+            return 1;
+        }
+        if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower)) {
+            return 2;
+        }
+        if (preg_match('/(hadits|hadist)/i', $nameLower)) {
+            return 3;
         }
 
-        return [$group, $nameLower];
+        return 4;
+    }
+
+    private function subjectSortOrder(string $name, string $category): array
+    {
+        return [$this->subjectGroup($name), strtolower($name)];
     }
 }

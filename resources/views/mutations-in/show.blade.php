@@ -214,22 +214,18 @@
 </div>
 @endif
 
-<div class="modal fade zoomIn" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body text-center">
-                <h4 class="mt-2">Hapus PD Masuk?</h4>
-                <p class="text-muted">Data <strong>{{ $mutation->student_name }}</strong> akan dihapus permanen.</p>
-            </div>
-            <div class="modal-footer justify-content-center gap-2">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                <form action="{{ route('user.mutations-in.destroy', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Ya, Hapus!</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<form action="{{ route('user.mutations-in.destroy', ['userId' => $userId, 'mutationUuid' => $mutation->id]) }}" method="POST" id="deleteMutationForm" class="d-none">
+    @csrf @method('DELETE')
+</form>
+
+<x-modal-confirm id="deleteModal" class="zoomIn"
+    icon="https://cdn.lordicon.com/gsqxdxog.json"
+    primaryColor="#f7b84b" secondaryColor="#f06548"
+    title="Hapus PD Masuk?"
+    message="Data <strong>{{ $mutation->student_name }}</strong> akan dihapus permanen."
+    submitLabel="Ya, Hapus!"
+    submitIcon="ri-delete-bin-line"
+    submitClass="btn-danger"
+    formId="deleteMutationForm" />
+<script src="https://cdn.lordicon.com/lordicon.js"></script>
 @endsection

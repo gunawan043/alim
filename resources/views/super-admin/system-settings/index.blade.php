@@ -38,6 +38,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'pos-api' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'pos-api']) }}">
+                                <i class="ri-plug-line me-1"></i> Integrasi POS
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'cache' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'cache']) }}">
                                 <i class="ri-database-2-line me-1"></i> Cache & Utils
@@ -293,6 +299,159 @@
                             </div>
                         @endif
 
+                        {{-- TAB: Integrasi POS --}}
+                        @if($tab === 'pos-api')
+                            @php
+                                $posEnabled = ($settings['pos_api_enabled'] ?? '1') == '1';
+                                $posKey = (string) ($settings['pos_api_key'] ?? config('services.pos.api_key'));
+                                $posHeader = (string) ($settings['pos_api_header'] ?? config('services.pos.header', 'X-ALIM-POS-KEY'));
+                                $posAllowedIps = (string) ($settings['pos_api_allowed_ips'] ?? implode(',', (array) config('services.pos.allowed_ips', [])));
+                                $posGeneratedAt = $settings['pos_api_key_generated_at'] ?? null;
+                                $posBaseUrl = url('/api/pos/v1');
+                                $posKeyFromEnv = empty($settings['pos_api_key']) && $posKey !== '';
+                                $posEndpoints = [
+                                    ['ping', 'Tes koneksi + ringkasan jumlah data', 'Untuk tombol "Tes Koneksi" di aplikasi POS'],
+                                    ['satuan-kerja', 'Satuan kerja / unit kerja', 'Filter: type, divisi_id, is_active, search'],
+                                    ['kepegawaian', 'Data pegawai (GTK): biodata, no. WhatsApp, satuan kerja', 'Filter: satuan_kerja, status_kepegawaian, jenis_gtk, jabatan, updated_since, search'],
+                                    ['divisi', 'Master divisi', 'Filter: is_active, search'],
+                                    ['jabatan', 'Master jabatan & jenis GTK', 'Filter: jenis_gtk_id, is_active, search'],
+                                    ['jenis-gtk', 'Master jenis GTK', 'Filter: is_active, search'],
+                                    ['sekolah', 'Profil sekolah / lembaga', 'Filter: school_level, work_unit_id, is_active, search'],
+                                    ['santri', 'Data santri: NIS/NISN, kelas, sekolah, status', 'Filter: status, sekolah, kelas, jenis_kelamin, updated_since, search'],
+                                ];
+                            @endphp
+
+                            <input type="hidden" name="pos_tab" value="1">
+
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    {{-- Token --}}
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-key-2-line me-1"></i>Token API</h6>
+                                            <span class="badge bg-{{ $posEnabled ? 'success' : 'secondary' }}-subtle text-{{ $posEnabled ? 'success' : 'secondary' }}">
+                                                {{ $posEnabled ? 'Aktif' : 'Nonaktif' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <label class="form-label small">Token</label>
+                                            <div class="input-group">
+                                                <input type="password" id="pos-api-key" class="form-control font-monospace"
+                                                    value="{{ $posKey }}" readonly autocomplete="off">
+                                                <button type="button" class="btn btn-soft-secondary" onclick="posToggleKey()"
+                                                    title="Tampilkan / sembunyikan">
+                                                    <i class="ri-eye-line" id="pos-api-key-icon"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-soft-primary" onclick="posCopy(this)">
+                                                    <i class="ri-file-copy-line me-1"></i>Salin
+                                                </button>
+                                            </div>
+                                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                                                <small class="text-muted">
+                                                    Sumber:
+                                                    @if($posKeyFromEnv)
+                                                        <span class="badge bg-warning-subtle text-warning">.env — belum disimpan ke database</span>
+                                                    @elseif($posKey !== '')
+                                                        <span class="badge bg-info-subtle text-info">Database</span>
+                                                        @if($posGeneratedAt)
+                                                            <span class="text-muted">· dibuat {{ \Illuminate\Support\Carbon::parse($posGeneratedAt)->format('d/m/Y H:i') }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-danger-subtle text-danger">Belum ada token</span>
+                                                    @endif
+                                                </small>
+                                                <small class="text-muted">Header: <code>{{ $posHeader }}</code></small>
+                                            </div>
+                                            <hr class="my-3">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <button type="submit" name="regenerate_pos_key" value="1" class="btn btn-sm btn-warning"
+                                                    onclick="return confirm('Token lama akan langsung tidak berlaku dan POS harus diganti tokennya. Lanjutkan?')">
+                                                    <i class="ri-refresh-line me-1"></i>Generate Token Baru
+                                                </button>
+                                                <span class="text-muted small">Gunakan bila token bocor atau saat serah terima ke tim POS.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Pengaturan akses --}}
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-shield-check-line me-1"></i>Pengaturan Akses</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" name="pos_api_enabled" value="1"
+                                                            id="pos-enabled" {{ $posEnabled ? 'checked' : '' }}>
+                                                        <label class="form-check-label" for="pos-enabled">Aktifkan API POS</label>
+                                                    </div>
+                                                    <small class="text-muted">Jika dimatikan, semua request ke <code>/api/pos/v1/*</code> ditolak (503).</small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Nama Header Token</label>
+                                                    <input type="text" name="pos_api_header" class="form-control form-control-sm font-monospace"
+                                                        value="{{ $posHeader }}" placeholder="X-ALIM-POS-KEY">
+                                                    <small class="text-muted">POS mengirim token lewat header ini.</small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Whitelist IP (opsional)</label>
+                                                    <textarea name="pos_api_allowed_ips" rows="2" class="form-control form-control-sm font-monospace"
+                                                        placeholder="103.10.20.30, 10.0.0.0/8">{{ $posAllowedIps }}</textarea>
+                                                    <small class="text-muted">Kosongkan = semua IP boleh (cukup token). Isi bila server POS ber-IP tetap.</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    {{-- Alamat API --}}
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-links-line me-1"></i>Alamat API</h6>
+                                            <button type="button" class="btn btn-sm btn-soft-primary" onclick="posCopyUrl(this)">
+                                                <i class="ri-file-copy-line me-1"></i>Salin
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="p-2 bg-light rounded font-monospace small text-break" id="pos-base-url">{{ $posBaseUrl }}</div>
+                                            <small class="text-muted">Tambahkan <code>?page=1&per_page=100</code> untuk menarik data per halaman.</small>
+                                        </div>
+                                    </div>
+
+                                    {{-- Dokumentasi singkat --}}
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-code-s-slash-line me-1"></i>Contoh Pemakaian</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <pre class="bg-dark text-light p-3 rounded small mb-3" style="white-space: pre-wrap;">curl -H "{{ $posHeader }}: {{ $posKey ?: '<TOKEN>' }}" \
+  "{{ $posBaseUrl }}/kepegawaian?per_page=100"</pre>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle mb-0">
+                                                    <thead class="table-light">
+                                                        <tr><th>Endpoint</th><th>Isi</th></tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($posEndpoints as [$path, $label, $hint])
+                                                            <tr>
+                                                                <td class="font-monospace small">GET /{{ $path }}</td>
+                                                                <td class="small">
+                                                                    {{ $label }}
+                                                                    <div class="text-muted" style="font-size:0.72rem;">{{ $hint }}</div>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- TAB: Cache & Utils --}}
                         @if($tab === 'cache')
                             <div class="row">
@@ -323,3 +482,66 @@
         </div>
     </div>
 @endsection
+
+@if($tab === 'pos-api')
+    @push('scripts')
+        <script>
+            function posToggleKey() {
+                const input = document.getElementById('pos-api-key');
+                const icon = document.getElementById('pos-api-key-icon');
+                if (!input) return;
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('ri-eye-line');
+                    icon.classList.add('ri-eye-off-line');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('ri-eye-off-line');
+                    icon.classList.add('ri-eye-line');
+                }
+            }
+
+            function posCopyText(text, button) {
+                const done = function () {
+                    if (typeof Toastify !== 'undefined') {
+                        Toastify({
+                            text: 'Tersalin ke clipboard',
+                            duration: 1500,
+                            gravity: 'top',
+                            position: 'right',
+                            style: { background: '#0ab39c' }
+                        }).showToast();
+                    }
+                    if (button) {
+                        const original = button.innerHTML;
+                        button.innerHTML = '<i class="ri-check-line me-1"></i>Tersalin';
+                        setTimeout(function () { button.innerHTML = original; }, 1500);
+                    }
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(done);
+                } else {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    document.body.appendChild(helper);
+                    helper.select();
+                    try { document.execCommand('copy'); } catch (e) {}
+                    document.body.removeChild(helper);
+                    done();
+                }
+            }
+
+            function posCopy(button) {
+                const input = document.getElementById('pos-api-key');
+                if (input) posCopyText(input.value, button);
+            }
+
+            function posCopyUrl(button) {
+                const el = document.getElementById('pos-base-url');
+                if (el) posCopyText(el.textContent.trim(), button);
+            }
+        </script>
+    @endpush
+@endif

@@ -246,41 +246,37 @@
     </div>
 @endsection
 
+    {{-- Modal hapus (konsep lord-icon/zoomIn) --}}
+    <form id="deleteGlForm" method="POST" class="d-none" action="">
+        @csrf
+        @method('DELETE')
+    </form>
+
+    <x-modal-confirm id="deleteGlModal" class="zoomIn"
+        icon="https://cdn.lordicon.com/gsqxdxog.json"
+        primaryColor="#f7b84b" secondaryColor="#f06548"
+        title="Yakin ingin menghapus?"
+        submitLabel="Ya, Hapus!"
+        submitIcon="ri-delete-bin-line"
+        submitClass="btn-danger"
+        formId="deleteGlForm">
+        <p class="text-center text-muted mb-0" id="deleteGlMessage">Tingkat kelas akan dihapus permanen.</p>
+    </x-modal-confirm>
+
 @section('script')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
     <script>
         document.querySelectorAll('.delete-gl').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
                 var name = this.dataset.name;
-                Swal.fire({
-                    title: 'Yakin ingin menghapus?',
-                    text: "Tingkat kelas \"" + name + "\" akan dihapus permanen.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '/{{ $userId }}/grade-levels/' + id;
-                        var token = document.createElement('input');
-                        token.type = 'hidden';
-                        token.name = '_token';
-                        token.value = '{{ csrf_token() }}';
-                        var method = document.createElement('input');
-                        method.type = 'hidden';
-                        method.name = '_method';
-                        method.value = 'DELETE';
-                        form.appendChild(token);
-                        form.appendChild(method);
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
+                var form = document.getElementById('deleteGlForm');
+                if (form) form.action = '/{{ $userId }}/grade-levels/' + id;
+                var msg = document.getElementById('deleteGlMessage');
+                if (msg) msg.textContent = 'Tingkat kelas "' + name + '" akan dihapus permanen.';
+                var modalEl = document.getElementById('deleteGlModal');
+                if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
             });
         });
     </script>

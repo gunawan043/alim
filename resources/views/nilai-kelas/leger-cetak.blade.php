@@ -61,7 +61,7 @@
             <th class="name" style="width:150px;">Nama Santri</th>
             @foreach($subjectMap as $subject)
                 <th style="width:50px;background:#f5f5f5;" title="{{ $subject->name }}">
-                    {{ $subject->code ?? Str::limit($subject->name, 8) }}
+                    {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                 </th>
             @endforeach
             <th class="aggregate" style="width:45px;">Jml</th>

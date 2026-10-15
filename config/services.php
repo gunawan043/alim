@@ -44,4 +44,31 @@ return [
         'token' => env('RECRUITMENT_API_TOKEN'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | POS / Kasir Integration API
+    |--------------------------------------------------------------------------
+    |
+    | Static API key used by the external POS (kasir) application to pull
+    | master data (satuan kerja, kepegawaian, santri, sekolah, dll) from ALIM.
+    |
+    | - POS_API_KEY          : long random secret (min. 32 chars), empty disables
+    |                          the whole /api/pos/v1 integration.
+    | - POS_API_HEADER       : custom header name carrying the key. Defaults to
+    |                          a non-generic name so automated scanners miss it.
+    | - POS_ALLOWED_IPS      : optional comma-separated IP allowlist of the POS
+    |                          server(s). Empty = any IP. Supports CIDR.
+    |
+    | The key is also accepted via `Authorization: Bearer <key>` for tooling.
+    |
+    */
+    'pos' => [
+        'api_key' => env('POS_API_KEY', ''),
+        'header' => env('POS_API_HEADER', 'X-ALIM-POS-KEY'),
+        'allowed_ips' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('POS_ALLOWED_IPS', ''))
+        ))),
+    ],
+
 ];

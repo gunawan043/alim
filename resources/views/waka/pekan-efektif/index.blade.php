@@ -226,19 +226,16 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="8" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="ri-calendar-2-line fs-1 d-block mb-2"></i>
-                                    Belum ada data. Gunakan tombol <strong>Generate Pekan Efektif</strong> di atas untuk membuat dari Kalender Pendidikan.
-                                </div>
-                            </td>
-                        </tr>
+                        <x-empty-state colspan="8"
+                            title="Belum ada data pekan"
+                            message="Gunakan tombol Generate Pekan Efektif di atas untuk membuat dari Kalender Pendidikan." />
                     @endforelse
                 </tbody>
             </table>
         </div>
-        <div class="card-body pt-0">{{ $pekanList->links() }}</div>
+        <div class="card-body pt-0">
+            @include('shared._pagination', ['paginator' => $pekanList])
+        </div>
     </div>
 @endsection
 

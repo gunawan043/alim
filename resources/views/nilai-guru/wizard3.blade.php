@@ -16,23 +16,44 @@
         </div>
     @endif
 
-    {{-- Info Buku — full width atas --}}
-    <div class="card border-primary mb-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center g-2">
-                <div class="col-md-auto">
-                    <p class="mb-n1 btn btn-primary btn-sm" style="font-size: 10px;"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</p>
-                    <p class="mb-n1 btn btn-secondary btn-sm"><i class="ri-team-line me-1"></i>{{ $book['adminBook']->studyGroup->name }}</p>
-                    <p class="mb-n1 btn btn-dark btn-sm"><i class="ri-calendar-line me-1"></i>{{ ucfirst($book['adminBook']->semester) }}</p>
-                    <p class="mb-n1 btn btn-warning btn-sm"><i class="ri-government-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</p>
+    <style>
+        .form-control {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none;
+        }
+    </style>
+
+    {{-- Info Buku (gaya kartu Jurnal) --}}
+    <div class="card border-primary-subtle mb-3">
+        <div class="card-body py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <h5 class="card-title mb-2"><i class="ri-article-line me-1 text-primary"></i>Buku Nilai — Nilai Sumatif</h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge bg-primary-subtle text-primary"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>Kelas - {{ $book['adminBook']->studyGroup->name }}</span>
+                        <span class="badge bg-dark-subtle text-dark"><i class="ri-calendar-line me-1"></i>Semester {{ ucfirst($book['adminBook']->semester) }}</span>
+                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-2-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</span>
+                        <span id="autosave-indicator" class="badge bg-light text-primary border d-flex align-items-center gap-1" style="font-size:.75rem;">
+                            <span id="autosave-dot" class="rounded-circle bg-secondary" style="width:8px;height:8px;display:inline-block;"></span>
+                            <span id="autosave-text">Menunggu perubahan…</span>
+                        </span>
+                    </div>
                 </div>
-                <div class="col-md-auto ms-auto">
-                    <span id="autosave-indicator" class="badge bg-light text-primary border d-flex align-items-center gap-1" style="font-size:.75rem;">
-                        <span id="autosave-dot" class="rounded-circle bg-secondary" style="width:8px;height:8px;display:inline-block;"></span>
-                        <span id="autosave-text">Menunggu perubahan…</span>
-                    </span>
-                </div>
-                <div class="col-md-auto">
+                <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $book['adminBook']->academic_year_id, 'semester' => $book['adminBook']->semester]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-line-chart-line me-1"></i> Realisasi
+                    </a>
+                    <a class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" href="#collapseBobotNR" role="button" aria-expanded="false" aria-controls="collapseBobotNR">
+                        <i class="ri-settings-3-line me-1"></i> Pengaturan NR Final
+                    </a>
                     <select class="form-select form-select-sm" style="width:auto;" onchange="location.href=this.value">
                         @foreach($books as $b)
                             <option value="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $b->id]) }}" {{ $b->id == $book['adminBook']->id ? 'selected' : '' }}>
@@ -40,11 +61,6 @@
                             </option>
                         @endforeach
                     </select>
-                </div>
-                <div class="col-md-auto">
-                    <a class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" href="#collapseBobotNR" role="button" aria-expanded="false" aria-controls="collapseBobotNR">
-                        <i class="ri-settings-3-line me-1"></i> Pengaturan NR Final
-                    </a>
                 </div>
             </div>
             {{-- Collapsible: Pengaturan Bobot NR Final --}}
@@ -92,13 +108,13 @@
                 <form id="form-nilai" method="POST" action="{{ route('user.schools.guru-mapel.w3.store', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]) }}">
                     @csrf
                     @php $autosaveUrl = route('user.schools.guru-mapel.autosave', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]); @endphp
-                    <div class="table-responsive mx-3 my-3">
-                        <table class="table table-bordered table-striped table-hover mb-0">
+                    <div class="table-responsive nilai-scroll mx-3 my-3">
+                        <table id="sumatif-table" class="table table-bordered table-hover align-middle mb-0 js-tools-table">
                             <thead class="table-light">
                                 <tr>
-                                    <th rowspan="2" style="vertical-align:middle;width:35px;text-align:center;">#</th>
-                                    <th rowspan="2" style="vertical-align:middle;width:70px;text-align:center;">NIS</th>
-                                    <th rowspan="2" style="vertical-align:middle;min-width:200px;text-align:center;">Nama Siswa</th>
+                                    <th rowspan="2" style="vertical-align:middle;text-align:center;">#</th>
+                                    <th rowspan="2" style="vertical-align:middle;text-align:center;">NIS</th>
+                                    <th rowspan="2" style="vertical-align:middle;text-align:center;">Nama Siswa</th>
                                     <th colspan="{{ count($columns) }}" style="vertical-align:middle;text-align:center;">
                                         Sumatif Harian
                                         <button type="button" class="btn btn-outline-primary btn-sm ms-2 py-0 px-2" style="font-size:.65rem;"
@@ -130,23 +146,42 @@
                                 @php $n = $sumatifMap->get($s->student_id); $shVals = $shMap[$s->student_id] ?? []; @endphp
                                 <tr>
                                     <td class="text-center fw-bold text-muted">{{ $i + 1 }}</td>
-                                    <td class="text-center">{{ $s->student->nis ?? '-' }}</td>
-                                    <td>{{ $s->student->name ?? '-' }}</td>
+                                    <td class="text-muted text-center"><code>{{ $s->student->nis ?? '-' }}</code></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-primary text-white">
+                                                    {{ strtoupper(mb_substr(($__w = preg_split('/\s+/', trim((string) $s->student->name)))[0] ?? '', 0, 1) . (count($__w) > 1 ? mb_substr($__w[count($__w) - 1], 0, 1) : mb_substr($__w[0] ?? '', 1, 1))) }}
+                                                </span>
+                                            </div>
+                                            <span class="">{{ $s->student->name }}</span>
+                                        </div>
+                                    </td>
                                     @foreach($columns as $col)
+                                        @if($col['id'] === 's6')
+                                            @php
+                                                $fmtS6 = $formatifMap[$s->student_id] ?? null;
+                                                $s6Val = $n?->s6 ?? ($fmtS6?->nr_final !== null ? (float) $fmtS6->nr_final : null);
+                                            @endphp
+                                            <td class="text-center" style="font-style:italic;" title="S6 otomatis = rata-rata Penilaian Asesmen Formatif">
+                                                <span id="s6-{{ $s->student_id }}">{{ $s6Val !== null ? number_format($s6Val, 1) : '—' }}</span>
+                                            </td>
+                                        @else
                                         <td>
                                             <input type="number" name="sumatif[{{ $s->student_id }}][sh][{{ $col['id'] }}]"
                                                    value="{{ $shVals[$col['id']] ?? '' }}"
                                                    min="0" max="100" placeholder="---"
                                                    style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;">
                                         </td>
+                                        @endif
                                     @endforeach
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rs-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rs ?? '-' }}</span>
                                     </td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sts_murni]" value="{{ $n->sts_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sts" title="Nilai hasil ujian STS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" title="Wajib isi Nilai Murni STS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" @if(($n->sts_murni ?? null) === null) readonly @endif title="Wajib isi Nilai Murni STS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sas_murni]" value="{{ $n->sas_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sas" title="Nilai hasil ujian SAS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" title="Wajib isi Nilai Murni SAS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" @if(($n->sas_murni ?? null) === null) readonly @endif title="Wajib isi Nilai Murni SAS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rsa-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rsa ?? '-' }}</span>
                                     </td>
@@ -212,6 +247,80 @@
         </div>
     </div>
 
+    {{-- Modal: peringatan Nilai Murni (konsep modal lord-icon/zoomIn) --}}
+    {{-- Modal: peringatan Nilai Murni (template lord-icon / zoomIn) --}}
+    <div class="modal fade zoomIn" id="murniModalW3" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mt-2 text-center">
+                        <lord-icon src="https://cdn.lordicon.com/tdrtiskw.json" trigger="loop"
+                            colors="primary:#f7b84b,secondary:#005981" style="width:100px;height:100px"></lord-icon>
+                        <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                            <h4>Nilai Murni Belum Diisi</h4>
+                            <p class="text-muted mx-4 mb-0" id="murniModalW3Body">
+                                Isi <strong>Nilai Murni</strong> (nilai hasil ujian, tanpa elemen lain) terlebih dahulu sebelum mengisi kolom STS/SAS.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                        <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn w-sm btn-primary" id="murniModalW3Focus">Isi Nilai Murni Sekarang</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+
+    @if(session('success'))
+        {{-- Modal sukses (konsep modal lord-icon/zoomIn) --}}
+        <x-modal-success id="savedModalW3" title="Tersimpan!" message="{{ session('success') }}" />
+    @endif
+    <style>
+    /* ── Buku Nilai — tabel gaya Leger (tema terang/gelap) ── */
+    .nilai-scroll { max-height: 72vh; overflow: auto; }
+    #sumatif-table { font-size: 12px; }
+    /* Hierarki lapisan: header identitas (40) > header lain (30) > body identitas (10) */
+    #sumatif-table thead th {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--bs-tertiary-bg); font-weight: 600;
+    }
+    #sumatif-table thead tr:first-child th:nth-child(-n+3) { z-index: 40; }
+    #sumatif-table tbody td:nth-child(-n+3) {
+        position: sticky; z-index: 10; background: var(--bs-body-bg);
+    }
+    #sumatif-table thead tr:first-child th:nth-child(1), #sumatif-table tbody td:nth-child(1) { left: 0; width: 50px; min-width: 50px; max-width: 50px; }
+    #sumatif-table thead tr:first-child th:nth-child(2), #sumatif-table tbody td:nth-child(2) { left: 50px; width: 90px; min-width: 90px; max-width: 90px; }
+    #sumatif-table thead tr:first-child th:nth-child(3), #sumatif-table tbody td:nth-child(3) { left: 140px; min-width: 200px; white-space: nowrap; }
+    #sumatif-table tbody td:nth-child(3) { box-shadow: inset -1px 0 0 var(--bs-border-color); }
+    /* Layar kecil: kolom beku dimatikan agar tabel bisa digeser ke samping */
+    @media (max-width: 991.98px) {
+        #sumatif-table thead tr:first-child th:nth-child(-n+3),
+        #sumatif-table tbody td:nth-child(-n+3) { left: auto !important; }
+    }
+    #sumatif-table tbody tr:hover td { background: rgba(var(--bs-primary-rgb), .05); }
+    #sumatif-table tbody tr:hover td:nth-child(-n+3) { background: var(--bs-secondary-bg); }
+    #sumatif-table input {
+        width: 100%; height: 28px; border: 0; border-radius: 0;
+        background: transparent; text-align: center;
+        font-size: 12px; color: var(--bs-body-color);
+    }
+    #sumatif-table input::placeholder { text-align: center; opacity: .45; }
+    #sumatif-table input:focus { outline: none; border: 0; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
+</style>
+    @if(session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var el = document.getElementById('savedModalW3');
+                if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show();
+            });
+        </script>
+    @endif
+
     {{-- Modal: Kelola Kolom Sumatif Harian --}}
     <div class="modal fade" id="kolomModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -240,6 +349,7 @@
             </div>
         </div>
     </div>
+    @include('nilai-guru.partials.table-tools')
 @endsection
 
 @push('scripts')
@@ -418,8 +528,8 @@
             })
             .then(res => res.ok ? res.json() : Promise.reject())
             .then(() => {
-                statusEl.textContent = 'Tersimpan!';
-                setTimeout(() => { statusEl.textContent = ''; }, 2000);
+                statusEl.textContent = 'Tersimpan! Memuat ulang…';
+                setTimeout(() => { window.location.reload(); }, 700);
             })
             .catch(() => {
                 statusEl.textContent = 'Gagal menyimpan bobot';
@@ -483,10 +593,29 @@ function kolomAdd() {
     kolomRender();
 }
 
+var pendingKolomSumatif = null;
+
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('hapusKolomSumatifConfirm');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        if (pendingKolomSumatif === null) return;
+        kolomData.splice(pendingKolomSumatif, 1);
+        pendingKolomSumatif = null;
+        var modalEl = document.getElementById('hapusKolomSumatifModal');
+        if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+        kolomRender();
+    });
+});
+
 function kolomRemove(i) {
-    if (!confirm('Hapus kolom "' + kolomData[i].label + '"? Nilai pada kolom ini akan ikut terhapus dari semua siswa.')) return;
-    kolomData.splice(i, 1);
-    kolomRender();
+    pendingKolomSumatif = i;
+    var body = document.getElementById('hapusKolomSumatifBody');
+    if (body) {
+        body.innerHTML = 'Kolom <strong>' + kolomData[i].label + '</strong> akan dihapus. Nilai pada kolom ini ikut terhapus dari semua siswa.';
+    }
+    var modalEl = document.getElementById('hapusKolomSumatifModal');
+    if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 function kolomMove(i, dir) {
@@ -564,4 +693,85 @@ document.addEventListener('input', function (e) {
 document.addEventListener('DOMContentLoaded', applyMurniGate);
 applyMurniGate();
 </script>
+<script>
+// ─── Peringatan Nilai Murni: klik kolom STS/SAS yang terkunci ─────
+(function () {
+    function refresh(row) {
+        if (!row || !row.querySelector) return;
+        var ms = row.querySelector('.murni-sts'), sts = row.querySelector('.input-sts');
+        if (sts) sts.readOnly = !(ms && String(ms.value).trim() !== '');
+        var ma = row.querySelector('.murni-sas'), sas = row.querySelector('.input-sas');
+        if (sas) sas.readOnly = !(ma && String(ma.value).trim() !== '');
+    }
+
+    document.querySelectorAll('#form-nilai tbody tr').forEach(function (row) {
+        refresh(row);
+        row.addEventListener('input', function (e) {
+            if (e.target.classList && (e.target.classList.contains('murni-sts') || e.target.classList.contains('murni-sas'))) {
+                refresh(row);
+            }
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        var inp = e.target;
+        if (!inp.classList) return;
+        var isSts = inp.classList.contains('input-sts');
+        var isSas = inp.classList.contains('input-sas');
+        if ((!isSts && !isSas) || !inp.readOnly) return;
+
+        var need = isSts ? '.murni-sts' : '.murni-sas';
+        var label = isSts ? 'Nilai Murni STS' : 'Nilai Murni SAS';
+        var kolom = isSts ? 'STS' : 'SAS';
+        var row = inp.closest('tr');
+        var src = row ? row.querySelector(need) : null;
+
+        var modalEl = document.getElementById('murniModalW3');
+        if (!modalEl || !window.bootstrap) return;
+        var body = document.getElementById('murniModalW3Body');
+        if (body) {
+            body.innerHTML = 'Kolom <strong>' + kolom + '</strong> belum dapat diisi. Isi <strong>' + label +
+                '</strong> (nilai hasil ujian, tanpa elemen lain) terlebih dahulu.';
+        }
+        var btn = document.getElementById('murniModalW3Focus');
+        if (btn) {
+            btn.onclick = function () {
+                if (src) { src.focus(); if (src.select) src.select(); }
+                var m = bootstrap.Modal.getInstance(modalEl);
+                if (m) m.hide();
+            };
+        }
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        inp.blur();
+    });
+})();
+</script>
+<script>
+// ─── Header beku multi-baris tabel Nilai Sumatif ───
+(function () {
+    function applyTops() {
+        var table = document.getElementById('sumatif-table');
+        if (!table) return;
+        var top = 0;
+        table.querySelectorAll('thead tr').forEach(function (tr) {
+            var h = tr.getBoundingClientRect().height;
+            tr.querySelectorAll('th').forEach(function (th) { th.style.top = top + 'px'; });
+            top += h;
+        });
+    }
+    document.addEventListener('DOMContentLoaded', applyTops);
+    window.addEventListener('load', applyTops);
+    window.addEventListener('resize', applyTops);
+})();
+</script>
+<x-modal-confirm id="hapusKolomSumatifModal" class="zoomIn"
+    icon="https://cdn.lordicon.com/gsqxdxog.json"
+    primaryColor="#f7b84b" secondaryColor="#f06548"
+    title="Hapus kolom ini?"
+    submitLabel="Ya, Hapus!"
+    submitIcon="ri-delete-bin-line"
+    submitClass="btn-danger"
+    submitId="hapusKolomSumatifConfirm">
+    <p class="text-center text-muted mb-0" id="hapusKolomSumatifBody">Kolom akan dihapus.</p>
+</x-modal-confirm>
 @endpush

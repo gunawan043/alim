@@ -45,8 +45,14 @@ final class BindOrganizationContext
         // --- Resolve academic year ---
         // Prefer the request attribute, then session selection, then config default.
         // We never read $user->academic_year_id — User does not own this dimension.
+        // Catatan: request API stateless tidak memiliki session — jangan
+        // memanggil session() tanpa guard.
+        $sessionYear = $request->hasSession()
+            ? $request->session()->get('selected_academic_year_id')
+            : null;
+
         $academicYearId = $request->attributes->get('schoolContextAcademicYearId')
-            ?? $request->session()->get('selected_academic_year_id')
+            ?? $sessionYear
             ?? config('authorization.default_academic_year_id');
 
         // --- Resolve role dimension ---

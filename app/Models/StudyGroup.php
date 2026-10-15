@@ -81,9 +81,8 @@ class StudyGroup extends Model
 
     public function getFullNameAttribute(): string
     {
-        return $this->gradeLevel
-            ? "{$this->gradeLevel->name} {$this->name}"
-            : $this->name;
+        // Nama rombel sudah memuat tingkat (mis. "1A", "7B") — jangan menempelkan tingkat dua kali.
+        return $this->name;
     }
 
     // ── Scopes ─────────────────────────────────────────────────

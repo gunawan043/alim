@@ -22,8 +22,8 @@
     @endphp
 
     @component('components.breadcrumb')
-        @slot('li_1') <a href="{{ route('user.sa.curriculum-structure.index', ['userId' => $userId]) }}">Struktur Kurikulum</a> @endslot
-        @slot('title') Kurikulum Pembelajaran per Jenjang @endslot
+        @slot('li_1') Kurikulum @endslot
+        @slot('title') Struktur Kurikulum (per Jenjang) @endslot
     @endcomponent
 
     @if(session('success'))
@@ -109,7 +109,8 @@
     {{-- Filter (pola GTK) --}}
     <div class="card mb-3">
         <div class="card-header py-2 bg-light border-bottom">
-            <form method="GET" class="row g-2 align-items-end">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+            <form method="GET" class="row g-2 align-items-end flex-grow-1">
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Tampilkan Jenjang</label>
                     <select name="jenjang" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -125,6 +126,14 @@
                     dapat mengubah <strong>nama</strong>; jam terkunci. <strong>Mapel Pemadatan</strong> diatur satuan masing-masing.
                 </div>
             </form>
+            <form method="POST" action="{{ route('user.sa.curriculum-structure.apply', ['userId' => $userId]) }}"
+                  onsubmit="return confirm('Terapkan ulang struktur kurikulum pondok ke seluruh satuan pendidikan?');">
+                @csrf
+                <button class="btn btn-success btn-sm text-nowrap">
+                    <i class="ri-refresh-line me-1"></i>Terapkan Struktur (semua satuan)
+                </button>
+            </form>
+            </div>
         </div>
     </div>
 
@@ -149,6 +158,7 @@
                     <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th rowspan="2" class="align-middle text-center" style="width:40px">No</th>
                                 <th rowspan="2" class="align-middle" style="max-width:50px">Kode Mapel</th>
                                 <th rowspan="2" class="align-middle" style="min-width:240px">Mata Pelajaran</th>
                                 <th colspan="{{ count($jenjang['labels']) }}" class="text-center">Alokasi Waktu Per Pekan</th>
@@ -161,10 +171,27 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php $prevGroup = null; $mainNo = 0; $subNo = 0; @endphp
                             @forelse($jenjang['rows'] as $row)
+                                @php
+                                    $gid = $row['group_id'] ?? null;
+                                    $isGrouped = $gid && (($jenjang['groupCounts'][$gid] ?? 0) > 1);
+                                @endphp
+                                @if($isGrouped && $gid !== $prevGroup)
+                                    @php $mainNo++; $subNo = 0; $prevGroup = $gid; @endphp
+                                    <tr class="table-light">
+                                        <td class="text-center fw-semibold">{{ $mainNo }}</td>
+                                        <td colspan="{{ count($jenjang['labels']) + 3 }}" class="fw-semibold">
+                                            {{ $row['group_name'] ?? 'Rumpun' }}
+                                        </td>
+                                    </tr>
+                                @endif
                                 <tr>
+                                    <td class="text-center text-muted">{{ $isGrouped ? '' : (++$mainNo) }}</td>
                                     <td class="fw-medium">{{ $row['code'] }}</td>
-                                    <td class="fw-medium">{{ $row['name'] }}</td>
+                                    <td class="fw-medium">
+                                        @if($isGrouped) {{ ++$subNo }}. @endif{{ $row['name'] }}
+                                    </td>
                                     @foreach($jenjang['labels'] as $col => $label)
                                         <td class="text-center hour-cell">
                                             @if(($row['cells'][$col] ?? null) !== null)
@@ -191,7 +218,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ count($jenjang['labels']) + 2 }}" class="text-center text-muted py-4">
+                                <tr><td colspan="{{ count($jenjang['labels']) + 4 }}" class="text-center text-muted py-4">
                                     Belum ada struktur — gunakan "Tambah Mapel" atau jalankan "Terapkan Struktur".
                                 </td></tr>
                             @endforelse
@@ -199,7 +226,7 @@
                         @if($jenjang['rows'])
                             <tfoot>
                                 <tr class="table-light fw-semibold">
-                                    <td colspan="2">Jumlah Jam Pelajaran Per Pekan</td>
+                                    <td colspan="3">Jumlah Jam Pelajaran Per Pekan</td>
                                     @foreach($jenjang['labels'] as $col => $label)
                                         <td class="text-center">{{ $jenjang['totals'][$col] }}</td>
                                     @endforeach

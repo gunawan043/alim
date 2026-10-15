@@ -1,4 +1,5 @@
 @extends('layouts.master')
+@php $userId = $userId ?? request()->route('userId') ?? auth()->id(); @endphp
 @section('title') {{ $paket->judul }} @endsection
 
 @section('content')
@@ -23,7 +24,7 @@
             </div>
             <div>
                 @if(!$paket->is_published && $paket->jumlah_soal_aktual > 0)
-                <form action="{{ route('user.paket-soal.publish', $paket->id) }}" method="POST" class="d-inline">
+                <form action="{{ route('user.paket-soal.publish', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" method="POST" class="d-inline">
                     @csrf
                     <button class="btn btn-sm btn-success" onclick="return confirm('Publish paket ini?')">
                         <i class="ri-check-line"></i> Publish
@@ -32,13 +33,13 @@
                 @endif
 
                 @if($paket->is_published)
-                <form action="{{ route('user.paket-soal.unpublish', $paket->id) }}" method="POST" class="d-inline">
+                <form action="{{ route('user.paket-soal.unpublish', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" method="POST" class="d-inline">
                     @csrf
                     <button class="btn btn-sm btn-warning">Unpublish</button>
                 </form>
                 @endif
 
-                <a href="{{ route('user.paket-soal.reroll', $paket->id) }}" class="btn btn-sm btn-outline-info">
+                <a href="{{ route('user.paket-soal.reroll', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-info">
                     <i class="ri-refresh-line"></i> Re-roll Soal
                 </a>
             </div>
@@ -71,7 +72,7 @@
         </div>
         <div class="card-body">
             @if($bisaKelolaNaskah)
-                <form method="POST" action="{{ route('user.paket-soal.komposisi.simpan', ['paketUuid' => $paket->id]) }}" class="mb-3">
+                <form method="POST" action="{{ route('user.paket-soal.komposisi.simpan', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="mb-3">
                     @csrf @method('PUT')
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-2">
@@ -97,7 +98,7 @@
                     </div>
                     <button class="btn btn-sm btn-primary"><i class="ri-save-line me-1"></i>Simpan Komposisi</button>
                 </form>
-                <form method="POST" action="{{ route('user.paket-soal.komposisi.generate', ['paketUuid' => $paket->id]) }}"
+                <form method="POST" action="{{ route('user.paket-soal.komposisi.generate', ['userId' => $userId, 'paketUuid' => $paket->id]) }}"
                       onsubmit="return confirm('Isi ulang butir dari komposisi? Butir paket saat ini akan diganti.');">
                     @csrf
                     <button class="btn btn-sm btn-soft-success"><i class="ri-magic-line me-1"></i>Generate Butir dari Komposisi</button>

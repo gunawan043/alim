@@ -293,7 +293,7 @@
                                 <a href="{{ route('waka.kaldik') }}" class="nav-link">Kaldik</a>
                             </li>
                             <li class="nav-item">
-                                <a href="{{ route('waka.pekan-efektif') }}" class="nav-link">Pekan Efektif</a>
+                                <a href="{{ route('waka.pekan-efektif.index') }}" class="nav-link">Pekan Efektif</a>
                             </li>
                         </ul>
                     </div>

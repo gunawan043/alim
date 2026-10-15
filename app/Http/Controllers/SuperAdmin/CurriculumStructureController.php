@@ -7,8 +7,11 @@ use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
+use App\Models\SubjectGroup;
+use Database\Seeders\CurriculumStructureSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Menu Super Admin — Struktur Kurikulum:
@@ -22,29 +25,6 @@ class CurriculumStructureController extends Controller
         'SMP' => ['levels' => [7, 8, 9], 'labels' => ['VII', 'VIII', 'IX']],
         'SMA' => ['levels' => [10, 11, 11, 12, 12], 'labels' => ['X', 'XI (BHS)', 'XI (IPA)', 'XII (BHS)', 'XII (IPA)'], 'tracks' => [null, 'bahasa', 'ipa', 'bahasa', 'ipa']],
     ];
-
-
-    public function index(Request $request)
-    {
-        $this->authorizeSuper($request);
-
-        $schools = School::query()->orderBy('name')->get()->map(function (School $school) {
-            $gradeIds = GradeLevel::where('school_id', $school->id)->pluck('id');
-
-            return [
-                'school' => $school,
-                'levels' => $gradeIds->count(),
-                'pondok' => Subject::where('school_id', $school->id)->where('source', 'pondok')->count(),
-                'pemadatan' => Subject::where('school_id', $school->id)->where('source', 'pemadatan')->count(),
-                'allocations' => GradeLevelSubject::whereIn('grade_level_id', $gradeIds)->count(),
-            ];
-        });
-
-        return view('super-admin.curriculum-structure.index', [
-            'userId' => $request->route('userId') ?? auth()->id(),
-            'schools' => $schools,
-        ]);
-    }
 
     /**
      * Matriks struktur kurikulum PER JENJANG (format tabel pondok):
@@ -68,16 +48,35 @@ class CurriculumStructureController extends Controller
             $schoolIds = School::whereIn('school_level', array_map('strtolower', [strtolower($nama), $nama === 'SMA' ? 'ma' : $nama]))->pluck('id');
             $schoolIds = School::where('school_level', strtolower($nama))->pluck('id');
 
-            if ($schoolIds->isEmpty()) { continue; }
+            if ($schoolIds->isEmpty()) {
+                continue;
+            }
 
             $gradesByLevel = GradeLevel::whereIn('school_id', $schoolIds)->get()->groupBy('level');
 
-            $subjects = Subject::with('subjectGroup:id,code')
+            $subjects = Subject::with('subjectGroup:id,code,name')
                 ->whereIn('school_id', $schoolIds)
                 ->where('source', 'pondok')
                 ->orderBy('name')
                 ->get()
                 ->unique('code')
+                ->values();
+
+            // Susunan tampilan: mapel satu rumpun selalu berdampingan (grup dulu, baru mapel lepas).
+            $groupCounts = $subjects->groupBy(fn ($x) => $x->subject_group_id ?? 'none')->map->count();
+            $subjects = $subjects
+                ->sortBy(function ($x) use ($groupCounts) {
+                    $gid = $x->subject_group_id ?? 'none';
+                    $multi = ($groupCounts[$gid] ?? 0) > 1;
+
+                    return sprintf(
+                        '%d|%05d|%s|%s',
+                        $multi ? 0 : 1,
+                        $multi ? (int) ($x->subjectGroup?->sort_order ?? 500) : 999,
+                        $multi ? mb_strtolower((string) $x->subjectGroup?->name) : 'zzzz',
+                        mb_strtolower($x->name)
+                    );
+                })
                 ->values();
 
             $rows = [];
@@ -90,9 +89,13 @@ class CurriculumStructureController extends Controller
                     $gradeIds = ($gradesByLevel[$level] ?? collect())->pluck('id');
                     $track = $def['tracks'][$i] ?? null;
 
-                    if ($gradeIds->isEmpty()) { $cells[] = null; continue; }
+                    if ($gradeIds->isEmpty()) {
+                        $cells[] = null;
 
-                    $query = \App\Models\GradeLevelSubject::whereIn('grade_level_id', $gradeIds)
+                        continue;
+                    }
+
+                    $query = GradeLevelSubject::whereIn('grade_level_id', $gradeIds)
                         ->whereIn('subject_id', $subjectIds);
 
                     if ($track === null) {
@@ -110,6 +113,7 @@ class CurriculumStructureController extends Controller
                     'name' => $subject->name,
                     'group_id' => $subject->subject_group_id,
                     'group' => $subject->subjectGroup?->code,
+                    'group_name' => $subject->subjectGroup?->name,
                     'cells' => $cells,
                 ];
             }
@@ -134,6 +138,7 @@ class CurriculumStructureController extends Controller
                 'levels' => $def['levels'],
                 'tracks' => $def['tracks'] ?? [],
                 'columns' => $columns,
+                'groupCounts' => $groupCounts->all(),
                 'rows' => $rows,
                 'totals' => $totals,
                 'pemadatan' => $pemadatan,
@@ -147,7 +152,7 @@ class CurriculumStructureController extends Controller
             'jenjangs' => collect($jenjangs),
             'jenjangColumns' => $jenjangColumns,
             'filter' => $filter,
-            'subjectGroups' => \App\Models\SubjectGroup::orderBy('sort_order')->get(['id', 'name', 'code']),
+            'subjectGroups' => SubjectGroup::orderBy('sort_order')->get(['id', 'name', 'code']),
         ]);
     }
 
@@ -156,7 +161,7 @@ class CurriculumStructureController extends Controller
         $this->authorizeSuper($request);
 
         Artisan::call('db:seed', [
-            '--class' => \Database\Seeders\CurriculumStructureSeeder::class,
+            '--class' => CurriculumStructureSeeder::class,
             '--force' => true,
         ]);
 
@@ -216,7 +221,7 @@ class CurriculumStructureController extends Controller
             abort(422, 'Belum ada satuan pendidikan pada jenjang '.$jenjang.'.');
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $def, $schoolIds, $editingCode) {
+        DB::transaction(function () use ($data, $def, $schoolIds, $editingCode) {
             foreach ($schoolIds as $schoolId) {
                 $subject = Subject::updateOrCreate(
                     ['school_id' => $schoolId, 'code' => strtoupper($data['code'])],
@@ -237,11 +242,14 @@ class CurriculumStructureController extends Controller
                     $hours = (int) ($data['allocations'][$key] ?? 0);
                     $gradeId = $gradesByLevel[$level]?->id;
 
-                    if (! $gradeId) { continue; }
+                    if (! $gradeId) {
+                        continue;
+                    }
 
                     if ($hours <= 0) {
                         GradeLevelSubject::where('grade_level_id', $gradeId)->where('subject_id', $subject->id)
                             ->when($track, fn ($q) => $q->where('track', $track), fn ($q) => $q->whereNull('track'))->delete();
+
                         continue;
                     }
 

@@ -8,6 +8,7 @@ use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
+use App\Services\StudyGroupService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -54,34 +55,36 @@ class SchoolRombelStructureSeeder extends Seeder
                     ->get();
 
                 foreach ($letters as $letter) {
-                    // Nama & kode rombel cukup A/B/C — tingkat sudah dibedakan grade_level.
+                    // Nama rombel = tingkat + kode (mis. 1A, 2B, 7C) — konsisten di seluruh halaman.
+                    $canonicalName = $grade->level.$letter;
+                    $legacyName = $letter;
+
                     $adopted = StudyGroup::query()
                         ->where('school_id', $school->id)
                         ->where('academic_year_id', $ay->id)
                         ->where('grade_level_id', $grade->id)
-                        ->where('name', $letter)
+                        ->where('name', $canonicalName)
                         ->first();
 
-                    $prefixed = StudyGroup::query()
+                    $legacy = StudyGroup::query()
                         ->where('school_id', $school->id)
                         ->where('academic_year_id', $ay->id)
                         ->where('grade_level_id', $grade->id)
-                        ->where('name', $grade->level.$letter)
+                        ->where('name', $legacyName)
                         ->first();
 
-                    // Nama A/B/C sudah dipakai rombel lama (mis. "A" uji coba) → bersihkan
-                    // rombel lama tsb agar penamaan seragam, lalu pakai rombel utama.
-                    if ($adopted && $prefixed && $adopted->id !== $prefixed->id) {
-                        app(\App\Services\StudyGroupService::class)->deleteSafely($adopted);
-                        $adopted = null;
+                    // Nama lama (mis. "A") sudah dipakai → bersihkan agar penamaan seragam.
+                    if ($adopted && $legacy && $adopted->id !== $legacy->id) {
+                        app(StudyGroupService::class)->deleteSafely($legacy);
+                        $legacy = null;
                     }
 
                     if ($adopted) {
                         $rombel = $adopted;
                         $existingRombels++;
-                    } elseif ($prefixed) {
-                        $prefixed->forceFill(['name' => $letter, 'code' => $letter])->save();
-                        $rombel = $prefixed;
+                    } elseif ($legacy) {
+                        $legacy->forceFill(['name' => $canonicalName, 'code' => $canonicalName])->save();
+                        $rombel = $legacy;
                         $existingRombels++;
                     } else {
                         $rombel = StudyGroup::create([
@@ -89,8 +92,8 @@ class SchoolRombelStructureSeeder extends Seeder
                             'school_id' => $school->id,
                             'academic_year_id' => $ay->id,
                             'grade_level_id' => $grade->id,
-                            'name' => $letter,
-                            'code' => $letter,
+                            'name' => $canonicalName,
+                            'code' => $canonicalName,
                             'capacity' => 32,
                             'curriculum_type' => 'merdeka',
                             'shift' => 'pagi',

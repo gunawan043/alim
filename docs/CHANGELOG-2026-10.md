@@ -2,6 +2,26 @@
 
 Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang sudah di-commit di `main`).
 
+## 0. LJK Smart Scanner — Pemindai Lembar Jawaban Berbasis Kamera HP (15 Okt 2026)
+
+Fitur baru end-to-end: **Paket Soal final → LJK siap cetak A4 (kotak tanda silang) → pemindaian kamera HP → OMR deterministik → verifikasi guru → sinkron ke modul nilai resmi**.
+
+Backend (Laravel):
+- Migrasi aditif: `ljk_templates` (template ber-versi + geometri mm), `ljk_exams` (referensi paket + versi + digest naskah), `ljk_participants` (pemetaan urutan/opsi aktual), `ljk_sheets` (kode unik + QR HMAC + data strip), `ljk_scans` (gambar privat + metrik kualitas), `ljk_scan_answers` (hasil baca awal + evidence), `ljk_answer_corrections` (log koreksi append-only), `ljk_sync_logs` (idempotensi), `admin_nilai_sumatif.ljk_exam_id` (proventa nullable).
+- Mesin OMR murni GD (`app/Services/Ljk/Omr/`): gerbang kualitas, deteksi penanda adaptif+filter kontras cincin, homografi perspektif, analisis fitur tanda silang (dua diagonal, sudut, pusat, run goresan, tinta biru), klasifikasi `terbaca/kosong/ganda/meragukan/tidak_dapat_diproses/manual`.
+- Layanan: exam dari paket final (digest + peserta + lembar), QR GD (`LjkQrRenderer`, tanpa imagick), pemindaian & anti-duplikat, penilaian memakai kunci **snapshot versi paket yang benar**, koreksi guru ber-audit, sinkron lewat `SumatifHarianService` (bukan jalur nilai alternatif).
+- Web guru: menu *Bank Soal & Asesmen → LJK Smart Scanner* (index, terbitkan, detail, **PDF siap cetak**, preview, **halaman kamera HP**, hasil & verifikasi, koreksi per nomor, finalisasi, sinkron). Seluruh halaman memakai konvensi UI `gtk/index.blade.php` (stat card, filter-badge, table-freeze, pagination bersama, tombol soft) dengan gaya bersama `resources/views/ljk/_styles.blade.php`.
+- API mobile Sanctum: `GET ljk/exams`, `GET ljk/exams/{exam}`, `POST ljk/exams/{exam}/scans`, `GET ljk/scans/{scan}`, `PATCH ljk/scans/{scan}/answers/{answer}`; ability `ljk.*`; `/auth/login|me` menambah `role` + `capabilities` (aditif).
+- Kalibrasi: `ljk:generate-dataset` (dataset sintetis berlabel) & `ljk:calibrate` (exact-sheet, per-question, false acceptance, review rate, waktu; `--tune`).
+- Perbaikan insidental: guard `hasSession()` di `BindOrganizationContext`; `ljk_exam_id` masuk `$fillable` `NilaiSumatif`.
+- Hasil ukur aktual (60 lembar × 20 soal, sintetis): exact-sheet **98,33 %**, per-question **99,92 %**, false acceptance **0,00 %**, review rate **4,83 %**, 0 lembar gagal, ±480 ms/lembar. Target ≥99 % exact-sheet belum tercapai dan dicatat apa adanya (kasus tersisa diarahkan ke pemeriksaan guru).
+- Dokumentasi: `docs/features/LJK-SMART-SCANNER.md`.
+- Revisi 2 (UI & lembar): kop lembaga pada lembar (gambar `kop_path` atau kop teks + logo), tata letak **2 kolom sejak awal** (kiri 1–10, kanan 11–20), **Master Fotokopi tanpa nama** (`?master=1&copies=N`, tanpa QR/data strip) dengan **Mode Fotokopi** (urutan seragam) saat menerbitkan, **nilai otomatis masuk** ke kolom resmi (STS/SAS/sumatif murni) begitu lembar bersih/dikoreksi (`ljk_sync_logs.action = auto`), halaman **Lihat Soal** (`/{userId}/ljk/{ljkUuid}/soal`, kunci mengikuti kebijakan `canViewAnswerKeys`), serta perbaikan bug **"Missing required parameter paketUuid"** pada view evaluasi paket soal (semua `route('user.paket-soal.*')` kini menyertakan `userId`).
+- Revisi 3 (lembar soal & font): **Lembar Soal PDF** (`/{userId}/ljk/{ljkUuid}/soal/pdf`) mengikuti format naskah madrasah — judul jenis ujian + tahun ajaran, tabel identitas (Mapel/Hari-Tanggal/Kelas/Waktu/Guru Pengampu/Nama Peserta Didik bergaris), **PENANAMAN KARAKTER** 3 butir, instruksi PG, butir soal **tanpa bobot/poin/TP/kunci/pembahasan** dengan **opsi mendatar** yang turun baris otomatis bila tidak muat; kolom **Waktu Mulai/Selesai** pada ujian (tampil sebagai `07.30 – 09.00`); **font Cambria untuk semua PDF LJK** via `LjkPdfFonts` (fallback Caladea → DejaVu Serif, cache metrik di `storage/app/dompdf/fonts`, status font tampil di halaman Lihat Soal).
+- Seeder contoh: `database/seeders/LjkLaluSopianSeeder.php` (idempoten) — menyiapkan akun GTK **Lalu Sopian Harianto** + buku nilai **Bahasa Inggris · kelas 1B**, Bank Soal + 20 soal PG, kisi-kisi, **Paket Soal final ber-snapshot**, dan ujian LJK contoh berikut 22 lembar siap cetak. Jalankan: `php artisan db:seed --class=LjkLaluSopianSeeder`.
+
+Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar ujian → peserta → **kamera** → hasil & koreksi) memakai `expo-image-picker` yang sudah terpasang (tanpa dependensi native baru), service/hook React Query, dan menu sidebar guru.
+
 ## 1. Dashboard per Role (1 Role = 1 Dashboard)
 - 9 dashboard role dibangun dengan pola `{role}/index` + `config/dashboard/{role}.php` + controller per role.
 - Widget = gabungan jabatan (structural position) ∪ tugas tambahan (gtk_additional_tasks), deduplikasi, cache 5 menit per widget, isolasi error per widget, tanpa data dummy.
@@ -750,9 +770,407 @@ Ringkasan seluruh modul yang dikerjakan (belum termasuk modul sebelumnya yang su
 - Catatan: saat login **Super Admin** (`showAll`), seluruh menu memang tampil — gunakan akun satuan untuk melihat menu per jabatan.
 - Test: batch render terkait **32 test / 173 assertion lulus**; `view:cache` sukses.
 
+## 84. KKTP di Peta Kurikulum + Total JP per Tingkat (Matriks SA Dikembalikan)
+- **KKTP diatur langsung di Peta Kurikulum** (satuan, `/{userId}/kurikulum`): kolom **N-KKTP** per (mapel × tingkat) + tombol **Simpan N-KKTP**; hak atur: tim kurikulum & koordinator mapel (lainnya read-only). Route `user.kurikulum.kktp.save`.
+- **Total JP per tingkat** ditampilkan sebagai badge di Peta Kurikulum (dari struktur; track dihitung sekali via nilai maksimum per mapel).
+- **Menu "KKTP" berdiri sendiri dihapus** dari sidebar satuan & dua sidebar tugas tambahan (koordinator kurikulum, koor mapel).
+- **Catatan**: percobaan menaruh input KKTP di matriks **Struktur Kurikulum (Super Admin) dikembalikan** ke bentuk sebelumnya atas permintaan — halaman matriks kini tanpa input KKTP (render identik dengan versi sebelumnya) dan route/method KKTP SA dihapus. KKTP kini hanya di Peta Kurikulum.
+- Test: batch terkait **45 test / 297 assertion lulus**; `view:cache` sukses.
+
+## 85. Wizard Leger: Sheet Leger SAS + Kolom Lengkap Sheet per-Mapel
+- **Halaman Leger rombel** (`/{userId}/schools/nilai-kelas/{rombel}/sts`) kini benar-benar berlapis sheet: tab atas **Leger + tab per-mapel**, dan di dalam tab Leger ada **pill "Leger STS | Leger SAS"**.
+- **Leger SAS (baru, baca-saja)**: matriks santri × mapel yang menampilkan kolom `sas`; **Jumlah, Rata-rata, Peringkat, Predikat** dihitung dari nilai SAS; **Absensi S/I/A** tetap dari presensi harian semester. Input SAS tetap milik guru mapel di Buku Nilai (wizard 3) — halaman ini hanya menampilkan.
+- **Sheet per-mapel dilengkapi** sesuai spesifikasi leger: Asesmen Sumatif Harian (S1–S6 + kolom dinamis) → **RS (%)** → **STS (%)** → **SAS (25%)** → **RSA** → **NR Murni** → **Penghargaan Akademik** (Jujur, Disiplin, Peduli, Adab, Kehadiran, Keaktifan — read-only dari w5) → **NR Final** → **Penilaian Asesmen Formatif** (LKPD, Diskusi, Kuis, Antar Teman + RATA-RATA — read-only dari w4).
+- Judul halaman & catatan kaki **dinamis per sheet** ("Leger Nilai STS"/"Leger Nilai SAS"); parameter `userId`/`studyGroupId` di link pill ikut disertakan (menghindari error rute).
+- Test regresi baru `test_sheet_leger_sas_dan_kolom_lengkap_mapel_render`: mode SAS terbukti **read-only** (tanpa input `leger_sts`), mode STS tetap editable, kolom SAS/RSA/NR Murni/Penghargaan/Formatif tampil.
+- Batch: `SumatifHarianDinamisTest` **11 test / 82 assertion**, `BukuNilaiKonsolidasiTest` + `PesertaDidikP0Test` — semua lulus; `view:cache` sukses.
+- **Catatan terbuka**: kolom **Pembiasaan Pagi (Do'a/Hiwar/Conversation)** dan **Tahfidz (Juz/Halaqoh)** pada Leger SAS belum diisi — menunggu konfirmasi sumber data (modul Tahfidz sudah ada: `TahfidzJuzProgress`/`TahfidzSetoran`; Pembiasaan Pagi belum ada modulnya).
+
+## 86. Leger SAS Lengkap (Pembiasaan + Tahfidz + Grup Agama/Umum) & Sidebar Leger
+- **Kolom baru di Leger SAS**: grup **PEMBIASAAN PAGI** (Do'a, Hiwar, Conversation dari `pembiasaan_pagi`) dan **TAHFIDZ** (Juz dari `tahfidz_juz_progress`; Halaqoh dari `tahfidz_group_members` ⨝ `tahfidz_groups`), hanya muncul di sheet SAS.
+- **Header grup tegas "AGAMA | UMUM"** di tabel leger (STS & SAS): mapel dikelompokkan mengikuti aturan urutan lama (Agama/Arab/Hadits = AGAMA, sisanya UMUM) dengan warna pembeda; kolom SAS baru ikut terhitung di baris KKTP & baris kosong.
+- **Fix bug nyata `PembiasaanPagi`**: model tidak men-generate UUID → `updateOrCreate`/simpan pembiasaan gagal (`NOT NULL constraint on id`). Kini memakai hook `creating` (pola `StudyGroup`).
+- **Sidebar "Leger & Cetak Rapor" diperbaiki**: wali kelas → langsung ke leger rombelnya; TU/struktural/kepala → `nilai-kelas.index` yang kini **redirect ke rombel pertama** (sebelumnya `abort(404)` untuk non-wali, dan link wali memakai atribut `->uuid` yang tidak ada).
+- **Pemilih kelas (rombel) di halaman leger** untuk TU/struktural/kepala — pindah kelas langsung dari baris filter; wali kelas tetap terpaku ke rombelnya.
+- Test baru: grup & kolom SAS/STS (Pembiasaan/Tahfidz/AGAMA/UMUM) + index wali mengarah ke leger; `SumatifHarianDinamisTest` **13 test / 99 assertion lulus**; `view:cache` sukses.
+- Catatan tindak lanjut: leger **cetak/PDF** belum ikut memuat kolom Pembiasaan/Tahfidz & grup Agama/Umum (menyusul bila disetujui).
+
+## 87. Gating Akses Leger: Wali Kelas Hanya Kelasnya; KSP/Waka/Kurikulum/TU Semua Kelas
+- **Helper akses di `NilaiKelasController`**: `legerAccess()` → `'full'` (KSP/Kepala, Waka, Koordinator/Tim Kurikulum, TU, Super Admin, atau pemegang permission `nilaikelas-*`) · `'wali'` (rombel yang diwalikan) · `'none'`.
+- **Gerbang dipasang di semua rute modul leger**: `sts`, `sts.store`, `leger.cetak`, `leger.download`, `rapor`, `rapor.note`, `rapor.cetak`. Guru non-wali → **403**; wali kelas lain → **403**; pengunjung tak berhak ke index → **403** (bukan 404 samar).
+- **Sidebar satuan** diperbaiki: menu "Leger & Cetak Rapor" untuk semua kelas kini hanya **Kepala/Wakil/TU/Koordinator Kurikulum/Tim Kurikulum** (Kesiswaan dikeluarkan); blok wali kelas tetap dan link-nya **langsung ke leger rombelnya** (diperbaiki juga di `tugas-tambahan/wali-kelas` — sebelumnya ke index).
+- **Sidebar Koordinator Kurikulum (tugas tambahan)**: ditambah menu **Leger & Cetak Rapor** (semua kelas; pemilih kelas tersedia di halaman leger).
+- Guru non-wali tetap mendapat **"Buku Nilai Saya"** (`guru-mapel`) untuk input nilai sesuai aturan Pak Prof.
+- Test baru: guru non-wali 403 · wali kelas lain 403 & wali sendiri OK · TU semua kelas OK + index redirect. `SumatifHarianDinamisTest` **15 test / 106 assertion**; `BukuNilaiKonsolidasiTest` + `PesertaDidikP0Test` **33 test / 160 assertion** — semua lulus; `view:cache` sukses.
+- Catatan kecil: pemegang **dua tugas sekaligus** (mis. wali + koordinator mapel) memakai sidebar tugas-nya (tanpa menu leger) — akses URL tetap sesuai hak; bisa disempurnakan nanti bila diperlukan.
+
+## 88. Rute Lama "Data Nilai" (nilai/{buku}) Dialihkan ke Leger Baru
+- **Temuan Pak Prof.**: halaman `/schools/nilai/{adminBookId}/sts` masih halaman lama (bukan leger baru) — berasal dari menu "Data Nilai" → browser buku → tombol STS/SAS.
+- **Perbaikan rute**: halaman lama per buku (`nilai/{adminBookId}/sts` & `/sas`) kini **redirect otomatis**:
+  - Wali kelas / KSP / Waka / Kurikulum / TU / Super Admin → **Leger baru** (sheet per-mapel buku tsb: `nilai-kelas.sts?tab=mapel&admin_book_id=…`).
+  - Guru non-wali → daftar **Buku Nilai Saya** (`guru-mapel.index`).
+- **Satu aturan akses**: helper dijadikan `NilaiKelasController::legerAccessFor()` (publik-statis) dan dipakai bersama oleh `NilaiController` — tidak ada logika hak ganda.
+- **POST lama** (`storeSts`/`storeSas`) tetap berjalan untuk kompatibilitas; form lama tidak lagi terjangkau karena GET sudah dialihkan.
+- Test diperbarui: rute lama → **302** lalu target **200** dengan kolom dinamis tampil. Batch `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` + `PesertaDidikP0Test` = **48 test / 267 assertion lulus**.
+
+## 89. Perbaikan 5 Titik Halaman Leger (UI, Autosave, Sortir, Rapor Massal, Semester Genap)
+- **UI card & keseluruhan**: tombol aksi (Cetak Rapor, Rapor Massal, Leger STS/SAS, Download Excel) kini tampil juga untuk **wali kelas** (sebelumnya hanya mode TU/Waka); badge mode TU/Waka tetap; banner informasi otomatis saat buku semester dibuat.
+- **Autosave diperkuat**: front-end kini mengirim `X-Requested-With`, menolak respons non-JSON dengan pesan "Sesi berakhir — muat ulang halaman", dan **tidak lagi menampilkan sukses palsu** saat respons error. Sisi server sudah mengembalikan JSON (`saved_rows`) dan dibuktikan lewat test baru.
+- **Tabel & sortir**: header tabel **beku** (sticky) + kolom No/NIS/Nama **beku kiri** saat digeser; baris hover; input nilai lebih besar dengan focus ring; **klik header untuk mengurutkan** kolom (No/NIS/Nama, semua mapel, Jumlah/Rata/Peringkat/Predikat, S/I/A, serta Pembiasaan/Tahfidz/Juz/Halaqoh pada sheet SAS; juga S1–S6/RS/STS pada sheet per-mapel) dengan indikator ▲/▼.
+- **Cetak Rapor Massal**: satu PDF berisi **seluruh santri rombel** (halaman terpisah per santri) — tombol di halaman leger ("Rapor Massal") dan di halaman Cetak Rapor ("Cetak Rapor Massal (1 PDF)"). Route baru: `nilai-kelas/{rombel}/rapor/cetak-massal`; memakai template rapor yang sama + menyimpan final_score/predikat untuk SAS.
+- **Semester genap kosong**: penyebab terkonfirmasi — **0 buku semester genap** di DB. Kini saat membuka leger semester yang belum punya buku, sistem **otomatis menyalin struktur buku dari semester lain** pada rombel+TA tsb (idempoten) dan menampilkan banner bahwa N buku disiapkan otomatis.
+- Refactor: logika rapor per-santri diekstrak ke `buildSantriRapor()` + `schoolKopBase64()` agar per-santri & massal memakai satu jalur.
+- Test baru: autosave JSON (leger & mapel), auto-buku semester genap, cetak rapor massal PDF. `SumatifHarianDinamisTest` **18 test / 121 assertion**; `BukuNilaiKonsolidasiTest` + `PesertaDidikP0Test` **33 test / 160 assertion** — semua lulus; `view:cache` sukses.
+
+## 90. Seragamkan Tipografi & Rapikan Kolom Beku Tabel Leger
+- **Tipografi tabel diseragamkan 12px**: seluruh sel & header tabel Leger dan per-Mapel kini 12px (sebelumnya campur 10–14px); **semua `font-size` inline di dalam tabel dihapus** dan dipusatkan di CSS agar konsisten.
+- Skala pendukung: header grup (AGAMA/UMUM/PEMBIASAAN/TAHFIDZ/PRESENSI) 11px · teks `small` di header 10px · badge 11px · avatar 10px · input nilai 12px (lebar 52px; SH 40px).
+- Teks 13px yang tersisa di luar tabel (banner/legend/empty state) diseragamkan ke 12px.
+- **Kolom beku kini presisi**: lebar kolom No/NIS/Nama dipatok via CSS + offset `left` dihitung ulang (50/134px Leger; 54/138px per-Mapel), nama panjang dipotong dengan elipsis.
+- **Header multi-baris tidak lagi menumpuk**: posisi `top` sticky per baris header dihitung otomatis via JS (`applyStickyHeaderTops`) saat load/resize.
+- Test: `SumatifHarianDinamisTest` **18 test / 121 assertion lulus**; `view:cache` sukses.
+
+## 92. Dark/Light Mode, Lebar Kolom Konsisten, Label Sumatif Penuh, dan Absensi Tombol Huruf
+- **Dark/light mode**: seluruh warna keras (putih/abu/kuning/biru) di tabel Leger & per-Mapel diganti **variabel tema Bootstrap** (`--bs-body-bg`, `--bs-tertiary-bg`, `--bs-*-bg-subtle`, dst.) — otomatis menyesuaikan mode gelap/terang dan tidak lagi "full color".
+- **Lebar kolom konsisten di kedua tab**: No 50px & NIS 84px (sama persis di Leger dan per-Mapel); **Nama tanpa batas maksimum** (min 220px, nama tampil utuh); kolom mapel Leger semua **92px**; kolom agregat (Jumlah 76/Rata 82/Peringkat 64/Predikat 104) & Pembiasaan/Tahfidz (46–84px) tetap; kolom pendukung mapel diseragamkan (RS/STS/SAS/RSA/NR 80px; Penghargaan & Formatif 52px).
+- **Label kolom sumatif tampil penuh**: lebar kolom S1–S6 dihitung otomatis dari panjang label (mis. "Sumatif Harian 1" tampil utuh, bukan terpotong).
+- **Halaman absensi santri** (Absensi Harian → Input): pilihan status kini **tombol huruf H/S/I/A/T** (gaya *subtle*, aman dark mode); klik S/I/A/T **otomatis memunculkan kolom Keterangan** (fokus langsung), klik H menyembunyikannya; tombol "isi semua" & reset ikut menyinkronkan status + keterangan. **Mode default halaman = tombol huruf.**
+- **Perbaikan fixture test lama** `AttendanceSyncKehadiranTest`: fixture membuat buku manual padahal observer penugasan sudah otomatis membuatnya → duplikat (unique constraint). Kini idempoten (`updateOrCreate`).
+- Test batch: AttendanceSyncKehadiranTest + AcademicServerSideAuthorizationTest + PesertaDidikP0Test + SumatifHarianDinamisTest + BukuNilaiKonsolidasiTest = **69 test / 327 assertion lulus**; `view:cache` sukses.
+
+## 93. Leger Baca-Saja, Nilai Murni STS/SAS di Tab Mapel, Z-Index Berlapis & Input Gaya Spreadsheet
+- **Leger tidak lagi menerima input nilai** — semua nilai diambil dari **tab Mapel** (footer menjelaskan hal ini). Kolom KKTP tetap bisa diatur inline di baris KKTP leger.
+- **Kolom Nilai Murni STS & SAS** ditambahkan di tab Mapel (input), mengikuti aturan yang sudah berlaku di Buku Nilai: **Nilai Murni wajib terisi sebelum kolom STS/SAS**:
+  - UI: kolom STS/SAS otomatis **terkunci (disabled)** sampai Nilai Murni diisi; terbuka seketika saat Nilai Murni diketik (JS gating per baris).
+  - Backend: pelanggaran → **422** dengan pesan `nilai.<santri>.sts` / `nilai.<santri>.sas` ("Isi Nilai Murni … terlebih dahulu"), berlaku juga saat autosave.
+- **Z-index berlapis** sesuai permintaan: sel nilai (dasar) → **sel identitas tubuh No/NIS/Nama (2)** → **header tabel (3)** → **header identitas No/NIS/Nama (4, paling depan)**; latar sel identitas opak sehingga tidak tembus lapisan lain saat digulir.
+- **Input gaya spreadsheet**: input di tab Mapel (SH, N. Murni STS/SAS, STS, SAS) kini **tanpa border & penuh kolom** (border hanya dari tabel; fokus memakai ring inset), KKTP di leger juga ikut gaya ini.
+- **Fitur spreadsheet yang sudah aktif**: navigasi **Enter/↑/↓** antar sel, **paste matriks** dari Excel/Google Sheets mulai dari sel aktif (nilai terdistribusi ke kolom/baris berikutnya, memicu autosave). Blok/range selection untuk copy-paste antar sel dicatat sebagai rencana berikutnya.
+- Test: `SumatifHarianDinamisTest` **20 test / 137 assertion** (termasuk uji aturan Nilai Murni di tab Mapel & leger baca-saja); batch lain (BukuNilai/Kesiswaan/Absensi/Otorisasi) **202 assertion lulus**; `view:cache` sukses.
+
+## 94. Modal Peringatan Nilai Murni, Auto-Update Nilai Turunan, S6 = Rata-rata Formatif, Kelola Kolom di Leger
+- **Modal peringatan "Nilai Murni Belum Diisi"**: kolom STS/SAS yang terkunci kini `readonly` (bukan disabled) sehingga **klik memunculkan modal** dengan penjelasan + tombol "Isi Nilai Murni Sekarang" (langsung fokus ke kolom murni). Diterapkan di **tab Mapel halaman Leger** dan **Buku Nilai (wizard 3)**.
+- **Auto-update nilai turunan**: respons autosave kini mengirim `rs/sas/rsa/nr_murni/nr_final` per santri; UI memperbarui sel **RS, RSA, NR Murni, NR Final** seketika (tanpa reload) — pola sama dengan Buku Nilai.
+- **S6 = rata-rata Penilaian Asesmen Formatif (otomatis)**:
+  - Kolom S6 di **tab Mapel & wizard 3** kini **tampilan otomatis** (bukan input), nilainya dari rata-rata formatif (wizard 4).
+  - Saat guru menyimpan **formatif (wizard 4)**, S6 + RS/RSA/NR Murni/NR Final **otomatis dihitung ulang** (server).
+  - Perhitungan **RS kini menyertakan S6 otomatis** (JS + backend).
+- **Fitur tambah kolom di halaman Leger**: tombol **Kelola Kolom** di tab Mapel — tambah/ganti nama/urutkan/hapus kolom sumatif (S1–S5 legacy terkunci, S6 otomatis terkunci); tersimpan via endpoint baru `nilai-kelas/{rombel}/sts/kolom`.
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` + `PesertaDidikP0Test` + `AttendanceSyncKehadiranTest` + `AcademicServerSideAuthorizationTest` = **72 test / 356 assertion lulus**; `view:cache` sukses.
+- Catatan: format **Asesmen Formatif dengan sub-kolom 1–4 per aspek** (16 kolom + RATA-RATA) membutuhkan perubahan skema (JSON per aspek) — diusulkan sebagai iterasi berikutnya.
+
+## 95. Template Modal Konsisten, Perbaikan Urutkan, dan Asesmen Formatif 4 Kolom per Aspek
+- **Konsistensi template modal**: modal peringatan Nilai Murni (halaman Leger & Buku Nilai) dan modal **Kelola Kolom** kini memakai komponen modal bersama **`<x-modal>`** (template modal yang sudah ada di proyek) — header, footer, dan ukuran konsisten dengan modal-modul lain.
+- **Perbaikan fitur urutkan**: akar masalahnya baris tabel **tab Mapel tidak memiliki `data-name`** sehingga pemilih baris sortir tidak menemukan apa pun. Kini sortir memilih semua baris ber-`data-col` → **klik judul kolom benar-benar mengurutkan di kedua tab** (Leger & Mapel).
+- **Penilaian Asesmen Formatif — 4 kolom per aspek (bisa ditambah)**:
+  - Migrasi baru: JSON `lkpd_scores`, `diskusi_scores`, `kuis_scores`, `antarteman_scores` pada `admin_nilai_formatif` (kolom skalar lama dipertahankan untuk kompatibilitas).
+  - **Buku Nilai (wizard 4)**: setiap aspek (Mengerjakan LKPD, Diskusi Kelompok, Kuis/Tes Singkat, Penilaian Antarteman) kini punya **4 kolom nilai** dengan tombol **+** untuk menambah kolom; menampilkan **rata-rata per aspek** dan **NR Final** secara langsung.
+  - **Server**: skor tiap aspek = rata-rata sub-kolomnya; **NR Final = rata-rata dari rata-rata aspek**; **S6 tersinkron otomatis** dari nilai formatif. Data format lama (skor tunggal) tetap terbaca.
+  - **Leger**: yang ditampilkan adalah **rata-rata tiap aspek** (LKPD/Diskusi/Kuis/Antar Teman) + RATA-RATA — sesuai permintaan.
+- Catatan: `StudyGroupSubjectAssignmentCascadeTest` gagal jika berdiri sendiri karena memakai `DatabaseTransactions` **tanpa menjalankan migrasi** (in-memory DB kosong) — **pre-existing**, tidak terkait perubahan ini.
+- Test: 8 file terkait (leger, buku nilai, kesiswaan, absensi, otorisasi, kurikulum, pelaksanaan) = **100 test / 595 assertion lulus**; `view:cache` sukses; migrasi dev dijalankan.
+
+## 96. Modal Gaya Lord-Icon (zoomIn) & Kolom Formatif Ala Nilai Sumatif
+- **Konsistensi konsep modal (lord-icon/zoomIn)** sesuai template yang ada:
+  - Modal peringatan **Nilai Murni Belum Diisi** (halaman Leger & Buku Nilai) kini memakai komponen bersama **`x-modal-confirm`** — lord-icon animasi, judul, pesan, tombol "Isi Nilai Murni Sekarang" + "Batal", kelas `zoomIn` (script lordicon dimuat di halaman terkait).
+  - Komponen baru **`x-modal-success`** (konsep sama) — di Buku Nilai, setelah **simpan berhasil** muncul modal sukses otomatis.
+  - Komponen bersama ini siap dipakai untuk konfirmasi **hapus/tambah/sukses** di halaman lain (rollout bertahap).
+- **Penilaian Asesmen Formatif kini ber-“Kelola Kolom” ala Nilai Sumatif**:
+  - Tombol **Kelola Kolom** di halaman formatif: modal mengelola **kolom tiap aspek** (Mengerjakan LKPD / Diskusi Kelompok / Kuis-Tes Singkat / Penilaian Antarteman) — minimal 4 kolom (default), maksimal 12, **label kolom bisa diganti**.
+  - Definisi kolom tersimpan per buku (`teacher_admin_books.formatif_columns`, migrasi baru) via endpoint `guru-mapel/{buku}/w4/kolom`.
+  - Grid mengikuti definisi (jumlah & tooltip label), **rata-rata per aspek + NR Final live**, **S6 tetap tersinkron otomatis**, dan Leger tetap menampilkan **rata-rata per aspek**.
+- Test: 8 file terkait = **101 test / 601 assertion lulus**; `view:cache` sukses; migrasi dev dijalankan.
+
+## 97. Ikon Modal Sesuai Konteks, Rollout Modal Verifikasi, Tabel Formatif Sistem Kolom, & Fix RS/S6
+- **Ikon modal konteks**: modal "Nilai Murni Belum Diisi" tidak lagi memakai ikon tong sampah — kini memakai **ikon alert/peringatan** (`tdrtiskw`, warna amber) yang sesuai konteks.
+- **Rollout konsep modal (lord-icon/zoomIn)** ke halaman verifikasi lain:
+  - **Mutasi Masuk** — modal hapus → `x-modal-confirm` (ikon hapus, tombol "Ya, Hapus!").
+  - **Jenis Izin (asrama/leave-policies)** — modal hapus → `x-modal-confirm` (form delete dipindah ke luar modal, pesan dinamis tetap).
+  - **Promosi Siswa** — modal eksekusi diberi ikon peringatan lord-icon (checkbox konfirmasi tetap).
+  - Catatan: konfirmasi lain di aplikasi banyak yang memakai SweetAlert2 — konversi bertahap bisa dilanjutkan sesuai prioritas.
+- **Tabel Penilaian Asesmen Formatif kini benar-benar sistem kolom** (seperti Nilai Sumatif): **1 sub-kolom = 1 kolom tabel** (header dua baris: nama aspek + label sub-kolom + kolom **Rata** per aspek), input **tanpa border** di dalam sel berbingkai (gaya spreadsheet). Tidak lagi 4 input menumpuk dalam satu sel. Rata per aspek & NR Final tetap live; S6 tetap tersinkron.
+- **Fix RS: S6 kini ikut dihitung** — akar masalah: **autosave Buku Nilai menghapus S6** (posting SH tanpa S6). Perbaikan di semua jalur simpan (autosave, w3, tab Mapel): S6 dipertahankan dari nilai formatif atau nilai tersimpan; tampilan S6 memakai nilai tersimpan lebih dulu. Rumus RS = **jumlah data ÷ jumlah kolom terisi** (rata-rata), kini sudah termasuk S6.
+- Test regresi baru: autosave SH tidak menghapus S6 & RS = (S1+S6)/2. Batch 3 file = **58 test / 338 assertion lulus**; `view:cache` sukses.
+
+## 98. RS Pembagi Seragam, UI Formatif Profesional, & Konversi Swal→Modal (Kelas & Rombel)
+- **Rumus RS diperbaiki — pembagi SERAGAM per kelas**: RS = jumlah nilai SH terisi ÷ **banyak kolom terisi terbanyak di kelas** (bukan per santri). Contoh: ada santri mengisi 4 kolom → semua santri dibagi 4, sehingga santri yang tidak mengikuti sebagian sumatif tidak diuntungkan. Diterapkan di service (semua jalur simpan & recalc) dan hitungan live tab Mapel (`data-rs-divisor`). Contoh S1=90, S5=90, S6=85 dengan pembagi kelas 4 → RS = 66,25.
+- **UI Asesmen Formatif lebih profesional**: header 2 baris **beku** (sticky) dengan perhitungan top otomatis, **kolom #/NIS/Nama beku kiri**, tipografi seragam 12px, warna memakai variabel tema (aman gelap/terang), input **tanpa border** penuh sel (gaya spreadsheet), kolom **Rata** per aspek disorot, hover baris, dan area gulir maksimum 70vh.
+- **Konversi SweetAlert2 → modal Bootstrap lord-icon (bertahap)** dimulai di satuan pendidikan:
+  - **Kelas (grade-levels)** & **Rombel (study-groups)**: konfirmasi hapus kini memakai `x-modal-confirm` (ikon hapus lord-icon, form tersembunyi, `formId`, tombol "Ya, Hapus!").
+  - Lanjutan giliran berikutnya: Mutasi, Nilai, Kurikulum, Jadwal, Kaldik (komponen bersama sudah siap).
+- Test: 3 file terkait = **59 test / 340 assertion lulus**; `view:cache` sukses.
+
+## 99. Kolom Formatif Ditambah per Aspek, Placeholder Tengah, & Kolom Beku Opak
+- **Tambah/hapus kolom per aspek** (tidak lagi satu modal terpusat yang membingungkan):
+  - Setiap **header aspek** (Mengerjakan LKPD / Diskusi Kelompok / Kuis-Tes Singkat / Penilaian Antarteman) memiliki tombol **+** untuk menambah kolom aspek tersebut langsung dari tabel.
+  - Setiap **header sub-kolom** memiliki tombol **×** (muncul saat kolom > 4) untuk menghapus kolom tersebut; perubahan langsung tersimpan dan halaman dimuat ulang.
+  - Modal "Kelola Kolom" terpusat dihapus; catatan footer diperbarui mengikuti tombol baru.
+- **Placeholder input di tengah**: `::placeholder { text-align: center }` pada input tabel Formatif (dan konsisten di tabel Leger/Mapel).
+- **Kolom beku dibuat opak** — memperbaiki tampilan "tumpang tindih/transparan": hover pada kolom identitas (#/NIS/Nama) kini memakai warna **solid** (`--bs-secondary-bg`), bukan warna transparan; ditambah **bayangan tepi** pemisah kolom beku. Diterapkan di **Asesmen Formatif** dan **Leger/Mapel**.
+- Test: 4 file terkait = **66 test / 362 assertion lulus**; `view:cache` sukses.
+
+## 100. Modal Hapus Kolom, Penomoran Otomatis, UI Buku Nilai Gaya Leger, Bobot NR Final, & Pencarian Leger
+- **Hapus kolom formatif pakai modal lord-icon**: tombol × pada sub-kolom tidak lagi memakai `confirm()` browser — muncul modal "Hapus kolom ini?" (ikon hapus, tombol "Ya, Hapus!").
+- **Penomoran otomatis setelah hapus**: menghapus kolom ke-3/ke-2/terakhir membuat kolom sisa **dinomori ulang berurutan** (1,2,3,4) — di klien maupun server; label custom (mis. "Pertemuan") tetap dipertahankan.
+- **UI tabel Buku Nilai (Nilai Sumatif) kini seragam dengan Leger**: header 2 baris **beku** (top dihitung otomatis), **kolom #/NIS/Nama beku** kiri, tipografi 12px, warna variabel tema (gelap/terang), input **tanpa border** penuh sel dengan placeholder tengah, bayangan tepi kolom beku, hover opak.
+- **Bobot NR Final (guru mapel) berfungsi kembali**: panel "Pengaturan NR Final" di kartu header; setelah disimpan halaman **otomatis dimuat ulang** sehingga bobot RS/STS/SAS (dan seluruh NR Final) langsung terlihat terpakai.
+- **Header kartu gaya Jurnal** diterapkan di Buku Nilai (Nilai Sumatif & Asesmen Formatif): `card border-primary-subtle`, judul berikon, badge subtle (mapel/kelas/semester/TA), indikator autosave, tombol **Realisasi**, dan pemilih buku.
+- **Pencarian nama di Leger otomatis (tanpa Enter)**: filter berjalan saat mengetik dan berlaku di **kedua tab** (Leger & Mapel) berdasarkan nama santri.
+- Test: 3 file terkait = **60 test / 343 assertion lulus**; `view:cache` sukses.
+
+## 101. Kartu Seragam w1–w6, Tools Tabel Buku Nilai, Modal Hapus Kolom Sumatif, & Seeder Kurikulum
+- **Kartu header gaya Jurnal kini di SEMUA halaman Buku Nilai (wizard 1–6)**: w1 (Presensi), w5 (Penghargaan), w6 (Catatan) menyusul w2–w4 — badge subtle (mapel/kelas/semester/TA), indikator autosave, tombol **Realisasi**, dan pemilih buku.
+- **Tools tabel seragam di Buku Nilai (w1–w6)** via partial bersama `nilai-guru.partials.table-tools`:
+  - **Pencarian nama otomatis tanpa Enter** di setiap tabel;
+  - **Klik judul kolom untuk mengurutkan** (▲/▼) dengan pemetaan kolom visual (mendukung header bertingkat);
+  - gaya tabel Leger: header beku (top per baris), kolom **#/NIS/Nama beku**, 12px, variabel tema (gelap/terang), input tanpa border + placeholder tengah, hover opak.
+- **Hapus kolom Nilai Sumatif (w3) memakai modal lord-icon** ("Hapus kolom ini?" → "Ya, Hapus!") — konsisten dengan hapus kolom Formatif (tidak lagi `confirm()` browser).
+- **Seeder Kurikulum GTK "Lalu Sopian Harianto"** (`KurikulumLaluSopianSeeder`, idempoten): membuat rantai **CP → TP → ATP (+item) → Prota (+item) → Prosem (+item + distribusi mingguan) → Perangkat (RPM)** untuk tiap konteks buku GTK (mapel × tingkat × TA × semester). Sudah dijalankan di dev: **47 konteks → 47 CP/ATP/Prota/Prosem/Perangkat + 282 TP/282 item**. Jalankan ulang kapan saja: `php artisan db:seed --class=KurikulumLaluSopianSeeder`.
+- Test: 3 file terkait = **60 test / 343 assertion lulus**; `view:cache` sukses.
+
+## 102. Presensi Buku Nilai: Tombol Huruf H/T/S/I/A + Keterangan, Enum Terlambat, & Laporan Seeder
+- **Radio besar di Presensi Buku Nilai (w1) diganti tombol huruf kompak** `H T S I A` (Hadir, Terlambat, Sakit, Izin, Alpa) — ukuran kecil (24×22px), gaya *subtle* aman tema gelap/terang.
+- **Klik S/I/A/T memunculkan form Keterangan** otomatis (fokus langsung); klik H menyembunyikannya. Nilai keterangan tersimpan ke kolom `notes` (sudah terbukti lewat test).
+- **Status `terlambat` didukung penuh**: migrasi baru menambah enum pada `admin_presensi_siswa` (MySQL) + validasi store diperbarui (`in:hadir,terlambat,izin,sakit,alpa`).
+- Tombol status di halaman **Absensi Harian** ikut diperkecil agar konsisten.
+- **Seeder Kurikulum (Lalu Sopian Harianto)**: output kini juga menampilkan **total data saat ini** — 0 "baru" wajar karena **idempoten** (data sudah pernah dibuat): **47 CP, 282 TP, 47 ATP (282 item), 47 Prota (282 item), 47 Prosem (282 item), 47 Perangkat**.
+- Test: 3 file terkait = **40 test + 1 risky / 240 assertion lulus**; `view:cache` sukses.
+
+## 103. Tombol Status Bulat, Pencarian & Filter Buku Nilai, & Fix Autosave Wizard 4
+- **Kolom "Status Kehadiran" kini tombol bulat berwarna** (seperti radio): `(H) (T) (S) (I) (A)` — lingkaran 26px, **berwarna saat dipilih**, gaya *subtle* aman tema gelap/terang. Berlaku di **Buku Nilai → Presensi (w1)** dan **Absensi Harian**.
+- **Keterangan hanya muncul saat status bukan Hadir**: klik S/I/A/T → form keterangan tampil & fokus; klik H → tersembunyi.
+- **Pencarian & filter di semua wizard Buku Nilai (w1–w6)**:
+  - Kotak **Cari nama santri** berjalan **saat mengetik (tanpa Enter)**;
+  - **Filter tambahan** yang menyesuaikan tabel: pada tabel presensi → filter **status** (Semua/Hadir/Terlambat/Sakit/Izin/Alpa); pada tabel nilai → filter **kelengkapan** (Semua/Belum Lengkap/Sudah Lengkap);
+  - Pencarian dan filter dapat dikombinasikan.
+- **Autosave Wizard 4 (Asesmen Formatif) diperbaiki**: akar masalah — autosave mengirim `type=formatif` tetapi endpoint hanya menangani `sumatif`. Kini ada penanganan **formatif** (ekstraksi `saveFormatifRows` dipakai bersama oleh simpan & autosave): menyimpan sub-kolom per aspek, menghitung **rata-rata per aspek + NR Final**, menyinkronkan **S6**, dan mengembalikan `saved_rows` untuk pembaruan tampilan.
+- Test baru: autosave formatif berhasil (contoh: rata aspek 85/70/100/80 → NR Final 83,75 & S6 tersinkron). Batch 4 file = **69 test / 377 assertion lulus**; `view:cache` sukses.
+
+## 104. Presensi Buku Nilai (w1) Kini Berbentuk Daftar Kartu
+- **Input presensi w1 diubah dari tabel menjadi daftar kartu** sesuai contoh Pak Prof.: setiap santri satu kartu dengan **avatar inisial**, **nama tebal + NIS**, **tombol status bulat H/T/S/I/A** (berwarna saat dipilih), dan **kolom Keterangan/Alasan di bawah kartu** yang **hanya muncul saat status bukan Hadir**.
+- **Pencarian nama tetap otomatis (tanpa Enter)** untuk daftar ini, ditambah **filter status** (Semua/Hadir/Terlambat/Sakit/Izin/Alpa) — dapat dikombinasikan; penghitung siswa ikut menyesuaikan.
+- `setW1Status` kini menyinkronkan `data-status` kartu (untuk filter) dan membuka/menutup wrapper keterangan.
+- Test: 2 file terkait = **56 test / 322 assertion lulus**; `view:cache` sukses.
+
+## 105. AKAR MASALAH UI/JS: Layout Tidak Merender CSS & JS Halaman
+- **Temuan penting**: `layouts/master.blade.php` hanya merender `@stack('scripts')`, padahal banyak halaman memakai `@section('script')` (Leger), `@section('css')` (rapor), dan `@push('style')` (Presensi w1) — akibatnya **CSS/JS halaman-halaman itu tidak pernah dimuat**:
+  - Halaman **Leger** tampil tanpa gaya tabel (kolom beku/huruf/input kacau) dan tanpa JS (urutkan, pencarian, autosave) — persis keluhan "urutkan/cari belum bisa, autosave gagal, UI kacau".
+  - **Presensi w1** tanpa CSS daftar kartu, **rapor** tanpa CSS, dsb.
+- **Perbaikan layout (`master.blade.php`)**: kini merender `@yield('css')`, `@stack('style')`, `@stack('styles')` di kepala halaman serta `@yield('script')`, `@stack('script')`, `@stack('scripts')`, `@yield('js')` di akhir — semua CSS/JS halaman langsung dimuat kembali.
+- **Regresi test** ditambahkan: halaman Leger wajib memuat `initSortableTable` (JS), halaman Presensi w1 wajib memuat CSS `.presensi-row` — mencegah masalah ini terulang.
+- Test: 4 file terkait = **69 test / 381 assertion lulus**; `view:cache` sukses.
+
+## 106. Presensi w1 Sesuai Mockup (Baris + Avatar Besar + Tombol Solid)
+- **Daftar presensi w1 disamakan dengan mockup Pak Prof.**: baris tanpa kotak per-kartu, dipisah **garis tipis**; **avatar bulat 44px** berisi inisial; **nama tebal 16px** + **NIS** abu di bawahnya.
+- **Tombol status bulat 34px**: tidak dipilih = transparan + garis abu + huruf abu; **dipilih = solid berwarna** (H hijau, T kuning, S kuning-emas seperti gambar, I biru, A merah) dengan huruf kontras — tetap aman di mode gelap/terang.
+- **Keterangan/Alasan** tampil **di bawah baris** (input rounded 8px, border halus, latar transparan) dan **hanya muncul saat status bukan Hadir**.
+- Tombol **T (Terlambat)** dipertahankan (5 tombol) sesuai permintaan sebelumnya; bila ingin persis 4 tombol seperti gambar, tinggal dihapus.
+- Test: `SumatifHarianDinamisTest` **29 test / 199 assertion lulus**; `view:cache` sukses.
+
+## 107. Tombol Status: Border Lingkaran Jelas + Ukuran & Font Seragam
+- **Border lingkaran kini terlihat jelas** pada tombol status yang belum dipilih: **1.5px solid `--bs-secondary-color`** (abu, kontras di mode terang & gelap) — sebelumnya border terlalu samar.
+- **Keseragaman ukuran & font**: tombol di Presensi w1 **34×34px / font 13px bold**; di tabel lain & Absensi Harian **30×30px / font 12px bold** — semuanya bulat penuh, `font-family: inherit`, `box-sizing: border-box`, dan `appearance: none` sehingga **ukuran tidak berubah saat dipilih** (border dipertahankan 1.5px, hanya warna yang berubah).
+- **Status terpilih = solid** dan konsisten di semua tempat: H hijau, T kuning, S kuning-emas (#f0b429), I biru, A merah — huruf kontras (gelap untuk H/T/S, putih untuk I/A).
+- Hover: border & huruf berubah ke warna primer (indikasi dapat diklik).
+- Test: `SumatifHarianDinamisTest` + `AttendanceSyncKehadiranTest` = **36 test / 221 assertion lulus**; `view:cache` sukses.
+
+## 108. AKAR MASALAH VISUAL: Variabel CSS Bootstrap Tidak Ada di Build Tema
+- **Temuan kunci**: `bootstrap.min.css`, `app.min.css`, dan `custom.min.css` build tema ini **sama sekali tidak memuat variabel `--bs-*`** (0 definisi). Akibatnya **semua `var(--bs-*)` gagal senyap** — menjelaskan kenapa hanya warna hex (S & I) yang tampil pada tombol, kenapa border/background kolom beku sering kosong, dan kenapa UI terasa "kacau" di banyak halaman.
+- **Perbaikan global** di `layouts/head-css.blade.php`:
+  - Blok `<style id="bs-theme-vars">` berisi **variabel standar Bootstrap 5.3** (terang + `[data-bs-theme="dark"]`) sehingga seluruh `var(--bs-*)` di aplikasi berfungsi kembali.
+  - **Urutan CSS dibetulkan**: CSS halaman (`@yield('css')`, `@stack('css'/'style'/'styles')`) kini dimuat **setelah** CSS tema (sebelumnya ada yang dimuat sebelum Bootstrap sehingga tertimpa). Duplikasi di `master` dihapus.
+- **Wizard 1 (desain Bapak)**: tombol status diberi **nilai fallback hex** (`var(--bs-primary, #0d6efd)` dll.) sebagai pengaman ganda — H/T/A kini berwarna & berlingkaran seperti S/I.
+- **Konsistensi tabel dengan Leger**: tabel presensi memakai **font 12px**, **header beku** dengan warna `--bs-tertiary-bg`, padding sel `.5rem`, hover baris, kolom No 50px center, NIS 12px, nama 12px/600.
+- Test: 3 file terkait = **62 test / 360 assertion lulus**; `view:cache` sukses.
+
+## 109. Hover Tombol Status Memakai Variabel Subtle Bawaan
+- Warna hover tombol status tidak lagi memakai rgba keras, melainkan **variabel subtle Bootstrap** yang sudah ada (setara `badge bg-*-subtle`):
+  - Hadir → `--bs-primary-bg-subtle` · Terlambat → `--bs-warning-bg-subtle` · Sakit → `--bs-warning-bg-subtle` · Izin → `--bs-success-bg-subtle` · Alpa → `--bs-danger-bg-subtle` (dengan fallback hex).
+- Diterapkan seragam di **Presensi w1**, **tabel wizard lain**, dan **Absensi Harian**.
+- Test: `SumatifHarianDinamisTest` + `AttendanceSyncKehadiranTest` lulus; `view:cache` sukses.
+
+## 110. Wizard 1: Hapus CSS Kustom — Konsisten Memakai Kelas Velzon
+- **Seluruh blok `@push('style')` kustom di wizard 1 (±135 baris CSS) dihapus**; tampilan kini murni memakai kelas **Velzon/Bootstrap**:
+  - Tabel: `table table-hover align-middle table-nowrap` + `thead.table-light` + `table-responsive`; isi sel memakai `text-muted`, `fw-semibold`, `<code>` untuk NIS.
+  - **Tombol status**: `btn btn-sm btn-icon rounded-circle` + **`btn-soft-{color}`** saat belum dipilih (subtle, setara `bg-*-subtle`) dan **`btn-{color}`** (solid) saat dipilih — warna: H primary, T warning, S warning, I success, A danger.
+  - Keterangan: `form-control form-control-sm` + `mt-2` (tanpa CSS tambahan).
+- **`setW1Status`** diperbarui: menukar kelas `btn-soft-*` ↔ `btn-*` berdasarkan `data-color` (tetap menyinkronkan hidden input, `data-status`, dan wraper keterangan).
+- Hanya kelas semantik (`status-group`, `note-inline`, `presensi-row`) yang tersisa untuk kebutuhan perilaku JS — tanpa gaya.
+- Regresi test diperbarui: halaman w1 wajib memuat kelas **`btn-icon`**, **`btn-soft-`**, dan fungsi `setW1Status`.
+- Test: `SumatifHarianDinamisTest` + `AttendanceSyncKehadiranTest` = **36 test / 223 assertion lulus**; `view:cache` sukses.
+
+## 111. Autosave Presensi w1, Style Tabel Velzon di Semua Wizard, & Inisial Nama Depan+Akhir
+- **Simpan otomatis di Presensi (wizard 1)**: klik tombol status langsung **menyimpan otomatis** (debounce 1 detik) melalui endpoint yang kini mengembalikan **JSON** (`saved: true`); mengetik **Keterangan** juga ikut tersimpan otomatis. Indikator kecil di baris info menampilkan **"Tersimpan hh:mm"**; tombol "Simpan Presensi" tetap tersedia untuk simpan manual.
+- **Style tabel wizard 1 diterapkan ke SEMUA wizard Buku Nilai (w1–w6)**:
+  - Blok CSS kustom **dihapus** dari w3, w4, dan partial bersama (sisa hanya indikator urut ▲▼).
+  - Semua tabel memakai kelas **Velzon/Bootstrap**: `table table-hover align-middle table-nowrap` + `thead.table-light` (tanpa `table-bordered`, tanpa sticky kustom).
+  - **Input** di w3 & w5 (dan w4) dikonversi ke **`form-control form-control-sm`** — total **14 input** dibersihkan; tidak ada lagi style inline `#f8f9fa00/border:none`.
+  - Toolbar pencarian/filter/urut tetap berfungsi (kelas utilitas Bootstrap).
+- **Inisial kini nama depan + nama akhir** (bukan satu huruf): mis. "ABDUL BARR MIRAJI" → **AM**; nama satu kata memakai dua huruf pertama. Diterapkan di **avatar Leger & tab Mapel**, **rapor-index**, dan **tabel Riwayat wizard 1**.
+- Test baru: autosave presensi w1 mengembalikan JSON + data tersimpan. Batch 3 file = **63 test / 364 assertion lulus**; `view:cache` sukses.
+
+## 112. Kembalikan Tampilan Wizard Lain (w2–w6) Seperti Sebelumnya
+- Atas permintaan Pak Prof., perubahan gaya tabel pada **wizard selain w1 dikembalikan** ke tampilan sebelumnya:
+  - **Partial tools**: style tabel lengkap dikembalikan (header beku, kolom identitas beku, input borderless, hover, indikator urut).
+  - **w4 (Asesmen Formatif)**: style `tf-scroll`/`#formatif-table` + JS header beku + kelas `table-bordered` + input borderless + sel Rata + input Ket dikembalikan.
+  - **w5 (Penghargaan)**: kelas tabel & **6 input** dikembalikan ke borderless.
+  - **w2 (Jurnal)**: kelas `table-freeze` dikembalikan; **w6 (Catatan)**: kelas tabel dikembalikan.
+  - **w3 (Nilai Sumatif)** sudah dalam kondisi sebelumnya — tidak diubah.
+- **Yang tetap dipertahankan** (sesuai permintaan sebelumnya): **simpan otomatis di w1** + indikator, **inisial nama depan+akhir** di seluruh tempat, dan wizard 1 yang sudah Velzon-native.
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` = **36 test / 237 assertion lulus**; `view:cache` sukses.
+
+## 113. Autosave Presensi Wizard 1 (Dipasang Ulang & Terverifikasi)
+- **Skrip autosave wizard 1 dipasang ulang** (file sempat ditulis ulang sehingga skrip sebelumnya hilang): kini **self-contained** di wizard1 —
+  - Klik tombol status → tersimpan otomatis (debounce 0,9 detik) via `#presensiList` (listener delegasi, terbukti jalan terlepas dari urutan skrip partial).
+  - Mengetik Keterangan → ikut tersimpan otomatis.
+  - **Indikator** "Menyimpan… → Tersimpan hh:mm → Menunggu…" di sebelah tombol "Simpan Presensi" (badge Velzon).
+  - Hook `window.__w1AutoSave` tetap didaftarkan bila partial memanggilnya.
+- Endpoint `w1.store` mengembalikan **JSON** (`saved: true`) untuk permintaan AJAX (sudah ada, terverifikasi).
+- Regresi test ditambah: halaman w1 wajib memuat `__w1AutoSave` dan `w1-autosave-indicator`.
+- Test: `SumatifHarianDinamisTest` **30 test / 204 assertion lulus**; `view:cache` sukses.
+- Sesuai instruksi: **tidak menyentuh wizard lain**.
+
+## 114. Wizard 1: Aksi Cepat (Semua Hadir/Telat/Sakit/Izin/Alfa) + Rekap Harian
+- **Aksi Cepat** ditambahkan di atas tabel presensi: tombol **Semua Hadir / Semua Telat / Semua Sakit / Semua Izin / Semua Alfa** (gaya `btn-soft-*` Velzon). Klik tombol → semua santri diubah ke status tersebut, keterangan otomatis terbuka untuk non-hadir, lalu **disimpan sekaligus (bulk save)** lewat autosave.
+- **Rekapitulasi harian live** di baris yang sama: badge jumlah **H / T / S / I / A** yang **diperbarui otomatis** setiap kali status berubah (dan saat aksi cepat digunakan). Perhitungan dari nilai tersimpan di hidden input, jadi konsisten dengan data yang akan dikirim.
+- Tombol **Simpan Presensi** manual tetap tersedia; indikator autosave tetap "Menyimpan… → Tersimpan hh:mm".
+- Regresi test ditambah: halaman w1 wajib memuat `w1SetAll` dan `w1-count-hadir`.
+- Test: `SumatifHarianDinamisTest` **30 test / 206 assertion lulus**; `view:cache` sukses.
+- Sesuai instruksi: **hanya wizard 1** yang disentuh.
+
+## 115. Absensi Harian (Wali Kelas) Bergaya Wizard 1 + Filter Rombel Dibatasi
+- **Input Absensi Harian kini berfitur seperti wizard 1**:
+  - Tombol status **bulat Velzon** (`btn btn-sm btn-icon rounded-circle`) — `btn-soft-*` saat belum dipilih, `btn-*` solid saat dipilih (H primary, T warning, S warning, I success, A danger) — CSS kustom tombol dihapus.
+  - **Keterangan/Alasan** otomatis tampil hanya saat status bukan Hadir.
+  - **Simpan otomatis**: perubahan status per santri & ketikan keterangan tersimpan otomatis (debounce 0,9 detik); ada **indikator** "Menyimpan… → Tersimpan hh:mm" di action bar; endpoint `absensi.harian.store` mengembalikan **JSON** untuk AJAX.
+  - **Aksi Cepat**: tombol Semua Hadir/Telat/Sakit/Izin/Alfa — mengubah semua santri lalu **menyimpan borongan**.
+  - **Rekapitulasi harian live** (badge H/T/S/I/A) yang diperbarui setiap perubahan status.
+- **Filter rombel dibatasi**: hanya **TU, Waka, Kurikulum, KSP, dan setingkat (Super Admin)** yang boleh memilih rombel. **Wali kelas** melihat rombelnya sebagai **badge terkunci** (tanpa dropdown) — ditegakkan di **controller** (scoping query di 4 halaman absensi, `canFilterRombel()`), **otorisasi simpan**, dan **view**.
+- Test baru: halaman input wali terkunci + memuat UI baru; autosave absensi mengembalikan JSON & tersimpan. Batch 5 file = **semua lulus** (AttendanceSync 9 test/30 assertion; batch lain tetap hijau); `view:cache` sukses.
+
+## 116. Absensi Wali Kelas: Langsung ke Kelasnya Tanpa Filter
+- **Wali kelas kini langsung masuk ke kelasnya**: saat membuka halaman input absensi **tanpa memilih apa pun**, rombelnya **otomatis terpilih** (controller mengisi rombel pertama milik wali) dan daftar santri **langsung tampil**.
+- **Filter rombel dihilangkan untuk wali**: kolom "Rombel" tidak dirender (hanya hidden input), tombol "Tampilkan Siswa" tidak muncul. Kolom Tanggal/Semester/Tampilan otomatis lebih lebar.
+- **Ganti tanggal/semester/tampilan langsung memuat ulang** untuk wali (tanpa tombol), sehingga alur input tetap lancar per hari.
+- **TU, Waka, Kurikulum, KSP, dan setingkat** tetap memakai filter rombel + tombol "Tampilkan Siswa" seperti biasa.
+- Test diperbarui: wali membuka halaman **tanpa parameter** → santri langsung tampil, tanpa "Pilih Rombel" dan tanpa "Tampilkan Siswa".
+- Batch: AttendanceSync + Sumatif + PesertaDidik lulus; `view:cache` sukses.
+
+## 117. Tabel Input Absensi Persis Seperti Wizard 1
+- **Struktur tabel disamakan dengan wizard 1 Buku Nilai**: kolom **No | NIS | Nama | Presensi Kehadiran** — kolom **JK dihapus** dan **kolom Keterangan terpisah dihapus** (keterangan kini berada **di dalam sel status**, di bawah tombol, muncul otomatis saat status bukan Hadir — persis wizard 1).
+- **Kelas tabel sama**: `table table-hover align-middle table-nowrap mb-0` + `thead.table-light`; baris tidak lagi di-highlight hijau (mengikuti wizard 1); NIS memakai `<code>`, nama `fw-semibold`.
+- Tombol status tetap **bulat Velzon** (`btn btn-sm btn-icon rounded-circle`, soft → solid) dengan `data-color`; mode dropdown tetap tersedia di dalam sel untuk yang memakai mode tersebut.
+- Ditambahkan kondisi kosong ("Belum ada santri di rombel ini.") dan catatan legend diperbarui.
+- Semua fitur tetap: autosave, indikator tersimpan, aksi cepat (Semua Hadir/Telat/Sakit/Izin/Alfa), rekap harian live, rombel wali terkunci & auto-load.
+- Test: `AttendanceSyncKehadiranTest` **9 test / 32 assertion lulus**; `view:cache` sukses.
+
+## 118. Absensi Harian: Pencarian Nama + Filter Status (Seperti Wizard 1)
+- Ditambahkan **toolbar pencarian & filter** di atas tabel input absensi:
+  - **Cari nama santri** — berjalan otomatis saat mengetik (tanpa Enter).
+  - **Filter status**: Semua / Hadir / Terlambat / Sakit / Izin / Alpa.
+  - Penghitung **"X / Y santri"** yang menyesuaikan hasil filter.
+- Baris tabel memakai `data-name` & `data-status`; status ikut tersinkron saat tombol status diklik, aksi cepat dijalankan, atau dropdown diubah — sehingga hasil filter selalu akurat.
+- Regresi test ditambah: halaman input wali wajib memuat `absenSearchInput` + `absenStatusFilter`.
+- Test: `AttendanceSyncKehadiranTest` **9 test / 32 assertion lulus**; `view:cache` sukses.
+
+## 119. Perbaikan Leger & Buku Nilai: Lapisan Freeze, Input Spreadsheet, & Modal Nilai Murni
+- **Bug lapisan tabel ditemukan & diperbaiki**: sel beku (frozen) di Leger memiliki **z-index 20** — lebih tinggi dari header (3/4) — sehingga **header tertindih oleh body**. Hierarki baru: **header identitas 40 > header 30 > sel beku body 10 > sel bergerak (auto)**; semua sel beku berlatar opak.
+- **Tabel wizard Buku Nilai**: aturan **kolom beku dihapus** dari partial (penyebab tumpang tindih antar kolom karena lebar kolom berbeda-beda); kini hanya **header beku** (z-index 30, latar opak) — tidak ada lagi kolom yang saling menindih.
+- **Input gaya spreadsheet (tanpa border)**:
+  - Leger: `leger-input`, `sh-input`, `sts-input`, `kktp-input` → **border 0**, latar transparan; saat **klik/fokus tidak ada border/ring** — hanya latar halus (`rgba(primary,.06)`).
+  - Tabel wizard: semua input di `.js-tools-table` juga borderless tanpa ring fokus.
+- **Modal "Nilai Murni Belum Diisi" disamakan dengan template**: markup eksplisit gaya **lord-icon + zoomIn** (header close, ikon animasi, judul, pesan, tombol "Tutup" + "Isi Nilai Murni Sekarang") — sebelumnya di halaman Leger masih markup lama yang tidak sesuai. Berlaku di **Leger (tab Mapel)** dan **Buku Nilai (w3)**.
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` = **36 test / 241 assertion lulus**; `view:cache` sukses.
+
+## 120. Leger & Buku Nilai: Lapisan z-index, Input Spreadsheet, & Modal Nilai Murni
+- **Bug lapisan tabel**: selector ID (`#tab-leger th[...]`) mengalahkan aturan kelas — aturan freeze kini **hanya menyasar `td`**; header identitas dikunci `z-index: 40` lewat `#tab-leger thead th[data-sort=...]`. Hierarki: **header identitas 40 > header lain 30 > body identitas 10 > body nilai (auto)**.
+- **Input gaya spreadsheet**: semua input tabel Leger & Mapel borderless; saat **klik/fokus tanpa border & ring** — hanya latar halus.
+- **Modal "Nilai Murni Belum Diisi"** di Leger (tab Mapel) & w3 memakai **markup eksplisit template lord-icon/zoomIn** (ikon sesuai konteks).
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` = **36 test / 241 assertion lulus**.
+
+## 121. Perbaikan Skrip Halaman Leger (SyntaxError `kolomColumnsUrl`) & Ring Fokus Biru
+- **Akar masalah**: `@yield('script')` dirender **dua kali** (di `master.blade.php` dan `vendor-scripts.blade.php`) → `const kolomColumnsUrl` dideklarasikan ganda → **seluruh JavaScript halaman Leger mati** (urut, cari, autosave, header beku, modal kolom).
+- Perbaikan: duplikat yield dihapus — yield tunggal tetap di tempat aslinya (`vendor-scripts`).
+- `sheet-input:focus` masih memakai **ring biru** → diganti borderless + latar halus; ditambah **aturan catch-all `!important`** untuk semua input tabel Leger & Mapel: `border-color` transparan, `box-shadow: none`, `outline: 0` saat diklik/fokus.
+- Regresi baru: skrip kolom wajib dirender **tepat satu kali**.
+
+## 122. Kolom Beku: Mati Otomatis di Layar Kecil + Perbaikan di Wizard 3
+- **Media query `max-width: 991.98px`**: kolom beku No/NIS/Nama **dimatikan** di Leger & Mapel (`left: auto`, `z-index: auto`) → tabel **bisa digeser ke samping di mobile**; header tetap beku di atas saat digulir vertikal.
+- **Wizard 3 (Nilai Sumatif)**: hierarki lapisan diperbaiki — sebelumnya **header identitas z-10 tertindih header lain z-30** (dari partial) sehingga terlihat tanpa beku; kini **header identitas 40 > header 30 > body identitas 10**.
+- Lebar kolom w3 diselaraskan (50 / 90 / 140 px) dan `min-width` inline dihapus → tidak ada kolom saling menimpa; kolom beku mati di layar kecil.
+
+## 123. Penyesuaian Leger & Wizard 3: Kolom Ekstra, CSS W3 Selalu Aktif, & Lebar Predikat
+- **Kolom ekstra di ujung tabel Leger dihilangkan**: header `PRESENSI` tercakup **dua kali** (`rowspan="2"` + filler `<td colspan="3">` di baris sub-header) → 3 sel hantu menonjol di ujung tabel; `rowspan` pada PRESENSI dihapus.
+- **Wizard 3 tanpa kolom beku (temuan akar)**: seluruh blok `<style>` w3 — termasuk `.nilai-scroll` & semua aturan freeze — **terjebak di dalam `@if(session('success'))`** sehingga hanya aktif sesaat setelah simpan. Blok dipindah **keluar** dari `@if`; script modal sukses tetap di dalam `@if`.
+- Focus input w3 kini **tanpa ring biru** (konsisten dengan Leger).
+- **Kolom Predikat dilebarkan** `104px → 150px`; badge predikat `min-width: 130px` + `white-space: nowrap` → teks **"Mumtaz Murtafi'"** tidak terpotong.
+- **Regresi baru**:
+  - `assertLegerGridRapi()` — simulasi grid `rowspan`/`colspan` DOM: **semua baris tabel Leger (STS & SAS) wajib selebar sama** (mendeteksi kolom ekstra/kurang).
+  - CSS kolom beku w3 wajib tampil **tanpa** session sukses.
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` = **36 test / 261 assertion lulus**; `view:cache` sukses.
+
+## 124. Simpan KKTP di Tab Leger + Sel KKTP Ikut Beku
+- **Gagal menyimpan KKTP (tab leger) diperbaiki**: blok simpan `leger_kkm` ternyata **berada di dalam** cabang `if (tab === 'leger' && filled('leger_sts'))` — padahal sejak leger baca-saja, `leger_sts` **tidak pernah dikirim** → setiap perubahan KKTP jatuh ke fallback *"Data tidak valid"* (indikator autosave menampilkan "Gagal menyimpan").
+  - Cabang leger kini juga aktif saat **hanya `leger_kkm`** yang dikirim; pesan JSON menyesuaikan: **"KKTP disimpan."** / "Leger disimpan."
+  - Ditambah **validasi server** untuk nilai KKTP: `nullable|numeric|min:0|max:100`.
+- **Sel KKTP ikut beku horizontal**: sel `th` KKTP di baris KKTP (sejajar kolom No/NIS/Nama) kini `position: sticky; left: 0; z-index: 40` → tetap terlihat saat tabel digeser ke samping, disamakan dengan kolom identitas; otomatis dimatikan di layar kecil bersama kolom beku lainnya.
+- **Regresi baru**: `test_kktp_tab_leger_tersimpan_tanpa_leger_sts` — simpan KKTP tanpa `leger_sts` → JSON `success:true` + baris `subject_kktp` ter-update + `kktp_id` buku tersinkron + CSS beku sel KKTP dirender.
+- Test: `SumatifHarianDinamisTest` + `BukuNilaiKonsolidasiTest` = **37 test / 268 assertion lulus**; `view:cache` sukses.
+
+## 125. Increment 1 — Fondasi Hak Akses & Konsistensi UI (Absensi, Data Nilai, Peta Kurikulum, Bank Soal, Leger TU, Monitoring Kehadiran)
+- **Helper bersama baru `app/Support/UserJabatan.php`**: membaca jabatan dari **semua sumber** (`employment` utama, seluruh `employments`, relasi `jabatanRel`) + varian nama TU. Dipakai di `NilaiKelasController::legerAccessFor()`, `NilaiController::isNilaiPrivileged()`, dan `AbsensiHarianController::canFilterRombel()` — memperbaiki 403 palsu untuk akun TU yang jabatannya tersimpan di `jabatan_id` atau memakai varian nama (*TU Sekolah*, *Kepala TU Sekolah*, *Staf TU Sekolah*).
+- **Absensi Kelas — hak akses**:
+  - Backend: guard baru `assertAbsensiAccess()` pada `index`, `create`, `recap`, `recapSemester` — guru tanpa kewenangan (bukan wali, bukan KSP/Waka/Kurikulum/Kesiswaan/TU) **ditolak 403**; diletakkan *setelah* pemeriksaan scope rombel agar semantik 404 lama tetap terjaga.
+  - `canFilterRombel()` kini juga mengenali **Koordinator Kesiswaan** dan **Tim Kesiswaan**.
+  - Sidebar: menu *Absensi Kelas Saya* di seksi KBM hanya untuk guru **ber-kewenangan** (bukan guru biasa); wali kelas mendapat entri di seksi **Wali Kelas**; seksi *Absensi Kehadiran* menampilkan *Absensi Peserta Didik* untuk KSP/Waka/Kurikulum/Kesiswaan/TU.
+- **Data Nilai — kewenangan & alur**:
+  - `isNilaiPrivileged()` baru: KSP/Waka/Kurikulum/TU dikenali dari **jabatan/tugas nyata**, bukan hanya permission yang tidak terdaftar — memperbaiki **Waka yang hanya melihat 2 rombel** (kini seluruh rombel satuan pendidikan).
+  - `user.schools.nilai.index`: wali kelas → **redirect ke Leger kelasnya**; guru mapel → **redirect ke Buku Nilai Saya**; hanya KSP/Waka/Kurikulum/TU yang melihat halaman Data Nilai umum.
+  - Sidebar: menu *Data Nilai* hanya tampil untuk KSP/Waka/Kurikulum/TU (guru & wali memakai jalur masing-masing).
+- **Peta Kurikulum**: guru kini melihat **seluruh struktur kurikulum jenjang** dalam cakupan satuan pendidikan (filter "hanya mapel diampu" dihapus). Hak edit tetap terjaga: KKTP via `$canEditKktp` + guard `saveKktp`, CP/TP/ATP/Perangkat via `KurikulumAccess::canManageSubject()`.
+- **Bank Soal**:
+  - `BankSoal::scopeAccessibleBy()` kini **sadar-rumpun**: soal bersama dalam rumpun kewenangan guru (satu satuan pendidikan, atau central/public_pool lintas satuan yang diizinkan) dapat dibuka. Tidak membuka bank rumpun lain/palsu.
+  - Halaman detail bank & detail repository (yang sebelumnya 403) memakai scope yang sama — daftar dan guard detail kini **selaras**.
+  - Bug filter `is_public` (`filled(...) !== null` yang selalu true) diperbaiki; index bank memakai `accessibleBy()` yang sama dengan guard detail.
+  - Quick scope *Serumpun* pada repository kini berbasis **rumpun mapel** (bukan sekadar `subject_id` yang sama).
+  - Sidebar master: 4 tautan Bank Soal rusak (single-brace + route butuh id) diganti satu tautan daftar yang valid.
+- **Leger & Cetak Rapor TU (403)**: resolver jabatan tangguh (lihat helper) — akun TU dengan jabatan via relasi/varian nama kini memperoleh akses `full` sesuai kebijakan.
+- **Monitoring Kehadiran (403)**: menu yang menautkan `user.teacher-qr.waka-dashboard`/`history` (satuan-pendidikan, koordinator-kurikulum, _koor-guru-shared, humas-personalia, pimpinan) kini digerbangi **`canPermission('teacher-attendance_view')`** — sejalan dengan middleware route, sehingga tidak ada lagi klik-through 403; pengguna berhak tetap melihat & membuka.
+- **Regresi test baru**: guard absensi (403 guru biasa; 200 wali & TU), menu sidebar absensi, pemisahan sidebar *Absensi Kelas Saya*, alur Data Nilai Waka/wali/guru + sidebar, Peta Kurikulum seluruh jenjang tanpa hak edit, bank privat serumpun dapat dibuka & rumpun lain 403, gate menu Monitoring mengikuti permission.
+- Test: `SumatifHarianDinamis + BukuNilaiKonsolidasi + KurikulumPembelajaran + SubjectGroupPolicy + AttendanceSyncKehadiran` = **75 test (+2 risky) / 533 assertion lulus**; `AttendanceSyncKehadiran` sendiri **10 (+2 risky) / 51 assertion**; `view:cache` sukses.
+- Catatan pra-ada (bukan dari perubahan ini): `BankSoalTerpusatTest::test_sumatif_hanya_menerima_paket_final` gagal karena `UniqueConstraintViolationException` pada fixture test itu sendiri (`TeacherAdminBook::create` ganda pada kombinasi unik `unique_admin_book_per_teacher`); file test tidak diubah dalam increment ini.
+
+## 126. Increment 2 (Bagian 1) — Komponen Empty State Bersama, Pekan Efektif, & Konteks Otomatis Kisi-Kisi
+- **Komponen bersama baru `x-empty-state`** (`resources/views/components/empty-state.blade.php`): pola gtk/index (lord-icon + judul + pesan + aksi opsional), mendukung mode tabel (`colspan`) dan mode blok, serta memuat `lordicon.js` **sekali per halaman** via `@once @push('scripts')`.
+- **Pekan Efektif — halaman guru/satuan pendidikan**:
+  - Kartu ringkasan kini menampilkan data yang sebelumnya tidak tampil: **total minggu semester** dan **total hari libur** (dari `ringkasan`).
+  - Header "Rincian Pekan" diberi **badge sumber data**: "Tersimpan (hasil generate)" vs "Hitung langsung dari Kaldik".
+  - Tabel Alokasi JP menampilkan **kode mapel** (subject_code); semua empty-state diganti komponen bersama.
+- **Pekan Efektif — halaman Waka**: empty-state memakai `x-empty-state`; pagination memakai partial bersama `shared._pagination`; **route sidebar waka yang tidak ada** (`waka.pekan-efektif`) diperbaiki ke `waka.pekan-efektif.index`; item sidebar master (single-brace) untuk Pekan Efektif diperbaiki.
+- **Kisi-Kisi Soal — konteks otomatis sesuai penugasan (Increment 2 item 4A)**:
+  - **Mapel** pada form hanya berisi mapel **penugasan guru** (TeachingAssignment aktif, TA berjalan, sekolah); Kurikulum/TU/KSP/Waka tetap melihat seluruh mapel satuan. Tingkat/Fase mengikuti penugasan; jika hanya satu mapel/tingkat langsung terpilih.
+  - **Tahun Ajaran** otomatis memilih TA aktif (diberi label "(aktif)"), **Semester** otomatis mengikuti semester berjalan.
+  - **Validasi backend baru**: guru yang mengirim mapel di luar penugasannya ditolak `422` — konteks tidak bisa dipalsukan dari klien.
+  - **Dropdown TP terfilter** per Mapel + Tingkat (partial baru `evalusi/kisi-kisi/_tp-filter-script.blade.php`), label TP memuat **kode TP** untuk keterlacakan indikator.
+  - **Bug enum C6 diperbaiki**: nilai valid `C6_mencipta` (validasi/UI) kini dinormalisasi ke enum database `C6_mencita` saat simpan — sebelumnya simpan item C6 berisiko gagal/terpotong. Label UI memakai "C6 — Mencipta".
+  - **Bug halaman edit**: form edit sebelumnya **tidak memiliki field Mapel/Tingkat/TA** padahal validasi `update()` mewajibkan `subject_id` (update selalu gagal). Field dilengkapi; dropdown edit kini dibatasi konteks sekolah (sebelumnya `Subject::all()`, `GradeLevel::all()`, `BankSoal::all()` lintas satuan).
+- **Test**:
+  - Baru: `tests/Feature/KisiKisiKonteksTest.php` — 3 test / 21 assertion (form mengikuti penugasan; mapel luar penugasan 422 + normalisasi C6; halaman edit memuat field mapel & update berhasil).
+  - `KaldikPekanEfektifTest` diperluas — ringkasan baru & badge sumber diuji (10 test / 58 assertion).
+  - Regresi batch: `KisiKisiKonteks + PesertaDidikP0 + PaketNaskahPolicy` = **35 test / 199 assertion lulus**; `view:cache` sukses.
+
+## 127. Increment 2 (Bagian 2) — Relasi Mapel ↔ Kelas: Propagasi ke Rombel, `track`, & Validasi Ter-scope
+- **Akar masalah "mapel baru tidak muncul di kelas"** ditemukan & diperbaiki:
+  1. **`GradeLevelSubject::$fillable` tidak memuat `track`** — semua `updateOrCreate([... 'track' => ...])` membuang nilai saat INSERT, sehingga baris peminatan tersimpan `NULL` dan **baris duplikat menumpuk** tiap seeder ulang (unique menganggap NULL berbeda). `track` kini fillable.
+  2. **Tidak ada propagasi** dari mapel tingkat ke rombel — mapel yang ditambahkan ke kelas/tingkat tidak pernah muncul di layar berbasis rombel (Buku Nilai, Jadwal, Plotting, Leger). `GradeLevelController::addSubject` kini **mempropagasi otomatis** ke seluruh rombel aktif pada tingkat yang sama (`study_group_subjects`): baris yang pernah di-soft-delete dihidupkan kembali, dan jam mengajar yang sudah diatur di rombel **tidak ditimpa**.
+  3. **Validasi `addSubject` tidak ter-scope satuan** — kini `Rule::exists('subjects')` dibatasi `school_id` kelas + `is_active`, sehingga mapel satuan pendidikan lain tidak bisa dipaksakan dari klien.
+  4. **`removeSubject`** (hapus mapel dari tingkat) kini **menonaktifkan** mapel pada rombel-rombel tingkat itu (bukan menghapus) sehingga riwayat nilai tetap aman.
+- **Test baru `MapelKelasPropagationTest`** (4 test / 11 assertion): propagasi ke rombel aktif, penolakan mapel lintas satuan, penonaktifan saat dihapus dari tingkat, dan regresi `track` tanpa duplikasi.
+- Regresi: `CurriculumStructureSeederTest + KurikulumMasterUiTest + CurriculumStructureMenuTest` = **30 test / 163 assertion lulus**; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
-- `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, KKTP, catatan wali.
+- `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
 - `tests/Feature/TeacherQrScanControllerTest.php` — diperbarui agar berjalan di SQLite (snapshot permission + `Event::fake` terarah).
 - `tests/Feature/KaldikPekanEfektifTest.php` — pembagian semester, generate pekan efektif dari kalender (minggu/hari/libur/ujian), alokasi JP efektif, policy pengelolaan (Super Admin/Pimpinan vs Satuan Pendidikan/Guru), halaman pekan efektif untuk Guru & Satuan Pendidikan.
 - `tests/Feature/KurikulumPembelajaranTest.php` — rantai Kalender → Pekan Efektif → JP Efektif → CP → TP → ATP → Perangkat: fallback JP berjenjang, hub kurikulum, akses CP/TP (tim kurikulum vs guru mapel), urutan TP, indikator alokasi ATP (kurang/pas/lebih), desain Pembelajaran Mendalam perangkat, render semua halaman.

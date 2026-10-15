@@ -213,7 +213,13 @@ class KaldikPekanEfektifTest extends TestCase
         $this->get("/{$this->satuan->id}/pekan-efektif")
             ->assertOk()
             ->assertSee('Pekan Efektif')
-            ->assertSee('Minggu Efektif');
+            ->assertSee('Minggu Efektif')
+            // Ringkasan yang sebelumnya tidak tampil kini tersedia:
+            ->assertSee('minggu semester ini')
+            ->assertSee('hari libur tercatat')
+            // Badge sumber data (belum digenerate → hitung langsung dari Kaldik)
+            ->assertSee('Hitung langsung dari Kaldik')
+            ->assertSee('Rincian Pekan');
     }
 
     public function test_generate_controller_menyimpan_pekan_efektif(): void

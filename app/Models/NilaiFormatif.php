@@ -31,6 +31,10 @@ class NilaiFormatif extends Model
         'skor_diskusi',
         'skor_kuis',
         'skor_antarteman',
+        'lkpd_scores',
+        'diskusi_scores',
+        'kuis_scores',
+        'antarteman_scores',
         'nr_final',
         'ket',
     ];
@@ -41,6 +45,10 @@ class NilaiFormatif extends Model
         'skor_kuis' => 'decimal:2',
         'skor_antarteman' => 'decimal:2',
         'nr_final' => 'decimal:2',
+        'lkpd_scores' => 'array',
+        'diskusi_scores' => 'array',
+        'kuis_scores' => 'array',
+        'antarteman_scores' => 'array',
     ];
 
     public function adminBook(): BelongsTo

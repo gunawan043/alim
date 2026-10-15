@@ -1,4 +1,5 @@
 @extends('layouts.master')
+@php $userId = $userId ?? request()->route('userId') ?? auth()->id(); @endphp
 @section('title') Paket Soal @endsection
 
 @section('css')
@@ -152,7 +153,7 @@
                             @forelse($pakets as $pkt)
                                 <tr>
                                     <td>
-                                        <a href="{{ route('user.paket-soal.show', $pkt->id) }}" class="fw-medium link-primary">{{ $pkt->judul }}</a>
+                                        <a href="{{ route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $pkt->id]) }}" class="fw-medium link-primary">{{ $pkt->judul }}</a>
                                         <br><small class="text-muted">{{ $pkt->kisiKisi->subject->name ?? '-' }} · {{ $pkt->kisiKisi->jenis_ujian ?? '-' }}</small>
                                     </td>
                                     <td class="text-center"><span class="badge bg-light text-dark">{{ $pkt->kode_paket }}</span></td>
@@ -175,17 +176,17 @@
                                     </td>
                                     <td class="text-end">
                                         @if(!$pkt->is_published && $pkt->jumlah_soal_aktual > 0)
-                                        <form action="{{ route('user.paket-soal.publish', $pkt->id) }}" method="POST" class="d-inline">
+                                        <form action="{{ route('user.paket-soal.publish', ['userId' => $userId, 'paketUuid' => $pkt->id]) }}" method="POST" class="d-inline">
                                             @csrf
                                             <button class="btn btn-sm btn-success" onclick="return confirm('Publish paket ini?')">
                                                 <i class="ri-check-line"></i> Publish
                                             </button>
                                         </form>
                                         @endif
-                                        <a href="{{ route('user.paket-soal.reroll', $pkt->id) }}" class="btn btn-sm btn-outline-danger" title="Acak ulang soal">
+                                        <a href="{{ route('user.paket-soal.reroll', ['userId' => $userId, 'paketUuid' => $pkt->id]) }}" class="btn btn-sm btn-outline-danger" title="Acak ulang soal">
                                             <i class="ri-refresh-line"></i>
                                         </a>
-                                        <form action="{{ route('user.paket-soal.destroy', $pkt->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus paket ini?')">
+                                        <form action="{{ route('user.paket-soal.destroy', ['userId' => $userId, 'paketUuid' => $pkt->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus paket ini?')">
                                             @csrf @method('DELETE')
                                             <button class="btn btn-sm btn-danger"><i class="ri-delete-bin-line"></i></button>
                                         </form>

@@ -81,7 +81,7 @@
                             aria-haspopup="true"
                             aria-expanded="false">
                         <i class='bx bx-bell fs-22'></i>
-                        <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger {{ $notifUnreadCount > 0 ? '' : 'd-none' }}"
+                        <span clasas="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger {{ $notifUnreadCount > 0 ? '' : 'd-none' }}"
                               id="notif-badge-count">{{ $notifUnreadCount }}
                             <span class="visually-hidden">unread messages</span>
                         </span>
@@ -311,9 +311,9 @@
 
     <style>
         .alim-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-80%); color:#94a3b8; font-size:16px; }
-        .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; font-size:.85rem; transition:all .15s ease; }
+        .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; font-size:.85rem; transition:all .15s ease; }
         .alim-search-input:focus { outline:none; border-color:#0a5f9e; background:#fff; box-shadow:0 0 0 3px rgba(10,95,158,.12); }
-        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,.16); z-index:2000; max-height:420px; overflow:auto; padding:.4rem; border:1px solid #eef2f7; }
+        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,.16); z-index:2000; max-height:420px; overflow:auto; padding:.4rem;}
         .alim-search-group { padding:.5rem .7rem .25rem; font-size:.66rem; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
         .alim-search-group i { margin-right:4px; }
         .alim-search-item { display:block; padding:.5rem .7rem; border-radius:9px; color:#1e293b; text-decoration:none; transition:background .12s ease; }

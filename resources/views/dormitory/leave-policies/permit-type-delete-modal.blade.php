@@ -1,23 +1,18 @@
 {{-- Modal konfirmasi hapus jenis izin --}}
-<div class="modal fade" id="deletePermitTypeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Hapus Jenis Izin?</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmDeleteMessage">Anda akan menghapus jenis izin.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <form method="POST" id="deletePermitTypeForm" action="">
-                    @csrf
-                    <input type="hidden" name="_method" value="DELETE" />
-                    <input type="hidden" name="id" value="" />
-                    <button type="submit" class="btn btn-danger">Hapus Tetap</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<form method="POST" id="deletePermitTypeForm" action="" class="d-none">
+    @csrf
+    <input type="hidden" name="_method" value="DELETE" />
+    <input type="hidden" name="id" value="" />
+</form>
+
+<x-modal-confirm id="deletePermitTypeModal" class="zoomIn"
+    icon="https://cdn.lordicon.com/gsqxdxog.json"
+    primaryColor="#f7b84b" secondaryColor="#f06548"
+    title="Hapus Jenis Izin?"
+    submitLabel="Hapus Tetap"
+    submitIcon="ri-delete-bin-line"
+    submitClass="btn-danger"
+    formId="deletePermitTypeForm">
+    <p class="text-center text-muted mb-0" id="confirmDeleteMessage">Anda akan menghapus jenis izin.</p>
+</x-modal-confirm>
+<script src="https://cdn.lordicon.com/lordicon.js"></script>

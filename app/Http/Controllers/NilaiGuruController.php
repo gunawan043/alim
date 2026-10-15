@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\AdminCatatanGuru;
 use App\Models\AdminJurnalPembelajaran;
 use App\Models\AdminPresensiMapel;
@@ -9,6 +10,7 @@ use App\Models\AdminPresensiSiswa;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
+use App\Models\PaketSoal;
 use App\Models\PekanEfektif;
 use App\Models\PenghargaanAkademik;
 use App\Models\PerangkatPembelajaran;
@@ -19,12 +21,13 @@ use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
-use App\Models\User;
+use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class NilaiGuruController extends Controller
 {
@@ -37,7 +40,7 @@ class NilaiGuruController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $authUser = auth()->user();
         $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
-            || app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($authUser));
+            || app(KurikulumAccess::class)->isKurikulumTeam($authUser));
 
         // Daftar mapel yang diampu guru ini
         $baseQuery = $this->applyTeacherBookScope(
@@ -257,7 +260,7 @@ class NilaiGuruController extends Controller
         $request->validate([
             'attendance_date' => 'required|date',
             'status' => 'required|array',
-            'status.*' => 'in:hadir,izin,sakit,alpa',
+            'status.*' => 'in:hadir,terlambat,izin,sakit,alpa',
         ]);
 
         $book = $this->loadAdminBook($userId, $adminBookId, true);
@@ -291,6 +294,13 @@ class NilaiGuruController extends Controller
                 );
             }
         });
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'saved' => true,
+                'message' => 'Presensi tersimpan.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Presensi berhasil disimpan.')
             ->with('_tab', 'input');
@@ -465,9 +475,9 @@ class NilaiGuruController extends Controller
         );
 
         // Paket soal final (approved + dipublikasikan) untuk asesmen sumatif final.
-        $paketOptions = \App\Models\PaketSoal::query()
+        $paketOptions = PaketSoal::query()
             ->where('is_published', true)
-            ->whereIn('workflow_status', [\App\Models\PaketSoal::WORKFLOW_APPROVED, \App\Models\PaketSoal::WORKFLOW_PUBLISHED])
+            ->whereIn('workflow_status', [PaketSoal::WORKFLOW_APPROVED, PaketSoal::WORKFLOW_PUBLISHED])
             ->whereHas('kisiKisi', function ($q) use ($book) {
                 $q->where('subject_id', $book['adminBook']->subject_id)
                     ->where('academic_year_id', $book['adminBook']->academic_year_id)
@@ -482,8 +492,13 @@ class NilaiGuruController extends Controller
             ->whereNotNull('paket_soal_id')
             ->value('paket_soal_id');
 
+        $formatifMap = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
+            ->where('semester', $book['adminBook']->semester)
+            ->get()
+            ->keyBy('student_id');
+
         return view('nilai-guru.wizard3', compact(
-            'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId'
+            'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId', 'formatifMap',
         ));
     }
 
@@ -552,7 +567,7 @@ class NilaiGuruController extends Controller
         }
 
         if (! empty($policyErrors)) {
-            throw \Illuminate\Validation\ValidationException::withMessages($policyErrors);
+            throw ValidationException::withMessages($policyErrors);
         }
 
         $service = app(SumatifHarianService::class);
@@ -560,7 +575,7 @@ class NilaiGuruController extends Controller
         // Paket soal final (jika dipilih) — hanya paket approved+published yang sahih.
         $paketId = $request->input('paket_soal_id');
         if ($paketId) {
-            $paket = \App\Models\PaketSoal::with('kisiKisi')->find($paketId);
+            $paket = PaketSoal::with('kisiKisi')->find($paketId);
             $isValid = $paket && $paket->isFinal()
                 && $paket->kisiKisi
                 && $paket->kisiKisi->subject_id === $book['adminBook']->subject_id
@@ -590,6 +605,31 @@ class NilaiGuruController extends Controller
 
             if (array_key_exists('sh', $data) && is_array($data['sh'])) {
                 $input['sh'] = $data['sh'];
+            }
+
+            // S6 otomatis = rata-rata Penilaian Asesmen Formatif (wizard 4).
+            $formatifRow = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
+                ->where('student_id', $studentId)
+                ->where('semester', $book['adminBook']->semester)
+                ->first();
+            if ($formatifRow && $formatifRow->nr_final !== null) {
+                $fmtS6 = (float) $formatifRow->nr_final;
+                $input['s6'] = $fmtS6;
+                if (isset($input['sh']) && is_array($input['sh'])) {
+                    $input['sh']['s6'] = $fmtS6;
+                }
+            } else {
+                // Tidak ada formatif → jangan hapus S6 yang sudah tersimpan.
+                $existingS6 = NilaiSumatif::where('admin_book_id', $book['adminBook']->id)
+                    ->where('student_id', $studentId)
+                    ->where('semester', $book['adminBook']->semester)
+                    ->value('s6');
+                if ($existingS6 !== null) {
+                    $input['s6'] = (float) $existingS6;
+                    if (isset($input['sh']) && is_array($input['sh'])) {
+                        $input['sh']['s6'] = (float) $existingS6;
+                    }
+                }
             }
 
             $service->upsertSumatif($book['adminBook'], (string) $studentId, $input);
@@ -679,7 +719,14 @@ class NilaiGuruController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        return view('nilai-guru.wizard4', compact('userId', 'book', 'books', 'students', 'formatifMap'));
+        $formatifColumns = array_merge([
+            'lkpd' => ['1', '2', '3', '4'],
+            'diskusi' => ['1', '2', '3', '4'],
+            'kuis' => ['1', '2', '3', '4'],
+            'antarteman' => ['1', '2', '3', '4'],
+        ], array_filter((array) ($book['adminBook']->formatif_columns ?? []), fn ($v) => is_array($v) && count($v) > 0));
+
+        return view('nilai-guru.wizard4', compact('userId', 'book', 'books', 'students', 'formatifMap', 'formatifColumns'));
     }
 
     public function wizard4Store(Request $request, string $userId, string $adminBookId)
@@ -692,15 +739,62 @@ class NilaiGuruController extends Controller
             'formatif.*.skor_diskusi' => 'nullable|numeric|min:0|max:100',
             'formatif.*.skor_kuis' => 'nullable|numeric|min:0|max:100',
             'formatif.*.skor_antarteman' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.lkpd_scores' => 'nullable|array',
+            'formatif.*.lkpd_scores.*' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.diskusi_scores' => 'nullable|array',
+            'formatif.*.diskusi_scores.*' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.kuis_scores' => 'nullable|array',
+            'formatif.*.kuis_scores.*' => 'nullable|numeric|min:0|max:100',
+            'formatif.*.antarteman_scores' => 'nullable|array',
+            'formatif.*.antarteman_scores.*' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        foreach ($request->formatif as $studentId => $data) {
-            $scores = collect(['skor_lkpd', 'skor_diskusi', 'skor_kuis', 'skor_antarteman'])
-                ->map(fn ($k) => $data[$k] ?? null)
-                ->filter(fn ($v) => is_numeric($v))
-                ->values()
-                ->toArray();
-            $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
+        $this->saveFormatifRows($book, (array) $request->formatif);
+
+        return redirect()->back()->with('success', 'Nilai Formatif berhasil disimpan.');
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // WIZARD 5 — PENGHARGAAN AKADEMIK
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Simpan baris-baris Penilaian Asesmen Formatif (dipakai store & autosave).
+     * Mengembalikan saved_rows untuk respons JSON autosave.
+     */
+    protected function saveFormatifRows(array $book, array $formatifData): array
+    {
+        $aspects = ['lkpd', 'diskusi', 'kuis', 'antarteman'];
+        $savedRows = [];
+
+        foreach ($formatifData as $studentId => $data) {
+            if (! is_array($data)) {
+                continue;
+            }
+
+            $columns = [];
+            $averages = [];
+
+            foreach ($aspects as $aspect) {
+                $raw = $data[$aspect.'_scores'] ?? null;
+                $scores = is_array($raw)
+                    ? array_values(array_filter(array_map(
+                        fn ($v) => is_numeric($v) ? (float) $v : null,
+                        $raw
+                    ), fn ($v) => $v !== null))
+                    : [];
+
+                // Kompatibilitas format lama (skor tunggal per aspek).
+                if (empty($scores) && is_numeric($data['skor_'.$aspect] ?? null)) {
+                    $scores = [(float) $data['skor_'.$aspect]];
+                }
+
+                $columns[$aspect] = $scores;
+                $averages[$aspect] = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
+            }
+
+            $filled = array_values(array_filter($averages, fn ($v) => $v !== null));
+            $nrFinal = count($filled) > 0 ? round(array_sum($filled) / count($filled), 2) : null;
 
             NilaiFormatif::updateOrCreate(
                 [
@@ -710,22 +804,84 @@ class NilaiGuruController extends Controller
                 ],
                 [
                     'academic_year_id' => $book['adminBook']->academic_year_id,
-                    'skor_lkpd' => $data['skor_lkpd'] ?? null,
-                    'skor_diskusi' => $data['skor_diskusi'] ?? null,
-                    'skor_kuis' => $data['skor_kuis'] ?? null,
-                    'skor_antarteman' => $data['skor_antarteman'] ?? null,
+                    'skor_lkpd' => $averages['lkpd'],
+                    'skor_diskusi' => $averages['diskusi'],
+                    'skor_kuis' => $averages['kuis'],
+                    'skor_antarteman' => $averages['antarteman'],
+                    'lkpd_scores' => ! empty($columns['lkpd']) ? $columns['lkpd'] : null,
+                    'diskusi_scores' => ! empty($columns['diskusi']) ? $columns['diskusi'] : null,
+                    'kuis_scores' => ! empty($columns['kuis']) ? $columns['kuis'] : null,
+                    'antarteman_scores' => ! empty($columns['antarteman']) ? $columns['antarteman'] : null,
                     'nr_final' => $nrFinal,
                     'ket' => $data['ket'] ?? null,
                 ]
             );
+
+            // Sinkronkan S6 (rata-rata formatif) ke NilaiSumatif + hitung ulang RS/RSA/NR.
+            if ($nrFinal !== null) {
+                app(SumatifHarianService::class)->upsertSumatif($book['adminBook'], (string) $studentId, ['s6' => $nrFinal]);
+            }
+
+            $savedRows[] = [
+                'student_id' => (string) $studentId,
+                'nr_final' => $nrFinal,
+                'skor_lkpd' => $averages['lkpd'],
+                'skor_diskusi' => $averages['diskusi'],
+                'skor_kuis' => $averages['kuis'],
+                'skor_antarteman' => $averages['antarteman'],
+            ];
         }
 
-        return redirect()->back()->with('success', 'Nilai Formatif berhasil disimpan.');
+        return $savedRows;
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // WIZARD 5 — PENGHARGAAN AKADEMIK
-    // ══════════════════════════════════════════════════════════════════
+    /**
+     * Kelola kolom Penilaian Asesmen Formatif (label sub-kolom per aspek) — ala Nilai Sumatif.
+     */
+    public function wizard4Columns(Request $request, string $userId, string $adminBookId)
+    {
+        $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        $validated = $request->validate([
+            'columns' => 'required|array',
+            'columns.lkpd' => 'array|max:12',
+            'columns.lkpd.*' => 'nullable|string|max:20',
+            'columns.diskusi' => 'array|max:12',
+            'columns.diskusi.*' => 'nullable|string|max:20',
+            'columns.kuis' => 'array|max:12',
+            'columns.kuis.*' => 'nullable|string|max:20',
+            'columns.antarteman' => 'array|max:12',
+            'columns.antarteman.*' => 'nullable|string|max:20',
+        ]);
+
+        $clean = [];
+        foreach (['lkpd', 'diskusi', 'kuis', 'antarteman'] as $aspect) {
+            $vals = array_values(array_map(
+                fn ($v) => trim((string) $v),
+                $validated['columns'][$aspect] ?? []
+            ));
+
+            // Penomoran otomatis: label kosong/angka dinomori ulang berurutan; label custom dipertahankan.
+            $seq = 0;
+            $clean[$aspect] = array_map(function ($v) use (&$seq) {
+                if ($v === '' || ctype_digit($v)) {
+                    $seq++;
+
+                    return (string) $seq;
+                }
+
+                return $v;
+            }, $vals);
+
+            if (empty($clean[$aspect])) {
+                $clean[$aspect] = ['1', '2', '3', '4'];
+            }
+        }
+
+        $book['adminBook']->update(['formatif_columns' => $clean]);
+
+        return response()->json(['success' => true, 'columns' => $clean, 'message' => 'Kolom formatif disimpan.']);
+    }
 
     public function wizard5(Request $request, string $userId, string $adminBookId)
     {
@@ -869,6 +1025,13 @@ class NilaiGuruController extends Controller
         ]);
 
         switch ($request->input('type')) {
+            case 'formatif':
+                return response()->json([
+                    'saved' => true,
+                    'skipped' => false,
+                    'saved_rows' => $this->saveFormatifRows($book, (array) ($data['formatif'] ?? [])),
+                ]);
+
             case 'sumatif':
                 $service = app(SumatifHarianService::class);
                 $savedRows = [];
@@ -882,7 +1045,9 @@ class NilaiGuruController extends Controller
                     }
 
                     $input = [
+                        'sts_murni' => array_key_exists('sts_murni', $flds) ? $flds['sts_murni'] : null,
                         'sts' => array_key_exists('sts', $flds) ? $flds['sts'] : null,
+                        'sas_murni' => array_key_exists('sas_murni', $flds) ? $flds['sas_murni'] : null,
                         'sas' => array_key_exists('sas', $flds) ? $flds['sas'] : null,
                         'raport_sts' => array_key_exists('raport_sts', $flds) ? $flds['raport_sts'] : null,
                         'ket' => $flds['ket'] ?? null,
@@ -895,8 +1060,41 @@ class NilaiGuruController extends Controller
                         's6' => $flds['s6'] ?? null,
                     ];
 
+                    // Aturan: Nilai Murni STS/SAS wajib diisi sebelum kolom STS/SAS (autosave).
+                    $hasSts = isset($flds['sts']) && $flds['sts'] !== '' && $flds['sts'] !== null;
+                    $hasSas = isset($flds['sas']) && $flds['sas'] !== '' && $flds['sas'] !== null;
+                    $hasStsMurni = isset($flds['sts_murni']) && $flds['sts_murni'] !== '' && $flds['sts_murni'] !== null;
+                    $hasSasMurni = isset($flds['sas_murni']) && $flds['sas_murni'] !== '' && $flds['sas_murni'] !== null;
+
+                    if (($hasSts && ! $hasStsMurni) || ($hasSas && ! $hasSasMurni)) {
+                        return response()->json([
+                            'saved' => false,
+                            'message' => 'Isi Nilai Murni STS/SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS/SAS.',
+                        ], 422);
+                    }
+
                     if (array_key_exists('sh', $flds) && is_array($flds['sh'])) {
                         $input['sh'] = $flds['sh'];
+                    }
+
+                    // Pertahankan S6 otomatis (rata-rata formatif) agar tidak terhapus saat autosave SH.
+                    $formatifRow = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
+                        ->where('student_id', $sid)
+                        ->where('semester', $book['adminBook']->semester)
+                        ->first();
+                    $existingRow = NilaiSumatif::where('admin_book_id', $book['adminBook']->id)
+                        ->where('student_id', $sid)
+                        ->where('semester', $book['adminBook']->semester)
+                        ->first();
+                    $s6Keep = ($formatifRow && $formatifRow->nr_final !== null)
+                        ? (float) $formatifRow->nr_final
+                        : ($existingRow?->s6 !== null ? (float) $existingRow->s6 : null);
+
+                    if ($s6Keep !== null) {
+                        $input['s6'] = $s6Keep;
+                        if (isset($input['sh']) && is_array($input['sh'])) {
+                            $input['sh']['s6'] = $s6Keep;
+                        }
                     }
 
                     $row = $service->upsertSumatif($book['adminBook'], (string) $sid, $input);
@@ -1123,7 +1321,7 @@ class NilaiGuruController extends Controller
         $schoolId = request()->attributes->get('schoolContextId');
         $authUser = auth()->user();
         $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
-            || app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($authUser));
+            || app(KurikulumAccess::class)->isKurikulumTeam($authUser));
 
         // Cast integer adminBookId
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
@@ -1143,10 +1341,10 @@ class NilaiGuruController extends Controller
         // Buku tetap dapat diubah bila TA-nya TA aktif ATAU TA operasional
         // (TA terbaru yang memiliki penugasan mengajar aktif di sekolah tsb).
         if ($forWrite) {
-            $activeYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
+            $activeYearId = AcademicYear::where('is_active', true)->value('id');
             $bookYearId = (string) $adminBook->academic_year_id;
 
-            $operationalYearId = \App\Models\TeachingAssignment::query()
+            $operationalYearId = TeachingAssignment::query()
                 ->where('school_id', $adminBook->school_id)
                 ->where('status', 'active')
                 ->join('academic_years as ay', 'ay.id', '=', 'teaching_assignments.academic_year_id')

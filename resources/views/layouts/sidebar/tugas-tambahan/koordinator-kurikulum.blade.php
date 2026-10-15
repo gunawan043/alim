@@ -95,14 +95,7 @@
         <i class="ri-group-2-line"></i><span>Rombel</span>
     </a>
 </li>
-
-{{-- KKTP --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
-       href="{{ $koorKurUrl('user.schools.kktp.index') }}">
-        <i class="ri-ruler-2-line"></i><span>KKTP</span>
-    </a>
-</li>
+    {{-- KKTP kini diatur di Peta Kurikulum (kolom N-KKTP) & Struktur Kurikulum. --}}
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 3 — PLOTTING & JADWAL
@@ -169,6 +162,14 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Penilaian & Evaluasi</span></li>
 
+{{-- Leger & Cetak Rapor — akses semua kelas (Kurikulum) --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
+       href="{{ $koorKurUrl('user.schools.nilai-kelas.index') }}">
+        <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+    </a>
+</li>
+
 {{-- Bank Soal & Kisi-Kisi --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.']) ? ' active' : '' }}"
@@ -198,6 +199,12 @@
                     Paket Soal Sumatif
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
+                   href="{{ $koorKurUrl('user.ljk.index') }}">
+                    <i class="ri-scan-2-line me-1"></i>LJK Smart Scanner
+                </a>
+            </li>
         </ul>
     </div>
 </li>
@@ -217,20 +224,24 @@
 <li class="menu-title"><span>Monitoring Kehadiran</span></li>
 
 {{-- Dashboard Kehadiran Guru --}}
+@if(canPermission('teacher-attendance_view'))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.teacher-qr.waka-dashboard') }}">
         <i class="ri-dashboard-2-line"></i><span>Kehadiran Guru Per Jam</span>
     </a>
 </li>
+@endif
 
 {{-- Riwayat Kehadiran Guru --}}
+@if(canPermission('teacher-attendance_view'))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.teacher-qr.history') }}">
         <i class="ri-history-line"></i><span>Riwayat Kehadiran Guru</span>
     </a>
 </li>
+@endif
 
 {{-- Rekap Pergantian Jam --}}
 <li class="nav-item">

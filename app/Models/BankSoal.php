@@ -138,7 +138,13 @@ class BankSoal extends Model
      */
     public function scopeAccessibleBy($query, string $userId, ?string $schoolId = null)
     {
-        return $query->where(function ($q) use ($userId, $schoolId) {
+        // Rumpun mapel yang menjadi kewenangan guru (dari tugas mengajar aktif).
+        $groupIds = app(\App\Services\SubjectGroupResolver::class)
+            ->groupsForTeacher($userId)
+            ->pluck('id')
+            ->all();
+
+        return $query->where(function ($q) use ($userId, $schoolId, $groupIds) {
             $q->where('owner_user_id', $userId)
                 ->orWhere('is_public', true)
                 ->orWhere('is_central', true)
@@ -150,6 +156,23 @@ class BankSoal extends Model
                         $q2->where('school_id', $schoolId);
                     }
                 });
+
+            // Soal bersama dalam rumpun yang menjadi kewenangan guru:
+            // satu satuan pendidikan (school context) atau repositori lintas
+            // satuan yang memang diizinkan (central/public_pool).
+            if ($groupIds !== []) {
+                $q->orWhere(function ($q2) use ($groupIds, $schoolId) {
+                    $q2->whereHas('subject', fn ($s) => $s->whereIn('subject_group_id', $groupIds))
+                        ->where(function ($q3) use ($schoolId) {
+                            $q3->where('is_central', true)
+                                ->orWhere('shared_scope', 'public_pool');
+
+                            if ($schoolId) {
+                                $q3->orWhere(fn ($q4) => $q4->whereNotNull('school_id')->where('school_id', $schoolId));
+                            }
+                        });
+                });
+            }
         });
     }
 }

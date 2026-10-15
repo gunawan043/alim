@@ -445,12 +445,69 @@ class AuthController extends Controller
 
     // ── User formatting ──────────────────────────────────────────────────────
 
+    /**
+     * Peran utama untuk klien mobile (aditif — is_wali tetap dipertahankan).
+     */
+    private function primaryRole(User $user): string
+    {
+        if ($user->is_wali) {
+            return 'wali';
+        }
+
+        try {
+            $roles = $user->effectiveRoles();
+        } catch (\Throwable) {
+            $roles = [];
+        }
+
+        if (in_array('super admin', $roles, true) || in_array('super-admin', $roles, true)) {
+            return 'admin';
+        }
+
+        return 'guru';
+    }
+
+    /**
+     * Apakah akun ini berpotensi memakai pemindai LJK (guru pengampu /
+     * kurikulum / TU). Otorisasi detail tetap dilakukan per-ujian di server.
+     */
+    private function canUseLjkScanner(User $user): bool
+    {
+        if ($user->is_wali) {
+            return false;
+        }
+
+        try {
+            if (app(\App\Services\Ljk\LjkAccess::class)->isOfficer($user)) {
+                return true;
+            }
+
+            return \App\Models\TeacherAdminBook::query()
+                ->where('teacher_id', $user->id)
+                ->where('is_active', true)
+                ->exists()
+                || \App\Models\TeachingAssignment::query()
+                    ->where('teacher_id', $user->id)
+                    ->where('status', 'active')
+                    ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            // Peran efektif (aditif): 'wali' untuk akun wali santri,
+            // 'guru' untuk staf pengajar, 'admin' untuk admin sistem.
+            'role' => $this->primaryRole($user),
+            // Kapabilitas aditif yang dipakai klien untuk menampilkan menu.
+            'capabilities' => [
+                'ljk_scan' => $this->canUseLjkScanner($user),
+            ],
             'no_kk' => $user->no_kk ? WaliSantri::maskNoKk($user->no_kk) : null,
             'nik_wali' => $user->nik_wali ? substr($user->nik_wali, 0, 6).'••••••••'.substr($user->nik_wali, -2) : null,
             'no_hp' => $user->no_hp,

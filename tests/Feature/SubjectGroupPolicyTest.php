@@ -12,6 +12,7 @@ use App\Models\KisiKisiSoal;
 use App\Models\OtherTeacherTask;
 use App\Models\PaketSoal;
 use App\Models\PaketSoalItem;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\Soal;
@@ -391,6 +392,50 @@ class SubjectGroupPolicyTest extends TestCase
         return BankSoal::where('subject_id', Subject::where('name', 'Matematika')->value('id'))
             ->where('school_id', $this->school->id)
             ->firstOrFail();
+    }
+
+    public function test_bank_privat_sekolah_sendiri_serumpun_dapat_dibuka(): void
+    {
+        // Layout sidebar memerlukan permission ini; sediakan agar halaman bank dapat dirender.
+        Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
+
+        // Bank privat (bukan publik/central) milik guru Matematika.
+        $bank = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => Subject::where('name', 'Matematika')->firstOrFail()->id,
+            'fase' => 'D',
+            'jenjang' => 'smp',
+            'grade_level_id' => $this->grade->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'nama' => 'Bank Matematika Privat',
+            'jenis_soal' => 'pilihan_ganda',
+            'tingkat_kesulitan_target' => 'campuran',
+            'shared_scope' => 'private',
+            'is_central' => false,
+            'owner_user_id' => $this->guruMath->id,
+            'created_by' => $this->guruMath->id,
+        ]);
+
+        $soal = $this->makeSoal($bank, $this->guruMath, 'Soal matematika privat.', 'approved');
+
+        // Serumpun (Fisika ⊂ Umum) & satu satuan pendidikan → halaman bank + detail soal dapat dibuka.
+        $this->actingAs($this->guruFisika)
+            ->get("/{$this->guruFisika->id}/bank-soal/{$bank->id}")
+            ->assertOk();
+
+        $this->actingAs($this->guruFisika)
+            ->getJson("/{$this->guruFisika->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertOk();
+
+        // Rumpun lain → tetap 403 (authorization tidak dilemahkan).
+        $this->actingAs($this->guruFiqih)
+            ->get("/{$this->guruFiqih->id}/bank-soal/{$bank->id}")
+            ->assertForbidden();
+
+        $this->actingAs($this->guruFiqih)
+            ->getJson("/{$this->guruFiqih->id}/bank-soal-terpusat/{$soal->id}/detail")
+            ->assertForbidden();
     }
 
     private function makeBank(Subject $subject): BankSoal

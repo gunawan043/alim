@@ -12,8 +12,12 @@ use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\KurikulumAccess;
+use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\SumatifHarianService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class NilaiController extends Controller
 {
@@ -24,16 +28,78 @@ class NilaiController extends Controller
      * Menampilkan list KELAS, bukan list mapel
      * Hanya menampilkan tahun ajaran & semester yang aktif (is_active = true)
      */
+    /**
+     * Kewenangan penuh Data Nilai: KSP, Waka, Kurikulum, TU (atau permission/super admin).
+     * Guru mapel & wali kelas tetap dibatasi pada penugasannya.
+     */
+    protected function isNilaiPrivileged(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ((method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        if (canPermission('nilai-admin-tu')
+            || canPermission('nilai-wakil-kepala-sekolah')
+            || canPermission('nilai-kepala-sekolah-pondok')
+            || canPermission('nilai-kepala-sekolah')
+            || canPermission('nilai-koordinator-kurikulum')) {
+            return true;
+        }
+
+        // Jabatan dibaca dari semua sumber + varian nama TU (selaras dengan leger).
+        if (\App\Support\UserJabatan::hasAny($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala tata usaha',
+            'tata usaha',
+            'staf tata usaha',
+            'koordinator kurikulum',
+            'kepala tu sekolah',
+            'tu sekolah',
+            'staf tu sekolah',
+            'tata usaha sekolah',
+        ])) {
+            return true;
+        }
+
+        $tugas = method_exists($user, 'tugasTambahan') ? $user->tugasTambahan->pluck('nama')->all() : [];
+
+        return in_array('Tim Kurikulum', $tugas, true);
+    }
+
     public function index(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $user = User::find($userId);
 
-        $isPrivileged = $user && (
-            canPermission('nilai-admin-tu') ||
-            canPermission('nilai-wakil-kepala-sekolah') ||
-            canPermission('nilai-kepala-sekolah-pondok')
-        );
+        $isPrivileged = $this->isNilaiPrivileged($user);
+
+        // Wali kelas → langsung ke Leger kelasnya (bukan halaman Data Nilai umum).
+        // Guru mapel → Buku Nilai Saya. Data Nilai umum hanya untuk KSP/Waka/Kurikulum/TU.
+        if (! $isPrivileged) {
+            $waliGroup = StudyGroup::where('homeroom_teacher_id', $user?->id)
+                ->where('is_active', true)
+                ->orderedByGrade()
+                ->first();
+
+            if ($waliGroup) {
+                return redirect()->route('user.schools.nilai-kelas.sts', [
+                    'userId' => $userId,
+                    'studyGroupId' => $waliGroup->id,
+                ]);
+            }
+
+            if ($user && TeacherAdminBook::where('teacher_id', $user->id)->where('is_active', true)->exists()) {
+                return redirect()->route('user.schools.guru-mapel.index', ['userId' => $userId]);
+            }
+
+            abort(403, 'Data Nilai hanya untuk KSP, Waka, Kurikulum, dan TU. Guru mapel menggunakan Buku Nilai Saya.');
+        }
 
         // Hanya tahun ajaran yang aktif
         $academicYears = AcademicYear::where('is_active', true)->orderByDesc('name')->get();
@@ -101,11 +167,7 @@ class NilaiController extends Controller
     {
         $user = User::find($userId);
         $schoolId = $request->attributes->get('schoolContextId');
-        $isPrivileged = $user && (
-            canPermission('nilai-admin-tu') ||
-            canPermission('nilai-wakil-kepala-sekolah') ||
-            canPermission('nilai-kepala-sekolah-pondok')
-        );
+        $isPrivileged = $this->isNilaiPrivileged($user);
 
         // adminBookId bisa integer atau UUID — cast ke integer jika numeric
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
@@ -115,6 +177,25 @@ class NilaiController extends Controller
             ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
             ->where('id', $bookId)
             ->firstOrFail();
+
+        // Halaman lama (per buku) dialihkan ke alur baru:
+        //  - Wali kelas / KSP-Waka-Kurikulum-TU → sheet per-mapel di Leger baru
+        //  - Guru non-wali                       → daftar Buku Nilai Saya
+        $bookGroup = $adminBook->studyGroup;
+        $legerAccess = $bookGroup ? NilaiKelasController::legerAccessFor($userId, $bookGroup) : 'none';
+
+        if (in_array($legerAccess, ['full', 'wali'], true)) {
+            return redirect()->route('user.schools.nilai-kelas.sts', [
+                'userId' => $userId,
+                'studyGroupId' => $adminBook->study_group_id,
+                'academic_year_id' => $adminBook->academic_year_id,
+                'semester' => $adminBook->semester,
+                'tab' => 'mapel',
+                'admin_book_id' => $adminBook->id,
+            ]);
+        }
+
+        return redirect()->route('user.schools.guru-mapel.index', ['userId' => $userId]);
 
         // Siswa di kelas ini (tahun ajaran aktif)
         $students = StudentClassHistory::with('student')
@@ -206,11 +287,7 @@ class NilaiController extends Controller
     {
         $user = User::find($userId);
         $schoolId = $request->attributes->get('schoolContextId');
-        $isPrivileged = $user && (
-            canPermission('nilai-admin-tu') ||
-            canPermission('nilai-wakil-kepala-sekolah') ||
-            canPermission('nilai-kepala-sekolah-pondok')
-        );
+        $isPrivileged = $this->isNilaiPrivileged($user);
 
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
 
@@ -219,6 +296,25 @@ class NilaiController extends Controller
             ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
             ->where('id', $bookId)
             ->firstOrFail();
+
+        // Halaman lama (per buku) dialihkan ke alur baru:
+        //  - Wali kelas / KSP-Waka-Kurikulum-TU → sheet per-mapel di Leger baru
+        //  - Guru non-wali                       → daftar Buku Nilai Saya
+        $bookGroup = $adminBook->studyGroup;
+        $legerAccess = $bookGroup ? NilaiKelasController::legerAccessFor($userId, $bookGroup) : 'none';
+
+        if (in_array($legerAccess, ['full', 'wali'], true)) {
+            return redirect()->route('user.schools.nilai-kelas.sts', [
+                'userId' => $userId,
+                'studyGroupId' => $adminBook->study_group_id,
+                'academic_year_id' => $adminBook->academic_year_id,
+                'semester' => $adminBook->semester,
+                'tab' => 'mapel',
+                'admin_book_id' => $adminBook->id,
+            ]);
+        }
+
+        return redirect()->route('user.schools.guru-mapel.index', ['userId' => $userId]);
 
         $students = StudentClassHistory::with('student')
             ->where('study_group_id', $adminBook->study_group_id)
@@ -360,7 +456,7 @@ class NilaiController extends Controller
         $studyGroup = StudyGroup::find($adminBook->study_group_id);
         $isWali = $studyGroup && (string) $studyGroup->homeroom_teacher_id === (string) $user?->id;
 
-        if (! $isWali && ! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+        if (! $isWali && ! app(KurikulumAccess::class)->isKurikulumTeam($user)) {
             abort(403, 'Hanya wali kelas atau tim kurikulum yang dapat mengunci nilai final.');
         }
 
@@ -370,13 +466,13 @@ class NilaiController extends Controller
 
         $adminBook->forceFill(['locked_at' => now(), 'locked_by' => $user?->id])->save();
 
-        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($adminBook, 'book_locked', $user);
+        app(ReviewWorkflowService::class)->audit($adminBook, 'book_locked', $user);
 
         // Notifikasi WA: nilai final & rapor siap ditinjau (mode terpusat/wali).
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyRaporReady($adminBook);
+            app(GuardianWhatsAppNotifier::class)->notifyRaporReady($adminBook);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif rapor gagal: '.$e->getMessage());
+            Log::warning('WA notif rapor gagal: '.$e->getMessage());
         }
 
         return back()->with('success', 'Nilai final dikunci. Perubahan hanya setelah dibuka kurikulum.');
@@ -392,7 +488,7 @@ class NilaiController extends Controller
 
         $this->ensureSchoolScope($request, $adminBook->school_id, 'Buku nilai tidak ditemukan pada satuan pendidikan Anda.');
 
-        if (! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($request->user())) {
+        if (! app(KurikulumAccess::class)->isKurikulumTeam($request->user())) {
             abort(403, 'Pembukaan kunci nilai hanya oleh tim kurikulum.');
         }
 
@@ -402,7 +498,7 @@ class NilaiController extends Controller
 
         $adminBook->forceFill(['locked_at' => null, 'locked_by' => null])->save();
 
-        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($adminBook, 'book_unlocked', $request->user());
+        app(ReviewWorkflowService::class)->audit($adminBook, 'book_unlocked', $request->user());
 
         return back()->with('success', 'Kunci nilai dibuka (tercatat pada audit).');
     }

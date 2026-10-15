@@ -360,16 +360,21 @@ class BankSoalTerpusatTest extends TestCase
 
         $paketDraft = $this->makePaket([$soal]);
 
-        // Buku administrasi + santri.
-        $book = TeacherAdminBook::create([
-            'teacher_id' => $this->guruA->id,
-            'subject_id' => $this->mathA->id,
-            'study_group_id' => $this->groupA->id,
-            'school_id' => $this->schoolA->id,
-            'academic_year_id' => $this->ay->id,
-            'semester' => 'ganjil',
-            'is_active' => true,
-        ]);
+        // Buku administrasi bisa sudah dibuat otomatis oleh TeachingAssignmentObserver;
+        // pastikan ada tanpa melanggar unique_admin_book_per_teacher.
+        $book = TeacherAdminBook::firstOrCreate(
+            [
+                'teacher_id' => $this->guruA->id,
+                'subject_id' => $this->mathA->id,
+                'study_group_id' => $this->groupA->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+            ],
+            [
+                'school_id' => $this->schoolA->id,
+                'is_active' => true,
+            ],
+        );
 
         $studentId = (string) Str::uuid();
         Schema::disableForeignKeyConstraints();
@@ -406,15 +411,18 @@ class BankSoalTerpusatTest extends TestCase
 
         $this->actingAs($this->guruA);
 
+        // Nilai Murni wajib diisi lebih dulu (kebijakan akademik), baru paket divalidasi.
+        $sumatif = [$studentId => ['sts_murni' => 80, 'sts' => 80]];
+
         // Paket belum final → ditolak
         $this->post("/{$this->guruA->id}/schools/guru-mapel/{$book->id}/w3", [
-            'sumatif' => [$studentId => ['sts' => 80]],
+            'sumatif' => $sumatif,
             'paket_soal_id' => $paketDraft->id,
         ])->assertSessionHas('error');
 
         // Paket final → tersimpan sebagai penghubung Buku Administrasi
         $this->post("/{$this->guruA->id}/schools/guru-mapel/{$book->id}/w3", [
-            'sumatif' => [$studentId => ['sts' => 80]],
+            'sumatif' => $sumatif,
             'paket_soal_id' => $paketFinal->id,
         ])->assertStatus(302);
 

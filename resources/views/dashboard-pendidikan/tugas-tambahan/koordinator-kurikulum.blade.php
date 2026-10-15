@@ -60,8 +60,8 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('user.schools.kktp.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
-                        <i class="ri-file-text-line me-1"></i>Manage KKTP / Silabus
+                    <a href="{{ route('user.kurikulum.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-primary">
+                        <i class="ri-file-text-line me-1"></i>Kelola KKTP (di Peta Kurikulum)
                     </a>
                     <a href="{{ route('user.bank-soal.index', ['userId' => $user->id]) }}" class="btn quick-action-btn btn-outline-warning">
                         <i class="ri-question-line me-1"></i>Review Bank Soal

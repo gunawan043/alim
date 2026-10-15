@@ -298,38 +298,37 @@
     </div>
 @endsection
 
+    {{-- Modal hapus (konsep lord-icon/zoomIn) --}}
+    <form id="deleteSgForm" method="POST" class="d-none" action="">
+        @csrf
+        @method('DELETE')
+    </form>
+
+    <x-modal-confirm id="deleteSgModal" class="zoomIn"
+        icon="https://cdn.lordicon.com/gsqxdxog.json"
+        primaryColor="#f7b84b" secondaryColor="#f06548"
+        title="Yakin ingin menghapus?"
+        submitLabel="Ya, Hapus!"
+        submitIcon="ri-delete-bin-line"
+        submitClass="btn-danger"
+        formId="deleteSgForm">
+        <p class="text-center text-muted mb-0" id="deleteSgMessage">Rombel akan dihapus permanen.</p>
+    </x-modal-confirm>
+
 @section('script')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
     <script>
         document.querySelectorAll('.delete-sg').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;
                 var name = this.dataset.name;
-                Swal.fire({
-                    title: 'Yakin ingin menghapus?',
-                    text: "Rombel \"" + name + "\" akan dihapus permanen.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '/{{ $userId }}/study-groups/' + id;
-                        ['_token','_method'].forEach(function(name, i) {
-                            var inp = document.createElement('input');
-                            inp.type = 'hidden';
-                            inp.name = name;
-                            inp.value = i === 0 ? '{{ csrf_token() }}' : 'DELETE';
-                            form.appendChild(inp);
-                        });
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
+                var form = document.getElementById('deleteSgForm');
+                if (form) form.action = '/{{ $userId }}/study-groups/' + id;
+                var msg = document.getElementById('deleteSgMessage');
+                if (msg) msg.textContent = 'Rombel "' + name + '" akan dihapus permanen.';
+                var modalEl = document.getElementById('deleteSgModal');
+                if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
             });
         });
     </script>

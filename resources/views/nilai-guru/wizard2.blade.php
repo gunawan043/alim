@@ -42,7 +42,7 @@
                     <h5 class="card-title mb-2"><i class="ri-article-line me-1 text-primary"></i>Jurnal Pembelajaran</h5>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <span class="badge bg-primary-subtle text-primary"><i class="ri-book-2-line me-1"></i>{{ $adminBook->subject->name ?? '-' }}</span>
-                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>{{ $adminBook->studyGroup->name }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>Kelas - {{ $adminBook->studyGroup->name }}</span>
                         <span class="badge bg-dark-subtle text-dark"><i class="ri-calendar-line me-1"></i>Semester {{ ucfirst($adminBook->semester) }}</span>
                         <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-2-line me-1"></i>{{ $adminBook->academicYear->name ?? '-' }}</span>
                     </div>
@@ -63,7 +63,7 @@
         </div>
     </div>
 
-    <div class="row mb-3">
+    <!-- <div class="row mb-3">
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90 mb-0">
                 <div class="card-body py-3">
@@ -136,7 +136,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <div class="row g-3">
         <div class="col-12">
@@ -257,7 +257,7 @@
                     <h6 class="text-muted fw-semibold mb-3"><i class="ri-history-line me-1"></i> Riwayat Jurnal &amp; Realisasi TP</h6>
                     @if($journals->isNotEmpty())
                         <div class="table-responsive">
-                            <table class="table table-nowrap table-hover align-middle table-freeze mb-0">
+                            <table class="table table-nowrap table-hover align-middle table-freeze mb-0 js-tools-table">
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th style="width:40px">#</th>
@@ -372,4 +372,5 @@
         document.getElementById('meeting_date')?.addEventListener('change', suggestWeekByDate);
         document.addEventListener('DOMContentLoaded', suggestWeekByDate);
     </script>
+    @include('nilai-guru.partials.table-tools')
 @endsection

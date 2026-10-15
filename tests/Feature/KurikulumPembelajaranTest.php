@@ -474,13 +474,19 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertStatus(403);
     }
 
-    public function test_peta_kurikulum_guru_hanya_mapel_yang_diampu(): void
+    public function test_peta_kurikulum_guru_melihat_seluruh_kurikulum_tanpa_hak_edit(): void
     {
+        // Peta Kurikulum kini menampilkan seluruh struktur jenjang (bukan hanya mapel yang diampu),
+        // namun hak edit tetap ditolak untuk guru murni.
         $this->actingAs($this->guru)
             ->get("/{$this->guru->id}/kurikulum")
             ->assertOk()
             ->assertSee('Matematika')
-            ->assertDontSee('Fisika');
+            ->assertSee('Fisika');
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/kurikulum/kktp", [])
+            ->assertForbidden();
     }
 
     public function test_guru_melihat_cp_serumpun_dan_bukan_mapel_lain(): void

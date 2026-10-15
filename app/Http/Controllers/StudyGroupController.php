@@ -8,7 +8,10 @@ use App\Models\School;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\User;
+use App\Services\SchoolGroupService;
+use App\Services\StudyGroupService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class StudyGroupController extends Controller
 {
@@ -86,7 +89,7 @@ class StudyGroupController extends Controller
         if ($schoolId) {
             $schools = School::where('id', $schoolId)->get();
             $gradeLevels = GradeLevel::where('school_id', $schoolId)->orderBy('level')->get();
-            $teacherIds = \App\Services\SchoolGroupService::userIdsForSchool($schoolId);
+            $teacherIds = SchoolGroupService::userIdsForSchool($schoolId);
             $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
             $teachers = User::query()
                 ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
@@ -135,10 +138,11 @@ class StudyGroupController extends Controller
 
         $exists = StudyGroup::where('school_id', $data['school_id'])
             ->where('academic_year_id', $data['academic_year_id'])
+            ->where('grade_level_id', $data['grade_level_id'] ?? null)
             ->where('name', $data['name'])
             ->exists();
         if ($exists) {
-            return back()->withInput()->with('error', 'Rombel dengan nama ini sudah ada pada sekolah dan tahun ajaran tersebut.');
+            return back()->withInput()->with('error', 'Rombel dengan nama ini sudah ada pada sekolah, tahun ajaran, dan tingkat tersebut.');
         }
 
         $studyGroup = StudyGroup::create($data);
@@ -181,7 +185,7 @@ class StudyGroupController extends Controller
         $schools = School::orderBy('name')->get();
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $gradeLevels = GradeLevel::where('school_id', $studyGroup->school_id)->orderBy('level')->get();
-        $teacherIds = \App\Services\SchoolGroupService::userIdsForSchool($studyGroup->school_id);
+        $teacherIds = SchoolGroupService::userIdsForSchool($studyGroup->school_id);
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
@@ -228,11 +232,12 @@ class StudyGroupController extends Controller
 
         $exists = StudyGroup::where('school_id', $data['school_id'])
             ->where('academic_year_id', $data['academic_year_id'])
+            ->where('grade_level_id', $data['grade_level_id'] ?? null)
             ->where('name', $data['name'])
             ->where('id', '!=', $id)
             ->exists();
         if ($exists) {
-            return back()->withInput()->with('error', 'Rombel dengan nama ini sudah ada pada sekolah dan tahun ajaran tersebut.');
+            return back()->withInput()->with('error', 'Rombel dengan nama ini sudah ada pada sekolah, tahun ajaran, dan tingkat tersebut.');
         }
 
         $studyGroup->update($data);
@@ -251,9 +256,9 @@ class StudyGroupController extends Controller
         }
 
         try {
-            app(\App\Services\StudyGroupService::class)->deleteSafely($studyGroup);
+            app(StudyGroupService::class)->deleteSafely($studyGroup);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Hapus rombel gagal: '.$e->getMessage(), [
+            Log::warning('Hapus rombel gagal: '.$e->getMessage(), [
                 'study_group_id' => $id,
             ]);
 

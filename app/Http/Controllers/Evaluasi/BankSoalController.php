@@ -75,16 +75,9 @@ class BankSoalController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        // Scope filtering: owner can see their own + public/internal_school banks
-        $baseQuery = BankSoal::where('school_id', $schoolId)
-            ->where(function ($q) use ($userId, $schoolId) {
-                $q->where('owner_user_id', $userId)
-                    ->orWhere('is_public', true)
-                    ->where(function ($q2) use ($schoolId) {
-                        $q2->where('shared_scope', 'internal_school')
-                            ->where('school_id', $schoolId);
-                    });
-            });
+        // Scope daftar = SATU sumber dengan guard detail (accessibleBy):
+        // milik sendiri, publik/central/public_pool, internal satuan, dan rumpun kewenangan.
+        $baseQuery = BankSoal::query()->accessibleBy($userId, $schoolId);
 
         $query = (clone $baseQuery)
             ->withCount(['soal' => fn ($q) => $q->where('status', 'approved')])
@@ -102,8 +95,8 @@ class BankSoalController extends Controller
         if ($request->filled('shared_scope')) {
             $query->where('shared_scope', $request->shared_scope);
         }
-        if ($request->filled('is_public') !== null) {
-            $query->where('is_public', (bool) $request->is_public);
+        if ($request->has('is_public') && $request->input('is_public') !== '') {
+            $query->where('is_public', (bool) $request->boolean('is_public'));
         }
         if ($request->filled('academic_year_id')) {
             $query->where('academic_year_id', $request->academic_year_id);

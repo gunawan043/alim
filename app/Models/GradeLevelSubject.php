@@ -22,6 +22,7 @@ class GradeLevelSubject extends Model
         'grade_level_id',
         'subject_id',
         'allocation_hours',
+        'track',
         'is_active',
     ];
 

@@ -9,6 +9,7 @@
     'submitIcon' => 'ri-check-line',
     'submitClass' => 'btn-success',
     'formId' => null,
+    'submitId' => null,
 ])
 
 <div {{ $attributes->merge(['class' => 'modal fade']) }} id="{{ $id }}" tabindex="-1" aria-labelledby="{{ $id }}Label" aria-hidden="true">
@@ -33,6 +34,7 @@
                         </button>
                         <button type="submit"
                                 @if($formId) form="{{ $formId }}" @endif
+                                @if($submitId) id="{{ $submitId }}" @endif
                                 class="btn {{ $submitClass }}">
                             <i class="{{ $submitIcon }} me-1"></i>{{ $submitLabel }}
                         </button>

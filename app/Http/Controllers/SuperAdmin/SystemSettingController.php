@@ -4,8 +4,10 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
+use App\Services\Notifications\WhatsAppGatewayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class SystemSettingController extends Controller
 {
@@ -16,7 +18,7 @@ class SystemSettingController extends Controller
 
         $settings = SystemSetting::pluck('value', 'key')->toArray();
 
-        $waLogs = \Illuminate\Support\Facades\DB::table('wa_message_logs')
+        $waLogs = DB::table('wa_message_logs')
             ->orderByDesc('created_at')
             ->limit(15)
             ->get();
@@ -69,6 +71,8 @@ class SystemSettingController extends Controller
             'wa_event_achievement' => 'boolean',
             'wa_event_announcement' => 'boolean',
             'wa_event_visit' => 'boolean',
+            'pos_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
+            'pos_api_allowed_ips' => 'nullable|string|max:2000',
         ]);
 
         // Normalisasi: perbaiki typo umum domain Fonnte + trim token/URL.
@@ -91,11 +95,50 @@ class SystemSettingController extends Controller
             }
         }
 
+        // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
+        // pembuatan token) — keluarkan dari penyimpanan generik.
+        unset($validated['pos_api_header'], $validated['pos_api_allowed_ips']);
+
         foreach ($validated as $key => $value) {
             SystemSetting::updateOrCreate(
                 ['key' => $key],
                 ['value' => $value]
             );
+        }
+
+        // ── Tab Integrasi POS: simpan pengaturan & kelola token ──────────
+        $posFlash = null;
+
+        if ($request->filled('pos_tab')) {
+            $headerInput = trim((string) $request->input('pos_api_header', ''));
+            $allowedIpsInput = trim((string) $request->input('pos_api_allowed_ips', ''));
+
+            [$allowedIpsNormalized, $invalidIps] = $this->normalizeIpAllowlist($allowedIpsInput);
+
+            if ($invalidIps !== []) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Daftar IP tidak valid: '.implode(', ', $invalidIps)
+                        .'. Gunakan format IP atau CIDR (contoh: 103.10.20.30 atau 10.0.0.0/8), pisahkan dengan koma.'
+                );
+            }
+
+            SystemSetting::set('pos_api_enabled', $request->boolean('pos_api_enabled') ? '1' : '0', 'pos_api');
+            SystemSetting::set('pos_api_header', $headerInput !== '' ? $headerInput : 'X-ALIM-POS-KEY', 'pos_api');
+            SystemSetting::set('pos_api_allowed_ips', $allowedIpsNormalized, 'pos_api');
+
+            $currentKey = (string) (SystemSetting::get('pos_api_key') ?: '');
+            $regenerated = false;
+
+            if ($request->filled('regenerate_pos_key') || ($request->boolean('pos_api_enabled') && $currentKey === '')) {
+                SystemSetting::set('pos_api_key', bin2hex(random_bytes(32)), 'pos_api');
+                SystemSetting::set('pos_api_key_generated_at', now()->toDateTimeString(), 'pos_api');
+                $regenerated = true;
+            }
+
+            $posFlash = $regenerated
+                ? 'Pengaturan Integrasi POS disimpan dan token baru berhasil dibuat. Salin token ke aplikasi POS sekarang.'
+                : 'Pengaturan Integrasi POS berhasil disimpan.';
         }
 
         // Clear related caches
@@ -104,11 +147,11 @@ class SystemSettingController extends Controller
 
         // Cek status device provider (Fonnte) — diagnosa cepat.
         if ($request->filled('check_device')) {
-            $info = app(\App\Services\Notifications\WhatsAppGatewayService::class)->checkDevice();
+            $info = app(WhatsAppGatewayService::class)->checkDevice();
 
             return redirect()->back()->with(
-                !empty($info['ok']) ? 'success' : 'error',
-                !empty($info['ok'])
+                ! empty($info['ok']) ? 'success' : 'error',
+                ! empty($info['ok'])
                     ? 'Status device: '.($info['device_status'] ?? '-').' · device '.($info['device'] ?? '-')
                         .' · kuota '.($info['quota'] ?? '-').' · paket '.($info['package'] ?? '-')
                         .' · expired '.($info['expired'] ?? '-')
@@ -122,14 +165,14 @@ class SystemSettingController extends Controller
             $sent = false;
 
             if ($number) {
-                $sent = app(\App\Services\Notifications\WhatsAppGatewayService::class)->send(
+                $sent = app(WhatsAppGatewayService::class)->send(
                     $number,
                     "Tes notifikasi WhatsApp ALIM.\nWaktu: ".now()->format('d/m/Y H:i:s'),
                     ['event' => 'test', 'reference_id' => 'test-send']
                 );
             }
 
-            $detail = app(\App\Services\Notifications\WhatsAppGatewayService::class)->lastResponseDetail();
+            $detail = app(WhatsAppGatewayService::class)->lastResponseDetail();
 
             return redirect()->back()->with(
                 $sent ? 'success' : 'error',
@@ -140,7 +183,61 @@ class SystemSettingController extends Controller
         }
 
         return redirect()->back()
-            ->with('success', 'Pengaturan berhasil disimpan.');
+            ->with('success', $posFlash ?? 'Pengaturan berhasil disimpan.');
+    }
+
+    /**
+     * Normalisasi daftar IP/CIDR (dipisah koma) untuk whitelist POS.
+     *
+     * @return array{0: string, 1: list<string>} [nilai ternormalisasi, item tidak valid]
+     */
+    private function normalizeIpAllowlist(string $input): array
+    {
+        $items = array_values(array_filter(
+            array_map('trim', explode(',', $input)),
+            fn (string $item) => $item !== ''
+        ));
+
+        $valid = [];
+        $invalid = [];
+
+        foreach ($items as $item) {
+            if ($this->isValidIpOrCidr($item)) {
+                $valid[] = $item;
+            } else {
+                $invalid[] = $item;
+            }
+        }
+
+        return [implode(',', $valid), $invalid];
+    }
+
+    /**
+     * Cek apakah sebuah nilai berupa IP atau blok CIDR (IPv4/IPv6).
+     */
+    private function isValidIpOrCidr(string $value): bool
+    {
+        if (! str_contains($value, '/')) {
+            return filter_var($value, FILTER_VALIDATE_IP) !== false;
+        }
+
+        [$ip, $prefix] = explode('/', $value, 2);
+
+        if (! is_numeric($prefix)) {
+            return false;
+        }
+
+        $prefix = (int) $prefix;
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            return $prefix >= 0 && $prefix <= 32;
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
+            return $prefix >= 0 && $prefix <= 128;
+        }
+
+        return false;
     }
 
     public function clearCache()

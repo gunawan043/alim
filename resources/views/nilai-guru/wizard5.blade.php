@@ -16,23 +16,27 @@
         </div>
     @endif
 
-    {{-- Info Buku — full width atas --}}
-    <div class="card border-primary mb-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center g-2">
-                <div class="col-md-auto">
-                    <p class="mb-n1 btn btn-primary btn-sm" style="font-size: 10px;"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</p>
-                    <p class="mb-n1 btn btn-secondary btn-sm"><i class="ri-team-line me-1"></i>{{ $book['adminBook']->studyGroup->name }}</p>
-                    <p class="mb-n1 btn btn-dark btn-sm"><i class="ri-calendar-line me-1"></i>{{ ucfirst($book['adminBook']->semester) }}</p>
-                    <p class="mb-n1 btn btn-warning btn-sm"><i class="ri-government-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</p>
+    {{-- Info Buku (gaya kartu Jurnal) --}}
+    <div class="card border-primary-subtle mb-3">
+        <div class="card-body py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <h5 class="card-title mb-2"><i class="ri-article-line me-1 text-primary"></i>Buku Nilai — Penghargaan Akademik</h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge bg-primary-subtle text-primary"><i class="ri-book-2-line me-1"></i>{{ $book['adminBook']->subject->name ?? '-' }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-team-line me-1"></i>Kelas - {{ $book['adminBook']->studyGroup->name }}</span>
+                        <span class="badge bg-dark-subtle text-dark"><i class="ri-calendar-line me-1"></i>Semester {{ ucfirst($book['adminBook']->semester) }}</span>
+                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-2-line me-1"></i>{{ $book['adminBook']->academicYear->name ?? '-' }}</span>
+                        <span id="autosave-indicator" class="badge bg-light text-primary border d-flex align-items-center gap-1" style="font-size:.75rem;">
+                            <span id="autosave-dot" class="rounded-circle bg-secondary" style="width:8px;height:8px;display:inline-block;"></span>
+                            <span id="autosave-text">Menunggu perubahan…</span>
+                        </span>
+                    </div>
                 </div>
-                <div class="col-md-auto ms-auto">
-                    <span id="autosave-indicator" class="badge bg-light text-primary border d-flex align-items-center gap-1" style="font-size:.75rem;">
-                        <span id="autosave-dot" class="rounded-circle bg-secondary" style="width:8px;height:8px;display:inline-block;"></span>
-                        <span id="autosave-text">Menunggu perubahan…</span>
-                    </span>
-                </div>
-                <div class="col-md-auto">
+                <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $book['adminBook']->academic_year_id, 'semester' => $book['adminBook']->semester]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-line-chart-line me-1"></i> Realisasi
+                    </a>
                     <select class="form-select form-select-sm" style="width:auto;" onchange="location.href=this.value">
                         @foreach($books as $b)
                             <option value="{{ route('user.schools.guru-mapel.w5', ['userId' => $userId, 'adminBookId' => $b->id]) }}" {{ $b->id == $book['adminBook']->id ? 'selected' : '' }}>
@@ -63,7 +67,7 @@
                     @csrf
                     @php $autosaveUrl = route('user.schools.guru-mapel.autosave', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]); @endphp
                     <div class="table-responsive mx-3 my-3">
-                        <table class="table table-bordered table-striped table-hover mb-0" style="table-layout:fixed;min-width:900px;">
+                        <table class="table table-bordered table-hover align-middle mb-0 js-tools-table" style="min-width:900px;">
                             <thead class="table-light">
                                 <tr style="font-size:.80rem;">
                                     <th style="vertical-align:middle;width:40px;min-width:40px;text-align:center;">#</th>
@@ -84,8 +88,17 @@
                                 @php $p = $penghargaanMap->get($s->student_id); @endphp
                                 <tr>
                                     <td class="text-center fw-bold text-muted" style="vertical-align:middle;">{{ $i + 1 }}</td>
-                                    <td class="text-center" style="vertical-align:middle;">{{ $s->student->nis ?? '-' }}</td>
-                                    <td style="vertical-align:middle;">{{ $s->student->name ?? '-' }}</td>
+                                    <td class="text-muted text-center"><code>{{ $s->student->nis ?? '-' }}</code></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-primary text-white">
+                                                    {{ strtoupper(mb_substr(($__w = preg_split('/\s+/', trim((string) $s->student->name)))[0] ?? '', 0, 1) . (count($__w) > 1 ? mb_substr($__w[count($__w) - 1], 0, 1) : mb_substr($__w[0] ?? '', 1, 1))) }}
+                                                </span>
+                                            </div>
+                                            <span class="">{{ $s->student->name }}</span>
+                                        </div>
+                                    </td>
                                     <td><input type="number" name="penghargaan[{{ $s->student_id }}][jujur]" value="{{ $p->jujur ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;min-width:70px;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td><input type="number" name="penghargaan[{{ $s->student_id }}][disiplin]" value="{{ $p->disiplin ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;min-width:70px;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td><input type="number" name="penghargaan[{{ $s->student_id }}][peduli]" value="{{ $p->peduli ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;min-width:70px;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
@@ -95,7 +108,7 @@
                                     <td class="bg-light text-center fw-bold" style="vertical-align:middle;font-style:italic;color:#0d6efd;">
                                         <span id="nrf-{{ $s->student_id }}">{{ $p->nr_final ?? '-' }}</span>
                                     </td>
-                                    {{-- <td><input type="text" name="penghargaan[{{ $s->student_id }}][ket]" value="{{ $p->ket ?? '' }}" placeholder="---" style="width:100%;min-width:140px;text-align:left;background:#f8f9fa00;border:none;"></td> --}}
+                                    {{-- <td><input class="form-control form-control-sm" type="text" name="penghargaan[{{ $s->student_id }}][ket]" value="{{ $p->ket ?? '' }}" placeholder="---"></td> --}}
                                 </tr>
                                 @empty
                                 <tr><td colspan="11" class="text-center text-muted py-3">Belum ada siswa.</td></tr>
@@ -132,6 +145,7 @@
             </div>
         </div>
     </div>
+    @include('nilai-guru.partials.table-tools')
 @endsection
 
 @push('scripts')

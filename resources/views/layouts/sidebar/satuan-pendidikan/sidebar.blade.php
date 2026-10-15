@@ -97,6 +97,16 @@
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
     $isTimKurikulumG   = $isKoorKurik || $isTimKurikulum || $isKepala || $isWakil;
 
+    /* ── Absensi Kelas — wali kelas & kewenangan (KSP/Waka/Kurikulum/Kesiswaan/TU) ── */
+    $canAbsensiAuthority = $isKepala || $isWakil || $isAdminTU
+        || $isKoorKurik || $isTimKurikulum
+        || $isKoorKesiswa || $isTimKesiswaan
+        || (function_exists('canPermission') && (
+            canPermission('absensi-admin-tu') || canPermission('absensi-tata-usaha')
+            || canPermission('absensi-wakil-kepala-sekolah') || canPermission('absensi-kepala-sekolah')
+            || canPermission('absensi-kepala-sekolah-pondok')
+        ));
+
     /* ── Absen Manual — restricted (aturan #4) ───────────────────────── */
     $canManualAbsen = ($isAdminTU || $isStruktural || $isKoordinator)
         && (function_exists('canPermission')
@@ -299,12 +309,14 @@
         </a>
     </li>
 
+    @if($showAll || ($isGuru && ! $isWaliKelas && $canAbsensiAuthority))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
            href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
             <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>
         </a>
     </li>
+    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
@@ -521,8 +533,17 @@
 
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
-               href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-                <i class="ri-table-line"></i><span>Konsolidasi Nilai Kelas</span>
+               href="{{ $waliKelasGroups->isNotEmpty()
+                    ? route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $waliKelasGroups->first()->id])
+                    : route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
+               href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
+                <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>
             </a>
         </li>
 
@@ -539,6 +560,15 @@
                     ? route('user.students.index', ['userId' => $userId, 'study_group_id' => $waliKelasGroups->first()->id])
                     : route('user.students.index', ['userId' => $userId]) }}">
                 <i class="ri-user-heart-line"></i><span>Santri Kelas Saya</span>
+            </a>
+        </li>
+    @endif
+
+    @if(($showAll || $isAdminTU || $isStruktural || $isKoorKurik || $isTimKurikulum) && ! $isWaliKelas)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
+               href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
             </a>
         </li>
     @endif
@@ -792,23 +822,26 @@
                         </a>
                     </li>
                 @endif
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
+                       href="{{ route('user.ljk.index', ['userId' => $userId]) }}">
+                        <i class="ri-scan-2-line me-1"></i>LJK Smart Scanner
+                    </a>
+                </li>
             </ul>
         </div>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.kktp.index', ['userId' => $userId]) }}">
-            <i class="ri-ruler-2-line"></i><span>KKTP</span>
-        </a>
-    </li>
+    {{-- KKTP kini diatur langsung di Peta Kurikulum (kolom N-KKTP) & Struktur Kurikulum. --}}
 
+    @if($showAll || $isAdminTU || $isStruktural || $isKoorKurik || $isTimKurikulum)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai.']) ? ' active' : '' }}"
            href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">
             <i class="ri-survey-line"></i><span>Data Nilai</span>
         </a>
     </li>
+    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? ' active' : '' }}"
@@ -1060,12 +1093,14 @@
 @if($showAll || $isWakil || $isKoorKurik || $isKepala || $isAdminTU)
     <li class="menu-title"><span>Monitoring Kehadiran</span></li>
 
+    @if(canPermission('teacher-attendance_view'))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard']) ? ' active' : '' }}"
            href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}">
             <i class="ri-dashboard-2-line"></i><span>Kehadiran Guru Per Jam</span>
         </a>
     </li>
+    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kehadiran.pergantian-jam']) ? ' active' : '' }}"
@@ -1090,12 +1125,14 @@
     </li>
     @endif
 
+    @if(canPermission('teacher-attendance_view'))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
            href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
             <i class="ri-history-line"></i><span>Riwayat Kehadiran Saya</span>
         </a>
     </li>
+    @endif
 
     @if($showAll || $isStruktural || $isAdminTU || $isKoorKurik)
     <li class="nav-item">
@@ -1113,7 +1150,9 @@
             <i class="ri-contacts-book-line"></i><span>Absensi GTK</span>
         </a>
     </li>
+    @endif
 
+    @if($showAll || $isAdminTU || $isKepala || $isWakil || $isKoorKurik || $isTimKurikulum || $isKoorKesiswa || $isTimKesiswaan)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
            href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">

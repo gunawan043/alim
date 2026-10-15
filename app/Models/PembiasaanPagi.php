@@ -4,10 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class PembiasaanPagi extends Model
 {
     protected $table = 'pembiasaan_pagi';
+
+    protected static function booted(): void
+    {
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+    }
 
     protected $fillable = [
         'admin_book_id',

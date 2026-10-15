@@ -150,6 +150,21 @@
                     </div>
                 </div>
 
+                <div class="card-header py-2 bg-light border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-semibold"><i class="ri-stack-line me-1"></i>Total JP per Tingkat:</span>
+                        @foreach(($jpSummary ?? collect()) as $sum)
+                            <span class="badge bg-success-subtle text-success">{{ $sum['name'] }}: {{ rtrim(rtrim(number_format($sum['total'], 1, ',', '.'), '0'), ',') }} JP</span>
+                        @endforeach
+                    </div>
+                </div>
+
+                <form id="kktpFormPeta" method="POST" action="{{ route('user.kurikulum.kktp.save', ['userId' => $userId]) }}">
+                    @csrf
+                    <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
+                    <input type="hidden" name="semester" value="{{ $semester }}">
+                </form>
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light">
@@ -159,11 +174,12 @@
                                 <th>Mata Pelajaran</th>
                                 <th class="text-center">JP/Minggu</th>
                                 <th class="text-center">JP Efektif</th>
+                                <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100)">N-KKTP</th>
                                 <th class="text-center">CP</th>
                                 <th class="text-center">TP</th>
                                 <th>ATP</th>
                                 <th class="text-center">Rombel</th>
-                                <th class="text-center">Guru</th>
+                                <th class="text-center" title="Jumlah guru pengampu mapel ini pada TA terpilih di satuan pendidikan ini (tidak menghitung lintas lembaga)">Guru</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -180,6 +196,22 @@
                                     <td>{{ $row['subject'] }}</td>
                                     <td class="text-center">{{ $row['weekly_hours'] }}</td>
                                     <td class="text-center fw-semibold">{{ $row['jp_efektif'] }}</td>
+                                    <td class="text-center">
+                                        @if($canEditKktp ?? false)
+                                            <input type="number"
+                                                   form="kktpFormPeta"
+                                                   name="kktp[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}]"
+                                                   value="{{ $row['kktp'] ?? '' }}"
+                                                   min="0" max="100" placeholder="—"
+                                                   class="form-control form-control-sm text-center"
+                                                   style="width:80px;margin:0 auto"
+                                                   title="N-KKTP (0-100)">
+                                        @else
+                                            <span class="badge {{ ($row['kktp'] ?? null) !== null ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
+                                                {{ $row['kktp'] ?? '—' }}
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge {{ $row['cp_count'] > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $row['cp_count'] }}</span>
                                     </td>
@@ -204,7 +236,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="text-center py-5">
+                                    <td colspan="11" class="text-center py-5">
                                         <div class="text-muted">
                                             <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
                                             Belum ada mapel per jenjang. Lengkapi di
@@ -216,6 +248,14 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if($canEditKktp ?? false)
+                    <div class="d-flex justify-content-end p-3 border-top">
+                        <button type="submit" form="kktpFormPeta" class="btn btn-success btn-sm">
+                            <i class="ri-save-line me-1"></i>Simpan N-KKTP
+                        </button>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

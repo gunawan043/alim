@@ -1,4 +1,5 @@
 @extends('layouts.master')
+@php $userId = $userId ?? request()->route('userId') ?? auth()->id(); @endphp
 @section('title') Buat Paket Soal @endsection
 
 @section('content')
@@ -44,7 +45,7 @@
         </div>
     </div>
 
-    <form action="{{ route('user.paket-soal.store', $kisi->id) }}" method="POST">
+    <form action="{{ route('user.paket-soal.store', ['userId' => $userId, 'kisiKisiId' => $kisi->id]) }}" method="POST">
         @csrf
 
         <div class="card mb-3">
@@ -100,7 +101,7 @@
         </div>
 
         <div class="text-end mb-4">
-            <a href="{{ route('user.paket-soal.index') }}" class="btn btn-secondary">Batal</a>
+            <a href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}" class="btn btn-secondary">Batal</a>
             <button class="btn btn-success"><i class="ri-rocket-line"></i> Bangun Paket Soal</button>
         </div>
     </form>

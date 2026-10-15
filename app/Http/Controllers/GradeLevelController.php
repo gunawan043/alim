@@ -6,6 +6,8 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
+use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
 use Illuminate\Http\Request;
@@ -135,8 +137,14 @@ class GradeLevelController extends Controller
             abort(403);
         }
 
+        // Validasi backend: mapel wajib milik satuan pendidikan yang sama & aktif
+        // (dropdown memang hanya menampilkan ini — jangan biarkan dipalsukan dari klien).
         $validated = $request->validate([
-            'subject_id' => 'required|exists:subjects,id',
+            'subject_id' => [
+                'required',
+                \Illuminate\Validation\Rule::exists('subjects', 'id')
+                    ->where(fn ($q) => $q->where('school_id', $gradeLevel->school_id)->where('is_active', true)),
+            ],
             'allocation_hours' => 'nullable|integer|min:0|max:40',
         ]);
 
@@ -147,15 +155,68 @@ class GradeLevelController extends Controller
             return back()->with('error', 'Mapel ini sudah ditambahkan ke tingkat ini.');
         }
 
+        $weeklyHours = (int) ($validated['allocation_hours'] ?? 0);
+
         GradeLevelSubject::create([
             'id' => (string) Str::uuid(),
             'grade_level_id' => $id,
             'subject_id' => $validated['subject_id'],
-            'allocation_hours' => $validated['allocation_hours'] ?? 0,
+            'allocation_hours' => $weeklyHours,
         ]);
 
+        // Propagasi: mapel tingkat → seluruh rombel aktif pada tingkat yang sama,
+        // agar langsung muncul di Buku Nilai, Jadwal, Plotting, dan Leger.
+        $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $validated['subject_id'], $weeklyHours);
+
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
-            ->with('success', 'Mapel berhasil ditambahkan.');
+            ->with('success', $propagated > 0
+                ? "Mapel berhasil ditambahkan ke tingkat ini dan {$propagated} rombel aktif."
+                : 'Mapel berhasil ditambahkan.');
+    }
+
+    /**
+     * Sinkronkan mapel tingkat ke seluruh rombel aktif pada tingkat yang sama.
+     * Baris yang pernah di-soft-delete dihidupkan kembali; jam mengajar yang
+     * sudah diatur di rombel tidak ditimpa.
+     */
+    protected function propagateSubjectToStudyGroups(GradeLevel $gradeLevel, string $subjectId, int $weeklyHours = 0): int
+    {
+        $groups = StudyGroup::query()
+            ->where('grade_level_id', $gradeLevel->id)
+            ->where('school_id', $gradeLevel->school_id)
+            ->where('is_active', true)
+            ->get(['id']);
+
+        $count = 0;
+
+        foreach ($groups as $group) {
+            $existing = StudyGroupSubject::withTrashed()
+                ->where('study_group_id', $group->id)
+                ->where('subject_id', $subjectId)
+                ->first();
+
+            if ($existing) {
+                if ($existing->trashed()) {
+                    $existing->restore();
+                }
+                if (! $existing->is_active) {
+                    $existing->forceFill(['is_active' => true])->save();
+                }
+                $count++;
+
+                continue;
+            }
+
+            StudyGroupSubject::create([
+                'study_group_id' => $group->id,
+                'subject_id' => $subjectId,
+                'weekly_hours' => $weeklyHours,
+                'is_active' => true,
+            ]);
+            $count++;
+        }
+
+        return $count;
     }
 
     public function removeSubject(Request $request, string $userId, string $id)
@@ -166,9 +227,23 @@ class GradeLevelController extends Controller
             abort(403);
         }
 
-        $deleted = GradeLevelSubject::where('grade_level_id', $id)
+        $gls = GradeLevelSubject::where('grade_level_id', $id)
             ->where('id', $request->input('subject_id'))
-            ->delete();
+            ->first();
+
+        if ($gls) {
+            $subjectId = $gls->subject_id;
+            $gls->delete();
+
+            // Nonaktifkan mapel pada rombel-rombel tingkat ini (riwayat nilai tidak dihapus).
+            $groupIds = StudyGroup::where('grade_level_id', $id)
+                ->where('school_id', $gradeLevel->school_id)
+                ->pluck('id');
+
+            StudyGroupSubject::whereIn('study_group_id', $groupIds)
+                ->where('subject_id', $subjectId)
+                ->update(['is_active' => false]);
+        }
 
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
             ->with('success', 'Mapel berhasil dihapus.');

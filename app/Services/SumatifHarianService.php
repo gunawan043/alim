@@ -159,7 +159,7 @@ class SumatifHarianService
      *
      * @param  array<string, float|int|string|null>  $values
      */
-    public function calcRs(array $values): ?float
+    public function calcRs(array $values, ?int $divisor = null): ?float
     {
         $filled = array_filter(
             $values,
@@ -170,7 +170,43 @@ class SumatifHarianService
             return null;
         }
 
-        return round(array_sum($filled) / count($filled), 2);
+        // Pembagi seragam per kelas (bila diberikan) agar santri yang tidak ikut
+        // sebagian sumatif tidak mendapat nilai rata-rata yang berbeda pembaginya.
+        $divisor = ($divisor !== null && $divisor > 0) ? $divisor : count($filled);
+
+        return round(array_sum($filled) / $divisor, 2);
+    }
+
+    /**
+     * Pembagi RS seragam per kelas: banyak kolom terisi TERBANYAK di antara santri.
+     * Contoh: ada santri mengisi 4 kolom → semua santri dibagi 4.
+     */
+    public function rsDivisor(TeacherAdminBook $book, ?array $currentValues = null, ?string $currentStudentId = null): int
+    {
+        $columns = $this->columnsFor($book);
+
+        $max = $currentValues !== null ? $this->filledColumnCount($currentValues) : 0;
+
+        NilaiSumatif::where('admin_book_id', $book->id)
+            ->where('semester', $book->semester)
+            ->get()
+            ->each(function (NilaiSumatif $row) use ($columns, $currentStudentId, &$max) {
+                if ($currentStudentId !== null && (string) $row->student_id === (string) $currentStudentId) {
+                    return;
+                }
+
+                $max = max($max, $this->filledColumnCount($this->valuesFor($row, $columns)));
+            });
+
+        return max(1, $max);
+    }
+
+    protected function filledColumnCount(array $values): int
+    {
+        return count(array_filter(
+            $values,
+            fn ($v) => $v !== null && $v !== '' && is_numeric($v)
+        ));
     }
 
     /**
@@ -293,9 +329,11 @@ class SumatifHarianService
         $columns = $this->columnsFor($book);
         $updated = 0;
 
-        NilaiSumatif::where('admin_book_id', $book->id)->each(function (NilaiSumatif $row) use ($book, $columns, &$updated) {
+        $divisor = $this->rsDivisor($book);
+
+        NilaiSumatif::where('admin_book_id', $book->id)->each(function (NilaiSumatif $row) use ($book, $columns, $divisor, &$updated) {
             $values = $this->valuesFor($row, $columns);
-            $this->applyDerived($row, $book, $values);
+            $this->applyDerived($row, $book, $values, $divisor);
 
             if ($row->isDirty()) {
                 $row->save();
@@ -349,13 +387,16 @@ class SumatifHarianService
      *
      * @param  array<string, float|null>  $values
      */
-    protected function applyDerived(NilaiSumatif $row, TeacherAdminBook $book, array $values): void
+    protected function applyDerived(NilaiSumatif $row, TeacherAdminBook $book, array $values, ?int $divisor = null): void
     {
         $wRs = (float) ($book->nr_final_weight_rs ?? 50.0);
         $wSts = (float) ($book->nr_final_weight_sts ?? 25.0);
         $wSas = (float) ($book->nr_final_weight_sas ?? 25.0);
 
-        $rs = $this->calcRs($values);
+        $rs = $this->calcRs(
+            $values,
+            $divisor ?? $this->rsDivisor($book, $values, (string) $row->student_id)
+        );
 
         $sts = $row->sts !== null ? (float) $row->sts : null;
         $sas = $row->sas !== null ? (float) $row->sas : null;

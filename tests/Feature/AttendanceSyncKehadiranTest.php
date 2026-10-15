@@ -278,6 +278,84 @@ class AttendanceSyncKehadiranTest extends TestCase
     // FIXTURE
     // ─────────────────────────────────────────────────────────────
 
+    public function test_absensi_kelas_dibatasi_wali_dan_kewenangan(): void
+    {
+        // Guru mapel tanpa kewenangan → 403 di semua halaman Absensi Kelas
+        $this->actingAs($this->guruMapel)
+            ->get("/{$this->guruMapel->id}/absensi/harian")
+            ->assertForbidden();
+
+        $this->actingAs($this->guruMapel)
+            ->get("/{$this->guruMapel->id}/absensi/harian/create")
+            ->assertForbidden();
+
+        $this->actingAs($this->guruMapel)
+            ->get("/{$this->guruMapel->id}/absensi/harian/recap")
+            ->assertForbidden();
+
+        // Wali kelas → boleh
+        $this->actingAs($this->wali)
+            ->get("/{$this->wali->id}/absensi/harian")
+            ->assertOk();
+
+        // TU → boleh (kewenangan)
+        $this->actingAs($this->tu)
+            ->get("/{$this->tu->id}/absensi/harian")
+            ->assertOk();
+    }
+
+    public function test_sidebar_absensi_kelas_hanya_untuk_wali_dan_kewenangan(): void
+    {
+        // Guru mapel tanpa kewenangan: menu tidak tampil
+        $this->actingAs($this->guruMapel)
+            ->get("/{$this->guruMapel->id}/todos")
+            ->assertOk()
+            ->assertDontSee('Absensi Kelas Saya');
+
+        // Wali kelas: menu tampil
+        $this->actingAs($this->wali)
+            ->get("/{$this->wali->id}/todos")
+            ->assertOk()
+            ->assertSee('Absensi Kelas Saya');
+
+        // TU: menu Absensi Peserta Didik tampil
+        $this->actingAs($this->tu)
+            ->get("/{$this->tu->id}/todos")
+            ->assertOk()
+            ->assertSee('Absensi Peserta Didik');
+    }
+
+    public function test_menu_monitoring_kehadiran_mengikuti_permission_view(): void
+    {
+        // Waka dengan snapshot TANPA teacher-attendance_view → menu Monitoring tidak tampil
+        // (mencegah klik-through 403); route tetap menolak = fail-closed.
+        $wakaTanpa = $this->makeUser('Waka Tanpa Monitor', 'waka.tanpa@kehadiran.test', 'Wakil Kepala Satuan Pendidikan');
+
+        $this->actingAs($wakaTanpa)
+            ->get("/{$wakaTanpa->id}/todos")
+            ->assertOk()
+            ->assertDontSee('Kehadiran Guru Per Jam');
+
+        $this->actingAs($wakaTanpa)
+            ->get("/{$wakaTanpa->id}/absensi-guru-mapel-qr/waka-dashboard")
+            ->assertForbidden();
+
+        // Waka dengan teacher-attendance_view pada snapshot → menu tampil & halaman dapat dibuka.
+        $wakaDengan = $this->makeUser('Waka Monitor', 'waka.dengan@kehadiran.test', 'Wakil Kepala Satuan Pendidikan');
+        DB::table('permission_snapshots')
+            ->where('user_id', $wakaDengan->id)
+            ->update(['permissions' => json_encode(['jadwalkbm.read', 'teacher-attendance_view'])]);
+
+        $this->actingAs($wakaDengan)
+            ->get("/{$wakaDengan->id}/todos")
+            ->assertOk()
+            ->assertSee('Kehadiran Guru Per Jam');
+
+        $this->actingAs($wakaDengan)
+            ->get("/{$wakaDengan->id}/absensi-guru-mapel-qr/waka-dashboard")
+            ->assertOk();
+    }
+
     private function makeUser(string $name, string $email, string $jabatan = 'Guru Mapel'): User
     {
         $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
@@ -304,6 +382,17 @@ class AttendanceSyncKehadiranTest extends TestCase
                 'status_kepegawaian' => 'GTY',
                 'jenis_gtk' => 'Pendidik / Guru',
                 'jabatan' => $jabatan,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Unit kerja utama — dipakai sidebar untuk resolusi kelas wali & konteks sekolah.
+            DB::table('gtk_work_unit')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'work_unit_id' => $this->school->work_unit_id,
+                'jabatan' => $jabatan,
+                'is_primary' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -350,6 +439,15 @@ class AttendanceSyncKehadiranTest extends TestCase
 
         $this->wali = $this->makeUser('Wali Kelas', 'wali@kehadiran.test');
         $this->guruMapel = $this->makeUser('Guru Mapel', 'guru.mapel@kehadiran.test');
+
+        // Tugas tambahan Wali Kelas — dipakai sidebar untuk menampilkan menu wali.
+        DB::table('gtk_additional_tasks')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $this->wali->id,
+            'nama_tugas' => 'Wali Kelas',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $this->tu = $this->makeUser('Staf Tata Usaha', 'tu@kehadiran.test', 'Staf Tata Usaha');
 
         $this->studyGroup = StudyGroup::create([
@@ -407,15 +505,20 @@ class AttendanceSyncKehadiranTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->book = TeacherAdminBook::create([
-            'teacher_id' => $this->guruMapel->id,
-            'subject_id' => $this->subject->id,
-            'study_group_id' => $this->studyGroup->id,
-            'school_id' => $this->school->id,
-            'academic_year_id' => $this->ay->id,
-            'semester' => 'ganjil',
-            'is_active' => true,
-        ]);
+        // Observer penugasan bisa saja sudah otomatis membuat buku — pastikan idempoten.
+        $this->book = TeacherAdminBook::updateOrCreate(
+            [
+                'teacher_id' => $this->guruMapel->id,
+                'subject_id' => $this->subject->id,
+                'study_group_id' => $this->studyGroup->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+            ],
+            [
+                'school_id' => $this->school->id,
+                'is_active' => true,
+            ]
+        );
 
         AdminPresensiMapel::create([
             'admin_book_id' => $this->book->id,
@@ -447,6 +550,46 @@ class AttendanceSyncKehadiranTest extends TestCase
             'is_current' => 1,
             'created_at' => now(),
             'archived_at' => null,
+        ]);
+    }
+
+    public function test_halaman_input_absensi_wali_terkunci_dan_ui_baru(): void
+    {
+        // Tanpa param study_group_id — wali harus langsung masuk kelasnya sendiri.
+        $this->actingAs($this->wali)
+            ->get("/{$this->wali->id}/absensi/harian/create?date=".now()->toDateString()."&semester=ganjil&mode=radio")
+            ->assertOk()
+            ->assertSee('Aksi Cepat')
+            ->assertSee($this->student->name)
+            ->assertSee('absen-count-hadir', false)
+            ->assertSee('absen-autosave-indicator', false)
+            ->assertSee('absenSearchInput', false)
+            ->assertSee('absenStatusFilter', false)
+            ->assertDontSee('Pilih Rombel')
+            ->assertDontSee('Tampilkan Siswa');
+    }
+
+    public function test_autosave_absensi_harian_mengembalikan_json(): void
+    {
+        $this->actingAs($this->wali)
+            ->postJson("/{$this->wali->id}/absensi/harian", [
+                'study_group_id' => $this->studyGroup->id,
+                'attendance_date' => now()->toDateString(),
+                'semester' => 'ganjil',
+                'mode' => 'radio',
+                'records' => [[
+                    'student_id' => $this->student->id,
+                    'status' => 'izin',
+                    'notes' => 'Acara keluarga',
+                ]],
+            ])
+            ->assertOk()
+            ->assertJson(['saved' => true]);
+
+        $this->assertDatabaseHas('admin_presensi_harian', [
+            'student_id' => $this->student->id,
+            'status' => 'izin',
+            'notes' => 'Acara keluarga',
         ]);
     }
 }

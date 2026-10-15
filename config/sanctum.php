@@ -133,6 +133,9 @@ return [
             'dashboard.read',
             'profile.read',
             'profile.write',
+            'ljk.read',
+            'ljk.scan',
+            'ljk.review',
         ],
 
         // ── Role -> abilities mapping ────────────────────────────────────────
@@ -170,6 +173,9 @@ return [
                 'attendance.write',
                 'grades.read',
                 'grades.write',
+                'ljk.read',
+                'ljk.scan',
+                'ljk.review',
                 'permit.read',
                 'health.read',
                 'notification.read',

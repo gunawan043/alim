@@ -10,6 +10,8 @@ use App\Models\GradeLevel;
 use App\Models\KisiKisiItem;
 use App\Models\KisiKisiSoal;
 use App\Models\Subject;
+use App\Models\TeachingAssignment;
+use App\Models\TujuanPembelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +22,92 @@ class KisiKisiController extends Controller
     /**
      * List kisi-kisi (filters by school context).
      */
+    /**
+     * Konteks otomatis kisi-kisi:
+     * - Mapel & tingkat mengikuti penugasan guru (TeachingAssignment aktif).
+     * - Tahun ajaran default = TA aktif; semester default = semester berjalan.
+     * - Kurikulum/TU/KSP/Waka melihat seluruh mapel & tingkat satuan pendidikan.
+     *
+     * @return array<string, mixed>
+     */
+    protected function kisiContext(Request $request): array
+    {
+        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $activeYear = AcademicYear::where('is_active', true)->orderByDesc('name')->first();
+        $activeAyId = $activeYear?->id;
+        $activeSemester = $activeYear?->semester ?: 'ganjil';
+
+        $isPrivileged = app(\App\Services\KurikulumAccess::class)->canAccessAllBankSoal($user);
+
+        $subjectIds = null;   // null = semua mapel sekolah
+        $gradeLevelIds = null;
+
+        if (! $isPrivileged) {
+            $assignments = TeachingAssignment::query()
+                ->where('teacher_id', $user->id)
+                ->where('status', 'active')
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
+                ->with('studyGroup:id,grade_level_id')
+                ->get();
+
+            $subjectIds = $assignments->pluck('subject_id')->filter()->unique()->values()->all();
+            $gradeLevelIds = $assignments->pluck('studyGroup.grade_level_id')->filter()->unique()->values()->all();
+        }
+
+        $subjects = Subject::query()
+            ->when($schoolId, fn ($q) => $q->where(fn ($qq) => $qq->where('school_id', $schoolId)->orWhereNull('school_id')))
+            ->when($subjectIds !== null, fn ($q) => $q->whereIn('id', $subjectIds ?: ['-']))
+            ->orderBy('name')
+            ->get();
+
+        $gradeLevels = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where(fn ($qq) => $qq->where('school_id', $schoolId)->orWhereNull('school_id')))
+            ->when($gradeLevelIds !== null, fn ($q) => $q->whereIn('id', $gradeLevelIds ?: ['-']))
+            ->orderBy('level')
+            ->get();
+
+        // TP untuk dropdown item — hanya mapel yang terlihat pada konteks.
+        $tps = TujuanPembelajaran::query()
+            ->whereIn('subject_id', $subjects->pluck('id')->all() ?: ['-'])
+            ->orderBy('urutan')
+            ->orderBy('kode_tp')
+            ->get(['id', 'subject_id', 'grade_level_id', 'kode_tp', 'deskripsi', 'semester', 'academic_year_id']);
+
+        return compact(
+            'user', 'schoolId', 'activeYear', 'activeAyId', 'activeSemester',
+            'isPrivileged', 'subjectIds', 'gradeLevelIds', 'subjects', 'gradeLevels', 'tps'
+        );
+    }
+
+    /**
+     * Validasi backend: guru hanya boleh memakai mapel yang menjadi penugasannya.
+     * KSP/Waka/Kurikulum/TU (dan super admin) melihat seluruh mapel satuan.
+     */
+    protected function assertSubjectAccess(Request $request, string $subjectId): void
+    {
+        $ctx = $this->kisiContext($request);
+
+        if ($ctx['isPrivileged'] || $ctx['subjectIds'] === null) {
+            return;
+        }
+
+        if (! in_array($subjectId, $ctx['subjectIds'], true)) {
+            abort(422, 'Mapel ini bukan bagian dari penugasan Anda pada tahun ajaran aktif.');
+        }
+    }
+
+    /**
+     * Normalisasi level kognitif C6 ke nilai enum yang tersimpan di database
+     * (kolom enum lama memakai `C6_mencita`).
+     */
+    protected function normalizeLevelKognitif(?string $level): ?string
+    {
+        return $level === 'C6_mencipta' ? 'C6_mencita' : $level;
+    }
+
     /**
      * Guard kisi-kisi: batas satuan pendidikan; perubahan hanya penyusun
      * atau tim kurikulum.
@@ -68,11 +156,12 @@ class KisiKisiController extends Controller
 
         $kisis = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
-        $subjects = Subject::where('school_id', $schoolId)->orWhereNull('school_id')->get();
-        $gradeLevels = GradeLevel::where('school_id', $schoolId)->orWhereNull('school_id')->get();
+        $ctx = $this->kisiContext($request);
+        $subjects = $ctx['subjects'];
+        $gradeLevels = $ctx['gradeLevels'];
         $years = AcademicYear::orderByDesc('name')->get();
 
-        $activeYear = $years->firstWhere('is_active', true);
+        $activeYear = $ctx['activeYear'];
 
         $statistics = [
             'total' => (clone $baseQuery)->count(),
@@ -91,10 +180,15 @@ class KisiKisiController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $subjects = Subject::where('school_id', $schoolId)->orWhereNull('school_id')->orderBy('name')->get();
-        $gradeLevels = GradeLevel::where('school_id', $schoolId)->orWhereNull('school_id')->get();
+        $ctx = $this->kisiContext($request);
+        $subjects = $ctx['subjects'];
+        $gradeLevels = $ctx['gradeLevels'];
         $years = AcademicYear::orderByDesc('name')->get();
         $banks = BankSoal::where('school_id', $schoolId)->with('subject')->get();
+        $tps = $ctx['tps'];
+        $defaultAyId = $ctx['activeAyId'];
+        $defaultSemester = $ctx['activeSemester'];
+        $isPrivileged = $ctx['isPrivileged'];
 
         $jenisUjian = [
             'sts' => 'STK / SAS (Sumatif Tengah Semester)',
@@ -104,7 +198,10 @@ class KisiKisiController extends Controller
             'latihan' => 'Latihan',
         ];
 
-        return view('evalusi.kisi-kisi.create', compact('subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian'));
+        return view('evalusi.kisi-kisi.create', compact(
+            'subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian',
+            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged'
+        ));
     }
 
     /**
@@ -126,10 +223,13 @@ class KisiKisiController extends Controller
             'total_bobot_target' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.tp_id' => 'required|exists:tujuan_pembelajaran,id',
-            'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
+            'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencita,C6_mencipta',
             'items.*.jumlah_soal' => 'required|integer|min:1',
             'items.*.bobot_per_soal' => 'required|numeric|min:0',
         ]);
+
+        // Validasi backend: mapel harus dalam penugasan guru (kecuali tim kurikulum/TU/KSP/Waka).
+        $this->assertSubjectAccess($request, $validated['subject_id']);
 
         return DB::transaction(function () use ($validated, $userId, $request) {
             $schoolId = $request->attributes->get('schoolContextId');
@@ -143,6 +243,7 @@ class KisiKisiController extends Controller
 
             foreach ($validated['items'] as $idx => $item) {
                 $item['kisi_kisi_soal_id'] = $kisi->id;
+                $item['level_kognitif'] = $this->normalizeLevelKognitif($item['level_kognitif'] ?? null);
                 KisiKisiItem::create($item);
             }
 
@@ -174,17 +275,25 @@ class KisiKisiController extends Controller
 
         $this->authorizeKisi($request, $kisi);
 
-        $subjects = Subject::all();
-        $gradeLevels = GradeLevel::all();
-        $years = AcademicYear::all();
-        $banks = BankSoal::all();
+        $ctx = $this->kisiContext($request);
+        $subjects = $ctx['subjects'];
+        $gradeLevels = $ctx['gradeLevels'];
+        $years = AcademicYear::orderByDesc('name')->get();
+        $banks = BankSoal::where('school_id', $ctx['schoolId'])->with('subject')->get();
+        $tps = $ctx['tps'];
+        $defaultAyId = $ctx['activeAyId'];
+        $defaultSemester = $ctx['activeSemester'];
+        $isPrivileged = $ctx['isPrivileged'];
 
         $jenisUjian = [
             'sts' => 'STK / SAS', 'sas' => 'SAK',
             'ulangan_harian' => 'Ulangan Harian', 'try_out' => 'Try Out', 'latihan' => 'Latihan',
         ];
 
-        return view('evalusi.kisi-kisi.edit', compact('kisi', 'subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian'));
+        return view('evalusi.kisi-kisi.edit', compact(
+            'kisi', 'subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian',
+            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged'
+        ));
     }
 
     /**
@@ -202,12 +311,14 @@ class KisiKisiController extends Controller
             'items' => 'required|array|min:1',
             'items.*.id' => 'nullable|exists:kisi_kisi_soal_items,id',
             'items.*.tp_id' => 'required|exists:tujuan_pembelajaran,id',
-            'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
+            'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencita,C6_mencipta',
             'items.*.jumlah_soal' => 'required|integer|min:1',
             'items.*.bobot_per_soal' => 'required|numeric|min:0',
         ]);
 
-        return DB::transaction(function () use ($validated, $id) {
+        $this->assertSubjectAccess($request, $validated['subject_id']);
+
+        return DB::transaction(function () use ($validated, $id, $request) {
             $kisi = KisiKisiSoal::findOrFail($id);
 
         $this->authorizeKisi($request, $kisi);
@@ -222,7 +333,7 @@ class KisiKisiController extends Controller
                     $record = KisiKisiItem::findOrFail($itemId);
                     $record->update([
                         'tp_id' => $item['tp_id'],
-                        'level_kognitif' => $item['level_kognitif'],
+                        'level_kognitif' => $this->normalizeLevelKognitif($item['level_kognitif']),
                         'jumlah_soal' => $item['jumlah_soal'],
                         'bobot_per_soal' => $item['bobot_per_soal'],
                     ]);
@@ -231,7 +342,7 @@ class KisiKisiController extends Controller
                     KisiKisiItem::create([
                         'kisi_kisi_soal_id' => $id,
                         'tp_id' => $item['tp_id'],
-                        'level_kognitif' => $item['level_kognitif'],
+                        'level_kognitif' => $this->normalizeLevelKognitif($item['level_kognitif']),
                         'jumlah_soal' => $item['jumlah_soal'],
                         'bobot_per_soal' => $item['bobot_per_soal'],
                     ]);

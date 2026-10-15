@@ -38,6 +38,7 @@ class TeacherAdminBook extends Model
         'nr_final_weight_sts',
         'nr_final_weight_sas',
         'sumatif_columns',
+        'formatif_columns',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class TeacherAdminBook extends Model
         'nr_final_weight_sts' => 'float',
         'nr_final_weight_sas' => 'float',
         'sumatif_columns' => 'array',
+        'formatif_columns' => 'array',
         'locked_at' => 'datetime',
     ];
 

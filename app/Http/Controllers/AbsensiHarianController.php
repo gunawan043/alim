@@ -47,6 +47,74 @@ class AbsensiHarianController extends Controller
     /**
      * Cek apakah user adalah Admin TU atau Waka.
      */
+    /**
+     * Boleh memilih rombel mana pun: TU, Waka, Kurikulum, KSP, dan setingkat (Super Admin).
+     * Wali kelas hanya kelasnya sendiri.
+     */
+    protected function canFilterRombel(): bool
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        if ((method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        if ($this->isAdminOrWaka()) {
+            return true;
+        }
+
+        if (\App\Support\UserJabatan::hasAny($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala tata usaha',
+            'tata usaha',
+            'staf tata usaha',
+            'koordinator kurikulum',
+            'koordinator kesiswaan',
+            'kepala tu sekolah',
+            'tu sekolah',
+            'staf tu sekolah',
+            'tata usaha sekolah',
+        ])) {
+            return true;
+        }
+
+        $tugas = method_exists($user, 'tugasTambahan') ? $user->tugasTambahan->pluck('nama')->all() : [];
+
+        return in_array('Tim Kurikulum', $tugas, true)
+            || in_array('Tim Kesiswaan', $tugas, true);
+    }
+
+    /**
+     * Absensi Kelas hanya untuk wali kelas, KSP, Waka, Kurikulum, Kesiswaan, dan TU.
+     * Guru tanpa kewenangan ditolak (403) — konsisten dengan menu di sidebar.
+     */
+    protected function assertAbsensiAccess(Request $request): void
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(403, 'Silakan masuk terlebih dahulu.');
+        }
+
+        if ($this->canFilterRombel()) {
+            return;
+        }
+
+        $isWali = StudyGroup::withoutGlobalScope('school_context')
+            ->where('homeroom_teacher_id', $user->id)
+            ->where('is_active', true)
+            ->when($this->getSchoolId($request), fn ($q, $sid) => $q->where('school_id', $sid))
+            ->exists();
+
+        if (! $isWali) {
+            abort(403, 'Absensi Kelas hanya untuk wali kelas, KSP, Waka, Kurikulum, Kesiswaan, dan TU.');
+        }
+    }
+
     protected function isAdminOrWaka(): bool
     {
         $user = Auth::user();
@@ -58,6 +126,8 @@ class AbsensiHarianController extends Controller
 
     public function index(Request $request, string $userId)
     {
+        $this->assertAbsensiAccess($request);
+
         $user = Auth::user();
         $schoolId = $this->getSchoolId($request);
         $activeYear = $this->getActiveAcademicYear();
@@ -79,11 +149,13 @@ class AbsensiHarianController extends Controller
             canPermission('absensi-kepala-sekolah-pondok')
         );
 
+        $canFilterRombel = $this->canFilterRombel();
+
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -162,10 +234,13 @@ class AbsensiHarianController extends Controller
             }
             $this->authorizeStudyGroupScope($request, $selectedSg);
         }
+
+        $this->assertAbsensiAccess($request);
+
         $selectedSemester = $request->filled('semester')
             ? $request->semester
             : $activeYear->semester;
-        $inputMode = $request->input('mode', 'dropdown');
+        $inputMode = $request->input('mode', 'radio');
 
         // Admin TU / Waka: semua rombel semua sekolah. Wali Kelas: rombelnya sendiri.
         $isPrivileged = $user && (
@@ -176,6 +251,8 @@ class AbsensiHarianController extends Controller
             canPermission('absensi-kepala-sekolah-pondok')
         );
 
+        $canFilterRombel = $this->canFilterRombel();
+
         // Query StudyGroup langsung — bypass global scope
         $studyGroupQuery = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
@@ -183,7 +260,7 @@ class AbsensiHarianController extends Controller
             ->where('is_active', true)
             ->orderBy('name');
 
-        if (! $isPrivileged) {
+        if (! $canFilterRombel) {
             $studyGroupQuery->where('homeroom_teacher_id', $user->id);
         }
 
@@ -192,6 +269,11 @@ class AbsensiHarianController extends Controller
         // Validasi rombel yang dipilih
         if ($selectedStudyGroupId && ! $studyGroups->contains('id', $selectedStudyGroupId)) {
             $selectedStudyGroupId = null;
+        }
+
+        // Wali kelas: langsung ke kelasnya (tanpa memilih rombel).
+        if (! $canFilterRombel && ! $selectedStudyGroupId) {
+            $selectedStudyGroupId = $studyGroups->first()?->id;
         }
 
         $students = collect();
@@ -222,7 +304,8 @@ class AbsensiHarianController extends Controller
             'userId', 'studyGroups', 'students', 'existingRecords',
             'selectedDate', 'selectedStudyGroupId', 'selectedSemester',
             'activeYear', 'academicYears', 'inputMode',
-        ));
+        
+            'canFilterRombel',));
     }
 
     // ── STORE — Simpan Absensi ───────────────────────────────────
@@ -249,7 +332,7 @@ class AbsensiHarianController extends Controller
         ]);
 
         // Otorisasi: hanya Admin TU / Waka / Wali Kelas rombel tsb
-        if (! $this->isAdminOrWaka() && ! $this->isWaliKelasOf($request, $validated['study_group_id'])) {
+        if (! $this->canFilterRombel() && ! $this->isWaliKelasOf($request, $validated['study_group_id'])) {
             abort(403, 'Anda bukan wali kelas rombel ini.');
         }
 
@@ -268,7 +351,7 @@ class AbsensiHarianController extends Controller
             abort(422, 'Terdapat santri yang bukan anggota aktif rombel ini.');
         }
 
-        $inputMode = $request->input('mode', 'dropdown');
+        $inputMode = $request->input('mode', 'radio');
         $date = Carbon::parse($validated['attendance_date']);
         $records = $validated['records'];
 
@@ -290,7 +373,11 @@ class AbsensiHarianController extends Controller
             }
         });
 
-        return redirect()
+                if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['saved' => true, 'message' => 'Absensi tersimpan.']);
+        }
+
+return redirect()
             ->route('user.absensi.harian.create', [
                 'userId' => $userId,
                 'study_group_id' => $validated['study_group_id'],
@@ -332,11 +419,13 @@ class AbsensiHarianController extends Controller
             canPermission('absensi-kepala-sekolah-pondok')
         );
 
+        $canFilterRombel = $this->canFilterRombel();
+
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -492,6 +581,9 @@ class AbsensiHarianController extends Controller
             }
             $this->authorizeStudyGroupScope($request, $selectedSg);
         }
+
+        $this->assertAbsensiAccess($request);
+
         $selectedMonth = $request->filled('month') ? (int) $request->month : (int) now()->month;
         $selectedYear = $request->filled('year') ? (int) $request->year : (int) now()->year;
         $selectedSemester = $request->filled('semester')
@@ -508,11 +600,13 @@ class AbsensiHarianController extends Controller
             canPermission('absensi-kepala-sekolah-pondok')
         );
 
+        $canFilterRombel = $this->canFilterRombel();
+
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 
@@ -595,6 +689,9 @@ class AbsensiHarianController extends Controller
             }
             $this->authorizeStudyGroupScope($request, $selectedSg);
         }
+
+        $this->assertAbsensiAccess($request);
+
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : $activeYear?->id;
@@ -612,11 +709,13 @@ class AbsensiHarianController extends Controller
             canPermission('absensi-kepala-sekolah-pondok')
         );
 
+        $canFilterRombel = $this->canFilterRombel();
+
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $isPrivileged, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
             ->orderBy('name')
             ->get();
 

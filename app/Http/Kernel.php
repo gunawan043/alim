@@ -25,6 +25,7 @@ use App\Http\Middleware\ShareRoleId;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\VerifyCsrfToken;
+use App\Http\Middleware\VerifyPosApiKey;
 use App\Http\Middleware\WaliSchoolContextMiddleware;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 use Illuminate\Auth\Middleware\Authorize;
@@ -123,5 +124,6 @@ class Kernel extends HttpKernel
         'permission-all' => RequirePermission::class,
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
+        'pos.api-key' => VerifyPosApiKey::class,
     ];
 }

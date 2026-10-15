@@ -334,6 +334,10 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <lord-icon src="https://cdn.lordicon.com/tdrtiskw.json" trigger="loop"
+                                    colors="primary:#f7b84b,secondary:#005981" style="width:90px;height:90px"></lord-icon>
+                            </div>
                             <div class="alert alert-warning mb-3">
                                 <strong>Perhatian!</strong> Eksekusi promosi akan mengubah data secara permanen:
                             </div>
@@ -375,4 +379,5 @@ document.getElementById('checkAllTable')?.addEventListener('change', function ()
     document.querySelectorAll('.student-check').forEach(cb => cb.checked = this.checked);
 });
 </script>
+<script src="https://cdn.lordicon.com/lordicon.js"></script>
 @endsection

@@ -68,12 +68,14 @@
 </li>
 
 {{-- 4. Monitoring Kehadiran --}}
+@if(canPermission('teacher-attendance_view'))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.waka-dashboard', 'user.teacher-qr.history']) ? ' active' : '' }}"
        href="{{ $koorUrl('user.teacher-qr.waka-dashboard') }}">
         <i class="ri-calendar-check-line"></i><span>Monitoring Kehadiran</span>
     </a>
 </li>
+@endif
 
 {{-- 5-6. Bank Soal & Kisi-Kisi --}}
 <li class="nav-item">
@@ -104,17 +106,18 @@
                     Paket Soal Sumatif
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
+                   href="{{ $koorUrl('user.ljk.index') }}">
+                    <i class="ri-scan-2-line me-1"></i>LJK Smart Scanner
+                </a>
+            </li>
         </ul>
     </div>
 </li>
 
 {{-- 7. Standar Penilaian --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.kktp.']) ? ' active' : '' }}"
-       href="{{ $koorUrl('user.schools.kktp.index') }}">
-        <i class="ri-ruler-2-line"></i><span>Standar Penilaian</span>
-    </a>
-</li>
+    {{-- KKTP kini diatur di Peta Kurikulum (kolom N-KKTP) & Struktur Kurikulum. --}}
 
 {{-- 8. Laporan Rumpun --}}
 <li class="nav-item">

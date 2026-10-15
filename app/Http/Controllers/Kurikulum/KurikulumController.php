@@ -9,8 +9,10 @@ use App\Models\CapaianPembelajaran;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\StudyGroup;
+use App\Models\SubjectKktp;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Http\Request;
@@ -95,33 +97,21 @@ class KurikulumController extends Controller
                 ->get()
                 ->groupBy('grade_level_id');
 
-            // Peta Kurikulum = "Kurikulum Saya" untuk guru: hanya mapel yang diampu.
-            // Tim kurikulum / KSP / Wakil melihat semua mapel sekolah.
-            if (! app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($request->user())) {
-                $taught = TeachingAssignment::query()
-                    ->where('teacher_id', $request->user()->id)
-                    ->where('academic_year_id', $academicYearId)
-                    ->where('status', 'active')
-                    ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                    ->pluck('subject_id')
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                $gradeSubjects = $gradeSubjects->map(
-                    fn ($items) => $items->whereIn('subject_id', $taught ?: ['-'])
-                );
-            }
+            // Peta Kurikulum menampilkan SELURUH struktur jenjang dalam cakupan satuan pendidikan
+            // (termasuk mapel yang tidak diampu guru) agar GTK memahami keseluruhan kurikulum.
+            // Hak edit TETAP dibatasi: KKTP via $canEditKktp + guard saveKktp;
+            // CP/TP/ATP/Perangkat via KurikulumAccess::canManageSubject().
 
             $subjectIds = $gradeSubjects->flatten()->pluck('subject_id')->filter()->unique()->values()->all();
 
-            $teachersBySubject = TeachingAssignment::query()
+            // Jumlah guru pengampu per mapel PER SATUAN PENDIDIKAN (tidak menghitung lintas lembaga).
+            $teachersBySubjectSchool = TeachingAssignment::query()
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('academic_year_id', $academicYearId)
                 ->where('status', 'active')
                 ->whereIn('subject_id', $subjectIds)
-                ->get(['subject_id', 'teacher_id'])
-                ->groupBy('subject_id')
+                ->get(['subject_id', 'school_id', 'teacher_id'])
+                ->groupBy(fn ($a) => $a->subject_id.'|'.$a->school_id)
                 ->map(fn ($items) => $items->pluck('teacher_id')->unique()->count());
 
             $cpCounts = CapaianPembelajaran::query()
@@ -170,7 +160,7 @@ class KurikulumController extends Controller
                         'weekly_hours' => $weeklyHours,
                         'jp_efektif' => $weeklyHours * $mingguEfektif,
                         'rombel' => (int) ($rombelByGrade[$grade->id] ?? 0),
-                        'guru' => (int) ($teachersBySubject[$subject->id] ?? 0),
+                        'guru' => (int) ($teachersBySubjectSchool[$subject->id.'|'.$grade->school_id] ?? 0),
                         'cp_count' => $fase ? (int) ($cpCounts[$subject->id.'|'.$fase] ?? 0) : 0,
                         'tp_count' => (int) ($tpCounts[$subject->id] ?? 0),
                         'atp_id' => $atp?->id,
@@ -181,6 +171,39 @@ class KurikulumController extends Controller
             }
         }
 
+        // ── KKTP per (mapel × tingkat) untuk TA/semester terpilih ──
+        $kktpMap = SubjectKktp::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester', $semester)
+            ->get(['subject_id', 'grade_level_id', 'kktp_score'])
+            ->keyBy(fn ($k) => $k->subject_id.'|'.$k->grade_level_id);
+
+        $rows = $rows->map(function ($row) use ($kktpMap) {
+            $row['kktp'] = $kktpMap->get($row['subject_id'].'|'.$row['grade_level_id'])?->kktp_score;
+
+            return $row;
+        });
+
+        // Izin atur KKTP: tim kurikulum atau koordinator mapel.
+        $isKoorMapelUser = (bool) optional($request->user()?->tugasTambahan)
+            ->pluck('nama')
+            ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
+        $canEditKktp = app(KurikulumAccess::class)->isKurikulumTeam($request->user()) || $isKoorMapelUser;
+
+        // ── Total JP per tingkat (struktur, bukan per baris tampil) ──
+        $jpTotals = GradeLevelSubject::query()
+            ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
+            ->where('is_active', true)
+            ->get(['grade_level_id', 'subject_id', 'allocation_hours'])
+            ->groupBy('grade_level_id')
+            ->map(fn ($items) => $items->groupBy('subject_id')->map->max('allocation_hours')->sum());
+
+        $jpSummary = $gradeLevelOptions->map(fn ($g) => [
+            'name' => $g->name,
+            'total' => (float) ($jpTotals[$g->id] ?? 0),
+        ])->values();
+
         return view('kurikulum.index', compact(
             'userId',
             'academicYears',
@@ -190,7 +213,74 @@ class KurikulumController extends Controller
             'ringkasan',
             'rows',
             'gradeLevelOptions',
-            'gradeLevelId'
+            'gradeLevelId',
+            'canEditKktp',
+            'jpSummary'
         ));
+    }
+
+    /**
+     * Simpan KKTP (Kriteria Ketercapaian) langsung dari Peta Kurikulum.
+     * Format: kktp[grade_level_id][subject_id] = nilai 0-100 (kosong = hapus).
+     */
+    public function saveKktp(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $user = $request->user();
+
+        $isKoorMapelUser = (bool) optional($user->tugasTambahan)
+            ->pluck('nama')
+            ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumTeam($user) || $isKoorMapelUser,
+            403,
+            'Hanya tim kurikulum atau koordinator mapel yang dapat mengatur KKTP.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'kktp' => 'nullable|array',
+            'kktp.*' => 'nullable|array',
+            'kktp.*.*' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $saved = 0;
+
+        foreach (($data['kktp'] ?? []) as $gradeLevelId => $subjects) {
+            foreach ((array) $subjects as $subjectId => $value) {
+                $query = SubjectKktp::query()
+                    ->where('subject_id', $subjectId)
+                    ->where('grade_level_id', $gradeLevelId)
+                    ->where('academic_year_id', $data['academic_year_id'])
+                    ->where('semester', $data['semester']);
+
+                if ($value === null || $value === '') {
+                    $query->delete();
+
+                    continue;
+                }
+
+                SubjectKktp::updateOrCreate(
+                    [
+                        'subject_id' => $subjectId,
+                        'grade_level_id' => $gradeLevelId,
+                        'academic_year_id' => $data['academic_year_id'],
+                        'semester' => $data['semester'],
+                    ],
+                    [
+                        'school_id' => $schoolId,
+                        'kktp_score' => $value,
+                        'kkm_score' => $value, // konvensi: kkm mirror KKTP
+                        'created_by' => $user->id,
+                    ]
+                );
+
+                $saved++;
+            }
+        }
+
+        return back()->with('success', "KKTP tersimpan ({$saved} mapel-tingkat).");
     }
 }

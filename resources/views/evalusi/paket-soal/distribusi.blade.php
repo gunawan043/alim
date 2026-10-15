@@ -137,7 +137,7 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="badge bg-info-subtle text-info"><i class="ri-send-plane-line me-1"></i>Terkirim</span>
                                     @if((string) $distribution->recipient_user_id === (string) auth()->id())
-                                        <form method="POST" action="{{ route('user.paket-soal.distribusi.terima', ['paketUuid' => $paket->id, 'distributionId' => $distribution->id]) }}">
+                                        <form method="POST" action="{{ route('user.paket-soal.distribusi.terima', ['userId' => $userId, 'paketUuid' => $paket->id, 'distributionId' => $distribution->id]) }}">
                                             @csrf @method('PUT')
                                             <button class="btn btn-sm btn-soft-success"><i class="ri-check-line me-1"></i>Tandai Diterima</button>
                                         </form>

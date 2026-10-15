@@ -82,6 +82,59 @@ class AcademicNilai
      * Keterangan capaian: Terlampaui / Tercapai / Belum Tuntas.
      * Konsisten antara Rapor, Leger, dan export.
      */
+    /**
+     * Nama mapel untuk kolom sempit — otomatis:
+     * nama pendek dibiarkan utuh; nama panjang diringkas per kata umum, lalu dipotong rapi.
+     */
+    public static function shortSubjectName(?string $name, int $max = 13): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', (string) $name));
+        if ($name === '') {
+            return '';
+        }
+
+        if (mb_strlen($name) <= $max) {
+            return $name;
+        }
+
+        $map = [
+            'bahasa' => 'B.',
+            'pendidikan' => 'Pend.',
+            'hafalan' => 'Haf.',
+            'sejarah' => 'Sej.',
+            'prakarya' => 'Prak.',
+            'kepercayaan' => 'Keperc.',
+            'kewarganegaraan' => 'Kwn.',
+        ];
+
+        $words = explode(' ', $name);
+        $out = [];
+        foreach ($words as $w) {
+            $lw = mb_strtolower($w);
+            $out[] = $map[$lw] ?? $w;
+        }
+
+        $short = implode(' ', $out);
+        if (mb_strlen($short) <= $max + 2) {
+            return $short;
+        }
+
+        $result = '';
+        foreach ($out as $w) {
+            $candidate = $result === '' ? $w : $result.' '.$w;
+            if (mb_strlen($candidate) > $max) {
+                break;
+            }
+            $result = $candidate;
+        }
+
+        if ($result === '') {
+            $result = mb_substr($short, 0, $max);
+        }
+
+        return $result === $short ? $short : $result.'…';
+    }
+
     public static function keterangan(?float $nilai, ?TeacherAdminBook $book): string
     {
         if ($nilai === null) {

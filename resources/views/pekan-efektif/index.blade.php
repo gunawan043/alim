@@ -76,7 +76,7 @@
                                 <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['minggu_efektif'] }}</h3>
                             </div>
                         </div>
-                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Dari Kalender Pendidikan</p>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Dari {{ $ringkasan['total_minggu'] ?? '—' }} minggu semester ini</p>
                     </div>
                 </div>
             </div>
@@ -108,7 +108,7 @@
                                 <h3 class="fw-bold ff-secondary mb-0">{{ $ringkasan['minggu_libur'] }}</h3>
                             </div>
                         </div>
-                        <p class="text-muted mb-0 stat-label"><i class="ri-lock-line me-1"></i>Tidak dihitung efektif</p>
+                        <p class="text-muted mb-0 stat-label"><i class="ri-lock-line me-1"></i>{{ $ringkasan['total_hari_libur'] ?? '—' }} hari libur tercatat</p>
                     </div>
                 </div>
             </div>
@@ -136,7 +136,12 @@
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0"><i class="ri-calendar-2-line text-primary me-1"></i> Rincian Pekan</h5>
-                    <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} pekan</span>
+                    <span class="d-flex align-items-center gap-2">
+                        <span class="badge {{ $isPreview ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success' }}">
+                            {{ $isPreview ? 'Hitung langsung dari Kaldik' : 'Tersimpan (hasil generate)' }}
+                        </span>
+                        <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} pekan</span>
+                    </span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -172,14 +177,9 @@
                                     <td class="small text-muted">{{ \Illuminate\Support\Str::limit($row['keterangan'], 60) ?: '—' }}</td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="5" class="text-center py-5">
-                                        <div class="text-muted">
-                                            <i class="ri-calendar-2-line fs-1 d-block mb-2"></i>
-                                            Belum ada data pekan efektif.
-                                        </div>
-                                    </td>
-                                </tr>
+                                <x-empty-state colspan="5"
+                                    title="Belum ada data pekan efektif"
+                                    message="Pekan efektif dihitung dari Kalender Pendidikan." />
                             @endforelse
                         </tbody>
                     </table>
@@ -229,21 +229,21 @@
                                 @php $totalJp += $jp['jp_efektif']; @endphp
                                 <tr>
                                     <td>
-                                        <div class="fw-medium">{{ $jp['subject'] }}</div>
+                                        <div class="fw-medium">
+                                            {{ $jp['subject'] }}
+                                            @if(! empty($jp['subject_code']))
+                                                <span class="badge bg-light text-muted ms-1" style="font-size:.65rem;">{{ $jp['subject_code'] }}</span>
+                                            @endif
+                                        </div>
                                         <div class="small text-muted">{{ $jp['teacher'] }}</div>
                                     </td>
                                     <td class="text-center">{{ $jp['weekly_hours'] }}</td>
                                     <td class="text-center fw-semibold">{{ $jp['jp_efektif'] }}</td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="3" class="text-center py-5">
-                                        <div class="text-muted">
-                                            <i class="ri-stack-line fs-1 d-block mb-2"></i>
-                                            Belum ada plotting mengajar untuk kelas ini.
-                                        </div>
-                                    </td>
-                                </tr>
+                                <x-empty-state colspan="3"
+                                    title="Belum ada plotting mengajar"
+                                    message="Tambahkan plotting mapel untuk kelas ini." />
                             @endforelse
                         </tbody>
                         @if(count($jpRows))

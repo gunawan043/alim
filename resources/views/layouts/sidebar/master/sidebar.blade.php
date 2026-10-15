@@ -433,12 +433,6 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link{ isActiveMaster($currentRoute, 'user.schools.') ? ' active' : '' }"
-                   href="{ route('user.schools.kktp.index', ['userId' => auth()->id()]) }">
-                    Schools.kktp
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'user.schools.') ? ' active' : '' }"
                    href="{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => auth()->id()]) }">
                     Schools.nilai Kelas.rapor
                 </a>
@@ -772,26 +766,8 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'user.bank-soal.') ? ' active' : '' }"
-                   href="{ route('user.bank-soal.create', ['userId' => auth()->id()]) }">
-                    Bank Soal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'user.bank-soal.') ? ' active' : '' }"
-                   href="{ route('user.bank-soal.edit', ['userId' => auth()->id()]) }">
-                    Bank Soal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'user.bank-soal.') ? ' active' : '' }"
-                   href="{ route('user.bank-soal.index', ['userId' => auth()->id()]) }">
-                    Bank Soal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'user.bank-soal.') ? ' active' : '' }"
-                   href="{ route('user.bank-soal.show', ['userId' => auth()->id()]) }">
+                <a class="nav-link{{ isActiveMaster($currentRoute, 'user.bank-soal.') ? ' active' : '' }}"
+                   href="{{ route('user.bank-soal.index', ['userId' => auth()->id()]) }}">
                     Bank Soal
                 </a>
             </li>
@@ -1180,9 +1156,9 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{ isActiveMaster($currentRoute, 'waka.pekan-efektif.') ? ' active' : '' }"
-                   href="{ route('waka.pekan-efektif.index') }">
-                    Waka.pekan Efektif
+                <a class="nav-link{{ isActiveMaster($currentRoute, 'waka.pekan-efektif.') ? ' active' : '' }}"
+                   href="{{ route('waka.pekan-efektif.index') }}">
+                    Pekan Efektif
                 </a>
             </li>
             <li class="nav-item">

@@ -49,7 +49,7 @@
 {{-- Konsolidasi Nilai Kelas --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
-       href="{{ $waliUrl('user.schools.nilai-kelas.index') }}">
+       href="{{ $waliUrl('user.schools.nilai-kelas.sts', ['studyGroupId' => $waliKelasGroups->first()->id]) }}">
         <i class="ri-table-line"></i><span>Konsolidasi Nilai</span>
     </a>
 </li>
@@ -57,7 +57,7 @@
 {{-- Rapor & Leger --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.rapor', 'user.schools.nilai-kelas.leger']) ? ' active' : '' }}"
-       href="{{ $waliUrl('user.schools.nilai-kelas.index') }}">
+       href="{{ $waliUrl('user.schools.nilai-kelas.sts', ['studyGroupId' => $waliKelasGroups->first()->id]) }}">
         <i class="ri-file-text-line"></i><span>Rapor & Leger</span>
     </a>
 </li>
