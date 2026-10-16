@@ -74,6 +74,16 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label class="form-label">Privasi Agenda</label>
+                                <select name="visibility" class="form-control @error('visibility') is-invalid @enderror">
+                                    @foreach(\App\Models\Kaldik::VISIBILITY_OPTIONS as $visKey => $visLabel)
+                                        <option value="{{ $visKey }}" {{ old('visibility', $kaldik->visibility ?? 'satuan') === $visKey ? 'selected' : '' }}>{{ $visLabel }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Agenda <strong>pribadi</strong> hanya terlihat oleh Anda.</small>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label class="form-label">Tipe</label>
                                 <select name="type" class="form-control">
                                     <option value="">-- Pilih Tipe --</option>

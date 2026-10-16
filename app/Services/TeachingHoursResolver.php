@@ -60,13 +60,14 @@ class TeachingHoursResolver
         $academicYearId = $academicYearId ?: $studyGroup?->academic_year_id;
 
         if ($gradeLevelId) {
-            $hours = (int) GradeLevelSubject::query()
+            $row = GradeLevelSubject::query()
                 ->where('grade_level_id', $gradeLevelId)
                 ->where('subject_id', $subject->id)
-                ->where('is_active', true)
                 ->forAcademicYear($academicYearId)
                 ->orderByAcademicYearFirst()
-                ->value('allocation_hours');
+                ->first(['allocation_hours', 'is_active']);
+
+            $hours = ($row && $row->is_active) ? (int) $row->allocation_hours : 0;
 
             if ($hours > 0) {
                 return $hours;

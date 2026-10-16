@@ -34,6 +34,14 @@
             <strong>{{ $studyGroup->academicYear?->name ?? '-' }}</strong> — termasuk santri yang sudah pindah/naik kelas.
             Data nilai &amp; presensi tahun ajaran tersebut tetap tersimpan.
         </div>
+    @elseif(($isArchiveAy ?? false))
+        <div class="alert alert-warning py-2 px-3 small" role="alert">
+            <i class="ri-archive-line me-1"></i>
+            Menampilkan data santri periode <strong>arsip</strong> tahun ajaran
+            <strong>{{ $academicYears->firstWhere('id', $rombelDisplayAyId)?->name ?? '-' }}
+                ({{ $academicYears->firstWhere('id', $rombelDisplayAyId)?->semester_text ?? '-' }})</strong>.
+            Kolom <strong>Rombel</strong> mengikuti periode tersebut, bukan rombel saat ini.
+        </div>
     @endif
 
     @if (session('error'))
@@ -397,7 +405,25 @@
                                 placeholder="Cari nama, NISN, NIS, NIK..." value="{{ request('search') }}">
                         </div>
 
+                        {{-- ARSIP PERIODE: filter tahun ajaran (kolom Rombel mengikuti TA ini) --}}
                         <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
+                            <select name="academic_year_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">Semua Tahun Ajaran</option>
+                                @foreach (($academicYears ?? collect()) as $ay)
+                                    <option value="{{ $ay->id }}"
+                                        {{ (string) ($selectedAcademicYearId ?? '') === (string) $ay->id ? 'selected' : '' }}>
+                                        {{ $ay->name }} ({{ $ay->semester_text }})
+                                        @if ($ay->is_active)
+                                            — Aktif
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Status</label>
                             <select name="status" class="form-select">
                                 <option value="">Semua Status</option>
                                 <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Aktif
@@ -595,6 +621,16 @@
                                 <th style="width:56px">Foto</th>
                                 <th>Nama</th>
                                 <th>NISN</th>
+                                <th>Rombel
+                                    @if (($rombelDisplayAyId ?? null) && ($ay = ($academicYears ?? collect())->firstWhere('id', $rombelDisplayAyId)))
+                                        <div class="text-muted fw-normal" style="font-size:10px;">
+                                            TA {{ $ay->name }} ({{ $ay->semester_text }})
+                                            @if (($isArchiveAy ?? false))
+                                                · arsip
+                                            @endif
+                                        </div>
+                                    @endif
+                                </th>
                                 <th>JK</th>
                                 <th>Tempat, Tgl Lahir</th>
                                 <th>Sekolah</th>
@@ -637,6 +673,28 @@
                                         @endif
                                     </td>
                                     <td><code>{{ $s->nisn }}</code></td>
+                                    @php
+                                        // ARSIP PERIODE: rombel mengikuti TA yang ditampilkan (bukan rombel saat ini).
+                                        $rombelHistory = ($rombelDisplayAyId ?? null)
+                                            ? $s->classHistories->firstWhere('academic_year_id', $rombelDisplayAyId)
+                                            : null;
+                                        $rombelPlacement = $rombelHistory?->studyGroup;
+                                    @endphp
+                                    <td>
+                                        @if($rombelPlacement)
+                                            <a href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $rombelPlacement->id, 'academic_year_id' => $rombelDisplayAyId]) }}"
+                                               class="badge bg-primary-subtle text-primary text-decoration-none"
+                                               title="Tampilkan santri rombel ini pada TA tersebut">
+                                                {{ $rombelPlacement->name }}
+                                            </a>
+                                            @if(! $rombelHistory->is_active)
+                                                <span class="badge bg-secondary-subtle text-secondary"
+                                                      title="Penempatan periode ini sudah berakhir (pindah/naik kelas) — tetap tampil sebagai arsip">Pindah</span>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($s->gender === 'L')
                                             <span class="badge bg-primary-subtle text-primary">L</span>
@@ -711,7 +769,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <x-empty-state colspan="9"
+                                <x-empty-state colspan="10"
                                     title="Belum ada data santri"
                                     message="Data santri yang ditambahkan akan tampil di sini.">
                                     @unless($isDormitoryUser ?? false)

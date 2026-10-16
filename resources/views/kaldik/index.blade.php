@@ -248,14 +248,39 @@
                             <span class="badge bg-light text-dark" style="font-size:0.68rem" id="upcoming-count"></span>
                         </div>
                     </div>
-                    <div class="mb-3 mt-2 overflow-hidden" data-simplebar style="max-height: 340px">
+                    <div class="mb-3 mt-2" style="max-height: 340px; overflow-y: auto; padding-right: 6px;">
                         <div class="mt-1" id="upcoming-event-list"></div>
                     </div>
                 </div>
 
                 {{-- RIGHT CALENDAR ─────────────────────────────────── --}}
                 <div class="col-xl-9">
-                    <div class="card card-h-100">
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-soft-primary" id="btn-view-month">
+                            <i class="ri-calendar-2-line me-1"></i>Kalender Bulanan
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-view-year">
+                            <i class="ri-calendar-todo-line me-1"></i>Kalender Tahunan
+                        </button>
+                    </div>
+
+                    {{-- Tampilan TAHUNAN: 12 bulan penuh (klik bulan → tampilan bulanan) --}}
+                    <div id="annual-view" class="d-none">
+                        <div class="card card-h-100">
+                            <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <h5 class="card-title mb-0">
+                                    <i class="ri-calendar-todo-line text-primary me-1"></i>
+                                    Kalender Tahunan {{ $annualLabel ? '— TA '.$annualLabel : '' }}
+                                </h5>
+                                <span class="text-muted small"><i class="ri-information-line me-1"></i>Klik nama bulan untuk membuka tampilan bulanan.</span>
+                            </div>
+                            <div class="card-body">
+                                @include('kaldik._annual', ['eventsByDate' => $eventsByDate ?? []])
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-h-100" id="monthly-view">
                         <div class="card-body">
                             <div id="kaldik-calendar"></div>
                         </div>
@@ -564,6 +589,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
     typeSelect.addEventListener('change', applyDefaultColor);
     if (!document.querySelector('input[name="event-color"]:checked')) { applyDefaultColor(); }
+});
+
+// Toggle Kalender Bulanan ↔ Tahunan + lompat ke bulan dari tampilan tahunan.
+document.addEventListener('DOMContentLoaded', function () {
+    var monthlyView = document.getElementById('monthly-view');
+    var annualView = document.getElementById('annual-view');
+    var btnMonth = document.getElementById('btn-view-month');
+    var btnYear = document.getElementById('btn-view-year');
+
+    if (!monthlyView || !annualView) return;
+
+    function showMonthly() {
+        annualView.classList.add('d-none');
+        monthlyView.classList.remove('d-none');
+        btnMonth?.classList.add('btn-primary');
+        btnMonth?.classList.remove('btn-soft-primary');
+        btnYear?.classList.remove('btn-primary');
+        btnYear?.classList.add('btn-outline-primary');
+    }
+
+    function showAnnual() {
+        monthlyView.classList.add('d-none');
+        annualView.classList.remove('d-none');
+        btnYear?.classList.add('btn-primary');
+        btnYear?.classList.remove('btn-outline-primary');
+        btnMonth?.classList.remove('btn-primary');
+        btnMonth?.classList.add('btn-soft-primary');
+    }
+
+    btnMonth?.addEventListener('click', showMonthly);
+    btnYear?.addEventListener('click', showAnnual);
+
+    window.kaldikOpenMonth = function (ym) {
+        if (window.KALDIK_CALENDAR && typeof window.KALDIK_CALENDAR.gotoDate === 'function') {
+            window.KALDIK_CALENDAR.gotoDate(ym + '-01');
+        }
+        showMonthly();
+    };
 });
 </script>
 @endsection

@@ -20,6 +20,15 @@
         </div>
     @endif
 
+    @if($isArchiveGroup ?? false)
+        <div class="alert alert-warning py-2 px-3 small" role="alert">
+            <i class="ri-archive-line me-1"></i>
+            Menampilkan <strong>arsip rombel</strong> tahun ajaran
+            <strong>{{ $studyGroup->academicYear?->name ?? '-' }} ({{ $studyGroup->academicYear?->semester_text ?? '-' }})</strong>
+            — termasuk santri yang sudah pindah/naik kelas. Data periode ini tidak diubah oleh TA aktif.
+        </div>
+    @endif
+
     {{-- Warning: kapasitas penuh --}}
     @php $sgFilled = $activeHistories->count(); @endphp
     @if($sgFilled > $studyGroup->capacity)

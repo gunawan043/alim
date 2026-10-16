@@ -122,6 +122,12 @@
                         <i class="ri-user-settings-line align-bottom me-1"></i>Mode TU / Waka
                     </span>
                     @endif
+
+                    @if($isArchiveAy ?? false)
+                    <span class="badge bg-warning-subtle text-warning" style="font-size:11px;padding:4px 10px;">
+                        <i class="ri-archive-line align-bottom me-1"></i>Arsip {{ $selectedAy?->name }} — baca-saja
+                    </span>
+                    @endif
                 </div>
                 <div class="col-sm-auto">
                     {{-- Action Buttons --}}
@@ -189,7 +195,7 @@
                 <div>
                     <select name="academic_year_id" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:160px;">
                         @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ $selectedAyId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                            <option value="{{ $ay->id }}" {{ $selectedAyId == $ay->id ? 'selected' : '' }}>{{ $ay->name }} ({{ $ay->semester_text }})</option>
                         @endforeach
                     </select>
                 </div>

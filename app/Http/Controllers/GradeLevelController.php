@@ -105,6 +105,8 @@ class GradeLevelController extends Controller
         $semester = $activeAy?->semester ?? 'ganjil';
 
         // ARSIP PERIODE: struktur versi TA aktif + baris lama (NULL) sebagai fallback.
+        // Baris shadow nonaktif (mapel dihapus untuk TA ini) menutupi baris lama,
+        // lalu dibuang dari tampilan.
         $gradeLevelSubjects = GradeLevelSubject::with('subject')
             ->where('grade_level_id', $id)
             ->forAcademicYear($activeAy?->id)
@@ -112,6 +114,7 @@ class GradeLevelController extends Controller
             ->orderBy('subject_id')
             ->get()
             ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+            ->filter(fn ($r) => $r->is_active)
             ->values();
 
         $availableSubjects = Subject::where('is_active', true)
@@ -256,11 +259,16 @@ class GradeLevelController extends Controller
             $subjectId = $gls->subject_id;
             $activeAy = AcademicYear::where('is_active', true)->first();
 
-            if ($gls->academic_year_id || ! $activeAy) {
+            // Ada periode lain? Hanya bila ada, baris lama (lintas periode) perlu
+            // dipertahankan untuk arsip dan cukup disembunyikan lewat baris versi
+            // periode (shadow nonaktif). Pada sistem satu TA perilaku lama tetap:
+            // baris dihapus.
+            $hasOtherPeriods = $activeAy
+                && AcademicYear::where('id', '!=', $activeAy->id)->exists();
+
+            if ($gls->academic_year_id || ! $activeAy || ! $hasOtherPeriods) {
                 $gls->delete();
             } else {
-                // Baris lama (lintas periode) tidak dihapus agar arsip TA lain tetap utuh;
-                // cukup sembunyikan untuk TA aktif lewat baris versi periode (shadow nonaktif).
                 GradeLevelSubject::updateOrCreate(
                     [
                         'academic_year_id' => $activeAy->id,

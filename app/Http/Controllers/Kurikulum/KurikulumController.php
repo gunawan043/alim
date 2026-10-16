@@ -97,13 +97,13 @@ class KurikulumController extends Controller
 
             $gradeSubjects = GradeLevelSubject::with('subject')
                 ->whereIn('grade_level_id', $gradeLevelIds)
-                ->where('is_active', true)
                 ->forAcademicYear($academicYearId)
                 ->orderByAcademicYearFirst()
                 ->get()
                 ->groupBy('grade_level_id')
                 ->map(fn ($rows) => $rows
                     ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                    ->filter(fn ($r) => $r->is_active)
                     ->values());
 
             // Peta Kurikulum menampilkan SELURUH struktur jenjang dalam cakupan satuan pendidikan
@@ -203,13 +203,13 @@ class KurikulumController extends Controller
         // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
             ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
-            ->where('is_active', true)
             ->forAcademicYear($academicYearId)
             ->orderByAcademicYearFirst()
-            ->get(['grade_level_id', 'subject_id', 'track', 'allocation_hours', 'academic_year_id'])
+            ->get(['grade_level_id', 'subject_id', 'track', 'allocation_hours', 'academic_year_id', 'is_active'])
             ->groupBy('grade_level_id')
             ->map(fn ($items) => $items
                 ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                ->filter(fn ($r) => $r->is_active)
                 ->sum('allocation_hours'));
 
         $jpSummary = $gradeLevelOptions->map(fn ($g) => [

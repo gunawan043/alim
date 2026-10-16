@@ -536,6 +536,7 @@ File: Kaldik Calendar init js
     });
 
     calendar.render();
+    window.KALDIK_CALENDAR = calendar;
     upcomingEvent(getFilteredEvents());
     colorDayCells();
 

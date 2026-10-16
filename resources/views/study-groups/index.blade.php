@@ -256,6 +256,12 @@
                                                         <i class="ri-eye-line me-2"></i>Lihat
                                                     </a>
                                                 </li>
+                                                {{-- ARSIP PERIODE: buka Data Santri rombel ini pada TA rombel (bukan TA aktif). --}}
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $sg->id, 'academic_year_id' => $sg->academic_year_id]) }}">
+                                                        <i class="ri-user-search-line me-2 text-info"></i>Lihat Santri
+                                                    </a>
+                                                </li>
                                                 <li>
                                                     <a class="dropdown-item" href="{{ route('user.study-groups.edit', ['userId' => $userId, 'id' => $sg->id]) }}">
                                                         <i class="ri-pencil-line me-2"></i>Edit

@@ -77,11 +77,12 @@ class KaldikController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
-        // ── FILTER WORK UNIT (NON-GLOBAL) ────────────────────
+        // ── SCOPE AKSES (NON-GLOBAL) ─────────────────────────
+        // 1) Kaldik pondok (global) — untuk semua GTK.
+        // 2) Agenda SATUAN — hanya GTK dalam satuan kerja tersebut.
+        // 3) Agenda PRIBADI — HANYA pemiliknya (tidak bocor ke GTK lain).
         if (! $isGlobal) {
-            // Kaldik pondok (work_unit null) untuk semua + agenda satuan kerja sendiri.
-            // Bila user tidak punya konteks satuan kerja, hanya kaldik pondok.
-            $query->where(function ($q) use ($userWorkUnitId) {
+            $query->where(function ($q) use ($userWorkUnitId, $user) {
                 $q->where(function ($q2) {
                     $q2->where('category', Kaldik::CATEGORY_KALDIK)
                         ->whereNull('work_unit_id');
@@ -90,13 +91,40 @@ class KaldikController extends Controller
                 if ($userWorkUnitId) {
                     $q->orWhere(function ($q2) use ($userWorkUnitId) {
                         $q2->where('category', Kaldik::CATEGORY_AGENDA)
+                            ->where('visibility', '!=', Kaldik::VISIBILITY_PRIBADI)
                             ->where('work_unit_id', $userWorkUnitId);
                     });
                 }
+
+                $q->orWhere(function ($q2) use ($user) {
+                    $q2->where('category', Kaldik::CATEGORY_AGENDA)
+                        ->where('visibility', Kaldik::VISIBILITY_PRIBADI)
+                        ->where('owner_user_id', $user->id);
+                });
             });
         }
 
         $kaldiks = $query->get();
+
+        // Peta tanggal → event: dipakai oleh tampilan KALENDER TAHUNAN (12 bulan).
+        $eventsByDate = [];
+        foreach ($kaldiks as $item) {
+            if (! $item->start_date || ! $item->end_date) {
+                continue;
+            }
+
+            $cursor = $item->start_date->copy();
+            $guard = 0;
+            while ($cursor->lte($item->end_date) && $guard < 400) {
+                $eventsByDate[$cursor->toDateString()][] = [
+                    'title' => $item->name,
+                    'color' => $item->color,
+                    'category' => $item->category,
+                ];
+                $cursor->addDay();
+                $guard++;
+            }
+        }
 
         // Convert to FullCalendar event format
         $kaldikEvents = $kaldiks->map(function ($item) {
@@ -138,7 +166,28 @@ class KaldikController extends Controller
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $workUnits = $isGlobal ? WorkUnit::active()->orderBy('name')->get() : collect();
 
-        return view('kaldik.index', compact(
+        // Bulan-bulan untuk tampilan KALENDER TAHUNAN (mengikuti TA terpilih; fallback TA aktif).
+        $annualAy = $request->filled('academic_year_id')
+            ? $academicYears->firstWhere('id', $request->input('academic_year_id'))
+            : (\App\Models\AcademicYear::where('is_active', true)->first() ?? $academicYears->first());
+
+        $annualStart = $annualAy?->start_date
+            ? $annualAy->start_date->copy()->startOfMonth()
+            : now()->startOfYear();
+
+        $annualMonths = collect(range(0, 11))->map(function ($i) use ($annualStart) {
+            $m = $annualStart->copy()->addMonths($i);
+
+            return [
+                'ym' => $m->format('Y-m'),
+                'label' => $m->translatedFormat('F Y'),
+                'start' => $m->copy()->startOfMonth(),
+                'end' => $m->copy()->endOfMonth(),
+            ];
+        });
+        $annualLabel = $annualAy?->name;
+
+        return view('kaldik.index', compact('eventsByDate', 'annualMonths', 'annualLabel', 'kaldiks') + compact(
             'kaldikEvents',
             'academicYears',
             'workUnits',
@@ -211,6 +260,7 @@ class KaldikController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'description' => 'nullable|string|max:2000',
             'is_active' => 'boolean',
+            'visibility' => 'nullable|in:satuan,pribadi',
         ];
 
         if ($isAdminTU) {
@@ -229,6 +279,12 @@ class KaldikController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
         $validated['created_by'] = $user->id;
+
+        // Privasi: agenda pribadi disimpan dengan pemiliknya; agenda satuan tanpa pemilik.
+        $validated['visibility'] = ($validated['visibility'] ?? Kaldik::VISIBILITY_SATUAN) === Kaldik::VISIBILITY_PRIBADI
+            ? Kaldik::VISIBILITY_PRIBADI
+            : Kaldik::VISIBILITY_SATUAN;
+        $validated['owner_user_id'] = $validated['visibility'] === Kaldik::VISIBILITY_PRIBADI ? $user->id : null;
 
         // Legenda default: libur → merah, dst. (dapat ditimpa settings).
         $validated['color'] = $validated['color'] ?? kaldik_default_color($validated['type'] ?? null);
@@ -374,9 +430,20 @@ class KaldikController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'description' => 'nullable|string|max:2000',
             'is_active' => 'boolean',
+            'visibility' => 'nullable|in:satuan,pribadi',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
+
+        if (array_key_exists('visibility', $validated)) {
+            $validated['visibility'] = ($validated['visibility'] ?? Kaldik::VISIBILITY_SATUAN) === Kaldik::VISIBILITY_PRIBADI
+                ? Kaldik::VISIBILITY_PRIBADI
+                : Kaldik::VISIBILITY_SATUAN;
+            $validated['owner_user_id'] = $validated['visibility'] === Kaldik::VISIBILITY_PRIBADI
+                ? ($kaldik->owner_user_id ?: $user->id)
+                : null;
+        }
+
         $kaldik->update($validated);
 
         // Notifikasi IN-APP GTK: agenda Kaldik diperbarui.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
@@ -35,6 +36,7 @@ class CurriculumStructureController extends Controller
         $this->authorizeSuper($request);
 
         $jenjangDefs = self::JENJANG_DEFS;
+        $activeAcademicYearId = AcademicYear::where('is_active', true)->value('id');
 
         // Filter per jenjang (Semua / SD / SMP / SMA).
         $filter = strtoupper((string) $request->query('jenjang', ''));
@@ -95,14 +97,30 @@ class CurriculumStructureController extends Controller
                         continue;
                     }
 
-                    $query = GradeLevelSubject::whereIn('grade_level_id', $gradeIds)
-                        ->whereIn('subject_id', $subjectIds);
+                    // Struktur efektif periode: versi TA aktif diprioritaskan atas
+                    // baris lama (NULL); baris shadow nonaktif menutupi baris lama.
+                    $effectiveHours = function (?string $track) use ($gradeIds, $subjectIds, $activeAcademicYearId) {
+                        $rows = GradeLevelSubject::query()
+                            ->whereIn('grade_level_id', $gradeIds)
+                            ->whereIn('subject_id', $subjectIds)
+                            ->forAcademicYear($activeAcademicYearId)
+                            ->orderByAcademicYearFirst()
+                            ->get(['grade_level_id', 'subject_id', 'track', 'allocation_hours', 'academic_year_id', 'is_active']);
 
-                    if ($track === null) {
-                        $value = (clone $query)->whereNull('track')->max('allocation_hours');
-                    } else {
-                        $value = (clone $query)->where('track', $track)->max('allocation_hours')
-                            ?? (clone $query)->whereNull('track')->max('allocation_hours');
+                        $rows = $track === null
+                            ? $rows->whereNull('track')
+                            : $rows->where('track', $track);
+
+                        return $rows
+                            ->unique(fn ($r) => $r->grade_level_id.'|'.$r->subject_id.'|'.($r->track ?? ''))
+                            ->filter(fn ($r) => $r->is_active)
+                            ->max('allocation_hours');
+                    };
+
+                    $value = $effectiveHours($track);
+
+                    if ($value === null && $track !== null) {
+                        $value = $effectiveHours(null);
                     }
 
                     $cells[] = $value !== null ? (int) $value : null;
@@ -222,6 +240,8 @@ class CurriculumStructureController extends Controller
         }
 
         DB::transaction(function () use ($data, $def, $schoolIds, $editingCode) {
+            $activeAcademicYearId = AcademicYear::where('is_active', true)->value('id');
+
             foreach ($schoolIds as $schoolId) {
                 $subject = Subject::updateOrCreate(
                     ['school_id' => $schoolId, 'code' => strtoupper($data['code'])],
@@ -248,13 +268,19 @@ class CurriculumStructureController extends Controller
 
                     if ($hours <= 0) {
                         GradeLevelSubject::where('grade_level_id', $gradeId)->where('subject_id', $subject->id)
+                            ->where('academic_year_id', $activeAcademicYearId)
                             ->when($track, fn ($q) => $q->where('track', $track), fn ($q) => $q->whereNull('track'))->delete();
 
                         continue;
                     }
 
                     GradeLevelSubject::updateOrCreate(
-                        ['grade_level_id' => $gradeId, 'subject_id' => $subject->id, 'track' => $track],
+                        [
+                            'academic_year_id' => $activeAcademicYearId,
+                            'grade_level_id' => $gradeId,
+                            'subject_id' => $subject->id,
+                            'track' => $track,
+                        ],
                         ['allocation_hours' => $hours, 'is_active' => true]
                     );
                 }

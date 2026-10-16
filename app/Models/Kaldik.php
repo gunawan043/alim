@@ -34,6 +34,9 @@ class Kaldik extends Model
         'end_date',
         'description',
         'is_active',
+    
+        'owner_user_id',
+        'visibility',
     ];
 
     protected $casts = [
@@ -44,6 +47,15 @@ class Kaldik extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+    ];
+
+    const VISIBILITY_SATUAN = 'satuan';
+
+    const VISIBILITY_PRIBADI = 'pribadi';
+
+    const VISIBILITY_OPTIONS = [
+        self::VISIBILITY_SATUAN => 'Agenda Satuan',
+        self::VISIBILITY_PRIBADI => 'Agenda Pribadi (hanya saya)',
     ];
 
     const CATEGORY_KALDIK = 'kaldik';

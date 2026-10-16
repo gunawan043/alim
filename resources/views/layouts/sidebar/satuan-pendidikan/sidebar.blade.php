@@ -37,25 +37,29 @@
     $sekolah           = $primaryWorkUnit?->workUnit?->school;
     $sekolahId         = $sekolah?->id;
 
-    /* ── Kelas yang diwalikan user (untuk Wali Kelas) ─────────────────── */
+    /* ── Tahun ajaran aktif (satu sumber — bukan perkiraan kalender) ──── */
+    $activeAcademicYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
+
+    /* ── Kelas yang diwalikan user (untuk Wali Kelas) — TA aktif saja ─── */
     $waliKelasGroups = $sekolahId
         ? \App\Models\StudyGroup::withoutGlobalScope('school_context')
             ->where('school_id', $sekolahId)
             ->where('homeroom_teacher_id', $userId)
             ->where('is_active', true)
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
             ->with(['gradeLevel'])
             ->orderBy('name')
             ->get()
         : collect();
     $isActuallyWaliKelas = $waliKelasGroups->isNotEmpty();
 
-    /* ── Semua rombel di sekolah (untuk TU/Kepala/Wakil) ──────────────── */
-    $activeSemester = \App\Models\AcademicYear::where('is_active', true)->value('semester');
+    /* ── Semua rombel di sekolah (untuk TU/Kepala/Wakil) — TA AKTIF saja;
+          rombel TA lama tetap tersimpan & diakses lewat Data Rombel. ───── */
     $sidebarStudyGroups = $sekolahId
         ? \App\Models\StudyGroup::withoutGlobalScope('school_context')
             ->where('school_id', $sekolahId)
             ->where('is_active', true)
-            ->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester))
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->orderBy('name')
             ->get()

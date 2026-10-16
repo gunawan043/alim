@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
@@ -122,15 +123,19 @@ class CurriculumStructureSeeder extends Seeder
     {
         $groups = SubjectGroup::pluck('id', 'code');
 
+        // ARSIP PERIODE: struktur diterapkan sebagai versi TA aktif (bila ada),
+        // sehingga menerapkan ulang struktur tidak menimpa arsip TA sebelumnya.
+        $activeAcademicYearId = AcademicYear::where('is_active', true)->value('id');
+
         foreach (School::query()->orderBy('name')->get() as $school) {
             $jenjang = strtolower((string) $school->school_level);
 
             match ($jenjang) {
                 'sd' => $this->seedJenjang($school, $groups, [
                     1 => 'A', 2 => 'A', 3 => 'B', 4 => 'B', 5 => 'C', 6 => 'C',
-                ], 'SD', self::SD),
-                'smp' => $this->seedJenjang($school, $groups, [7 => 'D', 8 => 'D', 9 => 'D'], 'SMP', self::SMP),
-                'sma', 'ma', 'smk' => $this->seedJenjang($school, $groups, [10 => 'E', 11 => 'F', 12 => 'F'], 'SMA', self::SMA),
+                ], 'SD', self::SD, $activeAcademicYearId),
+                'smp' => $this->seedJenjang($school, $groups, [7 => 'D', 8 => 'D', 9 => 'D'], 'SMP', self::SMP, $activeAcademicYearId),
+                'sma', 'ma', 'smk' => $this->seedJenjang($school, $groups, [10 => 'E', 11 => 'F', 12 => 'F'], 'SMA', self::SMA, $activeAcademicYearId),
                 default => null,
             };
         }
@@ -141,7 +146,7 @@ class CurriculumStructureSeeder extends Seeder
      * @param  array<int, string>  $faseByLevel
      * @param  array<int, array<int, mixed>>  $defs
      */
-    private function seedJenjang(School $school, $groups, array $faseByLevel, string $prefix, array $defs): void
+    private function seedJenjang(School $school, $groups, array $faseByLevel, string $prefix, array $defs, ?string $activeAcademicYearId = null): void
     {
         // 1) Tingkat + fase
         $gradeIds = [];
@@ -181,7 +186,12 @@ class CurriculumStructureSeeder extends Seeder
 
                 if (isset($gradeIds[$level]) && $hours > 0) {
                     GradeLevelSubject::updateOrCreate(
-                        ['grade_level_id' => $gradeIds[$level], 'subject_id' => $subject->id, 'track' => $track],
+                        [
+                            'academic_year_id' => $activeAcademicYearId,
+                            'grade_level_id' => $gradeIds[$level],
+                            'subject_id' => $subject->id,
+                            'track' => $track,
+                        ],
                         ['allocation_hours' => (int) $hours, 'is_active' => true]
                     );
                 }
@@ -211,7 +221,12 @@ class CurriculumStructureSeeder extends Seeder
                 }
 
                 GradeLevelSubject::updateOrCreate(
-                    ['grade_level_id' => $gradeIds[$level], 'subject_id' => $subject->id, 'track' => null],
+                    [
+                        'academic_year_id' => $activeAcademicYearId,
+                        'grade_level_id' => $gradeIds[$level],
+                        'subject_id' => $subject->id,
+                        'track' => null,
+                    ],
                     ['allocation_hours' => $hours, 'is_active' => true]
                 );
             }

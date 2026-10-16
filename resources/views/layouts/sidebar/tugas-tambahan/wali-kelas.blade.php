@@ -25,10 +25,13 @@
         }
     };
 
-    /* ── Kelas yang diwalikan ─────────────────────────────────────────── */
+    /* ── Kelas yang diwalikan (TA aktif saja — konsisten dengan sidebar) ── */
+    $activeAcademicYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
+
     $waliKelasGroups = \App\Models\StudyGroup::withoutGlobalScope('school_context')
         ->where('homeroom_teacher_id', auth()->id())
         ->where('is_active', true)
+        ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
         ->with(['gradeLevel'])
         ->orderBy('name')
         ->get();

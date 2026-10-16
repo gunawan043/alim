@@ -129,11 +129,15 @@ class SubjectController extends Controller
             if ($hours <= 0) {
                 $existing = GradeLevelSubject::where('grade_level_id', $gradeLevelId)
                     ->where('subject_id', $subject->id)
+                    ->orderByAcademicYearFirst()
                     ->first();
 
-                if ($existing?->academic_year_id) {
-                    $existing->delete();
-                } elseif ($existing && $activeAy) {
+                $hasOtherPeriods = $activeAy
+                    && AcademicYear::where('id', '!=', $activeAy->id)->exists();
+
+                if ($existing?->academic_year_id || ! $activeAy || ! $hasOtherPeriods) {
+                    $existing?->delete();
+                } elseif ($existing) {
                     // Baris lama lintas periode → sembunyikan hanya untuk TA aktif.
                     GradeLevelSubject::updateOrCreate(
                         [

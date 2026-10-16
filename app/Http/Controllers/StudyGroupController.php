@@ -44,30 +44,45 @@ class StudyGroupController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
-        $activeYearId = AcademicYear::where('is_active', true)->value('id');
-
         // Statistik ringkas (mengikuti filter konteks/TA, bukan pencarian).
         $statsGroupIds = (clone $query)->pluck('id');
+        $activeAcademicYearId = AcademicYear::where('is_active', true)->value('id');
+
+        // Hitungan santri per rombel mengikuti TA ROMBEL MASING-MASING (arsip),
+        // bukan selalu TA aktif — berlaku juga pada mode "Semua Tahun Ajaran".
+        // TA aktif: keanggotaan berjalan; TA arsip: seluruh penempatan periode tsb.
+        $countsByGroup = StudentClassHistory::query()
+            ->whereIn('student_class_histories.study_group_id', $statsGroupIds)
+            ->join('study_groups as sg_period', 'sg_period.id', '=', 'student_class_histories.study_group_id')
+            ->whereColumn('student_class_histories.academic_year_id', 'sg_period.academic_year_id')
+            ->when(
+                $activeAcademicYearId,
+                function ($q) use ($activeAcademicYearId) {
+                    $q->where(function ($qq) use ($activeAcademicYearId) {
+                        $qq->where(function ($qqq) use ($activeAcademicYearId) {
+                            $qqq->where('sg_period.academic_year_id', $activeAcademicYearId)
+                                ->where('student_class_histories.is_active', true);
+                        })->orWhere('sg_period.academic_year_id', '!=', $activeAcademicYearId);
+                    });
+                },
+                fn ($q) => $q->where('student_class_histories.is_active', true)
+            )
+            ->groupBy('student_class_histories.study_group_id')
+            ->selectRaw('student_class_histories.study_group_id as sg_id, COUNT(*) as total')
+            ->pluck('total', 'sg_id');
+
         $stats = [
             'total' => $statsGroupIds->count(),
-            'santri' => StudentClassHistory::whereIn('study_group_id', $statsGroupIds)
-                ->where('is_active', true)
-                ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
-                ->count(),
+            'santri' => (int) $countsByGroup->sum(),
             'wali' => (clone $query)->whereNotNull('homeroom_teacher_id')->count(),
             'kapasitas' => (int) (clone $query)->sum('capacity'),
         ];
 
         $studyGroups = $query->orderedByGrade()->paginate(15)->withQueryString();
 
-        // Load student counts per study group
+        // Load student counts per study group (TA rombel masing-masing).
         $sgIds = $studyGroups->pluck('id');
-        $counts = StudentClassHistory::whereIn('study_group_id', $sgIds)
-            ->where('is_active', true)
-            ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
-            ->groupBy('study_group_id')
-            ->selectRaw('study_group_id, COUNT(*) as total')
-            ->pluck('total', 'study_group_id');
+        $counts = $countsByGroup->only($sgIds->all());
 
         $studyGroups->getCollection()->transform(function ($sg) use ($counts) {
             $sg->studentCount = $counts[$sg->id] ?? 0;
@@ -166,11 +181,19 @@ class StudyGroupController extends Controller
 
         $activeHistories = $studyGroup->studentClassHistories()
             ->with('student:id,name,nisn,nis,gender')
-            ->where('is_active', true)
+            ->where('academic_year_id', $studyGroup->academic_year_id)
+            ->when(
+                ! $activeAcademicYear || (string) $studyGroup->academic_year_id === (string) $activeAcademicYear->id,
+                fn ($q) => $q->where('is_active', true)
+            )
+            ->orderByDesc('is_active')
             ->orderBy('attendance_number')
             ->get();
 
-        return view('study-groups.show', compact('studyGroup', 'userId', 'activeHistories', 'activeAcademicYear'));
+        $isArchiveGroup = $activeAcademicYear
+            && (string) $studyGroup->academic_year_id !== (string) $activeAcademicYear->id;
+
+        return view('study-groups.show', compact('studyGroup', 'userId', 'activeHistories', 'activeAcademicYear', 'isArchiveGroup'));
     }
 
     public function edit(string $userId, string $id)

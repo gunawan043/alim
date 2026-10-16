@@ -40,6 +40,11 @@ class StudentController extends Controller
         } elseif ($request->filled('school_id')) {
             $query->where('school_id', $request->school_id);
         }
+        // ARSIP PERIODE: filter tahun ajaran opsional + konteks rombel per periode.
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
+        $activeAcademicYearId = $academicYears->firstWhere('is_active', true)?->id;
+
+        $rombelAyId = null;
         if ($request->filled('study_group_id')) {
             // ARSIP: keanggotaan rombel mengikuti TAHUN AJARAN rombel (bukan hanya
             // baris aktif) agar kelas pada TA lama tetap menampilkan anggotanya.
@@ -52,6 +57,22 @@ class StudentController extends Controller
                 ->when($rombelAyId, fn ($qq) => $qq->where('academic_year_id', $rombelAyId))
             );
         }
+
+        // Filter tahun ajaran: menampilkan santri yang terdaftar pada periode tsb.
+        // Tidak ada filter TA = seluruh santri (perilaku lama dipertahankan).
+        $selectedAcademicYearId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : null;
+
+        $effectiveAyId = $selectedAcademicYearId ?: $rombelAyId;
+        if ($effectiveAyId) {
+            $query->whereHas('classHistories', fn ($q) => $q->where('academic_year_id', $effectiveAyId));
+        }
+
+        // TA untuk kolom Rombel: TA terpilih → TA rombel → TA aktif.
+        $rombelDisplayAyId = $selectedAcademicYearId ?: ($rombelAyId ?: $activeAcademicYearId);
+        $isArchiveAy = $rombelDisplayAyId && $activeAcademicYearId
+            && (string) $rombelDisplayAyId !== (string) $activeAcademicYearId;
         if ($request->filled('search')) {
             $q = $request->search;
             $query->where(fn ($sq) => $sq
@@ -92,7 +113,7 @@ class StudentController extends Controller
         }
         if ($request->filled('grade_level_id')) {
             $query->whereHas('classHistories', fn ($q) => $q
-                ->where('is_active', true)
+                ->when($effectiveAyId, fn ($qq) => $qq->where('academic_year_id', $effectiveAyId), fn ($qq) => $qq->where('is_active', true))
                 ->whereHas('studyGroup', fn ($sg) => $sg
                     ->where('grade_level_id', $request->grade_level_id)
                 )
@@ -119,7 +140,9 @@ class StudentController extends Controller
 
         // Get the raw count from the query (before clone messiness, rebuild from same filters)
         $isFilteredByClass = $request->filled('study_group_id');
-        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+        $activeAcademicYear = $activeAcademicYearId
+            ? $academicYears->firstWhere('id', $activeAcademicYearId)
+            : null;
 
         $statsQuery = Student::query();
         if ($schoolId) {
@@ -130,8 +153,12 @@ class StudentController extends Controller
         if ($request->filled('study_group_id')) {
             $statsQuery->whereHas('classHistories', fn ($q) => $q
                 ->where('study_group_id', $request->study_group_id)
-                ->where('is_active', true)
+                ->when($rombelAyId, fn ($qq) => $qq->where('academic_year_id', $rombelAyId), fn ($qq) => $qq->where('is_active', true))
             );
+        }
+        // ARSIP PERIODE: statistik mengikuti TA yang dipilih.
+        if ($selectedAcademicYearId) {
+            $statsQuery->whereHas('classHistories', fn ($q) => $q->where('academic_year_id', $selectedAcademicYearId));
         }
         if ($request->filled('gender')) {
             $statsQuery->where('gender', $request->gender);
@@ -165,7 +192,15 @@ class StudentController extends Controller
         $isCurrentRombelOverCapacity = false;
 
         if (! $request->filled('study_group_id')) {
-            $assignedInAY = StudentClassHistory::where('is_active', true)
+            // Keanggotaan mengikuti TA yang ditampilkan (TA terpilih/TA aktif),
+            // bukan sekadar baris aktif lintas periode.
+            $isDisplayingActiveAy = ! $rombelDisplayAyId || ! $activeAcademicYearId
+                || (string) $rombelDisplayAyId === (string) $activeAcademicYearId;
+
+            $assignedInAY = StudentClassHistory::query()
+                ->when($rombelDisplayAyId, fn ($q) => $q->where('academic_year_id', $rombelDisplayAyId))
+                ->when($isDisplayingActiveAy, fn ($q) => $q->where('is_active', true))
+                ->when($schoolId, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('school_id', $schoolId)))
                 ->pluck('student_id');
 
             $unassignedCount = (clone $statsQuery)
@@ -183,38 +218,44 @@ class StudentController extends Controller
                 'in_rombel' => $inRombelCount,
             ];
 
-            // Distribusi per tingkat (massal view only)
+            // Distribusi per tingkat (massal view only) — mengikuti TA yang ditampilkan.
             $distribusiPerTingkat = StudentClassHistory::selectRaw('grade_levels.name as grade_name, COUNT(student_class_histories.id) as total')
                 ->join('study_groups', 'study_groups.id', '=', 'student_class_histories.study_group_id')
                 ->join('grade_levels', 'grade_levels.id', '=', 'study_groups.grade_level_id')
-                ->where('student_class_histories.is_active', true)
+                ->when($rombelDisplayAyId, fn ($q) => $q->where('student_class_histories.academic_year_id', $rombelDisplayAyId))
+                ->when($isDisplayingActiveAy, fn ($q) => $q->where('student_class_histories.is_active', true))
                 ->when($schoolId, fn ($q) => $q->where('study_groups.school_id', $schoolId))
                 ->groupBy('grade_levels.name')
                 ->orderByRaw('CAST(grade_levels.name AS INTEGER) ASC')
                 ->get();
 
-            // ── Warning: rombel melebihi kapasitas ──
-            $activeAyId = $schoolId
-                ? AcademicYear::where('is_active', true)->value('id')
-                : null;
+            // ── Warning: rombel melebihi kapasitas (hanya untuk TA aktif) ──
+            $showCapacityWarning = ! $rombelDisplayAyId || ! $activeAcademicYearId
+                || (string) $rombelDisplayAyId === (string) $activeAcademicYearId;
 
-            $activeHistoryCount = StudentClassHistory::selectRaw('study_group_id, COUNT(*) as cnt')
-                ->where('is_active', true)
-                ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
-                ->groupBy('study_group_id')
-                ->toBase();
+            if ($showCapacityWarning) {
+                $activeAyId = $schoolId
+                    ? $activeAcademicYearId
+                    : null;
 
-            $overCapacityRombels = StudyGroup::with('gradeLevel')
-                ->select('study_groups.id', 'study_groups.name', 'study_groups.capacity', 'study_groups.school_id')
-                ->selectRaw('COUNT(student_class_histories.id) as student_count')
-                ->join('student_class_histories', 'student_class_histories.study_group_id', '=', 'study_groups.id')
-                ->where('student_class_histories.is_active', true)
-                ->when($schoolId, fn ($q) => $q->where('study_groups.school_id', $schoolId))
-                ->groupBy('study_groups.id', 'study_groups.name', 'study_groups.capacity', 'study_groups.school_id')
-                ->havingRaw('COUNT(student_class_histories.id) > study_groups.capacity')
-                ->orderByRaw('COUNT(student_class_histories.id) - study_groups.capacity DESC')
-                ->limit(10)
-                ->get();
+                $activeHistoryCount = StudentClassHistory::selectRaw('study_group_id, COUNT(*) as cnt')
+                    ->where('is_active', true)
+                    ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
+                    ->groupBy('study_group_id')
+                    ->toBase();
+
+                $overCapacityRombels = StudyGroup::with('gradeLevel')
+                    ->select('study_groups.id', 'study_groups.name', 'study_groups.capacity', 'study_groups.school_id')
+                    ->selectRaw('COUNT(student_class_histories.id) as student_count')
+                    ->join('student_class_histories', 'student_class_histories.study_group_id', '=', 'study_groups.id')
+                    ->where('student_class_histories.is_active', true)
+                    ->when($schoolId, fn ($q) => $q->where('study_groups.school_id', $schoolId))
+                    ->groupBy('study_groups.id', 'study_groups.name', 'study_groups.capacity', 'study_groups.school_id')
+                    ->havingRaw('COUNT(student_class_histories.id) > study_groups.capacity')
+                    ->orderByRaw('COUNT(student_class_histories.id) - study_groups.capacity DESC')
+                    ->limit(10)
+                    ->get();
+            }
         }
 
         // Per-kelas stats (for rombel-filtered view)
@@ -224,9 +265,12 @@ class StudentController extends Controller
         if ($request->filled('study_group_id')) {
             $studyGroup = StudyGroup::with(['gradeLevel', 'homeroomTeacher', 'school'])->find($request->study_group_id);
             $capacity = $studyGroup?->capacity ?? 0;
+            $isActiveRombelAy = ! $rombelAyId || ! $activeAcademicYearId
+                || (string) $rombelAyId === (string) $activeAcademicYearId;
+
             $inClass = (clone $statsQuery)->whereHas('classHistories',
                 fn ($q) => $q->where('study_group_id', $request->study_group_id)
-                    ->where('is_active', true)
+                    ->when($isActiveRombelAy, fn ($qq) => $qq->where('is_active', true))
             )->count();
             // Cek apakah rombel ini melebihi kapasitas
             $isCurrentRombelOverCapacity = $inClass > $capacity;
@@ -250,6 +294,7 @@ class StudentController extends Controller
             'distribusiPerTingkat', 'isFilteredByClass',
             'provinces', 'overCapacityRombels', 'isCurrentRombelOverCapacity',
             'gradeLevels', 'mutationInCount', 'mutationOutCount',
+            'academicYears', 'selectedAcademicYearId', 'rombelDisplayAyId', 'activeAcademicYearId', 'isArchiveAy',
         ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() ?? false);
     }
 

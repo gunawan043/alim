@@ -41,6 +41,17 @@
         @slot('title') Data Nilai @endslot
     @endcomponent
 
+    @if($isArchiveAy ?? false)
+        <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2" role="alert">
+            <i class="ri-archive-line fs-5"></i>
+            <div>
+                Menampilkan <strong>arsip Data Nilai</strong> tahun ajaran
+                <strong>{{ $selectedAy?->name ?? '-' }} ({{ $selectedAy?->semester_text ?? '-' }})</strong>.
+                Data ini bersifat baca-saja — nilai TA lama tidak dapat diubah dan tidak terpengaruh TA aktif.
+            </div>
+        </div>
+    @endif
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-check-line me-2"></i>{{ session('success') }}
@@ -55,7 +66,7 @@
     @endif
 
     {{-- Stats Cards --}}
-    @if($selectedAcademicYearId && $selectedAy?->is_active)
+    @if($selectedAcademicYearId && $selectedAy)
     <div class="row">
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90">
@@ -140,9 +151,15 @@
                         </div>
                         @if($isPrivileged && $selectedAcademicYearId)
                         <div class="col-sm-auto">
-                            <span class="badge bg-info-subtle text-info" style="font-size:11px;padding:4px 10px;">
-                                <i class="ri-user-settings-line align-bottom me-1"></i>Mode TU / Waka
-                            </span>
+                            @if($isArchiveAy ?? false)
+                                <span class="badge bg-warning-subtle text-warning" style="font-size:11px;padding:4px 10px;">
+                                    <i class="ri-archive-line align-bottom me-1"></i>Arsip TA {{ $selectedAy?->name }}
+                                </span>
+                            @else
+                                <span class="badge bg-info-subtle text-info" style="font-size:11px;padding:4px 10px;">
+                                    <i class="ri-user-settings-line align-bottom me-1"></i>Mode TU / Waka
+                                </span>
+                            @endif
                         </div>
                         @endif
                     </div>
@@ -179,7 +196,7 @@
                                         @foreach($academicYears as $ay)
                                             <option value="{{ $ay->id }}"
                                                 {{ $selectedAcademicYearId == $ay->id ? 'selected' : '' }}>
-                                                {{ $ay->name }}
+                                                {{ $ay->name }} ({{ $ay->semester_text }})
                                             </option>
                                         @endforeach
                                     @endif
@@ -227,7 +244,7 @@
                 </div>
 
                 {{-- Table --}}
-                @if($selectedAcademicYearId && $selectedAy?->is_active)
+                @if($selectedAcademicYearId && $selectedAy)
                 <div class="border-top">
                     @if($totalKelas > 0)
                     <div class="px-4 py-2 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -312,7 +329,9 @@
                                             <h6 class="text-muted">Belum ada kelas ditemukan</h6>
                                             <p class="text-muted mb-0" style="font-size:13px;">
                                                 @if($academicYears->isEmpty())
-                                                    Tidak ada <strong>Tahun Ajaran aktif</strong>. Hubungi admin untuk mengaktifkan tahun ajaran.
+                                                    Belum ada <strong>Tahun Ajaran</strong>. Hubungi admin untuk menyiapkan tahun ajaran.
+                                                @elseif($isArchiveAy ?? false)
+                                                    Tidak ada <strong>Buku Admin Guru</strong> untuk TA arsip ini. Data nilai mungkin belum pernah diisi pada periode tersebut.
                                                 @else
                                                     Pastikan <strong>Buku Admin Guru</strong> sudah terisi untuk semester ini.
                                                 @endif

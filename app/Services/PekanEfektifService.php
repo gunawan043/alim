@@ -419,8 +419,11 @@ class PekanEfektifService
         if ($studyGroup->grade_level_id) {
             $gradeSubjects = GradeLevelSubject::with('subject')
                 ->where('grade_level_id', $studyGroup->grade_level_id)
-                ->where('is_active', true)
-                ->get();
+                ->forAcademicYear($academicYearId)
+                ->orderByAcademicYearFirst()
+                ->get()
+                ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                ->filter(fn ($r) => $r->is_active);
 
             foreach ($gradeSubjects as $gradeSubject) {
                 if (! $gradeSubject->subject || isset($seenSubjects[$gradeSubject->subject_id])) {

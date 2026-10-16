@@ -82,8 +82,11 @@ class NilaiController extends Controller
         // Wali kelas → langsung ke Leger kelasnya (bukan halaman Data Nilai umum).
         // Guru mapel → Buku Nilai Saya. Data Nilai umum hanya untuk KSP/Waka/Kurikulum/TU.
         if (! $isPrivileged) {
+            $activeAyId = AcademicYear::where('is_active', true)->value('id');
+
             $waliGroup = StudyGroup::where('homeroom_teacher_id', $user?->id)
                 ->where('is_active', true)
+                ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
                 ->orderedByGrade()
                 ->first();
 
@@ -101,13 +104,18 @@ class NilaiController extends Controller
             abort(403, 'Data Nilai hanya untuk KSP, Waka, Kurikulum, dan TU. Guru mapel menggunakan Buku Nilai Saya.');
         }
 
-        // Hanya tahun ajaran yang aktif
-        $academicYears = AcademicYear::where('is_active', true)->orderByDesc('name')->get();
+        // ARSIP PERIODE: seluruh tahun ajaran dapat dipilih (termasuk TA lama).
+        // TA aktif tetap menjadi default; TA lama bersifat arsip (tidak dapat diubah).
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
+        $activeAcademicYearId = $academicYears->firstWhere('is_active', true)?->id;
 
-        // Auto-select: TA aktif yang pertama
+        // Auto-select: TA aktif bila ada, jika tidak TA terbaru.
         $selectedAcademicYearId = $request->filled('academic_year_id')
             ? $request->academic_year_id
-            : $academicYears->first()?->id;
+            : ($activeAcademicYearId ?? $academicYears->first()?->id);
+
+        $isArchiveAy = $selectedAcademicYearId && $activeAcademicYearId
+            && (string) $selectedAcademicYearId !== (string) $activeAcademicYearId;
 
         // Auto-select semester dari request, default ganjil
         $selectedSemester = $request->filled('semester')
@@ -145,7 +153,10 @@ class NilaiController extends Controller
                 'total_mapel' => $books->pluck('subject_id')->unique()->count(),
                 'total_siswa' => StudentClassHistory::where('study_group_id', $books->first()->study_group_id)
                     ->where('academic_year_id', $selectedAcademicYearId)
-                    ->where('is_active', true)->count(),
+                    ->when(
+                        $selectedAcademicYearId && (string) $selectedAcademicYearId === (string) $activeAcademicYearId,
+                        fn ($q) => $q->where('is_active', true)
+                    )->count(),
                 'first_book' => $books->first(),
             ])
             ->when($selectedGradeLevelId, fn ($col) => $col->filter(fn ($k) => $k['study_group']->gradeLevel?->id === $selectedGradeLevelId
@@ -156,7 +167,8 @@ class NilaiController extends Controller
 
         return view('nilai.index', compact(
             'academicYears', 'kelasList', 'gradeLevelIds',
-            'userId', 'isPrivileged', 'selectedAcademicYearId', 'selectedSemester'
+            'userId', 'isPrivileged', 'selectedAcademicYearId', 'selectedSemester',
+            'activeAcademicYearId', 'isArchiveAy'
         ));
     }
 

@@ -1316,6 +1316,15 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Test baru**: seluruh item diberi skor B(3) → **nilai 75.00 = "Baik"**, jumlah baris penilaian sesuai item, halaman penilaian & cetak dapat dirender (`SupervisiSmokeTest` = **7 test / 47 assertion**).
 - Regresi batch (Supervisi + BulkPromotion + RombelArchive + PesertaDidikP0 + AttendanceSync) — **0 gagal**; `view:cache` sukses.
 
+## 139. Kalender Pendidikan — Scroll, Kalender Tahunan, & Privasi Agenda (Satuan/Pribadi)
+- **Scroll daftar "Agenda Mendatang" diperbaiki**: `data-simplebar` + `overflow-hidden` diganti scroll asli (`overflow-y:auto`) — daftar kegiatan kini dapat digulir.
+- **Tampilan KALENDER TAHUNAN**: tombol **Kalender Bulanan / Kalender Tahunan**; tampilan tahunan menampilkan **12 bulan penuh** (mengikuti TA terpilih, fallback TA aktif) dengan **penanda titik kegiatan** (warna sesuai jenis + tooltip judul), hari ini disorot, dan **klik nama bulan** kembali ke tampilan bulanan pada bulan tersebut (instance FullCalendar diekspos `window.KALDIK_CALENDAR`).
+- **Privasi agenda berjenjang**:
+  - Migrasi `visibility` (`satuan`/`pribadi`) + `owner_user_id` pada tabel `kaldik`.
+  - Scope baru: **Kaldik pondok** (global) terlihat semua GTK · **Agenda satuan** hanya GTK dalam satuan kerja tsb · **Agenda pribadi HANYA pemiliknya** (tidak muncul di kalender/dashboard/agenda orang lain).
+  - Form **Tambah/Edit** menambah pilihan **Privasi Agenda**; `store()`/`update()` menetapkan pemilik untuk agenda pribadi dan membersihkannya untuk agenda satuan.
+- **Test baru `KaldikPrivasiTest`**: agenda pribadi terlihat pemilik, tidak bocor ke GTK lain; agenda satuan tidak menyeberang unit; kaldik pondok terlihat semua. `KaldikPekanEfektifTest` tetap hijau (**11 test / 68 assertion — 0 gagal**); `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

@@ -40,9 +40,12 @@ class NilaiKelasController extends Controller
         $request = request();
         $schoolId = $request->attributes->get('schoolContextId');
 
-        // Wali kelas → langsung ke rombelnya
+        // Wali kelas → langsung ke rombelnya (TA aktif saja).
+        $activeAyId = AcademicYear::where('is_active', true)->value('id');
+
         $studyGroup = StudyGroup::where('homeroom_teacher_id', $userId)
             ->where('is_active', true)
+            ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
             ->orderedByGrade()
             ->first();
 
@@ -89,11 +92,15 @@ class NilaiKelasController extends Controller
         $legerAccess = $this->assertLegerAccess($userId, $studyGroup);
         $isPrivileged = $legerAccess === 'full';
 
-        // Tahun ajaran aktif
-        $academicYears = AcademicYear::where('is_active', true)->orderByDesc('name')->get();
+        // ARSIP PERIODE: seluruh tahun ajaran dapat dipilih — TA aktif menjadi default.
+        // Data TA lama tetap dapat dibaca; input nilai TA lama diblokir di stsStore().
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
+        $activeAyId = $academicYears->firstWhere('is_active', true)?->id;
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
-            : $academicYears->first()?->id;
+            : ($activeAyId ?? $academicYears->first()?->id);
+        $isArchiveAy = $selectedAyId && $activeAyId
+            && (string) $selectedAyId !== (string) $activeAyId;
 
         // Semester
         $selectedSemester = $request->filled('semester') ? $request->semester : 'ganjil';
@@ -102,7 +109,10 @@ class NilaiKelasController extends Controller
         $legerMode = in_array($request->input('leger'), ['sts', 'sas'], true) ? $request->input('leger') : 'sts';
 
         // Semester terpilih belum punya buku? → salin struktur dari semester lain (mis. genap dari ganjil).
-        $autoProvisionedBooks = $this->ensureBooksForSemester($schoolId, $studyGroupId, $selectedAyId, $selectedSemester, $userId);
+        // Hanya untuk TA aktif — TA arsip tidak pernah dimaterialisasi ulang.
+        $autoProvisionedBooks = $isArchiveAy
+            ? 0
+            : $this->ensureBooksForSemester($schoolId, $studyGroupId, $selectedAyId, $selectedSemester, $userId);
 
 
         // Semua mapel di kelas ini (dari TeacherAdminBook) + sorting: Agama → Arab → Hadits → Umum
@@ -328,7 +338,8 @@ class NilaiKelasController extends Controller
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
-            'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor'
+            'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
+            'isArchiveAy', 'activeAyId'
         ));
     }
 
@@ -345,6 +356,8 @@ class NilaiKelasController extends Controller
         if ($request->tab === 'mapel' && $request->filled('admin_book_id')) {
             $bookId = is_numeric($request->admin_book_id) ? (int) $request->admin_book_id : $request->admin_book_id;
             $adminBook = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($bookId);
+
+            $this->assertNotArchivedAcademicYear($adminBook->academic_year_id);
 
             $nilaiData = $request->input('nilai', []);
             $savedRows = [];
@@ -461,6 +474,8 @@ class NilaiKelasController extends Controller
         if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm'))) {
             $selectedAyId = $request->academic_year_id;
             $selectedSem = $request->semester ?? 'ganjil';
+
+            $this->assertNotArchivedAcademicYear($selectedAyId);
 
             // Ambil semua admin books di kelas ini
             $allBooks = TeacherAdminBook::with('subject', 'studyGroup.gradeLevel', 'kktp')
@@ -937,6 +952,8 @@ class NilaiKelasController extends Controller
             : AcademicYear::where('is_active', true)->first()?->id;
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
 
+        $this->assertNotArchivedAcademicYear($selectedAyId);
+
         $validated = $request->validate([
             'homeroom_note' => 'nullable|string|max:500',
         ]);
@@ -1160,20 +1177,26 @@ class NilaiKelasController extends Controller
 
         $catatanWali = $registration?->homeroom_note;
 
-        // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir).
+        // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir) pada TA aktif
+        // — cetak ulang rapor TA arsip tidak menulis apa pun ke data periode lama.
         if ($jenis === 'sas') {
-            RaportRegistration::updateOrCreate(
-                [
-                    'student_id' => $studentId,
-                    'study_group_id' => $studyGroupId,
-                    'academic_year_id' => $selectedAyId,
-                    'semester' => $selectedSem,
-                ],
-                [
-                    'final_score' => $rata,
-                    'predicate' => $predikat,
-                ]
-            );
+            $activeYearId = AcademicYear::where('is_active', true)->value('id');
+            $isArchivedAy = $activeYearId && (string) $selectedAyId !== (string) $activeYearId;
+
+            if (! $isArchivedAy) {
+                RaportRegistration::updateOrCreate(
+                    [
+                        'student_id' => $studentId,
+                        'study_group_id' => $studyGroupId,
+                        'academic_year_id' => $selectedAyId,
+                        'semester' => $selectedSem,
+                    ],
+                    [
+                        'final_score' => $rata,
+                        'predicate' => $predikat,
+                    ]
+                );
+            }
         }
 
         return [
@@ -1371,6 +1394,19 @@ class NilaiKelasController extends Controller
         );
 
         return $access;
+    }
+
+    /**
+     * ARSIP PERIODE: tolak perubahan nilai pada TA yang bukan TA aktif.
+     * Data TA lama tetap dapat dibaca/dicetak, tetapi tidak boleh diubah.
+     */
+    private function assertNotArchivedAcademicYear(?string $academicYearId): void
+    {
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+
+        if ($activeYearId && $academicYearId && (string) $academicYearId !== (string) $activeYearId) {
+            abort(403, 'Nilai tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
+        }
     }
 
     /**
