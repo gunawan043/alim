@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Schema;
  * versi periode aktif — dipertahankan agar arsip TA lama tetap tampil
  * tanpa membuat data historis palsu. Baris ber-academic_year_id
  * (versi periode) selalu diprioritaskan atas baris NULL.
+ *
+ * Keunikan struktur diperluas: (grade_level_id, subject_id, track)
+ * → (academic_year_id, grade_level_id, subject_id, track).
  */
 return new class extends Migration
 {
@@ -25,10 +28,38 @@ return new class extends Migration
                 $table->index(['academic_year_id', 'grade_level_id'], 'gls_academic_year_grade_idx');
             });
         }
+
+        try {
+            Schema::table('grade_level_subjects', function (Blueprint $table) {
+                $table->dropUnique('unique_grade_level_subject_track');
+            });
+        } catch (\Throwable) {
+            // Index tidak ada / sudah diganti pada driver ini.
+        }
+
+        try {
+            Schema::table('grade_level_subjects', function (Blueprint $table) {
+                $table->unique(
+                    ['academic_year_id', 'grade_level_id', 'subject_id', 'track'],
+                    'unique_gls_ay_grade_subject_track'
+                );
+            });
+        } catch (\Throwable) {
+            // Sudah ada.
+        }
     }
 
     public function down(): void
     {
+        try {
+            Schema::table('grade_level_subjects', function (Blueprint $table) {
+                $table->dropUnique('unique_gls_ay_grade_subject_track');
+                $table->unique(['grade_level_id', 'subject_id', 'track'], 'unique_grade_level_subject_track');
+            });
+        } catch (\Throwable) {
+            // abaikan
+        }
+
         if (Schema::hasColumn('grade_level_subjects', 'academic_year_id')) {
             Schema::table('grade_level_subjects', function (Blueprint $table) {
                 $table->dropIndex('gls_academic_year_grade_idx');

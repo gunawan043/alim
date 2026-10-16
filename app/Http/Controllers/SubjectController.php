@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
@@ -120,16 +121,41 @@ class SubjectController extends Controller
             ]
         );
 
+        $activeAy = AcademicYear::where('is_active', true)->first();
+
         foreach (($data['allocations'] ?? []) as $gradeLevelId => $hours) {
             $hours = (int) $hours;
 
             if ($hours <= 0) {
-                \App\Models\GradeLevelSubject::where('grade_level_id', $gradeLevelId)->where('subject_id', $subject->id)->delete();
+                $existing = GradeLevelSubject::where('grade_level_id', $gradeLevelId)
+                    ->where('subject_id', $subject->id)
+                    ->first();
+
+                if ($existing?->academic_year_id) {
+                    $existing->delete();
+                } elseif ($existing && $activeAy) {
+                    // Baris lama lintas periode → sembunyikan hanya untuk TA aktif.
+                    GradeLevelSubject::updateOrCreate(
+                        [
+                            'academic_year_id' => $activeAy->id,
+                            'grade_level_id' => $gradeLevelId,
+                            'subject_id' => $subject->id,
+                            'track' => $existing->track,
+                        ],
+                        ['allocation_hours' => $existing->allocation_hours, 'is_active' => false]
+                    );
+                }
+
                 continue;
             }
 
-            \App\Models\GradeLevelSubject::updateOrCreate(
-                ['grade_level_id' => $gradeLevelId, 'subject_id' => $subject->id, 'track' => null],
+            GradeLevelSubject::updateOrCreate(
+                [
+                    'academic_year_id' => $activeAy?->id,
+                    'grade_level_id' => $gradeLevelId,
+                    'subject_id' => $subject->id,
+                    'track' => null,
+                ],
                 ['allocation_hours' => $hours, 'is_active' => true]
             );
         }
