@@ -153,11 +153,13 @@ class NilaiKelasController extends Controller
         // Pembagi RS seragam per kelas (ditampilkan & dipakai hitungan live di tab Mapel).
         $rsDivisor = $activeBook ? app(SumatifHarianService::class)->rsDivisor($activeBook) : 1;
 
-        // Siswa di kelas ini
+        // ARSIP ROMBEL: ambil SEMUA anggota rombel pada TA tersebut (termasuk yang
+        // sudah pindah/naik kelas) agar data kelas lama tidak hilang. Input nilai
+        // (tab Mapel) tetap hanya untuk anggota aktif.
         $students = StudentClassHistory::with('student')
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
-            ->where('is_active', true)
+            ->orderByDesc('is_active')
             ->orderBy('attendance_number')
             ->get();
 

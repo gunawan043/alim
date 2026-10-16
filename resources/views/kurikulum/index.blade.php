@@ -17,6 +17,31 @@
         @slot('title') Kurikulum Pembelajaran @endslot
     @endcomponent
 
+    @if($isArchive ?? false)
+        <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2" role="alert">
+            <i class="ri-archive-line fs-5"></i>
+            <div>
+                Menampilkan <strong>arsip Peta Kurikulum</strong> tahun ajaran
+                <strong>{{ $academicYears->firstWhere('id', $academicYearId)?->name ?? '-' }}
+                    ({{ $academicYears->firstWhere('id', $academicYearId)?->semester_text ?? '-' }})</strong>.
+                Data periode lain tidak berubah oleh pengaturan di periode ini.
+            </div>
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-check-line me-1"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -103,9 +128,9 @@
                         <div class="col-sm-auto">
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 <form method="GET" action="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
-                                    <select name="academic_year_id" class="form-select" style="width:150px" onchange="this.form.submit()">
+                                    <select name="academic_year_id" class="form-select" style="width:200px" onchange="this.form.submit()">
                                         @foreach($academicYears as $ay)
-                                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                            <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }} ({{ $ay->semester_text }})</option>
                                         @endforeach
                                     </select>
                                     <select name="semester" class="form-select" style="width:110px" onchange="this.form.submit()">
@@ -114,6 +139,23 @@
                                     </select>
                                     <a href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
+                                @if(($canPrepare ?? false) && $academicYearId && $academicYears->count() > 1)
+                                    <form method="POST" action="{{ route('user.kurikulum.siapkan', ['userId' => $userId]) }}"
+                                          class="d-flex flex-wrap gap-2"
+                                          onsubmit="return confirm('Salin struktur Peta Kurikulum & KKTP dari TA sumber ke TA terpilih? TA sumber tidak akan diubah.');">
+                                        @csrf
+                                        <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
+                                        <select name="source_academic_year_id" class="form-select" style="width:210px" title="TA sumber salinan">
+                                            @foreach($academicYears as $ay)
+                                                @continue($ay->id == $academicYearId)
+                                                <option value="{{ $ay->id }}" {{ (string) $activeAcademicYearId === (string) $ay->id ? 'selected' : '' }}>Salin dari {{ $ay->name }} ({{ $ay->semester_text }})</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-success" title="Siapkan Peta Kurikulum untuk TA terpilih">
+                                            <i class="ri-archive-drawer-line align-bottom me-1"></i> Siapkan TA Ini
+                                        </button>
+                                    </form>
+                                @endif
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                         <i class="ri-apps-2-line align-bottom me-1"></i> Buka Modul

@@ -16,6 +16,7 @@ use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Hub Kurikulum — menghubungkan tahun ajaran, satuan pendidikan, jenjang,
@@ -54,6 +55,9 @@ class KurikulumController extends Controller
 
         $academicYearId = $request->input('academic_year_id', $activeAy?->id);
         $academicYear = $academicYears->firstWhere('id', $academicYearId);
+        $activeAcademicYearId = $academicYears->firstWhere('is_active', true)?->id;
+        $isArchive = $academicYearId && $activeAcademicYearId
+            && (string) $academicYearId !== (string) $activeAcademicYearId;
 
         $semester = $request->input('semester', $academicYear?->semester === 'genap' ? 'genap' : 'ganjil');
         if (! in_array($semester, ['ganjil', 'genap'], true)) {
@@ -94,8 +98,13 @@ class KurikulumController extends Controller
             $gradeSubjects = GradeLevelSubject::with('subject')
                 ->whereIn('grade_level_id', $gradeLevelIds)
                 ->where('is_active', true)
+                ->forAcademicYear($academicYearId)
+                ->orderByAcademicYearFirst()
                 ->get()
-                ->groupBy('grade_level_id');
+                ->groupBy('grade_level_id')
+                ->map(fn ($rows) => $rows
+                    ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                    ->values());
 
             // Peta Kurikulum menampilkan SELURUH struktur jenjang dalam cakupan satuan pendidikan
             // (termasuk mapel yang tidak diampu guru) agar GTK memahami keseluruhan kurikulum.
@@ -148,7 +157,7 @@ class KurikulumController extends Controller
                         continue;
                     }
 
-                    $weeklyHours = $this->hoursResolver->resolve(null, $subject, null, $grade->id);
+                    $weeklyHours = $this->hoursResolver->resolve(null, $subject, null, $grade->id, $academicYearId);
                     $atp = $atpBy->get($subject->id.'|'.$grade->id);
 
                     $rows->push([
@@ -191,18 +200,25 @@ class KurikulumController extends Controller
             ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
         $canEditKktp = app(KurikulumAccess::class)->isKurikulumTeam($request->user()) || $isKoorMapelUser;
 
-        // ── Total JP per tingkat (struktur, bukan per baris tampil) ──
+        // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
             ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
             ->where('is_active', true)
-            ->get(['grade_level_id', 'subject_id', 'allocation_hours'])
+            ->forAcademicYear($academicYearId)
+            ->orderByAcademicYearFirst()
+            ->get(['grade_level_id', 'subject_id', 'track', 'allocation_hours', 'academic_year_id'])
             ->groupBy('grade_level_id')
-            ->map(fn ($items) => $items->groupBy('subject_id')->map->max('allocation_hours')->sum());
+            ->map(fn ($items) => $items
+                ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                ->sum('allocation_hours'));
 
         $jpSummary = $gradeLevelOptions->map(fn ($g) => [
             'name' => $g->name,
             'total' => (float) ($jpTotals[$g->id] ?? 0),
         ])->values();
+
+        // Izin menyiapkan Peta TA baru: editor kurikulum (tim/koordinator kurikulum, super admin).
+        $canPrepare = app(KurikulumAccess::class)->isKurikulumEditor($request->user());
 
         return view('kurikulum.index', compact(
             'userId',
@@ -215,8 +231,113 @@ class KurikulumController extends Controller
             'gradeLevelOptions',
             'gradeLevelId',
             'canEditKktp',
+            'canPrepare',
+            'isArchive',
+            'activeAcademicYearId',
             'jpSummary'
         ));
+    }
+
+    /**
+     * ARSIP PETA KURIKULUM: siapkan Peta Kurikulum tahun ajaran tujuan dengan
+     * menyalin struktur (mapel × tingkat + JP) dan KKTP dari TA sumber.
+     * Idempoten — baris yang sudah ada pada TA tujuan tidak ditimpa, dan
+     * TA sumber tidak pernah diubah sehingga arsip lama tetap utuh.
+     */
+    public function siapkan(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $user = $request->user();
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumEditor($user),
+            403,
+            'Hanya tim kurikulum yang dapat menyiapkan Peta Kurikulum tahun ajaran baru.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'source_academic_year_id' => 'required|exists:academic_years,id|different:academic_year_id',
+        ]);
+
+        $targetAyId = $data['academic_year_id'];
+        $sourceAyId = $data['source_academic_year_id'];
+
+        $createdStructure = 0;
+        $createdKktp = 0;
+
+        DB::transaction(function () use ($schoolId, $targetAyId, $sourceAyId, $user, &$createdStructure, &$createdKktp) {
+            $sourceRows = GradeLevelSubject::query()
+                ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
+                ->where('is_active', true)
+                ->forAcademicYear($sourceAyId)
+                ->orderByAcademicYearFirst()
+                ->get()
+                ->unique(fn ($row) => $row->structureKey());
+
+            foreach ($sourceRows as $row) {
+                $exists = GradeLevelSubject::query()
+                    ->where('grade_level_id', $row->grade_level_id)
+                    ->where('subject_id', $row->subject_id)
+                    ->when($row->track === null, fn ($q) => $q->whereNull('track'), fn ($q) => $q->where('track', $row->track))
+                    ->where('academic_year_id', $targetAyId)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                GradeLevelSubject::create([
+                    'academic_year_id' => $targetAyId,
+                    'grade_level_id' => $row->grade_level_id,
+                    'subject_id' => $row->subject_id,
+                    'allocation_hours' => $row->allocation_hours,
+                    'track' => $row->track,
+                    'is_active' => true,
+                ]);
+
+                $createdStructure++;
+            }
+
+            $kktpRows = SubjectKktp::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->where('academic_year_id', $sourceAyId)
+                ->get();
+
+            foreach ($kktpRows as $kktp) {
+                $exists = SubjectKktp::query()
+                    ->where('subject_id', $kktp->subject_id)
+                    ->where('grade_level_id', $kktp->grade_level_id)
+                    ->where('academic_year_id', $targetAyId)
+                    ->where('semester', $kktp->semester)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                SubjectKktp::create([
+                    'subject_id' => $kktp->subject_id,
+                    'school_id' => $kktp->school_id,
+                    'grade_level_id' => $kktp->grade_level_id,
+                    'academic_year_id' => $targetAyId,
+                    'semester' => $kktp->semester,
+                    'kktp_score' => $kktp->kktp_score,
+                    'kkm_score' => $kktp->kkm_score,
+                    'notes' => $kktp->notes,
+                    'created_by' => $user?->id,
+                ]);
+
+                $createdKktp++;
+            }
+        });
+
+        $targetAy = AcademicYear::find($targetAyId);
+
+        return back()->with(
+            'success',
+            "Peta Kurikulum {$targetAy?->name} disiapkan: {$createdStructure} baris struktur dan {$createdKktp} KKTP disalin (TA sumber tidak diubah)."
+        );
     }
 
     /**

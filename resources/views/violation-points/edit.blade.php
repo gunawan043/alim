@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Edit Poin Pelanggaran @endsection
 
+@section('css')
+    @include('shared._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') GTK & Peserta Didik @endslot

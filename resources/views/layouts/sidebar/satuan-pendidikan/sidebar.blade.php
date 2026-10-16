@@ -951,6 +951,21 @@
         </li>
     @endif
 
+    @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi.']) ? ' active' : '' }}"
+               href="{{ route('waka.supervisi.index') }}">
+                <i class="ri-file-excel-2-line"></i><span>Supervisi Pembelajaran</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-instrumen.']) ? ' active' : '' }}"
+               href="{{ route('waka.supervisi-instrumen.index') }}">
+                <i class="ri-list-settings-line"></i><span>Instrumen Supervisi</span>
+            </a>
+        </li>
+    @endif
+
     @if($showAll || $isKoorMapel)
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kinerja.']) ? ' active' : '' }}"

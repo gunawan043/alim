@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Detail Poin Pelanggaran @endsection
 
+@section('css')
+    @include('shared._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') GTK & Peserta Didik @endslot
@@ -52,7 +56,7 @@
                         <div class="col-md-4">
                             <label class="text-muted small mb-1">Poin</label>
                             <div>
-                                <span class="badge bg-danger fs-6">{{ $violation->points }} Poin</span>
+                                <span class="badge bg-danger-subtle text-danger">{{ $violation->points }} Poin</span>
                             </div>
                         </div>
 

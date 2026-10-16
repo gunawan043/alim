@@ -27,8 +27,10 @@ class StudyGroupApiController extends Controller
 
         $this->ensureSchoolScope($request, $studyGroup->school_id);
 
-        // Students who already have an active class history (is_active = true)
+        // Kecualikan santri yang sudah aktif pada TAHUN AJARAN rombel ini saja —
+        // sebelumnya lintas TA sehingga daftar "Tarik Santri" bisa kosong.
         $assignedStudentIds = StudentClassHistory::where('is_active', true)
+            ->when($studyGroup->academic_year_id, fn ($q) => $q->where('academic_year_id', $studyGroup->academic_year_id))
             ->pluck('student_id');
 
         $query = Student::where('school_id', $studyGroup->school_id)
@@ -70,28 +72,33 @@ class StudyGroupApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Hanya wali kelas atau petugas berwenang yang dapat mengubah anggota rombel.'], 403);
         }
 
-        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+        // TA tujuan = TA rombel (bukan TA aktif global — penyebab santri "tidak masuk").
+        $targetAyId = $studyGroup->academic_year_id
+            ?: AcademicYear::where('is_active', true)->value('id');
 
-        // Deactivate any previous active history for this student
+        // Tutup histori aktif santri pada TA tujuan saja.
         StudentClassHistory::where('student_id', $request->student_id)
+            ->where('academic_year_id', $targetAyId)
             ->where('is_active', true)
-            ->update(['is_active' => false]);
+            ->update(['is_active' => false, 'leave_date' => now()->toDateString()]);
 
-        // Check if already has a record for this student + AY (may be inactive in a different SG)
+        // Pindahkan baris TA tujuan bila ada (idempoten — jangan buat duplikat).
         $exists = StudentClassHistory::where('student_id', $request->student_id)
-            ->where('academic_year_id', $activeAcademicYear?->id)
+            ->where('academic_year_id', $targetAyId)
             ->first();
 
         if ($exists) {
-            // Reactivate the existing record (move to this study group)
-            $exists->update([
+            $exists->forceFill([
                 'study_group_id' => $studyGroupId,
                 'is_active' => true,
-            ]);
+                'leave_date' => null,
+                'join_date' => $exists->join_date ?: now()->toDateString(),
+            ])->save();
             $history = $exists;
         } else {
             // Count existing active members
             $count = StudentClassHistory::where('study_group_id', $studyGroupId)
+                ->where('academic_year_id', $targetAyId)
                 ->where('is_active', true)
                 ->count();
 
@@ -99,7 +106,7 @@ class StudyGroupApiController extends Controller
                 'id' => (string) Str::uuid(),
                 'student_id' => $request->student_id,
                 'study_group_id' => $studyGroupId,
-                'academic_year_id' => $activeAcademicYear?->id,
+                'academic_year_id' => $targetAyId,
                 'is_active' => true,
                 'join_date' => now()->toDateString(),
                 'attendance_number' => $count + 1,
@@ -139,10 +146,13 @@ class StudyGroupApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Hanya wali kelas atau petugas berwenang yang dapat mengubah anggota rombel.'], 403);
         }
 
-        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+        // TA tujuan = TA rombel (bukan TA aktif global).
+        $targetAyId = $studyGroup->academic_year_id
+            ?: AcademicYear::where('is_active', true)->value('id');
 
         // Count existing active members
         $currentCount = StudentClassHistory::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $targetAyId)
             ->where('is_active', true)
             ->count();
 
@@ -150,33 +160,37 @@ class StudyGroupApiController extends Controller
         $now = now()->toDateString();
 
         foreach ($request->student_ids as $studentId) {
-            // Deactivate any previous active history for this student
+            // Tutup histori aktif santri pada TA tujuan saja.
             StudentClassHistory::where('student_id', $studentId)
+                ->where('academic_year_id', $targetAyId)
                 ->where('is_active', true)
-                ->update(['is_active' => false]);
+                ->update(['is_active' => false, 'leave_date' => $now]);
 
-            // Check if already has an active record for this study group + AY
+            // Pindahkan baris TA tujuan bila ada (idempoten).
             $exists = StudentClassHistory::where('student_id', $studentId)
-                ->where('study_group_id', $studyGroupId)
-                ->where('academic_year_id', $activeAcademicYear?->id)
-                ->where('is_active', true)
+                ->where('academic_year_id', $targetAyId)
                 ->first();
 
             if ($exists) {
-                $exists->update(['is_active' => true]);
+                $exists->forceFill([
+                    'study_group_id' => $studyGroupId,
+                    'is_active' => true,
+                    'leave_date' => null,
+                    'join_date' => $exists->join_date ?: $now,
+                ])->save();
             } else {
                 $currentCount++;
                 StudentClassHistory::create([
                     'id' => (string) Str::uuid(),
                     'student_id' => $studentId,
                     'study_group_id' => $studyGroupId,
-                    'academic_year_id' => $activeAcademicYear?->id,
+                    'academic_year_id' => $targetAyId,
                     'is_active' => true,
                     'join_date' => $now,
                     'attendance_number' => $currentCount,
                 ]);
-                $added++;
             }
+            $added++;
         }
 
         return response()->json([

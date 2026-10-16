@@ -97,7 +97,7 @@ class CetakDokumenKurikulumController extends Controller
         $semesterInt = $atp->semester === 'genap' ? 2 : 1;
         $summary = $this->pekanService->summary($atp->school_id, $atp->academic_year_id, $semesterInt);
         $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
-        $weeklyHours = $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id);
+        $weeklyHours = $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id, $atp->academic_year_id);
         $jpEfektif = $weeklyHours * $mingguEfektif;
         $jpTerpakai = (int) $atp->items->sum('jp_alokasi');
 

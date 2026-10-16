@@ -7,16 +7,7 @@
 @endphp
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
-    <style>
-        .card-animate {
-            transition: all 0.3s ease;
-        }
-
-        .card-animate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-        }
-    </style>
+    @include('shared._styles')
 @endsection
 
 @section('content')
@@ -35,6 +26,15 @@
             @endif
         @endslot
     @endcomponent
+
+    @if($isFilteredByClass && $studyGroup && $studyGroup->academic_year_id !== \App\Models\AcademicYear::where('is_active', true)->value('id'))
+        <div class="alert alert-info py-2 px-3 small" role="alert">
+            <i class="ri-archive-line me-1"></i>
+            Menampilkan <strong>arsip rombel</strong> tahun ajaran
+            <strong>{{ $studyGroup->academicYear?->name ?? '-' }}</strong> — termasuk santri yang sudah pindah/naik kelas.
+            Data nilai &amp; presensi tahun ajaran tersebut tetap tersimpan.
+        </div>
+    @endif
 
     @if (session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -392,12 +392,12 @@
                             <input type="hidden" name="study_group_id" value="{{ $studyGroup->id }}">
                         @endif
 
-                        <div class="{{ $isFilteredByClass ? 'col-md-8' : 'col-md-6' }}">
+                        <div class="col-md-6">
                             <input type="text" name="search" class="form-control"
                                 placeholder="Cari nama, NISN, NIS, NIK..." value="{{ request('search') }}">
                         </div>
 
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <select name="status" class="form-select">
                                 <option value="">Semua Status</option>
                                 <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Aktif
@@ -474,18 +474,6 @@
                                         @endif
 
                                         @if (!$isFilteredByClass)
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Gender</label>
-                                                <select name="gender" class="form-select">
-                                                    <option value="">Semua Gender</option>
-                                                    <option value="L"
-                                                        {{ request('gender') === 'L' ? 'selected' : '' }}>Laki-laki
-                                                    </option>
-                                                    <option value="P"
-                                                        {{ request('gender') === 'P' ? 'selected' : '' }}>Perempuan
-                                                    </option>
-                                                </select>
-                                            </div>
                                             <div class="col-md-6">
                                                 <label class="form-label fw-semibold small">Tingkat</label>
                                                 <select name="grade_level_id" class="form-select">
@@ -585,7 +573,7 @@
                     <div class="d-flex flex-wrap align-items-center">
                         <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
                         <a href="{{ request()->fullUrlWithQuery(['status' => null, 'gender' => null, 'is_pip_eligible' => null, 'alumni_filter' => null, 'page' => null]) }}"
-                           class="filter-badge {{ !request('status') && !request('gender') && !request('is_pip_eligible') && !request('alumni_filter') ? 'active' : '' }}">Semua</a>
+                           class="filter-badge {{ !request('status') && !request('is_pip_eligible') && !request('alumni_filter') ? 'active' : '' }}">Semua</a>
                         <a href="{{ request()->fullUrlWithQuery(['status' => 'active', 'page' => null]) }}"
                            class="filter-badge {{ request('status') === 'active' ? 'active' : '' }}"><i class="ri-checkbox-circle-line"></i>Aktif</a>
                         <a href="{{ request()->fullUrlWithQuery(['status' => 'transfer_in', 'page' => null]) }}"
@@ -594,11 +582,6 @@
                            class="filter-badge {{ request('status') === 'transfer_out' ? 'active' : '' }}"><i class="ri-logout-box-line"></i>Pindahan Keluar</a>
                         <a href="{{ request()->fullUrlWithQuery(['status' => 'graduate', 'page' => null]) }}"
                            class="filter-badge {{ request('status') === 'graduate' ? 'active' : '' }}"><i class="ri-graduation-cap-line"></i>Lulus</a>
-                        <span class="text-muted small ms-2 me-2">·</span>
-                        <a href="{{ request()->fullUrlWithQuery(['gender' => 'L', 'page' => null]) }}"
-                           class="filter-badge {{ request('gender') === 'L' ? 'active' : '' }}"><i class="ri-men-line"></i>Laki-laki</a>
-                        <a href="{{ request()->fullUrlWithQuery(['gender' => 'P', 'page' => null]) }}"
-                           class="filter-badge {{ request('gender') === 'P' ? 'active' : '' }}"><i class="ri-women-line"></i>Perempuan</a>
                         <a href="{{ request()->fullUrlWithQuery(['is_pip_eligible' => '1', 'page' => null]) }}"
                            class="filter-badge {{ request('is_pip_eligible') ? 'active' : '' }}"><i class="ri-hand-coin-line"></i>Penerima PIP</a>
                     </div>
@@ -606,9 +589,10 @@
 
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-freeze mb-0">
-                        <thead class="table-light text-muted">
+                        <thead class="table-light">
                             <tr>
-                                <th>#</th>
+                                <th style="width:50px">#</th>
+                                <th style="width:56px">Foto</th>
                                 <th>Nama</th>
                                 <th>NISN</th>
                                 <th>JK</th>
@@ -621,12 +605,36 @@
                         <tbody>
                             @forelse($students as $s)
                                 <tr>
-                                    <td>{{ $loop->iteration + ($students->currentPage() - 1) * $students->perPage() }}</td>
+                                    <td class="text-muted">{{ $loop->iteration + ($students->currentPage() - 1) * $students->perPage() }}</td>
+                                    <td>
+                                        @if ($s->photo_url)
+                                            <img src="{{ $s->photo_url }}" alt="{{ $s->name }}"
+                                                 class="rounded-circle object-fit-cover" style="width:36px;height:36px;">
+                                        @else
+                                            @php
+                                                $__words = preg_split('/\s+/', trim((string) $s->name)) ?: [];
+                                                $__initials = strtoupper(mb_substr($__words[0] ?? '', 0, 1) . (count($__words) > 1 ? mb_substr($__words[count($__words) - 1], 0, 1) : ''));
+                                            @endphp
+                                            <span class="avatar-xs">
+                                                <span class="avatar-title rounded-circle {{ $s->gender === 'P' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary' }}"
+                                                      style="font-size:.65rem;">{{ $__initials }}</span>
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $s->id]) }}"
                                             class="fw-medium link-primary">
                                             {{ $s->name }}
                                         </a>
+                                        @php
+                                            $selectedRombelHistory = request('study_group_id')
+                                                ? $s->classHistories->firstWhere('study_group_id', request('study_group_id'))
+                                                : null;
+                                        @endphp
+                                        @if($selectedRombelHistory && ! $selectedRombelHistory->is_active)
+                                            <span class="badge bg-secondary-subtle text-secondary ms-1"
+                                                  title="Sudah pindah/naik dari rombel ini — data tetap tersimpan sebagai arsip">Pindah</span>
+                                        @endif
                                     </td>
                                     <td><code>{{ $s->nisn }}</code></td>
                                     <td>
@@ -703,22 +711,15 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <div class="avatar-lg mx-auto mb-3">
-                                            <div class="avatar-title bg-light rounded-circle">
-                                                <i class="ri-user-follow-line fs-1 text-muted"></i>
-                                            </div>
-                                        </div>
-                                        <h5 class="text-muted">Belum ada data santri</h5>
-                                        @unless($isDormitoryUser ?? false)
-                                            <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
-                                                class="btn btn-success">
-                                                <i class="ri-add-line me-1"></i>Tambah Santri
-                                            </a>
-                                        @endunless
-                                    </td>
-                                </tr>
+                                <x-empty-state colspan="9"
+                                    title="Belum ada data santri"
+                                    message="Data santri yang ditambahkan akan tampil di sini.">
+                                    @unless($isDormitoryUser ?? false)
+                                        <a href="{{ route('user.students.create', ['userId' => $userId]) }}" class="btn btn-success mt-3">
+                                            <i class="ri-add-line me-1"></i>Tambah Santri
+                                        </a>
+                                    @endunless
+                                </x-empty-state>
                             @endforelse
                         </tbody>
                     </table>

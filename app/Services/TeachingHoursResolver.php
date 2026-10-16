@@ -26,12 +26,14 @@ class TeachingHoursResolver
     /**
      * @param  int|float|string|null  $assignmentHours  JP dari teaching_assignments (bila ada)
      * @param  string|null  $gradeLevelId  Jenjang (bila tidak dipanggil dari konteks kelas)
+     * @param  string|null  $academicYearId  Tahun ajaran konteks (arsip periode Peta Kurikulum)
      */
     public function resolve(
         ?StudyGroup $studyGroup,
         ?Subject $subject,
         int|float|string|null $assignmentHours = null,
         ?string $gradeLevelId = null,
+        ?string $academicYearId = null,
     ): int {
         $hours = (int) $assignmentHours;
         if ($hours > 0) {
@@ -55,12 +57,15 @@ class TeachingHoursResolver
         }
 
         $gradeLevelId = $gradeLevelId ?: $studyGroup?->grade_level_id;
+        $academicYearId = $academicYearId ?: $studyGroup?->academic_year_id;
 
         if ($gradeLevelId) {
             $hours = (int) GradeLevelSubject::query()
                 ->where('grade_level_id', $gradeLevelId)
                 ->where('subject_id', $subject->id)
                 ->where('is_active', true)
+                ->forAcademicYear($academicYearId)
+                ->orderByAcademicYearFirst()
                 ->value('allocation_hours');
 
             if ($hours > 0) {

@@ -427,7 +427,7 @@ class PekanEfektifService
                     continue;
                 }
 
-                $weeklyHours = $this->hoursResolver->resolve($studyGroup, $gradeSubject->subject);
+                $weeklyHours = $this->hoursResolver->resolve($studyGroup, $gradeSubject->subject, null, null, $academicYearId);
                 $seenSubjects[$gradeSubject->subject_id] = true;
                 $rows[] = $this->jpRow($gradeSubject->subject, null, $weeklyHours, $mingguEfektif);
             }
@@ -447,7 +447,7 @@ class PekanEfektifService
         $summary = $this->summary($schoolId, $academicYearId, $semester);
         $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
 
-        $weeklyHours = $this->hoursResolver->resolve(null, $subject, null, $gradeLevelId);
+        $weeklyHours = $this->hoursResolver->resolve(null, $subject, null, $gradeLevelId, $academicYearId);
 
         return $weeklyHours * $mingguEfektif;
     }

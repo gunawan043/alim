@@ -11,7 +11,16 @@
             'C5_mengevaluasi' => 'C5 — Mengevaluasi',
             'C6_mencita' => 'C6 — Mencipta',
         ];
+        $bentukSoalOptions = [
+            'pg' => 'Pilihan Ganda',
+            'mcc' => 'PG Kompleks',
+            'bs' => 'Benar/Salah',
+            'jodoh' => 'Menjodohkan',
+            'isian' => 'Isian',
+            'uraian' => 'Uraian',
+        ];
     @endphp
+
     @component('components.breadcrumb')
         @slot('li_1') Kisi-kisi @endslot
         @slot('li_2') Edit @endslot
@@ -87,7 +96,7 @@
             <div class="card-body">
                 <table class="table table-bordered" id="items-table">
                     <thead>
-                        <tr><th>TP</th><th>Level</th><th>Jumlah</th><th>Bobot</th><th>Aksi</th></tr>
+                        <tr><th>Indikator (TP)</th><th>Materi</th><th>Bentuk Soal</th><th>Nomor Soal</th><th>Level</th><th>Jumlah</th><th>Bobot</th><th>Aksi</th></tr>
                     </thead>
                     <tbody id="items-tbody">
                         @foreach($kisi->items as $idx => $item)
@@ -108,13 +117,23 @@
                                     @endforeach
                                 </select>
                             </td>
-                            <td>
+                                <td><input type="text" name="items[{{ $idx }}][materi]" class="form-control form-control-sm" value="{{ old('items.'.$idx.'.materi', $item->materi) }}" maxlength="255" placeholder="Materi"></td>
+                                <td>
+                                    <select name="items[{{ $idx }}][bentuk_soal]" class="form-select form-select-sm">
+                                        <option value="">--</option>
+                                        @foreach($bentukSoalOptions as $bsKey => $bsLabel)
+                                            <option value="{{ $bsKey }}" {{ old('items.'.$idx.'.bentuk_soal', $item->bentuk_soal) === $bsKey ? 'selected' : '' }}>{{ $bsLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td><input type="text" name="items[{{ $idx }}][nomor_soal]" class="form-control form-control-sm" value="{{ old('items.'.$idx.'.nomor_soal', $item->nomor_soal) }}" maxlength="40" placeholder="mis. 1-5"></td>
+                                <td>
                                 <select name="items[{{ $idx }}][level_kognitif]" class="form-select form-select-sm" required>
                                     @foreach($levelOptions as $lvl => $lvlLabel)
                                         <option value="{{ $lvl }}" {{ $item->level_kognitif===$lvl ? 'selected':'' }}>{{ $lvlLabel }}</option>
                                     @endforeach
                                 </select>
-                            </td>
+                                </td>
                             <td><input type="number" name="items[{{ $idx }}][jumlah_soal]" class="form-control form-control-sm" value="{{ $item->jumlah_soal }}" min="1" required></td>
                             <td><input type="number" step="0.01" name="items[{{ $idx }}][bobot_per_soal]" class="form-control form-control-sm" value="{{ $item->bobot_per_soal }}" min="0" required></td>
                             <td><button type="button" class="btn btn-sm btn-danger btn-remove-item"><i class="ri-delete-bin-line"></i></button></td>
@@ -135,11 +154,20 @@
 @push('script')
 <script>
 let itemIdx = {{ count($kisi->items) }};
+const bentukSoalOptions = `
+    @foreach($bentukSoalOptions as $bsKey => $bsLabel)
+        <option value="{{ $bsKey }}">{{ $bsLabel }}</option>
+    @endforeach
+`;
+
 const tpOptionsHtml = `@foreach($tps as $tp)<option value="{{ $tp->id }}" data-subject-id="{{ $tp->subject_id }}" data-grade-level-id="{{ $tp->grade_level_id }}">{{ $tp->kode_tp ? $tp->kode_tp.' — ' : '' }}{{ \Illuminate\Support\Str::limit($tp->deskripsi ?? $tp->id, 60) }}</option>@endforeach`;
 document.getElementById('btn-add-item').addEventListener('click', () => {
     const tbody = document.getElementById('items-tbody');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><select name="items[${itemIdx}][tp_id]" class="form-select form-select-sm" data-tp-select><option value="">-- Pilih --</option>${tpOptionsHtml}</select></td>
+        <td><input type="text" name="items[${itemIdx}][materi]" class="form-control form-control-sm" maxlength="255" placeholder="Materi"></td>
+        <td><select name="items[${itemIdx}][bentuk_soal]" class="form-select form-select-sm"><option value="">--</option>${bentukSoalOptions}</select></td>
+        <td><input type="text" name="items[${itemIdx}][nomor_soal]" class="form-control form-control-sm" maxlength="40" placeholder="mis. 1-5"></td>
         <td><select name="items[${itemIdx}][level_kognitif]" class="form-select form-select-sm">@foreach($levelOptions as $lvl => $lvlLabel)<option value="{{ $lvl }}">{{ $lvlLabel }}</option>@endforeach</select></td>
         <td><input type="number" name="items[${itemIdx}][jumlah_soal]" class="form-control form-control-sm" value="1" min="1" required></td>
         <td><input type="number" step="0.01" name="items[${itemIdx}][bobot_per_soal]" class="form-control form-control-sm" value="0" min="0" required></td>

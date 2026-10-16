@@ -177,6 +177,9 @@ class KisiKisiKonteksTest extends TestCase
             'items' => [[
                 'tp_id' => $this->tpMatematika->id,
                 'level_kognitif' => 'C6_mencipta',
+                'materi' => 'Operasi bilangan bulat',
+                'bentuk_soal' => 'pg',
+                'nomor_soal' => '1-2',
                 'jumlah_soal' => 2,
                 'bobot_per_soal' => 5,
             ]],
@@ -201,6 +204,19 @@ class KisiKisiKonteksTest extends TestCase
         $item = KisiKisiItem::where('kisi_kisi_soal_id', $kisi->id)->first();
         $this->assertNotNull($item);
         $this->assertSame('C6_mencita', $item->level_kognitif);
+        $this->assertSame('Operasi bilangan bulat', $item->materi);
+        $this->assertSame('pg', $item->bentuk_soal);
+        $this->assertSame('1-2', $item->nomor_soal);
+
+        // Halaman detail menampilkan format kolom kebijakan:
+        // No | Indikator | Materi | Bentuk Soal | Nomor Soal | Level Kognitif.
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kisi-kisi-soal/{$kisi->id}")
+            ->assertOk()
+            ->assertSee('Bentuk Soal')
+            ->assertSee('Nomor Soal')
+            ->assertSee('Operasi bilangan bulat')
+            ->assertSee('Pilihan Ganda');
     }
 
     public function test_halaman_edit_kisi_kisi_memuat_field_mapel_dan_update_berhasil(): void
@@ -233,7 +249,9 @@ class KisiKisiKonteksTest extends TestCase
             ->get("/{$this->guru->id}/kisi-kisi-soal/{$kisi->id}/edit")
             ->assertOk()
             ->assertSee('subject-select')
-            ->assertSee('Matematika');
+            ->assertSee('Matematika')
+            ->assertSee('Bentuk Soal')
+            ->assertSee('Nomor Soal');
 
         $this->actingAs($this->guru)
             ->put("/{$this->guru->id}/kisi-kisi-soal/{$kisi->id}", [
@@ -248,6 +266,9 @@ class KisiKisiKonteksTest extends TestCase
                     'id' => $item->id,
                     'tp_id' => $this->tpMatematika->id,
                     'level_kognitif' => 'C6_mencipta',
+                    'materi' => 'Statistika dasar',
+                    'bentuk_soal' => 'uraian',
+                    'nomor_soal' => '3',
                     'jumlah_soal' => 3,
                     'bobot_per_soal' => 5,
                 ]],
@@ -257,6 +278,9 @@ class KisiKisiKonteksTest extends TestCase
         $this->assertSame('Kisi-kisi diperbarui', $kisi->fresh()->judul);
         $this->assertSame('C6_mencita', $item->fresh()->level_kognitif);
         $this->assertSame(3, $item->fresh()->jumlah_soal);
+        $this->assertSame('Statistika dasar', $item->fresh()->materi);
+        $this->assertSame('uraian', $item->fresh()->bentuk_soal);
+        $this->assertSame('3', $item->fresh()->nomor_soal);
     }
 
     private function makeUser(string $name, string $email, string $jabatan = 'Guru Umum'): User

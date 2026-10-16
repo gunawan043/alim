@@ -30,24 +30,50 @@ class BulkPromotionController extends Controller
 
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
 
-        $activeSemester = AcademicYear::where('is_active', true)->value('semester');
-        $query = StudyGroup::with(['gradeLevel', 'academicYear'])
+        // Tahun ajaran asal & tingkat asal rombel.
+        $fromAyId = $studyGroup?->academic_year_id;
+        $fromAy = $fromAyId ? AcademicYear::find($fromAyId) : null;
+        $fromLevel = $studyGroup?->gradeLevel?->level ?? 0;
+
+        // KEBIJAKAN: kenaikan kelas HANYA ke TAHUN AJARAN BARU (bukan TA yang sama —
+        // pindah kelas pada TA yang sama adalah fitur Mutasi Kelas).
+        $targetAcademicYears = $academicYears->filter(function ($ay) use ($fromAy) {
+            if (! $fromAy) {
+                return true;
+            }
+
+            return ($ay->year_start ?? (int) substr($ay->name, 0, 4)) > ($fromAy->year_start ?? (int) substr($fromAy->name, 0, 4));
+        })->values();
+
+        // Rombel tujuan: hanya rombel aktif pada TA yang LEBIH BARU dan TINGKAT DI ATAS saat ini.
+        $allStudyGroups = StudyGroup::with(['gradeLevel', 'academicYear'])
             ->where('is_active', true)
-            ->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
-        if ($schoolContextId) {
-            $query->where('school_id', $schoolContextId);
-        }
-        $allStudyGroups = $query->orderBy('name')->get();
+            ->when($schoolContextId, fn ($q) => $q->where('school_id', $schoolContextId))
+            ->whereIn('academic_year_id', $targetAcademicYears->pluck('id'))
+            ->when($fromLevel > 0, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('level', '>', $fromLevel)))
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($sg) => [
+                'id' => $sg->id,
+                'name' => $sg->name,
+                'academic_year_id' => $sg->academic_year_id,
+                'academic_year' => $sg->academicYear?->name,
+                'grade_level_id' => $sg->grade_level_id,
+                'grade_level' => $sg->gradeLevel?->level,
+            ]);
 
         $students = collect([]);
         $isFinalGrade = false;
 
         if ($studyGroup) {
-            $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+            // Gunakan tahun ajaran ROMBEL terpilih — bukan TA aktif global —
+            // agar kelas tujuan (mis. 2A di TA baru) tetap menampilkan datanya.
+            $historyAyId = $studyGroup->academic_year_id
+                ?: AcademicYear::where('is_active', true)->value('id');
 
             $studentIds = StudentClassHistory::where('study_group_id', $studyGroup->id)
                 ->where('is_active', true)
-                ->when($activeAcademicYear, fn ($q) => $q->where('academic_year_id', $activeAcademicYear->id))
+                ->when($historyAyId, fn ($q) => $q->where('academic_year_id', $historyAyId))
                 ->pluck('student_id');
 
             $students = Student::whereIn('id', $studentIds)
@@ -67,8 +93,13 @@ class BulkPromotionController extends Controller
 
         return view('bulk-promotion.index', compact(
             'userId', 'studyGroup', 'students', 'isFinalGrade',
-            'schools', 'academicYears', 'schoolContextId', 'allStudyGroups',
-        ));
+            'schools', 'academicYears', 'schoolContextId', 'allStudyGroups', 'targetAcademicYears',
+        ) + [
+            'fromAyId' => $studyGroup?->academic_year_id,
+            'fromLevel' => $studyGroup?->gradeLevel?->level ?? 0,
+            'fromAyName' => $fromAy?->name,
+            'fromRombelName' => $studyGroup?->name,
+        ]);
     }
 
     public function store(Request $request, string $userId, string $studyGroupId)
@@ -89,26 +120,45 @@ class BulkPromotionController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $fromAyId = AcademicYear::where('is_active', true)->value('id');
+        // TA asal = TA rombel sumber (bukan TA aktif global — itu penyebab
+        // histori lama tidak tertutup dan kelas tujuan tampak kosong).
+        $fromAyId = $studyGroup->academic_year_id
+            ?: AcademicYear::where('is_active', true)->value('id');
 
         $toAyId = $validated['to_academic_year_id'];
         $toStudyGroupId = $validated['to_study_group_id'] ?? null;
         $promotionDate = $validated['promotion_date'];
         $results = ['success' => 0, 'failed' => 0];
 
-        // Hitung target rombel dulu (di luar transaction supaya bisa dibaca untuk redirect)
-        $targetSgId = $toStudyGroupId;
+        // KEBIJAKAN: kenaikan kelas hanya ke TAHUN AJARAN BARU. Pindah kelas pada TA
+        // yang sama bukan kenaikan kelas → gunakan fitur Mutasi Kelas.
+        $fromAy = AcademicYear::find($fromAyId);
+        $toAy = AcademicYear::find($toAyId);
+
+        $fromStart = $fromAy?->year_start ?? ($fromAy ? (int) substr((string) $fromAy->name, 0, 4) : 0);
+        $toStart = $toAy?->year_start ?? ($toAy ? (int) substr((string) $toAy->name, 0, 4) : 0);
+
+        if ($toStart <= $fromStart) {
+            return back()->withInput()->withErrors([
+                'to_academic_year_id' => 'Kenaikan kelas hanya ke TAHUN AJARAN BARU. Untuk pindah kelas pada tahun ajaran yang sama gunakan fitur Mutasi Kelas.',
+            ]);
+        }
+
+        if ($toStudyGroupId && (string) $toStudyGroupId === (string) $studyGroup->id) {
+            return back()->withInput()->withErrors([
+                'to_study_group_id' => 'Rombel tujuan sama dengan rombel saat ini.',
+            ]);
+        }
+
+        // Rombel tujuan: pilihan manual, atau paralel otomatis pada TA baru (1A → 2A).
+        $targetSgId = $toStudyGroupId ?: $this->targetStudyGroupId($studyGroup, $toAyId);
+
+        // WAJIB ada target SEBELUM mengubah data apa pun — mencegah santri
+        // kehilangan kelas (histori lama ditutup tanpa baris baru).
         if (! $targetSgId) {
-            $fromLevel = $studyGroup->gradeLevel?->level ?? 0;
-            $targetLevel = $fromLevel + 1;
-            $targetGradeLevel = GradeLevel::where('school_id', $studyGroup->school_id)
-                ->where('level', $targetLevel)->first();
-            if ($targetGradeLevel) {
-                $targetSgId = StudyGroup::where('school_id', $studyGroup->school_id)
-                    ->where('academic_year_id', $toAyId)
-                    ->where('grade_level_id', $targetGradeLevel->id)
-                    ->first()?->id;
-            }
+            return back()->withInput()->withErrors([
+                'to_study_group_id' => 'Rombel tujuan tidak ditemukan pada tahun ajaran baru. Buat rombel tingkat di atasnya terlebih dahulu — tidak ada data yang diubah.',
+            ]);
         }
 
         DB::transaction(function () use ($fromAyId, $toAyId, $targetSgId, $promotionDate, &$results, $validated) {
@@ -118,19 +168,16 @@ class BulkPromotionController extends Controller
                     continue;
                 }
 
-                // Tutup histori lama
+                // 1) Buat/pastikan enrollment BARU pada TA baru terlebih dahulu.
+                $this->enrollStudent($studentId, $targetSgId, $toAyId, $promotionDate);
+
+                // 2) Baru tutup histori lama (histori lama TETAP tersimpan dengan leave_date).
                 StudentClassHistory::where('student_id', $studentId)
                     ->where('academic_year_id', $fromAyId)
                     ->where('is_active', true)
                     ->update(['is_active' => false, 'leave_date' => $promotionDate]);
 
-                // Promote — global atau auto-detect
-                if ($targetSgId) {
-                    $this->enrollStudent($studentId, $targetSgId, $toAyId, $promotionDate);
-                    $results['success']++;
-                } else {
-                    $results['failed']++;
-                }
+                $results['success']++;
             }
         });
 
@@ -145,19 +192,74 @@ class BulkPromotionController extends Controller
         ])->with('success', $msg);
     }
 
-    private function enrollStudent(string $studentId, string $studyGroupId, string $academicYearId, string $promotionDate): void
+    /**
+     * Rombel tujuan otomatis: utamakan KELAS PARALEL yang sama (1A → 2A),
+     * fallback ke rombel pertama pada tingkat tujuan. Sebelumnya memakai
+     * rombel pertama tanpa memperhatikan nama paralel sehingga 2A kosong.
+     */
+    private function targetStudyGroupId(StudyGroup $from, string $toAyId, int $gradeShift = 1): ?string
     {
-        $alreadyEnrolled = StudentClassHistory::where('student_id', $studentId)
-            ->where('academic_year_id', $academicYearId)
-            ->exists();
+        $fromLevel = $from->gradeLevel?->level ?? 0;
+        $targetLevel = $fromLevel + $gradeShift;
 
-        if ($alreadyEnrolled) {
-            return;
+        $targetGradeLevel = GradeLevel::where('school_id', $from->school_id)
+            ->where('level', $targetLevel)
+            ->first();
+
+        if (! $targetGradeLevel) {
+            return null;
         }
+
+        $base = StudyGroup::where('school_id', $from->school_id)
+            ->where('academic_year_id', $toAyId)
+            ->where('grade_level_id', $targetGradeLevel->id)
+            ->where('is_active', true);
+
+        // Suffix paralel dari nama sumber: '1A' → 'A', '7-B' → 'B'.
+        $suffix = preg_replace('/^\d+[\s\-_.]*/u', '', (string) $from->name);
+
+        if ($suffix !== '') {
+            $parallel = (clone $base)->where('name', $targetLevel.$suffix)->value('id');
+            if ($parallel) {
+                return $parallel;
+            }
+
+            $suffixMatch = (clone $base)->where('name', 'like', '%'.$suffix)->value('id');
+            if ($suffixMatch) {
+                return $suffixMatch;
+            }
+        }
+
+        return $base->orderBy('name')->value('id');
+    }
+
+    /**
+     * Enroll student ke rombel tujuan secara IDEMPOTEN:
+     * bila sudah ada baris untuk TA tujuan, baris itu dipindahkan/diaktifkan
+     * (sebelumnya hanya `exists()` lalu return diam → kelas tujuan kosong).
+     */
+    private function enrollStudent(string $studentId, string $studyGroupId, string $academicYearId, string $promotionDate): bool
+    {
+        $existing = StudentClassHistory::where('student_id', $studentId)
+            ->where('academic_year_id', $academicYearId)
+            ->first();
 
         $count = StudentClassHistory::where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $academicYearId)
             ->count();
+
+        if ($existing) {
+            // Sudah ada baris pada TA tujuan → pindahkan/aktifkan (idempoten).
+            $existing->forceFill([
+                'study_group_id' => $studyGroupId,
+                'is_active' => true,
+                'leave_date' => null,
+                'join_date' => $existing->join_date ?: $promotionDate,
+                'attendance_number' => $existing->attendance_number ?: ($count + 1),
+            ])->save();
+
+            return true;
+        }
 
         StudentClassHistory::create([
             'student_id' => $studentId,
@@ -167,6 +269,8 @@ class BulkPromotionController extends Controller
             'join_date' => $promotionDate,
             'attendance_number' => $count + 1,
         ]);
+
+        return true;
     }
 
     /**
@@ -230,7 +334,9 @@ class BulkPromotionController extends Controller
             abort(403);
         }
 
-        $fromAyId = AcademicYear::where('is_active', true)->value('id');
+        // TA asal = TA rombel sumber (bukan TA aktif global).
+        $fromAyId = $fromStudyGroup->academic_year_id
+            ?: AcademicYear::where('is_active', true)->value('id');
 
         $toAyId = $validated['to_academic_year_id'];
         $promotionDate = $validated['promotion_date'];
@@ -239,9 +345,21 @@ class BulkPromotionController extends Controller
 
         $toStudyGroupId = $validated['to_study_group_id'] ?? null;
 
+        $isSameYear = (string) $toAyId === (string) $fromAyId;
+
+        // Aksi promote pada TA yang sama = mutasi kelas → bukan ranah kenaikan kelas.
+        // (Aksi graduate/mutate_out/retain/skip tetap boleh.)
+        $hasPromoteAction = empty($studentActions) || in_array('promote', array_values($studentActions), true);
+
+        if ($isSameYear && $hasPromoteAction) {
+            return back()->withInput()->withErrors([
+                'to_academic_year_id' => 'Kenaikan kelas hanya ke TAHUN AJARAN BARU. Untuk pindah kelas pada tahun ajaran yang sama gunakan fitur Mutasi Kelas.',
+            ]);
+        }
+
         $results = ['success' => 0, 'failed' => 0, 'skipped' => 0];
 
-        DB::transaction(function () use ($validated, $fromStudyGroup, $fromAyId, $toAyId, $promotionDate, $studentActions, $gradeShift, $toStudyGroupId, &$results) {
+        DB::transaction(function () use ($validated, $fromStudyGroup, $fromAyId, $toAyId, $promotionDate, $studentActions, $gradeShift, $toStudyGroupId, $isSameYear, &$results) {
             foreach ($validated['student_ids'] as $studentId) {
                 $action = $studentActions[$studentId] ?? 'promote';
 
@@ -330,63 +448,54 @@ class BulkPromotionController extends Controller
 
                 // Naik kelas (promote)
                 if ($action === 'promote') {
-                    $targetSgId = $toStudyGroupId;
 
-                    if (! $targetSgId) {
-                        $fromLevel = $fromStudyGroup->gradeLevel?->level ?? 0;
-                        $targetLevel = $fromLevel + $gradeShift;
-
-                        $targetGradeLevel = GradeLevel::where('school_id', $fromStudyGroup->school_id)
-                            ->where('level', $targetLevel)
-                            ->first();
-
-                        if ($targetGradeLevel) {
-                            $targetSgId = StudyGroup::where('school_id', $fromStudyGroup->school_id)
-                                ->where('academic_year_id', $toAyId)
-                                ->where('grade_level_id', $targetGradeLevel->id)
-                                ->value('id');
-                        }
-                    }
+                    // Rombel tujuan: pilihan manual, atau paralel otomatis (1A → 2A).
+                    $targetSgId = $toStudyGroupId ?: $this->targetStudyGroupId($fromStudyGroup, $toAyId, $gradeShift);
 
                     if ($targetSgId) {
-                        $alreadyEnrolled = StudentClassHistory::where('student_id', $studentId)
-                            ->where('academic_year_id', $toAyId)
-                            ->exists();
-
                         $targetGroup = StudyGroup::find($targetSgId);
+
+                        // Baris santri pada TA tujuan (pada TA yang sama, ini bisa
+                        // merupakan baris SUMBER itu sendiri — jangan dianggap "sudah enroll").
+                        $existing = StudentClassHistory::where('student_id', $studentId)
+                            ->where('academic_year_id', $toAyId)
+                            ->first();
+
+                        $alreadyAtTarget = $existing
+                            && (string) $existing->study_group_id === (string) $targetSgId
+                            && (bool) $existing->is_active;
+
+                        if ($alreadyAtTarget) {
+                            // Sudah benar-benar di rombel tujuan → idempoten.
+                            $results['success']++;
+
+                            continue;
+                        }
+
+                        // Kapasitas target dihitung tanpa baris santri ini.
                         $targetCount = StudentClassHistory::where('study_group_id', $targetSgId)
                             ->where('academic_year_id', $toAyId)
                             ->where('is_active', true)
+                            ->when($existing && (string) $existing->study_group_id === (string) $targetSgId,
+                                fn ($q) => $q->where('student_id', '!=', $studentId))
                             ->count();
 
-                        if (! $alreadyEnrolled && $targetGroup && $targetGroup->capacity > 0 && $targetCount >= $targetGroup->capacity) {
+                        if ($targetGroup && $targetGroup->capacity > 0 && $targetCount >= $targetGroup->capacity) {
                             $results['failed']++;
 
                             continue;
                         }
 
-                        if (! $alreadyEnrolled) {
-                            StudentClassHistory::where('student_id', $studentId)
-                                ->where('academic_year_id', $fromAyId)
-                                ->where('is_active', true)
-                                ->update(['is_active' => false, 'leave_date' => $promotionDate]);
+                        // Tutup histori lama pada TA ASAL (bila TA sama, jangan sentuh baris target).
+                        StudentClassHistory::where('student_id', $studentId)
+                            ->where('academic_year_id', $fromAyId)
+                            ->where('is_active', true)
+                            ->when($toAyId === $fromAyId, fn ($q) => $q->where('study_group_id', '!=', $targetSgId))
+                            ->update(['is_active' => false, 'leave_date' => $promotionDate]);
 
-                            $count = StudentClassHistory::where('study_group_id', $targetSgId)
-                                ->where('academic_year_id', $toAyId)
-                                ->count();
-
-                            StudentClassHistory::create([
-                                'student_id' => $studentId,
-                                'study_group_id' => $targetSgId,
-                                'academic_year_id' => $toAyId,
-                                'is_active' => true,
-                                'join_date' => $promotionDate,
-                                'attendance_number' => $count + 1,
-                            ]);
-                            $results['success']++;
-                        } else {
-                            $results['failed']++;
-                        }
+                        // Idempoten: buat atau pindahkan baris TA tujuan.
+                        $this->enrollStudent($studentId, $targetSgId, $toAyId, $promotionDate);
+                        $results['success']++;
                     } else {
                         $results['failed']++;
                     }

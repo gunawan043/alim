@@ -2,13 +2,7 @@
 @section('title') Supervisi @endsection
 
 @section('css')
-    <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
-    <style>
-        .badge-soft-info    { background: #e0f2fe; color: #075985; }
-        .badge-soft-warning { background: #fef3c7; color: #92400e; }
-        .badge-soft-success { background: #d1fae5; color: #065f46; }
-        .badge-soft-danger  { background: #fee2e2; color: #991b1b; }
-    </style>
+    @include('shared._styles')
 @endsection
 
 @section('content')
@@ -17,120 +11,179 @@
         @slot('title') Daftar Supervisi @endslot
     @endcomponent
 
-    <div class="row mb-3">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Daftar Supervisi</h4>
-            <a href="{{ route('waka.supervisi.create') }}" class="btn btn-primary">
-                <i class="ri-add-line align-middle me-1"></i> Tambah Supervisi
-            </a>
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-    </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
-    <div class="card mb-3">
+    <div class="card" id="supervisiList">
+        <div class="card-header border-bottom-dashed">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Daftar Supervisi</h5>
+                    <p class="text-muted mb-0 small">Jadwal dan hasil supervisi pembelajaran GTK.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge bg-primary-subtle text-primary align-self-center">{{ $supervisiList->total() }} supervisi</span>
+                    <a href="{{ route('waka.supervisi.create') }}" class="btn btn-success btn-sm">
+                        <i class="ri-add-line me-1"></i>Tambah Supervisi
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <div class="card-body">
-            <form method="GET" action="{{ route('waka.supervisi.index') }}" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small text-muted">Cari</label>
+            <form method="GET" action="{{ route('waka.supervisi.index') }}" class="row g-2 align-items-end mb-3">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label small text-muted mb-1">Cari</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="GTK / observer / mapel">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small text-muted">Status</label>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label small text-muted mb-1">Status</label>
                     <select name="status" class="form-select form-select-sm">
-                        <option value="">— Semua —</option>
+                        <option value="">Semua</option>
                         @foreach(['terjadwal','berlangsung','selesai','dibatalkan'] as $s)
                             <option value="{{ $s }}" {{ request('status')===$s?'selected':'' }}>{{ ucfirst($s) }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small text-muted">Jenis</label>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label small text-muted mb-1">Jenis</label>
                     <select name="jenis_supervisi" class="form-select form-select-sm">
-                        <option value="">— Semua —</option>
+                        <option value="">Semua</option>
                         @foreach(['perangkat_pembelajaran'=>'Perangkat','proses_pembelajaran'=>'Proses','penilaian'=>'Penilaian','lainnya'=>'Lainnya'] as $k=>$v)
                             <option value="{{ $k }}" {{ request('jenis_supervisi')===$k?'selected':'' }}>{{ $v }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small text-muted">Tahun Ajaran</label>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
                     <select name="academic_year_id" class="form-select form-select-sm">
-                        <option value="">— Semua —</option>
+                        <option value="">Semua</option>
                         @foreach($academicYears as $ay)
                             <option value="{{ $ay->id }}" {{ request('academic_year_id')==$ay->id?'selected':'' }}>{{ $ay->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 d-flex">
-                    <button type="submit" class="btn btn-sm btn-primary me-1 flex-grow-1"><i class="ri-search-line"></i> Filter</button>
-                    <a href="{{ route('waka.supervisi.index') }}" class="btn btn-sm btn-secondary"><i class="ri-refresh-line"></i></a>
+                <div class="col-lg-2 col-md-6">
+                    <div class="d-flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="ri-filter-3-line me-1"></i>Filter</button>
+                        <a href="{{ route('waka.supervisi.index') }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-refresh-line"></i></a>
+                    </div>
                 </div>
             </form>
-        </div>
-    </div>
 
-    <div class="card">
-        <div class="card-body">
-            <p class="text-muted small">Total: {{ $supervisiList->total() }} supervisi</p>
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>GTK</th>
-                        <th>Observer</th>
-                        <th>Mapel</th>
-                        <th>Jenis</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($supervisiList as $s)
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <td>{{ $s->tanggal_supervisi?->format('d/m/Y') }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $s->gtk?->name ?? $s->gtk_name }}</div>
-                                @if($s->gtk?->latest_nupy)<small class="text-muted">NUPY. {{ $s->gtk->latest_nupy }}</small>@endif
-                            </td>
-                            <td>{{ $s->observer?->name ?? $s->observer_name }}</td>
-                            <td>{{ $s->mata_pelajaran ?: '—' }}</td>
-                            <td><span class="badge badge-soft-info">{{ \Illuminate\Support\Str::headline($s->jenis_supervisi) }}</span></td>
-                            <td>
-                                @php
-                                    $badge = ['terjadwal'=>'warning','berlangsung'=>'info','selesai'=>'success','dibatalkan'=>'danger'][$s->status] ?? 'secondary';
-                                @endphp
-                                <span class="badge bg-{{ $badge }}">{{ ucfirst($s->status) }}</span>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('waka.supervisi.show', $s->id) }}" class="btn btn-outline-info"><i class="ri-eye-line"></i></a>
-                                    <a href="{{ route('waka.supervisi.edit', $s->id) }}" class="btn btn-outline-warning"><i class="ri-edit-line"></i></a>
-                                    <form action="{{ route('waka.supervisi.destroy', $s->id) }}" method="POST" class="d-inline form-delete">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger btn-delete"><i class="ri-delete-bin-line"></i></button>
-                                    </form>
-                                </div>
-                            </td>
+                            <th style="width:110px">Tanggal</th>
+                            <th>GTK</th>
+                            <th style="width:180px">Observer</th>
+                            <th style="width:160px">Mapel</th>
+                            <th style="width:120px">Jenis</th>
+                            <th style="width:120px" class="text-center">Status</th>
+                            <th style="width:140px" class="text-center">Aksi</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">Belum ada data supervisi.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-            <div class="mt-3">{{ $supervisiList->links() }}</div>
+                    </thead>
+                    <tbody>
+                        @forelse($supervisiList as $s)
+                            @php
+                                $badge = ['terjadwal' => 'warning', 'berlangsung' => 'info', 'selesai' => 'success', 'dibatalkan' => 'secondary'][$s->status] ?? 'secondary';
+                            @endphp
+                            <tr>
+                                <td class="small">{{ $s->tanggal_supervisi?->format('d/m/Y') ?? '—' }}</td>
+                                <td>
+                                    <span class="fw-semibold">{{ $s->gtk?->user?->name ?? $s->gtk_name ?? '—' }}</span>
+                                    @if($s->gtk?->latest_nupy)
+                                        <small class="text-muted d-block">NUPY. {{ $s->gtk->latest_nupy }}</small>
+                                    @endif
+                                </td>
+                                <td class="small">{{ $s->observer?->user?->name ?? $s->observer_name ?? '—' }}</td>
+                                <td class="small">{{ $s->mata_pelajaran ?: '—' }}</td>
+                                <td><span class="badge bg-info-subtle text-info">{{ \Illuminate\Support\Str::headline($s->jenis_supervisi) }}</span></td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ $badge }}-subtle text-{{ $badge }}">{{ ucfirst($s->status) }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <a href="{{ route('waka.supervisi.show', $s->id) }}" class="btn btn-sm btn-soft-primary me-1" title="Detail">
+                                        <i class="ri-eye-line"></i>
+                                    </a>
+                                    <a href="{{ route('waka.supervisi.edit', $s->id) }}" class="btn btn-sm btn-soft-warning me-1" title="Edit">
+                                        <i class="ri-pencil-line"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-soft-danger"
+                                            title="Hapus"
+                                            data-bs-toggle="modal" data-bs-target="#deleteSupervisiModal"
+                                            data-action="{{ route('waka.supervisi.destroy', $s->id) }}"
+                                            data-name="{{ $s->gtk?->user?->name ?? $s->gtk_name }}"
+                                            data-date="{{ $s->tanggal_supervisi?->format('d/m/Y') }}">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <x-empty-state colspan="7"
+                                title="Belum ada data supervisi"
+                                message="Tambahkan jadwal supervisi untuk memulai.">
+                                <a href="{{ route('waka.supervisi.create') }}" class="btn btn-success mt-3">
+                                    <i class="ri-add-line me-1"></i>Tambah Supervisi
+                                </a>
+                            </x-empty-state>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @include('shared._pagination', ['paginator' => $supervisiList])
         </div>
     </div>
-@endsection
 
-@section('script')
-    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    {{-- Modal konfirmasi hapus — template lord-icon/zoomIn --}}
+    <form id="deleteSupervisiForm" method="POST" action="" class="d-none">
+        @csrf
+        @method('DELETE')
+    </form>
+
+    <x-modal-confirm id="deleteSupervisiModal"
+        icon="https://cdn.lordicon.com/tdrtiskw.json"
+        primary-color="#f7b84b" secondary-color="#005981"
+        title="Hapus Data Supervisi?"
+        message="Data supervisi <strong id=&quot;deleteSupervisiLabel&quot;>ini</strong> akan dihapus. Tindakan ini tidak dapat dibatalkan."
+        form-id="deleteSupervisiForm"
+        submit-label="Ya, Hapus"
+        submit-icon="ri-delete-bin-line"
+        submit-class="btn-danger" />
+
+    @push('scripts')
     <script>
-        document.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                const form = this.closest('form');
-                Swal.fire({ title: 'Hapus data supervisi ini?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, hapus' })
-                    .then((r) => { if (r.isConfirmed) form.submit(); });
+        document.addEventListener('DOMContentLoaded', function () {
+            var modal = document.getElementById('deleteSupervisiModal');
+            if (!modal) return;
+
+            modal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) return;
+
+                var form = document.getElementById('deleteSupervisiForm');
+                if (form) form.setAttribute('action', trigger.getAttribute('data-action') || '');
+
+                var label = document.getElementById('deleteSupervisiLabel');
+                if (label) {
+                    var name = trigger.getAttribute('data-name') || 'ini';
+                    var date = trigger.getAttribute('data-date') || '';
+                    label.textContent = (name + (date ? ' — ' + date : '')).trim();
+                }
             });
         });
     </script>
+    @endpush
 @endsection

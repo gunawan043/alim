@@ -1,59 +1,95 @@
 @extends('layouts.master')
 @section('title') Dashboard Poin Pelanggaran @endsection
 
+@section('css')
+    @include('shared._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') GTK & Peserta Didik @endslot
+        @slot('li_1') <a href="{{ route('user.students.index', ['userId' => $userId]) }}">Peserta Didik</a> @endslot
         @slot('li_2') <a href="{{ route('user.violation-points.index', ['userId' => $userId]) }}">Poin Pelanggaran</a> @endslot
-        @slot('title') Dashboard @endslot
+        @slot('title') Dashboard Kedisiplinan @endslot
     @endcomponent
 
-    {{-- Summary Cards --}}
-    <div class="row mb-4">
-        <div class="col-sm-3">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="text-primary mb-2"><i class="ri-file-list-3-line fs-1"></i></div>
-                    <h3 class="mb-0">{{ number_format($totalViolations) }}</h3>
-                    <p class="text-muted mb-0 small">Total Pelanggaran</p>
+    @php
+        $avgPerViolation = $totalViolations > 0 ? number_format($totalPoints / $totalViolations, 1) : '0';
+    @endphp
+
+    {{-- Ringkasan --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-file-list-3-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Pelanggaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalViolations) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Seluruh catatan tercatat</p>
                 </div>
             </div>
         </div>
-        <div class="col-sm-3">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="text-danger mb-2"><i class="ri-error-warning-line fs-1"></i></div>
-                    <h3 class="mb-0">{{ number_format($totalPoints) }}</h3>
-                    <p class="text-muted mb-0 small">Total Poin Diberikan</p>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-error-warning-line text-danger"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Poin</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalPoints) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Akumulasi seluruh poin</p>
                 </div>
             </div>
         </div>
-        <div class="col-sm-3">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="text-warning mb-2"><i class="ri-user-follow-line fs-1"></i></div>
-                    <h3 class="mb-0">{{ number_format($uniqueStudents) }}</h3>
-                    <p class="text-muted mb-0 small">Siswa Terlibat</p>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-user-follow-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Santri Terlibat</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($uniqueStudents) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Pernah tercatat pelanggaran</p>
                 </div>
             </div>
         </div>
-        <div class="col-sm-3">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="text-success mb-2"><i class="ri-bar-chart-line fs-1"></i></div>
-                    <h3 class="mb-0">{{ $totalViolations > 0 ? number_format($totalPoints / $totalViolations, 1) : '0' }}</h3>
-                    <p class="text-muted mb-0 small">Rata-rata Poin/Pel.</p>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-bar-chart-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Rata-rata Poin/Pelanggaran</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $avgPerViolation }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Rata-rata seluruh catatan</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        {{-- Trend Bulanan --}}
         <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="ri-line-chart-line me-1"></i>Trend Pelanggaran Bulanan {{ now()->year }}</h5>
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0"><i class="ri-line-chart-line text-primary me-1"></i> Trend Pelanggaran Bulanan {{ now()->year }}</h5>
+                    <span class="badge bg-primary-subtle text-primary">12 bulan</span>
                 </div>
                 <div class="card-body">
                     <div id="chart-monthly" class="apex-charts" dir="ltr"></div>
@@ -61,16 +97,18 @@
             </div>
         </div>
 
-        {{-- Top Jenis Pelanggaran --}}
         <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="ri-pie-chart-line me-1"></i>Jenis Pelanggaran Terbanyak</h5>
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-pie-chart-line text-primary me-1"></i> Jenis Pelanggaran Terbanyak</h5>
                 </div>
                 <div class="card-body">
-                    <div id="chart-violation-types" class="apex-charts" dir="ltr"></div>
                     @if($topViolationTypes->isEmpty())
-                        <p class="text-muted text-center mb-0 py-4">Belum ada data.</p>
+                        <x-empty-state icon="https://cdn.lordicon.com/msoeawqm.json"
+                            title="Belum ada data"
+                            message="Catatan pelanggaran akan tampil di sini." />
+                    @else
+                        <div id="chart-violation-types" class="apex-charts" dir="ltr"></div>
                     @endif
                 </div>
             </div>
@@ -78,11 +116,10 @@
     </div>
 
     <div class="row">
-        {{-- Per Rombel --}}
         <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="ri-group-line me-1"></i>Pelanggaran per Rombel</h5>
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-group-line text-primary me-1"></i> Pelanggaran per Rombel</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -90,19 +127,21 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Rombel</th>
-                                    <th class="text-center">Jumlah</th>
-                                    <th class="text-center">Total Poin</th>
+                                    <th class="text-center" style="width:100px">Jumlah</th>
+                                    <th class="text-center" style="width:110px">Total Poin</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($byStudyGroup as $row)
                                     <tr>
-                                        <td>{{ $row->studyGroup?->full_name ?? '-' }}</td>
+                                        <td class="fw-medium">{{ $row->studyGroup?->full_name ?? '-' }}</td>
                                         <td class="text-center">{{ $row->total }}</td>
-                                        <td class="text-center"><span class="badge bg-danger">{{ $row->total_points }}</span></td>
+                                        <td class="text-center"><span class="badge bg-danger-subtle text-danger">{{ $row->total_points }}</span></td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="3" class="text-center text-muted py-3">Belum ada data.</td></tr>
+                                    <x-empty-state colspan="3"
+                                        title="Belum ada data"
+                                        message="Belum ada pelanggaran per rombel." />
                                 @endforelse
                             </tbody>
                         </table>
@@ -111,11 +150,10 @@
             </div>
         </div>
 
-        {{-- Per Tingkat --}}
         <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="ri-stack-line me-1"></i>Pelanggaran per Tingkat</h5>
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-stack-line text-primary me-1"></i> Pelanggaran per Tingkat</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -123,19 +161,21 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Tingkat</th>
-                                    <th class="text-center">Jumlah</th>
-                                    <th class="text-center">Total Poin</th>
+                                    <th class="text-center" style="width:100px">Jumlah</th>
+                                    <th class="text-center" style="width:110px">Total Poin</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($byGradeLevel as $row)
                                     <tr>
-                                        <td>{{ $row->grade_level_name ?? '-' }}</td>
+                                        <td class="fw-medium">{{ $row->grade_level_name ?? '-' }}</td>
                                         <td class="text-center">{{ $row->total }}</td>
-                                        <td class="text-center"><span class="badge bg-danger">{{ $row->total_points }}</span></td>
+                                        <td class="text-center"><span class="badge bg-danger-subtle text-danger">{{ $row->total_points }}</span></td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="3" class="text-center text-muted py-3">Belum ada data.</td></tr>
+                                    <x-empty-state colspan="3"
+                                        title="Belum ada data"
+                                        message="Belum ada pelanggaran per tingkat." />
                                 @endforelse
                             </tbody>
                         </table>
@@ -148,35 +188,30 @@
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
-                <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="ri-list-check-2 me-1"></i>Ringkasan per Siswa</h5>
-                    <a href="{{ route('user.violation-points.recap', ['userId' => $userId]) }}" class="btn btn-sm btn-outline-primary">
-                        Lihat Semua <i class="ri-arrow-right-line"></i>
-                    </a>
+                <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0"><i class="ri-list-check-2 text-primary me-1"></i> Ringkasan per Santri</h5>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('user.violation-points.create', ['userId' => $userId]) }}" class="btn btn-success btn-sm">
+                            <i class="ri-add-line me-1"></i>Tambah Pelanggaran
+                        </a>
+                        <a href="{{ route('user.violation-points.recap', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
+                            Lihat Semua <i class="ri-arrow-right-line"></i>
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Nama Siswa</th>
+                                    <th>Nama Santri</th>
                                     <th>Rombel</th>
-                                    <th class="text-center">Total Poin</th>
-                                    <th class="text-center">Jumlah Pelanggaran</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th class="text-center" style="width:110px">Total Poin</th>
+                                    <th class="text-center" style="width:150px">Jumlah Pelanggaran</th>
+                                    <th class="text-center" style="width:90px">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $topStudents = \App\Models\Student::when(request()->attributes->get('schoolContextId'), fn($q, $sid) => $q->where('school_id', $sid))
-                                        ->where('status', 'active')
-                                        ->with(['studyGroups' => fn($q) => $q->limit(1)])
-                                        ->withCount('violationPoints')
-                                        ->withSum('violationPoints', 'points')
-                                        ->having('violation_points_count', '>', 0)
-                                        ->orderByDesc('violation_points_sum_points')
-                                        ->limit(5)->get();
-                                @endphp
                                 @forelse($topStudents as $s)
                                     <tr>
                                         <td>
@@ -184,17 +219,19 @@
                                             @if($s->nisn)<small class="text-muted d-block">{{ $s->nisn }}</small>@endif
                                         </td>
                                         <td>{{ $s->studyGroups->first()?->studyGroup?->full_name ?? '-' }}</td>
-                                        <td class="text-center"><span class="badge bg-danger">{{ $s->violation_points_sum_points ?? 0 }}</span></td>
+                                        <td class="text-center"><span class="badge bg-danger-subtle text-danger">{{ $s->violation_points_sum_points ?? 0 }}</span></td>
                                         <td class="text-center">{{ $s->violation_points_count }}</td>
                                         <td class="text-center">
                                             <a href="{{ route('user.violation-points.recap.detail', ['userId' => $userId, 'studentUuid' => $s->id]) }}"
-                                               class="btn btn-sm btn-outline-secondary">
+                                               class="btn btn-sm btn-soft-primary" title="Detail per santri">
                                                 <i class="ri-eye-line"></i>
                                             </a>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted py-3">Belum ada data.</td></tr>
+                                    <x-empty-state colspan="5"
+                                        title="Belum ada pelanggaran"
+                                        message="Catatan pelanggaran santri akan tampil di sini." />
                                 @endforelse
                             </tbody>
                         </table>
@@ -209,7 +246,6 @@
 <script src="{{ URL::asset('build/libs/apexcharts/dist/apexcharts.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Monthly Trend Chart
     var monthlyOptions = {
         series: [
             { name: 'Jumlah Pelanggaran', type: 'column', data: {!! json_encode($months->pluck('total')) !!} },
@@ -230,7 +266,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var monthlyChart = new ApexCharts(document.querySelector('#chart-monthly'), monthlyOptions);
     monthlyChart.render();
 
-    // Top Violation Types Donut
     @if($topViolationTypes->count())
     var typeOptions = {
         series: {!! json_encode($topViolationTypes->pluck('total')) !!},

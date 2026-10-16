@@ -284,13 +284,12 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="d-flex gap-1 justify-content-center">
-                                                    <form method="POST" action="{{ route('user.grade-levels.subjects.remove', ['userId' => $userId, 'id' => $gradeLevel->id]) }}" class="d-inline">
-                                                        @csrf @method('DELETE')
-                                                        <input type="hidden" name="subject_id" value="{{ $gls->id }}">
-                                                        <button type="submit" class="btn btn-soft-danger btn-sm px-2 py-1"
-                                                            onclick="return confirm('Hapus {{ addslashes($gls->subject->name) }} dari {{ addslashes($gradeLevel->name) }}?')"
-                                                            title="Hapus"><i class="ri-delete-bin-2-line"></i></button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-soft-danger btn-sm px-2 py-1"
+                                                        data-bs-toggle="modal" data-bs-target="#removeSubjectModal"
+                                                        data-action="{{ route('user.grade-levels.subjects.remove', ['userId' => $userId, 'id' => $gradeLevel->id]) }}"
+                                                        data-subject-id="{{ $gls->id }}"
+                                                        data-subject-name="{{ $gls->subject->name }}"
+                                                        title="Hapus"><i class="ri-delete-bin-2-line"></i></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -483,4 +482,43 @@
             </div>
         </div>
     </div>
+    {{-- Modal konfirmasi hapus mapel — template lord-icon/zoomIn --}}
+    <form id="removeSubjectForm" method="POST" action="" class="d-none">
+        @csrf
+        @method('DELETE')
+        <input type="hidden" name="subject_id" id="removeSubjectId" value="">
+    </form>
+
+    <x-modal-confirm id="removeSubjectModal"
+        icon="https://cdn.lordicon.com/tdrtiskw.json"
+        primary-color="#f7b84b" secondary-color="#005981"
+        title="Hapus Mapel dari Tingkat?"
+        message="Mapel <strong id=&quot;removeSubjectName&quot;>ini</strong> akan dihapus dari tingkat <strong>{{ $gradeLevel->name }}</strong> dan dinonaktifkan pada seluruh rombel tingkat ini. Riwayat nilai tetap aman."
+        form-id="removeSubjectForm"
+        submit-label="Ya, Hapus"
+        submit-icon="ri-delete-bin-2-line"
+        submit-class="btn-danger" />
+
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var modal = document.getElementById('removeSubjectModal');
+            if (!modal) return;
+
+            modal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) return;
+
+                var form = document.getElementById('removeSubjectForm');
+                if (form) form.setAttribute('action', trigger.getAttribute('data-action') || '');
+
+                var idField = document.getElementById('removeSubjectId');
+                if (idField) idField.value = trigger.getAttribute('data-subject-id') || '';
+
+                var nameField = document.getElementById('removeSubjectName');
+                if (nameField) nameField.textContent = trigger.getAttribute('data-subject-name') || 'ini';
+            });
+        });
+    </script>
+    @endpush
 @endsection

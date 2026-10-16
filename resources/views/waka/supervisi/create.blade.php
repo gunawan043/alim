@@ -1,6 +1,10 @@
 @extends('waka.master')
 @section('title') Tambah Supervisi @endsection
 
+@section('css')
+    @include('shared._styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Supervisi @endslot
@@ -10,7 +14,7 @@
     <div class="row">
         <div class="col-xl-8">
             <div class="card">
-                <div class="card-header"><h5 class="card-title mb-0">Form Tambah Supervisi</h5></div>
+                <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0">Form Tambah Supervisi</h5></div>
                 <div class="card-body">
                     <form action="{{ route('waka.supervisi.store') }}" method="POST" autocomplete="off">
                         @csrf
@@ -27,10 +31,10 @@
                                     <option value="">— Pilih GTK —</option>
                                     @foreach($gtks as $gtk)
                                         <option value="{{ $gtk->id }}"
-                                            data-name="{{ $gtk->name }}"
+                                            data-name="{{ $gtk->user?->name }}"
                                             data-nupy="{{ $gtk->latest_nupy }}"
                                             {{ old('gtk_id')==$gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}{{ $gtk->latest_nupy ? ' | NUPY. '.$gtk->latest_nupy : '' }}
+                                            {{ $gtk->user?->name }}{{ $gtk->latest_nupy ? ' | NUPY. '.$gtk->latest_nupy : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -55,10 +59,10 @@
                                     <option value="">— Pilih Observer —</option>
                                     @foreach($gtks as $gtk)
                                         <option value="{{ $gtk->id }}"
-                                            data-name="{{ $gtk->name }}"
+                                            data-name="{{ $gtk->user?->name }}"
                                             data-nupy="{{ $gtk->latest_nupy }}"
                                             {{ old('observer_id')==$gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}
+                                            {{ $gtk->user?->name }}
                                         </option>
                                     @endforeach
                                 </select>

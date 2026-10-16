@@ -224,6 +224,9 @@ class KisiKisiController extends Controller
             'items' => 'required|array|min:1',
             'items.*.tp_id' => 'required|exists:tujuan_pembelajaran,id',
             'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencita,C6_mencipta',
+            'items.*.materi' => 'nullable|string|max:255',
+            'items.*.bentuk_soal' => 'nullable|in:pg,mcc,bs,jodoh,isian,uraian',
+            'items.*.nomor_soal' => 'nullable|string|max:40',
             'items.*.jumlah_soal' => 'required|integer|min:1',
             'items.*.bobot_per_soal' => 'required|numeric|min:0',
         ]);
@@ -312,6 +315,9 @@ class KisiKisiController extends Controller
             'items.*.id' => 'nullable|exists:kisi_kisi_soal_items,id',
             'items.*.tp_id' => 'required|exists:tujuan_pembelajaran,id',
             'items.*.level_kognitif' => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencita,C6_mencipta',
+            'items.*.materi' => 'nullable|string|max:255',
+            'items.*.bentuk_soal' => 'nullable|in:pg,mcc,bs,jodoh,isian,uraian',
+            'items.*.nomor_soal' => 'nullable|string|max:40',
             'items.*.jumlah_soal' => 'required|integer|min:1',
             'items.*.bobot_per_soal' => 'required|numeric|min:0',
         ]);
@@ -334,6 +340,9 @@ class KisiKisiController extends Controller
                     $record->update([
                         'tp_id' => $item['tp_id'],
                         'level_kognitif' => $this->normalizeLevelKognitif($item['level_kognitif']),
+                        'materi' => $item['materi'] ?? null,
+                        'bentuk_soal' => $item['bentuk_soal'] ?? null,
+                        'nomor_soal' => $item['nomor_soal'] ?? null,
                         'jumlah_soal' => $item['jumlah_soal'],
                         'bobot_per_soal' => $item['bobot_per_soal'],
                     ]);
@@ -343,6 +352,9 @@ class KisiKisiController extends Controller
                         'kisi_kisi_soal_id' => $id,
                         'tp_id' => $item['tp_id'],
                         'level_kognitif' => $this->normalizeLevelKognitif($item['level_kognitif']),
+                        'materi' => $item['materi'] ?? null,
+                        'bentuk_soal' => $item['bentuk_soal'] ?? null,
+                        'nomor_soal' => $item['nomor_soal'] ?? null,
                         'jumlah_soal' => $item['jumlah_soal'],
                         'bobot_per_soal' => $item['bobot_per_soal'],
                     ]);

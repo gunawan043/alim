@@ -1,5 +1,15 @@
 @extends('layouts.master')
-@section('title') Daftar Mata Pelajaran — {{ $studyGroup->full_name }} @endsection
+@section('title') Daftar Mata Pelajaran — {{ $studyGroup->full_name }}     {{-- Modal konfirmasi ubah status mapel rombel — template lord-icon/zoomIn --}}
+    <x-modal-confirm id="toggleSubjectModal"
+        primary-color="#f7b84b" secondary-color="#005981"
+        title="Ubah Status Mapel Rombel?"
+        message="Status mapel pada rombel ini akan diperbarui. Struktur akademik (buku nilai, jadwal, leger) mengikuti perubahan ini."
+        submit-id="toggleSubjectConfirm"
+        submit-label="Ya, Lanjutkan"
+        submit-icon="ri-check-line"
+        submit-class="btn-primary" />
+
+@endsection
 
 @section('content')
 @php
@@ -118,32 +128,44 @@
 
 @push('scripts')
 <script>
-function deactivate(id) {
-    if (!confirm('Nonaktifkan assignment ini? Struktur akademik akan dibuat tidak aktif.')) return;
-    fetch(`{{ route('user.study-groups.show', ['userId' => $userId, 'id' => 'x']) }}/subjects/${id}/update`, {
+var pendingToggle = null;
+
+function deactivate(id) { askToggle(id, false); }
+function reactivate(id) { askToggle(id, true); }
+
+function askToggle(id, active) {
+    pendingToggle = { id: id, active: active };
+    var modalEl = document.getElementById('toggleSubjectModal');
+    if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function runToggle() {
+    if (!pendingToggle) return;
+    var payload = pendingToggle;
+    pendingToggle = null;
+
+    var modalEl = document.getElementById('toggleSubjectModal');
+    if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+
+    fetch(`{{ route('user.study-groups.show', ['userId' => $userId, 'id' => 'x']) }}/subjects/${payload.id}/update`, {
         method: 'PUT',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
         },
-        body: JSON.stringify({ is_active: false })
+        body: JSON.stringify({ is_active: payload.active })
     }).then(r => r.json()).then(d => {
         location.reload();
     }).catch(e => location.reload());
 }
 
-function reactivate(id) {
-    if (!confirm('Aktifkan kembali assignment ini?')) return;
-    fetch(`{{ route('user.study-groups.show', ['userId' => $userId, 'id' => 'x']) }}/subjects/${id}/update`, {
-        method: 'PUT',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ is_active: true })
-    }).then(r => r.json()).then(d => {
-        location.reload();
-    }).catch(e => location.reload());
-}
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('toggleSubjectConfirm');
+    if (btn) btn.addEventListener('click', runToggle);
+});
 </script>
 @endpush

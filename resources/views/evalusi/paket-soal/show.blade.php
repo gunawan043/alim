@@ -39,6 +39,12 @@
                 </form>
                 @endif
 
+                <a href="{{ route('user.paket-soal.kartu-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="ri-file-list-3-line"></i> Kartu Soal
+                </a>
+                <a href="{{ route('user.paket-soal.validasi-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="ri-shield-check-line"></i> Validasi Soal
+                </a>
                 <a href="{{ route('user.paket-soal.reroll', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-info">
                     <i class="ri-refresh-line"></i> Re-roll Soal
                 </a>

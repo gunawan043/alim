@@ -80,18 +80,12 @@
     <div class="profile-foreground position-relative mx-n4 mt-n4">
         <div class="profile-wid-bg">
             <img src="{{ URL::asset('build/images/alim-one-bg.png') }}" alt="Background Profile" class="profile-wid-img" />
-            <div class="overlay-content position-absolute bottom-0 start-0 p-4 text-white">
-                <h4 class="mb-1">{{ $student->name }}</h4>
-                <p class="mb-0 opacity-75">
-                    {{ $currentRombel ? $currentRombel->full_name : 'Belum masuk rombel' }}
-                    @if ($student->school) • {{ $student->school->name }} @endif
-                </p>
-            </div>
+            
         </div>
     </div>
 
     <!-- Profile Stats -->
-    <div class="pt-4 mb-4 mb-lg-3 pb-lg-4 profile-wrapper">
+    <div class="pt-4 mb-4 mb-lg-3 pb-lg-4">
         <div class="row g-4">
             <div class="col-auto">
                 <div class="avatar-lg position-relative">
@@ -992,44 +986,83 @@
                                             <i class="ri-group-line text-primary me-2"></i>Riwayat Kelas / Rombel
                                         </h5>
                                         <div class="table-responsive">
-                                            <table class="table table-bordered table-striped align-middle">
+                                            <table class="table table-hover align-middle mb-0">
                                                 <thead class="table-light">
                                                     <tr>
-                                                        <th class="text-center" width="5%">No</th>
+                                                        <th class="text-center" style="width:50px">No</th>
                                                         <th>Kelas / Rombel</th>
-                                                        <th>Tahun Ajaran</th>
-                                                        <th class="text-center">Aktif</th>
-                                                        <th class="text-center">Tanggal Masuk</th>
-                                                        <th width="10%">Aksi</th>
+                                                        <th style="width:150px">Tahun Ajaran</th>
+                                                        <th class="text-center" style="width:110px">Status</th>
+                                                        <th style="width:190px">Periode</th>
+                                                        <th class="text-center" style="width:220px">Aksi</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @foreach($student->classHistories->sortByDesc(fn($h) => $h->academicYear?->year_start ?? 0) as $index => $history)
+                                                        @php
+                                                            $rowAy = $history->academicYear;
+                                                            $rowSemester = $rowAy?->semester ?? 'ganjil';
+                                                            $canOpen = $history->studyGroup && \Illuminate\Support\Facades\Auth::check()
+                                                                && in_array(\App\Http\Controllers\NilaiKelasController::legerAccessFor($userId, $history->studyGroup), ['full', 'wali'], true);
+                                                        @endphp
                                                         <tr>
-                                                            <td class="text-center">{{ $index + 1 }}</td>
+                                                            <td class="text-center text-muted">{{ $index + 1 }}</td>
                                                             <td>
                                                                 @if($history->studyGroup)
                                                                     <div class="fw-semibold">{{ $history->studyGroup->full_name }}</div>
-                                                                    <div class="text-muted small">{{ $history->studyGroup->gradeLevel?->name ?? '-' }}</div>
+                                                                    <div class="text-muted small">
+                                                                        {{ $history->studyGroup->gradeLevel?->name ?? '-' }}
+                                                                        @if($history->studyGroup->homeroomTeacher)
+                                                                            • Wali: {{ $history->studyGroup->homeroomTeacher->name }}
+                                                                        @endif
+                                                                    </div>
                                                                 @else
                                                                     <span class="text-muted">-</span>
                                                                 @endif
                                                             </td>
-                                                            <td>{{ $history->academicYear?->name ?? ($history->academicYear?->year_start . '/' . $history->academicYear?->year_end) }}</td>
+                                                            <td class="small">{{ $rowAy?->name ?? ($rowAy ? $rowAy->year_start . '/' . $rowAy->year_end : '-') }}</td>
                                                             <td class="text-center">
                                                                 @if($history->is_active)
                                                                     <span class="badge bg-success-subtle text-success"><i class="ri-checkbox-circle-line me-1"></i>Aktif</span>
                                                                 @else
-                                                                    <span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>
+                                                                    <span class="badge bg-secondary-subtle text-secondary">Selesai</span>
                                                                 @endif
                                                             </td>
-                                                            <td class="text-center">{{ $history->entry_date?->format('d M Y') ?? '-' }}</td>
+                                                            <td class="small text-muted">
+                                                                {{ $history->join_date?->format('d M Y') ?? $history->entry_date?->format('d M Y') ?? '-' }}
+                                                                @if($history->leave_date)
+                                                                    &rarr; {{ $history->leave_date->format('d M Y') }}
+                                                                @endif
+                                                            </td>
                                                             <td class="text-center">
                                                                 @if($history->studyGroup)
                                                                     <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $history->studyGroup->id]) }}"
-                                                                       class="btn btn-sm btn-soft-primary">
+                                                                       class="btn btn-sm btn-soft-primary me-1" title="Detail rombel">
                                                                         <i class="ri-eye-line"></i>
                                                                     </a>
+                                                                    @if($canOpen)
+                                                                        <a href="{{ route('user.schools.nilai-kelas.sts', [
+                                                                                'userId' => $userId,
+                                                                                'studyGroupId' => $history->studyGroup->id,
+                                                                                'academic_year_id' => $history->academic_year_id,
+                                                                                'semester' => $rowSemester,
+                                                                                'tab' => 'leger',
+                                                                            ]) }}"
+                                                                           class="btn btn-sm btn-soft-info me-1" title="Leger nilai {{ $rowAy?->name }}">
+                                                                            <i class="ri-table-line me-1"></i>Leger
+                                                                        </a>
+                                                                        <a href="{{ route('user.schools.nilai-kelas.rapor.cetak', [
+                                                                                'userId' => $userId,
+                                                                                'studyGroupId' => $history->studyGroup->id,
+                                                                                'studentId' => $student->id,
+                                                                                'academic_year_id' => $history->academic_year_id,
+                                                                                'semester' => $rowSemester,
+                                                                            ]) }}"
+                                                                           target="_blank"
+                                                                           class="btn btn-sm btn-soft-success" title="Cetak rapor {{ $rowAy?->name }}">
+                                                                            <i class="ri-file-pdf-2-line me-1"></i>Rapor
+                                                                        </a>
+                                                                    @endif
                                                                 @endif
                                                             </td>
                                                         </tr>

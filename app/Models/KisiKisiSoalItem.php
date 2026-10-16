@@ -23,6 +23,7 @@ class KisiKisiSoalItem extends Model
         'kisi_kisi_soal_id',
         'tp_id',
         'level_kognitif',
+        'materi', 'bentuk_soal', 'nomor_soal',
         'jumlah_soal',
         'bobot_per_soal',
     ];

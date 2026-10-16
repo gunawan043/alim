@@ -214,15 +214,20 @@
 
                 <!-- Ekstrakurikuler -->
                 <li class="nav-item">
-                    <a class="nav-link menu-link" href="{{ route('waka.ekstrakurikuler') }}">
+                    <a class="nav-link menu-link" href="{{ route('waka.ekstrakurikuler.index') }}">
                         <i class="ri-basketball-line"></i> <span>Ekstrakurikuler</span>
                     </a>
                 </li>
 
                 <!-- Supervisi (khusus Waka) -->
                 <li class="nav-item">
-                    <a class="nav-link menu-link" href="{{ route('waka.supervisi') }}">
+                    <a class="nav-link menu-link" href="{{ route('waka.supervisi.index') }}">
                         <i class="ri-file-excel-2-line"></i> <span>Supervisi</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="{{ route('waka.supervisi-instrumen.index') }}">
+                        <i class="ri-list-settings-line"></i> <span>Instrumen Supervisi</span>
                     </a>
                 </li>
 

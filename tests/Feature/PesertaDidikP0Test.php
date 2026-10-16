@@ -520,13 +520,37 @@ class PesertaDidikP0Test extends TestCase
 
     public function test_bulk_promotion_mempertahankan_histori_saat_kapasitas_penuh(): void
     {
-        $this->groupB->update(['capacity' => 1]);
+        // TA baru + rombel tingkat di atas dengan kapasitas 1 (sudah penuh).
+        $nextAy = AcademicYear::create([
+            'name' => '2027/2028',
+            'semester' => 'ganjil',
+            'is_active' => false,
+            'start_date' => '2027-07-01',
+            'end_date' => '2028-06-30',
+        ]);
 
-        $penghuni = $this->makeStudent($this->schoolA, 'Penghuni 7B', '777000333');
+        $nextGrade = GradeLevel::create([
+            'school_id' => $this->schoolA->id,
+            'level' => 8,
+            'name' => 'Kelas 8',
+            'is_active' => true,
+        ]);
+
+        $target = StudyGroup::create([
+            'school_id' => $this->schoolA->id,
+            'academic_year_id' => $nextAy->id,
+            'grade_level_id' => $nextGrade->id,
+            'name' => '8A',
+            'code' => '8A',
+            'capacity' => 1,
+            'is_active' => true,
+        ]);
+
+        $penghuni = $this->makeStudent($this->schoolA, 'Penghuni 8A', '888000333');
         StudentClassHistory::create([
             'student_id' => $penghuni->id,
-            'study_group_id' => $this->groupB->id,
-            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $target->id,
+            'academic_year_id' => $nextAy->id,
             'is_active' => true,
             'join_date' => now()->toDateString(),
             'attendance_number' => 1,
@@ -534,8 +558,8 @@ class PesertaDidikP0Test extends TestCase
 
         $this->actingAs($this->user)->post("/{$this->user->id}/bulk-promotion/promote", [
             'from_study_group_id' => $this->groupA->id,
-            'to_academic_year_id' => $this->ay->id,
-            'to_study_group_id' => $this->groupB->id,
+            'to_academic_year_id' => $nextAy->id,
+            'to_study_group_id' => $target->id,
             'promotion_date' => now()->toDateString(),
             'student_ids' => [$this->student->id],
             'student_actions' => [$this->student->id => 'promote'],
@@ -547,6 +571,17 @@ class PesertaDidikP0Test extends TestCase
 
         $this->assertTrue((bool) $history->is_active, 'Histori lama tidak boleh ditutup saat rombel tujuan penuh.');
         $this->assertSame($this->groupA->id, $history->study_group_id);
+    }
+
+    public function test_bulk_promotion_ta_sama_ditolak_gunakan_mutasi_kelas(): void
+    {
+        // TA sama = mutasi kelas → bukan ranah halaman kenaikan kelas.
+        $this->actingAs($this->user)->post("/{$this->user->id}/bulk-promotion/promote", [
+            'from_study_group_id' => $this->groupA->id,
+            'to_academic_year_id' => $this->ay->id,
+            'promotion_date' => now()->toDateString(),
+            'student_ids' => [$this->student->id],
+        ])->assertSessionHasErrors('to_academic_year_id');
     }
 
     public function test_aksi_massal_mutasi_masuk_mengikuti_state_machine(): void

@@ -10,6 +10,7 @@ use App\Models\KisiKisiSoal;
 use App\Models\PaketSoal;
 use App\Models\PaketSoalDistribution;
 use App\Models\PaketSoalItem;
+use App\Models\ReviewAssignment;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
@@ -292,6 +293,62 @@ class PaketNaskahPolicyTest extends TestCase
         $this->assertSame(PaketSoalDistribution::STATUS_RECEIVED, $tuDistribution->status);
         $this->assertNotNull($tuDistribution->received_at);
         $this->assertSame($this->tu->id, $tuDistribution->received_by);
+    }
+
+    public function test_kartu_soal_menampilkan_butir_dan_melindungi_kunci(): void
+    {
+        $soal = $this->makeSoal($this->bank, 'pg', 'Ibu kota Indonesia?', 'approved');
+        $paket = $this->makePaket([$soal]);
+
+        // Penyusun serumpun → kunci terlihat.
+        $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/kartu-soal")
+            ->assertOk()
+            ->assertSee('Kartu Soal')
+            ->assertSee('Ibu kota Indonesia?')
+            ->assertDontSee('Disembunyikan');
+
+        // Halaman cetak tersedia dengan struktur dokumen.
+        $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/kartu-soal/cetak")
+            ->assertOk()
+            ->assertSee('KARTU SOAL');
+
+        // Peran bukan serumpun (TU) tetap dapat membuka kartu, tetapi kunci disamarkan.
+        $this->actingAs($this->tu)
+            ->get("/{$this->tu->id}/paket-soal/{$paket->id}/kartu-soal")
+            ->assertOk()
+            ->assertSee('Disembunyikan')
+            ->assertDontSee('>A<', false);
+    }
+
+    public function test_dokumen_validasi_soal_menampilkan_pembuat_dan_validator(): void
+    {
+        $soal = $this->makeSoal($this->bank, 'pg', 'Soal untuk validasi?', 'approved');
+        $paket = $this->makePaket([$soal]);
+
+        ReviewAssignment::create([
+            'reviewable_type' => Soal::class,
+            'reviewable_id' => $soal->id,
+            'reviewer_id' => $this->guruB->id,
+            'status' => ReviewAssignment::STATUS_REVISION,
+            'note' => 'Perbaiki opsi C — distraktor lemah.',
+            'decided_at' => now(),
+        ]);
+
+        $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/validasi-soal")
+            ->assertOk()
+            ->assertSee('VALIDASI SOAL')
+            ->assertSee($this->guruB->name)
+            ->assertSee('Perbaiki opsi C')
+            ->assertSee('Soal yang perlu diperbaiki');
+
+        $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/validasi-soal/cetak")
+            ->assertOk()
+            ->assertSee('VALIDASI SOAL')
+            ->assertSee('Perbaiki opsi C');
     }
 
     // ─────────────────────────────────────────────────────────────

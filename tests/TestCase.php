@@ -40,6 +40,8 @@ abstract class TestCase extends BaseTestCase
                 $table->integer('jumlah_soal')->nullable();
                 $table->decimal('bobot_per_soal', 8, 2)->nullable();
                 $table->text('materi')->nullable();
+                $table->string('bentuk_soal')->nullable();
+                $table->string('nomor_soal')->nullable();
                 $table->timestamps();
             });
         }

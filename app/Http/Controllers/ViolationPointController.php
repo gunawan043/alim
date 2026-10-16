@@ -214,9 +214,20 @@ class ViolationPointController extends Controller
             ? StudyGroup::where('school_id', $schoolId)->orderBy('name')->get()
             : StudyGroup::orderBy('name')->get();
 
+        // Ringkasan per santri (top 5) — query dipindahkan dari view agar rapi & efisien.
+        $topStudents = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('status', 'active')
+            ->with(['studyGroups' => fn ($q) => $q->limit(1), 'studyGroups.studyGroup'])
+            ->withCount('violationPoints')
+            ->withSum('violationPoints', 'points')
+            ->having('violation_points_count', '>', 0)
+            ->orderByDesc('violation_points_sum_points')
+            ->limit(5)
+            ->get();
+
         return view('violation-points.dashboard', compact(
             'userId', 'totalViolations', 'totalPoints', 'uniqueStudents',
-            'byStudyGroup', 'byGradeLevel', 'months', 'topViolationTypes', 'studyGroups'
+            'byStudyGroup', 'byGradeLevel', 'months', 'topViolationTypes', 'studyGroups', 'topStudents'
         ));
     }
 

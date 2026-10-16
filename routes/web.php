@@ -233,6 +233,7 @@ use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\Waka\SupervisiController;
+use App\Http\Controllers\Waka\SupervisiInstrumenController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\WakaController;
@@ -614,6 +615,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('kurikulum')->name('kurikulum.')->middleware('kurikulum.access')->group(function () {
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
+                Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
 
                 // Master Rumpun Mata Pelajaran & penetapan koordinator (Kebijakan Akademik)
                 Route::prefix('rumpun')->name('rumpun.')->group(function () {
@@ -1318,6 +1320,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/distribute', [PaketSoalController::class, 'distribute'])->name('distribute');
                 Route::put('/{paketUuid}/komposisi', [PaketSoalController::class, 'simpanKomposisi'])->name('komposisi.simpan');
                 Route::post('/{paketUuid}/komposisi/generate', [PaketSoalController::class, 'generateKomposisi'])->name('komposisi.generate');
+                Route::get('/{paketUuid}/kartu-soal', [PaketSoalController::class, 'kartuSoal'])->name('kartu-soal');
+                Route::get('/{paketUuid}/kartu-soal/cetak', [PaketSoalController::class, 'kartuSoalCetak'])->name('kartu-soal.cetak');
+                Route::get('/{paketUuid}/validasi-soal', [PaketSoalController::class, 'validasiSoal'])->name('validasi-soal');
+                Route::get('/{paketUuid}/validasi-soal/cetak', [PaketSoalController::class, 'validasiSoalCetak'])->name('validasi-soal.cetak');
                 Route::put('/{paketUuid}/distribusi/{distributionId}/terima', [PaketSoalController::class, 'terimaDistribusi'])->name('distribusi.terima');
             });
 
@@ -2776,6 +2782,26 @@ Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
 
         // ── SUPERVISI ───────────────────────────────────────────
         Route::resource('supervisi', SupervisiController::class);
+
+        Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
+        Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
+        Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+
+        // ── PENGATURAN INSTRUMEN SUPERVISI (bagian → item + poin) ──
+        Route::prefix('supervisi-instrumen')->name('supervisi-instrumen.')->group(function () {
+            Route::get('/', [SupervisiInstrumenController::class, 'index'])->name('index');
+            Route::post('/', [SupervisiInstrumenController::class, 'store'])->name('store');
+            Route::get('/{id}', [SupervisiInstrumenController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [SupervisiInstrumenController::class, 'update'])->name('update');
+            Route::post('/{id}/duplikat', [SupervisiInstrumenController::class, 'duplicate'])->name('duplikat');
+            Route::post('/{id}/bagian', [SupervisiInstrumenController::class, 'storeBagian'])->name('bagian.store');
+            Route::put('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'updateBagian'])->name('bagian.update');
+            Route::delete('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'destroyBagian'])->name('bagian.destroy');
+            Route::post('/bagian/{bagianId}/item', [SupervisiInstrumenController::class, 'storeItem'])->name('item.store');
+            Route::put('/item/{itemId}', [SupervisiInstrumenController::class, 'updateItem'])->name('item.update');
+            Route::delete('/item/{itemId}', [SupervisiInstrumenController::class, 'destroyItem'])->name('item.destroy');
+            Route::post('/item/{itemId}/pindah', [SupervisiInstrumenController::class, 'moveItem'])->name('item.move');
+        });
 
         // ── SURAT MASUK ─────────────────────────────────────────
         Route::resource('surat-masuk', SuratMasukController::class);

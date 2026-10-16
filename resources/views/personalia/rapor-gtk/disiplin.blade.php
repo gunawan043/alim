@@ -2,62 +2,36 @@
 @extends('layouts.master')
 @section('title') Penilaian Disiplin @endsection
 
-@push('css')
-<style>
-.stat-card{transition:all .25s ease;cursor:default}.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
-.table-freeze{table-layout:auto;min-width:900px;width:100%;margin-bottom:0}
-.table-freeze th,.table-freeze td{vertical-align:middle;padding:11px 14px;word-break:break-word}
-.table-freeze thead th{position:sticky;top:0;z-index:20;font-weight:600;background:#f8fafc;border-bottom:2px solid #e2e8f0}
-.table-freeze tbody tr:hover td{background:#f1f5f9}
-.page-header-card{background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;padding:1.25rem 1.5rem;border-radius:.625rem}
-[data-bs-theme="dark"] .page-header-card{background:linear-gradient(135deg,#0a1a2e 0%,#0f2040 100%);border-color:#1e40af}
-@media print{.no-print{display:none!important}}
-.badge-status{font-size:.78rem;padding:.35em .7em}
-</style>
-@endpush
+@section('css')
+    @include('shared._styles')
+    <style>
+        @media print { .no-print { display: none !important; } }
+        .badge-status { font-size: .78rem; padding: .35em .7em; }
+    </style>
+@endsection
 
 @section('content')
 @php $userId = request()->route('userId') ?? auth()->id(); @endphp
 
-<div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <div style="width:48px;height:48px;background:#3b82f618;color:#2563eb;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="ri-shield-check-line fs-4"></i>
-        </div>
-        <div>
-            <h4 class="fw-bold text-dark mb-1" style="font-size:1.1rem">Penilaian Disiplin GTK</h4>
-            <p class="mb-0 text-muted" style="font-size:.8rem">Evaluasi tingkat kedisiplinan dan kepatuhan GTK terhadap peraturan</p>
-        </div>
-    </div>
-    <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.rapor-gtk.tahunan', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-file-chart-line me-1"></i> Rekap Tahunan
-        </a>
-        <a href="{{ route('user.rapor-gtk.akademik', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-book-open-line me-1"></i> Akademik
-        </a>
-        <a href="{{ route('user.rapor-gtk.kepribadian', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-user-heart-line me-1"></i> Kepribadian
-        </a>
-        <a href="{{ route('user.rapor-gtk.administrasi', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-file-list-3-line me-1"></i> Administrasi
-        </a>
-    </div>
-</div>
+@component('components.breadcrumb')
+    @slot('li_1') Rapor GTK @endslot
+    @slot('li_2') <a href="{{ route('user.rapor-gtk.tahunan', $userId) }}">Rekap Tahunan</a> @endslot
+    @slot('title') Penilaian Disiplin GTK @endslot
+@endcomponent
 
 {{-- Stat Cards --}}
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #2563eb;">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-2" style="background:#3b82f618;">
-                            <i class="ri-team-line" style="color:#2563eb;"></i>
+                        <span class="avatar-title bg-primary-subtle rounded fs-2">
+                            <i class="ri-team-line text-primary"></i>
                         </span>
                     </div>
                     <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Total GTK</p>
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total GTK</p>
                         <h3 class="fw-bold ff-secondary mb-0">{{ $totalGtk ?? 0 }}</h3>
                     </div>
                 </div>
@@ -65,7 +39,7 @@
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #16a34a;">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-sm flex-shrink-0">
@@ -74,7 +48,7 @@
                         </span>
                     </div>
                     <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Rata-rata Kehadiran</p>
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Rata-rata Kehadiran</p>
                         <h3 class="fw-bold ff-secondary mb-0">{{ $rataKehadiran ?? '0' }}<small class="fw-normal text-muted" style="font-size:.7rem">%</small></h3>
                     </div>
                 </div>
@@ -82,7 +56,7 @@
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #d97706;">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-sm flex-shrink-0">
@@ -91,7 +65,7 @@
                         </span>
                     </div>
                     <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Skor Ketepatan</p>
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Skor Ketepatan</p>
                         <h3 class="fw-bold ff-secondary mb-0">{{ $skorKetepatan ?? '0' }}</h3>
                     </div>
                 </div>
@@ -99,7 +73,7 @@
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #dc2626;">
+        <div class="card card-animate h-90">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-sm flex-shrink-0">
@@ -108,7 +82,7 @@
                         </span>
                     </div>
                     <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Skor Disiplin</p>
+                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Skor Disiplin</p>
                         <h3 class="fw-bold ff-secondary mb-0">{{ $skorDisiplin ?? '0' }}</h3>
                     </div>
                 </div>
@@ -152,15 +126,15 @@
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle table-freeze">
-            <thead>
+            <thead class="table-light">
                 <tr>
-                    <th class="bg-light text-center" style="width:48px">No</th>
-                    <th class="bg-light">Nama GTK</th>
-                    <th class="bg-light text-center">Kehadiran (%)</th>
-                    <th class="bg-light text-center">Ketepatan (%)</th>
-                    <th class="bg-light text-center">Skor Disiplin</th>
-                    <th class="bg-light text-center">Predikat</th>
-                    <th class="bg-light text-center">Aksi</th>
+                    <th class="text-center" style="width:48px">No</th>
+                    <th >Nama GTK</th>
+                    <th class="text-center">Kehadiran (%)</th>
+                    <th class="text-center">Ketepatan (%)</th>
+                    <th class="text-center">Skor Disiplin</th>
+                    <th class="text-center">Predikat</th>
+                    <th class="text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -195,13 +169,9 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div style="color:#3b82f6;opacity:.4"><i class="ri-shield-check-line" style="font-size:3rem"></i></div>
-                            <h5 class="mt-2 fw-semibold">Belum ada data</h5>
-                            <p class="text-muted mb-0 small">Data penilaian disiplin GTK akan muncul di sini</p>
-                        </td>
-                    </tr>
+                    <x-empty-state colspan="7"
+                        title="Belum ada data"
+                        message="Data penilaian akan muncul di sini." />
                 @endforelse
             </tbody>
         </table>

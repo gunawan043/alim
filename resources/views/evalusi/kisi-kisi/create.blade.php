@@ -11,7 +11,16 @@
             'C5_mengevaluasi' => 'C5 — Mengevaluasi',
             'C6_mencita' => 'C6 — Mencipta',
         ];
+        $bentukSoalOptions = [
+            'pg' => 'Pilihan Ganda',
+            'mcc' => 'PG Kompleks',
+            'bs' => 'Benar/Salah',
+            'jodoh' => 'Menjodohkan',
+            'isian' => 'Isian',
+            'uraian' => 'Uraian',
+        ];
     @endphp
+
     @component('components.breadcrumb')
         @slot('li_1') Kisi-kisi @endslot
         @slot('li_2') Buat @endslot
@@ -129,7 +138,10 @@
                 <table class="table table-bordered" id="items-table">
                     <thead>
                         <tr>
-                            <th>TP</th>
+                            <th>Indikator (TP)</th>
+                            <th>Materi</th>
+                            <th>Bentuk Soal</th>
+                            <th>Nomor Soal</th>
                             <th>Level Kognitif</th>
                             <th>Jumlah Soal</th>
                             <th>Bobot/Soal</th>
@@ -153,6 +165,16 @@
                                         @endforeach
                                     </select>
                                 </td>
+                                <td><input type="text" name="items[{{ $idx }}][materi]" class="form-control form-control-sm" value="{{ $oldItem['materi'] ?? '' }}" maxlength="255" placeholder="Materi"></td>
+                                <td>
+                                    <select name="items[{{ $idx }}][bentuk_soal]" class="form-select form-select-sm">
+                                        <option value="">--</option>
+                                        @foreach($bentukSoalOptions as $bsKey => $bsLabel)
+                                            <option value="{{ $bsKey }}" {{ ($oldItem['bentuk_soal'] ?? '') === $bsKey ? 'selected' : '' }}>{{ $bsLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td><input type="text" name="items[{{ $idx }}][nomor_soal]" class="form-control form-control-sm" value="{{ $oldItem['nomor_soal'] ?? '' }}" maxlength="40" placeholder="mis. 1-5"></td>
                                 <td>
                                     <select name="items[{{ $idx }}][level_kognitif]" class="form-select form-select-sm" required>
                                         @foreach($levelOptions as $lvl => $lvlLabel)
@@ -189,6 +211,12 @@ const tpOptions = `
     @endforeach
 `;
 
+const bentukSoalOptions = `
+    @foreach($bentukSoalOptions as $bsKey => $bsLabel)
+        <option value="{{ $bsKey }}">{{ $bsLabel }}</option>
+    @endforeach
+`;
+
 const levelOptions = `
     @foreach($levelOptions as $lvl => $lvlLabel)
         <option value="{{ $lvl }}">{{ $lvlLabel }}</option>
@@ -200,6 +228,9 @@ document.getElementById('btn-add-item').addEventListener('click', () => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td><select name="items[${itemIdx}][tp_id]" class="form-select form-select-sm" data-tp-select required>${tpOptions}</select></td>
+        <td><input type="text" name="items[${itemIdx}][materi]" class="form-control form-control-sm" maxlength="255" placeholder="Materi"></td>
+        <td><select name="items[${itemIdx}][bentuk_soal]" class="form-select form-select-sm"><option value="">--</option>${bentukSoalOptions}</select></td>
+        <td><input type="text" name="items[${itemIdx}][nomor_soal]" class="form-control form-control-sm" maxlength="40" placeholder="mis. 1-5"></td>
         <td><select name="items[${itemIdx}][level_kognitif]" class="form-select form-select-sm" required>${levelOptions}</select></td>
         <td><input type="number" name="items[${itemIdx}][jumlah_soal]" class="form-control form-control-sm" value="1" min="1" required></td>
         <td><input type="number" step="0.01" name="items[${itemIdx}][bobot_per_soal]" class="form-control form-control-sm" value="0" min="0" required></td>

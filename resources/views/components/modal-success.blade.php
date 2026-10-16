@@ -8,6 +8,12 @@
     'secondaryColor' => '#121331',
 ])
 
+@once
+    @push('scripts')
+        <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    @endpush
+@endonce
+
 <div class="modal fade zoomIn" id="{{ $id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

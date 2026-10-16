@@ -439,11 +439,12 @@ return redirect()
         $dateMap = []; // [student_id][date_string] => status
 
         if ($selectedStudyGroupId && $activeYear) {
+            // ARSIP: tampilkan seluruh anggota rombel pada TA tersebut (termasuk yang
+            // sudah pindah) agar rekap kehadiran TA lama tetap lengkap.
             $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
-                ->where('is_active', true)
                 ->orderBy('attendance_number')
                 ->get();
 
@@ -618,11 +619,12 @@ return redirect()
             $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
             $endDate = $startDate->copy()->endOfMonth();
 
+            // ARSIP: tampilkan seluruh anggota rombel pada TA tersebut (termasuk yang
+            // sudah pindah) agar rekap kehadiran TA lama tetap lengkap.
             $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $activeYear->id)
-                ->where('is_active', true)
                 ->orderBy('attendance_number')
                 ->get();
 
@@ -727,11 +729,12 @@ return redirect()
         if ($selectedStudyGroupId && $selectedAyId) {
             $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
 
+            // ARSIP: tampilkan seluruh anggota rombel pada TA tersebut (termasuk yang
+            // sudah pindah) agar rekap kehadiran TA lama tetap lengkap.
             $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
                 ->where('academic_year_id', $selectedAyId)
-                ->where('is_active', true)
                 ->orderBy('attendance_number')
                 ->get();
 

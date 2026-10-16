@@ -41,9 +41,15 @@ class StudentController extends Controller
             $query->where('school_id', $request->school_id);
         }
         if ($request->filled('study_group_id')) {
+            // ARSIP: keanggotaan rombel mengikuti TAHUN AJARAN rombel (bukan hanya
+            // baris aktif) agar kelas pada TA lama tetap menampilkan anggotanya.
+            $rombelAyId = StudyGroup::withoutGlobalScope('school_context')
+                ->whereKey($request->study_group_id)
+                ->value('academic_year_id');
+
             $query->whereHas('classHistories', fn ($q) => $q
                 ->where('study_group_id', $request->study_group_id)
-                ->where('is_active', true)
+                ->when($rombelAyId, fn ($qq) => $qq->where('academic_year_id', $rombelAyId))
             );
         }
         if ($request->filled('search')) {

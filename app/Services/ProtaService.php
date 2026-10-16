@@ -36,7 +36,7 @@ class ProtaService
             : ['minggu_efektif' => 0, 'is_persisted' => false];
 
         $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
-        $jpPerMinggu = $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id);
+        $jpPerMinggu = $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id, $atp->academic_year_id);
         $jpEfektif = $jpPerMinggu * $mingguEfektif;
 
         $items = [];
@@ -149,7 +149,7 @@ class ProtaService
             $semester = $prota->semester === 'genap' ? 2 : 1;
             $summary = $this->pekanService->summary($prota->school_id, $prota->academic_year_id, $semester);
             $currentWeeks = (int) ($summary['minggu_efektif'] ?? 0);
-            $currentJpPerWeek = $this->hoursResolver->resolve(null, $prota->subject, null, $prota->grade_level_id);
+            $currentJpPerWeek = $this->hoursResolver->resolve(null, $prota->subject, null, $prota->grade_level_id, $prota->academic_year_id);
 
             if ($currentWeeks !== (int) $prota->minggu_efektif) {
                 $reasons[] = "Pekan Efektif berubah: {$prota->minggu_efektif} → {$currentWeeks} minggu efektif.";

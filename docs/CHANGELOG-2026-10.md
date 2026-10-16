@@ -1168,6 +1168,154 @@ Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar uj
 - **Test baru `MapelKelasPropagationTest`** (4 test / 11 assertion): propagasi ke rombel aktif, penolakan mapel lintas satuan, penonaktifan saat dihapus dari tingkat, dan regresi `track` tanpa duplikasi.
 - Regresi: `CurriculumStructureSeederTest + KurikulumMasterUiTest + CurriculumStructureMenuTest` = **30 test / 163 assertion lulus**; `view:cache` sukses.
 
+## 128. Increment 2 (Bagian 3) — Kartu Soal & Dokumen Validasi Soal
+- **Kartu Soal (baru)** — halaman web + cetak per **paket soal**, struktur sesuai kebijakan:
+  **Nomor Soal | Indikator | Soal | Kunci Jawaban | Level Kognitif | Skor Penilaian**.
+  - Isi diambil dari **butir soal sebenarnya** (`PaketSoalItem::kontenFinal()` — memakai snapshot bila paket sudah dibekukan), termasuk opsi jawaban dan total skor.
+  - **Indikator** ditelusuri dari TP butir soal (kode + deskripsi); **Level Kognitif** dari item kisi-kisi paket (map TP → level, label ramah C1–C6).
+  - **Perlindungan kunci**: penyusun butir soal selalu melihat kuncinya; peran lain mengikuti kebijakan serumpun/tim kurikulum (`KurikulumAccess::canViewAnswerKeys`). Peran tak berwenang melihat badge **"Disembunyikan"** dan peringatan di atas tabel. Halaman cetak mengikuti aturan yang sama.
+  - Tautan **"Kartu Soal"** ditambahkan pada halaman detail paket.
+- **Validasi Soal (baru)** — dokumen validasi per paket dengan identitas **"VALIDASI SOAL {JENIS} {SEMESTER} TA. {TAHUN AJARAN}"**:
+  - Identitas asesmen: Mata Pelajaran, Kelas, Tahun Ajaran, Semester, Jenis Asesmen, Paket.
+  - **Pembuat Soal** (penyusun kisi + penulis butir), **Validator** (dari penugasan review serumpun yang sah + hitungan setuju/revisi/menunggu), **Soal yang Perlu Diperbaiki** (nomor soal, indikator, validator, status, catatan), dan **Rekomendasi** (catatan validator).
+  - Tidak ada validator/status valid palsu — seluruh isi berasal dari `ReviewAssignment` workflow existing.
+  - Versi web + versi **cetak** (blok tanda tangan Pembuat/Validator/Tim Kurikulum).
+  - Tautan **"Validasi Soal"** ditambahkan pada halaman detail paket.
+- **Test baru** (di `PaketNaskahPolicyTest`): kartu soal menampilkan butir + melindungi kunci (penyusun melihat, TU disamarkan) dan halaman cetaknya; dokumen validasi menampilkan pembuat, validator, catatan perbaikan, dan versi cetak.
+- Regresi modul evaluasi: `PaketNaskahPolicy + BankSoalTerpusat + KisiKisiKonteks + PesertaDidikP0` = **59 test / 412 assertion lulus**; `view:cache` sukses.
+
+## 129. Tindak Lanjut: Template Modal (Kelola Mapel Kelas), Format Validasi Soal, & Kolom Kisi-Kisi
+- **Modal konfirmasi/informasi WAJIB memakai template bersama** (penegasan kebijakan UI):
+  - `components.modal-confirm`, `modal-result`, dan `modal-success` kini **memuat `lordicon.js` otomatis** (sekali per halaman) — template selalu berfungsi tanpa perlu script manual per halaman.
+  - **Halaman kelola mapel kelas** (`grade-levels/show`): hapus mapel dari tingkat tidak lagi memakai `confirm()` native browser — kini **modal lord-icon/zoomIn** (judul, pesan konsekuensi "riwayat nilai tetap aman", tombol **Ya, Hapus**), dengan form tersembunyi + JS yang mengisi `action` & nama mapel dari tombol baris.
+  - **Halaman mapel rombel** (`study-group-subjects/index`): aktif/nonaktif assignment mapel kini melalui modal konfirmasi yang sama (bukan `confirm()`).
+- **Validasi Soal — menyesuaikan format lembar** sesuai kebijakan:
+  - Judul dokumen: `VALIDASI SOAL {JENIS} {SEMESTER} TA. {TAHUN AJARAN}`;
+  - Header identitas: `MATA PELAJARAN: …` dan `KELAS: …`;
+  - Tabel 4 baris: **Pembuat soal | Validator | Soal yang perlu diperbaiki | Rekomendasi** dengan ruang catatan memadai;
+  - Versi web + versi cetak (blok tanda tangan Pembuat/Validator/Tim Kurikulum).
+- **Kisi-Kisi Soal — kelengkapan kolom format**:
+  - Migrasi baru `2026_10_16_100000_add_detail_columns_to_kisi_kisi_soal_items`: kolom `materi`, `bentuk_soal`, `nomor_soal` pada item kisi-kisi;
+  - Form create/edit + halaman detail kini menampilkan: **No | Indikator | Materi | Bentuk Soal | Nomor Soal | Level Kognitif** (+ Jumlah/Bobot/Total Bobot);
+  - Level kognitif berlabel ramah **C1–C6**; bentuk soal memakai label (Pilihan Ganda, PG Kompleks, Benar/Salah, Menjodohkan, Isian, Uraian) selaras enum `soal.tipe_soal`;
+  - Stub SQLite `tests/TestCase.php` diselaraskan; empty-state bersama di tabel detail kisi-kisi.
+- **Test**: `KisiKisiKonteksTest` diperluas (kolom baru tersimpan & tampil di halaman detail/edit); regresi `KisiKisiKonteks + PaketNaskahPolicy + KurikulumMasterUi + PesertaDidikP0 + MapelKelasPropagation` = **67 test / 382 assertion lulus**; `view:cache` sukses; migrasi dev dijalankan.
+
+## 130. Modul Kedisiplinan Disamakan dengan UI ALIM + Perbaikan Error Supervisi
+- **Dashboard Kedisiplinan** disamakan dengan pola dashboard ALIM: kartu statistik `card-animate` (avatar + label + catatan), header `border-bottom-dashed`, empty-state bersama, dan **query "Ringkasan per Santri" dipindahkan dari view ke controller** (view tidak lagi menjalankan query).
+- **Poin Pelanggaran (daftar)**: header aksi lengkap (Dashboard / Rekap per Santri / Ekspor PDF / Tambah), filter rapi (`form-select-sm`), tabel standar, pagination bersama, empty-state bersama, dan **modal konfirmasi hapus memakai template lord-icon** — sebelumnya tombol hapus **tidak memiliki handler sama sekali** (bug fungsional: klik tidak melakukan apa pun).
+- **Rekap Poin per Santri**: desain custom (`table-striped`, `card-shadow-hover`, header sekunder) diganti pola standar — kartu ringkasan, legenda tingkat rapi, filter konsisten, tabel `table-hover align-middle`, pagination & empty-state bersama.
+- **Detail Poin per Santri**: kartu ringkasan standar (Total Poin, Jumlah Pelanggaran, Tingkat Pelanggaran, Identitas), riwayat pelanggaran kronologis, pagination & empty-state bersama.
+- **Supervisi — perbaikan error (dari audit)**:
+  1. **Sidebar waka** memanggil `route('waka.supervisi')` dan `route('waka.ekstrakurikuler')` yang **tidak terdaftar** → `RouteNotFoundException` mematikan semua halaman waka. Diperbaiki ke `.index`.
+  2. Controller Supervisi menyentuh **kolom yang tidak ada di `gtk_profiles`** (`name`, `school_id`) → 500. Kini memakai `gtk.user.name` dan filter employment (`gtk_employments.school_id`), urut nama user.
+  3. `store()` kini **memvalidasi konteks satuan pendidikan** dan **menyinkronkan `gtk_name`/`observer_name` dari relasi** (kolom denormalisasi), NUPY benar via accessor.
+  4. View create/edit/index: `$gtk->name` → `$gtk->user?->name`.
+- **Test baru `SupervisiSmokeTest`** (3 test / 11 assertion): route sidebar waka terdaftar; halaman index/create memuat daftar GTK tanpa kolom invalid; simpan supervisi menyinkronkan nama GTK.
+- Regresi: `SupervisiSmoke + PesertaDidikP0 + KurikulumMasterUi + MapelKelasPropagation + DormitoryRouteSmoke` = **61 test / 291 assertion lulus**; `view:cache` sukses.
+- **Berikutnya**: instrumen Supervisi sesuai format (Guru Umum & Guru Agama) + **fitur pengaturan item & poin instrumen**; penyamaan halaman create/edit/show kedisiplinan; lanjutan Increment 3–5.
+
+## 131. Perbaikan `$tahunAjaran` (Rapor GTK/Supervisi) & Tipografi Halaman Pelanggaran
+- **Error "Undefined variable $tahunAjaran"** pada halaman **Rapor GTK → Tahunan** (target menu *Supervisi & Kinerja GTK*):
+  - akar: view memakai `{{ $tahunAjaran ? ... }}` pada pemakaian **kedua tanpa `??`**, sementara `RaporGtkController@tahunan` hanya mengirim `userId`.
+  - perbaikan: controller kini mengirim **tahun ajaran aktif** (tahun mulai, fallback tahun berjalan) dan judul rekap menampilkan `2026/2027`.
+  - regresi test baru: `test_halaman_rapor_gtk_tahunan_target_menu_supervisi_tidak_error`.
+- **Tipografi halaman pelanggaran diseragamkan** (font terlalu besar & tidak konsisten):
+  - akar: kelas `stat-label` (11px) dan `card-animate` berasal dari style modul kurikulum yang **tidak dimuat** di halaman pelanggaran → label kartu jatuh ke ukuran default (besar).
+  - dibuat partial bersama baru **`shared/_styles.blade.php`** (filter-badge, stat-label, card-animate, table-freeze) dan dimuat di **7 halaman pelanggaran** (dashboard, daftar, rekap, detail, show, create, edit).
+  - badge `fs-6` (poin) pada rekap & show dihapus → kembali ke ukuran badge standar (`fw-semibold`/`bg-*-subtle`), konsisten dengan halaman lain.
+- Test: `SupervisiSmoke + DormitoryRouteSmoke + PesertaDidikP0` = **32 test / 140 assertion lulus**; `view:cache` sukses.
+
+## 133. Kenaikan Kelas (1A→2A), Filter Santri per Rombel, Rekap Tahunan GTK, & Fondasi Instrumen Supervisi
+- **Bug kenaikan kelas "1A → 2A tidak ada datanya" — 3 akar masalah diperbaiki** (`BulkPromotionController`):
+  1. **TA asal keliru**: penutupan histori memakai TA **aktif global**, bukan TA rombel sumber → histori lama tidak tertutup / kelas tujuan tampak kosong. Kini memakai `study_group->academic_year_id`.
+  2. **Rombel tujuan tidak paralel**: auto-target mengambil **rombel pertama** tingkat tujuan (bisa 2B/2C), bukan kelas paralel. Helper baru `targetStudyGroupId()` memetakan **1A → 2A** (cocokkan suffix nama), fallback baru ke rombel pertama.
+  3. **Enroll senyap**: `enrollStudent()` berhenti diam bila sudah ada baris pada TA tujuan (termasuk baris sumber saat TA sama) → kelas tujuan kosong tapi dihitung "berhasil". Kini **idempoten**: baris yang ada dipindahkan/diaktifkan; kapasitas dihitung tanpa baris santri itu; pesan sukses jujur.
+  - Daftar santri pada halaman kelas tujuan juga memakai **TA rombel terpilih** (bukan TA aktif global).
+  - Regresi baru `BulkPromotionTest` (2 test / 8 assertion): paralel 1A→2A, kelas tujuan berisi data, re-run tidak menggandakan, dan skenario "rombel tujuan penuh" tetap dipertahankan.
+- **Filter halaman Santri per Rombel dirapikan**: lebar kolom filter diseimbangkan (6+3+3) dan **filter jenis kelamin dihapus** (modal lanjutan + badge cepat) sesuai kebijakan.
+- **Rekap Tahunan GTK** disamakan dengan pola `gtk/index.blade.php`: breadcrumb menggantikan header gradien custom, kartu statistik `card-animate` + `stat-label`, header `border-bottom-dashed`, tabel `table-hover align-middle` + `table-light`, badge predikat `bg-*-subtle`, `x-empty-state`, `shared._pagination`; **dropdown filter (GTK & Tahun Ajaran) kini terisi** dari kontroler (sebelumnya kosong).
+- **Fondasi Instrumen Supervisi (format Bapak)**:
+  - Migrasi baru `2026_10_16_200000_create_supervisi_instrumen_tables`: `supervisi_instrumen` (jenis: guru_umum/guru_agama, bisa per-satuan atau template global) → `supervisi_instrumen_bagian` (I, IIA, IIB, IIC) → `supervisi_instrumen_item` (teks, urutan, **bobot/poin**, butuh_kondisi, sub-item a–g via `parent_item_id`).
+  - Model `SupervisiInstrumen`, `SupervisiInstrumenBagian`, `SupervisiInstrumenItem`.
+  - **Seeder `SupervisiInstrumenSeeder`** (idempoten): **Guru Umum** (4 bagian / 37 item termasuk sub-item a–g) & **Guru Agama** (4 bagian / 25 item) — teks butir sesuai format Bapak.
+- Test: `BulkPromotion + SupervisiSmoke + PesertaDidikP0 + DormitoryRouteSmoke` = **34 test / 148 assertion lulus**; `view:cache` sukses; seeder diverifikasi idempoten (run 2× tetap 37 item, 2 instrumen).
+
+## 134. Tarik Santri ke Rombel (Fix) + Pengaturan Instrumen Supervisi (Item & Poin)
+- **"Tarik Santri ke Rombel" diperbaiki** (`StudyGroupApiController`) — 2 akar masalah:
+  1. `unassignedStudents()` mengecualikan santri yang aktif **lintas semua tahun ajaran** → daftar kandidat kosong. Kini pengecualian dibatasi **TA rombel** yang dituju.
+  2. `bulkAddStudents()` & `addStudent()` memakai **TA aktif global** (bukan TA rombel) dan mengecek duplikat setelah deaktivasi → santri masuk ke TA yang salah / baris berganda. Kini memakai **TA rombel**, memindahkan baris yang ada (idempoten), dan menautkan `leave_date` dengan benar.
+  - Regresi baru `StudyGroupPullStudentsTest` (1 test / 6 assertion).
+- **Pengaturan Instrumen Supervisi (fitur yang diminta: mengatur isian + poinnya)**:
+  - Skema: `supervisi_penilaian` (skor 1–4, kondisi Ya/Tidak, catatan per item) + kolom hasil pada `supervisi` (`instrumen_id`, `skor_total`, `skor_maks`, `nilai_akhir`, `ketercapaian`); model `SupervisiPenilaian` + relasi.
+  - Halaman **Instrumen Supervisi** (`waka.supervisi-instrumen.*`): daftar instrumen (bawaan/satuan + jumlah bagian & item), tombol **Duplikat ke Satuan**, **Tambah Instrumen**.
+  - **Editor instrumen**: ubah identitas; kelola **bagian** (kode/nama/urutan, hapus via modal template); kelola **item** inline — teks, **poin (bobot)**, kolom Ya/Tidak, aktif/nonaktif, naik/turun urutan, hapus, **sub-item a–g** — plus form tambah item/sub-item/bagian.
+  - Kebijakan: instrumen **bawaan baca-saja** (duplikat dulu ke satuan) → tidak ada perubahan lintas satuan; instrumen satuan hanya bisa diubah satuan pemiliknya (guard backend).
+  - Sidebar waka menambah tautan **Instrumen Supervisi**.
+- Test: `SupervisiSmoke` bertambah skenario pengaturan (duplikat 4 bagian/37 item, tambah item dengan poin, 403 untuk edit template global) → **5 test / 21 assertion**; regresi batch `SupervisiSmoke + StudyGroupPullStudents + BulkPromotion + PesertaDidikP0` = **0 gagal**; `view:cache` sukses.
+
+## 135. Audit Kenaikan Kelas/Mutasi, Menu Supervisi, UI Penilaian GTK, & Profil Santri (Histori + Leger/Rapor per TA)
+- **Kenaikan kelas — audit TA & pemilihan rombel tujuan** (`BulkPromotionController` + view):
+  - **TA sama = MUTASI KELAS** (bukan kenaikan): wajib memilih rombel tujuan eksplisit; auto-naik ditolak (backend 422 + aturan hanya untuk aksi `promote`, aksi lulus/mutasi keluar tetap boleh). Pesan dibedakan: **"Mutasi kelas selesai…"** vs "Kenaikan kelas selesai…".
+  - **Rombel tujuan kini dapat dipilih di form** (dropdown terisi dari seluruh rombel aktif satuan lintas TA — sebelumnya dropdown di modal bisa kosong karena filter semester). Contoh 3C → 4B dapat dipilih langsung.
+  - **Modal/peringatan bila rombel tujuan lebih rendah**: banner peringatan di konfigurasi + di dalam modal konfirmasi, label tombol berubah menjadi **"Ya, Mutasi Kelas"** — proses tetap diizinkan sebagai koreksi penempatan.
+  - Regresi: `BulkPromotionTest` (TA sama + target → mutasi; paralel 1A→2A; idempoten) & `PesertaDidikP0Test` (TA sama tanpa target → ditolak) — **0 gagal**.
+- **Menu Supervisi di sidebar**: tautan **Supervisi Pembelajaran** & **Instrumen Supervisi** ditambahkan pada sidebar Satuan Pendidikan (KSP/Waka/Kurikulum/TU) selain yang sudah ada di sidebar Waka.
+- **UI halaman Penilaian GTK** (akademik, disiplin, kepribadian, administrasi) disamakan dengan `gtk/index.blade.php`: header gradien custom diganti **breadcrumb** + tombol navigasi antar-halaman, kartu statistik `card-animate` + `stat-label` + warna `bg-*-subtle`, tabel `table-hover align-middle table-freeze` + `thead table-light`, badge predikat `bg-*-subtle`, **`x-empty-state`**, dan **`shared._pagination`**. Smoke test baru: 4 halaman + pola UI standar.
+- **Profil Santri — audit & penyempurnaan**:
+  1. **Histori kelas tidak hilang**: baris `student_class_histories` tidak pernah dihapus saat kenaikan/mutasi (ditutup dengan `leave_date`) dan tab **Riwayat Kelas** menampilkan seluruh TA (Aktif/Selesai) dengan wali kelas & periode masuk→keluar.
+  2. **Akses Leger & Rapor per tahun ajaran**: setiap baris histori kini memiliki tombol **Leger** (leger kelas TA tersebut) dan **Rapor** (cetak rapor individu TA tersebut; `raporCetak` sudah mendukung `academic_year_id`+`semester`), ditampilkan sesuai kewenangan leger pengguna.
+  3. **Desain mengikuti template profil GTK**: struktur `profile-foreground` + `profile-wrapper` + nav-pills sudah sama; memperbaiki sisa teks salah ("tes {{name}}") pada overlay.
+- Test: `SupervisiSmoke + BulkPromotion + StudyGroupPullStudents + PesertaDidikP0` = **38 test / 188 assertion lulus**; `view:cache` sukses.
+
+## 136. ARSIP ROMBEL — Seluruh Data Rombel per Tahun Ajaran Wajib Tersimpan & Tetap Dapat Dilihat
+**Analisis akar masalah**: data SEBENARNYA tersimpan per tahun ajaran (verified di DB: histori lama nonaktif + 6 baris arsip), tetapi **halaman-halaman menampilkannya kosong** karena semua query menyaring `is_active = true` tanpa memperhatikan tahun ajaran rombel → rombel TA lama terlihat "hilang".
+
+**Aturan baru — keanggotaan rombel = berdasarkan TAHUN AJARAN rombel (bukan hanya baris aktif):**
+- **Santri per rombel** (`StudentController@index`): anggota rombel TA lama tetap tampil; anggota yang sudah pindah/naik diberi **badge "Pindah"**; muncul **banner "Arsip rombel TA …"** saat membuka rombel non-aktif. Input (tulis) tetap hanya untuk anggota aktif.
+- **Leger & tab Mapel** (`NilaiKelasController@sts`): daftar santri memuat seluruh anggota TA tersebut (aktif dulu), anggota arsip diberi badge **"Pindah"**; **input nilai (tab Mapel) otomatis melewati anggota nonaktif** (`@continue`).
+- **Rekap kehadiran** (`recapDetail`, `recap`, `recapSemester`): memuat seluruh anggota rombel TA tersebut — rekap presensi TA lama tetap lengkap.
+- **Buku mapel & guru** (`teacher_admin_books`) dan **nilai** (`admin_nilai_sumatif`/formatif) memang per TA dan **tidak pernah disentuh** oleh kenaikan kelas; dibuktikan test.
+- **Untuk TA baru**: struktur mapel/guru di-provision otomatis (`ensureBooksForSemester`) saat leger TA tersebut dibuka.
+
+**Regresi baru `RombelArchiveTest` (3 test / 9 assertion):**
+1. Arsip rombel lama tetap menampilkan anggota (halaman santri + leger TA lama).
+2. Kenaikan kelas **tidak menghapus** buku mapel & nilai TA lama (sts 88 tetap ada; 2 histori: lama nonaktif + baru aktif).
+3. Arsip presensi TA lama tetap tampil di rekap semester.
+
+**Perbaikan UI yang menyertai**: badge status anggota arsip, banner arsip TA, konsistensi tabel/badge dengan pola gtk.
+
+Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 assertion (+2 risky) lulus**; `view:cache` sukses.
+
+## 137. Kenaikan Kelas — Histori Wajib Utuh, Hanya ke Tahun Ajaran Baru, Tanpa Mutasi
+**Temuan kritis dari data nyata**: **6 santri memiliki histori NONAKTIF tanpa baris aktif** — promosi menutup kelas lama tetapi **gagal membuat baris baru** (target rombel tidak ditemukan), sehingga santri kehilangan kelas. Akar: penutupan histori dilakukan **sebelum** target dipastikan.
+- **Perbaikan inti (anti kehilangan kelas)**:
+  1. Target rombel **WAJIB ada SEBELUM** ada perubahan: bila tidak ditemukan → error, **tidak ada data yang diubah** (histori lama tetap aktif).
+  2. Urutan operasi dibalik: **enrollment baru dibuat lebih dulu**, baru histori lama ditutup (tetap tersimpan dengan `leave_date`) → **pasangan histori 2A (TA lama) + 3A (TA baru) selalu terbentuk**.
+- **Kebijakan halaman kenaikan kelas (sesuai arahan)**:
+  1. **Hanya ke TAHUN AJARAN BARU** — TA yang sama/lebih lama ditolak dengan pesan *"gunakan fitur Mutasi Kelas"*.
+  2. **Mutasi kelas dikeluarkan dari halaman ini** — panduan + tautan ke fitur **Mutasi Kelas** disediakan (`student-move`).
+  3. **Rombel tujuan hanya dari TA baru yang dipilih** dan **hanya tingkat DI ATAS** kelas saat ini (filter server-side + JS).
+  4. **Rombel tujuan wajib dipilih** (tanpa opsi "auto" yang tidak jelas); kelas paralel (2A → 3A) **dipilih otomatis** untuk mengurangi klik; bila TA baru belum punya rombel → banner peringatan.
+- **Regresi diperbarui/ditambah** (`BulkPromotionTest` + `PesertaDidikP0Test`):
+  - TA sama ditolak (errors `to_academic_year_id`) + data tidak berubah;
+  - **TA baru tanpa rombel → gagal tanpa menutup histori lama** (regresi 6 santri kehilangan kelas);
+  - kapasitas penuh di TA baru → histori lama tetap aktif (skenario dipindah ke lintas-TA);
+  - pasangan histori 2A+3A & idempotensi tetap terjaga.
+- Test: 5 berkas regresi (BulkPromotion, PesertaDidikP0, RombelArchive, AttendanceSync, SumatifHarian) — **0 gagal**; `view:cache` sukses.
+- **Catatan pemulihan**: 6 santri tanpa kelas dapat dikembalikan lewat fitur **Tarik Santri** (ke rombel TA baru) atau **Mutasi Kelas** — keduanya sudah aman.
+
+## 138. Supervisi — Form Penilaian (Skor per Item, Ketercapaian) & Cetak Instrumen
+- **Form penilaian supervisi** (`waka.supervisi.penilaian` + `.store`):
+  - Pilih **instrumen** (milik satuan atau bawaan) langsung dari halaman penilaian.
+  - Seluruh bagian & item (termasuk sub-item a–g) ditampilkan dengan **Kondisi Ya/Tidak**, **Skor A(4)/B(3)/C(2)/D(1)**, dan **catatan per item**.
+  - **Ringkasan live** (JS): subtotal per bagian, jumlah skor, skor maksimum, **nilai akhir**, dan **ketercapaian** (86–100 Amat baik · 70–85 Baik · 55–69 Cukup · <55 Kurang).
+  - Simpan → menghitung `skor_total`, `skor_maks`, `nilai_akhir`, `ketercapaian` + menyimpan catatan penilai (temuan/rekomendasi/tindak lanjut).
+- **Cetak instrumen** (`waka.supervisi.cetak`): format lembar sesuai instrumen Bapak — identitas (sekolah, guru, mapel, kelas/semester, hari/tanggal/jam, TA, supervisor), tabel **No | Aspek | Kondisi Ya/Tidak | A | B | C | D | Ket** dengan baris bagian, **JUMLAH SKOR / SKOR MAKSIMUM / NILAI AKHIR**, tabel **Ketercapaian** dengan penanda pencapaian, **Catatan Penilai**, dan tanda tangan Guru/Supervisor/Kepala.
+- **Halaman detail supervisi**: tombol **Isi Penilaian** & **Cetak**, plus kartu **Hasil Penilaian** (instrumen, skor, nilai akhir, badge ketercapaian). Perbaikan nama GTK/Observer (memakai relasi `user`, karena `gtk_profiles` tidak punya kolom `name`).
+- **Test baru**: seluruh item diberi skor B(3) → **nilai 75.00 = "Baik"**, jumlah baris penilaian sesuai item, halaman penilaian & cetak dapat dirender (`SupervisiSmokeTest` = **7 test / 47 assertion**).
+- Regresi batch (Supervisi + BulkPromotion + RombelArchive + PesertaDidikP0 + AttendanceSync) — **0 gagal**; `view:cache` sukses.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

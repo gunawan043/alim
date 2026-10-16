@@ -657,4 +657,248 @@ class PaketSoalController extends Controller
 
         return $recipients;
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // KARTU SOAL & VALIDASI SOAL (Increment 2 — item 4C & 4D)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Kartu Soal (web) — satu baris per butir soal paket.
+     */
+    public function kartuSoal(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildKartuSoalData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.kartu-soal', $data + ['userId' => $userId]);
+    }
+
+    /**
+     * Kartu Soal (cetak).
+     */
+    public function kartuSoalCetak(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildKartuSoalData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.kartu-soal-cetak', $data);
+    }
+
+    /**
+     * Data Kartu Soal: nomor, indikator, soal, kunci (terlindungi),
+     * level kognitif, dan skor — diambil dari butir soal sebenarnya.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildKartuSoalData(Request $request, string $paketUuid): array
+    {
+        $paket = PaketSoal::with(['kisiKisi.subject', 'kisiKisi.gradeLevel', 'kisiKisi.academicYear'])
+            ->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket, false);
+
+        $user = $request->user();
+        $kurikulum = app(\App\Services\KurikulumAccess::class);
+
+        // Level kognitif per TP dari kisi-kisi paket (sumber: item kisi-kisi).
+        $levelByTp = collect();
+        if ($paket->kisi_kisi_soal_id) {
+            $levelByTp = KisiKisiSoalItem::where('kisi_kisi_soal_id', $paket->kisi_kisi_soal_id)
+                ->get(['tp_id', 'level_kognitif'])
+                ->groupBy('tp_id')
+                ->map(fn ($rows) => $rows->first()->level_kognitif);
+        }
+
+        $items = $paket->items()
+            ->with(['soal.options', 'soal.tujuanPembelajaran', 'soal.bankSoal.subject'])
+            ->orderBy('urutan')
+            ->get();
+
+        $subject = $paket->kisiKisi?->subject;
+
+        // KisiKisiSoal tidak memiliki relasi `creator` — resolusi lewat kolom created_by.
+        $pembuatNama = $paket->kisiKisi?->created_by
+            ? \App\Models\User::find($paket->kisiKisi->created_by)?->name
+            : null;
+
+        $rows = $items->map(function (PaketSoalItem $item) use ($user, $kurikulum, $levelByTp, $subject) {
+            $konten = $item->kontenFinal();
+            $soal = $item->soal;
+
+            $soalSubject = $subject ?? $soal?->bankSoal?->subject;
+
+            // Penyusun butir soal selalu berhak melihat kuncinya sendiri;
+            // peran lain mengikuti kebijakan (serumpun / tim kurikulum).
+            $isAuthor = $soal && (string) $soal->dibuat_oleh === (string) $user->id;
+            $canSeeKey = $isAuthor || $kurikulum->canViewAnswerKeys($user, $soalSubject);
+
+            $kunci = null;
+            if ($canSeeKey) {
+                $labels = collect($konten['opsi'] ?? [])->where('kunci', true)->pluck('label')->all();
+                $kunci = $labels !== [] ? implode(', ', $labels) : ($konten['pembahasan'] ?? null);
+            }
+
+            $tp = $soal?->tujuanPembelajaran;
+            $level = $levelByTp->get($konten['tp_id'] ?? $soal?->tp_id);
+
+            return [
+                'nomor' => $konten['nomor'] ?? ($item->nomor ?? $item->urutan),
+                'jenis' => $konten['jenis'] ?? $soal?->tipe_soal,
+                'indikator' => $tp
+                    ? trim(($tp->kode_tp ? $tp->kode_tp.' — ' : '').(string) $tp->deskripsi)
+                    : ($soal?->materi ?: null),
+                'pertanyaan' => $konten['pertanyaan'] ?? null,
+                'opsi' => $konten['opsi'] ?? [],
+                'kunci' => $kunci,
+                'kunci_terlindungi' => ! $canSeeKey,
+                'pembahasan' => $canSeeKey ? ($konten['pembahasan'] ?? null) : null,
+                'level' => $level,
+                'level_label' => $this->levelKognitifLabel($level),
+                'skor' => (float) ($konten['bobot'] ?? 0),
+            ];
+        });
+
+        return [
+            'paket' => $paket,
+            'rows' => $rows,
+            'pembuatNama' => $pembuatNama,
+            'canSeeKeys' => $rows->contains(fn ($r) => ! $r['kunci_terlindungi']),
+            'totalSkor' => (float) $rows->sum('skor'),
+        ];
+    }
+
+    /**
+     * Validasi Soal (web) — dokumen validasi paket: pembuat, validator,
+     * soal yang perlu diperbaiki, dan rekomendasi.
+     */
+    public function validasiSoal(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildValidasiSoalData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.validasi-soal', $data + ['userId' => $userId]);
+    }
+
+    /**
+     * Validasi Soal (cetak).
+     */
+    public function validasiSoalCetak(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildValidasiSoalData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.validasi-soal-cetak', $data);
+    }
+
+    /**
+     * Data dokumen validasi: identitas asesmen, pembuat soal, validator
+     * (dari penugasan review serumpun yang sah), soal yang perlu diperbaiki,
+     * dan rekomendasi validator.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildValidasiSoalData(Request $request, string $paketUuid): array
+    {
+        $paket = PaketSoal::with(['kisiKisi.subject', 'kisiKisi.gradeLevel', 'kisiKisi.academicYear'])
+            ->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket, false);
+
+        $items = $paket->items()
+            ->with(['soal.tujuanPembelajaran', 'soal.creator'])
+            ->orderBy('urutan')
+            ->get();
+
+        $subject = $paket->kisiKisi?->subject;
+        $gradeLevel = $paket->kisiKisi?->gradeLevel;
+        $academicYear = $paket->kisiKisi?->academicYear;
+        $semester = $paket->kisiKisi?->semester;
+        $jenisUjian = $paket->kisiKisi?->jenis_ujian;
+
+        // Pembuat soal: penyusun kisi-kisi/paket + penulis butir soal.
+        $kisiCreatorName = $paket->kisiKisi?->created_by
+            ? \App\Models\User::find($paket->kisiKisi->created_by)?->name
+            : null;
+
+        $pembuat = collect()
+            ->push($kisiCreatorName)
+            ->merge($items->map(fn ($i) => $i->soal?->creator?->name))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Validator: dari penugasan review soal (workflow existing).
+        $assignments = $items
+            ->flatMap(fn ($i) => collect($i->soal?->reviewAssignments ?? [])->map(fn ($a) => [
+                'soal' => $i,
+                'assignment' => $a,
+            ]))
+            ->values();
+
+        $validatorIds = $assignments->pluck('assignment.reviewer_id')->filter()->unique()->values();
+        $validators = \App\Models\User::whereIn('id', $validatorIds)->pluck('name', 'id');
+
+        $perValidator = $assignments
+            ->groupBy(fn ($row) => $row['assignment']->reviewer_id)
+            ->map(function ($rows, $reviewerId) use ($validators) {
+                $statuses = $rows->groupBy(fn ($r) => $r['assignment']->status)->map->count();
+
+                return [
+                    'nama' => $validators[$reviewerId] ?? 'Validator',
+                    'amount' => $rows->count(),
+                    'approved' => $statuses['approved'] ?? 0,
+                    'revision' => $statuses['revision'] ?? 0,
+                    'pending' => $statuses['pending'] ?? 0,
+                    'rejected' => $statuses['rejected'] ?? 0,
+                    'catatan' => $rows->map(fn ($r) => $r['assignment']->note)->filter()->unique()->values(),
+                ];
+            })
+            ->values();
+
+        // Soal yang perlu diperbaiki: penugasan revisi/ditolak/bercatatan.
+        $perluDiperbaiki = $assignments
+            ->filter(fn ($row) => in_array($row['assignment']->status, ['revision', 'rejected'], true) || filled($row['assignment']->note))
+            ->map(fn ($row) => [
+                'nomor' => $row['soal']->nomor ?? $row['soal']->urutan,
+                'indikator' => $row['soal']->soal?->tujuanPembelajaran?->kode_tp,
+                'validator' => $validators[$row['assignment']->reviewer_id] ?? 'Validator',
+                'status' => $row['assignment']->status,
+                'status_label' => \App\Models\ReviewAssignment::STATUS_OPTIONS[$row['assignment']->status] ?? ucfirst((string) $row['assignment']->status),
+                'catatan' => $row['assignment']->note,
+                'decided_at' => $row['assignment']->decided_at,
+            ])
+            ->values();
+
+        $rekomendasi = $assignments
+            ->map(fn ($row) => $row['assignment']->note_text ?? $row['assignment']->note)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return [
+            'paket' => $paket,
+            'items' => $items,
+            'subject' => $subject,
+            'gradeLevel' => $gradeLevel,
+            'academicYear' => $academicYear,
+            'semester' => $semester,
+            'jenisUjian' => $jenisUjian,
+            'pembuat' => $pembuat,
+            'perValidator' => $perValidator,
+            'perluDiperbaiki' => $perluDiperbaiki,
+            'rekomendasi' => $rekomendasi,
+        ];
+    }
+
+    /**
+     * Label level kognitif (nilai enum DB → label ramah).
+     */
+    protected function levelKognitifLabel(?string $level): string
+    {
+        return match ($level) {
+            'C1_mengingat' => 'C1 — Mengingat',
+            'C2_memahami' => 'C2 — Memahami',
+            'C3_menerapkan' => 'C3 — Menerapkan',
+            'C4_menganalisis' => 'C4 — Menganalisis',
+            'C5_mengevaluasi' => 'C5 — Mengevaluasi',
+            'C6_mencita', 'C6_mencipta' => 'C6 — Mencipta',
+            default => '—',
+        };
+    }
 }

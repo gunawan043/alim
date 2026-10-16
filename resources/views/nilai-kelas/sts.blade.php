@@ -410,7 +410,11 @@
                                                         </span>
                                                     </div>
                                                     <div>
-                                                        <div class="fw-semibold">{{ $student->name }}</div>
+                                                        <div class="fw-semibold">{{ $student->name }}
+                                                            @if(! $history->is_active)
+                                                                <span class="badge bg-secondary-subtle text-secondary ms-1">Pindah</span>
+                                                            @endif
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -603,6 +607,7 @@
                             </thead>
                             <tbody>
                                 @forelse($students as $i => $history)
+                                    @continue(! $history->is_active)
                                     @php $student = $history->student; @endphp
                                     @php $existing = $nilaiMap[$student->id][$activeBook->id] ?? null; @endphp
                                     <tr>

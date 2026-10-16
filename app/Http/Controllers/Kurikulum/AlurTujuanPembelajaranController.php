@@ -154,7 +154,7 @@ class AlurTujuanPembelajaranController extends Controller
 
         $mingguEfektif = (int) ($ringkasan['minggu_efektif'] ?? 0);
         $weeklyHours = $atp->subject
-            ? $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id)
+            ? $this->hoursResolver->resolve(null, $atp->subject, null, $atp->grade_level_id, $atp->academic_year_id)
             : 0;
 
         $jpTersedia = $weeklyHours * $mingguEfektif;

@@ -36,6 +36,7 @@ class Supervisi extends Model
         'rekomendasi',
         'tindak_lanjut',
         'status',
+        'instrumen_id', 'skor_total', 'skor_maks', 'nilai_akhir', 'ketercapaian',
     ];
 
     protected $casts = [
@@ -96,6 +97,16 @@ class Supervisi extends Model
     public function gtk()
     {
         return $this->belongsTo(GtkProfile::class, 'gtk_id');
+    }
+
+    public function instrumen(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SupervisiInstrumen::class, 'instrumen_id');
+    }
+
+    public function penilaian(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupervisiPenilaian::class, 'supervisi_id');
     }
 
     public function observer()

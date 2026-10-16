@@ -101,18 +101,23 @@ class GradeLevelController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        $activeAy = AcademicYear::where('is_active', true)->first();
+        $semester = $activeAy?->semester ?? 'ganjil';
+
+        // ARSIP PERIODE: struktur versi TA aktif + baris lama (NULL) sebagai fallback.
         $gradeLevelSubjects = GradeLevelSubject::with('subject')
             ->where('grade_level_id', $id)
+            ->forAcademicYear($activeAy?->id)
+            ->orderByAcademicYearFirst()
             ->orderBy('subject_id')
-            ->get();
+            ->get()
+            ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+            ->values();
 
         $availableSubjects = Subject::where('is_active', true)
             ->when($gradeLevel->school_id, fn ($q) => $q->where('school_id', $gradeLevel->school_id))
             ->orderBy('name')
             ->get();
-
-        $activeAy = AcademicYear::where('is_active', true)->first();
-        $semester = $activeAy?->semester ?? 'ganjil';
 
         // Ambil KKTP per mapel untuk semester aktif
         $kktpMap = SubjectKktp::where('grade_level_id', $id)
@@ -148,17 +153,33 @@ class GradeLevelController extends Controller
             'allocation_hours' => 'nullable|integer|min:0|max:40',
         ]);
 
-        $exists = GradeLevelSubject::where('grade_level_id', $id)
+        $weeklyHours = (int) ($validated['allocation_hours'] ?? 0);
+        $activeAy = AcademicYear::where('is_active', true)->first();
+
+        $existing = GradeLevelSubject::query()
+            ->where('grade_level_id', $id)
             ->where('subject_id', $validated['subject_id'])
-            ->exists();
-        if ($exists) {
+            ->forAcademicYear($activeAy?->id)
+            ->orderByAcademicYearFirst()
+            ->first();
+
+        if ($existing) {
+            // Baris versi TA berjalan yang pernah dinonaktifkan → aktifkan kembali (idempoten).
+            if ($existing->academic_year_id && ! $existing->is_active) {
+                $existing->update(['is_active' => true, 'allocation_hours' => $weeklyHours]);
+
+                $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $existing->subject_id, $weeklyHours);
+
+                return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
+                    ->with('success', "Mapel diaktifkan kembali untuk TA berjalan dan {$propagated} rombel aktif.");
+            }
+
             return back()->with('error', 'Mapel ini sudah ditambahkan ke tingkat ini.');
         }
 
-        $weeklyHours = (int) ($validated['allocation_hours'] ?? 0);
-
         GradeLevelSubject::create([
             'id' => (string) Str::uuid(),
+            'academic_year_id' => $activeAy?->id,
             'grade_level_id' => $id,
             'subject_id' => $validated['subject_id'],
             'allocation_hours' => $weeklyHours,
@@ -233,7 +254,26 @@ class GradeLevelController extends Controller
 
         if ($gls) {
             $subjectId = $gls->subject_id;
-            $gls->delete();
+            $activeAy = AcademicYear::where('is_active', true)->first();
+
+            if ($gls->academic_year_id || ! $activeAy) {
+                $gls->delete();
+            } else {
+                // Baris lama (lintas periode) tidak dihapus agar arsip TA lain tetap utuh;
+                // cukup sembunyikan untuk TA aktif lewat baris versi periode (shadow nonaktif).
+                GradeLevelSubject::updateOrCreate(
+                    [
+                        'academic_year_id' => $activeAy->id,
+                        'grade_level_id' => $id,
+                        'subject_id' => $subjectId,
+                        'track' => $gls->track,
+                    ],
+                    [
+                        'allocation_hours' => $gls->allocation_hours,
+                        'is_active' => false,
+                    ]
+                );
+            }
 
             // Nonaktifkan mapel pada rombel-rombel tingkat ini (riwayat nilai tidak dihapus).
             $groupIds = StudyGroup::where('grade_level_id', $id)
