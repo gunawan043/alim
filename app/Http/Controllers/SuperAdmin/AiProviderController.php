@@ -48,7 +48,7 @@ class AiProviderController extends Controller
         return back()->with('success', "Provider AI \"{$provider->name}\" ditambahkan.");
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $userId, string $id)
     {
         $this->authorizeSuper($request);
 
@@ -70,7 +70,7 @@ class AiProviderController extends Controller
         return back()->with('success', "Provider AI \"{$provider->name}\" diperbarui.");
     }
 
-    public function setDefault(Request $request, string $id)
+    public function setDefault(Request $request, string $userId, string $id)
     {
         $this->authorizeSuper($request);
 
@@ -85,7 +85,7 @@ class AiProviderController extends Controller
         return back()->with('success', "Provider \"{$provider->name}\" dijadikan default.");
     }
 
-    public function test(Request $request, string $id, AiProviderService $ai)
+    public function test(Request $request, string $userId, string $id, AiProviderService $ai)
     {
         $this->authorizeSuper($request);
 
@@ -100,7 +100,7 @@ class AiProviderController extends Controller
         );
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(Request $request, string $userId, string $id)
     {
         $this->authorizeSuper($request);
 

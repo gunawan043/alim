@@ -95,7 +95,7 @@ class AiProviderSettingsTest extends TestCase
             'api_key' => '',
             'model' => $provider->model,
             'is_active' => 1,
-        ]), $provider->id);
+        ]), $this->admin->id, $provider->id);
 
         $this->assertSame('sk-rahasia-123', $provider->fresh()->api_key);
 
@@ -107,7 +107,7 @@ class AiProviderSettingsTest extends TestCase
             'clear_api_key' => 1,
             'model' => $provider->model,
             'is_active' => 1,
-        ]), $provider->id);
+        ]), $this->admin->id, $provider->id);
 
         $this->assertNull($provider->fresh()->api_key);
     }
@@ -171,6 +171,66 @@ class AiProviderSettingsTest extends TestCase
         $this->assertSame('أحمد', $result);
         $this->assertFalse($provider->hasApiKey());
         Http::assertSent(fn ($request) => ! $request->hasHeader('Authorization'));
+    }
+
+    public function test_route_tes_koneksi_provider_dapat_diakses(): void
+    {
+        $provider = $this->storeProvider(['is_default' => 1]);
+
+        Http::fake([
+            'api.openai.test/*' => Http::response([
+                'choices' => [['message' => ['content' => 'OK']]],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-providers/{$provider->id}/test")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('ok', $provider->fresh()->last_test_status);
+    }
+
+    public function test_route_update_provider_memakai_id_provider(): void
+    {
+        $provider = $this->storeProvider();
+
+        $this->actingAs($this->admin)
+            ->put("/{$this->admin->id}/sa/ai-providers/{$provider->id}", [
+                'name' => 'OpenAI Diperbarui',
+                'provider' => 'openai',
+                'endpoint' => $provider->endpoint,
+                'model' => $provider->model,
+                'is_active' => 1,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('OpenAI Diperbarui', $provider->fresh()->name);
+    }
+
+    public function test_route_default_provider_memakai_id_provider(): void
+    {
+        $provider = $this->storeProvider();
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-providers/{$provider->id}/default")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertTrue($provider->fresh()->is_default);
+    }
+
+    public function test_route_hapus_provider_memakai_id_provider(): void
+    {
+        $provider = $this->storeProvider();
+
+        $this->actingAs($this->admin)
+            ->delete("/{$this->admin->id}/sa/ai-providers/{$provider->id}")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('ai_provider_settings', ['id' => $provider->id]);
     }
 
     public function test_halaman_pengaturan_ai_dapat_dirender(): void
