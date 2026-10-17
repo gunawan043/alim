@@ -112,6 +112,16 @@ class AiChatTest extends TestCase
         ]);
     }
 
+    public function test_widget_chat_tampil_di_layout(): void
+    {
+        $this->actingAs($this->admin)
+            ->get("/{$this->admin->id}/profile/my")
+            ->assertOk()
+            ->assertSee('aiChatFab')
+            ->assertSee('Tanya ALIM AI')
+            ->assertSee('ALIM Assistant');
+    }
+
     public function test_kirim_chat_menyimpan_riwayat(): void
     {
         Http::fake([

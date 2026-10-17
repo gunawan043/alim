@@ -115,6 +115,7 @@
                 linear-gradient(135deg, #35457a 0%, #405189 52%, #0d8f7a 100%);
         }
         .ai-chat-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+        .ai-chat-brand > div { min-width: 0; }
         .ai-chat-avatar {
             display: inline-flex;
             align-items: center;
@@ -156,8 +157,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             border: 0;
             border-radius: 10px;
             color: rgba(255, 255, 255, .86);
@@ -510,7 +511,6 @@
             if (! fab || ! panel) return;
 
             const body = document.getElementById('aiChatBody');
-            const empty = document.getElementById('aiChatEmpty');
             const input = document.getElementById('aiChatInput');
             const sendBtn = document.getElementById('aiChatSend');
             const closeBtn = document.getElementById('aiChatClose');
@@ -543,13 +543,13 @@
             };
 
             const clearBody = function () {
-                body.querySelectorAll('.ai-chat-row, .ai-chat-typing-row').forEach(function (el) { el.remove(); });
+                body.querySelectorAll('.ai-chat-row, .ai-chat-empty').forEach(function (el) { el.remove(); });
             };
 
             const addMessage = function (role, text, time, isError) {
-                if (empty) empty.remove();
+                body.querySelectorAll('.ai-chat-empty').forEach(function (el) { el.remove(); });
                 const row = document.createElement('div');
-                row.className = 'ai-chat-row ' + (role === 'user' ? 'is-user' : 'is-assistant') + ' ai-chat-typing-row';
+                row.className = 'ai-chat-row ' + (role === 'user' ? 'is-user' : 'is-assistant');
 
                 if (role !== 'user') {
                     const avatar = document.createElement('span');
