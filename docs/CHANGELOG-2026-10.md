@@ -29,6 +29,7 @@ Backend (Laravel):
 - Revisi 12 (grid 4 soal & ganti jawaban): **lembar jawaban memakai grid 4 soal sebaris** (row-major: 1–4, 5–8, …; ujian 5 opsi otomatis 3 kolom; soal uraian selebar baris) sehingga celah horizontal besar hilang dan kolom sejajar dari atas ke bawah. Header dinaikkan ke **98 mm** agar instruksi 3 baris + instruksi Arab tidak menimpa baris jawaban pertama. **Asumsi ganti jawaban** ditetapkan: dua tanda X kuat **selalu `ganda`** dan tidak dipilih otomatis (mesin `omr-v1.1.0`), review guru wajib; UI menampilkan **Terdeteksi: label** dan menyembunyikan tombol terima untuk ganda/meragukan; memilih label otomatis menjadi `terbaca`; koreksi tetap ber-audit dan nilai memakai kunci paket. Petunjuk LJK memuat aturan hapus tanda lama. Tes baru: layout 4 sebaris, dua tanda kuat selalu ganda, alur koreksi ganti jawaban → nilai 100; total **34 tes LJK / 460 asersi**. Kalibrasi v1.1.0 (60 lembar × 20 soal, grid 4 sebaris): per-question **99,67 %**, false acceptance **0,00 %**, review **5,08 %**, 0 lembar gagal; exact-sheet 93,33 % (turun disengaja karena dua tanda kuat kini review, bukan auto-pilih).
 - Revisi 13 (urut ke bawah, kolom otomatis, X=): distribusi LJK diubah menjadi **column-major** — nomor berurut ke bawah dulu (23 soal: 1–6, 7–12, 13–18, 19–23), baru pindah kolom. Jumlah kolom **tidak dipaksa 4**: opsi sampai E otomatis memakai **3 kolom** (lebar minimum per kolom dihitung dari opsi terbanyak). **Siswa tanpa penghapus** dapat menulis **"=" pada X lama (X=)**; mesin mendeteksi dua garis horizontal panjang ber-margin dan **mengabaikan kotak itu**, sehingga X baru langsung terbaca (tanpa review) — dua X sah tetap `ganda`. UI menampilkan chip **dicoret** untuk opsi X=; petunjuk LJK memuat aturan ini. Engine dinaikkan ke **omr-v1.2.0**. Tes: **35 tes LJK / 484 asersi**. Kalibrasi v1.2.0 (60 lembar × 20 soal): per-question 99,67 %, FAR 0,08 %, review 4,92 %, 0 lembar gagal.
 - Revisi 14 (identitas NIS & master generik): kolom **Waktu** pada tabel identitas LJK diganti **NIS** (nilai dari `students.nis`), nama peserta dicetak tanpa prefiks nomor peserta; lebar label/nilai diubah 20/30 sehingga tanggal tidak lagi membungkus. **Baris meta ujian** (*STS Bahasa Inggris 1B · …*) dihapus dari lembar. **Master** kini generik: semua nilai identitas kosong bergaris putus-putus, tanpa legenda wacana/“Jumlah nomor”, tanpa badge/footer **“Master Fotocopy”**; dapat dipakai untuk mapel/soal lain dengan template yang sama. Header diturunkan ke **88 mm** karena meta dihapus; pada mode Arab yang memuat instruksi Arab, blok karakter dilewati agar tidak menimpa baris jawaban. Tes: **35 tes LJK / 495 asersi**.
+- Revisi 15 (petunjuk ringkas & label rapat): teks petunjuk LJK dipersingkat menjadi **2 baris** (*Beri tanda silang (X) pada satu kotak jawaban … Dua X tanpa = diperiksa guru.*), dan jarak label opsi **A/B/C/D** dirapatkan ke **1,7 mm di atas kotak**. Label tetap **di luar** kotak demi kebersihan interior OMR — menaruh huruf di dalam kotak menambah tinta cetak yang bisa memicu false positive, sehingga hanya layak dengan masking area label + kalibrasi ulang. Tes: **35 tes LJK / 495 asersi**.
 - Seeder contoh: `database/seeders/LjkLaluSopianSeeder.php` (idempoten) — menyiapkan akun GTK **Lalu Sopian Harianto** + buku nilai **Bahasa Inggris · kelas 1B**, Bank Soal + 20 soal PG, kisi-kisi, **Paket Soal final ber-snapshot**, dan ujian LJK contoh berikut 22 lembar siap cetak. Jalankan: `php artisan db:seed --class=LjkLaluSopianSeeder`.
 
 Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar ujian → peserta → **kamera** → hasil & koreksi) memakai `expo-image-picker` yang sudah terpasang (tanpa dependensi native baru), service/hook React Query, dan menu sidebar guru.
@@ -1661,6 +1662,26 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Modal global** success/gagal/warning/info sudah aktif untuk seluruh halaman utama & waka.
 - **Test regresi**: kegiatan, jadwal rutin, presensi asrama, pipeline rapor, scope pengguna, payroll =
   9 test / 52 assertion — hijau.
+
+## 155. Standarisasi UI Asrama Lama (Kunjungan, Pelanggaran, Mutasi Kamar)
+
+- Halaman **Kunjungan**, **Pelanggaran**, dan **Mutasi Kamar** memakai `x-empty-state` (lord-icon) dan
+  `shared._pagination` sesuai pola `gtk/index`.
+- Flash session sukses/gagal/warning/info tetap tampil melalui modal global.
+- Header/statistik/filter/tabel dipertahankan; hanya bagian empty-state dan pagination diseragamkan.
+- Halaman perizinan sudah memakai modal konfirmasi lord-icon dan `x-pagination`.
+
+## 156. Standarisasi UI Asrama Lanjutan & Broadcast Darurat ke Wali
+
+- **UI halaman asrama lama**: Kunjungan, Pelanggaran, dan Mutasi Kamar memakai `x-empty-state` + `shared._pagination`
+  sesuai pola `gtk/index`; flash sukses/gagal/warning/info memakai modal global.
+- **Broadcast darurat diperbaiki**:
+  - `$dormitory` tidak lagi undefined pada `broadcastStore`.
+  - `broadcastToDormitoryWalis()` kini benar-benar mengirim notifikasi ke wali seluruh penghuni aktif
+    (in-app web + API mobile wali; WhatsApp mengikuti pilihan `broadcast_via`).
+  - Tidak ada lagi pembuatan broadcast ganda di service.
+  - Event `emergency_broadcast` ditambahkan ke Matriks Channel Notifikasi.
+- Test `DormitoryBroadcastTest` (1 test / 2 assertion): broadcast tersimpan + notifikasi wali dibuat.
 
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.

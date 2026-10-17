@@ -215,9 +215,11 @@ class DormitoryPostController extends Controller
         $data['created_by'] = auth()->id();
         $data['ack_required'] = $request->boolean('ack_required');
 
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+
         $broadcast = DormitoryEmergencyBroadcast::create($data);
 
-        // Broadcast via service (akan kirim notifikasi saat sistem wali tersedia)
+        // Kirim ke wali (in-app + channel sesuai pilihan).
         $this->service->broadcastToDormitoryWalis($dormitory, $data);
 
         return back()->with('success', 'Broadcast darurat berhasil dikirim.');

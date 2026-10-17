@@ -257,23 +257,21 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted py-5">
-                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon> <br>
-                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Mutasi</h6>
-                                            <p class="text-muted mb-3">Tidak ada permohonan mutasi kamar yang tercatat.</p>
-                                            <a href="{{ route('user.asrama.room-moves.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="ri-add-line me-1"></i> Ajukan Mutasi Baru
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    <x-empty-state colspan="8" title="Belum ada data mutasi"
+                                        message="Tidak ada permohonan mutasi kamar yang tercatat.">
+                                        <a href="{{ route('user.asrama.room-moves.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                           class="btn btn-primary btn-sm mt-3">
+                                            <i class="ri-add-line me-1"></i> Ajukan Mutasi Baru
+                                        </a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
 
-                    <x-pagination :paginator="$roomMoves" />
+                    @if($roomMoves->hasPages())
+                        @include('shared._pagination', ['paginator' => $roomMoves])
+                    @endif
                 </div>
             </div>
         </div>

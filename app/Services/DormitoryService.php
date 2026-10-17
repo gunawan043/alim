@@ -134,34 +134,39 @@ class DormitoryService
      * Kirim notifikasi broadcast darurat ke semua wali asrama.
      * Recipients diambil dari mahroms aktif dari resident students.
      */
-    public function broadcastToDormitoryWalis(Dormitory $dormitory, array $data): void
+    public function broadcastToDormitoryWalis(Dormitory $dormitory, array $data): int
     {
-        $mahromIds = $dormitory->residents()
+        $studentIds = $dormitory->residents()
             ->where('is_active', true)
-            ->with('student.mahroms')
-            ->get()
-            ->pluck('student.mahroms')
-            ->flatten()
-            ->filter(fn ($m) => $m->is_active)
-            ->pluck('id')
-            ->unique();
+            ->pluck('student_id')
+            ->unique()
+            ->values();
 
-        // Untuk broadcast, notifikasi dikirim via system.
-        // Recipient bergantung pada sistem waliregistration yang akan datang.
-        // Untuk sekarang, broadcast hanya disimpan di tabel emergency broadcast.
-        // Implementasi kirim WA/Email ke mahrom dapat ditambahkan setelah
-        // sistem registrasi wali tersedia.
+        if ($studentIds->isEmpty()) {
+            return 0;
+        }
 
-        DormitoryEmergencyBroadcast::create([
-            'dormitory_id' => $dormitory->id,
-            'title' => $data['title'] ?? '',
-            'content' => $data['content'] ?? '',
-            'severity' => $data['severity'] ?? 'info',
-            'broadcast_via' => $data['broadcast_via'] ?? 'all',
-            'ack_required' => $data['ack_required'] ?? false,
-            'expires_at' => $data['expires_at'] ?? null,
-            'created_by' => auth()->id(),
-        ]);
+        $via = $data['broadcast_via'] ?? 'all';
+
+        return app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents(
+            $studentIds,
+            [
+                'module' => 'dormitory',
+                'reference_type' => 'dormitory_emergency_broadcast',
+                'reference_id' => $dormitory->id,
+                'type' => match ($data['severity'] ?? 'info') {
+                    'emergency', 'urgent' => 'danger',
+                    'warning' => 'warning',
+                    default => 'info',
+                },
+                'action' => 'emergency_broadcast',
+                'title' => $data['title'] ?? 'Pengumuman Asrama',
+                'message' => $data['content'] ?? '',
+                'priority' => in_array($data['severity'] ?? 'info', ['urgent', 'emergency'], true) ? 'high' : 'medium',
+                'send_whatsapp' => in_array($via, ['whatsapp', 'all'], true),
+                'send_push' => true,
+            ],
+        );
     }
 
     /**

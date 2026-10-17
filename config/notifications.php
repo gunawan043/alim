@@ -29,6 +29,7 @@ return [
         'rapor_published' => ['group' => 'Akademik', 'label' => 'Rapor dipublikasikan ke wali'],
         'nilai_published' => ['group' => 'Akademik', 'label' => 'Nilai mapel dipublikasikan ke wali'],
         'activity_alpa' => ['group' => 'Asrama', 'label' => 'Santri tidak hadir pada kegiatan asrama'],
+        'emergency_broadcast' => ['group' => 'Asrama', 'label' => 'Broadcast darurat asrama ke wali'],
         'kaldik_created' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan dibuat'],
         'kaldik_updated' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan diperbarui'],
 

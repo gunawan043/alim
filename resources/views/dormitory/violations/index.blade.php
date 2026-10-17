@@ -222,26 +222,21 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="10" class="text-center text-muted py-5">
-                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon> <br>
-                                            Belum ada data pelanggaran.
-                                            <br>
-                                            <a href="{{ route('user.asrama.violations.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-sm btn-primary mt-2">
-                                                <i class="ri-add-line me-1"></i> Catat Pelanggaran Baru
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    <x-empty-state colspan="10" title="Belum ada pelanggaran"
+                                        message="Belum ada data pelanggaran yang tercatat.">
+                                        <a href="{{ route('user.asrama.violations.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                           class="btn btn-primary btn-sm mt-3">
+                                            <i class="ri-add-line me-1"></i> Catat Pelanggaran Baru
+                                        </a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">Menampilkan {{ $violations->firstItem() ?? 0 }} - {{ $violations->lastItem() ?? 0 }} dari {{ $violations->total() }} data</div>
-                        <div>{{ $violations->withQueryString()->links() }}</div>
-                    </div>
+                    @if($violations->hasPages())
+                        @include('shared._pagination', ['paginator' => $violations])
+                    @endif
                 </div>
             </div>
         </div>

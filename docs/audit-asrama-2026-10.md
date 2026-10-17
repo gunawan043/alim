@@ -98,3 +98,15 @@ Keterangan status: **Selesai** = berfungsi, **Diperbaiki** = baru diperbaiki pad
 - ✅ Template/log kegiatan lama diarahkan ke Kegiatan Rutin/Presensi Kegiatan.
 - ⏳ Standarisasi UI halaman lama (izin, kunjungan, pelanggaran, mutasi) ke pola `gtk/index` masih bertahap.
 - ⏳ Broadcast wali, QR gatepass, PWA/offline, audit log asrama belum.
+
+## 6. Batch 4 — Standarisasi UI
+- Kunjungan, pelanggaran, mutasi kamar: empty state lord-icon + pagination bersama.
+- Modal flash global menangani success/gagal/warning/info.
+- Perizinan sudah memakai modal konfirmasi.
+- Sisa: beberapa halaman detail/form lama masih memakai `confirm()`/SweetAlert lokal.
+
+## 7. Batch 5 — Broadcast & Standarisasi UI
+- ✅ Broadcast darurat mengirim notifikasi ke wali (in-app + opsi WhatsApp), tidak dobel.
+- ✅ Empty state & pagination halaman kunjungan, pelanggaran, mutasi kamar diseragamkan.
+- ✅ Modal flash global.
+- ⏳ Beberapa halaman detail masih memakai confirm/SweetAlert lokal.

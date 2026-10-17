@@ -257,23 +257,21 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center py-5">
-                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
-                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Data Kunjungan</h6>
-                                            <p class="text-muted mb-3">Belum ada data kunjungan yang tercatat.</p>
-                                            <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="ri-add-line me-1"></i> Ajukan Kunjungan Baru
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    <x-empty-state colspan="8" title="Belum ada data kunjungan"
+                                        message="Belum ada kunjungan yang tercatat untuk asrama ini.">
+                                        <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
+                                           class="btn btn-primary btn-sm mt-3">
+                                            <i class="ri-add-line me-1"></i> Ajukan Kunjungan Baru
+                                        </a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
 
-                    <x-pagination :paginator="$visits" />
+                    @if($visits->hasPages())
+                        @include('shared._pagination', ['paginator' => $visits])
+                    @endif
                 </div>
             </div>
         </div>
