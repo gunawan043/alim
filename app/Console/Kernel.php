@@ -113,6 +113,18 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Verifikasi integritas berkas arsip (hash) setiap Senin dini hari.
+        $schedule->command('arsip:verifikasi-dokumen')
+            ->weeklyOn(1, '03:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Pengingat backup database + folder arsip setiap Senin pagi.
+        $schedule->command('arsip:pengingat-backup --notify')
+            ->weeklyOn(1, '07:30')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // ASSET INTELLIGENCE
         $schedule->command('sarpras:repair-vs-replace --all')
             ->dailyAt('02:30')

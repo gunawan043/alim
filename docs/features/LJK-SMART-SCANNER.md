@@ -101,12 +101,17 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
 
 - A4 potrait, hitam-putih. Tata letak **diukur dalam milimeter** di
   `geometry` sehingga pembacaan memakai koordinat yang sama persis.
-- **Kop lembaga**: gambar kop sekolah (`schools.kop_path`) dicetak di atas
-  (maks 20 mm, lebar 145 mm); bila belum diunggah dipakai kop teks (nama +
-  alamat + telepon sekolah, dengan logo bila ada).
-- **Dua kolom sejak awal**: 20 soal → kolom kiri no 1–10, kolom kanan no 11–20
-  (baris sejajar). Kolom tambahan otomatis bila jumlah soal tidak muat
-  (`config('ljk.template.preferred_columns')`, `max_columns`).
+- **Kop lembaga**: **hanya gambar kop sekolah** (`schools.kop_path`) yang
+  dicetak di atas (maks 20 mm pada lembar soal, 22 mm pada lembar jawaban;
+  lebar menyesuaikan proporsi asli). Bila sekolah belum mengunggah kop, area
+  kop dikosongkan — tidak ada fallback teks/logo.
+- **Empat kolom, nomor berurut ke bawah (column-major)**: kolom 1 diisi
+  nomor 1–6 (untuk 23 soal), lalu kolom 2 nomor 7–12, kolom 3 13–18, kolom 4
+  19–23 — siswa membaca ke bawah dulu, baru pindah ke kolom berikutnya.
+  Jumlah kolom **tidak dipaksa 4**: `LjkTemplateService` menghitung lebar
+  minimum dari **opsi terbanyak**; ujian dengan opsi sampai **E** otomatis
+  turun ke **3 kolom** agar nomor + semua kotak tidak menabrak kolom sebelah.
+  Soal uraian/isian memakai 2 baris di kolomnya.
 - **Kotak jawaban** 6,2 × 4,8 mm dengan jarak 1,4 mm (cukup untuk tulisan
   tangan pulpen), garis kotak 0,45 mm, label opsi dicetak **di luar** kotak
   agar bagian dalam tetap bersih.
@@ -120,16 +125,39 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   kunci, dan pembahasan**; **opsi jawaban tersusun kolom sejajar** — A, B, C, D
   pada soal nomor 1 berada tepat di atas A, B, C, D soal berikutnya (tabel
   `table-layout: fixed`, jumlah kolom = opsi terbanyak pada paket, teks panjang
-  membungkus di dalam kolomnya; **huruf pilihan A/B/C/D tidak dicetak tebal**). **Untuk soal berbahasa Arab, huruf pilihan
+  membungkus di dalam kolomnya; **huruf pilihan A/B/C/D dan nomor soal tidak
+  dicetak tebal**). Nomor soal berada di kolom tersendiri; **teks soal dan
+  huruf pilihan A berada pada kolom yang sama (sejajar)**, dan baris kedua teks
+  menjorok sejajar teks, bukan sejajar nomor (hanging indent). **Untuk soal berbahasa Arab, huruf pilihan
   otomatis memakai ا، ب، ج، د، هـ** — baik di lembar soal maupun pada label
   kotak di lembar jawaban.
+- **Lembar jawaban (LJK)** — header disamakan dengan lembar soal:
+  kop gambar (maks 22 mm, proporsional), **judul dua baris** (*LEMBAR JAWABAN
+  KOMPUTER (LJK)* / *TAHUN AJARAN 2026/2027*), meta ujian (judul · mapel ·
+  kelas · tanggal), **tabel identitas maksimal 3 baris** (Mata Pelajaran,
+  Hari/Tanggal, Kelas, Waktu, Guru Pengampu, Nama Peserta Didik — berisi
+  *nomor peserta · nama*; pada master fotokopi diganti garis putus-putus),
+  **PENANAMAN KARAKTER** (3 butir), dan instruksi pengisian
+  (`soal.instruksi_ljk`) + legenda wacana. Font, margin kiri (14,99 mm), dan
+  ukuran huruf mengikuti lembar soal (Cambria/Caladea, 12 pt dengan kompensasi
+  `font_size_fallback_scale`). Template baru menyediakan
+  `template.header_height_mm = 98 mm` agar seluruh header selesai sebelum
+  baris jawaban pertama (termasuk instruksi 3 baris + instruksi Arab);
+  template lama memakai tinggi header tersimpan
+  (`geometry.header_height_mm`) dan otomatis melewati blok karakter bila
+  ruangnya tidak cukup. Instruksi Arab dicetak rata kanan di bawah instruksi
+  Indonesia.
 - **Catatan teknis (Dompdf):** jangan pernah memakai reset `* { margin: 0 }` —
   pada Dompdf aturan universal itu **menimpa margin `@page`** sehingga isi
   cetak mepet ke tepi kertas. Reset margin hanya untuk elemen isi
   (`body, div, table, td, …`); diuji oleh tes format lembar soal.
+- **Kop lembaga** — **hanya memakai gambar kop yang diunggah di pengaturan
+  sekolah** (`schools.kop_path`, lewat `LjkSchoolLetterhead`); tidak ada kop
+  teks. Bila sekolah belum mengunggah kop, area kop dikosongkan (unggah kop di
+  menu Sekolah agar tampil di lembar soal & lembar jawaban).
 - **Setelan cetak (default MS Word)** — dapat diubah di `config/ljk.php → soal`:
   font **Cambria 12 pt**, **jarak antar baris single (1.0)**, **jarak antar soal
-  1.15**, margin halaman **0.2" / 0.1" / 0.59" / 0.63"** (atas/bawah/kiri/kanan,
+  1.5**, margin halaman **0.2" / 0.1" / 0.59" / 0.63"** (atas/bawah/kiri/kanan,
   dikonversi ke mm), dan **tabel identitas maksimal 3 baris** (2 pasang
   label/nilai per baris; baris *Nama Peserta Didik* bergaris putus-putus).
 - **Kertas otomatis (minimalisasi halaman)** — default **A4**; bila isi tidak
@@ -142,12 +170,27 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   dipublikasikan, wacana ikut dibekukan. Di lembar soal wacana dicetak **sekali
   per kelompok** dengan keterangan *"Wacana untuk soal nomor 20–25"*; di lembar
   jawaban ditampilkan legenda *"Wacana/soal cerita: soal nomor 20–25"*.
+- **Mode bahasa tingkat UJIAN** (`ljk_exams.bahasa`, dipilih saat *Terbitkan
+  LJK*; otomatis diturunkan dari butir bila tidak dipilih):
+  **Latin/Gabungan** → **seluruh naskah soal LTR**, nomor `1, 2, 3`, pilihan
+  **A, B, C, D** — termasuk bila sebagian soal berbahasa Arab. **Arab** →
+  **naskah soal RTL**; **lembar jawaban** memakai tombol/angka yang sama
+  (lihat di bawah): nomor di kanan memakai **digit Arab ١، ٢، ٣**
+  (otomatis; `config('ljk.soal.angka_arab') = off` untuk mematikan), teks rata
+  kanan, penanda opsi ditulis **setelah teks** (`.ج` bukan `ج.`), dan huruf
+  pilihan **ا، ب، ج، د، هـ** dengan urutan kanan→kiri (ا di kotak paling
+  kanan). Di lembar jawaban, judul/tabel identitas tetap dicetak dua bahasa
+  (Indonesia) dan instruksi Arab ditambahkan rata kanan; urutan kolom kotak
+  mengikuti geometri template (4 soal sebaris, kiri→kanan) agar pemindaian
+  OMR tetap konsisten. Bahasa per soal (`soal.bahasa`) tetap tersimpan sebagai
+  metadata dan dipakai untuk menurunkan mode ujian.
 - **Bahasa Arab (ponpes)**: teks Arab di-*shaping* deterministik di PHP
   (`LjkArabicText`: bentuk awal/tengah/akhir/terpisah + ligatur lam-alef) dan
   disusun ulang kanan-ke-kiri karena Dompdf tidak memiliki mesin bidi/shaping.
-  Kelas `.ar` memakai font yang memuat bentuk presentasi Arab — **DejaVu Sans**
-  bawaan Dompdf (terverifikasi), atau **Amiri/Scheherazade** bila ditaruh di
-  `storage/app/fonts/`. Instruksi juga dicetak dalam bahasa Arab pada lembar
+  Kelas `.ar` memakai font yang memuat bentuk presentasi Arab — **Amiri**
+  (OFL) yang dibundel di `resources/fonts/` (Regular + Bold + lisensi), dengan
+  preferensi **Sakkal Majalla/XB** bila terpasang di sistem, lalu DejaVu Sans
+  bawaan Dompdf sebagai cadangan. Instruksi juga dicetak dalam bahasa Arab pada lembar
   yang memuat teks Arab.
 - **Dua varian cetak**: (1) *lembar peserta* dengan nama/nomor/kode + QR +
   data strip; (2) *master fotokopi* (`?master=1`, opsi `&copies=N`) — identitas
@@ -189,8 +232,39 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
    `tidak_dapat_diproses`, `manual`; semua kecuali `terbaca`/`kosong` masuk
    antrean pemeriksaan guru (`needs_review`).
 
+### Asumsi perubahan jawaban (santri mengganti jawaban)
+
+- **Satu tanda X jelas** → dibaca otomatis (`terbaca`).
+- **Dua tanda X kuat atau lebih** (tanda lama belum bersih + tanda baru, atau
+  siswa memang menandai dua kotak) → **selalu `ganda`**. Mesin **tidak**
+  memilih otomatis berdasarkan skor tertinggi/tergelap; guru yang menentukan
+  jawaban akhir lewat **Koreksi**. Ini mencegah nilai final yang salah saat
+  siswa mengganti jawaban.
+- **Tanda lama dihapus bersih / ditutup correction pen** → hanya tanda baru
+  yang terdeteksi → otomatis.
+- **Tanpa penghapus: X=**: siswa menambahkan **dua garis horizontal ("=")**
+  pada X lama di dalam kotak. Mesin mendeteksi garis horizontal panjang
+  ber-margin dan **mengabaikan kotak itu** (`cancelled_equals`); jika ada satu
+  X baru, jawaban baru langsung terbaca. Jika ada dua X baru tanpa "=",
+  tetap `ganda`/review. Tanda "=" harus **di dalam kotak/menimpa X lama**;
+  "=" di luar kotak atau terlalu kecil bisa tidak terdeteksi.
+- **Tanda lama dicoret/dicorat-coret tetapi masih terlihat** → `ganda` atau
+  `meragukan` → review guru; koreksi tercatat (sebelum/sesudah/alasan).
+- **Jawaban ditulis di luar kotak** (mis. hanya menulis huruf) tidak dibaca
+  sebagai pilihan; guru dapat mengoreksi manual. Petunjuk pada LJK meminta
+  siswa menghapus tanda lama sampai bersih lalu memberi X pada kotak baru.
+- **Antrean review**: nomor `ganda`/`meragukan` menampilkan **"Terdeteksi:
+  label, label"** (label yang tercetak di lembar peserta, sudah dipetakan dari
+  slot mesin) dan tombol **Terima hasil baca** disembunyikan — guru wajib
+  memilih jawaban. Memilih label otomatis mengubah status menjadi `terbaca`.
+- **Nilai**: selama masih ada nomor review, auto-sync tidak menulis nilai.
+  Setelah guru memilih jawaban, nilai dihitung ulang dari kunci paket yang
+  dibekukan dan disinkronkan otomatis.
+
 Ambang dan bobot fitur hidup di `config/ljk.php`, dapat diubah tanpa
-menyentuh kode.
+menyentuh kode. Sejak `omr-v1.1.0`, mekanisme auto-pilih berdasarkan
+`strong_margin` dihapus: dua tanda kuat selalu review. Sejak `omr-v1.2.0`,
+kotak dengan tanda "=" (X=) diabaikan sebagai pembatalan jawaban.
 
 ---
 
@@ -211,7 +285,7 @@ ringan, gelap, pulpen biru, X tipis/tebal/miring/tidak simetris, menyentuh
 garis kotak, kosong, ganda, centang, garis miring, coretan, bekas penghapusan,
 dan titik.
 
-**Hasil nyata pada 60 lembar × 20 soal (1.200 nomor), engine `omr-v1.0.0`:**
+**Hasil nyata pada 60 lembar × 20 soal (1.200 nomor), engine `omr-v1.0.0` (sebelum aturan ganti-jawaban v1.1.0):**
 
 | Metrik | Nilai |
 |---|---|
@@ -222,9 +296,44 @@ dan titik.
 | Lembar gagal diproses | **0** |
 | Waktu proses (min/median/max) | 464 / 480 / 623 ms per lembar |
 
+**Hasil v1.1.0 (grid 4 sebaris, header 98 mm, dua tanda kuat selalu ganda)**
+pada dataset 60 lembar × 20 soal:
+
+| Metrik | Nilai |
+|---|---|
+| Exact-sheet accuracy | **93,33 %** (56/60 lembar) |
+| Per-question accuracy | **99,67 %** (1.196/1.200) |
+| False acceptance rate | **0,00 %** |
+| Review rate | **5,08 %** |
+| Lembar gagal diproses | **0** |
+| Waktu proses (min/median/max) | 487 / 532 / 1.359 ms per lembar |
+
+Penurunan exact-sheet dari 98,33 % **disengaja**: lembar dengan dua tanda X
+kuat kini masuk review (`ganda`) dan tidak dipilih otomatis, sehingga tidak
+dihitung "tepat seluruhnya". Per-question tetap 99,67 %, false acceptance 0 %,
+dan tidak ada lembar gagal — trade-off yang benar untuk kasus siswa mengganti
+jawaban.
+
+**Hasil v1.2.0 (4 kolom column-major, X=, header 98 mm)** pada dataset
+60 lembar × 20 soal:
+
+| Metrik | Nilai |
+|---|---|
+| Exact-sheet accuracy | **93,33 %** (56/60 lembar) |
+| Per-question accuracy | **99,67 %** (1.196/1.200) |
+| False acceptance rate | **0,08 %** (1/1.200) |
+| Review rate | **4,92 %** |
+| Lembar gagal diproses | **0** |
+| Waktu proses (min/median/max) | 491 / 517 / 744 ms per lembar |
+
+FAR 0,08 % (satu nomor) muncul pada dataset sintetis v1.2.0; **tidak** ada
+lembar gagal dan review rate turun menjadi 4,92 %. Angka ini diukur ulang
+setelah aturan X= dan layout 4 kolom; bukan klaim 0 %.
+
 Catatan kejujuran:
 - Target awal **≥ 99 % exact-sheet** **belum tercapai** pada dataset sintetis
-  ini (98,33 %). Satu-satunya nomor yang salah adalah X tipis yang sangat
+  ini (98,33 % pada v1.0.0; 93,33 % pada v1.1.0/v1.2.0 karena aturan review ganda).
+  Satu-satunya nomor yang salah pada v1.0.0 adalah X tipis yang sangat
   buram; mesin **tidak** menebak — nomor tersebut diarahkan ke pemeriksaan
   guru (`meragukan`), sehingga tidak menghasilkan nilai salah.
 - Karena false acceptance 0 %, kesalahan yang tersisa berbentuk tambahan
@@ -318,13 +427,18 @@ verifikasi, periksa peserta.
 | Kunci `config/ljk.php` | Default | Arti |
 |---|---|---|
 | `soal.font_size` | `12.0` | Ukuran font dasar (pt), Cambria |
-| `soal.font_size_fallback_scale` | `0.90` | Kompensasi ukuran bila Cambria/Caladea belum dipasang (DejaVu Serif tampil lebih besar pada pt yang sama) |
+| `soal.font_size_fallback_scale` | `0.80` | Kompensasi ukuran bila Cambria/Caladea belum dipasang (DejaVu Serif tampil lebih besar pada pt yang sama → efektif ±9,6 pt) |
 | `soal.line_height` | `1.0` | Jarak antar baris (single) |
-| `soal.question_gap` | `1.15` | Jarak antar soal (kelipatan satu baris) |
+| `soal.question_gap` | `1.5` | Jarak antar soal (kelipatan satu baris) |
 | `soal.margin_in` | `0.20 / 0.10 / 0.59 / 0.63` | Margin atas/bawah/kiri/kanan (inci) |
 | `soal.paper.default` / `paper.fallback` | `a4` / `f4` | Kertas & cadangan otomatis |
 | `soal.huruf_arab` | `ا، ب، ج، د، هـ` | Huruf pilihan soal Arab |
 | `soal.identitas_baris_maks` | `3` | Baris maksimum tabel identitas |
+| `soal.instruksi_ljk` | teks | Petunjuk pengisian khusus lembar jawaban (termasuk aturan X=) |
+| `detection.cancel_long_run_ratio` | `0.55` | Panjang minimum garis horizontal untuk mendeteksi "=" |
+| `detection.cancel_min_lines` | `2` | Jumlah garis horizontal minimum (tanda "=") |
+| `template.header_height_mm` | `98.0` | Tinggi area header template baru (mm) |
+| `template.max_kop_height_mm` | `20.0` | Batas tinggi kop di lembar soal (LJK memakai 22 mm) |
 
 ### Font PDF (Cambria)
 
@@ -343,10 +457,14 @@ perlu instalasi sistem. Status font aktif ditampilkan di halaman **Lihat Soal**.
 Cache metrik font ditulis ke `storage/app/dompdf/fonts` (pastikan writable).
 
 Untuk teks Arab: shaping & urutan RTL dihitung di PHP, lalu dirender dengan
-font yang memuat *bentuk presentasi* Arab. Bila sekolah ingin tampilan naskh
-yang lebih halus, letakkan `Amiri-Regular.ttf`/`Scheherazade-Regular.ttf`
-(yang memuat blok FE70–FEFC) di `storage/app/fonts/`; sistem memilihnya
-otomatis, jika tidak ada tetap memakai DejaVu Sans.
+font yang memuat *bentuk presentasi* Arab. **Amiri (OFL) sudah dibundel** di
+`resources/fonts/` (Regular + Bold + lisensi `Amiri-OFL.txt`) sehingga tampilan
+Arab langsung memakai naskh Amiri tanpa instalasi tambahan. Urutan preferensi:
+**Sakkal Majalla → XB (Shafigh/Zar/Niloofar/Riyaz) → Amiri → Scheherazade →
+KFGQPC/Noto Naskh → DejaVu Sans** (bawaan Dompdf); letakkan TTF tambahan di
+`storage/app/fonts/` bila sekolah punya font sendiri. Hanya font yang memuat
+blok FE70–FEFC yang dipakai (Dompdf tanpa mesin OpenType). Status font Arab
+aktif tampil di halaman *Lihat Soal*.
 
 ## 11. Deployment & operasional
 
@@ -408,13 +526,13 @@ contoh tidak ikut ter-seed di produksi.
 
 | Berkas | Cakupan |
 |---|---|
-| `tests/Feature/Ljk/LjkOmrEngineTest.php` | X hitam/biru, tipis/tebal/miring/tidak simetris, menyentuh garis, kosong, ganda, centang/miring/coretan/hapus, foto miring+bayangan+blur, tolak buram/gelap/terpotong |
-| `tests/Feature/Ljk/LjkFlowTest.php` | Paket → ujian → peserta → lembar → pindai → nilai → koreksi (audit) → sinkron resmi → idempotensi → tolak saat masih review |
+| `tests/Feature/Ljk/LjkOmrEngineTest.php` | X hitam/biru, tipis/tebal/miring/tidak simetris, menyentuh garis, kosong, ganda, centang/miring/coretan/hapus, foto miring+bayangan+blur, tolak buram/gelap/terpotong, **grid 4 soal sebaris**, **dua tanda kuat selalu ganda tanpa auto-pilih** |
+| `tests/Feature/Ljk/LjkFlowTest.php` | **koreksi ganti jawaban → nilai memakai jawaban baru**,  Paket → ujian → peserta → lembar → pindai → nilai → koreksi (audit) → sinkron resmi → idempotensi → tolak saat masih review |
 | `tests/Feature/Ljk/LjkWebFlowTest.php` | HTTP guru: index/create/terbit/PDF/scan/koreksi/final/sinkron + 403 guru lain + **kepatuhan UI pola gtk/index** pada semua halaman (termasuk varian filter) |
 | `tests/Feature/Ljk/LjkMobileApiTest.php` | API mobile: daftar, detail, unggah, koreksi, penolakan tanpa identitas |
-| Tambahan | tata letak 2 kolom (kiri 1–10, kanan 11–20), master tanpa nama/QR/strip, auto-sync nilai ke kolom resmi, kunci tersembunyi di halaman *Lihat Soal*, lembar soal PDF (kop, penanaman karakter, opsi kolom sejajar, tanpa bobot) + font Cambria, wacana/soal cerita + legenda lembar jawaban, shaping teks Arab, unduh PDF (`?download=1`), **setelan cetak Word (12 pt, spasi 1.0/1.15, margin inci, tabel identitas 3 baris)**, **pemilihan kertas otomatis A4→F4**, **huruf pilihan Arab (ا، ب، ج، د)** di lembar soal & lembar jawaban, regresi route `paket-soal` (parameter `userId`) |
+| Tambahan | tata letak **4 kolom column-major** (5 opsi → 3 kolom; nomor berurut ke bawah 1–6, 7–12, …), master tanpa nama/QR/strip, auto-sync nilai ke kolom resmi, kunci tersembunyi di halaman *Lihat Soal*, lembar soal PDF (kop gambar, penanaman karakter, opsi kolom sejajar, hanging indent, tanpa bobot) + font Cambria, wacana/soal cerita + legenda lembar jawaban, shaping teks Arab, unduh PDF (`?download=1`), setelan cetak Word (12 pt, spasi 1.0/1.15, margin inci, tabel identitas 3 baris), pemilihan kertas otomatis A4→F4, **mode bahasa tingkat ujian (Latin/Gabungan LTR vs Arab RTL), digit Arab ١/٢/٣, penanda opsi `.ج` setelah teks, huruf pilihan ا/ب/ج/د, kop hanya gambar**, regresi route `paket-soal` (parameter `userId`) |
 
-Hasil terakhir: **28 tes, 366 asersi — lulus** (PHP 8.5 + SQLite in-memory;
+Hasil terakhir: **30 tes, 420 asersi — lulus** (PHP 8.5 + SQLite in-memory;
 peringatan `PDO::MYSQL_ATTR_*` berasal dari lingkungan PHP 8.5, bukan fitur).
 
 Regresi terkait yang dijalankan: `BukuNilaiKonsolidasiTest`,

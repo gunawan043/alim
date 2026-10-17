@@ -16,7 +16,28 @@
     .stat-value { font-size: 1.35rem; font-weight: 700; line-height: 1.15; }
     .stat-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .5px; margin: 0; color: #94a3b8; }
 
+    .scan-hero { border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.15rem; background: linear-gradient(135deg, #f8faff 0%, #eef6ff 100%); }
+    .scan-hero-icon { width: 48px; height: 48px; border-radius: 12px; background: #4f46e51a; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .scan-hero-title { font-size: 1.05rem; font-weight: 700; margin: 0; color: #1e293b; }
+    .scan-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .55rem; font-size: .8rem; color: #64748b; margin-top: .15rem; }
+    .scan-hero-meta .dot { color: #cbd5e1; }
+    .clock-card { display: flex; align-items: center; gap: .6rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: .45rem .75rem; }
+    .clock-card > i { font-size: 1.15rem; color: #4f46e5; }
+    .clock-label { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; line-height: 1; }
+    .clock-value { display: flex; align-items: baseline; gap: .25rem; font-family: 'SF Mono', Monaco, monospace; font-size: .9rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .clock-value small { font-size: .6rem; font-weight: 600; color: #94a3b8; }
+    .completion-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: .45rem .75rem; }
+    .no-schedule-card { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; flex-wrap: wrap; }
+    .no-schedule-icon { width: 40px; height: 40px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
     .clock-chip { font-family: 'SF Mono', Monaco, monospace; font-size: .8rem; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; padding: 4px 12px; white-space: nowrap; }
+    @media (max-width: 575.98px) {
+        .scan-hero { padding: .85rem; }
+        .scan-hero-icon { width: 42px; height: 42px; font-size: 1.25rem; }
+        .scan-hero-title { font-size: .98rem; }
+        .scan-hero-meta { font-size: .74rem; }
+        .clock-card, .completion-card { padding: .4rem .6rem; }
+        .scan-hero .btn { padding: .35rem .65rem; font-size: .82rem; }
+    }
 
     .nav-tabs-custom { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; border-bottom: 2px solid #e2e8f0; }
     .nav-tabs-custom::-webkit-scrollbar { display: none; }
@@ -65,41 +86,78 @@
     @slot('title') Absensi Kehadiran Guru @endslot
 @endcomponent
 
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-    <p class="text-muted small mb-0">
-        {{ $dayName }}, {{ $today->translatedFormat('d F Y') }}
-        @if($academicYear) • {{ $academicYear->name }} ({{ ucfirst($academicYear->semester ?? '-') }}) @endif
-        • {{ $stats['total'] }} jadwal hari ini
-    </p>
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <span class="clock-chip" title="Waktu saat ini"><i class="ri-time-line me-1 text-primary"></i><span id="live-clock">--:--:--</span> WITA</span>
-        @if($stats['total'] > 0)
-            <span class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded border bg-white small">
-                <span class="text-muted">Kelengkapan</span>
-                <span class="progress" style="width:90px;height:6px">
-                    <span class="progress-bar bg-{{ $completion >= 100 ? 'success' : 'primary' }}" style="width: {{ $completion }}%"></span>
-                </span>
-                <span class="fw-semibold">{{ $stats['checked_out'] }}/{{ $stats['total'] }}</span>
-            </span>
-        @endif
-        <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
-            <i class="ri-history-line me-1"></i>Riwayat
-        </a>
+@php
+    $tanggalHariIni = $today->copy()->locale('id')->translatedFormat('l, d F Y');
+    $semesterLabel = $academicYear
+        ? $academicYear->name.' ('.ucfirst($academicYear->semester ?? '-').')'
+        : null;
+@endphp
+
+<div class="scan-hero mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <span class="scan-hero-icon"><i class="ri-qr-scan-2-line"></i></span>
+            <div>
+                <h4 class="scan-hero-title">Scan QR Kehadiran</h4>
+                <div class="scan-hero-meta">
+                    <span><i class="ri-calendar-event-line me-1"></i>{{ $tanggalHariIni }}</span>
+                    @if($semesterLabel)
+                        <span class="dot">•</span>
+                        <span><i class="ri-graduation-cap-line me-1"></i>{{ $semesterLabel }}</span>
+                    @endif
+                    <span class="dot">•</span>
+                    @if($stats['total'] > 0)
+                        <span class="badge bg-primary-subtle text-primary">{{ $stats['total'] }} jadwal hari ini</span>
+                    @else
+                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-close-line me-1"></i>Tidak ada jadwal</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="clock-card" title="Waktu saat ini">
+                <i class="ri-time-line"></i>
+                <div>
+                    <span class="clock-label">Waktu sekarang</span>
+                    <span class="clock-value"><span id="live-clock">--:--:--</span><small>WITA</small></span>
+                </div>
+            </div>
+
+            @if($stats['total'] > 0)
+                <div class="completion-card">
+                    <div class="d-flex justify-content-between align-items-center gap-3 mb-1">
+                        <span class="clock-label">Kelengkapan</span>
+                        <span class="fw-bold small">{{ $stats['checked_out'] }}/{{ $stats['total'] }}</span>
+                    </div>
+                    <div class="progress" style="width:110px;height:7px">
+                        <div class="progress-bar bg-{{ $completion >= 100 ? 'success' : 'primary' }}" style="width: {{ $completion }}%"></div>
+                    </div>
+                </div>
+            @endif
+
+            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" class="btn btn-outline-primary">
+                <i class="ri-history-line me-1"></i>Riwayat
+            </a>
+        </div>
     </div>
 </div>
 
 @if($schedules->isEmpty())
-    <div class="alert alert-info d-flex align-items-center gap-2">
-        <i class="ri-information-line fs-5"></i>
-        <div>
-            <strong>Tidak ada jadwal mengajar hari ini ({{ $dayName }}).</strong>
-            <div class="small">Halaman scan tetap bisa dibuka, tetapi absensi hanya dapat diproses pada jam mengajar Anda.</div>
+    <div class="no-schedule-card mb-3">
+        <span class="no-schedule-icon"><i class="ri-calendar-close-line"></i></span>
+        <div class="flex-grow-1">
+            <div class="fw-semibold">Tidak ada jadwal mengajar hari ini</div>
+            <div class="small text-muted">Halaman scan tetap dapat dibuka, tetapi absensi hanya bisa diproses saat jam mengajar. Silakan periksa jadwal pelajaran Anda.</div>
         </div>
+        <a href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}" class="btn btn-sm btn-outline-primary flex-shrink-0">
+            <i class="ri-calendar-line me-1"></i>Lihat Jadwal
+        </a>
     </div>
 @endif
 
-{{-- Statistik ringkas --}}
-<div class="row">
+{{-- Statistik ringkas (desktop; di mobile ringkasan sudah ada di header) --}}
+<div class="row d-none d-xl-flex">
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
@@ -165,8 +223,9 @@
                 <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line me-2 text-primary"></i>Scan QR Kelas</h5>
                 <span class="badge bg-light text-secondary border" id="camera-state"><i class="ri-camera-line me-1"></i>Kamera</span>
             </div>
-            <div class="card-body">
-                {{-- Spotlight: kelas berlangsung / berikutnya --}}
+            <div class="card-body d-flex flex-column">
+                {{-- Spotlight: kelas berlangsung / berikutnya (desktop di atas, mobile di bawah kamera) --}}
+                <div class="order-2 order-xl-1">
                 @if($currentClass)
                     @php $att = $attendances[$currentClass->id] ?? null; @endphp
                     <div class="spotlight-card ongoing">
@@ -207,8 +266,12 @@
                         </div>
                     </div>
                 @endif
+                </div>
 
 @php $canManualAbsen = canPermission('teacher-attendance_manual'); @endphp
+
+                {{-- Kamera & tab scan: tampil paling atas pada mobile --}}
+                <div class="order-1 order-xl-2">
 
                 @if($geo['enabled'] ?? false)
                     <div class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert" id="geoStatusBox">
@@ -313,6 +376,7 @@
                         <strong>Waka / Kepala / Tata Usaha</strong>. Guru wajib memindai QR kelas saat jam mengajar.
                     </div>
                 @endunless
+                </div>
             </div>
         </div>
     </div>
@@ -689,7 +753,9 @@ document.addEventListener('DOMContentLoaded', function () {
 function tickClock() {
     const el = document.getElementById('live-clock');
     if (el) {
-        el.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
     }
 }
 

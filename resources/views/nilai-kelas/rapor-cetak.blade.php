@@ -385,7 +385,7 @@
                 @endif
                 <br><br><br><br><br>
                 ________________________
-                <br><strong>{!! $text(($isArabic && $studyGroup->homeroomTeacher?->name_ar) ? $studyGroup->homeroomTeacher->name_ar : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong>
+                <br><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong>
             </td>
         </tr>
         <tr>
@@ -394,7 +394,7 @@
                 {!! $text($label('mengetahui_kepala')) !!}
                 <br><br><br><br><br>
                 ________________________
-                <br><strong>{!! $text(($isArabic && $studyGroup->school?->principal_name_ar) ? $studyGroup->school->principal_name_ar : ($studyGroup->school?->principal_name ?? '................................')) !!}</strong>
+                <br><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($studyGroup->school?->principal_name ?? '................................')) !!}</strong>
                 <br>{!! $text($label('nip')) !!} {{ $studyGroup->school?->principal_nip ?? '...................' }}
             </td>
         </tr>

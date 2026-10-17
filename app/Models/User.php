@@ -26,6 +26,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'name_ar',
+        'name_ar_status',
+        'name_ar_reviewed_at',
+        'name_ar_reviewed_by',
         'username',
         'email',
         'password',
@@ -54,6 +57,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'last_login_at' => 'datetime',
+        'name_ar_reviewed_at' => 'datetime',
         'locked_at' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',

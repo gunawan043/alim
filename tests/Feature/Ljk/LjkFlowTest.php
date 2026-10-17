@@ -262,13 +262,14 @@ class LjkFlowTest extends TestCase
     {
         $geometry = $exam->template->geometry;
 
-        return app(LjkSyntheticRenderer::class)->renderToFile($geometry, [
+        $path = app(LjkSyntheticRenderer::class)->renderToFile($geometry, [
             'answers' => $slotAnswers,
             'styles' => $styles,
         ], [
             'participant_seq' => (int) $participant->nomor_peserta,
             'path' => sys_get_temp_dir().'/ljk-flow-'.Str::random(8).'.jpg',
         ]);
+        return $path;
     }
 
     private function upload(string $path, LjkExam $exam, ?LjkParticipant $participant = null): array
@@ -451,6 +452,61 @@ class LjkFlowTest extends TestCase
         // Sinkronisasi ulang dengan payload sama tidak menggandakan.
         $again = app(LjkSyncService::class)->sync($exam->fresh(), $this->teacher);
         $this->assertTrue($again['skipped']);
+    }
+
+    public function test_ganti_jawaban_ganda_dikoreksi_guru_dan_nilai_memakai_jawaban_baru(): void
+    {
+        $exam = $this->createExam();
+        $participants = app(LjkExamService::class)->provisionParticipants($exam);
+        app(LjkExamService::class)->generateSheets($exam, $this->teacher);
+
+        $participant = $participants[0];
+        $slots = $this->correctSlots($exam, $participant);
+        $mapItem2 = collect($participant->mappingItems())->firstWhere('no', 2);
+        $correct2 = $this->keyFor((string) $mapItem2['item_id']);
+
+        // Siswa mengganti jawaban: tanda lama (A) masih terlihat + tanda baru (B).
+        $slots[2] = 'AB';
+
+        $scan = $this->upload($this->renderSheet($exam, $participant, $slots), $exam, $participant)['scan'];
+        $answer = $scan->answers->firstWhere('nomor', 2);
+
+        $this->assertSame('ganda', $answer->status);
+        $this->assertNull($answer->selected_label, 'Jawaban ganda tidak boleh dipilih otomatis.');
+        $this->assertTrue((bool) $answer->needs_review);
+        $detected = (array) ($answer->evidence['selected_set'] ?? []);
+        $this->assertEqualsCanonicalizing(['A', 'B'], $detected);
+
+        // Selama menunggu koreksi, nilai belum masuk.
+        $this->assertDatabaseMissing('admin_nilai_sumatif', [
+            'admin_book_id' => $this->book->id,
+            'student_id' => $participant->student_id,
+        ]);
+
+        // Guru memilih jawaban baru; koreksi tercatat sebelum/sesudah + alasan.
+        $corrected = app(LjkReviewService::class)->correct(
+            $answer,
+            ['status' => 'terbaca', 'label' => $correct2],
+            $this->teacher,
+            'Siswa mengganti jawaban'
+        );
+
+        $this->assertSame('terbaca', $corrected->status);
+        $this->assertSame($correct2, $corrected->selected_label);
+        $this->assertFalse((bool) $corrected->needs_review);
+        $this->assertDatabaseHas('ljk_answer_corrections', [
+            'ljk_scan_answer_id' => $answer->id,
+            'corrected_by' => $this->teacher->id,
+            'reason' => 'Siswa mengganti jawaban',
+        ]);
+
+        // Koreksi bersih → nilai otomatis memakai kunci paket (semua benar = 100).
+        $row = NilaiSumatif::where('admin_book_id', $this->book->id)
+            ->where('student_id', $participant->student_id)
+            ->first();
+
+        $this->assertNotNull($row);
+        $this->assertEqualsWithDelta(100.0, (float) $row->sts_murni, 0.01);
     }
 
     public function test_sinkron_ditolak_saat_masih_ada_yang_menunggu_pemeriksaan(): void

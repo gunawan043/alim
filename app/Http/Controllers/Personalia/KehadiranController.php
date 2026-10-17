@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
+use App\Models\AbsensiGtk;
 use App\Models\AcademicYear;
+use App\Models\CutiRequest;
 use App\Models\JadwalKbm;
 use App\Models\TeacherClassAttendance;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -101,7 +104,64 @@ class KehadiranController extends Controller
      */
     public function rekap(Request $request, string $userId)
     {
-        return view('personalia.kehadiran.rekap', compact('userId'));
+        $schoolId = $this->resolveSchoolId($request);
+        $month = $this->parseMonth($request->input('periode'));
+
+        $start = $month->copy()->startOfMonth();
+        $end = $month->copy()->endOfMonth();
+        $gtkId = $request->input('gtk_id');
+
+        $gtkQuery = User::query()
+            ->with(['employment'])
+            ->whereHas('employment', fn ($e) => $e->when($schoolId, fn ($x) => $x->where('school_id', $schoolId)))
+            ->when($gtkId, fn ($q) => $q->where('id', $gtkId))
+            ->orderBy('name');
+
+        $attendanceByUser = AbsensiGtk::query()
+            ->with('gtk:id,user_id')
+            ->whereDate('tanggal', '>=', $start->toDateString())
+            ->whereDate('tanggal', '<=', $end->toDateString())
+            ->when($schoolId, fn ($q) => $q->whereHas(
+                'gtk.user.employment',
+                fn ($e) => $e->where('school_id', $schoolId)
+            ))
+            ->get()
+            ->filter(fn ($row) => $row->gtk?->user_id)
+            ->toBase()
+            ->groupBy(fn ($row) => $row->gtk->user_id);
+
+        $userIds = (clone $gtkQuery)->pluck('id');
+        $allRows = $attendanceByUser->only($userIds->all())->flatten(1);
+
+        $totalGtk = $userIds->count();
+        $totalHadir = $allRows->where('status', 'hadir')->count();
+        $terlambat = $allRows->where('status', 'hadir')->where('terlambat_menit', '>', 0)->count();
+        $tidakHadir = $allRows->whereIn('status', ['izin', 'sakit', 'alpa', 'alpha'])->count();
+
+        $kehadiranList = $gtkQuery->paginate(25)->withQueryString()
+            ->through(function (User $user) use ($attendanceByUser) {
+                $rows = $attendanceByUser->get($user->id, collect());
+
+                return [
+                    'nama' => $user->name,
+                    'jenis' => $user->employment?->jenis_gtk
+                        ? ucwords(str_replace('_', ' ', $user->employment->jenis_gtk))
+                        : ($user->employment?->jabatan ?: 'GTK'),
+                    'hadir' => $rows->where('status', 'hadir')->count(),
+                    'izin' => $rows->where('status', 'izin')->count(),
+                    'sakit' => $rows->where('status', 'sakit')->count(),
+                    'alfa' => $rows->whereIn('status', ['alpa', 'alpha'])->count(),
+                    'terlambat' => $rows->where('status', 'hadir')->where('terlambat_menit', '>', 0)->count(),
+                    'total_hari' => $rows->count(),
+                ];
+            });
+
+        $gtkOptions = (clone $gtkQuery)->pluck('name', 'id');
+
+        return view('personalia.kehadiran.rekap', compact(
+            'userId', 'kehadiranList', 'totalGtk', 'totalHadir', 'tidakHadir',
+            'terlambat', 'gtkOptions', 'month',
+        ));
     }
 
     /**
@@ -109,7 +169,77 @@ class KehadiranController extends Controller
      */
     public function cutiIzin(Request $request, string $userId)
     {
-        return view('personalia.kehadiran.cuti-izin', compact('userId'));
+        $schoolId = $this->resolveSchoolId($request);
+
+        $statusMap = [
+            'disetujui' => CutiRequest::STATUS_APPROVED,
+            'menunggu' => CutiRequest::STATUS_PENDING,
+            'ditolak' => CutiRequest::STATUS_REJECTED,
+        ];
+
+        $base = CutiRequest::query()
+            ->when($schoolId, fn ($q) => $q->whereHas(
+                'user.employment',
+                fn ($e) => $e->where('school_id', $schoolId)
+            ))
+            ->when($request->filled('gtk_id'), fn ($q) => $q->where('user_id', $request->input('gtk_id')))
+            ->when($request->filled('jenis'), fn ($q) => $q->whereHas(
+                'template',
+                fn ($t) => $t->where('jenis', $request->input('jenis'))
+            ))
+            ->when($request->filled('status'), fn ($q) => $q->where(
+                'status',
+                $statusMap[(string) $request->input('status')] ?? $request->input('status')
+            ));
+
+        $stats = [
+            'total' => (clone $base)->count(),
+            'disetujui' => (clone $base)->where('status', CutiRequest::STATUS_APPROVED)->count(),
+            'menunggu' => (clone $base)->where('status', CutiRequest::STATUS_PENDING)->count(),
+            'ditolak' => (clone $base)->where('status', CutiRequest::STATUS_REJECTED)->count(),
+        ];
+
+        $cutiIzinList = $base
+            ->with(['user', 'template'])
+            ->orderByDesc('tanggal_mulai')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn (CutiRequest $cuti) => [
+                'nama' => $cuti->user?->name ?? '-',
+                'jenis' => $cuti->template?->nama ?: ucfirst(strtolower($cuti->template?->jenis ?? '-')),
+                'tanggal_mulai' => $cuti->tanggal_mulai?->format('d/m/Y'),
+                'tanggal_selesai' => $cuti->tanggal_selesai?->format('d/m/Y'),
+                'durasi' => $cuti->jumlah_hari,
+                'alasan' => $cuti->alasan,
+                'status' => strtolower($cuti->status),
+            ]);
+
+        $gtkOptions = User::query()
+            ->whereHas('employment', fn ($e) => $e->when($schoolId, fn ($x) => $x->where('school_id', $schoolId)))
+            ->orderBy('name')
+            ->pluck('name', 'id');
+
+        return view('personalia.kehadiran.cuti-izin', array_merge(
+            compact('userId', 'cutiIzinList', 'gtkOptions'),
+            $stats,
+        ));
+    }
+
+    private function resolveSchoolId(Request $request): ?string
+    {
+        return $request->attributes->get('schoolContextId')
+            ?? $request->user()?->employment?->school_id;
+    }
+
+    private function parseMonth(?string $value): Carbon
+    {
+        try {
+            return $value
+                ? Carbon::createFromFormat('Y-m', $value)->startOfMonth()
+                : now()->startOfMonth();
+        } catch (\Throwable) {
+            return now()->startOfMonth();
+        }
     }
 
     /**

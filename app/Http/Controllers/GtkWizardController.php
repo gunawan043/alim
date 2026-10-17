@@ -1312,6 +1312,9 @@ class GtkWizardController extends Controller
             'user' => [
                 'name' => $validated['name'],
                 'name_ar' => $validated['name_ar'] ?? null,
+                'name_ar_status' => filled($validated['name_ar'] ?? null) ? 'approved' : null,
+                'name_ar_reviewed_at' => filled($validated['name_ar'] ?? null) ? now() : null,
+                'name_ar_reviewed_by' => filled($validated['name_ar'] ?? null) ? $request->user()?->id : null,
                 'email' => $validated['email'],
                 'password' => Hash::make($this->defaultPassword($nupy)),
                 'is_active' => $request->boolean('is_active', true),

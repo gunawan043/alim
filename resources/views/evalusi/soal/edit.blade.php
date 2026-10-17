@@ -34,6 +34,19 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label class="form-label">Bahasa Soal</label>
+                                <select name="bahasa" class="form-control">
+                                    @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" {{ old('bahasa', $soal->bahasa ?? 'latin') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    <strong>Arab</strong> → lembar soal RTL &amp; pilihan ا، ب، ج، د.
+                                    <strong>Latin/Gabungan</strong> → LTR &amp; pilihan A, B, C, D.
+                                </small>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label class="form-label">Tujuan Pembelajaran</label>
                                 <select name="tp_id" class="form-control">
                                     <option value="">— Tidak terkait —</option>

@@ -109,6 +109,10 @@
                         <i class="bx bx-bell me-2"></i>Daftar Notifikasi
                     </h5>
                     <div class="d-flex gap-2">
+                        <a href="{{ route('user.notifications.preferences', ['userId' => auth()->id()]) }}"
+                           class="btn btn-sm btn-outline-primary" title="Atur channel notifikasi">
+                            <i class="bx bx-cog me-1"></i> Preferensi
+                        </a>
                         <button type="button"
                                 class="btn btn-sm btn-success notif-mark-all"
                                 title="Tandai semua dibaca">

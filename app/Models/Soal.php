@@ -29,6 +29,7 @@ class Soal extends Model
         'materi',
         'derived_from_soal_id',
         'tipe_soal',
+        'bahasa',
         'pertanyaan',
         'pembahasan',
         'gambar_path',
@@ -60,6 +61,19 @@ class Soal extends Model
     const WORKFLOW_REVISI = 'revisi';
 
     const WORKFLOW_APPROVED = 'approved';
+
+    /** Bahasa soal menentukan arah tata letak lembar soal. */
+    public const BAHASA_LATIN = 'latin';
+
+    public const BAHASA_ARAB = 'arab';
+
+    public const BAHASA_GABUNGAN = 'gabungan';
+
+    public const BAHASA_OPTIONS = [
+        self::BAHASA_LATIN => 'Latin (LTR)',
+        self::BAHASA_ARAB => 'Arab (RTL)',
+        self::BAHASA_GABUNGAN => 'Gabungan (Latin + Arab, LTR)',
+    ];
 
     const WORKFLOW_OPTIONS = [
         self::WORKFLOW_DRAFT => 'Draft',
@@ -228,6 +242,27 @@ class Soal extends Model
     public function hasSimilarityWarnings(): bool
     {
         return (int) ($this->similarity_summary['total'] ?? 0) > 0;
+    }
+
+    /**
+     * Mode bahasa efektif: nilai tersimpan, atau deteksi otomatis untuk soal lama.
+     */
+    public function bahasaEfektif(): string
+    {
+        $bahasa = (string) ($this->bahasa ?? '');
+
+        if (in_array($bahasa, [self::BAHASA_LATIN, self::BAHASA_ARAB, self::BAHASA_GABUNGAN], true)) {
+            return $bahasa;
+        }
+
+        return \App\Services\Ljk\LjkArabicText::hasArabic($this->pertanyaan)
+            ? self::BAHASA_ARAB
+            : self::BAHASA_LATIN;
+    }
+
+    public function isRtl(): bool
+    {
+        return $this->bahasaEfektif() === self::BAHASA_ARAB;
     }
 
     public function getIsObjectivelyGradableAttribute(): bool

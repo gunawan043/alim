@@ -79,10 +79,27 @@ class ArabicNameAiGeneratorTest extends TestCase
         $this->assertSame('محمد فوزان', $result, 'Fallback kamus harus dipakai saat AI gagal.');
     }
 
-    public function test_ai_tanpa_kunci_fallback_ke_kaidah(): void
+    public function test_ai_tanpa_kunci_tetap_dipakai_untuk_endpoint_lokal(): void
+    {
+        $this->configureAi();
+        config()->set('arabic_names.ai.key', null);
+
+        Http::fake([
+            'api.openai.test/*' => Http::response([
+                'choices' => [['message' => ['content' => 'أحمد']]],
+            ]),
+        ]);
+
+        $result = app(AiArabicNameGenerator::class)->generate('Ahmad');
+
+        $this->assertSame('أحمد', $result);
+        Http::assertSent(fn ($request) => ! $request->hasHeader('Authorization'));
+    }
+
+    public function test_endpoint_kosong_fallback_ke_kaidah(): void
     {
         config()->set('arabic_names.driver', 'ai');
-        config()->set('arabic_names.ai.key', null);
+        config()->set('arabic_names.ai.endpoint', '');
 
         Http::fake();
 

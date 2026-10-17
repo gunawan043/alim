@@ -50,7 +50,7 @@ class LjkTemplateService
         $usableW = $pageW - $margin['left'] - $margin['right'];
         $usableH = $pageH - $headerH - $footerMargin;
 
-        $capacityPerColumn = max(1, (int) floor($usableH / $rowH));
+        $capacityPerPage = max(1, (int) floor($usableH / $rowH));
 
         // Rombak butir menjadi baris (manual/uraian = 2 baris).
         $rows = [];
@@ -59,14 +59,26 @@ class LjkTemplateService
             $rows[] = ['spec' => $spec, 'manual' => $manual, 'span' => $manual ? 2 : 1];
         }
 
-        // Distribusi baris ke kolom → halaman.
-        // Kolom "preferred" dipakai sejak awal (mis. 20 soal → 2 kolom × 10 baris:
-        // kiri no 1-10, kanan no 11-20), kolom tambahan otomatis bila tidak muat.
-        $preferredColumns = max(1, (int) ($cfg['preferred_columns'] ?? 2));
-        $neededColumns = max(1, (int) ceil(count($rows) / max(1, $capacityPerColumn)));
-        $columns = min($maxColumns, max($preferredColumns, $neededColumns));
-        $rowsPerColumn = max(1, (int) ceil(count($rows) / $columns));
+        // Kolom = 4 soal sebaris bila muat; jumlah kolom dihitung otomatis
+        // dari jumlah opsi terbanyak (5 opsi → 3 kolom) agar blok nomor +
+        // semua kotak tidak menabrak kolom sebelah.
+        $maxOptions = max(2, min((int) $this->maxOptions($specs), (int) $cfg['max_options']));
+        $labelW = 8.0;
+        $minColumnWidth = $labelW
+            + $maxOptions * (float) $box['width_mm']
+            + ($maxOptions - 1) * (float) $box['gap_mm']
+            + 2.0;
+        $maxColumnsByWidth = max(1, (int) floor(($usableW + $colGap) / ($minColumnWidth + $colGap)));
+
+        $preferredColumns = max(1, (int) ($cfg['preferred_columns'] ?? 4));
+        $neededColumns = max(1, (int) ceil(count($rows) / $capacityPerPage));
+        $columns = max(1, min($maxColumns, $maxColumnsByWidth, max($preferredColumns, $neededColumns)));
         $columnWidth = ($usableW - ($columns - 1) * $colGap) / $columns;
+
+        // Distribusi kolom-major: nomor berurut ke bawah pada satu kolom,
+        // lalu lanjut ke kolom berikutnya (kiri → kanan). Contoh 23 soal:
+        // kolom 1 = 1–6, kolom 2 = 7–12, kolom 3 = 13–18, kolom 4 = 19–23.
+        $rowsPerColumn = max(1, (int) ceil(count($rows) / $columns));
 
         $pages = [];
         $flat = [];
@@ -91,8 +103,7 @@ class LjkTemplateService
                     'y_mm' => round((float) $qrConf['offset_top_mm'], 2),
                     'size_mm' => (float) $qrConf['size_mm'],
                 ],
-                // Data strip mesin (32 sel) — identitas lembar & halaman yang
-                // dapat didekode server tanpa pustaka QR eksternal.
+                // Data strip mesin (32 sel) — identitas lembar & halaman.
                 'strip' => [
                     'x_mm' => round($margin['left'] - 3.0, 2),
                     'y_mm' => round($pageH - $margin['bottom'] + 5.0, 2),
@@ -107,9 +118,8 @@ class LjkTemplateService
         $pages[$pageIndex] = $makePage($pageIndex);
 
         foreach ($rows as $row) {
-            // Pindah kolom setelah kuota baris per kolom tercapai (distribusi
-            // merata), atau bila kolom sudah penuh karena span soal manual.
-            if ($rowCursor >= $rowsPerColumn || $rowCursor >= $capacityPerColumn) {
+            // Kolom penuh (kuota merata / kapasitas halaman) → kolom berikutnya.
+            if ($rowCursor >= $rowsPerColumn || $rowCursor >= $capacityPerPage) {
                 $rowCursor = 0;
                 $columnIndex++;
                 if ($columnIndex > $columns) {
@@ -122,7 +132,7 @@ class LjkTemplateService
             /** @var array{nomor:int,jenis:string,options?:int} $spec */
             $spec = $row['spec'];
 
-            $colX = $margin['left'] + ($columnIndex - 1) * ($columnWidth + $colGap);
+            $colX = (float) $margin['left'] + ($columnIndex - 1) * ($columnWidth + $colGap);
             $rowY = $headerH + $rowCursor * $rowH;
 
             $question = [
@@ -138,15 +148,14 @@ class LjkTemplateService
 
             if ($row['manual']) {
                 $question['w_mm'] = round($columnWidth, 2);
-                $question['h_mm'] = round($rowH * 2 - 1.6, 2);
+                $question['h_mm'] = round($rowH * $row['span'] - 1.6, 2);
                 $question['options'] = [];
             } else {
-                $optionCount = max(2, min((int) ($spec['options'] ?? 5), (int) config('ljk.template.max_options', 5)));
-                $labelW = 8.0;
+                $optionCount = max(2, min((int) ($spec['options'] ?? 5), (int) $cfg['max_options']));
                 $boxesW = $optionCount * (float) $box['width_mm'] + ($optionCount - 1) * (float) $box['gap_mm'];
-                $offsetX = $labelW + max(0.0, ($columnWidth - $labelW - $boxesW) / 2.0);
-                if ($offsetX + $labelW + $boxesW > $columnWidth) {
-                    $offsetX = $labelW;
+                $offsetX = $labelW; // blok kiri-rata agar kolom sejajar lurus
+                if ($offsetX + $boxesW > $columnWidth) {
+                    $offsetX = max(0.0, $columnWidth - $boxesW);
                 }
 
                 $question['options'] = [];
@@ -174,6 +183,7 @@ class LjkTemplateService
             'row_height_mm' => $rowH,
             'box' => $box,
             'max_options' => max(2, min((int) ($this->maxOptions($specs)), (int) config('ljk.template.max_options', 5))),
+            'header_height_mm' => $headerH,
             'pages' => array_values($pages),
             'questions' => $flat,
         ];

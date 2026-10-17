@@ -116,7 +116,7 @@
     <form method="GET" action="{{ route('user.kehadiran.rekap', $userId) }}" class="row g-2 align-items-end">
         <div class="col-md-3">
             <label class="form-label mb-0" style="font-size:.8rem">Periode</label>
-            <input type="month" name="periode" class="form-control form-control-sm" value="{{ request('periode') }}">
+            <input type="month" name="periode" class="form-control form-control-sm" value="{{ request('periode', isset($month) ? $month->format('Y-m') : now()->format('Y-m')) }}">
         </div>
         <div class="col-md-3">
             <label class="form-label mb-0" style="font-size:.8rem">Nama GTK</label>

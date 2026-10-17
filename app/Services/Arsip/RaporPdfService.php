@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
 use App\Models\RaporDistributionSetting;
+use App\Services\ArabicName\ArabicNameResolver;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
@@ -177,7 +178,7 @@ class RaporPdfService
             $mapelRows[] = [
                 'no' => $idx + 1,
                 'mapel' => $subject->name,
-                'mapel_ar' => $subject->name_ar,
+                'mapel_ar' => app(ArabicNameResolver::class)->subjectName($subject),
                 'kkm' => AcademicNilai::kkmLabel($book),
                 'nilai' => $nilai !== null ? number_format($nilai, 1) : '',
                 'keterangan' => AcademicNilai::keterangan($nilai, $book),
@@ -220,7 +221,7 @@ class RaporPdfService
         return [
             $studentId => [
                 'Nama' => $student->name,
-                'NamaAr' => $student->name_ar,
+                'NamaAr' => app(ArabicNameResolver::class)->studentName($student),
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
                 'Kelas' => $studyGroup->name,
@@ -257,6 +258,8 @@ class RaporPdfService
         $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
 
+        $resolver = app(ArabicNameResolver::class);
+
         return view('nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
@@ -265,6 +268,8 @@ class RaporPdfService
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
+            'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
+            'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
     }
 
@@ -315,6 +320,8 @@ class RaporPdfService
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
 
+        $resolver = app(ArabicNameResolver::class);
+
         $html = view('nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
@@ -323,6 +330,8 @@ class RaporPdfService
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
+            'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
+            'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
 
         return $this->renderPdf($html);

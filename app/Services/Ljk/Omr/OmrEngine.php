@@ -323,7 +323,6 @@ final class OmrEngine
         $strong = (float) ($cfg['option_strong'] ?? 0.56);
         $weak = (float) ($cfg['option_weak'] ?? 0.33);
         $singleMin = (float) ($cfg['single_candidate_min'] ?? 0.47);
-        $margin = (float) ($cfg['strong_margin'] ?? 0.12);
         $emptyMax = (float) ($cfg['empty_max'] ?? 0.28);
         $inkMin = (float) ($cfg['ink_min_ratio'] ?? 0.015);
 
@@ -344,7 +343,7 @@ final class OmrEngine
             if (in_array('out_of_bounds', $features['signature'] ?? [], true)) {
                 $outOfBounds++;
             }
-            if (($features['ink_ratio'] ?? 0) >= $inkMin) {
+            if (empty($features['cancel_equals']) && ($features['ink_ratio'] ?? 0) >= $inkMin) {
                 $hasInk = true;
             }
 
@@ -365,6 +364,12 @@ final class OmrEngine
         $strongLabels = [];
         $weakLabels = [];
         foreach ($sorted as $label => $features) {
+            // Kotak dengan tanda "=" (X=) = jawaban dibatalkan; jangan
+            // dihitung sebagai pilihan aktif.
+            if (! empty($features['cancel_equals'])) {
+                continue;
+            }
+
             $score = (float) ($features['score'] ?? 0);
             if ($score >= $strong) {
                 $strongLabels[] = (string) $label;
@@ -390,15 +395,13 @@ final class OmrEngine
             $base['selected_set'] = $strongLabels;
             $base['needs_review'] = false;
         } elseif (count($strongLabels) > 1) {
-            if (($topScore - $secondScore) >= $margin) {
-                $base['status'] = 'terbaca';
-                $base['selected'] = (string) $top;
-                $base['selected_set'] = [(string) $top];
-                $base['needs_review'] = false;
-            } else {
-                $base['status'] = 'ganda';
-                $base['selected_set'] = $strongLabels;
-            }
+            // Dua tanda X kuat atau lebih — bisa karena siswa mengganti
+            // jawaban (tanda lama belum bersih) atau memang menandai ganda.
+            // JANGAN memilih otomatis berdasarkan selisih skor: keputusan
+            // akhir harus lewat koreksi guru (tercatat di audit).
+            $base['status'] = 'ganda';
+            $base['selected_set'] = $strongLabels;
+            $base['needs_review'] = true;
         } else {
             if (count($weakLabels) === 1) {
                 // Kandidat tunggal yang mendekati ambang kuat dan tanpa tanda
@@ -447,6 +450,9 @@ final class OmrEngine
             } else {
                 $anyInk = false;
                 foreach ($optionScores as $features) {
+                    if (! empty($features['cancel_equals'])) {
+                        continue;
+                    }
                     if (($features['ink_ratio'] ?? 0) >= $inkMin) {
                         $anyInk = true;
                         break;

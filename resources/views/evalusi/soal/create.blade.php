@@ -35,6 +35,20 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label class="form-label">Bahasa Soal</label>
+                                <select name="bahasa" class="form-control @error('bahasa') is-invalid @enderror">
+                                    @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" {{ old('bahasa', 'latin') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    <strong>Arab</strong> → lembar soal RTL &amp; pilihan ا، ب، ج، د.
+                                    <strong>Latin/Gabungan</strong> → LTR &amp; pilihan A, B, C, D.
+                                </small>
+                                @error('bahasa') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
                                 <label class="form-label">Tujuan Pembelajaran</label>
                                 <select name="tp_id" class="form-control">
                                     <option value="">— Tidak terkait —</option>

@@ -11,6 +11,7 @@
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
     @include('layouts.head-css')
+    @include('shared._styles')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Instead of document.write(), use: -->
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
@@ -46,6 +47,8 @@
     <!-- JAVASCRIPT -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @include('layouts.vendor-scripts')
+    {{-- @yield('script') & @stack('scripts') sudah dirender vendor-scripts (jangan ganda!) --}}
+    @stack('script')
 </body>
 
 </html>

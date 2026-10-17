@@ -123,7 +123,10 @@ class LjkSheetService
      */
     public function qrDataUri(LjkExam $exam, LjkParticipant $participant, int $page = 1): string
     {
-        $payload = $this->buildQrPayload($exam, $participant, $participant->sheet ?? LjkSheet::query()->where('participant_id', $participant->id)->firstOrFail(), $page);
+        $sheet = $participant->sheet
+            ?? LjkSheet::query()->where('participant_id', $participant->id)->firstOrFail();
+
+        $payload = $this->buildQrPayload($exam, $participant, $sheet, $page);
 
         return LjkQrRenderer::pngDataUri($payload, 420);
     }
@@ -152,16 +155,35 @@ class LjkSheetService
         $template = $sheet->template;
         app(LjkTemplateService::class)->assertValidGeometry($template->geometry);
 
-        $school = $exam->school;
-        [$kopBase64, $kopHeightMm] = $this->kopData($school);
+        // Kop lembaga (tertaut pengaturan sekolah) untuk lembar jawaban.
+        // Tinggi dibatasi 16 mm agar seluruh header muat di atas area jawaban.
+        $letterhead = app(LjkSchoolLetterhead::class)->data($exam->school, 22.0);
 
         // Wacana/soal cerita & dukungan teks Arab untuk lembar jawaban
         // (butir diambil sekali agar tidak berulang query).
         $soalSheet = app(LjkSoalSheet::class);
         $soalQuestions = $soalSheet->questions($exam);
         $wacanaRanges = $soalSheet->rangesFromBlocks($soalSheet->blocks($soalQuestions));
+        $examBahasa = $soalSheet->examBahasa($exam);
         $arabicNumbers = $soalSheet->arabicNumbersFrom($soalQuestions);
         $hasArabic = $arabicNumbers !== [];
+        $arabAngka = $examBahasa === 'arab' && (string) config('ljk.soal.angka_arab', 'auto') === 'auto';
+
+        // Header lembar jawaban disamakan dengan lembar soal.
+        $fontSize = round((float) config('ljk.soal.font_size', 12.0) * LjkPdfFonts::sizeScale(), 2);
+        $headerMm = (float) ($template->geometry['header_height_mm'] ?? 0);
+
+        if ($headerMm <= 0) {
+            // Template lama: gunakan y soal pertama sebagai batas header.
+            $headerMm = (float) (collect($template->geometry['questions'] ?? [])->min('y_mm') ?: 58.0);
+        }
+
+        $meta = trim(implode(' · ', array_filter([
+            (string) ($exam->judul ?? ''),
+            (string) ($exam->subject?->name ?? ''),
+            (string) ($exam->studyGroup?->name ?? ''),
+            $exam->tanggal?->format('d/m/Y'),
+        ])));
 
         return view('ljk.sheet-pdf', [
             'exam' => $exam,
@@ -173,71 +195,34 @@ class LjkSheetService
             'page' => $page,
             'master' => $master,
             'masterNote' => $masterNote,
-            'school' => $school,
-            'kopBase64' => $kopBase64,
-            'kopHeightMm' => $kopHeightMm,
-            'logoBase64' => $this->logoDataUri($school),
+            'school' => $exam->school,
+            'schoolName' => $letterhead['schoolName'],
+            'schoolAddress' => $letterhead['address'],
+            'kopBase64' => $letterhead['kopBase64'],
+            'kopWidthMm' => $letterhead['kopWidthMm'] ?? 145.0,
+            'kopHeightMm' => $letterhead['kopHeightMm'],
+            'logoBase64' => $letterhead['logoBase64'],
             'arabicStack' => LjkPdfFonts::arabicStack(),
             'arabicFaceCss' => LjkPdfFonts::arabicFaceCss(),
             'wacanaRanges' => $wacanaRanges,
-            'hasArabic' => $hasArabic,
             'arabicNumbers' => $arabicNumbers,
+            'examBahasa' => $examBahasa,
+            'arabAngka' => $arabAngka,
             'hurufArab' => (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']),
+            'hasArabic' => $hasArabic,
             'instruksiArab' => (string) config('ljk.soal.instruksi_arab', ''),
+            // Header LJK (mengikuti format lembar soal)
+            'judulLjk' => $soalSheet->judulLjk($exam),
+            'metaLjk' => $meta,
+            'identityRows' => $soalSheet->identityRows($exam, $participant),
+            'karakter' => (array) config('ljk.soal.penanaman_karakter', []),
+            'instruksiLjk' => (string) config('ljk.soal.instruksi_ljk', ''),
+            'fontSize' => $fontSize,
+            'fontStack' => LjkPdfFonts::stack(),
+            'faceCss' => LjkPdfFonts::faceCss(),
+            'headerMm' => $headerMm,
             'qrDataUri' => $master ? null : $this->qrDataUri($exam, $participant, $page),
             'stripBits' => $master ? [] : $this->stripBits($exam, $participant, $page),
         ])->render();
-    }
-
-    /**
-     * Kop surat sekolah (bila diunggah) + tinggi render dalam mm.
-     *
-     * @return array{0: ?string, 1: float}
-     */
-    private function kopData(?\App\Models\School $school): array
-    {
-        if (! $school || ! $school->kop_path) {
-            return [null, 0.0];
-        }
-
-        $absolute = storage_path('app/public/'.$school->kop_path);
-        if (! file_exists($absolute)) {
-            return [null, 0.0];
-        }
-
-        $ext = strtolower(pathinfo($absolute, PATHINFO_EXTENSION) ?: 'png');
-        $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
-
-        $widthMm = 145.0;
-        $heightMm = 0.0;
-        $info = @getimagesize($absolute);
-        if ($info && (int) $info[0] > 0) {
-            $heightMm = round($widthMm * ((int) $info[1] / (int) $info[0]), 2);
-        }
-
-        $maxHeight = (float) config('ljk.template.max_kop_height_mm', 24.0);
-        $heightMm = $heightMm > 0 ? min($heightMm, $maxHeight) : 18.0;
-
-        return ['data:'.$mime.';base64,'.base64_encode((string) file_get_contents($absolute)), $heightMm];
-    }
-
-    /**
-     * Logo sekolah (bila ada) sebagai data-URI.
-     */
-    private function logoDataUri(?\App\Models\School $school): ?string
-    {
-        if (! $school || ! $school->logo_path) {
-            return null;
-        }
-
-        $absolute = storage_path('app/public/'.$school->logo_path);
-        if (! file_exists($absolute)) {
-            return null;
-        }
-
-        $ext = strtolower(pathinfo($absolute, PATHINFO_EXTENSION) ?: 'png');
-        $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
-
-        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($absolute));
     }
 }

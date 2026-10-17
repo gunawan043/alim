@@ -26,7 +26,7 @@ class Student extends Model
     protected $fillable = [
         'user_id', 'school_id',
         // Identitas
-        'nisn', 'nis', 'nik', 'no_kk', 'name', 'name_ar', 'gender',
+        'nisn', 'nis', 'nik', 'no_kk', 'name', 'name_ar', 'name_ar_status', 'name_ar_reviewed_at', 'name_ar_reviewed_by', 'gender',
         'birth_place', 'birth_date', 'religion', 'special_needs',
         // Alamat
         'address', 'rt', 'rw', 'hamlet',
@@ -63,6 +63,7 @@ class Student extends Model
 
     protected $casts = [
         'birth_date' => 'date',
+        'name_ar_reviewed_at' => 'datetime',
         'entry_date' => 'date',
         'graduation_date' => 'date',
         'father_birth_year' => 'integer',

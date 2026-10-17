@@ -183,6 +183,7 @@ class PaketNaskahService
                 'konten_snapshot' => [
                     'nomor' => $item->nomor ?? $item->urutan,
                     'jenis' => $item->jenis_soal ?? $soal->tipe_soal,
+                    'bahasa' => $soal->bahasaEfektif(),
                     'soal_id' => $soal->id,
                     'tp_id' => $soal->tp_id,
                     'wacana' => $soal->wacanaPayload(),

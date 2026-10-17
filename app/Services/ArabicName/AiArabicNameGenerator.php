@@ -2,27 +2,23 @@
 
 namespace App\Services\ArabicName;
 
+use App\Services\Ai\AiProviderService;
 use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Generator nama Arab berbasis AI (OpenAI-compatible Chat Completions).
+ * Generator nama Arab berbasis AI (OpenAI-compatible).
  *
- * Bersifat opsional: bila kredensial tidak tersedia atau panggilan gagal,
- * otomatis memakai generator kaidah transliterasi (fallback) agar proses
- * import/generate tidak pernah gagal total.
- *
- * Prompt sistem memuat kaidah penulisan nama:
- *  - berdasarkan pelafalan, bukan penggantian huruf satu-per-satu;
- *  - bedakan س/ش، ك/ق، ه/ح، ذ/ز;
- *  - vokal panjang/pendek; harakat opsional;
- *  - ejaan baku nama Arab; nama non-Arab fonetis tanpa terjemahan;
- *  - pisahkan unsur nama.
+ * Provider diambil dari Pengaturan AI (multi-platform, berbayar/gratis/lokal).
+ * Bila belum ada provider atau panggilan gagal, otomatis memakai kaidah
+ * transliterasi (fallback) agar proses import/generate tidak gagal total.
  */
 class AiArabicNameGenerator implements ArabicNameGeneratorContract
 {
-    public function __construct(private readonly ArabicNameGenerator $fallback) {}
+    public function __construct(
+        private readonly ArabicNameGenerator $fallback,
+        private readonly AiProviderService $ai,
+    ) {}
 
     public function driver(): string
     {
@@ -37,35 +33,25 @@ class AiArabicNameGenerator implements ArabicNameGeneratorContract
             return '';
         }
 
-        $key = (string) config('arabic_names.ai.key');
-        $endpoint = (string) config('arabic_names.ai.endpoint');
+        $provider = $this->ai->resolveProvider();
 
-        if ($key === '' || $endpoint === '') {
+        if (! $provider) {
             return $this->fallback->generate($name);
         }
 
         try {
-            $response = Http::withToken($key)
-                ->acceptJson()
-                ->timeout((int) config('arabic_names.ai.timeout', 20))
-                ->post($endpoint, [
-                    'model' => config('arabic_names.ai.model'),
-                    'temperature' => 0,
-                    'max_tokens' => 80,
-                    'messages' => [
-                        ['role' => 'system', 'content' => $this->systemPrompt()],
-                        ['role' => 'user', 'content' => $name],
-                    ],
-                ]);
+            $result = $this->ai->chat([
+                ['role' => 'system', 'content' => $this->systemPrompt()],
+                ['role' => 'user', 'content' => $name],
+            ], ['temperature' => 0, 'max_tokens' => 80], $provider);
 
-            if (! $response->successful()) {
-                Log::warning('Generator nama Arab AI gagal (HTTP '.$response->status().').');
+            if (! $result['ok']) {
+                Log::warning('Generator nama Arab AI gagal: '.($result['error'] ?? '-'));
 
                 return $this->fallback->generate($name);
             }
 
-            $content = (string) data_get($response->json(), 'choices.0.message.content', '');
-            $arabic = $this->sanitize($content);
+            $arabic = $this->sanitize($result['content']);
 
             return $arabic !== '' ? $arabic : $this->fallback->generate($name);
         } catch (\Throwable $e) {

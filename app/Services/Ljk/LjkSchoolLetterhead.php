@@ -29,26 +29,28 @@ final class LjkSchoolLetterhead
      *     hasImage: bool
      * }
      */
-    public function data(?School $school): array
+    public function data(?School $school, ?float $maxHeightMm = null): array
     {
         if (! $school) {
             return [
                 'schoolName' => 'ALIM',
                 'address' => '',
                 'kopBase64' => null,
+                'kopWidthMm' => 145.0,
                 'kopHeightMm' => 0.0,
                 'logoBase64' => null,
                 'hasImage' => false,
             ];
         }
 
-        [$kopBase64, $kopHeightMm] = $this->kopData($school);
+        [$kopBase64, $kopWidthMm, $kopHeightMm] = $this->kopData($school, $maxHeightMm);
         $logoBase64 = $this->imageDataUri($school->logo_path);
 
         return [
             'schoolName' => (string) ($school->name ?? 'ALIM'),
             'address' => $this->address($school),
             'kopBase64' => $kopBase64,
+            'kopWidthMm' => $kopWidthMm,
             'kopHeightMm' => $kopHeightMm,
             'logoBase64' => $logoBase64,
             'hasImage' => $kopBase64 !== null || $logoBase64 !== null,
@@ -72,28 +74,36 @@ final class LjkSchoolLetterhead
      *
      * @return array{0: ?string, 1: float}
      */
-    private function kopData(School $school): array
+    private function kopData(School $school, ?float $maxHeightMm = null): array
     {
         if (! $school->kop_path) {
-            return [null, 0.0];
+            return [null, 145.0, 0.0];
         }
 
         $absolute = storage_path('app/public/'.$school->kop_path);
         if (! is_file($absolute)) {
-            return [null, 0.0];
+            return [null, 145.0, 0.0];
         }
 
-        $widthMm = 145.0;
-        $heightMm = 0.0;
+        $baseWidthMm = 145.0;
+        $aspect = 0.0;
         $info = @getimagesize($absolute);
-        if ($info && (int) $info[0] > 0) {
-            $heightMm = round($widthMm * ((int) $info[1] / (int) $info[0]), 2);
+        if ($info && (int) $info[0] > 0 && (int) $info[1] > 0) {
+            $aspect = (int) $info[1] / (int) $info[0];
         }
 
-        $maxHeight = (float) config('ljk.template.max_kop_height_mm', 20.0);
-        $heightMm = $heightMm > 0 ? min($heightMm, $maxHeight) : 18.0;
+        $heightMm = $aspect > 0 ? round($baseWidthMm * $aspect, 2) : 18.0;
 
-        return [$this->imageDataUri($school->kop_path), $heightMm];
+        // Batasi tinggi TANPA merusak proporsi (lebar ikut menyesuaikan).
+        $maxHeight = $maxHeightMm ?? (float) config('ljk.template.max_kop_height_mm', 20.0);
+        $widthMm = $baseWidthMm;
+
+        if ($heightMm > $maxHeight) {
+            $widthMm = round($maxHeight / max(0.0001, $aspect), 2);
+            $heightMm = $maxHeight;
+        }
+
+        return [$this->imageDataUri($school->kop_path), $widthMm, $heightMm];
     }
 
     /**

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Exports\GtkArabicNameTemplateExport;
 use App\Exports\StudentArabicNameTemplateExport;
+use App\Http\Controllers\GtkArabicNameController;
 use App\Http\Controllers\StudentArabicNameController;
+use App\Http\Controllers\StudentController;
 use App\Models\GtkEmployment;
 use App\Models\Permission;
 use App\Models\Role;
@@ -126,6 +128,7 @@ class ArabicNameImportTest extends TestCase
 
         $this->assertSame('الطالب الأول', $byNis->fresh()->name_ar);
         $this->assertSame('الطالب الثاني', $byNisn->fresh()->name_ar);
+        $this->assertSame('pending', $byNis->fresh()->name_ar_status, 'Hasil import harus menunggu tinjauan.');
     }
 
     public function test_import_nama_arab_gtk_berdasarkan_nupy(): void
@@ -142,6 +145,7 @@ class ArabicNameImportTest extends TestCase
         $this->assertSame(1, $result['updated']);
         $this->assertSame(['NUPY-002', 'NUPY-999'], $result['not_found']);
         $this->assertSame('الأستاذ الأول', $guru->fresh()->name_ar);
+        $this->assertSame('pending', $guru->fresh()->name_ar_status);
         $this->assertNull($guruLain->fresh()->name_ar, 'GTK satuan pendidikan lain tidak boleh terubah.');
     }
 
@@ -155,6 +159,7 @@ class ArabicNameImportTest extends TestCase
         $this->assertSame(1, $count);
         $this->assertSame('أحمد المخصوص', $filled->fresh()->name_ar, 'Nama Arab yang sudah ada tidak ditimpa.');
         $this->assertSame('محمد فوزان', $empty->fresh()->name_ar);
+        $this->assertSame('pending', $empty->fresh()->name_ar_status);
     }
 
     public function test_halaman_import_nama_arab_santri_dan_template(): void
@@ -242,6 +247,78 @@ class ArabicNameImportTest extends TestCase
         $this->assertSame('الطالب إكسل', $student->fresh()->name_ar);
     }
 
+    public function test_review_dan_approve_nama_arab_santri(): void
+    {
+        $pending = $this->makeStudent([
+            'name' => 'Santri Pending', 'nis' => '6001', 'name_ar' => 'سانتري',
+            'name_ar_status' => 'pending',
+        ]);
+        $approved = $this->makeStudent(['name' => 'Santri Approved', 'nis' => '6002', 'name_ar' => 'سانتري معتمد']);
+
+        $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
+        $tu = User::create([
+            'name' => 'TU Review', 'email' => 'tu.review@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        $tu->assignRole($role);
+        $this->actingAs($tu);
+
+        $request = Request::create('/students/review-nama-arab', 'GET', ['status' => 'pending']);
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $tu);
+
+        $view = app(StudentArabicNameController::class)->review($request, (string) $tu->id);
+        $rows = $view->getData()['students'];
+
+        $this->assertTrue($rows->contains('id', $pending->id));
+        $this->assertFalse($rows->contains('id', $approved->id), 'Hanya status menunggu yang tampil pada filter pending.');
+
+        $approveRequest = Request::create('/students/review-nama-arab/'.$pending->id, 'POST', ['name_ar' => 'سانتري المصحح']);
+        $approveRequest->attributes->set('schoolContextId', $this->school->id);
+        $approveRequest->setUserResolver(fn () => $tu);
+
+        app(StudentArabicNameController::class)->approve($approveRequest, (string) $tu->id, $pending->id);
+
+        $pending->refresh();
+        $this->assertSame('سانتري المصحح', $pending->name_ar);
+        $this->assertSame('approved', $pending->name_ar_status);
+        $this->assertSame($tu->id, $pending->name_ar_reviewed_by);
+
+        // Bulk approve hanya menyentuh status pending.
+        $second = $this->makeStudent(['name' => 'Santri Kedua', 'nis' => '6003', 'name_ar' => 'سانتري الثاني', 'name_ar_status' => 'pending']);
+
+        $bulkRequest = Request::create('/students/review-nama-arab/approve-all', 'POST');
+        $bulkRequest->attributes->set('schoolContextId', $this->school->id);
+        $bulkRequest->setUserResolver(fn () => $tu);
+
+        app(StudentArabicNameController::class)->approveAll($bulkRequest, (string) $tu->id);
+
+        $this->assertSame('approved', $second->fresh()->name_ar_status);
+    }
+
+    public function test_approve_nama_arab_gtk(): void
+    {
+        $admin = User::create([
+            'name' => 'Super Admin Review', 'email' => 'sa.review@test.local',
+            'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true,
+        ]);
+        $guru = $this->makeGtk('Guru Review', 'NUPY-R01');
+        $guru->update(['name_ar' => 'الأستاذ للمراجعة', 'name_ar_status' => 'pending']);
+
+        $this->actingAs($admin);
+
+        $request = Request::create('/gtk/review-nama-arab/'.$guru->id, 'POST', ['name_ar' => 'الأستاذ المعتمد']);
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $admin);
+
+        app(GtkArabicNameController::class)->approve($request, (string) $admin->id, $guru->id);
+
+        $guru->refresh();
+        $this->assertSame('الأستاذ المعتمد', $guru->name_ar);
+        $this->assertSame('approved', $guru->name_ar_status);
+        $this->assertSame($admin->id, $guru->name_ar_reviewed_by);
+    }
+
     public function test_tabel_santri_kolom_sekolah_hanya_untuk_peran_lintas_sekolah(): void
     {
         $this->makeStudent(['name' => 'Santri Kolom', 'nis' => '5001']);
@@ -266,14 +343,14 @@ class ArabicNameImportTest extends TestCase
 
         $this->actingAs($tu);
         $request->setUserResolver(fn () => $tu);
-        $viewTu = app(\App\Http\Controllers\StudentController::class)->index($request);
+        $viewTu = app(StudentController::class)->index($request);
         $this->assertFalse($viewTu->getData()['showSchoolColumn'], 'Peran satuan pendidikan: kolom sekolah diganti nama Arab.');
 
         $requestPimpinan = Request::create('/students', 'GET');
         $requestPimpinan->attributes->set('schoolContextId', $this->school->id);
         $this->actingAs($pimpinan);
         $requestPimpinan->setUserResolver(fn () => $pimpinan);
-        $viewPimpinan = app(\App\Http\Controllers\StudentController::class)->index($requestPimpinan);
+        $viewPimpinan = app(StudentController::class)->index($requestPimpinan);
         $this->assertTrue($viewPimpinan->getData()['showSchoolColumn'], 'Pimpinan (lintas sekolah) tetap melihat kolom sekolah.');
     }
 

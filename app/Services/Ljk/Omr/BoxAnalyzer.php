@@ -148,6 +148,18 @@ final class BoxAnalyzer
         $hRuns = $this->maxRunCount($img, $mmToSource, $x0, $y0, $w, $h, $c, true);
         $vRuns = $this->maxRunCount($img, $mmToSource, $x0, $y0, $w, $h, $c, false);
 
+        // Deteksi pembatalan "X=": dua garis horizontal panjang di dalam kotak.
+        // Siswa tanpa penghapus menambahkan "=" pada X lama untuk membatalkan.
+        // Untuk deteksi "=", pindai jendela 5–95% kotak (bukan interior 16%)
+        // agar margin garis "=" terlihat; X tebal yang menyentuh sudut tidak
+        // dihitung sebagai garis panjang.
+        $longX0 = $box['x_mm'] + $box['w_mm'] * 0.05;
+        $longY0 = $box['y_mm'] + $box['h_mm'] * 0.05;
+        $longW = $box['w_mm'] * 0.90;
+        $longH = $box['h_mm'] * 0.90;
+        [$longLines, $longestRun] = $this->longHorizontalLines($img, $mmToSource, $longX0, $longY0, $longW, $longH, $c, $cfg);
+        $cancelEquals = $longLines >= (int) ($cfg['cancel_min_lines'] ?? 2);
+
         $signature = [];
         $maxDiag = max($diag1, $diag2);
         $minDiag = min($diag1, $diag2);
@@ -193,6 +205,9 @@ final class BoxAnalyzer
         if ($outsideRatio > 0.5) {
             $signature[] = 'out_of_bounds';
         }
+        if ($cancelEquals) {
+            $signature[] = 'cancelled_equals';
+        }
 
         return [
             'ink_ratio' => round($inkRatio, 4),
@@ -205,6 +220,9 @@ final class BoxAnalyzer
             'v_band' => round($vBand, 4),
             'h_runs' => $hRuns,
             'v_runs' => $vRuns,
+            'long_h_lines' => $longLines,
+            'longest_h_run' => round($longestRun, 4),
+            'cancel_equals' => $cancelEquals,
             'edge_mid' => round($edgeMid, 4),
             'uniformity' => round($uniformity, 4),
             'ink_blue_ratio' => $inkSamples > 0 ? round($blueInk / $inkSamples, 4) : null,
@@ -264,6 +282,11 @@ final class BoxAnalyzer
             }
         }
         if (in_array('out_of_bounds', $flags, true)) {
+            $score = 0.0;
+        }
+        // X= adalah pembatalan jawaban, bukan pilihan. Skor dinolkan agar
+        // kotak lama tidak ikut dianggap sebagai jawaban siswa.
+        if (! empty($f['cancel_equals'])) {
             $score = 0.0;
         }
 
@@ -389,6 +412,66 @@ final class BoxAnalyzer
      * Run = rangkaian piksel tinta berurutan. Dipakai membedakan tanda X
      * (2 coretan) dari coretan banyak garis atau blok tinta.
      */
+    /**
+     * Cari garis horizontal panjang (ciri tanda "=") pada beberapa baris.
+     *
+     * @return array{0: int, 1: float}
+     */
+    private function longHorizontalLines(
+        GrayImage $img,
+        Homography $mmToSource,
+        float $x0,
+        float $y0,
+        float $w,
+        float $h,
+        float $c,
+        array $cfg,
+    ): array {
+        $threshold = (float) ($cfg['cancel_long_run_ratio'] ?? 0.55);
+        $samples = 40;
+        $longLines = 0;
+        $longest = 0.0;
+
+        foreach ([0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80] as $fraction) {
+            $run = 0;
+            $runStart = 0;
+            $maxRun = 0;
+            $maxStart = 0;
+            $maxEnd = 0;
+
+            for ($i = 0; $i < $samples; $i++) {
+                $t = ($i + 0.5) / $samples;
+                $ink = $this->inkAt($img, $mmToSource, $x0 + $t * $w, $y0 + $fraction * $h, $c);
+                if ($ink) {
+                    if ($run === 0) {
+                        $runStart = $i;
+                    }
+                    $run++;
+                    if ($run > $maxRun) {
+                        $maxRun = $run;
+                        $maxStart = $runStart;
+                        $maxEnd = $i;
+                    }
+                } else {
+                    $run = 0;
+                }
+            }
+
+            $ratio = $maxRun / $samples;
+            $longest = max($longest, $ratio);
+
+            // Harus ada margin di kiri & kanan. Garis "=" yang disengaja
+            // punya ruang; X tebal yang menyentuh sudut kotak tidak dihitung
+            // sebagai pembatalan (mencegah X tebal dianggap X=).
+            $hasMargins = $maxStart >= 1 && $maxEnd <= $samples - 2;
+            if ($ratio >= $threshold && $hasMargins) {
+                $longLines++;
+            }
+        }
+
+        return [$longLines, $longest];
+    }
+
     private function maxRunCount(
         GrayImage $img,
         Homography $mmToSource,

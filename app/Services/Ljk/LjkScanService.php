@@ -314,6 +314,7 @@ class LjkScanService
                 'edge_mid' => (float) ($features['edge_mid'] ?? 0),
                 'blue' => $features['ink_blue_ratio'] ?? null,
                 'signature' => $features['signature'] ?? [],
+                'cancelled' => (bool) ($features['cancel_equals'] ?? false),
             ];
         }
 

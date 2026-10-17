@@ -17,6 +17,9 @@
                 <span class="badge bg-secondary">{{ ucfirst($kisi->semester) }}</span>
             </div>
             <div>
+                <a href="{{ route('user.kisi-kisi-soal.cetak', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" target="_blank" class="btn btn-sm btn-light">
+                    <i class="ri-printer-line"></i> Cetak
+                </a>
                 <a href="{{ route('user.paket-soal.create', ['userId' => $userId, 'kisiKisiId' => $kisi->id]) }}" class="btn btn-sm btn-success">
                     <i class="ri-file-list-3-line"></i> Buat Paket Soal
                 </a>

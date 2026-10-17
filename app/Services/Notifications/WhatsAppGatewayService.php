@@ -16,9 +16,21 @@ class WhatsAppGatewayService
 {
     private string $lastResponseBody = '';
 
+    private ?string $lastProviderMessageId = null;
+
     public function enabled(): bool
     {
         return (bool) $this->config('enabled', true);
+    }
+
+    public function provider(): string
+    {
+        return strtolower((string) $this->config('provider', 'log'));
+    }
+
+    public function lastProviderMessageId(): ?string
+    {
+        return $this->lastProviderMessageId;
     }
 
     /**
@@ -42,6 +54,10 @@ class WhatsAppGatewayService
      */
     public function checkDevice(): array
     {
+        if ($this->provider() === 'meta') {
+            return $this->checkMetaDevice();
+        }
+
         $token = (string) $this->config('token');
 
         if ($token === '') {
@@ -103,10 +119,11 @@ class WhatsAppGatewayService
             return false;
         }
 
-        $provider = strtolower((string) $this->config('provider', 'log'));
+        $provider = $this->provider();
 
         try {
             $sent = match ($provider) {
+                'meta' => $this->sendViaMeta($target, $message, $context),
                 'fonnte' => $this->sendViaFonnte($target, $message),
                 'wablas' => $this->sendViaWablas($target, $message),
                 'generic' => $this->sendViaGeneric($target, $message),
@@ -155,6 +172,111 @@ class WhatsAppGatewayService
     }
 
     // ── Drivers ─────────────────────────────────────────────────────
+
+    /**
+     * WhatsApp Cloud API resmi (Meta).
+     *
+     * - Dalam jendela layanan 24 jam: pesan teks bebas.
+     * - Di luar jendela: wajib template yang sudah disetujui Meta.
+     *   Aktifkan `meta_template_enabled` dan isi nama template + bahasa.
+     *   Parameter template diambil dari context `template_params`.
+     */
+    private function sendViaMeta(string $target, string $message, array $context = []): bool
+    {
+        $phoneNumberId = trim((string) $this->config('meta_phone_number_id'));
+        $token = trim((string) $this->config('meta_access_token'));
+
+        if ($phoneNumberId === '' || $token === '') {
+            $this->lastResponseBody = 'Meta Cloud API: Phone Number ID atau Access Token belum diisi.';
+
+            return false;
+        }
+
+        $version = trim((string) $this->config('meta_api_version', 'v20.0')) ?: 'v20.0';
+        $url = "https://graph.facebook.com/{$version}/{$phoneNumberId}/messages";
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => $target,
+        ];
+
+        $templateName = trim((string) $this->config('meta_template_name'));
+        $templateEnabled = filter_var($this->config('meta_template_enabled', false), FILTER_VALIDATE_BOOLEAN);
+        $templateParams = array_values(array_filter(
+            array_map('strval', (array) ($context['template_params'] ?? [])),
+            fn (string $value) => trim($value) !== ''
+        ));
+
+        if ($templateEnabled && $templateName !== '' && $templateParams !== []) {
+            $payload['type'] = 'template';
+            $payload['template'] = [
+                'name' => $templateName,
+                'language' => ['code' => (string) $this->config('meta_template_language', 'id')],
+                'components' => [[
+                    'type' => 'body',
+                    'parameters' => array_map(
+                        fn (string $value) => ['type' => 'text', 'text' => $value],
+                        $templateParams
+                    ),
+                ]],
+            ];
+        } else {
+            $payload['type'] = 'text';
+            $payload['text'] = ['preview_url' => false, 'body' => $message];
+        }
+
+        $response = Http::withToken($token)->acceptJson()->post($url, $payload);
+
+        $this->lastResponseBody = (string) $response->body();
+        $json = $response->json() ?? [];
+        $this->lastProviderMessageId = $json['messages'][0]['id'] ?? null;
+
+        if (isset($json['error'])) {
+            Log::warning('Meta Cloud API error', [
+                'http' => $response->status(),
+                'error' => $json['error'],
+                'target' => $target,
+            ]);
+        }
+
+        return $response->successful() && ! isset($json['error']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkMetaDevice(): array
+    {
+        $phoneNumberId = trim((string) $this->config('meta_phone_number_id'));
+        $token = trim((string) $this->config('meta_access_token'));
+
+        if ($phoneNumberId === '' || $token === '') {
+            return ['ok' => false, 'error' => 'Phone Number ID / Access Token Meta belum diisi.'];
+        }
+
+        $version = trim((string) $this->config('meta_api_version', 'v20.0')) ?: 'v20.0';
+
+        try {
+            $response = Http::withToken($token)->get(
+                "https://graph.facebook.com/{$version}/{$phoneNumberId}",
+                ['fields' => 'display_phone_number,verified_name,quality_rating']
+            );
+
+            $json = $response->json() ?? [];
+
+            return [
+                'ok' => $response->successful() && ! isset($json['error']),
+                'http' => $response->status(),
+                'device' => $json['display_phone_number'] ?? null,
+                'device_status' => $json['verified_name'] ?? null,
+                'quota' => $json['quality_rating'] ?? null,
+                'raw' => mb_substr((string) $response->body(), 0, 300),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+    }
 
     private function sendViaFonnte(string $target, string $message): bool
     {
@@ -271,6 +393,7 @@ class WhatsAppGatewayService
                 'reference_type' => $context['reference_type'] ?? null,
                 'reference_id' => $context['reference_id'] ?? null,
                 'provider' => $provider,
+                'provider_message_id' => $this->lastProviderMessageId,
                 'status' => $sent ? ($provider === 'log' ? 'logged' : 'sent') : 'failed',
                 'message' => $message,
                 'error' => $sent ? null : ($this->lastResponseBody !== '' ? mb_substr($this->lastResponseBody, 0, 500) : 'Pengiriman gagal'),
@@ -291,6 +414,18 @@ class WhatsAppGatewayService
             // Halaman pengaturan menyimpan token/URL sebagai wa_api_token/wa_api_url.
             if ($key === 'token') { $candidates[] = 'wa_api_token'; }
             if ($key === 'url') { $candidates[] = 'wa_api_url'; }
+
+            // Meta Cloud API (resmi): disimpan dengan prefiks wa_meta_*.
+            $metaAliases = [
+                'meta_phone_number_id' => 'wa_meta_phone_number_id',
+                'meta_access_token' => 'wa_meta_access_token',
+                'meta_api_version' => 'wa_meta_api_version',
+                'meta_template_name' => 'wa_meta_template_name',
+                'meta_template_language' => 'wa_meta_template_language',
+                'meta_template_enabled' => 'wa_meta_template_enabled',
+                'meta_verify_token' => 'wa_meta_verify_token',
+            ];
+            if (isset($metaAliases[$key])) { $candidates[] = $metaAliases[$key]; }
 
             foreach ($candidates as $settingKey) {
                 $value = setting($settingKey, null);

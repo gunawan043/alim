@@ -9,37 +9,51 @@
     $mapping = collect($participant->mappingItems())->keyBy('no');
     $paper = $geometry['paper'];
     $school = $school ?? $exam->school;
+    $schoolName = $schoolName ?? $school?->name ?? 'ALIM';
     $student = $participant->student;
     $master = $master ?? false;
 
-    // ── Tata letak kop & identitas ──────────────────────────────────────
-    // Area konten dimulai di x=18mm agar tidak menimpa penanda sudut (x 8-14mm)
-    // maupun QR (x ≥ 170mm, y 12-36mm).
-    $contentLeft = 18.0;
-    $contentWidth = 145.0;
+    // ── Tata letak header LJK (mengikuti format lembar soal) ─────────────
+    // Area konten dimulai di x=14.99mm (margin kiri soal), tidak menimpa
+    // penanda sudut (x 8–14mm) maupun QR (x ≥ 170mm).
+    $contentLeft = 14.99;
+    $qrLeft = (float) ($pageData['qr']['x_mm'] ?? 170.0);
+    $contentWidth = max(90.0, $qrLeft - 2.0 - $contentLeft);
 
-    // ── Slot vertikal kop (tidak boleh bertumpuk) ───────────────────────
-    //   sekolah (nama+kop) → judul → meta → identitas → petunjuk
-    //   seluruhnya harus selesai sebelum area jawaban (header_height_mm).
-    if ($kopBase64 ?? null) {
-        $kopTop = 10.0;
-        $titleTop = round($kopTop + (float) ($kopHeightMm ?? 18.0) + 1.5, 2);
-    } else {
-        $kopTop = null;
-        $schoolTop = 14.0;
-        $titleTop = ($logoBase64 ?? null) ? 31.0 : 27.0;
-    }
+    // Lebar alur teks (judul, karakter, instruksi) = lebar grid jawaban,
+    // sehingga tepi kanan sejajar dengan kolom kotak (tabel identitas tetap
+    // lebih sempit karena menghindari QR di kanan atas).
+    $flowWidth = (float) config('ljk.template.paper.width_mm', 210.0)
+        - $contentLeft
+        - (float) config('ljk.template.margin_mm.right', 11.0);
 
-    $metaTop = round($titleTop + 5.0, 2);
-    $ruleTop = round($titleTop + 9.2, 2);
-    $identityTop = round($titleTop + 11.0, 2);
-    $instructionTop = round($titleTop + 15.6, 2);
+    $fontSize = $fontSize ?? 9.6;
+    $headerMm = $headerMm ?? 58.0;
 
-    $address = trim(implode(' · ', array_filter([
-        $school?->address,
-        $school?->city?->name,
-        $school?->phone ? 'Telp. '.$school->phone : null,
-    ])));
+    $hasKop = ! empty($kopBase64);
+    $kopW = $kopWidthMm ?? 145.0;
+    $kopH = (float) ($kopHeightMm ?? 0.0);
+    $kopTop = 5.1;
+    $kopLeft = round($contentLeft + max(0.0, ($contentWidth - $kopW) / 2), 2);
+    $y = $hasKop ? round($kopTop + $kopH + 2.0, 2) : 8.0;
+
+    $titleY = $y;
+    $line2Y = round($y + 5.8, 2);
+    $metaY = round($y + 11.0, 2);
+    $tableY = round($y + 17.2, 2);
+
+    // Tabel identitas 3 baris; cadangan tinggi aman untuk sel yang membungkus.
+    $tableH = max(18.0, count($identityRows ?? []) * 8.0);
+    $karakterY = round($tableY + $tableH + 2.0, 2);
+
+    // Penanaman karakter hanya bila ruang header (termasuk petunjuk) cukup.
+    $karakterFits = ! empty($karakter) && ($karakterY + 30.0) <= ($headerMm - 1.0);
+    $instructionY = $karakterFits
+        ? round($karakterY + 18.4, 2)
+        : round($tableY + $tableH + 2.4, 2);
+
+    $line1 = $judulLjk[0] ?? 'LEMBAR JAWABAN KOMPUTER (LJK)';
+    $line2 = $judulLjk[1] ?? '';
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -49,8 +63,8 @@
 <style>
     {!! \App\Services\Ljk\LjkPdfFonts::faceCss() !!}
     {!! $arabicFaceCss ?? '' !!}
-    .ar { font-family: {!! $arabicStack ?? "'DejaVu Sans', sans-serif" !!}; direction: rtl; unicode-bidi: embed; }
-    .ar-block { text-align: right; }
+    .ar { font-family: {!! $arabicStack ?? "'DejaVu Sans', sans-serif" !!}; direction: rtl; unicode-bidi: embed; font-style: normal; }
+    .ar-block { display: block; text-align: right; }
     @page { margin: 0; size: {{ $paper['width_mm'] }}mm {{ $paper['height_mm'] }}mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!}; color: #111; }
@@ -63,18 +77,62 @@
     .option-label { font-size: 5.5pt; color: #555; text-align: center; }
     .option-box { border: 0.45mm solid #000; }
     .manual-area { border: 0.3mm dashed #777; }
-    .kop-img { width: {{ $contentWidth }}mm; }
-    .school-name { font-size: 12pt; font-weight: bold; text-align: center; }
-    .school-address { font-size: 7pt; color: #333; text-align: center; }
-    .logo { width: 17mm; height: 17mm; }
-    .rule { border-top: 0.5mm solid #000; height: 0; }
-    .doc-title { font-size: 10.5pt; font-weight: bold; text-align: center; letter-spacing: 0.4pt; }
-    .meta { font-size: 7.5pt; text-align: center; color: #222; }
-    .identity { font-size: 8.5pt; }
-    .identity .line { border-bottom: 0.25mm solid #333; display: inline-block; min-width: 52mm; }
-    .instructions { font-size: 6.5pt; color: #333; line-height: 1.3; }
+    .kop-img { display: block; }
+    .doc-title { font-size: {{ $fontSize + 1.5 }}pt; font-weight: bold; text-align: center; letter-spacing: 0.4pt; }
+    .title-sub { font-size: {{ $fontSize + 0.5 }}pt; font-weight: bold; text-align: center; }
+    .meta { font-size: {{ max(6.5, $fontSize - 1.2) }}pt; text-align: center; color: #222; }
+
+    /* Tabel identitas — sama dengan lembar soal (maks 3 baris, 2 pasang/baris) */
+    table.identitas {
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 100%;
+        font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
+    }
+    table.identitas td {
+        border: 0.3mm solid #000;
+        padding: 0.35mm 1.2mm;
+        vertical-align: middle;
+        font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
+        font-size: {{ max(7.5, $fontSize - 1.6) }}pt;
+        line-height: 1.15;
+    }
+    table.identitas td.label { width: 22%; }
+    table.identitas td.value { width: 28%; }
+    .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
+
+    .karakter-title {
+        font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
+        font-size: {{ max(6.5, $fontSize - 1) }}pt;
+        font-weight: bold;
+    }
+    ol.karakter {
+        margin: 0;
+        padding: 0 0 0 5mm;
+        font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
+        font-size: {{ max(6.5, $fontSize - 1.2) }}pt;
+    }
+    ol.karakter li { margin-bottom: 0.2mm; }
+
+    .instructions {
+        font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
+        font-size: {{ max(6.5, $fontSize - 1.4) }}pt;
+        color: #222;
+        line-height: 1.3;
+    }
     .small { font-size: 5.5pt; color: #666; }
-    .master-badge { font-size: 7pt; font-weight: bold; color: #b45309; border: 0.3mm solid #b45309; padding: 0.6mm 1.6mm; }
+    .master-badge {
+        display: inline-block;
+        white-space: nowrap;
+        font-size: 7pt;
+        font-weight: bold;
+        color: #b45309;
+        border: 0.3mm solid #b45309;
+        padding: 0.5mm 1.6mm;
+        margin-left: 2mm;
+        vertical-align: middle;
+        line-height: 1.2;
+    }
 </style>
 </head>
 <body>
@@ -99,55 +157,77 @@
         @endif
     @endforeach
 
-    {{-- KOP LEMBAGA --}}
-    @if($kopBase64)
+    {{-- KOP LEMBAGA — hanya gambar kop dari pengaturan sekolah --}}
+    @if($hasKop)
         <img class="abs kop-img" src="{{ $kopBase64 }}"
-             style="left: {{ $contentLeft }}mm; top: {{ $kopTop }}mm; height: {{ $kopHeightMm }}mm;">
-    @elseif($logoBase64)
-        <img class="abs logo" src="{{ $logoBase64 }}" style="left: {{ $contentLeft }}mm; top: 13mm;">
-        <div class="abs" style="left: {{ $contentLeft + 20 }}mm; top: {{ $schoolTop }}mm; width: {{ $contentWidth - 20 }}mm;">
-            <div class="school-name" style="text-align: left;">{{ $school?->name ?? 'ALIM' }}</div>
-            <div class="school-address" style="text-align: left;">{{ $address ?: 'Lembar Jawaban Komputer (LJK)' }}</div>
-        </div>
-    @else
-        <div class="abs" style="left: {{ $contentLeft }}mm; top: {{ $schoolTop }}mm; width: {{ $contentWidth }}mm;">
-            <div class="school-name">{{ $school?->name ?? 'ALIM' }}</div>
-            <div class="school-address">{{ $address ?: 'Lembar Jawaban Komputer (LJK)' }}</div>
+             style="left: {{ $kopLeft }}mm; top: {{ $kopTop }}mm; width: {{ $kopW }}mm; height: {{ $kopH }}mm;">
+    @endif
+
+    {{-- JUDUL (2 baris, seperti lembar soal) --}}
+    <div class="abs doc-title" style="left: {{ $contentLeft }}mm; top: {{ $titleY }}mm; width: {{ $flowWidth }}mm;">
+        {{ $line1 }}
+    </div>
+    @if($line2 !== '')
+        <div class="abs title-sub" style="left: {{ $contentLeft }}mm; top: {{ $line2Y }}mm; width: {{ $flowWidth }}mm;">
+            {{ $line2 }}
         </div>
     @endif
 
-    {{-- JUDUL & IDENTITAS (slot vertikal terpisah) --}}
-    <div class="abs doc-title" style="left: {{ $contentLeft }}mm; top: {{ $titleTop }}mm; width: {{ $contentWidth }}mm;">
-        LEMBAR JAWABAN KOMPUTER (LJK)
-    </div>
-
-    <div class="abs meta" style="left: {{ $contentLeft }}mm; top: {{ $metaTop }}mm; width: {{ $contentWidth }}mm;">
-        {!! \App\Services\Ljk\LjkArabicText::toHtml($exam->judul, false) !!} &middot; {{ $exam->subject?->name ?? '-' }} &middot; {{ $exam->studyGroup?->name ?? '-' }}
-        &middot; {{ strtoupper($exam->jenis_ujian) }} &middot; Sem. {{ ucfirst($exam->semester) }}
-        @if($exam->tanggal) &middot; {{ $exam->tanggal->format('d/m/Y') }} @endif
+    <div class="abs meta" style="left: {{ $contentLeft }}mm; top: {{ $metaY }}mm; width: {{ $flowWidth }}mm;">
+        {!! \App\Services\Ljk\LjkArabicText::toHtml($metaLjk ?? '', false) !!}
         @if($master) &nbsp; <span class="master-badge">MASTER FOTOKOPI</span> @endif
     </div>
 
-    <div class="abs rule" style="left: {{ $contentLeft }}mm; top: {{ $ruleTop }}mm; width: {{ $contentWidth }}mm;"></div>
-
-    <div class="abs identity" style="left: {{ $contentLeft }}mm; top: {{ $identityTop }}mm; width: {{ $contentWidth }}mm;">
-        @if($master)
-            Nama: <span class="line"></span> &nbsp;&nbsp; No. Peserta: <span class="line" style="min-width: 26mm;"></span>
-        @else
-            Nama: <strong>{!! \App\Services\Ljk\LjkArabicText::toHtml($student?->name, false) !!}</strong>
-            &nbsp;&nbsp; No. Peserta: <strong>{{ $participant->nomor_peserta }}</strong>
-            &nbsp;&nbsp; Kode: <strong>{{ $sheet->sheet_code }}</strong>
-        @endif
+    {{-- TABEL IDENTITAS (3 baris × 2 pasang) --}}
+    <div class="abs" style="left: {{ $contentLeft }}mm; top: {{ $tableY }}mm; width: {{ $contentWidth }}mm;">
+        <table class="identitas">
+            @foreach($identityRows ?? [] as $row)
+                <tr>
+                    @foreach($row as [$label, $value])
+                        <td class="label">{{ $label }}</td>
+                        <td class="value">
+                            @if($label === 'Nama Peserta Didik')
+                                @if($master)
+                                    <span class="nama-line">&nbsp;</span>
+                                @else
+                                    <strong>{!! \App\Services\Ljk\LjkArabicText::toHtml($value, false) !!}</strong>
+                                @endif
+                            @else
+                                {!! \App\Services\Ljk\LjkArabicText::toHtml($value, false) !!}
+                            @endif
+                        </td>
+                    @endforeach
+                    @for($i = count($row); $i < 2; $i++)
+                        <td class="label">&nbsp;</td>
+                        <td class="value">&nbsp;</td>
+                    @endfor
+                </tr>
+            @endforeach
+        </table>
     </div>
 
-    <div class="abs instructions" style="left: {{ $contentLeft }}mm; top: {{ $instructionTop }}mm; width: {{ $contentWidth }}mm;">
-        <strong>Petunjuk:</strong> Pilih <strong>satu</strong> jawaban dengan membuat tanda silang (X) di dalam kotak
-        menggunakan <strong>pulpen hitam atau biru</strong>. Hindari mencoret kotak lain. Jumlah nomor: {{ count($geometry['questions']) }}.
+    {{-- PENANAMAN KARAKTER (bila ruang header cukup) --}}
+    @if($karakterFits)
+        <div class="abs karakter-title" style="left: {{ $contentLeft }}mm; top: {{ $karakterY }}mm; width: {{ $flowWidth }}mm;">
+            PENANAMAN KARAKTER:
+        </div>
+        <ol class="abs karakter" style="left: {{ $contentLeft }}mm; top: {{ $karakterY + 4.2 }}mm; width: {{ $flowWidth }}mm;">
+            @foreach($karakter as $butir)
+                <li>{!! \App\Services\Ljk\LjkArabicText::toHtml($butir) !!}</li>
+            @endforeach
+        </ol>
+    @endif
+
+    {{-- PETUNJUK --}}
+    <div class="abs instructions" style="left: {{ $contentLeft }}mm; top: {{ $instructionY }}mm; width: {{ $flowWidth }}mm;">
+        <strong>A.</strong> {{ $instruksiLjk }}
+        Jumlah nomor: {{ count($geometry['questions']) }}.
         @if(($exam->skor_config['manual_count'] ?? 0) > 0)
-            Soal uraian/isian dikerjakan di area tulis dan dinilai manual oleh guru.
+            Soal uraian/isian dinilai manual oleh guru.
         @endif
         @if(! empty($wacanaRanges))
-            <br><strong>Wacana/soal cerita:</strong> soal nomor {{ implode(', ', $wacanaRanges) }}.
+            <br><strong>Wacana/soal cerita:</strong> soal nomor
+            @if($arabAngka ?? false)<span class="ar">{{ implode(', ', $wacanaRanges) }}</span>@else{{ implode(', ', $wacanaRanges) }}@endif.
         @endif
         @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
             <br><span class="ar-block"><span class="ar">{!! \App\Services\Ljk\LjkArabicText::toHtml($instruksiArab, false) !!}</span></span>
@@ -161,8 +241,14 @@
             $labels = $map['opsi'] ?? [];
         @endphp
 
+        @php
+            $nomorTeks = str_pad((string) $question['nomor'], 2, '0', STR_PAD_LEFT);
+            if ($arabAngka ?? false) {
+                $nomorTeks = strtr($nomorTeks, ['0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤','5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩']);
+            }
+        @endphp
         <div class="abs question-number" style="left: {{ $question['x_mm'] }}mm; top: {{ $question['y_mm'] + 0.6 }}mm;">
-            {{ str_pad((string) $question['nomor'], 2, '0', STR_PAD_LEFT) }}.
+            @if($arabAngka ?? false)<span class="ar">{{ $nomorTeks }}</span>@else{{ $nomorTeks }}@endif.
         </div>
 
         @if($question['manual'] ?? false)

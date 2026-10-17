@@ -33,6 +33,87 @@ class StudentArabicNameController extends Controller
         return view('students.import-nama-arab', compact('userId', 'stats', 'missingStudents'));
     }
 
+    public function review(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        abort_unless($schoolId, 403, 'Review nama Arab memerlukan konteks satuan pendidikan.');
+
+        $status = in_array($request->input('status'), ['pending', 'approved', 'missing', 'all'], true)
+            ? $request->input('status')
+            : 'pending';
+
+        $query = Student::query()
+            ->where('school_id', $schoolId)
+            ->orderBy('name');
+
+        match ($status) {
+            'pending' => $query->where('name_ar_status', 'pending'),
+            'approved' => $query->where('name_ar_status', 'approved'),
+            'missing' => $query->where(fn ($q) => $q->whereNull('name_ar')->orWhere('name_ar', '')),
+            default => null,
+        };
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
+                ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('nisn', 'like', "%{$search}%"));
+        }
+
+        $students = $query->paginate(25)->withQueryString();
+        $stats = app(ArabicNameImportService::class)->studentStats($schoolId);
+
+        $stats['pending'] = Student::where('school_id', $schoolId)->where('name_ar_status', 'pending')->count();
+        $stats['approved'] = Student::where('school_id', $schoolId)->where('name_ar_status', 'approved')->count();
+        $stats['duplicate_nis'] = Student::where('school_id', $schoolId)
+            ->whereNotNull('nis')->where('nis', '!=', '')
+            ->select('nis')->groupBy('nis')->havingRaw('COUNT(*) > 1')->pluck('nis')->count();
+
+        return view('students.review-nama-arab', compact('userId', 'students', 'stats', 'status'));
+    }
+
+    public function approve(Request $request, string $userId, string $studentId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        abort_unless($schoolId, 403, 'Review nama Arab memerlukan konteks satuan pendidikan.');
+
+        $student = Student::where('school_id', $schoolId)->findOrFail($studentId);
+
+        $validated = $request->validate([
+            'name_ar' => 'required|string|max:255',
+        ]);
+
+        $student->update([
+            'name_ar' => trim($validated['name_ar']),
+            'name_ar_status' => 'approved',
+            'name_ar_reviewed_at' => now(),
+            'name_ar_reviewed_by' => $request->user()?->id,
+        ]);
+
+        return back()->with('success', "Nama Arab {$student->name} disetujui.");
+    }
+
+    public function approveAll(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        abort_unless($schoolId, 403, 'Review nama Arab memerlukan konteks satuan pendidikan.');
+
+        $count = Student::where('school_id', $schoolId)
+            ->where('name_ar_status', 'pending')
+            ->whereNotNull('name_ar')
+            ->where('name_ar', '!=', '')
+            ->update([
+                'name_ar_status' => 'approved',
+                'name_ar_reviewed_at' => now(),
+                'name_ar_reviewed_by' => $request->user()?->id,
+            ]);
+
+        return back()->with('success', "{$count} nama Arab santri disetujui.");
+    }
+
     public function import(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');

@@ -386,6 +386,10 @@
                                         class="btn btn-outline-dark">
                                         <i class="ri-translate-2 align-bottom me-1"></i> Import Nama Arab
                                     </a>
+                                    <a href="{{ route('user.students.review-nama-arab', ['userId' => $userId]) }}"
+                                        class="btn btn-outline-success">
+                                        <i class="ri-check-double-line align-bottom me-1"></i> Review Nama Arab
+                                    </a>
                                 @else
                                     <span class="badge bg-info-subtle text-info">
                                         <i class="ri-information-line me-1"></i>

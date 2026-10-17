@@ -17,6 +17,7 @@ class Payroll extends Model
         'gaji_pokok', 'total_tunjangan', 'total_potongan', 'gaji_bersih',
         'detail_tunjangan', 'detail_potongan',
         'status', 'tanggal_bayar', 'catatan', 'dibuat_oleh',
+        'calculation_meta', 'published_at', 'paid_at', 'paid_by',
     ];
 
     protected $casts = [
@@ -29,6 +30,9 @@ class Payroll extends Model
         'detail_tunjangan' => 'array',
         'detail_potongan' => 'array',
         'tanggal_bayar' => 'date',
+        'calculation_meta' => 'array',
+        'published_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     public function gtk(): BelongsTo

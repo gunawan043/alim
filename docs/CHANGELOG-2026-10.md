@@ -21,6 +21,13 @@ Backend (Laravel):
 - Revisi 4 (lembar soal lanjutan): **opsi jawaban tersusun kolom sejajar** (A/B/C/D selalu pada posisi sama antar soal, `table-layout: fixed`), **fitur wacana/soal cerita** (`wacana_soal` + `soal.wacana_id`, dipasang dari form Bank Soal, dicetak sekali per kelompok dengan keterangan *"Wacana untuk soal nomor X–Y"*, legenda rentang di lembar jawaban, ikut dibekukan ke snapshot paket), **dukungan teks Arab** (shaping bentuk presentasi + susunan RTL deterministik di PHP — Dompdf tanpa mesin bidi, kelas `.ar` memakai DejaVu Sans bawaan atau Amiri/Scheherazade dari `storage/app/fonts/`, instruksi Arab otomatis), dan **opsi unduh PDF** `?download=1` untuk lembar soal maupun lembar jawaban (tombol *Unduh PDF* di UI). Seeder demo kini memuat contoh wacana Inggris (soal 11–13), wacana Arab + 3 soal Arab (21–23): total 23 butir.
 - Revisi 5 (setelan cetak lembar soal): font **Cambria 12 pt**, **spasi antar baris single (1.0)** dengan **jarak antar soal 1.15**, **margin halaman 0.2"/0.1"/0.59"/0.63"** (diubah otomatis ke mm), **identitas berbentuk tabel maksimal 3 baris** (2 pasang label/nilai per baris, *Nama Peserta Didik* bergaris), **pemilihan kertas otomatis A4 → F4 (215×330 mm)** yang hanya dipakai bila menghemat halaman (`LjkSoalPdfRenderer`, header `X-LJK-Paper`), serta **huruf pilihan Arab ا، ب، ج، د، هـ** untuk soal berbahasa Arab (otomatis terdeteksi) di lembar soal dan label kotak lembar jawaban. Nomor halaman dipindah ke pita margin bawah agar tidak menimpa baris terakhir.
 - Revisi 6 (perbaikan cetak): **margin `@page` kini benar-benar diterapkan** (akar masalah: reset `* { margin: 0 }` menimpa margin halaman di Dompdf — reset dibatasi pada elemen isi; hasil terukur kiri 14,7 mm · kanan 16 mm · atas 6,3 mm), **ukuran font dikompensasi** (`font_size_fallback_scale = 0.90`) sehingga 12 pt Cambria setara dengan ±10,8 pt font pengganti (DejaVu Serif tampil lebih besar), dan **huruf pilihan A/B/C/D tidak lagi bold**. Karena lebih padat, halaman 1 kini memuat 16 soal (sebelumnya 14).
+- Revisi 7 (kerapian lembar soal): **nomor soal tidak lagi bold**, **kop lembaga pada lembar soal tertaut ke pengaturan sekolah** (gambar `schools.kop_path` bila ada; jika tidak, logo + nama + alamat + telepon — satu layanan `LjkSchoolLetterhead` dipakai lembar soal & lembar jawaban), dan **ukuran font diperkecil lagi** (`font_size_fallback_scale` 0.80 → efektif ±9,6 pt dengan font pengganti; tetap 12 pt bila Cambria/Caladea terpasang).
+- Revisi 8 (format soal & kop): **hanging indent** — soal memakai tabel nomor+teks sehingga baris kedua menjorok sejajar teks (bukan nomor); **mode bahasa per soal** (`soal.bahasa`: `latin`/`gabungan` → LTR + pilihan A/B/C/D; `arab` → RTL, nomor di kanan, teks rata kanan, opsi ا/ب/ج/د dengan urutan kanan-ke-kiri; dipilih di form Bank Soal, ikut snapshot, soal lama memakai deteksi otomatis); **kop hanya memakai gambar kop yang diunggah** di pengaturan sekolah (tanpa fallback teks). Seeder demo mengisi bahasa soal (20 Latin + 3 Arab).
+- Revisi 9 (Arab & mode naskah): **mode bahasa pindah ke tingkat UJIAN** (`ljk_exams.bahasa`, dipilih saat menerbitkan; otomatis diturunkan dari butir) — **Latin/Gabungan** = seluruh lembar LTR + nomor Latin + pilihan A/B/C/D (walau ada soal Arab; sesuai ujian campuran), **Arab** = seluruh lembar RTL + **nomor digit Arab ١، ٢، ٣** (otomatis, bisa dimatikan via `ljk.soal.angka_arab`) + penanda opsi **setelah teks** (`.ج`, bukan `ج.`) + huruf ا/ب/ج/د; **preferensi font Arab** Sakkal Majalla → XB → Amiri/Scheherazade → DejaVu Sans (hanya font dengan bentuk presentasi Arab); seeder demo menyetel ujian `gabungan`.
+- Revisi 10 (kerapian akhir): **teks soal sejajar dengan huruf pilihan A** (nomor + isi dalam satu tabel; opsi tanpa indentasi tabel), **jarak antar soal diperlebar** (`question_gap` 1.5), dan **font Arab diganti ke Amiri** (OFL) yang dibundel di `resources/fonts/` (Regular + Bold + lisensi) dengan preferensi Sakkal Majalla/XB bila sekolah memasangnya. Nomor, wacana, dan huruf pilihan Arab ikut memakai Amiri.
+- Revisi 11 (header lembar jawaban): **LJK disamakan dengan format lembar soal** — kop gambar saja (maks 22 mm, proporsi asli), judul dua baris (*LEMBAR JAWABAN KOMPUTER (LJK)* / *TAHUN AJARAN …*), meta ujian, **tabel identitas 3 baris** (Mata Pelajaran, Hari/Tanggal, Kelas, Waktu, Guru Pengampu, Nama Peserta Didik berisi nomor + nama; master memakai garis putus-putus), **PENANAMAN KARAKTER** 3 butir, instruksi pengisian LJK + legenda wacana, font dan margin kiri mengikuti lembar soal. Template baru memakai `header_height_mm = 92 mm` dan `LjkSchoolLetterhead` menjaga proporsi kop (lebar ikut mengecil saat tinggi dibatasi); blok karakter otomatis dilewati bila header template lama tidak cukup. Tes `LjkWebFlowTest` ditambah (judul, tabel identitas, karakter, nama peserta, batas header) → 31 tes LJK / 437 asersi hijau.
+- Revisi 12 (grid 4 soal & ganti jawaban): **lembar jawaban memakai grid 4 soal sebaris** (row-major: 1–4, 5–8, …; ujian 5 opsi otomatis 3 kolom; soal uraian selebar baris) sehingga celah horizontal besar hilang dan kolom sejajar dari atas ke bawah. Header dinaikkan ke **98 mm** agar instruksi 3 baris + instruksi Arab tidak menimpa baris jawaban pertama. **Asumsi ganti jawaban** ditetapkan: dua tanda X kuat **selalu `ganda`** dan tidak dipilih otomatis (mesin `omr-v1.1.0`), review guru wajib; UI menampilkan **Terdeteksi: label** dan menyembunyikan tombol terima untuk ganda/meragukan; memilih label otomatis menjadi `terbaca`; koreksi tetap ber-audit dan nilai memakai kunci paket. Petunjuk LJK memuat aturan hapus tanda lama. Tes baru: layout 4 sebaris, dua tanda kuat selalu ganda, alur koreksi ganti jawaban → nilai 100; total **34 tes LJK / 460 asersi**. Kalibrasi v1.1.0 (60 lembar × 20 soal, grid 4 sebaris): per-question **99,67 %**, false acceptance **0,00 %**, review **5,08 %**, 0 lembar gagal; exact-sheet 93,33 % (turun disengaja karena dua tanda kuat kini review, bukan auto-pilih).
+- Revisi 13 (urut ke bawah, kolom otomatis, X=): distribusi LJK diubah menjadi **column-major** — nomor berurut ke bawah dulu (23 soal: 1–6, 7–12, 13–18, 19–23), baru pindah kolom. Jumlah kolom **tidak dipaksa 4**: opsi sampai E otomatis memakai **3 kolom** (lebar minimum per kolom dihitung dari opsi terbanyak). **Siswa tanpa penghapus** dapat menulis **"=" pada X lama (X=)**; mesin mendeteksi dua garis horizontal panjang ber-margin dan **mengabaikan kotak itu**, sehingga X baru langsung terbaca (tanpa review) — dua X sah tetap `ganda`. UI menampilkan chip **dicoret** untuk opsi X=; petunjuk LJK memuat aturan ini. Engine dinaikkan ke **omr-v1.2.0**. Tes: **35 tes LJK / 484 asersi**. Kalibrasi v1.2.0 (60 lembar × 20 soal): per-question 99,67 %, FAR 0,08 %, review 4,92 %, 0 lembar gagal.
 - Seeder contoh: `database/seeders/LjkLaluSopianSeeder.php` (idempoten) — menyiapkan akun GTK **Lalu Sopian Harianto** + buku nilai **Bahasa Inggris · kelas 1B**, Bank Soal + 20 soal PG, kisi-kisi, **Paket Soal final ber-snapshot**, dan ujian LJK contoh berikut 22 lembar siap cetak. Jalankan: `php artisan db:seed --class=LjkLaluSopianSeeder`.
 
 Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar ujian → peserta → **kamera** → hasil & koreksi) memakai `expo-image-picker` yang sudah terpasang (tanpa dependensi native baru), service/hook React Query, dan menu sidebar guru.
@@ -1381,6 +1388,148 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   perangkat sama → diizinkan; perangkat lain → ditolak; satu baris per user).
 - Test gabungan `TeacherDeviceBinding + QrAttendanceSettings + TeacherQrScanController + JadwalPergantianJam` =
   **23 test / 232 assertion — 0 gagal**; `view:cache` sukses.
+
+## 144. Tindak Lanjut Gelombang 3 — Scan Mobile, Pengingat 5 Menit, Import Mahrom, Surat, Laporan, Monitoring, Cetak Kisi-Kisi
+
+- **Scan QR mobile**: kartu statistik disembunyikan di bawah `xl` (ringkasan tetap di header), dan urutan kartu scan
+  dibalik lewat flex-order — **kamera tampil paling atas** saat dibuka di ponsel; spotlight kelas berlangsung pindah
+  ke bawah kamera. Desktop tidak berubah.
+- **Pengingat 5 menit sebelum jam pelajaran**: command baru `alim:notify-lesson-reminders --minutes=5`
+  (dijadwalkan setiap menit, `withoutOverlapping`) mengirim notifikasi in-app ke guru; dilewati bila guru sudah
+  check-in atau pengingat hari itu sudah terkirim (cache atomik). Test `LessonReminderNotificationTest`.
+- **Import Santri — sinkron mahrom/orang tua**: kolom Ayah/Ibu/Wali pada template otomatis dibuat sebagai
+  `student_mahroms` (peran yang belum ada saja; data lama tidak ditimpa, NIK ganda dalam satu santri diamankan,
+  maksimal sesuai `alim.max_mahrom`). Ringkasan jumlah mahrom tampil di hasil import. Test `StudentImportMahromTest`.
+- **Surat Masuk & Surat Keluar — diperbaiki end-to-end**:
+  - Nama field diselaraskan dengan skema (`tanggal_diterima`, `file_lampiran`, status/sifat/penyelesaian,
+    penandatangan), form memakai `enctype="multipart/form-data"`, lampiran lama dapat dilihat/diganti.
+  - Halaman index/create/edit/show ditulis ulang mengikuti pola ALIM (stat cards, filter, tabel, empty-state,
+    pagination, modal hapus lord-icon); controller mendapat statistik, filter tanggal, dan fallback satuan kerja.
+  - **Temuan fatal diperbaiki**: sidebar waka memakai `route('waka.surat-masuk')`/`route('waka.surat-keluar')`
+    (tidak terdaftar) dan parameter `rombel` yang salah (`{kelas}`) — sebelumnya membuat **semua halaman waka 500**.
+  - `waka/master` kini merender `shared._styles`; `@yield('css')`/`@stack('css')` sudah ditangani `head-css`,
+    dan `@yield('script')`/`@stack('scripts')` sudah ditangani `vendor-scripts` (tanpa duplikasi).
+  - Test `SuratMenyuratSmokeTest`.
+- **Menu Laporan — bukan placeholder lagi**:
+  - `UserLaporanController` kini mengisi data nyata: dashboard statistik (santri aktif, GTK, alumni, rombel,
+    presensi hari ini), **Laporan Presensi GTK** (periode + status + nama, ringkasan hadir/terlambat/tidak hadir),
+    **Laporan Santri** (cari/rombel/status/gender), **Laporan GTK** (cari/jenis/status), **Laporan Asrama**
+    (penghuni aktif, kapasitas, kamar), dan **export CSV** (`laporan/export/{type}`) untuk santri/gtk/presensi.
+  - Laporan Keuangan menampilkan status modul secara jujur (modul keuangan pondok belum tersedia) + tautan laporan lain.
+  - Test `LaporanPondokTest`.
+- **Monitoring Kehadiran — UI terisi data**: `KehadiranController@rekap` menghitung rekap bulanan per GTK
+  (hadir/izin/sakit/alfa/terlambat/total hari) dengan filter periode + GTK; `cutiIzin` menampilkan `CutiRequest`
+  nyata dengan filter GTK/jenis/status dan ringkasan status. Test `KehadiranMonitoringTest`.
+- **Cetak Kisi-Kisi**: route `kisi-kisi-soal/{id}/cetak` + view A4 landscape (kop sekolah, identitas, tabel item,
+  total bobot, tanda tangan penyusun/kepala sekolah, tombol Cetak/Simpan PDF) dan tombol **Cetak** di halaman detail.
+  Test `KisiKisiCetakTest`.
+
+## 145. Perbaikan 403 Riwayat QR + Header Scan & Jadwal Notifikasi
+
+- **403 halaman riwayat scan** (`/{userId}/absensi-guru-mapel-qr/history`): middleware
+  `permission:teacher-attendance_view` dihapus dari route **history** dan **export history**.
+  Guru biasa kini dapat membuka riwayatnya sendiri; pembatasan data tetap dilakukan di controller
+  (guru hanya melihat miliknya, pemegang `teacher-attendance_report_export` melihat semua).
+  Test regresi `QrHistoryAccessTest`.
+- **Header halaman scan dirapikan**: hero card baru berisi judul, tanggal Indonesia
+  (`Sabtu, 17 Oktober 2026`), tahun ajaran/semester, badge jumlah jadwal (atau “Tidak ada jadwal”),
+  kartu jam realtime format `HH:MM:SS WITA`, progress kelengkapan, dan tombol Riwayat.
+- **Empty state jadwal** diganti kartu kuning informatif + tombol **Lihat Jadwal** (bukan alert polos).
+- **Jam realtime** tidak lagi memakai format titik bawaan `id-ID`; kini konsisten `10:39:53`.
+- **Scheduler pengingat** tidak lagi `runInBackground()` agar output command
+  (`Pengingat jam pelajaran terkirim: N.`) terlihat di `php artisan schedule:run`.
+
+## 146. Riwayat Scan QR — UI Mengikuti Pola gtk/index + Perbaikan Rentang Tanggal
+
+- **Halaman riwayat dirombak mengikuti `gtk/index.blade.php`**: header halaman dengan aksi Export/Scan,
+  lima stat cards (total, tepat waktu, terlambat, belum keluar, rata-rata terlambat), filter card dengan
+  quick chips (Minggu Ini/Bulan Ini/7 Hari Terakhir), pencarian guru/kelas/mapel, `table-container` +
+  `table-freeze` sticky header, badge status, `x-empty-state`, dan `shared._pagination`.
+- **Pagination server-side** (20 baris/halaman); statistik dihitung dari seluruh hasil filter, bukan hanya
+  halaman aktif. Kolom Guru hanya muncul untuk pemegang izin laporan penuh.
+- **Perbaikan bug rentang tanggal**: `whereBetween` pada `attendance_date` tidak cocok di SQLite karena
+  nilai tersimpan `Y-m-d H:i:s`; diganti `whereDate` pada riwayat dan export. Ini juga membuat data
+  tidak lagi kosong di lingkungan pengembangan SQLite.
+- Test `QrHistoryAccessTest` diperluas: guru biasa dapat membuka halaman (200) dan record absensi
+  (kelas, mapel, status terlambat) benar-benar tampil.
+
+## 147. Prioritas 1 — Notifikasi Multi-Channel (Meta Cloud API Resmi), PDF & Grafik, Surat Otomatis + QR
+
+### Notifikasi multi-channel
+- **Driver WhatsApp resmi Meta Cloud API** ditambahkan ke `WhatsAppGatewayService` (provider: `meta`),
+  berdampingan dengan Fonnte/Wablas/generic/log. Mendukung pesan teks (dalam jendela 24 jam) dan
+  **template resmi** dengan 3 parameter untuk pengingat jam pelajaran.
+- **Pengaturan baru** di Super Admin → Pengaturan Sistem → Notifikasi: Phone Number ID, permanent access token,
+  API version, template name/language, webhook verify token, dan app secret (validasi signature).
+- **Webhook resmi** `GET/POST /webhook/whatsapp` untuk verifikasi Meta dan pembaruan status
+  sent/delivered/read/failed (`wa_message_logs.provider_message_id`).
+- **Preferensi notifikasi per pengguna** (`notification_preferences`): channel Email/WhatsApp/Push +
+  toggle pengingat 5 menit & pemberitahuan keterlambatan. Halaman **Notifikasi → Preferensi**.
+- Pengingat 5 menit & konfirmasi keterlambatan sekarang mengirim **in-app + email/WA/push** sesuai preferensi;
+  notifikasi keterlambatan ke satuan kerja tidak lagi menduplikasi guru yang bersangkutan.
+- Nomor WA diambil dari `gtkContact.no_whatsapp` → `users.no_hp` → profil → recruitment (memperbaiki lookup lama).
+
+### Laporan PDF & grafik
+- **Cetak PDF** untuk Laporan Presensi, Santri, GTK, dan Asrama (Dompdf, A4 landscape/portrait) via
+  `/laporan/pdf/{type}`; tombol PDF ditambahkan di tiap halaman.
+- **Grafik tren presensi harian** (ApexCharts, stacked: hadir/terlambat/izin/sakit/alpa) pada Laporan Presensi.
+
+### Surat: nomor otomatis, template, QR
+- **Penomoran otomatis** per satuan pendidikan/jenis/tahun (`letter_number_sequences`, format
+  `{seq}/SM|SK/{romawi}/{tahun}`, dapat diubah via `surat_format_masuk|keluar`). Nomor kosong di form
+  otomatis dibuat; form menampilkan bantuan.
+- **Template surat** (`surat_templates`) dengan CRUD di **Surat Menyurat → Template Surat**; pilih template
+  pada form surat keluar untuk mengisi perihal + isi surat. Kolom `isi_surat` ditambahkan.
+- **Verifikasi QR publik**: setiap surat mendapat `verification_token`; halaman `/verifikasi-surat/{token}`
+  menampilkan valid/tidak (termasuk surat dibatalkan). QR SVG tampil di detail surat dan **cetak surat keluar**
+  (`surat-keluar/{id}/cetak`) lengkap dengan kop, isi, tanda tangan, dan tautan verifikasi.
+- Backfill token untuk surat lama; test `SuratMenyuratSmokeTest` diperluas.
+
+### Test
+- `WhatsAppOfficialGatewayTest` (template Meta, fallback teks, webhook, preferensi) = 4 test / 16 assertion.
+- `LaporanPondokTest` + PDF = 5 test / 30 assertion.
+- `SuratMenyuratSmokeTest` (nomor otomatis, template, QR, cetak) = 3 test / 24 assertion.
+
+## 149. Payroll & Penggajian — Audit, Mesin Perhitungan, Master Gaji, dan Alur Persetujuan
+
+### Temuan audit (diperbaiki)
+- Halaman daftar gaji memakai variabel `$data` yang tidak pernah dikirim controller; statistik `$totalGtk/$totalGaji/$avgGaji`
+  juga tidak dikirim. Halaman kini memakai `$payrolls` + statistik nyata.
+- Relasi `GtkProfile::latestEmployment()` memakai local key yang salah (id profil vs user id) sehingga data kepegawaian
+  selalu kosong pada perhitungan. Diperbaiki menjadi `hasOne(..., 'user_id', 'user_id')`.
+- `gtk->nama` tidak ada di tabel `gtk_profiles`; ditambahkan accessor `nama` dari akun pengguna sehingga slip & daftar
+  menampilkan nama dengan benar.
+- Dropdown GTK pada form tambah/edit payroll kosong; kini terisi dari `$gtkList`.
+- Slip PDF memakai `Barryvdh\DomPDF` yang tidak terpasang; diganti Dompdf langsung (yang sudah ada di proyek).
+- Slip berstatus published/paid tidak dapat diedit/dihapus; regenerate tidak menimpa slip yang sudah dibayar.
+
+### Master gaji (kompatibel dengan skema lama)
+- Tabel & model baru: `masakerja`, `pendidikan`, `persentase_gaji`, `salary_scal`,
+  `skala_gaji_guru`, `skala_gaji_tendik`, `tunjangan` (namespace `App\Models\Payroll`).
+- `tunjangan` diberi atribut tambahan: `is_active`, `is_attendance_based`, `per_hari`.
+
+### Mesin perhitungan (`PayrollCalculator`)
+- Gaji pokok:
+  - Guru → `skala_gaji_guru` (masa kerja + level + kolom golongan 1..5).
+  - Tendik → `skala_gaji_tendik`.
+  - Fallback → `salary_scal` (pendidikan + masa kerja).
+  - Level dari `masakerja`; golongan dari `pendidikan` (SMA=1, D3=2, S1/D4=3, S2=4, S3=5).
+  - Opsional dikalikan `persentase_gaji` per golongan (toggle di Master Gaji).
+- Tunjangan: tunjangan tetap + tunjangan kehadiran (`per_hari` × jumlah hadir).
+- Potongan: keterlambatan per menit, alpa per hari, izin/sakit per hari, serta **BPJS Ketenagakerjaan/Kesehatan**
+  (persentase dari gaji pokok, dapat diaktifkan terpisah).
+- Ringkasan kehadiran diambil dari `absensi_gtk` pada bulan payroll.
+
+### UI & alur kerja
+- **Generate Payroll**: pilih bulan/tahun/GTK → hitung massal; laporan hasil (baru/diperbarui/dilewati) dan daftar
+  GTK yang gagal karena master gaji belum lengkap.
+- **Publish → Pay**: draft → published → paid, dengan pencatatan `published_at`, `paid_at`, `paid_by`.
+- **Master Gaji**: tab Aturan Payroll, Tunjangan (CRUD), Skala Gaji (guru/tendik), dan **Import CSV** + template CSV.
+- Index payroll: filter GTK/bulan/tahun/status, statistik, aksi slip/edit/publish/pay/hapus, pagination.
+
+### Test
+- `PayrollEngineTest`: kalkulasi (gaji pokok 5 juta + tunjangan 1,5 juta − potongan 250 ribu = 6,25 juta),
+  generate→publish→pay, regenerate tidak menimpa paid, render index/master/generate, dan PDF slip = 3 test / 20 assertion.
 
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.

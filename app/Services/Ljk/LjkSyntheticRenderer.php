@@ -23,7 +23,7 @@ final class LjkSyntheticRenderer
 {
     /**
      * @param  array<string, mixed>  $geometry
-     * @param  array{answers?: array<int, string>, styles?: array<int, string>, page?: int}  $content
+     * @param  array{answers?: array<int, string>, styles?: array<int, string>, option_styles?: array<int, array<string, string>>, page?: int}  $content
      * @param  array<string, mixed>  $opts
      */
     public function renderToFile(array $geometry, array $content, array $opts = []): string
@@ -43,7 +43,7 @@ final class LjkSyntheticRenderer
 
     /**
      * @param  array<string, mixed>  $geometry
-     * @param  array{answers?: array<int, string>, styles?: array<int, string>, page?: int}  $content
+     * @param  array{answers?: array<int, string>, styles?: array<int, string>, option_styles?: array<int, array<string, string>>, page?: int}  $content
      * @param  array<string, mixed>  $opts
      */
     public function render(array $geometry, array $content, array $opts = []): GdImage
@@ -189,6 +189,7 @@ final class LjkSyntheticRenderer
     {
         $answers = $content['answers'] ?? [];
         $styles = $content['styles'] ?? [];
+        $optionStyles = $content['option_styles'] ?? [];
 
         foreach ($page['questions'] as $question) {
             $nomor = (int) $question['nomor'];
@@ -221,7 +222,8 @@ final class LjkSyntheticRenderer
             $style = $styles[$nomor] ?? 'x';
 
             foreach ($question['options'] as $option) {
-                if (! in_array(strtoupper((string) $option['label']), $selected, true)) {
+                $label = strtoupper((string) $option['label']);
+                if (! in_array($label, $selected, true)) {
                     continue;
                 }
 
@@ -230,7 +232,7 @@ final class LjkSyntheticRenderer
                     'y' => (float) $option['y_mm'] * $scale,
                     'w' => (float) $option['w_mm'] * $scale,
                     'h' => (float) $option['h_mm'] * $scale,
-                ], $style, $scale);
+                ], $optionStyles[$nomor][$label] ?? $style, $scale);
             }
         }
     }
@@ -258,6 +260,18 @@ final class LjkSyntheticRenderer
         $ay1 = $y1 - $inset;
 
         switch (true) {
+            case $style === 'x_equals':
+                // X lama + tanda "=" (dua garis horizontal) = dibatalkan.
+                imagesetthickness($gd, $thickness);
+                imageline($gd, (int) $ax0, (int) $ay0, (int) $ax1, (int) $ay1, $color);
+                imageline($gd, (int) $ax1, (int) $ay0, (int) $ax0, (int) $ay1, $color);
+                imagesetthickness($gd, max(2, $thickness));
+                $ex0 = (int) ($x0 + ($x1 - $x0) * 0.12);
+                $ex1 = (int) ($x0 + ($x1 - $x0) * 0.88);
+                imageline($gd, $ex0, (int) ($y0 + ($y1 - $y0) * 0.30), $ex1, (int) ($y0 + ($y1 - $y0) * 0.30), $color);
+                imageline($gd, $ex0, (int) ($y0 + ($y1 - $y0) * 0.70), $ex1, (int) ($y0 + ($y1 - $y0) * 0.70), $color);
+                break;
+
             case str_starts_with($style, 'x'):
                 imagesetthickness($gd, $thickness);
                 imageline($gd, (int) $ax0, (int) $ay0, (int) $ax1, (int) $ay1, $color);

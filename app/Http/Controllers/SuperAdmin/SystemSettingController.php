@@ -51,6 +51,17 @@ class SystemSettingController extends Controller
             'wa_provider' => 'nullable|string|max:30',
             'wa_api_token' => 'nullable|string|max:255',
             'wa_api_url' => 'nullable|string|max:255',
+            'wa_meta_phone_number_id' => 'nullable|string|max:100',
+            'wa_meta_access_token' => 'nullable|string|max:2000',
+            'wa_meta_api_version' => 'nullable|string|max:10',
+            'wa_meta_template_name' => 'nullable|string|max:100',
+            'wa_meta_template_language' => 'nullable|string|max:10',
+            'wa_meta_template_enabled' => 'boolean',
+            'wa_meta_verify_token' => 'nullable|string|max:100',
+            'wa_meta_app_secret' => 'nullable|string|max:200',
+            'notif_channels' => 'nullable|array',
+            'notif_channels.*' => 'array',
+            'notif_channels.*.*' => 'boolean',
             'wa_sender' => 'nullable|string|max:50',
             'wa_central_number' => 'nullable|string|max:30',
             'wa_delivery_mode' => 'nullable|in:central,guardian,both',
@@ -84,6 +95,17 @@ class SystemSettingController extends Controller
         if (array_key_exists('wa_api_token', $validated)) {
             $validated['wa_api_token'] = trim((string) $validated['wa_api_token']);
         }
+        if (array_key_exists('wa_meta_access_token', $validated)) {
+            $validated['wa_meta_access_token'] = trim((string) $validated['wa_meta_access_token']);
+        }
+        if (array_key_exists('wa_meta_phone_number_id', $validated)) {
+            $validated['wa_meta_phone_number_id'] = preg_replace('/\D+/', '', (string) $validated['wa_meta_phone_number_id']);
+        }
+        if (array_key_exists('wa_meta_api_version', $validated)) {
+            $validated['wa_meta_api_version'] = trim((string) $validated['wa_meta_api_version']) ?: 'v20.0';
+        }
+        // Checkbox tidak tercentang = nonaktif.
+        $validated['wa_meta_template_enabled'] = $request->boolean('wa_meta_template_enabled') ? 1 : 0;
         if (array_key_exists('wa_central_number', $validated)) {
             $validated['wa_central_number'] = preg_replace('/\D+/', '', (string) $validated['wa_central_number']);
         }
@@ -94,6 +116,19 @@ class SystemSettingController extends Controller
                 $validated[$toggleKey] = $request->boolean($toggleKey) ? 1 : 0;
             }
         }
+
+        // Matriks channel notifikasi: simpan sebagai JSON.
+        $notifMatrix = [];
+        foreach (array_keys(config('notifications.events', [])) as $event) {
+            foreach (array_keys(config('notifications.channels', [])) as $channel) {
+                $notifMatrix[$event][$channel] = $request->boolean("notif_channels.{$event}.{$channel}");
+            }
+        }
+        SystemSetting::updateOrCreate(
+            ['key' => 'notification_channel_matrix'],
+            ['value' => json_encode($notifMatrix), 'group' => 'notifications']
+        );
+        unset($validated['notif_channels']);
 
         // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
         // pembuatan token) — keluarkan dari penyimpanan generik.

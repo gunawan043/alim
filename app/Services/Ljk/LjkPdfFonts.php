@@ -165,18 +165,22 @@ final class LjkPdfFonts
     }
 
     /**
-     * Font Arab terdaftar (bila ada berkas yang memuat bentuk presentasi Arab).
+     * Berkas font Arab terdaftar: ['normal' => path, 'bold' => path].
+     *
+     * @var array{normal: ?string, bold: ?string}|null
      */
-    public static function arabicFontPath(): ?string
-    {
-        static $resolved = false;
-        static $path = null;
+    private static ?array $arabicFaces = null;
 
-        if ($resolved) {
-            return $path;
+    /**
+     * @return array{normal: ?string, bold: ?string}
+     */
+    public static function arabicFaces(): array
+    {
+        if (self::$arabicFaces !== null) {
+            return self::$arabicFaces;
         }
 
-        $resolved = true;
+        $candidates = [];
 
         foreach ((array) config('ljk.pdf.fonts.arabic_paths', []) as $dir) {
             if (! is_string($dir) || ! is_dir($dir)) {
@@ -184,32 +188,83 @@ final class LjkPdfFonts
             }
 
             foreach (self::filesIn($dir) as $file) {
-                if (! preg_match('/amiri|scheherazade|kfgqpc|naskh|arabic|lateef|geeza|nile|thabit/i', basename($file))) {
-                    continue;
-                }
-
-                if (self::hasArabicPresentationForms($file)) {
-                    return $path = $file;
+                if (preg_match('/amiri|scheherazade|kfgqpc|naskh|arabic|lateef|geeza|nile|thabit|sakkal|majalla|shafigh|niloofar|riyaz|zar/i', basename($file))
+                    && self::hasArabicPresentationForms($file)) {
+                    $candidates[] = $file;
                 }
             }
         }
 
-        return $path = null;
+        if ($candidates === []) {
+            return self::$arabicFaces = ['normal' => null, 'bold' => null];
+        }
+
+        $preferred = (array) config('ljk.pdf.fonts.arabic_preferred', []);
+        usort($candidates, function (string $a, string $b) use ($preferred) {
+            $score = function (string $file) use ($preferred): int {
+                $name = mb_strtolower(basename($file));
+                foreach ($preferred as $i => $needle) {
+                    if ($needle !== '' && str_contains($name, mb_strtolower((string) $needle))) {
+                        return $i;
+                    }
+                }
+
+                return count($preferred) + 1;
+            };
+
+            return $score($a) <=> $score($b) ?: strcmp($a, $b);
+        });
+
+        $normal = null;
+        $bold = null;
+
+        foreach ($candidates as $file) {
+            $name = mb_strtolower(basename($file));
+            $isBold = str_contains($name, 'bold');
+            $isItalic = str_contains($name, 'italic') || str_contains($name, 'oblique');
+
+            if (! $isItalic && ! $isBold && $normal === null) {
+                $normal = $file;
+            }
+            if (! $isItalic && $isBold && $bold === null) {
+                $bold = $file;
+            }
+        }
+
+        $normal ??= $candidates[0];
+        $bold ??= $normal;
+
+        return self::$arabicFaces = ['normal' => $normal, 'bold' => $bold];
     }
 
     /**
-     * @font-face untuk font Arab terdaftar ('' bila memakai DejaVu Sans bawaan).
+     * Font Arab utama (varian Regular).
+     */
+    public static function arabicFontPath(): ?string
+    {
+        return self::arabicFaces()['normal'];
+    }
+
+    /**
+     * @font-face untuk font Arab terdaftar (normal + bold).
      */
     public static function arabicFaceCss(): string
     {
-        if (self::arabicFontPath() === null) {
+        $faces = self::arabicFaces();
+        $normal = $faces['normal'];
+        $bold = $faces['bold'];
+
+        if ($normal === null) {
             return '';
         }
 
-        $file = self::arabicFontPath();
+        $css = "@font-face { font-family: 'LJK-Arabic'; src: url('file://".$normal."') format('truetype'); font-weight: normal; font-style: normal; }\n";
 
-        return "@font-face { font-family: 'LJK-Arabic'; src: url('file://".$file."') format('truetype'); font-weight: normal; font-style: normal; }\n"
-            ."@font-face { font-family: 'LJK-Arabic'; src: url('file://".$file."') format('truetype'); font-weight: bold; font-style: normal; }\n";
+        if ($bold !== null && $bold !== $normal) {
+            $css .= "@font-face { font-family: 'LJK-Arabic'; src: url('file://".$bold."') format('truetype'); font-weight: bold; font-style: normal; }\n";
+        }
+
+        return $css;
     }
 
     /**
@@ -295,6 +350,18 @@ final class LjkPdfFonts
     public static function sizeScale(): float
     {
         return self::hasCambria() ? 1.0 : (float) config('ljk.soal.font_size_fallback_scale', 0.9);
+    }
+
+    /**
+     * Label font Arab aktif (untuk keterangan di UI).
+     */
+    public static function arabicFontLabel(): string
+    {
+        $file = self::arabicFontPath();
+
+        return $file !== null
+            ? pathinfo((string) $file, PATHINFO_FILENAME).' (font Arab terpasang)'
+            : 'DejaVu Sans (bawaan Dompdf)';
     }
 
     /**

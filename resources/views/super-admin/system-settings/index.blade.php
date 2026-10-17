@@ -183,7 +183,7 @@
                                 <div class="col-lg-8">
                                     <div class="card h-100">
                                         <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-0"><i class="ri-whatsapp-line me-1"></i>Gateway WhatsApp (tanpa API resmi)</h6>
+                                            <h6 class="mb-0"><i class="ri-whatsapp-line me-1"></i>Gateway WhatsApp (Fonnte / Meta Cloud API Resmi)</h6>
                                             <div class="d-flex gap-2">
                                                 <button type="submit" name="check_device" value="1" class="btn btn-sm btn-soft-info">
                                                     <i class="ri-signal-tower-line me-1"></i>Cek Status Device
@@ -205,7 +205,7 @@
                                                 <div class="col-md-4">
                                                     <label class="form-label small">Provider</label>
                                                     <select name="wa_provider" class="form-select form-select-sm">
-                                                        @foreach(['log' => 'Log / Gratis (wa.me manual)', 'fonnte' => 'Fonnte', 'wablas' => 'Wablas', 'generic' => 'Generic Webhook'] as $value => $label)
+                                                        @foreach(['log' => 'Log / Gratis (wa.me manual)', 'fonnte' => 'Fonnte (tidak resmi)', 'meta' => 'Meta WhatsApp Cloud API (resmi)', 'wablas' => 'Wablas', 'generic' => 'Generic Webhook'] as $value => $label)
                                                             <option value="{{ $value }}" {{ ($settings['wa_provider'] ?? 'log') === $value ? 'selected' : '' }}>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
@@ -231,6 +231,118 @@
                                                     <input type="text" name="wa_api_url" class="form-control form-control-sm" value="{{ $settings['wa_api_url'] ?? '' }}" placeholder="https://api.fonnte.com/send">
                                                 </div>
                                                 <input type="hidden" name="wa_sender" value="{{ $settings['wa_sender'] ?? '' }}">
+
+                                                <div class="col-12"><hr class="my-1"></div>
+                                                <div class="col-12">
+                                                    <div class="alert alert-info small mb-0">
+                                                        <strong><i class="ri-verified-badge-line me-1"></i>Meta WhatsApp Cloud API (resmi)</strong> —
+                                                        buat aplikasi di <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com/apps</a>
+                                                        → WhatsApp → API Setup. Salin <em>Phone Number ID</em> dan <em>permanent access token</em>.
+                                                        <br>
+                                                        Webhook URL: <code>{{ url('/webhook/whatsapp') }}</code> ·
+                                                        Verify token: <code>{{ $settings['wa_meta_verify_token'] ?? '(isi di bawah)' }}</code>
+                                                        <br>
+                                                        <span class="text-muted">Nomor uji Meta gratis untuk pengembangan. Untuk produksi, pengiriman di luar jendela 24 jam wajib memakai template yang disetujui Meta (biaya per pesan sesuai tarif Meta).</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Meta Phone Number ID</label>
+                                                    <input type="text" name="wa_meta_phone_number_id" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_phone_number_id'] ?? '' }}" placeholder="123456789012345">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Meta Access Token (permanent)</label>
+                                                    <input type="password" name="wa_meta_access_token" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_access_token'] ?? '' }}" placeholder="EAAG...">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">API Version</label>
+                                                    <input type="text" name="wa_meta_api_version" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_api_version'] ?? 'v20.0' }}" placeholder="v20.0">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Webhook Verify Token</label>
+                                                    <input type="text" name="wa_meta_verify_token" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_verify_token'] ?? '' }}" placeholder="token rahasia">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">App Secret (opsional)</label>
+                                                    <input type="password" name="wa_meta_app_secret" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_app_secret'] ?? '' }}" placeholder="untuk validasi signature">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-check form-switch mt-2">
+                                                        <input class="form-check-input" type="checkbox" name="wa_meta_template_enabled" value="1"
+                                                               id="waMetaTemplateEnabled" {{ ($settings['wa_meta_template_enabled'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                        <label class="form-check-label small" for="waMetaTemplateEnabled">Gunakan template Meta</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Nama Template</label>
+                                                    <input type="text" name="wa_meta_template_name" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_template_name'] ?? '' }}" placeholder="alim_lesson_reminder">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Bahasa Template</label>
+                                                    <input type="text" name="wa_meta_template_language" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_meta_template_language'] ?? 'id' }}" placeholder="id">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small d-block">&nbsp;</label>
+                                                    <div class="form-text small mt-0">
+                                                        Template pengingat 5 menit memakai 3 parameter:
+                                                        <code>@{{1}}</code> mapel, <code>@{{2}}</code> kelas,
+                                                        <code>@{{3}}</code> jam mulai.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-links-line me-1"></i>Matriks Channel Notifikasi</h6>
+                                            <small class="text-muted">
+                                                Pilih channel untuk tiap jenis notifikasi. <strong>Sistem</strong> = lonceng in-app.
+                                                Channel Email/WhatsApp tetap mengikuti preferensi masing-masing pengguna.
+                                            </small>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            @php
+                                                $channelMatrix = json_decode($settings['notification_channel_matrix'] ?? '[]', true) ?: [];
+                                            @endphp
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover align-middle mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Jenis Notifikasi</th>
+                                                            @foreach(config('notifications.channels') as $channelKey => $channelMeta)
+                                                                <th class="text-center" style="width:110px">
+                                                                    <i class="{{ $channelMeta['icon'] }} me-1"></i>{{ $channelMeta['label'] }}
+                                                                </th>
+                                                            @endforeach
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach(config('notifications.events') as $eventKey => $event)
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="fw-medium small">{{ $event['label'] }}</div>
+                                                                    <div class="text-muted" style="font-size:.7rem">{{ $event['group'] }}</div>
+                                                                </td>
+                                                                @foreach(config('notifications.channels') as $channelKey => $channelMeta)
+                                                                    <td class="text-center">
+                                                                        <input class="form-check-input" type="checkbox"
+                                                                               name="notif_channels[{{ $eventKey }}][{{ $channelKey }}]" value="1"
+                                                                               {{ ($channelMatrix[$eventKey][$channelKey] ?? true) ? 'checked' : '' }}>
+                                                                    </td>
+                                                                @endforeach
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>

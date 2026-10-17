@@ -133,10 +133,19 @@ class GtkProfile extends Model
         return $this->hasMany(GtkFamilyMember::class);
     }
 
+    /**
+     * Nama GTK diambil dari akun pengguna (kolom `nama` tidak ada di gtk_profiles).
+     */
+    public function getNamaAttribute(): string
+    {
+        return (string) ($this->user?->name ?? '-');
+    }
+
     public function latestEmployment()
     {
-        return $this->hasOne(GtkEmployment::class, 'user_id')
-            ->latestOfMany();
+        return $this->hasOne(GtkEmployment::class, 'user_id', 'user_id')
+            ->orderByDesc('tmt')
+            ->orderByDesc('created_at');
     }
 
     /*

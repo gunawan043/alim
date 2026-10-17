@@ -6,6 +6,7 @@ use App\Events\StudentAssignedToRombel;
 use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
+use App\Models\StudentMahrom;
 use App\Models\StudyGroup;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -18,6 +19,9 @@ class StudentImport implements ToCollection
     private array $errors = [];
 
     private int $successCount = 0;
+
+    /** Jumlah data mahrom/orang tua yang dibuat dari file import. */
+    private int $mahromCount = 0;
 
     private array $duplicates = [];
 
@@ -224,12 +228,19 @@ class StudentImport implements ToCollection
                 ->first();
 
             if ($existing) {
+                // Sinkronkan orang tua/wali yang belum tercatat sebagai mahrom.
+                // Tidak menimpa mahrom yang sudah ada (per peran).
+                $synced = $this->createMahroms($existing, $row);
+                $this->mahromCount += $synced;
+
                 $this->duplicates[] = [
                     'nisn' => $nisn ?: '-',
                     'nik' => $nik ?: '-',
                     'nama' => $existing->name,
                     'sekolah' => $existing->school?->name ?? '-',
-                    'catatan' => 'Sudah ada — dilewati',
+                    'catatan' => $synced > 0
+                        ? 'Sudah ada — '.$synced.' data mahrom disinkronkan'
+                        : 'Sudah ada — dilewati',
                 ];
 
                 continue;
@@ -255,8 +266,11 @@ class StudentImport implements ToCollection
             try {
                 // Atomik per baris: siswa + riwayat rombel dibuat bersama,
                 // jika salah satu gagal tidak meninggalkan data parsial.
-                [$student, $history] = DB::transaction(function () use ($row, $sgId, $activeYearId) {
+                [$student, $history, $mahromCreated] = DB::transaction(function () use ($row, $sgId, $activeYearId) {
                     $student = Student::create($this->parseRow($row));
+
+                    // Data Ayah/Ibu/Wali pada file ikut tersimpan sebagai mahrom.
+                    $mahromCreated = $this->createMahroms($student, $row);
 
                     $history = null;
                     if ($sgId && $activeYearId) {
@@ -279,10 +293,11 @@ class StudentImport implements ToCollection
                         );
                     }
 
-                    return [$student, $history];
+                    return [$student, $history, $mahromCreated];
                 });
 
                 $this->successCount++;
+                $this->mahromCount += $mahromCreated;
 
                 if ($history) {
                     StudentAssignedToRombel::dispatch($history);
@@ -519,6 +534,112 @@ class StudentImport implements ToCollection
             'angkutan_umum', 'antar_jemput' => $v,
             default => 'lainnya',
         };
+    }
+
+    /**
+     * Simpan data Ayah/Ibu/Wali dari file import sebagai mahrom santri.
+     * Hanya membuat peran yang belum ada — data lama tidak ditimpa.
+     */
+    private function createMahroms(Student $student, Collection $row): int
+    {
+        $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
+
+        $existingRelationships = StudentMahrom::where('student_id', $student->id)
+            ->pluck('relationship')->all();
+        $existingCount = StudentMahrom::where('student_id', $student->id)->count();
+        $hasPrimary = StudentMahrom::where('student_id', $student->id)
+            ->where('is_primary', true)->exists();
+        $usedNik = StudentMahrom::where('student_id', $student->id)
+            ->whereNotNull('id_number')->pluck('id_number')->all();
+
+        $created = 0;
+
+        foreach ($this->parentRows($row) as $parent) {
+            if ($existingCount >= $maxMahrom) {
+                break;
+            }
+
+            if (in_array($parent['relationship'], $existingRelationships, true)) {
+                continue;
+            }
+
+            $name = trim($parent['name']);
+            if ($name === '') {
+                continue;
+            }
+
+            $nik = trim($parent['nik']);
+            if ($nik !== '' && in_array($nik, $usedNik, true)) {
+                $nik = '';
+            }
+
+            $notes = array_filter([
+                $parent['birth_year'] !== '' ? 'Tahun lahir: '.$parent['birth_year'] : null,
+                $parent['education'] !== '' ? 'Pendidikan: '.$parent['education'] : null,
+                $parent['occupation'] !== '' ? 'Pekerjaan: '.$parent['occupation'] : null,
+            ]);
+
+            StudentMahrom::create([
+                'student_id' => $student->id,
+                'name' => mb_substr($name, 0, 191),
+                'id_number' => $nik !== '' ? mb_substr($nik, 0, 30) : null,
+                'relationship' => $parent['relationship'],
+                'is_active' => true,
+                'is_primary' => ! $hasPrimary,
+                'notes' => $notes ? implode(' · ', $notes) : null,
+            ]);
+
+            $hasPrimary = true;
+            $existingRelationships[] = $parent['relationship'];
+            $existingCount++;
+            $created++;
+
+            if ($nik !== '') {
+                $usedNik[] = $nik;
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * Kolom orang tua pada template: Ayah 24-29, Ibu 30-35, Wali 36-41.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function parentRows(Collection $row): array
+    {
+        return [
+            [
+                'relationship' => 'ayah',
+                'name' => $this->cell($row, 24),
+                'birth_year' => $this->cell($row, 25),
+                'education' => $this->cell($row, 26),
+                'occupation' => $this->cell($row, 27),
+                'nik' => $this->cell($row, 29),
+            ],
+            [
+                'relationship' => 'ibu',
+                'name' => $this->cell($row, 30),
+                'birth_year' => $this->cell($row, 31),
+                'education' => $this->cell($row, 32),
+                'occupation' => $this->cell($row, 33),
+                'nik' => $this->cell($row, 35),
+            ],
+            [
+                'relationship' => 'wali',
+                'name' => $this->cell($row, 36),
+                'birth_year' => $this->cell($row, 37),
+                'education' => $this->cell($row, 38),
+                'occupation' => $this->cell($row, 39),
+                'nik' => $this->cell($row, 41),
+            ],
+        ];
+    }
+
+    public function getMahromCount(): int
+    {
+        return $this->mahromCount;
     }
 
     public function getErrors(): array

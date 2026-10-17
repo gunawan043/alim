@@ -60,6 +60,15 @@ class LjkExamService
         $specs = $this->templates->specsFromItems($items);
         $template = $this->templates->registerTemplate($specs, $actor->id);
 
+        // Bahasa naskah: manual dari form, atau turunan otomatis dari butir.
+        $bahasa = (string) ($data['bahasa'] ?? '');
+        if (! in_array($bahasa, ['latin', 'arab', 'gabungan'], true)) {
+            $modes = $items->map(fn ($item) => $item->soal?->bahasaEfektif() ?? 'latin');
+            $bahasa = $modes->every(fn ($m) => $m === 'arab')
+                ? 'arab'
+                : ($modes->contains('arab') ? 'gabungan' : 'latin');
+        }
+
         $totalWeight = 0.0;
         $manualCount = 0;
         foreach ($specs as $spec) {
@@ -70,8 +79,9 @@ class LjkExamService
             }
         }
 
-        return DB::transaction(function () use ($data, $paket, $book, $jenis, $items, $template, $actor, $totalWeight, $manualCount) {
+        return DB::transaction(function () use ($data, $paket, $book, $jenis, $items, $template, $actor, $totalWeight, $manualCount, $bahasa) {
             $exam = LjkExam::create([
+                'bahasa' => $bahasa,
                 'school_id' => $data['school_id'] ?? $book?->school_id ?? $paket->kisiKisi?->school_id,
                 'academic_year_id' => $data['academic_year_id'] ?? $book?->academic_year_id ?? $paket->kisiKisi?->academic_year_id,
                 'semester' => $data['semester'] ?? $book?->semester ?? $paket->kisiKisi?->semester ?? 'ganjil',

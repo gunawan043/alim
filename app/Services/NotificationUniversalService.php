@@ -34,6 +34,9 @@ class NotificationUniversalService
      */
     public function send($userId, array $data)
     {
+        $action = (string) ($data['action'] ?? 'system');
+        $systemEnabled = $this->channelAllowed($action, 'system');
+
         $notification = NotificationUniversal::create([
             'user_id' => $userId,
             'work_unit_id' => $data['work_unit_id'] ?? null,
@@ -50,6 +53,10 @@ class NotificationUniversalService
             'action_text' => $data['action_text'] ?? 'Lihat Detail',
             'priority' => $data['priority'] ?? 'medium',
             'expires_at' => $data['expires_at'] ?? null,
+            // Jika channel Sistem dimatikan, notifikasi tetap disimpan untuk
+            // audit/channel lain tetapi diarsipkan agar tidak tampil di lonceng.
+            'is_archived' => ! $systemEnabled,
+            'archived_at' => $systemEnabled ? null : now(),
         ]);
 
         // Handle delivery channels
@@ -110,10 +117,14 @@ class NotificationUniversalService
      * Notifikasi GTK generik: per satuan kerja, atau GLOBAL (semua pengguna
      * aktif) bila satuan kerja tidak diketahui — mis. dibuat Super Admin.
      */
-    public function notifyGtk(?string $workUnitId, array $data): int
+    public function notifyGtk(?string $workUnitId, array $data, ?string $excludeUserId = null): int
     {
         if ($workUnitId) {
             $ids = $this->userIdsForWorkUnit($workUnitId);
+
+            if ($excludeUserId) {
+                $ids = array_values(array_filter($ids, fn ($id) => (string) $id !== (string) $excludeUserId));
+            }
 
             return count($this->sendToMany($ids, $data + ['work_unit_id' => $workUnitId]));
         }
@@ -228,23 +239,61 @@ class NotificationUniversalService
             return;
         }
 
+        // Preferensi pengguna (default aktif semua bila belum diatur).
+        $prefs = \App\Models\NotificationPreference::forUser($user);
+        $action = (string) ($data['action'] ?? $notification->action ?? 'system');
+
         // Email
-        if (($data['send_email'] ?? false) && $user->email) {
+        if (($data['send_email'] ?? false) && $prefs->email_enabled
+            && $this->channelAllowed($action, 'email') && $user->email) {
             $this->sendEmail($user, $notification);
         }
 
         // WhatsApp
-        if (($data['send_whatsapp'] ?? false)) {
-            $phone = $user->gtkProfiles?->no_whatsapp ?? $user->recruitmentProfile?->no_whatsapp;
+        if (($data['send_whatsapp'] ?? false) && $prefs->whatsapp_enabled
+            && $this->channelAllowed($action, 'wa')) {
+            $phone = $this->recipientPhone($user);
             if ($phone) {
-                $this->sendWhatsApp($user, $notification, $phone);
+                $this->sendWhatsApp($user, $notification, $phone, $data);
             }
         }
 
         // Push Notification (Web)
-        if (($data['send_push'] ?? false)) {
+        if (($data['send_push'] ?? false) && $prefs->push_enabled
+            && $this->channelAllowed($action, 'push')) {
             $this->sendPushNotification($user, $notification);
         }
+    }
+
+    /**
+     * Cek matriks channel global (Super Admin). Default: aktif.
+     */
+    private function channelAllowed(string $action, string $channel): bool
+    {
+        $raw = setting('notification_channel_matrix');
+
+        if (! $raw) {
+            return true;
+        }
+
+        $matrix = is_array($raw) ? $raw : json_decode((string) $raw, true);
+
+        if (! is_array($matrix) || ! isset($matrix[$action])) {
+            return true;
+        }
+
+        return (bool) ($matrix[$action][$channel] ?? true);
+    }
+
+    /**
+     * Nomor WhatsApp penerima: kontak GTK → no_hp akun → profil → recruitment.
+     */
+    private function recipientPhone(User $user): ?string
+    {
+        return $user->gtkContact?->no_whatsapp
+            ?: ($user->no_hp ?: null)
+            ?: $user->gtkProfile?->no_whatsapp
+            ?: $user->recruitmentProfile?->no_whatsapp;
     }
 
     /**
@@ -268,11 +317,16 @@ class NotificationUniversalService
     /**
      * Send WhatsApp notification
      */
-    protected function sendWhatsApp($user, $notification, $phone)
+    protected function sendWhatsApp($user, $notification, $phone, array $data = [])
     {
         try {
-            // Queue WhatsApp job
-            SendUniversalWhatsApp::dispatch($user, $notification, $phone);
+            // Queue WhatsApp job (sertakan konteks untuk template Meta).
+            SendUniversalWhatsApp::dispatch($user, $notification, $phone, [
+                'event' => $data['action'] ?? null,
+                'reference_type' => $data['reference_type'] ?? null,
+                'reference_id' => $data['reference_id'] ?? null,
+                'template_params' => $data['template_params'] ?? [],
+            ]);
 
             $notification->update([
                 'is_whatsapp_sent' => true,

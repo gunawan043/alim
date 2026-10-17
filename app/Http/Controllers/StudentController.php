@@ -412,6 +412,8 @@ class StudentController extends Controller
             'photo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
+        $this->markArabicNameReviewed($data, $request);
+
         // Handle photo upload
         if ($request->hasFile('photo_path')) {
             $path = $request->file('photo_path')->store('students/photos', 'public');
@@ -548,6 +550,8 @@ class StudentController extends Controller
             'photo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'remove_photo' => 'nullable|boolean',
         ]);
+
+        $this->markArabicNameReviewed($data, $request);
 
         // Handle photo upload
         if ($request->hasFile('photo_path')) {
@@ -783,6 +787,24 @@ class StudentController extends Controller
      * Pertahanan tambahan: tolak user asrama (admin/kepala/staf asrama) dari
      * aksi tulis terkait data Santri. Hanya CRUD Mahrom yang diizinkan.
      */
+    /**
+     * Input manual nama Arab dianggap sudah ditinjau (approved).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function markArabicNameReviewed(array &$data, Request $request): void
+    {
+        if (! array_key_exists('name_ar', $data)) {
+            return;
+        }
+
+        $filled = filled($data['name_ar'] ?? null);
+
+        $data['name_ar_status'] = $filled ? 'approved' : null;
+        $data['name_ar_reviewed_at'] = $filled ? now() : null;
+        $data['name_ar_reviewed_by'] = $filled ? $request->user()?->id : null;
+    }
+
     /**
      * Batasi akses data santri ke satuan pendidikan pengguna (kecuali global view).
      */

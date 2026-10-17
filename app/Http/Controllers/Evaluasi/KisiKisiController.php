@@ -269,6 +269,25 @@ class KisiKisiController extends Controller
     }
 
     /**
+     * Cetak kisi-kisi (dokumen resmi, siap A4).
+     */
+    public function cetak(Request $request, string $userId, string $id)
+    {
+        $kisi = KisiKisiSoal::with([
+            'subject', 'gradeLevel', 'academicYear',
+            'items.tujuanPembelajaran', 'items.kisiKisi',
+        ])->findOrFail($id);
+
+        // Cetak = akses baca.
+        $this->authorizeKisi($request, $kisi, false);
+
+        $school = \App\Models\School::find($kisi->school_id);
+        $penyusun = \App\Models\User::find($kisi->created_by)?->name;
+
+        return view('evalusi.kisi-kisi.cetak', compact('kisi', 'school', 'userId', 'penyusun'));
+    }
+
+    /**
      * Edit form.
      */
     public function edit(Request $request, string $userId, string $id)

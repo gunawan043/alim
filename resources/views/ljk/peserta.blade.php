@@ -238,15 +238,28 @@
                                     $labels = $map['opsi'] ?? [];
                                     $options = $answer->evidence['options'] ?? [];
                                     $statusColor = $statusBadge[$answer->status] ?? 'secondary';
+                                    // selected_set berisi slot A..E dari mesin; ubah ke label
+                                    // yang tercetak pada lembar peserta (bisa acak/Arab).
+                                    $detectedLabels = [];
+                                    foreach ((array) ($answer->evidence['selected_set'] ?? []) as $slot) {
+                                        $idx = ord(strtoupper((string) $slot)) - 65;
+                                        $detectedLabels[] = $labels[$idx] ?? strtoupper((string) $slot);
+                                    }
+                                    $detectedLabels = array_values(array_unique(array_filter($detectedLabels)));
                                 @endphp
                                 <tr class="{{ $answer->needs_review ? 'ljk-row-review' : '' }}">
                                     <td><span class="fw-bold">{{ $answer->nomor }}</span></td>
                                     <td style="min-width:190px;">
                                         @foreach ($labels as $i => $label)
-                                            @php $score = $options[chr(65 + $i)]['score'] ?? null; @endphp
-                                            <span class="ljk-option-chip {{ ($answer->selected_label === $label && ! $answer->needs_review) ? 'is-read' : (($score !== null && $score > 0.33) ? 'is-candidate' : '') }}"
-                                                  title="Skor bukti {{ $score !== null ? number_format((float) $score, 2) : '-' }}">
-                                                {{ $label }}@if ($score !== null && $score > 0.33) {{ number_format((float) $score, 2) }}@endif
+                                            @php
+                                                $optEvidence = $options[chr(65 + $i)] ?? [];
+                                                $score = $optEvidence['score'] ?? null;
+                                                $isCancelled = ! empty($optEvidence['cancelled'])
+                                                    || in_array('cancelled_equals', $optEvidence['signature'] ?? [], true);
+                                            @endphp
+                                            <span class="ljk-option-chip {{ $isCancelled ? 'is-cancelled' : (($answer->selected_label === $label && ! $answer->needs_review) ? 'is-read' : (($score !== null && $score > 0.33) ? 'is-candidate' : '')) }}"
+                                                  title="{{ $isCancelled ? 'Dibatalkan dengan tanda = (X=)' : 'Skor bukti '.($score !== null ? number_format((float) $score, 2) : '-') }}">
+                                                {{ $label }}@if (! $isCancelled && $score !== null && $score > 0.33) {{ number_format((float) $score, 2) }}@endif
                                             </span>
                                         @endforeach
                                     </td>
@@ -255,6 +268,11 @@
                                             <span class="fw-bold">{{ $answer->selected_label }}</span>
                                         @else
                                             <span class="text-muted">—</span>
+                                        @endif
+                                        @if (in_array($answer->status, ['ganda', 'meragukan'], true) && $detectedLabels !== [])
+                                            <div class="small text-danger fw-semibold">
+                                                Terdeteksi: {{ implode(', ', $detectedLabels) }}
+                                            </div>
                                         @endif
                                         <div class="text-muted stat-label">keyakinan {{ number_format((float) $answer->confidence, 2) }}</div>
                                     </td>
@@ -282,10 +300,11 @@
                                                     data-label="{{ $answer->selected_label }}"
                                                     data-point="{{ $answer->point_final }}"
                                                     data-manual="{{ $answer->status === 'manual' ? '1' : '0' }}"
+                                                    data-detected="{{ implode(',', $detectedLabels) }}"
                                                     data-options="{{ implode(',', $labels) }}">
                                                 <i class="ri-edit-line me-1"></i> Koreksi
                                             </button>
-                                            @if ($answer->needs_review)
+                                            @if ($answer->needs_review && ! in_array($answer->status, ['ganda', 'meragukan'], true))
                                                 <form method="POST" action="{{ route('user.ljk.review', ['userId' => $userId, 'ljkUuid' => $exam->id, 'answerUuid' => $answer->id]) }}">
                                                     @csrf
                                                     <input type="hidden" name="action" value="accept">
@@ -341,6 +360,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-warning py-2 small d-none" id="modal-ganda-hint">
+                        <i class="ri-alert-line me-1"></i>
+                        Terdeteksi lebih dari satu kotak: <strong id="modal-detected"></strong>.
+                        Kemungkinan siswa mengganti jawaban. Pilih jawaban yang benar —
+                        koreksi dicatat sebelum/sesudah beserta alasannya.
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Status jawaban</label>
                         <select name="status" id="modal-status" class="form-select">
@@ -398,10 +423,29 @@
                 });
                 labelSelect.value = trigger.dataset.label || '';
 
+                const hint = document.getElementById('modal-ganda-hint');
+                const detected = (trigger.dataset.detected || '').trim();
+                const status = trigger.dataset.status || '';
+                if (detected !== '' && (status === 'ganda' || status === 'meragukan')) {
+                    document.getElementById('modal-detected').textContent = detected;
+                    hint.classList.remove('d-none');
+                } else {
+                    hint.classList.add('d-none');
+                }
+
                 const isManual = trigger.dataset.manual === '1';
                 document.getElementById('modal-point-wrap').style.display = isManual ? '' : 'none';
                 document.getElementById('modal-point').value = isManual ? trigger.dataset.point : '';
                 document.getElementById('modal-reason').value = '';
+
+                // Memilih jawaban pada nomor ganda/meragukan = jawaban final
+                // terbaca (guru yang menentukan, bukan mesin).
+                labelSelect.onchange = function () {
+                    const statusSelect = document.getElementById('modal-status');
+                    if (labelSelect.value !== '' && ['ganda', 'meragukan', 'kosong', 'tidak_dapat_diproses'].includes(statusSelect.value)) {
+                        statusSelect.value = 'terbaca';
+                    }
+                };
             });
         })();
     </script>

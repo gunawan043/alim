@@ -361,6 +361,23 @@
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="mb-3">
+                                                        <label class="form-label detail-label">Nama Arab</label>
+                                                        <div class="detail-value" dir="rtl">
+                                                            @if($student->name_ar)
+                                                                <span class="fw-medium">{{ $student->name_ar }}</span>
+                                                                @if($student->name_ar_status === 'approved')
+                                                                    <span class="badge bg-success-subtle text-success ms-1">Disetujui</span>
+                                                                @else
+                                                                    <span class="badge bg-warning-subtle text-warning ms-1">Menunggu tinjauan</span>
+                                                                @endif
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
                                                         <label class="form-label detail-label">NISN</label>
                                                         <div class="detail-value"><code>{{ $student->nisn }}</code></div>
                                                     </div>

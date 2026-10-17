@@ -116,6 +116,18 @@
                                 <label class="form-label">Tanggal</label>
                                 <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal') }}">
                             </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Bahasa Naskah</label>
+                                <select name="bahasa" id="bahasa-naskah" class="form-select">
+                                    @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" @selected(old('bahasa', 'gabungan') === $key)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">
+                                    <strong>Arab</strong> → seluruh lembar RTL, nomor ١، ٢، ٣, pilihan ا، ب، ج، د.
+                                    <strong>Latin/Gabungan</strong> → LTR, nomor 1, 2, 3, pilihan A, B, C, D.
+                                </div>
+                            </div>
                             <div class="col-md-2">
                                 <label class="form-label">Waktu Mulai</label>
                                 <input type="time" name="waktu_mulai" class="form-control" value="{{ old('waktu_mulai') }}">

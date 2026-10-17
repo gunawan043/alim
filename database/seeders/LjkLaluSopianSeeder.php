@@ -135,6 +135,7 @@ class LjkLaluSopianSeeder extends Seeder
                 [
                     'bank_soal_id' => $bank->id,
                     'tipe_soal' => 'pg',
+                    'bahasa' => \App\Services\Ljk\LjkArabicText::hasArabic($item['q']) ? 'arab' : 'latin',
                     'pertanyaan' => $item['q'],
                     'bobot_default' => 1,
                     'tingkat_kesulitan_estimasi' => 'mudah',
@@ -306,6 +307,7 @@ class LjkLaluSopianSeeder extends Seeder
                 'admin_book_id' => $book->id,
                 'study_group_id' => $group->id,
                 'jenis_ujian' => self::JENIS_UJIAN,
+                'bahasa' => 'gabungan',
                 'semester' => $book->semester,
                 'tanggal' => now()->toDateString(),
                 'waktu_mulai' => '07:30',

@@ -78,9 +78,9 @@
                                 <a href="#Rombel" class="nav-link" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="Rombel">Rombel</a>
                                 <div class="collapse menu-dropdown" id="Rombel">
                                     <ul class="nav nav-sm flex-column">
-                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['rombel' => '7a']) }}" class="nav-link">7A</a></li>
-                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['rombel' => '7b']) }}" class="nav-link">7B</a></li>
-                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['rombel' => '7c']) }}" class="nav-link">7C</a></li>
+                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['kelas' => '7a']) }}" class="nav-link">7A</a></li>
+                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['kelas' => '7b']) }}" class="nav-link">7B</a></li>
+                                        <li class="nav-item"><a href="{{ route('waka.peserta-didik.rombel', ['kelas' => '7c']) }}" class="nav-link">7C</a></li>
                                     </ul>
                                 </div>
                             </li>
@@ -267,10 +267,11 @@
                     <div class="collapse menu-dropdown" id="SuratMenyurat">
                         <ul class="nav nav-sm flex-column">
                             <li class="nav-item">
-                                <a href="{{ route('waka.surat-keluar') }}" class="nav-link">Surat Keluar</a>
+                                <a href="{{ route('waka.surat-keluar.index') }}" class="nav-link">Surat Keluar</a>
                             </li>
                             <li class="nav-item">
-                                <a href="{{ route('waka.surat-masuk') }}" class="nav-link">Surat Masuk</a>
+                                <a href="{{ route('waka.surat-masuk.index') }}" class="nav-link">Surat Masuk</a>
+                                <a href="{{ route('waka.surat-template.index') }}" class="nav-link">Template Surat</a>
                             </li>
                         </ul>
                     </div>

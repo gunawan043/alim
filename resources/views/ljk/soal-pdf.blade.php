@@ -13,6 +13,10 @@
 
     $paper = $paper ?? ['width_mm' => 210.0, 'height_mm' => 297.0, 'label' => 'A4'];
     $marginMm = $marginMm ?? ['top' => 5.08, 'bottom' => 2.54, 'left' => 14.99, 'right' => 16.0];
+    $letterhead = $letterhead ?? [
+        'schoolName' => 'ALIM', 'address' => '',
+        'kopBase64' => null, 'kopHeightMm' => 0.0, 'logoBase64' => null,
+    ];
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -41,8 +45,13 @@
     }
 
     /* Teks Arab: bentuk presentasi + urutan visual sudah disiapkan di PHP. */
-    .ar { font-family: {!! $arabicStack !!}; direction: rtl; unicode-bidi: embed; }
+    .ar { font-family: {!! $arabicStack !!}; direction: rtl; unicode-bidi: embed; font-style: normal; }
     .ar-block { text-align: right; }
+
+    /* Kop lembaga — HANYA gambar kop yang diunggah di pengaturan sekolah */
+    .kop { text-align: center; }
+    .kop-image { width: 100%; display: block; margin: 0 auto; }
+    .kop-rule { border-top: 0.5mm solid #000; margin: 1.2mm 0 1.6mm; }
 
     .title { text-align: center; font-weight: bold; font-size: {{ $fontSize }}pt; }
     .title-sub { text-align: center; font-weight: bold; font-size: {{ $fontSize }}pt; margin-top: 0.2em; }
@@ -85,12 +94,19 @@
 
     /* Butir soal — opsi dalam kolom sejajar (A..D selalu pada posisi sama) */
     .q { margin-top: {{ $questionGapPt }}pt; page-break-inside: avoid; }
-    .q-no { font-weight: bold; }
+
+    /* Nomor soal + isi (teks DAN opsi) berada dalam kolom yang sama,
+       sehingga teks soal sejajar persis dengan huruf pilihan A, dan baris
+       lanjutan teks menjorok sejajar teks (hanging indent). */
+    table.qwrap { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.qwrap td { vertical-align: top; padding: 0; }
+    table.qwrap td.qno { width: 4.5%; font-weight: normal; }
+    table.qwrap td.qbody { width: 95.5%; }
     table.opts {
         width: 100%;
         border-collapse: collapse;
         table-layout: fixed;
-        margin: 0.1em 0 0 1.4em;
+        margin: 0.1em 0 0 0;
     }
     table.opts td {
         vertical-align: top;
@@ -105,7 +121,18 @@
 </head>
 <body>
 
-    {{-- ── KOP ─────────────────────────────────────────────────────────── --}}
+    {{-- ── KOP LEMBAGA ───────────────────────────────────────────────────
+         Hanya memakai gambar kop yang diunggah di Pengaturan Sekolah.
+         Bila belum ada, area kop dikosongkan (tidak memakai teks). --}}
+    @if(! empty($letterhead['kopBase64']))
+        <div class="kop">
+            <img class="kop-image" src="{{ $letterhead['kopBase64'] }}"
+                 style="width: {{ $letterhead['kopWidthMm'] ?? 145 }}mm; height: {{ $letterhead['kopHeightMm'] ?? 18 }}mm;">
+            <div class="kop-rule"></div>
+        </div>
+    @endif
+
+    {{-- ── JUDUL UJIAN ─────────────────────────────────────────────────── --}}
     <div class="title">{{ $line1 }}</div>
     @if($line2 !== '')
         <div class="title-sub">{{ $line2 }}</div>
@@ -168,37 +195,39 @@
                     <div class="wacana-caption paper-note">Sumber: {!! LjkArabicText::toHtml($block['sumber']) !!}</div>
                 @endif
                 @if($block['dari'] !== null)
-                    <div class="wacana-caption">
-                        Wacana untuk soal nomor {{ $block['dari'] }}{{ $block['sampai'] !== $block['dari'] ? '–'.$block['sampai'] : '' }}.
-                    </div>
+                    @php
+                        $dari = $block['dari_tampil'] ?? $block['dari'];
+                        $sampai = $block['sampai_tampil'] ?? $block['sampai'];
+                    @endphp
+                    <div class="wacana-caption">Wacana untuk soal nomor @if($arabAngka ?? false)<span class="ar">{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}</span>@else{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}@endif.</div>
                 @endif
             </div>
         @else
+            @php $rtl = (bool) ($block['rtl'] ?? false); @endphp
             <div class="q">
-                <div>
-                    <span class="q-no">{{ $block['nomor'] }}.</span>
-                    <span class="q-text">{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</span>
-                </div>
-
-                @if(! empty($block['opsi']))
-                    <table class="opts">
-                        <tr>
-                            @for($i = 0; $i < $maxOptions; $i++)
-                                @php $opsi = $block['opsi'][$i] ?? null; @endphp
-                                <td style="width: {{ $colWidth }}%;">
-                                    @if($opsi)
-                                        {{-- Huruf pilihan: Arab (ا، ب، ج، د) memakai font Arab;
-                                             Latin tetap memakai font naskah. --}}
-                                        <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
-                                        {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                    @else
-                                        &nbsp;
-                                    @endif
-                                </td>
-                            @endfor
-                        </tr>
-                    </table>
-                @endif
+                {{-- Satu tabel: nomor + kolom isi (teks soal DAN opsi ada di kolom
+                     yang sama) → teks soal sejajar dengan huruf pilihan A. --}}
+                <table class="qwrap">
+                    <tr>
+                        @if($rtl)
+                            <td class="qbody" style="text-align: right;">
+                                <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                            </td>
+                            <td class="qno" style="text-align: right;">
+                                @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                            </td>
+                        @else
+                            <td class="qno">
+                                @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                            </td>
+                            <td class="qbody">
+                                <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                            </td>
+                        @endif
+                    </tr>
+                </table>
             </div>
         @endif
 

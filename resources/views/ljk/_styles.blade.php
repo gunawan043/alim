@@ -18,6 +18,7 @@
     }
     .ljk-option-chip.is-read { background: #198754; border-color: #198754; color: #fff; }
     .ljk-option-chip.is-candidate { background: #fff3cd; border-color: #ffe69c; color: #997404; }
+    .ljk-option-chip.is-cancelled { background: #f1f3f5; border-color: #ced4da; color: #868e96; text-decoration: line-through; }
 
     /* Baris jawaban yang perlu diperiksa */
     .ljk-row-review { background: #fff8e6; }

@@ -21,6 +21,7 @@ class SuratMasuk extends Model
 
     protected $fillable = [
         'school_id',
+        'verification_token',
         'nomor_surat',
         'tanggal_surat',
         'tanggal_diterima',
@@ -78,6 +79,9 @@ class SuratMasuk extends Model
         static::creating(function ($model) {
             if (empty($model->id)) {
                 $model->id = (string) Str::uuid();
+            }
+            if (empty($model->verification_token)) {
+                $model->verification_token = (string) Str::uuid();
             }
         });
     }

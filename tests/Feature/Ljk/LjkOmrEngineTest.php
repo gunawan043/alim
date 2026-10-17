@@ -42,29 +42,126 @@ class LjkOmrEngineTest extends TestCase
         return app(LjkSyntheticRenderer::class)->renderToFile($geometry, $content, $opts + ['path' => $path]);
     }
 
-    public function test_tata_letak_dua_kolom_kiri_1_10_kanan_11_20(): void
+    public function test_tata_letak_empat_kolom_berurut_ke_bawah(): void
     {
         $geometry = $this->geometry(20, 4);
 
-        $this->assertSame(2, $geometry['columns'], 'Template harus memakai 2 kolom sejak awal.');
+        $this->assertSame(4, $geometry['columns'], 'Lembar memuat 4 kolom soal.');
         $this->assertSame(1, count($geometry['pages']));
 
         $byNumber = collect($geometry['questions'])->keyBy('nomor');
 
-        // Kiri kolom 1 (no 1-10), kanan kolom 2 (no 11-20).
-        foreach (range(1, 10) as $nomor) {
-            $this->assertSame(1, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom kiri.");
+        // Nomor berurut ke bawah dulu, baru lanjut ke kolom berikutnya.
+        // 20 soal / 4 kolom = 5 baris per kolom.
+        foreach (range(1, 5) as $nomor) {
+            $this->assertSame(1, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom 1.");
         }
-        foreach (range(11, 20) as $nomor) {
-            $this->assertSame(2, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom kanan.");
+        foreach (range(6, 10) as $nomor) {
+            $this->assertSame(2, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom 2.");
+        }
+        foreach (range(11, 15) as $nomor) {
+            $this->assertSame(3, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom 3.");
+        }
+        foreach (range(16, 20) as $nomor) {
+            $this->assertSame(4, $byNumber[$nomor]['column'], "Nomor {$nomor} harus di kolom 4.");
         }
 
-        // Baris pertama kiri/kanan sejajar (soal 1 & 11 di y yang sama).
-        $this->assertSame($byNumber[1]['y_mm'], $byNumber[11]['y_mm']);
-        $this->assertGreaterThan($byNumber[1]['x_mm'], $byNumber[11]['x_mm']);
+        // Baris pertama setiap kolom sejajar: 1, 6, 11, 16.
+        foreach ([1, 6, 11, 16] as $nomor) {
+            $this->assertSame($byNumber[1]['y_mm'], $byNumber[$nomor]['y_mm']);
+        }
+        $this->assertGreaterThan($byNumber[1]['x_mm'], $byNumber[6]['x_mm']);
+        $this->assertGreaterThan($byNumber[6]['x_mm'], $byNumber[11]['x_mm']);
+        $this->assertGreaterThan($byNumber[11]['x_mm'], $byNumber[16]['x_mm']);
 
-        // Area jawaban tetap memakai lebar halaman penuh (2 kolom, bukan 1).
-        $this->assertGreaterThan(80.0, (float) $byNumber[11]['x_mm']);
+        // Dalam satu kolom: nomor berikutnya turun, x tetap.
+        $this->assertSame($byNumber[1]['x_mm'], $byNumber[2]['x_mm']);
+        $this->assertGreaterThan($byNumber[1]['y_mm'], $byNumber[2]['y_mm']);
+
+        // Kotak opsi tidak menabrak kolom berikutnya.
+        $q1 = $byNumber[1];
+        $last = end($q1['options']);
+        $this->assertLessThanOrEqual((float) $byNumber[6]['x_mm'], (float) $last['x_mm'] + (float) $last['w_mm']);
+
+        // Opsi sampai E → jumlah kolom otomatis turun menjadi 3.
+        $geometry5 = $this->geometry(20, 5);
+        $this->assertSame(3, $geometry5['columns']);
+    }
+
+    public function test_ganti_jawaban_dua_tanda_kuat_selalu_ganda_tanpa_pilih_otomatis(): void
+    {
+        $geometry = $this->geometry(4, 4);
+
+        // Soal 1: tanda lama (A) tetap terlihat dan tanda baru (B) lebih tebal.
+        // Mesin tidak boleh memilih B otomatis hanya karena skornya lebih tinggi.
+        $path = $this->render($geometry, [
+            'answers' => [1 => 'AB'],
+            'option_styles' => [1 => ['A' => 'thin', 'B' => 'thick']],
+        ]);
+
+        $result = app(OmrEngine::class)->process($path, $geometry);
+        $this->assertTrue($result['ok'], 'Engine gagal: '.json_encode($result['quality']));
+
+        $q = collect($result['questions'])->firstWhere('nomor', 1);
+        $this->assertSame('ganda', $q['status'], 'Dua tanda kuat harus ganda: '.json_encode($q['evidence']));
+        $this->assertNull($q['selected'], 'Tidak boleh ada jawaban terpilih otomatis.');
+        $this->assertTrue($q['needs_review'], 'Jawaban ganda wajib diperiksa guru.');
+        $this->assertEqualsCanonicalizing(['A', 'B'], $q['selected_set']);
+    }
+
+    public function test_tanda_sama_dengan_membatalkan_jawaban_x_lama(): void
+    {
+        $geometry = $this->geometry(8, 4);
+
+        // Siswa tanpa penghapus: X lama ditambah "=" (X=) lalu X baru.
+        $answers = [
+            1 => 'A',      // hanya X= → kosong
+            2 => 'AC',     // A dibatalkan, C jawaban baru
+            3 => 'ABC',    // A dibatalkan, B & C dua jawaban sah → ganda
+            4 => 'B',      // normal
+            5 => 'AB',     // dua-duanya dibatalkan
+            6 => 'AB',     // A dibatalkan, B tipis
+            7 => 'AB',     // B dibatalkan, A sah
+            8 => 'ABC',    // A & C dibatalkan, B sah
+        ];
+        $styles = [
+            1 => ['A' => 'x_equals'],
+            2 => ['A' => 'x_equals', 'C' => 'x'],
+            3 => ['A' => 'x_equals', 'B' => 'x', 'C' => 'x'],
+            4 => ['B' => 'x'],
+            5 => ['A' => 'x_equals', 'B' => 'x_equals'],
+            6 => ['A' => 'x_equals', 'B' => 'thin'],
+            7 => ['A' => 'x', 'B' => 'x_equals'],
+            8 => ['A' => 'x_equals', 'B' => 'x', 'C' => 'x_equals'],
+        ];
+
+        $result = app(OmrEngine::class)->process($this->render($geometry, [
+            'answers' => $answers,
+            'option_styles' => $styles,
+        ]), $geometry);
+
+        $this->assertTrue($result['ok'], 'Engine gagal: '.json_encode($result['quality']));
+        $byNumber = collect($result['questions'])->keyBy('nomor');
+
+        $this->assertSame('kosong', $byNumber[1]['status'], 'X= saja harus kosong: '.json_encode($byNumber[1]['opsi']));
+        $this->assertFalse((bool) $byNumber[1]['needs_review']);
+        $this->assertTrue((bool) ($byNumber[1]['opsi']['A']['cancel_equals'] ?? false), 'X= harus terdeteksi sebagai pembatalan.');
+
+        $this->assertSame('terbaca', $byNumber[2]['status']);
+        $this->assertSame('C', $byNumber[2]['selected']);
+
+        $this->assertSame('ganda', $byNumber[3]['status'], 'Dua X sah harus ganda: '.json_encode($byNumber[3]['evidence']));
+        $this->assertNull($byNumber[3]['selected']);
+        $this->assertTrue((bool) $byNumber[3]['needs_review']);
+
+        $this->assertSame('terbaca', $byNumber[4]['status']);
+        $this->assertSame('B', $byNumber[4]['selected']);
+
+        $this->assertSame('kosong', $byNumber[5]['status'], 'Dua X= harus kosong.');
+        $this->assertSame('terbaca', $byNumber[7]['status']);
+        $this->assertSame('A', $byNumber[7]['selected']);
+        $this->assertSame('terbaca', $byNumber[8]['status']);
+        $this->assertSame('B', $byNumber[8]['selected']);
     }
 
     public function test_membaca_tanda_silang_pulpen_hitam_dan_biru(): void

@@ -577,6 +577,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.ai-providers.']) ? ' active' : '' }}"
+       href="{{ route('user.sa.ai-providers.index', ['userId' => $userId]) }}">
+        <i class="ri-robot-2-line"></i><span>Pengaturan AI</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
         <i class="ri-pulse-line"></i><span>Monitoring</span>

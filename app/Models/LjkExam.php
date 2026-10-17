@@ -56,7 +56,7 @@ class LjkExam extends Model
     protected $fillable = [
         'code', 'school_id', 'academic_year_id', 'semester', 'admin_book_id',
         'paket_soal_id', 'paket_version', 'paket_snapshot_at', 'paket_digest',
-        'study_group_id', 'subject_id', 'template_id', 'jenis_ujian',
+        'study_group_id', 'subject_id', 'template_id', 'jenis_ujian', 'bahasa',
         'judul', 'tanggal', 'waktu_mulai', 'waktu_selesai', 'jumlah_soal', 'skor_config', 'nilai_target',
         'status', 'instruksi', 'created_by',
     ];

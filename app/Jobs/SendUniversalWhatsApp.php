@@ -21,6 +21,7 @@ class SendUniversalWhatsApp implements ShouldQueue
         public mixed $user,
         public mixed $notification,
         public string $phone,
+        public array $context = [],
     ) {}
 
     public function handle(WhatsAppGatewayService $gateway): void
@@ -31,9 +32,9 @@ class SendUniversalWhatsApp implements ShouldQueue
             return;
         }
 
-        $gateway->send($this->phone, $message, [
+        $gateway->send($this->phone, $message, array_merge($this->context, [
             'notification_id' => $this->notification->id ?? null,
             'user_id' => $this->user->id ?? null,
-        ]);
+        ]));
     }
 }

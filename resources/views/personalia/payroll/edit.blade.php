@@ -55,8 +55,11 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama GTK <span class="text-danger">*</span></label>
-                            <select name="gtk_id" class="form-select">
+                            <select name="gtk_id" class="form-select" required>
                                 <option value="">-- Pilih GTK --</option>
+                                @foreach($gtkList as $gtk)
+                                    <option value="{{ $gtk->id }}" {{ old('gtk_id', $payroll->gtk_id) === $gtk->id ? 'selected' : '' }}>{{ $gtk->nama }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-3">

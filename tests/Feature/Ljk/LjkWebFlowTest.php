@@ -292,10 +292,10 @@ class LjkWebFlowTest extends TestCase
         return $slots;
     }
 
-    private function createExamViaHttp(): LjkExam
+    private function createExamViaHttp(array $extra = []): LjkExam
     {
-        $this->actingAs($this->teacher)
-            ->post("/{$this->teacher->id}/ljk", [
+        $response = $this->actingAs($this->teacher)
+            ->post("/{$this->teacher->id}/ljk", array_merge([
                 'judul' => 'STS Fiqih Web',
                 'paket_soal_id' => $this->paket->id,
                 'admin_book_id' => $this->book->id,
@@ -304,10 +304,15 @@ class LjkWebFlowTest extends TestCase
                 'tanggal' => '2026-09-18',
                 'waktu_mulai' => '07:30',
                 'waktu_selesai' => '09:00',
-            ])
+            ], $extra))
             ->assertRedirect();
 
-        return LjkExam::query()->latest('created_at')->firstOrFail();
+        // Ambil UUID dari URL redirect (lebih andal daripada "latest" saat
+        // beberapa ujian dibuat pada detik yang sama).
+        $location = (string) $response->headers->get('Location');
+        $uuid = basename((string) parse_url($location, PHP_URL_PATH));
+
+        return LjkExam::query()->findOrFail($uuid);
     }
 
     public function test_guru_dapat_membuka_daftar_dan_form_ljk(): void
@@ -386,6 +391,38 @@ class LjkWebFlowTest extends TestCase
         $this->actingAs($this->otherTeacher)
             ->get("/{$this->otherTeacher->id}/ljk/scan/gambar/{$scan->id}")
             ->assertForbidden();
+    }
+
+    public function test_halaman_peserta_menampilkan_jawaban_ganda_untuk_koreksi(): void
+    {
+        $exam = $this->createExamViaHttp();
+        $participant = LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
+
+        $answers = $this->correctSlots($participant);
+        $answers[2] = 'AB'; // siswa mengganti jawaban: dua kotak bertanda X
+
+        $path = app(LjkSyntheticRenderer::class)->renderToFile($exam->template->geometry, [
+            'answers' => $answers,
+        ], [
+            'participant_seq' => (int) $participant->nomor_peserta,
+            'path' => sys_get_temp_dir().'/ljk-web-ganda-'.Str::random(8).'.jpg',
+        ]);
+
+        $this->actingAs($this->teacher)
+            ->post("/{$this->teacher->id}/ljk/{$exam->id}/scan", [
+                'image' => new UploadedFile($path, 'scan.jpg', 'image/jpeg', null, true),
+                'participant_id' => $participant->id,
+            ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $page = $this->actingAs($this->teacher)
+            ->get("/{$this->teacher->id}/ljk/{$exam->id}/hasil/{$participant->id}");
+
+        $page->assertOk();
+        $page->assertSee('Terdeteksi:', false);
+        // Nomor ganda wajib dikoreksi; tombol "terima hasil baca" tidak ditampilkan.
+        $page->assertDontSee('Terima hasil baca', false);
     }
 
     public function test_koreksi_dan_sinkron_lewat_http(): void
@@ -521,6 +558,42 @@ class LjkWebFlowTest extends TestCase
             ->assertSee('Belum Dipindai');
     }
 
+    public function test_lembar_jawaban_memakai_header_identitas_dan_karakter(): void
+    {
+        $exam = $this->createExamViaHttp();
+        $participant = \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
+
+        $html = app(\App\Services\Ljk\LjkSheetService::class)
+            ->renderSheetHtml($exam->fresh(['school', 'subject', 'studyGroup', 'adminBook.teacher', 'template']), $participant, 1);
+
+        // Judul dua baris seperti lembar soal.
+        $this->assertStringContainsString('LEMBAR JAWABAN KOMPUTER (LJK)', $html);
+        $this->assertStringContainsString('TAHUN AJARAN', $html);
+
+        // Tabel identitas 3 baris dengan data peserta.
+        $this->assertStringContainsString('class="identitas"', $html);
+        $this->assertStringContainsString('Mata Pelajaran', $html);
+        $this->assertStringContainsString('Nama Peserta Didik', $html);
+        $this->assertStringContainsString('Santri Uji', $html);
+
+        // Penanaman karakter + petunjuk pengisian LJK.
+        $this->assertStringContainsString('PENANAMAN KARAKTER', $html);
+        $this->assertStringContainsString('Pilih satu jawaban dengan membuat tanda silang', $html);
+        $this->assertStringContainsString('Jumlah nomor:', $html);
+
+        // Header tidak boleh menimpa butir pertama (template baru).
+        $geometry = $exam->fresh()->template->geometry;
+        $this->assertArrayHasKey('header_height_mm', $geometry);
+        $this->assertGreaterThanOrEqual(80.0, (float) $geometry['header_height_mm']);
+        $this->assertGreaterThanOrEqual((float) $geometry['header_height_mm'], (float) collect($geometry['questions'])->min('y_mm'));
+
+        // Master tetap tanpa nama.
+        $master = app(\App\Services\Ljk\LjkSheetService::class)
+            ->renderSheetHtml($exam->fresh(['school', 'subject', 'studyGroup', 'adminBook.teacher', 'template']), $participant, 1, true);
+        $this->assertStringContainsString('nama-line', $master);
+        $this->assertStringNotContainsString('Santri Uji', $master);
+    }
+
     public function test_master_fotokopi_tanpa_nama_qr_dan_data_strip(): void
     {
         $exam = $this->createExamViaHttp();
@@ -630,15 +703,27 @@ class LjkWebFlowTest extends TestCase
         $this->assertSame(12.0, (float) $data['fontSizeBase']);
         $this->assertLessThanOrEqual(12.0, (float) $data['fontSize']);
         $this->assertSame(1.0, (float) $data['lineHeight']);
-        $this->assertSame(1.15, (float) $data['questionGap']);
+        $this->assertSame(1.5, (float) $data['questionGap']);
         $this->assertStringContainsString('font-size: '.$data['fontSize'].'pt', $html);
         $this->assertStringContainsString('line-height: 1', $html);
 
-        $expectedGap = round(0.15 * (float) $data['fontSize'], 2);
-        $this->assertStringContainsString('margin-top: '.$expectedGap.'pt', $html, 'Jarak antar soal = +15% satu baris (1.15).');
+        $expectedGap = round(0.5 * (float) $data['fontSize'], 2);
+        $this->assertStringContainsString('margin-top: '.$expectedGap.'pt', $html, 'Jarak antar soal = +50% satu baris (1.5).');
 
-        // Huruf pilihan tidak dicetak tebal.
+        // Huruf pilihan & nomor soal tidak dicetak tebal.
         $this->assertStringContainsString('.letter { font-weight: normal; }', $html);
+        $this->assertStringContainsString('td.qno { width: 4.5%; font-weight: normal; }', $html);
+
+        // Nomor & teks soal memakai tabel (hanging indent): baris lanjutan
+        // sejajar dengan teks, bukan dengan nomor.
+        $this->assertStringContainsString('table class="qwrap"', $html);
+        $this->assertStringContainsString('class="qbody"', $html);
+        // Teks soal & opsi berada di kolom yang sama (tanpa indent tabel opsi).
+        $this->assertStringContainsString('margin: 0.1em 0 0 0;', $html);
+
+        // Tanpa gambar kop di pengaturan sekolah → area kop dikosongkan
+        // (tidak memakai teks kop).
+        $this->assertStringNotContainsString('<div class="kop">', $html);
 
         // Reset CSS tidak boleh menimpa margin @page (isi pernah mepet ke tepi).
         $this->assertStringContainsString('* { padding: 0; box-sizing: border-box; }', $html);
@@ -729,6 +814,12 @@ class LjkWebFlowTest extends TestCase
     public function test_teks_arab_di_shaping_dan_dibungkus_span_arab(): void
     {
         $arabic = \App\Services\Ljk\LjkArabicText::class;
+
+        // Font Arab bawaan aplikasi (Amiri, OFL) terdeteksi & dipakai.
+        $fonts = \App\Services\Ljk\LjkPdfFonts::class;
+        $this->assertStringContainsString('Amiri', $fonts::arabicFontLabel());
+        $this->assertStringContainsString("font-family: 'LJK-Arabic'", $fonts::arabicFaceCss());
+        $this->assertStringContainsString('LJK-Arabic', $fonts::arabicStack());
 
         $this->assertTrue($arabic::hasArabic('بسم الله'));
         $this->assertFalse($arabic::hasArabic('Bahasa Inggris'));
@@ -833,30 +924,156 @@ class LjkWebFlowTest extends TestCase
         app(\App\Services\Evaluasi\PaketNaskahService::class)->snapshot($this->paket->fresh());
         $this->paket = $this->paket->fresh();
 
-        $exam = $this->createExamViaHttp();
+        $exam = $this->createExamViaHttp(['bahasa' => 'arab']);
 
         $sheet = app(\App\Services\Ljk\LjkSoalSheet::class);
         $data = $sheet->data($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
-        $this->assertSame([6], $sheet->arabicQuestionNumbers($exam->fresh(['paketSoal'])));
+        $this->assertSame([1, 2, 3, 4, 5, 6], $sheet->arabicQuestionNumbers($exam->fresh(['paketSoal'])));
 
         $arab = collect($data['blocks'])->firstWhere('nomor', 6);
         $this->assertTrue($arab['isArabic']);
         $this->assertSame(['ا', 'ب', 'ج', 'د'], array_column($arab['opsi'], 'display_label'));
 
         $html = $sheet->render($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
-        // Huruf pilihan Arab di-shaping ke bentuk presentasi (isolated) + font Arab.
+        // RTL: penanda ".ا" diletakkan SETELAH teks opsi (bukan "ا. teks").
         $alef = \App\Services\Ljk\LjkArabicText::shape('ا');
-        $this->assertStringContainsString('<span class="letter"><span class="ar">'.$alef.'</span>.', $html);
+        $this->assertStringContainsString('<span class="letter">.<span class="ar">'.$alef.'</span></span>', $html);
 
-        // Hanya 5 soal Inggris yang memakai huruf Latin A. (soal Arab tidak).
-        $this->assertSame(5, substr_count($html, 'class="letter">A.'), 'Soal Arab tidak boleh memakai huruf Latin.');
+        // Ujian mode Arab → SELURUH lembar memakai huruf Arab (tanpa A.).
+        $this->assertSame(0, substr_count($html, 'class="letter">A.'), 'Ujian Arab tidak boleh memakai huruf Latin.');
 
         // Lembar jawaban: label kotak nomor 6 memakai huruf Arab.
         $participant = \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
         $sheetHtml = app(\App\Services\Ljk\LjkSheetService::class)->renderSheetHtml($exam->fresh(), $participant, 1);
 
         $this->assertStringContainsString('<span class="ar">ا</span>', $sheetHtml);
+    }
+
+    /**
+     * Bila sekolah mengunggah kop surat (pengaturan sekolah), lembar soal
+     * memakai gambar kop tersebut.
+     */
+    public function test_kop_sekolah_memakai_gambar_dari_pengaturan(): void
+    {
+        $relative = 'ljk-test/kop.png';
+        $absolute = storage_path('app/public/'.$relative);
+        \Illuminate\Support\Facades\File::ensureDirectoryExists(dirname($absolute));
+
+        // PNG 1x1 (hitam) — cukup untuk memastikan gambar ter-embed.
+        \Illuminate\Support\Facades\File::put($absolute, base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        ));
+
+        $this->school->forceFill(['kop_path' => $relative, 'logo_path' => null])->save();
+
+        try {
+            $exam = $this->createExamViaHttp();
+            $html = app(\App\Services\Ljk\LjkSoalSheet::class)
+                ->render($exam->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+
+            $this->assertStringContainsString('class="kop-image"', $html);
+            $this->assertStringContainsString('data:image/png;base64,', $html);
+            $this->assertStringNotContainsString('<div class="kop-school">', $html, 'Bila kop gambar ada, teks kop tidak dicetak.');
+        } finally {
+            \Illuminate\Support\Facades\File::delete($absolute);
+            $this->school->forceFill(['kop_path' => null])->save();
+        }
+    }
+
+    /**
+     * Mode bahasa UJIAN: 'arab' → seluruh lembar RTL (nomor Arab + huruf ا/ب/ج/د,
+     * penanda setelah teks); 'gabungan' → seluruh lembar LTR + huruf A/B/C/D
+     * walau sebagian soal berbahasa Arab.
+     */
+    public function test_mode_bahasa_ujian_latin_gabungan_arab(): void
+    {
+        $bankId = $this->paket->items()->first()?->soal?->bank_soal_id;
+
+        $buat = function (string $bahasa, string $pertanyaan, array $opsi) use ($bankId) {
+            $soal = \App\Models\Soal::create([
+                'bank_soal_id' => $bankId,
+                'tipe_soal' => 'pg',
+                'bahasa' => $bahasa,
+                'pertanyaan' => $pertanyaan,
+                'bobot_default' => 1,
+                'status' => 'approved',
+                'workflow_status' => \App\Models\Soal::WORKFLOW_APPROVED,
+                'content_hash' => hash('sha256', 'mode-'.$bahasa.'-'.Str::random(8)),
+                'dibuat_oleh' => $this->teacher->id,
+            ]);
+
+            foreach ($opsi as $i => $teks) {
+                \App\Models\SoalOption::create([
+                    'soal_id' => $soal->id,
+                    'label' => chr(65 + $i),
+                    'teks_opsi' => $teks,
+                    'is_correct' => $i === 0,
+                    'urutan' => $i + 1,
+                ]);
+            }
+
+            return $soal;
+        };
+
+        $arab = $buat(\App\Models\Soal::BAHASA_ARAB, 'مَا هَذَا؟', ['كِتَابٌ', 'قَلَمٌ', 'بَابٌ', 'كُرْسِيٌّ']);
+        $gabungan = $buat(\App\Models\Soal::BAHASA_GABUNGAN, 'Terjemahkan: الكِتَاب', ['Buku', 'Pena', 'Pintu', 'Kursi']);
+
+        \App\Models\PaketSoalItem::create([
+            'paket_soal_id' => $this->paket->id, 'soal_id' => $arab->id,
+            'urutan' => 97, 'nomor' => 7, 'jenis_soal' => 'pg',
+        ]);
+        \App\Models\PaketSoalItem::create([
+            'paket_soal_id' => $this->paket->id, 'soal_id' => $gabungan->id,
+            'urutan' => 98, 'nomor' => 8, 'jenis_soal' => 'pg',
+        ]);
+
+        $this->paket->recomputeTotals();
+        app(\App\Services\Evaluasi\PaketNaskahService::class)->snapshot($this->paket->fresh());
+        $this->paket = $this->paket->fresh();
+
+        // (a) Ujian GABUNGAN → seluruh lembar LTR + huruf Latin.
+        $examGabungan = $this->createExamViaHttp(['bahasa' => 'gabungan']);
+        $dataGabungan = app(\App\Services\Ljk\LjkSoalSheet::class)
+            ->data($examGabungan->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+
+        $this->assertSame('gabungan', $dataGabungan['examBahasa']);
+        $this->assertFalse($dataGabungan['arabAngka']);
+
+        foreach (collect($dataGabungan['blocks'])->where('type', 'soal') as $block) {
+            $this->assertFalse($block['rtl'], 'Naskah gabungan harus LTR walau ada soal Arab.');
+            $this->assertSame(['A', 'B', 'C', 'D'], array_column($block['opsi'], 'display_label'));
+        }
+
+        $htmlGabungan = app(\App\Services\Ljk\LjkSoalSheet::class)->render($examGabungan->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+        $this->assertStringNotContainsString('class="qbody" style="text-align: right;"', $htmlGabungan);
+        $this->assertStringContainsString('<span class="letter">A.</span>', $htmlGabungan);
+
+        // (b) Ujian ARAB → seluruh lembar RTL, nomor Arab, huruf Arab.
+        $examArab = $this->createExamViaHttp(['bahasa' => 'arab']);
+        $dataArab = app(\App\Services\Ljk\LjkSoalSheet::class)
+            ->data($examArab->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+
+        $this->assertSame('arab', $dataArab['examBahasa']);
+        $this->assertTrue($dataArab['arabAngka']);
+
+        foreach (collect($dataArab['blocks'])->where('type', 'soal') as $block) {
+            $this->assertTrue($block['rtl']);
+            $this->assertSame(['ا', 'ب', 'ج', 'د'], array_column($block['opsi'], 'display_label'));
+        }
+
+        // Nomor tampil memakai digit Arab (mis. ١.).
+        $pertama = collect($dataArab['blocks'])->firstWhere('type', 'soal');
+        $this->assertSame('١.', $pertama['nomor_tampil']);
+
+        $htmlArab = app(\App\Services\Ljk\LjkSoalSheet::class)->render($examArab->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+
+        // RTL: teks didahulukan, nomor di sel kanan, penanda ".ج" setelah teks.
+        $this->assertStringContainsString('class="qbody" style="text-align: right;"', $htmlArab);
+        $this->assertStringContainsString('class="qno" style="text-align: right;"', $htmlArab);
+        $this->assertStringContainsString('١.', $htmlArab);
+        $this->assertStringContainsString('<span class="letter">.<span class="ar">', $htmlArab);
+        $this->assertStringNotContainsString('<span class="letter">A.</span>', $htmlArab);
     }
 
     public function test_guru_tidak_berwenang_tidak_bisa_melihat_ujian(): void

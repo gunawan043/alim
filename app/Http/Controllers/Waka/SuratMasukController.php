@@ -11,11 +11,27 @@ class SuratMasukController extends Controller
 {
     public function index(Request $request)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
+
+        $base = SuratMasuk::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
+
+        $stats = [
+            'total' => (clone $base)->count(),
+            'baru' => (clone $base)->where('status', SuratMasuk::STATUS_BARU)->count(),
+            'didisposisi' => (clone $base)->where('status', SuratMasuk::STATUS_DIDISPOSISI)->count(),
+            'selesai' => (clone $base)->where('status', SuratMasuk::STATUS_SELESAI)->count(),
+        ];
 
         $query = SuratMasuk::query();
         if ($schoolId) {
             $query->where('school_id', $schoolId);
+        }
+
+        if ($request->filled('dari')) {
+            $query->whereDate('tanggal_diterima', '>=', $request->input('dari'));
+        }
+        if ($request->filled('sampai')) {
+            $query->whereDate('tanggal_diterima', '<=', $request->input('sampai'));
         }
 
         if ($request->filled('status')) {
@@ -36,7 +52,7 @@ class SuratMasukController extends Controller
         $suratMasukList = $query->orderBy('tanggal_diterima', 'desc')
             ->paginate(15)->withQueryString();
 
-        return view('waka.surat-masuk.index', compact('suratMasukList'));
+        return view('waka.surat-masuk.index', compact('suratMasukList', 'stats'));
     }
 
     public function create(Request $request)
@@ -47,7 +63,7 @@ class SuratMasukController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nomor_surat' => 'required|string|max:100',
+            'nomor_surat' => 'nullable|string|max:100',
             'tanggal_surat' => 'required|date',
             'tanggal_diterima' => 'required|date',
             'pengirim' => 'required|string|max:255',
@@ -65,7 +81,16 @@ class SuratMasukController extends Controller
                 ->store('surat/masuk', 'public');
         }
 
-        $validated['school_id'] = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
+        if (! $schoolId) {
+            return back()->withInput()->with('error', 'Satuan pendidikan tidak terdeteksi. Pilih konteks satuan pendidikan lalu coba lagi.');
+        }
+
+        $validated['school_id'] = $schoolId;
+
+        if (empty($validated['nomor_surat'])) {
+            $validated['nomor_surat'] = app(\App\Services\SuratNumberService::class)->next($schoolId, 'masuk');
+        }
 
         SuratMasuk::create($validated);
 
@@ -75,7 +100,7 @@ class SuratMasukController extends Controller
 
     public function show(Request $request, string $id)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
         $query = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $surat = $query->findOrFail($id);
 
@@ -84,7 +109,7 @@ class SuratMasukController extends Controller
 
     public function edit(Request $request, string $id)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
         $query = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $surat = $query->findOrFail($id);
 
@@ -93,7 +118,7 @@ class SuratMasukController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
         $surat = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
@@ -127,7 +152,7 @@ class SuratMasukController extends Controller
 
     public function destroy(Request $request, string $id)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
+        $schoolId = $this->resolveSchoolId($request);
         $surat = SuratMasuk::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         if ($surat->file_lampiran && Storage::disk('public')->exists($surat->file_lampiran)) {
@@ -137,5 +162,19 @@ class SuratMasukController extends Controller
 
         return redirect()->route('waka.surat-masuk.index')
             ->with('success', 'Surat masuk berhasil dihapus.');
+    }
+
+    /**
+     * Konteks satuan pendidikan: middleware → unit kerja pengguna.
+     */
+    private function resolveSchoolId(Request $request): ?string
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId) {
+            return $schoolId;
+        }
+
+        return $request->user()?->employment?->school_id;
     }
 }

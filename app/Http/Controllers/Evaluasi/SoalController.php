@@ -121,6 +121,7 @@ class SoalController extends Controller
 
         $validated = $request->validate([
             'tipe_soal' => 'required|in:pg,bs,jodoh,isian,uraian',
+            'bahasa' => 'nullable|in:latin,arab,gabungan',
             'pertanyaan' => 'required|string',
             'pembahasan' => 'nullable|string|max:5000',
             'materi' => 'nullable|string|max:150',
@@ -151,6 +152,7 @@ class SoalController extends Controller
                 'wacana_id' => $this->resolveWacana($request, $bank, $userId),
                 'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
+                'bahasa' => $validated['bahasa'] ?? 'latin',
                 'pertanyaan' => $validated['pertanyaan'],
                 'pembahasan' => $validated['pembahasan'] ?? null,
                 'gambar_path' => $validated['gambar_path'] ?? null,
@@ -234,6 +236,7 @@ class SoalController extends Controller
 
         $validated = $request->validate([
             'tipe_soal' => 'required|in:pg,bs,jodoh,isian,uraian',
+            'bahasa' => 'nullable|in:latin,arab,gabungan',
             'pertanyaan' => 'required|string',
             'pembahasan' => 'nullable|string|max:5000',
             'materi' => 'nullable|string|max:150',
@@ -265,6 +268,7 @@ class SoalController extends Controller
                     : $soal->wacana_id,
                 'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
+                'bahasa' => $validated['bahasa'] ?? $soal->bahasa ?? 'latin',
                 'pertanyaan' => $validated['pertanyaan'],
                 'pembahasan' => $validated['pembahasan'] ?? null,
                 'gambar_path' => $validated['gambar_path'] ?? null,

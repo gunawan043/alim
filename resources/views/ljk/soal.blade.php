@@ -85,6 +85,8 @@
 
     <div class="alert alert-light border d-flex flex-wrap gap-3 no-print" style="font-size:0.8125rem;">
         <span><i class="ri-font-size-2 me-1"></i>Font PDF: <strong>{{ \App\Services\Ljk\LjkPdfFonts::activeLabel() }}</strong></span>
+        <span><i class="ri-translate-2 me-1"></i>Font Arab: <strong>{{ \App\Services\Ljk\LjkPdfFonts::arabicFontLabel() }}</strong></span>
+        <span><i class="ri-text-direction-r me-1"></i>Bahasa naskah: <strong>{{ \App\Models\Soal::BAHASA_OPTIONS[$exam->bahasa ?? 'gabungan'] ?? 'Gabungan' }}</strong></span>
         <span class="text-muted">{{ \App\Services\Ljk\LjkPdfFonts::installHint() }}</span>
     </div>
 

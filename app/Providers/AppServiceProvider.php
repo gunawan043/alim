@@ -113,7 +113,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Services\ArabicName\Contracts\ArabicNameGeneratorContract::class,
             function ($app) {
-                return config('arabic_names.driver') === 'ai'
+                $aiEnabled = config('arabic_names.driver') === 'ai'
+                    || $app->make(\App\Services\Ai\AiProviderService::class)->isConfigured();
+
+                return $aiEnabled
                     ? $app->make(\App\Services\ArabicName\AiArabicNameGenerator::class)
                     : $app->make(\App\Services\ArabicName\ArabicNameGenerator::class);
             }

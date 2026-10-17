@@ -115,6 +115,7 @@ use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\NotificationPageController;
+use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\OtherTeacherTaskController;
 use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
 use App\Http\Controllers\PengasuhDashboardController;
@@ -163,7 +164,8 @@ use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairVsReplaceController;
-// use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
+// use App\Http\Controllers\SuperAdmin\AiProviderController;
+use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
 use App\Http\Controllers\Sarpras\SarprasSparepartController;
@@ -238,6 +240,7 @@ use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\Waka\SupervisiController;
 use App\Http\Controllers\Waka\SupervisiInstrumenController;
 use App\Http\Controllers\Waka\SuratKeluarController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\WakaController;
 use App\Http\Controllers\WaliAsramaDashboardController;
@@ -403,6 +406,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::delete('/{id}', [NotificationUniversalController::class, 'destroy'])->name('destroy');
                 Route::get('/unread-count', [NotificationUniversalController::class, 'unreadCount'])->name('unread-count');
                 Route::get('/page', [NotificationPageController::class, 'index'])->name('page');
+                Route::get('/preferensi', [NotificationPreferenceController::class, 'edit'])->name('preferences');
+                Route::put('/preferensi', [NotificationPreferenceController::class, 'update'])->name('preferences.update');
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -514,6 +519,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/import-nama-arab', [GtkArabicNameController::class, 'import'])->name('import-nama-arab-process');
                 Route::get('/import-nama-arab/template', [GtkArabicNameController::class, 'template'])->name('import-nama-arab-template');
                 Route::post('/import-nama-arab/generate', [GtkArabicNameController::class, 'generate'])->name('import-nama-arab-generate');
+
+                // ── REVIEW & APPROVAL NAMA ARAB GTK ──
+                Route::get('/review-nama-arab', [GtkArabicNameController::class, 'review'])->name('review-nama-arab');
+                Route::post('/review-nama-arab/approve-all', [GtkArabicNameController::class, 'approveAll'])->name('review-nama-arab-approve-all');
+                Route::post('/review-nama-arab/{gtkUserId}', [GtkArabicNameController::class, 'approve'])->name('review-nama-arab-approve');
                 Route::post('/datatable', [GtkWizardController::class, 'datatable'])->name('datatable');
                 Route::get('/export-preview', [GtkWizardController::class, 'exportPreview'])->name('export.preview');
                 Route::get('/export', [GtkWizardController::class, 'export'])->name('export');
@@ -874,11 +884,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/manual-checkin', [TeacherQrScanController::class, 'manualCheckin'])
                     ->middleware('permission:teacher-attendance_manual')
                     ->name('manual-checkin');
+                // Riwayat: semua guru boleh melihat riwayatnya sendiri.
+                // Scoping (own vs all) dilakukan di controller berdasarkan permission.
                 Route::get('/history', [TeacherQrScanController::class, 'history'])
-                    ->middleware('permission:teacher-attendance_view')
                     ->name('history');
                 Route::get('/history/export', [TeacherQrScanController::class, 'exportHistory'])
-                    ->middleware('permission:teacher-attendance_view')
                     ->name('history.export');
                 Route::post('/manual-checkout', [TeacherQrScanController::class, 'manualCheckout'])
                     ->middleware('permission:teacher-attendance_manual')
@@ -911,6 +921,17 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [PayrollController::class, 'index'])->name('index');
                 Route::get('/create', [PayrollController::class, 'create'])->name('create');
                 Route::post('/', [PayrollController::class, 'store'])->name('store');
+                Route::get('/generate', [PayrollController::class, 'generateForm'])->name('generate');
+                Route::post('/generate', [PayrollController::class, 'generate'])->name('generate.store');
+                Route::get('/master', [PayrollController::class, 'master'])->name('master');
+                Route::post('/master/rules', [PayrollController::class, 'updateRules'])->name('master.rules');
+                Route::post('/master/tunjangan', [PayrollController::class, 'tunjanganStore'])->name('master.tunjangan.store');
+                Route::put('/master/tunjangan/{id}', [PayrollController::class, 'tunjanganUpdate'])->name('master.tunjangan.update');
+                Route::delete('/master/tunjangan/{id}', [PayrollController::class, 'tunjanganDestroy'])->name('master.tunjangan.destroy');
+                Route::post('/master/import', [PayrollController::class, 'importMaster'])->name('master.import');
+                Route::get('/master/template/{type}', [PayrollController::class, 'templateMaster'])->name('master.template');
+                Route::post('/{id}/publish', [PayrollController::class, 'publish'])->name('publish');
+                Route::post('/{id}/pay', [PayrollController::class, 'pay'])->name('pay');
                 Route::get('/{id}/edit', [PayrollController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [PayrollController::class, 'update'])->name('update');
                 Route::delete('/{id}', [PayrollController::class, 'destroy'])->name('destroy');
@@ -1297,6 +1318,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [KisiKisiController::class, 'index'])->name('index');
                 Route::get('/create', [KisiKisiController::class, 'create'])->name('create');
                 Route::post('/', [KisiKisiController::class, 'store'])->name('store');
+                Route::get('/{kisiUuid}/cetak', [KisiKisiController::class, 'cetak'])->name('cetak');
                 Route::get('/{kisiUuid}', [KisiKisiController::class, 'show'])->name('show');
                 Route::get('/{kisiUuid}/edit', [KisiKisiController::class, 'edit'])->name('edit');
                 Route::put('/{kisiUuid}', [KisiKisiController::class, 'update'])->name('update');
@@ -1432,6 +1454,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/import-nama-arab', [StudentArabicNameController::class, 'import'])->name('import-nama-arab-process')->middleware('dormitory.restrict:students');
                 Route::get('/import-nama-arab/template', [StudentArabicNameController::class, 'template'])->name('import-nama-arab-template');
                 Route::post('/import-nama-arab/generate', [StudentArabicNameController::class, 'generate'])->name('import-nama-arab-generate')->middleware('dormitory.restrict:students');
+
+                // ── REVIEW & APPROVAL NAMA ARAB SANTRI ──
+                Route::get('/review-nama-arab', [StudentArabicNameController::class, 'review'])->name('review-nama-arab')->middleware('dormitory.restrict:students');
+                Route::post('/review-nama-arab/approve-all', [StudentArabicNameController::class, 'approveAll'])->name('review-nama-arab-approve-all')->middleware('dormitory.restrict:students');
+                Route::post('/review-nama-arab/{studentId}', [StudentArabicNameController::class, 'approve'])->name('review-nama-arab-approve')->middleware('dormitory.restrict:students');
                 // Global mahrom listing MUST come before {santriUuid} so it isn't shadowed by the show route.
                 Route::get('/mahroms', [StudentMahromController::class, 'globalIndex'])->name('mahroms.global');
                 // Global CRUD for mahrom (cross-student): tambah/edit/hapus dari halaman Data Mahrom.
@@ -2306,6 +2333,16 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/clear-cache', [SystemSettingController::class, 'clearCache'])->name('clear-cache');
                 });
 
+                // ── PENGATURAN PROVIDER AI (multi-platform) ─────────
+                Route::prefix('ai-providers')->name('ai-providers.')->group(function () {
+                    Route::get('/', [AiProviderController::class, 'index'])->name('index');
+                    Route::post('/', [AiProviderController::class, 'store'])->name('store');
+                    Route::put('/{id}', [AiProviderController::class, 'update'])->name('update');
+                    Route::post('/{id}/default', [AiProviderController::class, 'setDefault'])->name('default');
+                    Route::post('/{id}/test', [AiProviderController::class, 'test'])->name('test');
+                    Route::delete('/{id}', [AiProviderController::class, 'destroy'])->name('destroy');
+                });
+
                 Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])->name('users.unlock');
                 Route::post('/ip-unblock', [UserSecurityController::class, 'unblockIp'])->name('ip.unblock');
 
@@ -2419,6 +2456,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/laporan/gtk', [UserLaporanController::class, 'gtk'])->name('laporan.gtk');
             Route::get('/laporan/keuangan', [UserLaporanController::class, 'keuangan'])->name('laporan.keuangan');
             Route::get('/laporan/asrama', [UserLaporanController::class, 'asrama'])->name('laporan.asrama');
+            Route::get('/laporan/pdf/{type}', [UserLaporanController::class, 'pdf'])->name('laporan.pdf');
+            Route::get('/laporan/export/{type}', [UserLaporanController::class, 'export'])->name('laporan.export');
         });
 });
 
@@ -2834,10 +2873,17 @@ Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
             Route::post('/item/{itemId}/pindah', [SupervisiInstrumenController::class, 'moveItem'])->name('item.move');
         });
 
+        // ── TEMPLATE SURAT ──────────────────────────────────────
+        Route::get('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'index'])->name('surat-template.index');
+        Route::post('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'store'])->name('surat-template.store');
+        Route::put('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'update'])->name('surat-template.update');
+        Route::delete('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'destroy'])->name('surat-template.destroy');
+
         // ── SURAT MASUK ─────────────────────────────────────────
         Route::resource('surat-masuk', SuratMasukController::class);
 
         // ── SURAT KELUAR ────────────────────────────────────────
+        Route::get('surat-keluar/{id}/cetak', [SuratKeluarController::class, 'cetak'])->name('surat-keluar.cetak');
         Route::resource('surat-keluar', SuratKeluarController::class);
 
         // ── PEKAN EFEKTIF ───────────────────────────────────────
@@ -2925,6 +2971,10 @@ Route::middleware(['auth', EnsureSuperAdminOrSystemAdmin::class])
         Route::get('/view-as/state', [ViewAsController::class, 'state'])->name('view-as.state');
     });
 
+// ── WEBHOOK WHATSAPP CLOUD API (META) ────────────────────────────────────────
+Route::get('/webhook/whatsapp', [WhatsAppWebhookController::class, 'verify']);
+Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'receive']);
+
 Route::fallback([HomeController::class, 'index']);
 
 // ── AUTO-DEPLOY WEBHOOK ────────────────────────────────────────────────────────
@@ -2932,12 +2982,6 @@ Route::fallback([HomeController::class, 'index']);
 Route::post('/webhook/deploy', [DeployController::class, 'handle']);
 Route::get('/health', [DeployController::class, 'health']);
 
-Route::get('send-wa', function () {
-    $responnya = Http::withHeaders([
-        'Authorization' => '2Tv7cQpqayjL2TRQ1GWP',
-    ])->post('https://api.fonnte.com/send', [
-        'target' => '082146898982',
-        'message' => 'Halo, ini pesan WhatsApp dari server.',
-    ]);
-    dd($responnya->json());
-});
+// ── VERIFIKASI PUBLIK SURAT (QR) ─────────────────────────────────────────────
+Route::get('/verifikasi-surat/{token}', [\App\Http\Controllers\SuratVerificationController::class, 'show'])
+    ->name('surat.verify');

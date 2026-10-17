@@ -107,6 +107,16 @@
             </div>
         </div>
 
+        @if(($result['mahrom_created'] ?? 0) > 0)
+            <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+                <i class="ri-parent-line fs-5"></i>
+                <div>
+                    <strong>{{ $result['mahrom_created'] }} data mahrom/orang tua</strong> ikut tersimpan
+                    (Ayah/Ibu/Wali). Data yang sudah ada tidak ditimpa — hanya peran yang belum tercatat yang dilengkapi.
+                </div>
+            </div>
+        @endif
+
         {{-- Error list — diperluas agar mudah dibaca --}}
         @if($totalErr)
             <div class="card border-danger mb-4">
@@ -231,6 +241,7 @@
                                         Baris 4-5 = header kolom.<br>
                                         Baris 6+ = data santrimu.<br>
                                         <strong>Nama</strong> dan <strong>JK (L/P)</strong> wajib.
+                                        Data <strong>Ayah/Ibu/Wali</strong> otomatis tersimpan sebagai mahrom.
                                     </p>
                                 </div>
                             </div>

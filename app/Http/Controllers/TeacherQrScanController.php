@@ -430,15 +430,42 @@ class TeacherQrScanController extends Controller
         try {
             $workUnitId = \App\Models\School::find($jadwalKbm->school_id)?->work_unit_id;
 
-            app(\App\Services\NotificationUniversalService::class)->notifyGtk($workUnitId, [
+            $notifier = app(\App\Services\NotificationUniversalService::class);
+            $group = $jadwalKbm->studyGroup?->name ?? '-';
+            $subject = $jadwalKbm->subject?->name ?? 'Jam Pelajaran';
+
+            // Pemberitahuan ke satuan kerja (in-app), kecuali guru yang bersangkutan.
+            $notifier->notifyGtk($workUnitId, [
                 'module' => 'teacher-attendance',
                 'reference_type' => 'teacher_class_attendance',
                 'reference_id' => $attendance->id,
                 'type' => 'warning',
                 'action' => 'teacher_late',
                 'title' => 'GTK terlambat: '.($user->name ?? 'GTK'),
-                'message' => 'Terlambat '.$lateMinutes.' menit pada '.($jadwalKbm->studyGroup?->name ?? '-').' (jadwal '.$startTime.').',
-            ]);
+                'message' => 'Terlambat '.$lateMinutes.' menit pada '.$group.' (jadwal '.$startTime.').',
+            ], $user->id);
+
+            // Konfirmasi langsung ke guru (in-app + channel sesuai preferensi).
+            $prefs = \App\Models\NotificationPreference::forUser($user);
+
+            if ($prefs->late_notification) {
+                $notifier->send($user->id, [
+                    'module' => 'teacher-attendance',
+                    'reference_type' => 'teacher_class_attendance',
+                    'reference_id' => $attendance->id,
+                    'type' => 'warning',
+                    'action' => 'teacher_late',
+                    'title' => 'Anda tercatat terlambat '.$lateMinutes.' menit',
+                    'message' => 'Jam '.$subject.' di '.$group.' (jadwal '.$startTime.') tercatat terlambat '.$lateMinutes.' menit. Segera masuk kelas.',
+                    'action_url' => route('user.teacher-qr.scan', ['userId' => $user->id]),
+                    'action_text' => 'Buka Scan QR',
+                    'priority' => 'high',
+                    'send_email' => $prefs->email_enabled,
+                    'send_whatsapp' => $prefs->whatsapp_enabled,
+                    'send_push' => $prefs->push_enabled,
+                    'template_params' => [$subject, $group, $startTime, (string) $lateMinutes],
+                ]);
+            }
         } catch (\Throwable $e) {
             report($e);
         }
@@ -453,30 +480,57 @@ class TeacherQrScanController extends Controller
         $start = $request->input('start_date', now()->startOfWeek()->format('Y-m-d'));
         $end = $request->input('end_date', now()->endOfWeek()->format('Y-m-d'));
         $statusFilter = $request->input('status');
+        $search = trim((string) $request->input('q'));
 
         // Permission-based scoping — same logic as exportHistory()
         $hasFullReportExport = canPermission('teacher-attendance_report_export');
 
-        $query = TeacherClassAttendance::with(['jadwalKbm.studyGroup', 'jadwalKbm.subject'])
-            ->whereBetween('attendance_date', [$start, $end]);
+        $base = TeacherClassAttendance::query()
+            ->whereDate('attendance_date', '>=', $start)
+            ->whereDate('attendance_date', '<=', $end);
 
         if (! $hasFullReportExport) {
-            $query->where('teacher_id', $user->id);
+            $base->where('teacher_id', $user->id);
         }
 
         if ($statusFilter) {
             match ($statusFilter) {
-                'hadir' => $query->where('status_masuk', 'hadir'),
-                'terlambat' => $query->where('status_masuk', 'terlambat'),
-                'belum_keluar' => $query->where('status_keluar', 'belum_keluar'),
-                'keluar_cepat' => $query->where('status_keluar', 'keluar_cepat'),
+                'hadir' => $base->where('status_masuk', 'hadir'),
+                'terlambat' => $base->where('status_masuk', 'terlambat'),
+                'belum_keluar' => $base->where('status_keluar', 'belum_keluar'),
+                'keluar_cepat' => $base->where('status_keluar', 'keluar_cepat'),
                 default => null,
             };
         }
 
-        $records = $query->orderByDesc('attendance_date')->orderBy('jadwal_kbm_id')->get();
+        if ($search !== '') {
+            $base->where(function ($w) use ($search) {
+                $w->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('jadwalKbm.studyGroup', fn ($g) => $g->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('jadwalKbm.subject', fn ($s) => $s->where('name', 'like', "%{$search}%"));
+            });
+        }
 
-        return view('teacher.qr.scan.history', compact('records', 'start', 'end', 'statusFilter'));
+        // Ringkasan dihitung dari seluruh hasil filter (bukan hanya halaman aktif).
+        $stats = [
+            'total' => (clone $base)->count(),
+            'hadir' => (clone $base)->where('status_masuk', 'hadir')->count(),
+            'terlambat' => (clone $base)->where('status_masuk', 'terlambat')->count(),
+            'belum_keluar' => (clone $base)->where('status_keluar', 'belum_keluar')->count(),
+            'keluar_cepat' => (clone $base)->where('status_keluar', 'keluar_cepat')->count(),
+            'avg_late' => (int) round((float) ((clone $base)->avg('late_minutes') ?? 0)),
+        ];
+
+        $records = (clone $base)
+            ->with(['teacher', 'jadwalKbm.teacher', 'jadwalKbm.studyGroup.gradeLevel', 'jadwalKbm.subject'])
+            ->orderByDesc('attendance_date')
+            ->orderBy('scheduled_start_time')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('teacher.qr.scan.history', compact(
+            'records', 'start', 'end', 'statusFilter', 'search', 'stats', 'hasFullReportExport',
+        ));
     }
 
     /**
@@ -684,7 +738,8 @@ class TeacherQrScanController extends Controller
         $hasFullReportExport = canPermission('teacher-attendance_report_export');
 
         $query = TeacherClassAttendance::with(['teacher', 'jadwalKbm.studyGroup', 'jadwalKbm.subject'])
-            ->whereBetween('attendance_date', [$start, $end]);
+            ->whereDate('attendance_date', '>=', $start)
+            ->whereDate('attendance_date', '<=', $end);
 
         if (! $hasFullReportExport) {
             $query->where('teacher_id', $user->id);

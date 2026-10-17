@@ -60,6 +60,10 @@ class PaketSoalItem extends Model
                 $konten['wacana'] = $this->soal?->wacanaPayload();
             }
 
+            if (! array_key_exists('bahasa', $konten)) {
+                $konten['bahasa'] = $this->soal?->bahasaEfektif();
+            }
+
             return $konten;
         }
 
@@ -68,6 +72,7 @@ class PaketSoalItem extends Model
         return [
             'nomor' => $this->nomor ?? $this->urutan,
             'jenis' => $this->jenis_soal ?? $soal?->tipe_soal,
+            'bahasa' => $soal?->bahasaEfektif(),
             'soal_id' => $soal?->id,
             'wacana' => $soal?->wacanaPayload(),
             'tp_id' => $soal?->tp_id,

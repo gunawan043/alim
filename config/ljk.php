@@ -18,7 +18,7 @@ return [
     | Disimpan pada setiap scan (ljk_scans.engine_version) agar hasil lama
     | tetap dapat diaudit ketika algoritma berkembang.
     */
-    'engine_version' => 'omr-v1.0.0',
+    'engine_version' => 'omr-v1.2.0',
 
     /*
     |--------------------------------------------------------------------------
@@ -84,11 +84,11 @@ return [
         // satu garis diagonal → bukan X (miring/centang/garis).
         'diagonal_balance_min' => 0.34,
         // Skor opsi dianggap terisi kuat.
+        // Sejak omr-v1.1.0: dua kandidat kuat SELALU ganda (review guru),
+        // tidak ada auto-pilih berdasarkan selisih skor.
         'option_strong' => 0.56,
         // Skor opsi dianggap sebagai indikasi lemah.
         'option_weak' => 0.33,
-        // Jarak minimum top-1 vs top-2 agar tidak dianggap ganda.
-        'strong_margin' => 0.12,
         // Kandidat tunggal (tanpa anomali) dengan skor >= nilai ini diterima
         // sebagai terbaca walau di bawah option_strong (X tipis/blur ringan).
         'single_candidate_min' => 0.47,
@@ -96,6 +96,10 @@ return [
         'double_tolerance' => 0.10,
         // Di bawah ini dianggap kotak kosong.
         'empty_max' => 0.28,
+        // Pembatalan jawaban "X=": minimal dua garis horizontal panjang
+        // di dalam kotak (siswa tanpa penghapus).
+        'cancel_long_run_ratio' => 0.55,
+        'cancel_min_lines' => 2,
         // Kerapatan tinta minimum agar kotak dinilai "ada tulisan".
         'ink_min_ratio' => 0.015,
         // Ambang deteksi tinta lokal: gray < localMean - max(c, localMean*ratio).
@@ -135,19 +139,20 @@ return [
     'template' => [
         'default_code' => 'LJK-A4-PILIHAN-GANDA',
         'paper' => ['size' => 'A4', 'width_mm' => 210.0, 'height_mm' => 297.0],
-        'margin_mm' => ['top' => 13.0, 'right' => 11.0, 'bottom' => 12.0, 'left' => 11.0],
+        'margin_mm' => ['top' => 13.0, 'right' => 11.0, 'bottom' => 12.0, 'left' => 15.0],
         'fiducial' => ['size_mm' => 6.0, 'offset_mm' => 7.0],
         'qr' => ['size_mm' => 24.0, 'offset_top_mm' => 12.0],
         'box' => ['width_mm' => 6.2, 'height_mm' => 4.8, 'gap_mm' => 1.4],
         'row_height_mm' => 8.2,
         'column_gap_mm' => 6.0,
-        // Kolom yang dipakai sejak awal (mis. 2 kolom: kiri no 1-10, kanan no 11-20).
-        // Kolom tambahan otomatis dipakai bila jumlah soal tidak muat.
-        'preferred_columns' => 2,
-        'max_columns' => 3,
+        // Satu baris memuat 4 soal berurutan (kiri → kanan). Jumlah kolom
+        // otomatis turun bila opsi 5 huruf tidak muat (3 kolom).
+        'preferred_columns' => 4,
+        'max_columns' => 4,
         'max_options' => 5,
-        // Ruang kop lembaga + judul + identitas peserta di atas area jawaban.
-        'header_height_mm' => 58.0,
+        // Ruang kop lembaga + judul + identitas + penanaman karakter +
+        // instruksi di atas area jawaban (lembar soal & lembar jawaban).
+        'header_height_mm' => 98.0,
         'footer_margin_mm' => 14.0,
         // Tinggi gambar kop maksimum (mm) bila sekolah mengunggah kop surat.
         'max_kop_height_mm' => 20.0,
@@ -213,7 +218,15 @@ return [
                 '/System/Library/Fonts',
             ],
             'fallback' => 'DejaVu Serif',
-            // Font Arab opsional (Amiri/Scheherazade/KFGQPC/Noto Naskh).
+            // Urutan preferensi font Arab (dicari di arabic_paths). Hanya font
+            // yang memuat bentuk presentasi Arab (FE70–FEFC) yang dipakai,
+            // karena shaping dilakukan di PHP (Dompdf tanpa mesin OpenType).
+            'arabic_preferred' => [
+                'sakkal', 'majalla', 'xb ', 'shafigh', 'niloofar', 'riyaz', 'zar',
+                'amiri', 'scheherazade', 'kfgqpc', 'naskh', 'arabic', 'lateef',
+                'geeza', 'nile', 'thabit',
+            ],
+            // Font Arab opsional (Sakkal Majalla/XB/Amiri/Scheherazade/KFGQPC/Noto Naskh).
             // Bila tidak ada, dipakai DejaVu Sans bawaan Dompdf yang sudah
             // memuat bentuk presentasi Arab (shaping dilakukan di PHP).
             'arabic_paths' => [
@@ -248,9 +261,11 @@ return [
             'Bertaqwalah kepada Allah dengan berperilaku jujur dalam mengerjakan soal!',
             'Sebaik-baik pengawas adalah Allah Subhanahuwata\'ala!',
         ],
-        'instruksi' => 'Pilihlah jawaban yang paling tepat dengan memberikan tanda silang (X) pada huruf A, B, C atau D pada Lembar Jawaban yang disediakan !',
+        'instruksi' => 'Pilihlah jawaban yang paling tepat dengan memberikan tanda silang (X) pada huruf A, B, C atau D pada Lembar Jawaban yang disediakan! Jika mengganti jawaban, hapus tanda lama hingga bersih atau tulis tanda = pada X lama.',
         // Ditampilkan pada lembar soal berbahasa Arab (setelah instruksi Indonesia).
         'instruksi_arab' => 'اختر الجواب الأصح بوضع علامة (X) على الحرف ا، ب، ج، د في ورقة الجواب المرفقة !',
+        // Petunjuk pengisian pada LEMBAR JAWABAN.
+        'instruksi_ljk' => 'Pilih satu jawaban dengan membuat tanda silang (X) di dalam kotak menggunakan pulpen hitam atau biru. Jika mengganti jawaban, hapus X lama sampai bersih atau tulis tanda = pada X lama, lalu beri X pada kotak baru — dua X tanpa tanda = diperiksa guru.',
 
         // ── Format cetak (default setelan umum MS Word) ─────────────────
         // Font lembar soal (pt) — Cambria.
@@ -258,10 +273,10 @@ return [
         // Faktor kompensasi bila font Cambria/Caladea belum dipasang: font
         // pengganti (DejaVu Serif) tampil lebih besar pada pt yang sama,
         // sehingga ukuran dikalikan faktor ini agar setara 12 pt Cambria.
-        'font_size_fallback_scale' => 0.90,
-        // Jarak antar baris "single" (1.0); jarak antar SOAL 1.15.
+        'font_size_fallback_scale' => 0.80,
+        // Jarak antar baris "single" (1.0); jarak antar SOAL 1.5.
         'line_height' => 1.0,
-        'question_gap' => 1.15,
+        'question_gap' => 1.5,
         // Margin dalam inci (dikonversi otomatis ke mm): atas, bawah, kiri, kanan.
         'margin_in' => ['top' => 0.20, 'bottom' => 0.10, 'left' => 0.59, 'right' => 0.63],
         // Kertas: default A4; otomatis naik ke F4 (folio) bila menghemat halaman.
@@ -276,6 +291,8 @@ return [
         ],
         // Huruf pilihan ganda untuk soal berbahasa Arab (bukan A/B/C/D/E).
         'huruf_arab' => ['ا', 'ب', 'ج', 'د', 'هـ'],
+        // Nomor soal Arab: 'auto' → naskah Arab memakai ١، ٢، ٣; 'off' → Latin.
+        'angka_arab' => 'auto',
         // Identitas: jumlah baris maksimum pada tabel kop (2 pasang per baris).
         'identitas_baris_maks' => 3,
     ],

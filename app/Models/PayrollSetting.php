@@ -22,6 +22,7 @@ class PayrollSetting extends Model
 
         return match ($row->type) {
             'int', 'integer' => (int) $row->value,
+            'float', 'decimal' => (float) $row->value,
             'bool', 'boolean' => (bool) $row->value,
             'json' => json_decode((string) $row->value, true),
             default => $row->value,

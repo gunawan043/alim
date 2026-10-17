@@ -167,6 +167,7 @@ class LjkController extends Controller
             'admin_book_id' => 'required|uuid',
             'study_group_id' => 'nullable|uuid',
             'jenis_ujian' => 'required|in:sts,sas,ulangan_harian,try_out,latihan',
+            'bahasa' => 'nullable|in:latin,gabungan,arab',
             'nilai_target_column' => 'nullable|string|max:60',
             'tanggal' => 'nullable|date',
             'waktu_mulai' => 'nullable|date_format:H:i',
@@ -200,6 +201,7 @@ class LjkController extends Controller
                 'admin_book_id' => $book->id,
                 'study_group_id' => $data['study_group_id'] ?? $book->study_group_id,
                 'jenis_ujian' => $data['jenis_ujian'],
+                'bahasa' => $data['bahasa'] ?? null,
                 'nilai_target' => in_array($data['jenis_ujian'], ['sts', 'sas'], true)
                     ? null
                     : [

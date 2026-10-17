@@ -124,10 +124,10 @@
             <label class="form-label mb-0" style="font-size:.8rem">Jenis</label>
             <select name="jenis" class="form-select form-select-sm">
                 <option value="">Semua</option>
-                <option value="cuti_tahunan">Cuti Tahunan</option>
-                <option value="cuti_sakit">Cuti Sakit</option>
-                <option value="cuti_besar">Cuti Besar</option>
-                <option value="izin">Izin</option>
+                <option value="TAHUNAN">Cuti Tahunan</option>
+                <option value="SAKIT">Cuti Sakit</option>
+                <option value="BESAR">Cuti Besar</option>
+                <option value="LAINNYA">Lainnya</option>
             </select>
         </div>
         <div class="col-md-3">

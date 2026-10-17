@@ -87,6 +87,10 @@
                            class="btn btn-outline-success">
                             <i class="ri-download-2-line me-1"></i>Unduh Template Excel
                         </a>
+                        <a href="{{ route('user.gtk.review-nama-arab', ['userId' => $userId]) }}"
+                           class="btn btn-outline-primary">
+                            <i class="ri-check-double-line me-1"></i>Review &amp; Setujui
+                        </a>
                     </div>
 
                     <form method="POST" action="{{ route('user.gtk.import-nama-arab-process', ['userId' => $userId]) }}"
@@ -110,7 +114,7 @@
             <div class="card">
                 <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="ri-magic-line text-primary me-1"></i>Isi Otomatis (Generator)
-                        @if(config('arabic_names.driver') === 'ai')
+                        @if(config('arabic_names.driver') === 'ai' || app(\App\Services\Ai\AiProviderService::class)->isConfigured())
                             <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:10px;">AI</span>
                         @else
                             <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:10px;">Kaidah Transliterasi</span>

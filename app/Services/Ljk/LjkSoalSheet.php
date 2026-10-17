@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Ljk;
 
 use App\Models\LjkExam;
+use App\Models\LjkParticipant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -31,8 +32,22 @@ class LjkSoalSheet
     {
         $exam->loadMissing(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']);
 
-        $soal = $this->questions($exam);
+        $examBahasa = $this->examBahasa($exam);
+        $arabAngka = $examBahasa === 'arab' && (string) config('ljk.soal.angka_arab', 'auto') === 'auto';
+
+        $soal = $this->questions($exam, $examBahasa);
         $blocks = $this->blocks($soal);
+
+        // Nomor tampil: ١، ٢، ٣ untuk naskah Arab; 1, 2, 3 untuk lainnya.
+        foreach ($blocks as &$block) {
+            if ($block['type'] === 'soal') {
+                $block['nomor_tampil'] = $this->formatNumber((int) $block['nomor'], $arabAngka);
+            } elseif ($block['dari'] !== null) {
+                $block['dari_tampil'] = $this->formatNumber((int) $block['dari'], $arabAngka, false);
+                $block['sampai_tampil'] = $this->formatNumber((int) $block['sampai'], $arabAngka, false);
+            }
+        }
+        unset($block);
 
         $maxOptions = 2;
         foreach ($soal as $butir) {
@@ -41,22 +56,15 @@ class LjkSoalSheet
 
         $paper = $this->paper($paperKey);
         $marginMm = $this->marginMm();
+        $letterhead = app(LjkSchoolLetterhead::class)->data($exam->school);
 
         // Identitas dalam bentuk tabel: 2 pasang label/nilai per baris, maks 3 baris.
-        $identityRows = array_chunk([
-            ['Mata Pelajaran', (string) ($exam->subject?->name ?? '-')],
-            ['Hari/Tanggal', $this->dayDate($exam->tanggal) ?: '-'],
-            ['Kelas', $this->kelasLabel($exam)],
-            ['Waktu', $this->waktuLabel($exam) ?: '-'],
-            ['Guru Pengampu', (string) ($exam->adminBook?->teacher?->name ?? '-')],
-            ['Nama Peserta Didik', ''],
-        ], 2);
-
-        $identityRows = array_slice($identityRows, 0, max(1, (int) config('ljk.soal.identitas_baris_maks', 3)));
+        $identityRows = $this->identityRows($exam);
 
         return [
             'judul' => $this->judul($exam),
             'identityRows' => $identityRows,
+            'letterhead' => $letterhead,
             'paper' => $paper,
             'marginMm' => $marginMm,
             'lineHeight' => (float) config('ljk.soal.line_height', 1.0),
@@ -72,6 +80,8 @@ class LjkSoalSheet
             'instruksiArab' => (string) config('ljk.soal.instruksi_arab', ''),
             'soal' => $soal,
             'blocks' => $blocks,
+            'examBahasa' => $examBahasa,
+            'arabAngka' => $arabAngka,
             'maxOptions' => min(5, $maxOptions),
             'fontStack' => LjkPdfFonts::stack(),
             'arabicStack' => LjkPdfFonts::arabicStack(),
@@ -138,13 +148,55 @@ class LjkSoalSheet
     }
 
     /**
-     * Nomor soal yang berbahasa Arab (untuk huruf pilihan pada lembar jawaban).
+     * Bahasa naskah efektif: tersimpan pada ujian, atau diturunkan dari butir.
+     */
+    public function examBahasa(LjkExam $exam): string
+    {
+        $bahasa = (string) ($exam->bahasa ?? '');
+
+        if (in_array($bahasa, ['latin', 'arab', 'gabungan'], true)) {
+            return $bahasa;
+        }
+
+        if (! $exam->paketSoal) {
+            return 'latin';
+        }
+
+        $modes = $exam->paketSoal->items()->with('soal')->get()
+            ->map(fn ($item) => $item->soal?->bahasaEfektif() ?? 'latin');
+
+        return $modes->every(fn ($m) => $m === 'arab')
+            ? 'arab'
+            : ($modes->contains('arab') ? 'gabungan' : 'latin');
+    }
+
+    /**
+     * Format nomor: ١، ٢، ٣ (Arab) atau 1, 2, 3 (Latin).
+     */
+    public function formatNumber(int $number, bool $arab, bool $withDot = true): string
+    {
+        $digits = (string) $number;
+
+        if ($arab) {
+            $digits = strtr($digits, [
+                '0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤',
+                '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩',
+            ]);
+        }
+
+        return $digits.($withDot ? '.' : '');
+    }
+
+    /**
+     * Nomor soal yang memakai format Arab (untuk huruf & nomor lembar jawaban).
      *
      * @return array<int, int>
      */
     public function arabicQuestionNumbers(LjkExam $exam): array
     {
-        return $this->arabicNumbersFrom($this->questions($exam));
+        return $this->examBahasa($exam) === 'arab'
+            ? collect($this->questions($exam))->pluck('nomor')->map(fn ($n) => (int) $n)->values()->all()
+            : [];
     }
 
     /**
@@ -186,18 +238,20 @@ class LjkSoalSheet
      *
      * @return array<int, array{nomor:int, pertanyaan:string, opsi:array<int, array{label:string, teks:string}>, wacana:?array<string, mixed>}>
      */
-    public function questions(LjkExam $exam): array
+    public function questions(LjkExam $exam, ?string $examBahasa = null): array
     {
         if (! $exam->paketSoal) {
             return [];
         }
+
+        $examBahasa = $examBahasa ?? $this->examBahasa($exam);
 
         return $exam->paketSoal->items()
             ->with(['soal.options', 'soal.wacana'])
             ->orderBy('urutan')
             ->get()
             ->values()
-            ->map(function ($item, int $index) {
+            ->map(function ($item, int $index) use ($examBahasa) {
                 $konten = $item->kontenFinal();
                 $wacana = $konten['wacana'] ?? null;
 
@@ -206,24 +260,29 @@ class LjkSoalSheet
                     'teks' => (string) ($o['teks'] ?? ''),
                 ])->values()->all();
 
-                // Soal berbahasa Arab → huruf pilihan memakai ا، ب، ج، د، هـ.
-                $isArabic = LjkArabicText::hasArabic((string) ($konten['pertanyaan'] ?? ''))
-                    || collect($opsi)->contains(fn (array $o) => LjkArabicText::hasArabic($o['teks']))
-                    || LjkArabicText::hasArabic($wacana['teks'] ?? null);
+                // Format lembar mengikuti BAHASA UJIAN (bukan per soal):
+                // 'arab' → seluruh naskah RTL + huruf ا، ب، ج، د;
+                // 'latin'/'gabungan' → LTR + huruf A, B, C, D.
+                $bahasa = $examBahasa;
+                $isArabic = $bahasa === 'arab';
+                $rtl = $isArabic;
 
-                if ($isArabic) {
-                    $huruf = (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']);
-                    foreach ($opsi as $i => &$option) {
-                        $option['display_label'] = $huruf[$i] ?? (string) ($option['label'] ?? '');
-                    }
-                    unset($option);
+                // Label tampil: huruf Arab untuk mode arab, label asli untuk lainnya.
+                $huruf = (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']);
+                foreach ($opsi as $i => &$option) {
+                    $option['display_label'] = $isArabic
+                        ? ($huruf[$i] ?? (string) ($option['label'] ?? ''))
+                        : (string) ($option['label'] ?? '');
                 }
+                unset($option);
 
                 return [
                     'nomor' => (int) ($konten['nomor'] ?? $index + 1),
                     'pertanyaan' => (string) ($konten['pertanyaan'] ?? ''),
                     'opsi' => $opsi,
+                    'bahasa' => $bahasa,
                     'isArabic' => $isArabic,
+                    'rtl' => $rtl,
                     'wacana' => is_array($wacana) && ! empty($wacana['teks']) ? $wacana : null,
                 ];
             })
@@ -298,7 +357,17 @@ class LjkSoalSheet
      */
     public function wacanaRanges(LjkExam $exam): array
     {
-        return $this->rangesFromBlocks($this->blocks($this->questions($exam)));
+        $ranges = $this->rangesFromBlocks($this->blocks($this->questions($exam)));
+
+        if ($this->examBahasa($exam) !== 'arab' || (string) config('ljk.soal.angka_arab', 'auto') !== 'auto') {
+            return $ranges;
+        }
+
+        // Angka rentang wacana juga memakai digit Arab pada naskah Arab.
+        return array_map(fn (string $range) => strtr($range, [
+            '0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤',
+            '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩',
+        ]), $ranges);
     }
 
     /**
@@ -320,6 +389,47 @@ class LjkSoalSheet
         return [
             $judul,
             $tahun !== '' ? 'TAHUN AJARAN '.$tahun : '',
+        ];
+    }
+
+    /**
+     * Baris tabel identitas (maks 3 baris × 2 pasang label/nilai).
+     * Untuk lembar jawaban, nama & nomor peserta diisi bila peserta diberikan.
+     *
+     * @return array<int, array<int, array{0: string, 1: string}>>
+     */
+    public function identityRows(LjkExam $exam, ?LjkParticipant $participant = null): array
+    {
+        $nama = '';
+
+        if ($participant) {
+            $nama = trim(($participant->nomor_peserta ? $participant->nomor_peserta.' · ' : '')
+                .($participant->student?->name ?? ''));
+            $nama = $nama !== '' ? $nama : '-';
+        }
+
+        $rows = array_chunk([
+            ['Mata Pelajaran', (string) ($exam->subject?->name ?? '-')],
+            ['Hari/Tanggal', $this->dayDate($exam->tanggal) ?: '-'],
+            ['Kelas', $this->kelasLabel($exam)],
+            ['Waktu', $this->waktuLabel($exam) ?: '-'],
+            ['Guru Pengampu', (string) ($exam->adminBook?->teacher?->name ?? '-')],
+            ['Nama Peserta Didik', $nama],
+        ], 2);
+
+        return array_slice($rows, 0, max(1, (int) config('ljk.soal.identitas_baris_maks', 3)));
+    }
+
+    /**
+     * Judul lembar jawaban: baris 1 judul LJK, baris 2 tahun ajaran.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function judulLjk(LjkExam $exam): array
+    {
+        return [
+            'LEMBAR JAWABAN KOMPUTER (LJK)',
+            $this->judul($exam)[1] ?? '',
         ];
     }
 

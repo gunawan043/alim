@@ -69,7 +69,12 @@ class ArabicNameImportService
                 continue;
             }
 
-            $student->update(['name_ar' => $arabic]);
+            $student->update([
+                'name_ar' => $arabic,
+                'name_ar_status' => 'pending',
+                'name_ar_reviewed_at' => null,
+                'name_ar_reviewed_by' => null,
+            ]);
             $updated++;
         }
 
@@ -122,7 +127,12 @@ class ArabicNameImportService
                 continue;
             }
 
-            $user->update(['name_ar' => $arabic]);
+            $user->update([
+                'name_ar' => $arabic,
+                'name_ar_status' => 'pending',
+                'name_ar_reviewed_at' => null,
+                'name_ar_reviewed_by' => null,
+            ]);
             $updated++;
         }
 
@@ -152,7 +162,12 @@ class ArabicNameImportService
             $arabic = $this->generator->generate($student->name);
 
             if ($arabic !== '') {
-                $student->update(['name_ar' => $arabic]);
+                $student->update([
+                    'name_ar' => $arabic,
+                    'name_ar_status' => 'pending',
+                    'name_ar_reviewed_at' => null,
+                    'name_ar_reviewed_by' => null,
+                ]);
                 $count++;
             }
         }
@@ -184,7 +199,12 @@ class ArabicNameImportService
             $arabic = $this->generator->generate($user->name);
 
             if ($arabic !== '') {
-                $user->update(['name_ar' => $arabic]);
+                $user->update([
+                    'name_ar' => $arabic,
+                    'name_ar_status' => 'pending',
+                    'name_ar_reviewed_at' => null,
+                    'name_ar_reviewed_by' => null,
+                ]);
                 $count++;
             }
         }

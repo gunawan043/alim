@@ -448,8 +448,8 @@ class ArsipInventarisTest extends TestCase
     public function test_rapor_arab_memakai_nama_arab_dan_angka_otomatis(): void
     {
         $this->activeRombel->update(['homeroom_teacher_id' => $this->guru->id]);
-        $this->guru->update(['name_ar' => 'الأستاذ أحمد']);
-        $this->activeStudent->update(['name_ar' => 'الطالب']);
+        $this->guru->update(['name_ar' => 'الأستاذ أحمد', 'name_ar_status' => 'approved']);
+        $this->activeStudent->update(['name_ar' => 'سالم الفريد', 'name_ar_status' => 'approved']);
         $this->subject->update(['name_ar' => 'الرياضيات']);
         $this->school->update(['principal_name_ar' => 'المدير']);
 
@@ -522,6 +522,24 @@ class ArsipInventarisTest extends TestCase
         $this->assertStringContainsString('Santri Aktif', $htmlId);
         $this->assertStringContainsString('85', $htmlId);
         $this->assertStringNotContainsString('٨٥', $htmlId);
+
+        // Nama Arab berstatus pending TIDAK dipakai pada dokumen resmi.
+        $this->activeStudent->update(['name_ar_status' => 'pending']);
+
+        $htmlPending = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->activeRombel->fresh(),
+            $this->activeAy,
+            (string) $this->activeAy->id,
+            'ganjil',
+            'sts',
+            $this->activeStudent->fresh(),
+            'ar',
+        );
+
+        $this->assertStringNotContainsString(ArabicText::shape('سالم'), $htmlPending);
+        $this->assertStringNotContainsString(ArabicText::shape('الفريد'), $htmlPending);
+        $this->assertStringContainsString('Santri Aktif', $htmlPending);
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -480,6 +480,10 @@
                                         <i class="ri-translate-2 align-bottom me-1"></i> Import Nama Arab
                                     </a>
 
+                                    <a href="{{ route('user.gtk.review-nama-arab', ['userId' => $userId]) }}" class="btn btn-outline-success">
+                                        <i class="ri-check-double-line align-bottom me-1"></i> Review Nama Arab
+                                    </a>
+
                                     <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-warning">
                                         <i class="bx bx-add-to-queue align-bottom me-1"></i> Tambah GTK
                                     </a>
