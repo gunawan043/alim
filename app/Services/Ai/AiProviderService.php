@@ -145,7 +145,7 @@ class AiProviderService
         $result = $this->chat([
             ['role' => 'system', 'content' => 'Balas hanya dengan kata: OK'],
             ['role' => 'user', 'content' => 'Tes koneksi.'],
-        ], ['temperature' => 0, 'max_tokens' => 8, 'timeout' => 20], $provider);
+        ], ['temperature' => 0, 'max_tokens' => 256, 'timeout' => 30], $provider);
 
         if ($provider->exists) {
             $provider->forceFill([
