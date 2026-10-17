@@ -1,0 +1,77 @@
+# Project Alim — GTK Health Records Implementation
+
+## Date: 2026-07-31
+
+## Issue
+User requested hospital-style patient tracking for UKS:
+- "ada status perawatan seperti rumah sakit. misalkan yang sedang di rawat di uks saat ini adalah santri A posisi di ranjang B kemudian ada detail penyakit, pemberian obat, gejala dll..."
+
+## Implementation Summary
+
+### 1. Database — GTK Health Records Table
+Created comprehensive medical history table to track periodic check-ups (MCU, etc.) for GTK (teachers/staff).
+
+**Migration:** `database/migrations/2026_07_26_061359_create_gtk_health_records_table.php`
+
+**Fields:**
+- `user_id` (FK)
+- `check_date`, `source` (mcu, mandiri, medical_check, klinik)
+- `blood_pressure`, `pulse`, `temperature`
+- `height`, `weight`, `bmi`, `waist_circumference`
+- `cholesterol_total`, `triglycerides`, `blood_sugar_fasting`, `uric_acid`, `hemoglobin`
+- `right_eye_vision`, `left_eye_vision`, `peak_flow`
+- `complaints`, `physical_examination`, `diagnosis`, `recommendation`
+- `fitness_status` (sehat, sehat_dengan_catatan, belum_sehat)
+- `referred_to_faskes`, `referral_reason`
+- `smoking_status`, `physical_activity`
+
+### 2. Models
+- `App\Models\GtkHealthRecord` — with relationships, casts (date, decimal, boolean), scopes
+- `App\Models\GtkHealthData` — extended with more baseline health fields
+
+### 3. Controller — `Uks\GtkHealthController`
+Added two new methods:
+- `showRecords($gtkUuid)` — displays history of medical examinations
+- `storeRecord(Request $request, $gtkUuid)` — stores new check-up records
+
+Updated validation rules in `update()` to support all new fields.
+
+### 4. Routes
+Added routes:
+- `GET /gtk/{gtkUuid}/records` — `gtk-health.records.index`
+- `POST /gtk/{gtkUuid}/records` — `gtk-health.records.store`
+
+### 5. Views
+**Created:** `resources/views/uks/gtk-health/records.blade.php`
+
+Features:
+- Profile summary card on the left
+- Latest check-up summary with vitals color-coded by normal range
+- Full medical history table
+- Tabbed modal form for adding new check-ups:
+  - Tab 1: Vital Signs (BP, pulse, temperature)
+  - Tab 2: Anthropometry (height, weight, BMI, waist)
+  - Tab 3: Lab/X-ray (cholesterol, triglycerides, blood sugar, uric acid, hemoglobin)
+  - Tab 4: Diagnosis & Recommendation
+  - Tab 5: Special Tests (vision, peak flow, smoking, activity)
+- Per-record detail modal showing all fields
+- BMI auto-calculation in form
+
+**Updated:** `resources/views/uks/gtk-health/show.blade.php`
+- Expanded health data form with comprehensive baseline fields
+- Added quick-access navigation buttons to records page, patient list, dashboard
+
+## Files Modified
+1. `app/Http/Controllers/Uks/GtkHealthController.php`
+2. `app/Models/GtkHealthData.php` (already had fillables)
+3. `app/Models/GtkHealthRecord.php` (NEW)
+4. `database/migrations/2026_07_26_061318_add_more_health_fields_to_gtk_health_data_table.php`
+5. `database/migrations/2026_07_25_120800_create_gtk_health_data_table.php` (renamed)
+6. `database/migrations/2026_07_26_061359_create_gtk_health_records_table.php` (NEW)
+7. `routes/web.php`
+8. `resources/views/uks/gtk-health/records.blade.php` (NEW)
+9. `resources/views/uks/gtk-health/show.blade.php`
+
+## Status
+- Migration: PENDING — need to run `php artisan migrate`
+- Schema, Models, Controllers, Routes, Views: COMPLETE

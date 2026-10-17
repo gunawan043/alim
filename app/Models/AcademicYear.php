@@ -1,0 +1,100 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+
+class AcademicYear extends Model
+{
+    protected $table = 'academic_years';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
+    protected $fillable = [
+        'name',
+        'semester',
+        'is_active',
+        'locked_at',
+        'locked_by',
+        'lock_notes',
+        'start_date',
+        'end_date',
+        'semester_ganjil_start',
+        'semester_ganjil_end',
+        'semester_genap_start',
+        'semester_genap_end',
+        'registration_start',
+        'registration_end',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'locked_at' => 'datetime',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'semester_ganjil_start' => 'date',
+        'semester_ganjil_end' => 'date',
+        'semester_genap_start' => 'date',
+        'semester_genap_end' => 'date',
+        'registration_start' => 'date',
+        'registration_end' => 'date',
+    ];
+
+    protected $appends = ['semester_text'];
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+    }
+
+    // ── Accessors ─────────────────────────────────────────────────
+
+    public function getSemesterTextAttribute(): string
+    {
+        return match ($this->semester) {
+            'ganjil' => 'Ganjil',
+            'genap' => 'Genap',
+            default => ucfirst($this->semester ?? ''),
+        };
+    }
+
+    public function getYearRangeAttribute(): string
+    {
+        if (! $this->start_date || ! $this->end_date) {
+            return $this->name;
+        }
+
+        return $this->start_date->format('d M Y').' – '.$this->end_date->format('d M Y');
+    }
+
+    // ── Scopes ────────────────────────────────────────────────────
+
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeSemester($q, string $semester)
+    {
+        return $q->where('semester', $semester);
+    }
+
+    // ── Arsip / Penutupan Periode ─────────────────────────────────
+
+    /**
+     * Periode ditutup resmi (arsip terkunci) — data tidak dapat diubah.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    public function locker()
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+}
