@@ -21,13 +21,13 @@ class AiProviderController extends Controller
         $providers = AiProviderSetting::query()->get()
             ->sortBy(fn (AiProviderSetting $provider) => sprintf(
                 '%d-%d-%06d-%s',
-                $provider->is_default ? 0 : 1,
                 match ($provider->extra['tier'] ?? 'paid') {
                     'free' => 0,
                     'local' => 1,
                     'paid' => 2,
                     default => 3,
                 },
+                $provider->is_default ? 0 : 1,
                 (int) ($provider->extra['sort_order'] ?? 999),
                 $provider->name,
             ))
