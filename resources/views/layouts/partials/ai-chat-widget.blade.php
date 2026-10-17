@@ -369,9 +369,7 @@
             resize: none;
             color: var(--ai-ink);
             background: transparent;
-            font-family: inherit;
             font-size: 13px;
-            letter-spacing: normal;
             line-height: 1.5;
         }
         .ai-chat-input::placeholder { color: #98a2b5; }
@@ -408,7 +406,6 @@
         }
         .ai-chat-count { flex: 0 0 auto; }
         .ai-chat-error {
-            display: none;
             margin-bottom: 7px;
             padding: 7px 9px;
             border: 1px solid #f1c7cc;
@@ -417,7 +414,6 @@
             background: #fff7f7;
             font-size: 11px;
         }
-        .ai-chat-error.is-visible { display: block; }
 
         @media (max-width: 575.98px) {
             .ai-chat-fab {
@@ -493,7 +489,7 @@
         </div>
 
         <div class="ai-chat-composer">
-            <div id="aiChatError" class="ai-chat-error" role="alert"></div>
+            <div id="aiChatError" class="ai-chat-error d-none" role="alert"></div>
             <div class="ai-chat-composer-box">
                 <textarea id="aiChatInput" class="ai-chat-input" rows="1" maxlength="2000"
                           placeholder="Tulis pertanyaan…" aria-label="Pesan untuk ALIM Assistant"></textarea>
@@ -539,7 +535,7 @@
 
             const setError = function (message) {
                 errorBox.textContent = message || '';
-                errorBox.classList.toggle('is-visible', !! message);
+                errorBox.classList.toggle('d-none', ! message);
             };
 
             const scrollToBottom = function () {

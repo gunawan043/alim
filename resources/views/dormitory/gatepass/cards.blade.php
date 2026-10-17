@@ -9,19 +9,9 @@
         @slot('title') Kartu QR @endslot
     @endcomponent
 
-    <div class="d-print-none d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="d-print-none d-flex justify-content-between align-items-center mb-3">
         <p class="text-muted mb-0 small">Cetak dan tempel kartu ini pada kartu santri.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('user.asrama.gatepass.cards.thermal', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'size' => '58']) }}"
-               target="_blank" class="btn btn-outline-primary btn-sm">
-                <i class="ri-printer-line me-1"></i>Thermal 58mm
-            </a>
-            <a href="{{ route('user.asrama.gatepass.cards.thermal', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'size' => '80']) }}"
-               target="_blank" class="btn btn-outline-primary btn-sm">
-                <i class="ri-printer-line me-1"></i>Thermal 80mm
-            </a>
-            <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="ri-printer-line me-1"></i>Cetak A4</button>
-        </div>
+        <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="ri-printer-line me-1"></i>Cetak</button>
     </div>
 
     <div class="row g-3">

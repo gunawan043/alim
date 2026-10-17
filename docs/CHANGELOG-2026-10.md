@@ -1731,29 +1731,6 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Hak akses: Kepala/Wakil, Staf Asrama, Wali Kamar, Staf Perizinan.
 - Test `DormitoryGatepassTest` (1 test / 3 assertion): keluar → masuk.
 
-## 162. Migrasi Konfirmasi Form Asrama ke Modal Global
-
-- Form-form asrama yang masih memakai `onsubmit="return confirm(...)"` diubah menjadi `data-confirm`,
-  sehingga otomatis memakai modal konfirmasi lord-icon global.
-- Mencakup broadcast, penghargaan, kamar, wing, penugasan wali kamar, dan halaman terkait.
-- Tombol `onclick="return confirm(...)"` yang berada di dalam form akan dimigrasikan bertahap.
-
-## 163. PWA Shell & Halaman Offline
-
-- `public/manifest.webmanifest`: ALIM dapat dipasang sebagai aplikasi (standalone, theme color).
-- `public/sw.js`: service worker cache shell + halaman `/offline`; navigasi network-first, aset statis cache-first.
-- Halaman offline ramah pengguna dengan tombol coba lagi.
-- Registrasi service worker otomatis di layout utama/waka; manifest ditambahkan di head.
-- Catatan: antrean transaksi offline (presensi/gatepass) belum diaktifkan — PWA saat ini menyediakan shell/offline fallback.
-
-## 164. QR Gatepass — Cetak Thermal 58mm/80mm
-
-- Halaman kartu QR gatepass tetap tersedia (A4), ditambah tombol **Thermal 58mm** dan **Thermal 80mm**.
-- Layout thermal: `@page size: 58mm auto` / `80mm auto`, margin 2mm, satu kartu per halaman, QR SVG tajam,
-  nama santri, kamar/bed, dan nama asrama.
-- QR tetap memakai token bertanda tangan yang sama dengan mode scan; tidak mengubah data atau format A4.
-- Tombol cetak memakai `window.print()` sehingga cocok untuk printer thermal kasir.
-
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

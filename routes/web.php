@@ -1957,7 +1957,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('{asramaUuid}/gatepass')->name('gatepass.')->group(function () {
                     Route::get('/', [\App\Http\Controllers\DormitoryGatepassController::class, 'index'])->name('index');
                     Route::get('/kartu', [\App\Http\Controllers\DormitoryGatepassController::class, 'cards'])->name('cards');
-                    Route::get('/kartu-thermal', [\App\Http\Controllers\DormitoryGatepassController::class, 'thermal'])->name('cards.thermal');
                     Route::get('/scan', [\App\Http\Controllers\DormitoryGatepassController::class, 'scan'])->name('scan');
                     Route::post('/scan', [\App\Http\Controllers\DormitoryGatepassController::class, 'process'])->name('process');
                 });
@@ -3048,8 +3047,6 @@ Route::fallback([HomeController::class, 'index']);
 // Lihat: app/Http/Controllers/DeployController.php
 Route::post('/webhook/deploy', [DeployController::class, 'handle']);
 Route::get('/health', [DeployController::class, 'health']);
-
-Route::view('/offline', 'offline')->name('offline');
 
 // ── VERIFIKASI PUBLIK SURAT (QR) ─────────────────────────────────────────────
 Route::get('/verifikasi-surat/{token}', [\App\Http\Controllers\SuratVerificationController::class, 'show'])

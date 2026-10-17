@@ -129,7 +129,7 @@
                                         <a href="{{ route('user.asrama.rewards.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'rewardUuid' => $reward->id]) }}" class="btn btn-outline-warning" title="Edit">
                                             <i class="ri-pencil-line"></i>
                                         </a>
-                                        <form action="{{ route('user.asrama.rewards.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'rewardUuid' => $reward->id]) }}" method="POST" class="d-inline" data-confirm="Yakin hapus penghargaan ini?">
+                                        <form action="{{ route('user.asrama.rewards.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'rewardUuid' => $reward->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin hapus penghargaan ini?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-outline-danger" title="Hapus">

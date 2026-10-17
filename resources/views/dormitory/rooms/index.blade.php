@@ -204,7 +204,7 @@
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </a></li>
                                                 <li>
-                                                    <form action="{{ route('user.asrama.rooms.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomUuid' => $r->id]) }}" method="POST" data-confirm="Yakin hapus kamar ini?">
+                                                    <form action="{{ route('user.asrama.rooms.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomUuid' => $r->id]) }}" method="POST" onsubmit="return confirm('Yakin hapus kamar ini?')">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="dropdown-item text-danger">
                                                             <i class="ri-delete-bin-line me-1"></i> Hapus

@@ -48,8 +48,6 @@
 <link href="{{ URL::asset('build/css/app.min.css') }}" id="app-style" rel="stylesheet" type="text/css" />
 <!-- custom Css-->
 <link href="{{ URL::asset('build/css/custom.min.css') }}" id="app-style" rel="stylesheet" type="text/css" />
-<link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#405189">
 {{-- Gaya khusus halaman — dimuat SETELAH CSS tema agar tidak tertimpa --}}
 @yield('css')
 @stack('css')
