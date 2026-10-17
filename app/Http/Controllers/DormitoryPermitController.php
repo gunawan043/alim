@@ -28,6 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DormitoryPermitController extends Controller
 {
+    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
     protected DormitoryService $service;
 
     public function __construct(
@@ -181,6 +182,9 @@ class DormitoryPermitController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
         $data = $request->validated();
+
+        // Pastikan santri benar-benar penghuni asrama ini.
+        $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
 
         // Jika permit_type = sakit, wajib ada StudentHealthPermit yg sudah approved
         if ($data['permit_type'] === 'sakit') {

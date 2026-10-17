@@ -146,6 +146,16 @@ class DormitoryAttendanceController extends Controller
                     continue;
                 }
 
+                $resident = DormitoryResident::where('dormitory_id', $asramaUuid)
+                    ->where('student_id', $item['student_id'])
+                    ->where('academic_year_id', $activeYear->id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if (! $resident) {
+                    continue;
+                }
+
                 $existing = DormitoryAttendance::where('student_id', $item['student_id'])
                     ->where('attendance_date', $data['attendance_date'])
                     ->where('session', $data['session'])
@@ -153,7 +163,7 @@ class DormitoryAttendanceController extends Controller
 
                 $fields = [
                     'dormitory_id' => $asramaUuid,
-                    'room_id' => $item['room_id'],
+                    'room_id' => $resident->room_id,
                     'academic_year_id' => $activeYear->id,
                     'recorded_by' => $recordedBy,
                     'attendance_date' => $data['attendance_date'],

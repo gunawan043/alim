@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\URL;
 
 class DormitoryVisitLogController extends Controller
 {
+    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
     public function __construct(
         private readonly VisitWorkflowService $visit,
     ) {}
@@ -116,6 +117,11 @@ class DormitoryVisitLogController extends Controller
     public function store(StoreVisitRequest $request, string $userId, string $asramaUuid)
     {
         $data = $request->validated();
+
+        $this->assertDormitoryResident($asramaUuid, $data['student_id']);
+        if (! empty($data['room_id'])) {
+            $this->assertDormitoryRoom($asramaUuid, $data['room_id']);
+        }
 
         try {
             $this->visit->submit(

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class DormitoryViolationController extends Controller
 {
+    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
     protected DormitoryService $service;
 
     public function __construct(DormitoryService $service)
@@ -84,6 +85,8 @@ class DormitoryViolationController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
         $data = $request->validated();
+
+        $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
 
         $data['dormitory_id'] = $asramaUuid;
         $data['academic_year_id'] = $activeYear->id;

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class DormitoryRoomMoveController extends Controller
 {
+    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
     /**
      * GET /{userId}/asrama/{asramaUuid}/mutasi-kamar
      */
@@ -101,7 +102,12 @@ class DormitoryRoomMoveController extends Controller
             return back()->withInput()->withErrors(['student_id' => 'Santri ini bukan penghuni aktif asrama.']);
         }
 
-        $toRoom = DormitoryRoom::find($data['to_room_id']);
+        if ((string) $resident->room_id !== (string) $data['from_room_id']) {
+            return back()->withInput()->withErrors(['from_room_id' => 'Kamar asal tidak sesuai dengan kamar santri saat ini.']);
+        }
+
+        $this->assertDormitoryRoom($asramaUuid, $data['from_room_id']);
+        $toRoom = $this->assertDormitoryRoom($asramaUuid, $data['to_room_id']);
 
         // Cek kapasitas dan buat record dalam transaction
         $roomMove = DB::transaction(function () use ($data, $asramaUuid, $activeYear, $toRoom) {

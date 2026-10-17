@@ -327,25 +327,29 @@ class DormitoryReportController extends Controller
     {
         $dormitory = $this->enforceScope($asramaUuid);
 
-        $byLocation = SanitationInspection::selectRaw('location_type, AVG(score) as avg_score, COUNT(*) as total')
-            ->where('location_type', 'asrama')
-            ->groupBy('location_type')
-            ->get();
+        $roomIds = DormitoryRoom::where('dormitory_id', $asramaUuid)->pluck('id');
+        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->pluck('name', 'id');
 
-        $recentInspections = SanitationInspection::with(['inspectedBy'])
-            ->where(function ($q) {
-                $q->where('location_type', 'asrama');
-            })
+        $base = SanitationInspection::query()
+            ->where('location_type', 'asrama')
+            ->where(function ($q) use ($roomIds, $asramaUuid) {
+                $q->whereIn('location_id', $roomIds)->orWhere('location_id', $asramaUuid);
+            });
+
+        $summary = [
+            'total' => (clone $base)->count(),
+            'avg_score' => round((float) ((clone $base)->avg('score') ?? 0), 1),
+            'passed' => (clone $base)->where('is_passed', true)->count(),
+            'pending_follow_up' => (clone $base)->pendingFollowUp()->count(),
+        ];
+
+        $recentInspections = (clone $base)->with(['inspectedBy'])
             ->orderByDesc('inspection_date')
             ->limit(50)
             ->get();
 
         return view('dormitory.reports.sanitation', compact(
-            'dormitory',
-            'byLocation',
-            'recentInspections',
-            'userId',
-            'asramaUuid',
+            'dormitory', 'summary', 'rooms', 'recentInspections', 'userId', 'asramaUuid',
         ));
     }
 

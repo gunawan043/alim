@@ -134,10 +134,9 @@ class DormitoryPostController extends Controller
 
     public function templateIndex(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
-        $templates = DormitoryActivityTemplate::where('dormitory_id', $asramaUuid)->get();
-
-        return view('dormitory.templates.index', compact('dormitory', 'templates', 'userId'));
+        return redirect()->route('user.asrama.kegiatan.schedules', [
+            'userId' => $userId, 'asramaUuid' => $asramaUuid,
+        ])->with('info', 'Template kegiatan kini dikelola sebagai Kegiatan Rutin (harian / malam tertentu).');
     }
 
     public function templateStore(Request $request, string $userId, string $asramaUuid)
@@ -175,22 +174,9 @@ class DormitoryPostController extends Controller
 
     public function activityLogIndex(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
-        $activeYear = AcademicYear::where('is_active', true)->first();
-
-        $date = $request->filled('date') ? $request->date : now()->toDateString();
-        $session = $request->filled('session') ? $request->session : 'malam';
-
-        $logs = DormitoryActivityLog::with(['resident.student', 'recordedBy'])
-            ->where('dormitory_id', $asramaUuid)
-            ->where('activity_date', $date)
-            ->where('session', $session)
-            ->orderBy('resident_id')
-            ->get();
-
-        return view('dormitory.activities.index', compact(
-            'dormitory', 'logs', 'userId', 'activeYear', 'date', 'session'
-        ));
+        return redirect()->route('user.asrama.kegiatan.index', [
+            'userId' => $userId, 'asramaUuid' => $asramaUuid,
+        ])->with('info', 'Log kegiatan kini terintegrasi dengan Presensi Kegiatan Asrama.');
     }
 
     // ── EMERGENCY BROADCAST ──────────────────────────────────────

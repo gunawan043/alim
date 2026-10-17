@@ -90,3 +90,11 @@ Keterangan status: **Selesai** = berfungsi, **Diperbaiki** = baru diperbaiki pad
 - Validasi kepemilikan `room_id`/`resident_id` di semua modul asrama.
 - Template/log kegiatan lama perlu disatukan dengan kegiatan rutin baru.
 - Beberapa halaman lama belum memakai pola UI `gtk/index` sepenuhnya.
+
+## 5. Pembaruan Batch 3 (P0 Lanjutan)
+- ✅ Laporan sanitasi diperbaiki (kolom & filter asrama).
+- ✅ Validasi kepemilikan santri/kamar pada izin, pelanggaran, kunjungan, mutasi kamar, presensi harian.
+- ✅ Mutasi kamar memastikan kamar asal = kamar penghuni saat ini.
+- ✅ Template/log kegiatan lama diarahkan ke Kegiatan Rutin/Presensi Kegiatan.
+- ⏳ Standarisasi UI halaman lama (izin, kunjungan, pelanggaran, mutasi) ke pola `gtk/index` masih bertahap.
+- ⏳ Broadcast wali, QR gatepass, PWA/offline, audit log asrama belum.

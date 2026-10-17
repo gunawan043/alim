@@ -8,69 +8,67 @@
         @slot('title') Laporan Kebersihan @endslot
     @endcomponent
 
-    <div class="row g-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0">Evaluasi Kebersihan</h4>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Tanggal</th>
-                                    <th>Ruangan</th>
-                                    <th>Lantai</th>
-                                    <th>Skor</th>
-                                    <th>Status</th>
-                                    <th>Pemeriksa</th>
-                                    <th>Catatan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($recentInspections as $si)
-                                <tr>
-                                    <td>{{ $si->inspection_date?->format('d M Y') ?? '-' }}</td>
-                                    <td>{{ $si->room->code ?? $si->building_name ?? '-' }}</td>
-                                    <td>{{ $si->floor ?? '-' }}</td>
-                                    <td>
-                                        <span class="badge {{ $si->score >= 80 ? 'bg-success' : ($si->score >= 60 ? 'bg-warning' : 'bg-danger') }}">
-                                            {{ $si->score }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($si->passing_grade)
-                                            <span class="badge bg-success">LULUS</span>
-                                        @else
-                                            <span class="badge bg-danger">TIDAK LULUS</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $si->inspectedBy->name ?? '-' }}</td>
-                                    <td class="text-muted">{{ Str::limit($si->notes ?? '', 50) }}</td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-5">
-                                        <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
-                                        <h6 class="text-muted mb-1 mt-3">Belum Ada Data Inspections</h6>
-                                        <p class="text-muted mb-3 small">Data inspection sanitasi akan muncul di sini.</p>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+    <div class="row g-3 mb-3">
+        @foreach([
+            ['Total Inspeksi', $summary['total'], 'primary', 'ri-file-list-3-line'],
+            ['Rata-rata Skor', $summary['avg_score'], 'info', 'ri-bar-chart-line'],
+            ['Lulus Standar', $summary['passed'], 'success', 'ri-checkbox-circle-line'],
+            ['Tindak Lanjut', $summary['pending_follow_up'], 'warning', 'ri-time-line'],
+        ] as [$label, $value, $tone, $icon])
+            <div class="col-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body py-3 d-flex align-items-center gap-3">
+                        <span class="avatar-sm"><span class="avatar-title rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }} fs-4"><i class="{{ $icon }}"></i></span></span>
+                        <div><div class="text-muted small">{{ $label }}</div><div class="fs-4 fw-bold">{{ $value }}</div></div>
                     </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
 
-                    <div class="mt-3">
-                        <a href="{{ route('user.asrama.sanitation.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) }}" class="btn btn-outline-primary btn-sm">
-                            <i class="ri-edit-line me-1"></i> Kelola Kebersihan
-                        </a>
-                        <a href="{{ route('user.asrama.sanitation.dashboard', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="ri-layout-grid-line me-1"></i> Dashboard
-                        </a>
-                    </div>
-                </div>
+    <div class="card">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="card-title mb-0"><i class="ri-broom-line me-2 text-primary"></i>Evaluasi Kebersihan</h5>
+            <span class="text-muted small">{{ $dormitory->name }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tanggal</th><th>Lokasi</th><th class="text-center">Skor</th>
+                            <th class="text-center">Status</th><th>Temuan</th><th>Tindak Lanjut</th><th>Pemeriksa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentInspections as $si)
+                            <tr>
+                                <td class="small">{{ $si->inspection_date?->format('d/m/Y') ?? '-' }}</td>
+                                <td>{{ $rooms[$si->location_id] ?? 'Asrama' }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ $si->score >= 80 ? 'success' : ($si->score >= 60 ? 'warning' : 'danger') }}-subtle text-{{ $si->score >= 80 ? 'success' : ($si->score >= 60 ? 'warning' : 'danger') }}">{{ $si->score }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ $si->is_passed ? 'success' : 'danger' }}-subtle text-{{ $si->is_passed ? 'success' : 'danger' }}">{{ $si->is_passed ? 'Lulus' : 'Perlu Perbaikan' }}</span>
+                                </td>
+                                <td class="small text-muted">{{ \Illuminate\Support\Str::limit((string) $si->findings, 60) ?: '—' }}</td>
+                                <td class="small">
+                                    @if($si->follow_up_completed_at)
+                                        <span class="text-success">Selesai {{ $si->follow_up_completed_at->format('d/m/Y') }}</span>
+                                    @elseif($si->follow_up_deadline)
+                                        <span class="text-warning">Batas {{ $si->follow_up_deadline->format('d/m/Y') }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td class="small">{{ $si->inspectedBy?->name ?? '-' }}</td>
+                            </tr>
+                        @empty
+                            <x-empty-state colspan="7" title="Belum ada inspeksi kebersihan"
+                                message="Data inspeksi sanitasi asrama akan tampil di sini." />
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

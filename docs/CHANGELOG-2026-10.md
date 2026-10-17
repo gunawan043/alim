@@ -1644,6 +1644,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Perbaikan audit**: enum inventaris & mutasi kamar diselaraskan; approve mutasi cek kapasitas & bed.
 - Test: `DormitoryActivityScheduleTest` (2 test / 6 assertion); regresi kegiatan/rapor/payroll hijau.
 
+## 154. P0 Asrama Lanjutan — Sanitasi, Validasi Kepemilikan, & Unifikasi Kegiatan
+
+- **Laporan sanitasi diperbaiki**: memakai kolom nyata (`score`, `is_passed`, `findings`, `recommendations`,
+  `follow_up_*`), filter asrama via kamar/dormitory, ringkasan total/rata-rata/lulus/tindak lanjut, dan UI
+  kartu + tabel standar.
+- **Validasi kepemilikan data** (`ValidatesDormitoryOwnership`):
+  - Izin & pelanggaran: `student_id` harus penghuni aktif asrama tersebut.
+  - Kunjungan: santri & kamar harus milik asrama.
+  - Mutasi kamar: kamar asal harus kamar santri saat ini; kamar asal/tujuan harus milik asrama.
+  - Presensi harian: kamar diambil dari data penghuni (bukan dari payload), mencegah manipulasi.
+- **Unifikasi kegiatan lama → baru**:
+  - `template-kegiatan` diarahkan ke **Kegiatan Rutin**.
+  - `log-kegiatan` diarahkan ke **Presensi Kegiatan**.
+  - Data lama tetap tersimpan di tabel lama; UI baru menjadi sumber operasional.
+- **Modal global** success/gagal/warning/info sudah aktif untuk seluruh halaman utama & waka.
+- **Test regresi**: kegiatan, jadwal rutin, presensi asrama, pipeline rapor, scope pengguna, payroll =
+  9 test / 52 assertion — hijau.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
