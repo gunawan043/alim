@@ -71,11 +71,17 @@ class GtkArabicNameController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $overwrite = $request->boolean('overwrite');
-        $count = app(ArabicNameImportService::class)->generateGtk($schoolId, $overwrite);
+        $limit = config('arabic_names.driver') === 'ai'
+            ? max(1, (int) config('arabic_names.ai.batch_limit', 20))
+            : null;
+
+        $count = app(ArabicNameImportService::class)->generateGtk($schoolId, $overwrite, $limit);
+
+        $batchNote = $limit ? " (batch AI maks {$limit} nama — jalankan lagi untuk sisanya)" : '';
 
         return redirect()
             ->route('user.gtk.import-nama-arab-form', ['userId' => $userId])
-            ->with('success', "Nama Arab dibuat otomatis untuk {$count} GTK. Silakan tinjau hasilnya di Data GTK.");
+            ->with('success', "Nama Arab dibuat otomatis untuk {$count} GTK{$batchNote}. Silakan tinjau hasilnya di Data GTK.");
     }
 
     private function authorizeGtkImport(): void

@@ -109,8 +109,14 @@
         <div class="col-lg-5">
             <div class="card">
                 <div class="card-header border-bottom-dashed">
-                    <h5 class="card-title mb-0"><i class="ri-magic-line text-primary me-1"></i>Isi Otomatis (Generator)</h5>
-                    <p class="text-muted mb-0 small">Membuat nama Arab dari nama Latin memakai kaidah transliterasi + kamus nama. Hasil bersifat best-effort — mohon ditinjau.</p>
+                    <h5 class="card-title mb-0"><i class="ri-magic-line text-primary me-1"></i>Isi Otomatis (Generator)
+                        @if(config('arabic_names.driver') === 'ai')
+                            <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:10px;">AI</span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:10px;">Kaidah Transliterasi</span>
+                        @endif
+                    </h5>
+                    <p class="text-muted mb-0 small">Membuat nama Arab dari nama Latin mengikuti kaidah transliterasi Arab (fonetis, ejaan baku, pemisahan unsur nama). Hasil bersifat best-effort — mohon ditinjau.</p>
                 </div>
                 <div class="card-body">
                     <form id="generateStudentsForm" method="POST"

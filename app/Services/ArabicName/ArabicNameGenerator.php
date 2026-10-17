@@ -2,6 +2,8 @@
 
 namespace App\Services\ArabicName;
 
+use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
+
 /**
  * Generator nama Arab dari nama Latin (best-effort, kaidah transliterasi).
  *
@@ -14,7 +16,7 @@ namespace App\Services\ArabicName;
  * Bila ingin memakai AI, ganti binding kelas ini di container dengan
  * implementasi yang memanggil penyedia AI — antarmuka `generate()` tetap.
  */
-class ArabicNameGenerator
+class ArabicNameGenerator implements ArabicNameGeneratorContract
 {
     /** Frasa umum (nama lengkap) → Arab. */
     private const PHRASES = [
@@ -131,6 +133,11 @@ class ArabicNameGenerator
         's' => 'س', 't' => 'ت', 'u' => 'و', 'v' => 'ف', 'w' => 'و', 'x' => 'كس',
         'y' => 'ي', 'z' => 'ز',
     ];
+
+    public function driver(): string
+    {
+        return 'rule';
+    }
 
     public function generate(?string $latinName): string
     {

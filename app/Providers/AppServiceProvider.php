@@ -109,6 +109,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(NotificationBroadcastService::class);
         $this->app->singleton(WorkspaceActivationService::class);
 
+        // Generator nama Arab: kaidah transliterasi (default) atau AI (opsional).
+        $this->app->bind(
+            \App\Services\ArabicName\Contracts\ArabicNameGeneratorContract::class,
+            function ($app) {
+                return config('arabic_names.driver') === 'ai'
+                    ? $app->make(\App\Services\ArabicName\AiArabicNameGenerator::class)
+                    : $app->make(\App\Services\ArabicName\ArabicNameGenerator::class);
+            }
+        );
+
         // Sarpras workflow services — singleton so the in-memory state machine
         // registry survives across requests in the same PHP process.
         $this->app->singleton(StateMachine::class);

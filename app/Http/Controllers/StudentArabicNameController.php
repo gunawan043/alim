@@ -70,10 +70,16 @@ class StudentArabicNameController extends Controller
         abort_unless($schoolId, 403, 'Generator memerlukan konteks satuan pendidikan.');
 
         $overwrite = $request->boolean('overwrite');
-        $count = app(ArabicNameImportService::class)->generateStudents($schoolId, $overwrite);
+        $limit = config('arabic_names.driver') === 'ai'
+            ? max(1, (int) config('arabic_names.ai.batch_limit', 20))
+            : null;
+
+        $count = app(ArabicNameImportService::class)->generateStudents($schoolId, $overwrite, $limit);
+
+        $batchNote = $limit ? " (batch AI maks {$limit} nama — jalankan lagi untuk sisanya)" : '';
 
         return redirect()
             ->route('user.students.import-nama-arab-form', ['userId' => $userId])
-            ->with('success', "Nama Arab dibuat otomatis untuk {$count} santri. Silakan tinjau hasilnya di Data Santri.");
+            ->with('success', "Nama Arab dibuat otomatis untuk {$count} santri{$batchNote}. Silakan tinjau hasilnya di Data Santri.");
     }
 }

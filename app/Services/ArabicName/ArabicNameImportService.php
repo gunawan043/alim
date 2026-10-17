@@ -5,6 +5,7 @@ namespace App\Services\ArabicName;
 use App\Models\GtkEmployment;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
 use App\Services\SchoolGroupService;
 
 /**
@@ -16,7 +17,7 @@ use App\Services\SchoolGroupService;
  */
 class ArabicNameImportService
 {
-    public function __construct(private readonly ArabicNameGenerator $generator) {}
+    public function __construct(private readonly ArabicNameGeneratorContract $generator) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $rows
@@ -131,7 +132,7 @@ class ArabicNameImportService
     /**
      * Isi otomatis nama Arab santri (default: hanya yang kosong).
      */
-    public function generateStudents(string $schoolId, bool $overwrite = false): int
+    public function generateStudents(string $schoolId, bool $overwrite = false, ?int $limit = null): int
     {
         $query = Student::query()
             ->where('school_id', $schoolId)
@@ -139,6 +140,10 @@ class ArabicNameImportService
 
         if (! $overwrite) {
             $query->where(fn ($q) => $q->whereNull('name_ar')->orWhere('name_ar', ''));
+        }
+
+        if ($limit !== null) {
+            $query->limit(max(1, $limit));
         }
 
         $count = 0;
@@ -158,7 +163,7 @@ class ArabicNameImportService
     /**
      * Isi otomatis nama Arab GTK (default: hanya yang kosong).
      */
-    public function generateGtk(?string $schoolId, bool $overwrite = false): int
+    public function generateGtk(?string $schoolId, bool $overwrite = false, ?int $limit = null): int
     {
         $query = User::query()
             ->whereHas('employment')
@@ -167,6 +172,10 @@ class ArabicNameImportService
 
         if (! $overwrite) {
             $query->where(fn ($q) => $q->whereNull('name_ar')->orWhere('name_ar', ''));
+        }
+
+        if ($limit !== null) {
+            $query->limit(max(1, $limit));
         }
 
         $count = 0;
