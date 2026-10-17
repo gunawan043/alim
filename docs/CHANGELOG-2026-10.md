@@ -1719,6 +1719,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Form lama yang masih memakai `onsubmit="return confirm(...)"` dapat dimigrasikan bertahap hanya dengan
   mengganti atribut menjadi `data-confirm`.
 
+## 161. QR Gatepass Keluar/Masuk Asrama
+
+- Tabel/model `dormitory_gatepasses` (keluar/masuk, tujuan, gerbang, petugas, waktu).
+- Menu **Asrama → Gatepass**:
+  - Scan QR via kamera (html5-qrcode) atau tempel token manual.
+  - QR ditandatangani (`Crypt`) berisi asrama + santri; QR asrama lain ditolak.
+  - Scan otomatis menentukan keluar/masuk berikutnya (berdasarkan scan terakhir hari ini).
+  - Daftar riwayat hari ini + statistik keluar/masuk/di luar.
+- **Kartu QR** per penghuni untuk dicetak (SVG, tanpa imagick).
+- Hak akses: Kepala/Wakil, Staf Asrama, Wali Kamar, Staf Perizinan.
+- Test `DormitoryGatepassTest` (1 test / 3 assertion): keluar → masuk.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

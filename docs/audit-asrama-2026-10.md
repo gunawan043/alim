@@ -125,3 +125,10 @@ Keterangan status: **Selesai** = berfungsi, **Diperbaiki** = baru diperbaiki pad
 - Halaman Audit Log Asrama (filter aksi/tanggal, pagination, empty state).
 - Data dibatasi pada record asrama terkait.
 - Tautan ditambahkan ke hub laporan.
+
+## 11. Batch 9 — QR Gatepass
+- Gatepass keluar/masuk dengan QR bertanda tangan, kamera/manual.
+- Kartu QR penghuni untuk dicetak.
+- Riwayat + statistik gatepass harian.
+- Hak akses kepala/wakil/staf/wali kamar/staf perizinan.
+- ⏳ PWA/offline belum.
