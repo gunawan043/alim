@@ -2390,6 +2390,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/', [AiProviderController::class, 'store'])->name('store');
                     Route::put('/{id}', [AiProviderController::class, 'update'])->name('update');
                     Route::post('/{id}/default', [AiProviderController::class, 'setDefault'])->name('default');
+                    Route::post('/{id}/toggle', [AiProviderController::class, 'toggleActive'])->name('toggle');
                     Route::post('/{id}/test', [AiProviderController::class, 'test'])->name('test');
                     Route::delete('/{id}', [AiProviderController::class, 'destroy'])->name('destroy');
                 });

@@ -177,7 +177,7 @@ class AiDataToolService
             }
         }
 
-        if (($args['active_only'] ?? true) === true) {
+        if (filter_var($args['active_only'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
             $query->whereNotIn('status_kepegawaian', ['Berhenti', 'Wafat', 'Pensiun']);
         }
 
@@ -200,7 +200,7 @@ class AiDataToolService
     {
         $query = $this->studyGroupQuery();
 
-        if (($args['active_only'] ?? true) === true) {
+        if (filter_var($args['active_only'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
             $query->where('is_active', true);
         }
         if (! empty($args['academic_year'])) {
@@ -215,7 +215,7 @@ class AiDataToolService
             'filters' => array_filter($args, fn ($value) => filled($value)),
         ];
 
-        if (($args['include_names'] ?? false) === true) {
+        if (filter_var($args['include_names'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $result['names'] = (clone $query)->orderBy('name')->limit(50)->pluck('name')->all();
         }
 

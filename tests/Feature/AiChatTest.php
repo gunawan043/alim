@@ -241,6 +241,6 @@ class AiChatTest extends TestCase
         $request->setUserResolver(fn () => $regular);
 
         $this->expectException(HttpException::class);
-        app(AiChatMonitorController::class)->index($request);
+        app(AiChatMonitorController::class)->index($request, $regular->id);
     }
 }

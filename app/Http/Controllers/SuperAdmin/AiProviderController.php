@@ -104,6 +104,35 @@ class AiProviderController extends Controller
         return back()->with('success', "Provider \"{$provider->name}\" dijadikan default.");
     }
 
+    public function toggleActive(Request $request, string $userId, string $id)
+    {
+        $this->authorizeSuper($request);
+
+        $provider = AiProviderSetting::findOrFail($id);
+        $preset = AiProviderPresets::get($provider->provider);
+        $needsKey = (bool) ($preset['needs_key'] ?? true);
+
+        if (! $provider->is_active && $needsKey && ! $provider->hasApiKey()) {
+            return back()->with('error', 'Isi API key terlebih dahulu sebelum mengaktifkan provider ini.');
+        }
+
+        $provider->is_active = ! $provider->is_active;
+
+        if (! $provider->is_active && $provider->is_default) {
+            $provider->is_default = false;
+        }
+
+        $provider->save();
+
+        if ($provider->is_active && ! AiProviderSetting::where('is_active', true)->where('is_default', true)->exists()) {
+            $provider->makeDefault();
+        }
+
+        return back()->with('success', $provider->is_active
+            ? "Provider \"{$provider->name}\" diaktifkan."
+            : "Provider \"{$provider->name}\" dinonaktifkan.");
+    }
+
     public function test(Request $request, string $userId, string $id, AiProviderService $ai)
     {
         $this->authorizeSuper($request);

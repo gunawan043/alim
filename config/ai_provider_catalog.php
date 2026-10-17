@@ -163,6 +163,36 @@ return [
         'key_group' => 'openrouter',
         'sort_order' => 30,
     ],
+    [
+        'name' => 'OpenRouter — DeepSeek V3',
+        'provider' => 'openrouter',
+        'model' => 'deepseek/deepseek-chat',
+        'tier' => 'paid',
+        'pricing' => '$0.32 / $0.89 per 1M token',
+        'notes' => 'Model V3 dasar.',
+        'key_group' => 'openrouter',
+        'sort_order' => 31,
+    ],
+    [
+        'name' => 'OpenRouter — DeepSeek V3.1 Terminus',
+        'provider' => 'openrouter',
+        'model' => 'deepseek/deepseek-v3.1-terminus',
+        'tier' => 'paid',
+        'pricing' => '$0.27 / $1.00 per 1M token',
+        'notes' => 'Update V3.1 Terminus.',
+        'key_group' => 'openrouter',
+        'sort_order' => 32,
+    ],
+    [
+        'name' => 'OpenRouter — DeepSeek V3.2 Exp',
+        'provider' => 'openrouter',
+        'model' => 'deepseek/deepseek-v3.2-exp',
+        'tier' => 'paid',
+        'pricing' => '$0.27 / $0.41 per 1M token',
+        'notes' => 'Eksperimen arsitektur V3.2.',
+        'key_group' => 'openrouter',
+        'sort_order' => 33,
+    ],
 
     // ── Free tier platform lain ─────────────────────────────────────
     [

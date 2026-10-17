@@ -151,6 +151,13 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-1">
+                                    <form method="POST" action="{{ route('user.sa.ai-providers.toggle', ['userId' => $userId, 'id' => $provider->id]) }}">
+                                        @csrf
+                                        <button class="btn btn-sm {{ $provider->is_active ? 'btn-outline-warning' : 'btn-outline-success' }}"
+                                                title="{{ $provider->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
+                                            <i class="ri-power-line"></i>
+                                        </button>
+                                    </form>
                                     <form method="POST" action="{{ route('user.sa.ai-providers.test', ['userId' => $userId, 'id' => $provider->id]) }}">
                                         @csrf
                                         <button class="btn btn-sm btn-outline-info" title="Tes koneksi"><i class="ri-plug-line"></i></button>
@@ -163,7 +170,7 @@
                                     @endif
                                     <button type="button" class="btn btn-sm btn-soft-warning" title="Edit"
                                             data-provider="{{ json_encode($provider->only(['id', 'name', 'provider', 'endpoint', 'model', 'is_default', 'is_active'])) }}"
-                                            data-has-key="{{ $provider->hasApiKey() ? '1' : '0' }}"
+                                            data-has-key="{{ $hasOwnKey ? '1' : '0' }}"
                                             onclick="openProviderForm(JSON.parse(this.dataset.provider), this.dataset.hasKey === '1')">
                                         <i class="ri-pencil-line"></i>
                                     </button>

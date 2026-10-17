@@ -233,6 +233,33 @@ class AiProviderSettingsTest extends TestCase
         $this->assertDatabaseMissing('ai_provider_settings', ['id' => $provider->id]);
     }
 
+    public function test_route_toggle_mengaktifkan_provider_dan_default(): void
+    {
+        $provider = $this->storeProvider(['is_active' => 0]);
+        $provider->forceFill(['is_active' => false, 'is_default' => false])->save();
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-providers/{$provider->id}/toggle")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertTrue($provider->fresh()->is_active);
+        $this->assertTrue($provider->fresh()->is_default);
+    }
+
+    public function test_toggle_menolak_provider_cloud_tanpa_key(): void
+    {
+        $provider = $this->storeProvider(['is_active' => 0, 'api_key' => null]);
+        $provider->forceFill(['is_active' => false, 'is_default' => false])->save();
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-providers/{$provider->id}/toggle")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertFalse($provider->fresh()->is_active);
+    }
+
     public function test_halaman_pengaturan_ai_dapat_dirender(): void
     {
         $this->storeProvider(['is_default' => 1]);

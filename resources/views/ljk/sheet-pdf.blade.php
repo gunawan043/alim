@@ -251,7 +251,7 @@
                     }
                 @endphp
                 <div class="abs option-label"
-                     style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] - 1.7 }}mm; width: {{ $option['w_mm'] }}mm;">
+                     style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] - 2.8 }}mm; width: {{ $option['w_mm'] }}mm;">
                     @if($isArabicQ)<span class="ar">{{ $printed }}</span>@else{{ $printed }}@endif
                 </div>
                 <div class="abs option-box"

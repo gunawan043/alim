@@ -47,6 +47,7 @@
 
                 @include('layouts.partials.permission-setup')
                 @include('layouts.partials.flash-modals')
+                @include('layouts.partials.confirm-interceptor')
             </div>
             <!-- End Page-content -->
             @include('layouts.footer')

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  */
 class AiChatMonitorController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, string $userId)
     {
         $this->authorizeSuper($request);
 

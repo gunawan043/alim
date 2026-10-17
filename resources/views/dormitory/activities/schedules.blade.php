@@ -38,7 +38,7 @@
         <div class="d-flex gap-2">
             <a href="{{ route('user.asrama.kegiatan.index', $base) }}" class="btn btn-light btn-sm"><i class="ri-arrow-go-back-line me-1"></i>Kembali</a>
             <form method="POST" action="{{ route('user.asrama.kegiatan.schedules.generate', $base) }}" class="d-inline"
-                  onsubmit="return confirm('Bentuk sesi kegiatan untuk 30 hari ke depan?')">
+                  data-confirm="Bentuk sesi kegiatan untuk 30 hari ke depan?">
                 @csrf
                 <button class="btn btn-outline-primary btn-sm"><i class="ri-flashlight-line me-1"></i>Generate 30 Hari</button>
             </form>
@@ -184,7 +184,7 @@
                                         <td class="text-end">
                                             <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="collapse" data-bs-target="#editSchedule{{ $schedule->id }}"><i class="ri-edit-line"></i></button>
                                             <form method="POST" action="{{ route('user.asrama.kegiatan.schedules.destroy', $base + ['scheduleId' => $schedule->id]) }}" class="d-inline"
-                                                  onsubmit="return confirm('Hapus jadwal rutin ini? Sesi yang sudah terbentuk tetap tersimpan.')">
+                                                  data-confirm="Hapus jadwal rutin ini? Sesi yang sudah terbentuk tetap tersimpan.">
                                                 @csrf @method('DELETE')
                                                 <button class="btn btn-sm btn-outline-danger"><i class="ri-delete-bin-line"></i></button>
                                             </form>

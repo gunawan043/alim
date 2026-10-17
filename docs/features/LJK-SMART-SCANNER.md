@@ -114,7 +114,7 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   Soal uraian/isian memakai 2 baris di kolomnya.
 - **Kotak jawaban** 6,2 × 4,8 mm dengan jarak 1,4 mm (cukup untuk tulisan
   tangan pulpen), garis kotak 0,45 mm, label opsi dicetak **di luar** kotak
-  (1,7 mm di atas kotak) agar bagian dalam tetap bersih. Huruf opsi **tidak**
+  (2,8 mm di atas kotak) agar bagian dalam tetap bersih. Huruf opsi **tidak**
   diletakkan di dalam kotak: tinta cetak di interior akan menambah fitur
   gelap/diagonal dan berisiko membuat kotak kosong terbaca terisi; opsi itu
   hanya aman bila area label dimasking dan mesin dikalibrasi ulang.

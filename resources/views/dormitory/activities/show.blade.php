@@ -47,13 +47,13 @@
             @if($canManage)
                 @if($activity->isOpen())
                     <form method="POST" action="{{ route('user.asrama.kegiatan.close', $activityUrl + ['activityId' => $activity->id]) }}" class="d-inline"
-                          onsubmit="return confirm('Tutup kegiatan ini? Presensi akan dikunci.')">
+                          data-confirm="Tutup kegiatan ini? Presensi akan dikunci.">
                         @csrf
                         <button class="btn btn-outline-danger btn-sm"><i class="ri-lock-line me-1"></i>Tutup Kegiatan</button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('user.asrama.kegiatan.reopen', $activityUrl + ['activityId' => $activity->id]) }}" class="d-inline"
-                          onsubmit="return confirm('Buka kembali kegiatan ini?')">
+                          data-confirm="Buka kembali kegiatan ini?">
                         @csrf
                         <button class="btn btn-outline-success btn-sm"><i class="ri-lock-unlock-line me-1"></i>Buka Kembali</button>
                     </form>

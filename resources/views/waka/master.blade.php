@@ -47,6 +47,7 @@
     <!-- JAVASCRIPT -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @include('layouts.partials.flash-modals')
+    @include('layouts.partials.confirm-interceptor')
     @include('layouts.vendor-scripts')
     {{-- @yield('script') & @stack('scripts') sudah dirender vendor-scripts (jangan ganda!) --}}
     @stack('script')

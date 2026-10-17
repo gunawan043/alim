@@ -49,7 +49,7 @@ class AiChatController extends Controller
         return response()->json($result, $result['ok'] ? 200 : 503);
     }
 
-    public function latest(Request $request)
+    public function latest(Request $request, string $userId)
     {
         $conversation = AiChatConversation::query()
             ->where('user_id', $request->user()->id)
