@@ -100,7 +100,7 @@
                         </a>
                         @if($supervisor->status === 'active')
                             <form method="POST" action="{{ route('user.asrama.room-supervisors.end', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $supervisor->id]) }}"
-                                  onsubmit="return confirm('Akhiri penugasan Wali Kamar ini?')">
+                                  data-confirm="Akhiri penugasan Wali Kamar ini?">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-outline-warning" title="Akhiri Penugasan">
                                     <i class="ri-stop-circle-line"></i>

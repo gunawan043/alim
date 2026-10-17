@@ -55,6 +55,28 @@ class DormitoryGatepassController extends Controller
         return view('dormitory.gatepass.cards', compact('dormitory', 'residents', 'tokens', 'userId', 'asramaUuid'));
     }
 
+    public function thermal(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = $this->authorizeGatepass($request, $asramaUuid);
+        $size = $request->input('size') === '80' ? '80' : '58';
+
+        $residents = DormitoryResident::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('is_active', true)
+            ->when($request->filled('student_id'), fn ($q) => $q->where('student_id', $request->student_id))
+            ->when($request->filled('room_id'), fn ($q) => $q->where('room_id', $request->room_id))
+            ->orderBy('room_id')
+            ->get();
+
+        $tokens = $residents->mapWithKeys(fn ($r) => [
+            $r->id => Crypt::encryptString($asramaUuid.'|'.$r->student_id),
+        ])->all();
+
+        return view('dormitory.gatepass.thermal', compact(
+            'dormitory', 'residents', 'tokens', 'userId', 'asramaUuid', 'size'
+        ));
+    }
+
     public function scan(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = $this->authorizeGatepass($request, $asramaUuid);
