@@ -116,6 +116,7 @@ class AiProviderController extends Controller
             return back()->with('error', 'Isi API key terlebih dahulu sebelum mengaktifkan provider ini.');
         }
 
+        $wasDefault = $provider->is_default;
         $provider->is_active = ! $provider->is_active;
 
         if (! $provider->is_active && $provider->is_default) {
@@ -123,6 +124,16 @@ class AiProviderController extends Controller
         }
 
         $provider->save();
+
+        if (! $provider->is_active && $wasDefault) {
+            AiProviderSetting::query()
+                ->whereKeyNot($provider->getKey())
+                ->where('is_active', true)
+                ->orderByDesc('is_default')
+                ->orderBy('name')
+                ->first()
+                ?->makeDefault();
+        }
 
         if ($provider->is_active && ! AiProviderSetting::where('is_active', true)->where('is_default', true)->exists()) {
             $provider->makeDefault();
