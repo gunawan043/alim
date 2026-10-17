@@ -64,6 +64,10 @@
                            target="_blank" class="btn btn-success">
                             <i class="ri-file-pdf-2-line align-bottom me-1"></i> Cetak Lembar Soal (PDF)
                         </a>
+                        <a href="{{ route('user.ljk.soal.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id, 'download' => 1]) }}"
+                           class="btn btn-soft-success" title="Unduh lembar soal sebagai PDF">
+                            <i class="ri-download-2-line align-bottom me-1"></i> Unduh PDF
+                        </a>
                         <button type="button" class="btn btn-soft-secondary" onclick="window.print()">
                             <i class="ri-printer-line align-bottom me-1"></i> Cetak Halaman
                         </button>
@@ -109,7 +113,24 @@
                     <h5 class="mb-0"><i class="ri-file-list-3-line me-1 text-primary"></i>Naskah Soal</h5>
                 </div>
                 <div class="card-body">
+                    @php $lastWacanaId = null; @endphp
                     @forelse ($questions as $question)
+                        @php $wacanaId = $question['wacana']['id'] ?? null; @endphp
+                        @if ($wacanaId !== null && $wacanaId !== $lastWacanaId)
+                            <div class="alert alert-light border mb-3">
+                                @if (! empty($question['wacana']['judul']))
+                                    <div class="fw-semibold mb-1">
+                                        <i class="ri-book-open-line me-1 text-primary"></i>{{ $question['wacana']['judul'] }}
+                                    </div>
+                                @endif
+                                <div style="font-size:0.875rem;">{!! nl2br(e($question['wacana']['teks'])) !!}</div>
+                                @if (! empty($question['wacana']['sumber']))
+                                    <div class="text-muted stat-label mt-1">Sumber: {{ $question['wacana']['sumber'] }}</div>
+                                @endif
+                            </div>
+                        @endif
+                        @php $lastWacanaId = $wacanaId; @endphp
+
                         <div class="mb-4 pb-3 border-bottom">
                             <div class="d-flex align-items-start gap-2">
                                 <span class="badge bg-primary-subtle text-primary" style="min-width:34px;">{{ $question['nomor'] }}</span>

@@ -18,6 +18,9 @@ Backend (Laravel):
 - Dokumentasi: `docs/features/LJK-SMART-SCANNER.md`.
 - Revisi 2 (UI & lembar): kop lembaga pada lembar (gambar `kop_path` atau kop teks + logo), tata letak **2 kolom sejak awal** (kiri 1–10, kanan 11–20), **Master Fotokopi tanpa nama** (`?master=1&copies=N`, tanpa QR/data strip) dengan **Mode Fotokopi** (urutan seragam) saat menerbitkan, **nilai otomatis masuk** ke kolom resmi (STS/SAS/sumatif murni) begitu lembar bersih/dikoreksi (`ljk_sync_logs.action = auto`), halaman **Lihat Soal** (`/{userId}/ljk/{ljkUuid}/soal`, kunci mengikuti kebijakan `canViewAnswerKeys`), serta perbaikan bug **"Missing required parameter paketUuid"** pada view evaluasi paket soal (semua `route('user.paket-soal.*')` kini menyertakan `userId`).
 - Revisi 3 (lembar soal & font): **Lembar Soal PDF** (`/{userId}/ljk/{ljkUuid}/soal/pdf`) mengikuti format naskah madrasah — judul jenis ujian + tahun ajaran, tabel identitas (Mapel/Hari-Tanggal/Kelas/Waktu/Guru Pengampu/Nama Peserta Didik bergaris), **PENANAMAN KARAKTER** 3 butir, instruksi PG, butir soal **tanpa bobot/poin/TP/kunci/pembahasan** dengan **opsi mendatar** yang turun baris otomatis bila tidak muat; kolom **Waktu Mulai/Selesai** pada ujian (tampil sebagai `07.30 – 09.00`); **font Cambria untuk semua PDF LJK** via `LjkPdfFonts` (fallback Caladea → DejaVu Serif, cache metrik di `storage/app/dompdf/fonts`, status font tampil di halaman Lihat Soal).
+- Revisi 4 (lembar soal lanjutan): **opsi jawaban tersusun kolom sejajar** (A/B/C/D selalu pada posisi sama antar soal, `table-layout: fixed`), **fitur wacana/soal cerita** (`wacana_soal` + `soal.wacana_id`, dipasang dari form Bank Soal, dicetak sekali per kelompok dengan keterangan *"Wacana untuk soal nomor X–Y"*, legenda rentang di lembar jawaban, ikut dibekukan ke snapshot paket), **dukungan teks Arab** (shaping bentuk presentasi + susunan RTL deterministik di PHP — Dompdf tanpa mesin bidi, kelas `.ar` memakai DejaVu Sans bawaan atau Amiri/Scheherazade dari `storage/app/fonts/`, instruksi Arab otomatis), dan **opsi unduh PDF** `?download=1` untuk lembar soal maupun lembar jawaban (tombol *Unduh PDF* di UI). Seeder demo kini memuat contoh wacana Inggris (soal 11–13), wacana Arab + 3 soal Arab (21–23): total 23 butir.
+- Revisi 5 (setelan cetak lembar soal): font **Cambria 12 pt**, **spasi antar baris single (1.0)** dengan **jarak antar soal 1.15**, **margin halaman 0.2"/0.1"/0.59"/0.63"** (diubah otomatis ke mm), **identitas berbentuk tabel maksimal 3 baris** (2 pasang label/nilai per baris, *Nama Peserta Didik* bergaris), **pemilihan kertas otomatis A4 → F4 (215×330 mm)** yang hanya dipakai bila menghemat halaman (`LjkSoalPdfRenderer`, header `X-LJK-Paper`), serta **huruf pilihan Arab ا، ب، ج، د، هـ** untuk soal berbahasa Arab (otomatis terdeteksi) di lembar soal dan label kotak lembar jawaban. Nomor halaman dipindah ke pita margin bawah agar tidak menimpa baris terakhir.
+- Revisi 6 (perbaikan cetak): **margin `@page` kini benar-benar diterapkan** (akar masalah: reset `* { margin: 0 }` menimpa margin halaman di Dompdf — reset dibatasi pada elemen isi; hasil terukur kiri 14,7 mm · kanan 16 mm · atas 6,3 mm), **ukuran font dikompensasi** (`font_size_fallback_scale = 0.90`) sehingga 12 pt Cambria setara dengan ±10,8 pt font pengganti (DejaVu Serif tampil lebih besar), dan **huruf pilihan A/B/C/D tidak lagi bold**. Karena lebih padat, halaman 1 kini memuat 16 soal (sebelumnya 14).
 - Seeder contoh: `database/seeders/LjkLaluSopianSeeder.php` (idempoten) — menyiapkan akun GTK **Lalu Sopian Harianto** + buku nilai **Bahasa Inggris · kelas 1B**, Bank Soal + 20 soal PG, kisi-kisi, **Paket Soal final ber-snapshot**, dan ujian LJK contoh berikut 22 lembar siap cetak. Jalankan: `php artisan db:seed --class=LjkLaluSopianSeeder`.
 
 Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar ujian → peserta → **kamera** → hasil & koreksi) memakai `expo-image-picker` yang sudah terpasang (tanpa dependensi native baru), service/hook React Query, dan menu sidebar guru.
@@ -1324,6 +1327,60 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Scope baru: **Kaldik pondok** (global) terlihat semua GTK · **Agenda satuan** hanya GTK dalam satuan kerja tsb · **Agenda pribadi HANYA pemiliknya** (tidak muncul di kalender/dashboard/agenda orang lain).
   - Form **Tambah/Edit** menambah pilihan **Privasi Agenda**; `store()`/`update()` menetapkan pemilik untuk agenda pribadi dan membersihkannya untuk agenda satuan.
 - **Test baru `KaldikPrivasiTest`**: agenda pribadi terlihat pemilik, tidak bocor ke GTK lain; agenda satuan tidak menyeberang unit; kaldik pondok terlihat semua. `KaldikPekanEfektifTest` tetap hijau (**11 test / 68 assertion — 0 gagal**); `view:cache` sukses.
+
+## 140. Agenda Kegiatan Terhubung ke Kaldik (Satu Sumber Data) + Verifikasi Privasi To-do List
+- **Agenda Kegiatan (Kalender Akademik) kini memakai SATU sumber data: tabel `kaldik`** — tidak ada lagi halaman statis tanpa data:
+  - `KalenderKegiatanController@akademik` memuat agenda (kategori `agenda`) dengan **scope yang sama seperti Kalender Pendidikan**: agenda satuan kerja sendiri + agenda pribadi milik sendiri (pribadi GTK lain tidak bocor); filter Tahun Ajaran.
+  - Ringkasan otomatis: **Total Agenda · Berlangsung · Mendatang · Selesai**.
+  - **UI disamakan dengan pola ALIM**: breadcrumb, kartu `card-animate` + `stat-label`, header `border-bottom-dashed`, tabel `table-hover` + `table-light`, badge privasi (**Pribadi/Satuan**) & status, `x-empty-state`.
+  - **Integrasi navigasi**: tombol **Kalender Pendidikan** (halaman Kaldik) dan **To-do List**, plus **Tambah Agenda** (untuk Admin TU) yang langsung ke form Kaldik.
+- **To-do List — privasi & penugasan diverifikasi dengan regresi baru `TodoPrivasiTest`** (1 test / 8 assertion):
+  - Tugas **pribadi** hanya terlihat pemiliknya; tugas **delegasi** terlihat pemberi tugas (delegator) dan penerima (owner); tugas pribadi GTK lain **tidak bocor**. Modul sudah menyimpan `owner_id`/`created_by`/`delegated_by` + notifikasi delegasi.
+- Test gabungan: `TodoPrivasi + KaldikPrivasi + KaldikPekanEfektif + SupervisiSmoke + RombelArchive` = **0 gagal**; `view:cache` sukses.
+
+## 141. Absensi QR: Pengaturan Toleransi Keterlambatan (Default 5 Menit) & Geolokasi Opsional
+- **Service baru `QrAttendanceSettings`** — satu sumber pengaturan absensi QR:
+  - **Toleransi keterlambatan default 5 menit** (dapat diatur 0–120); nilai lama pada grup `qr_settings` tetap dibaca.
+  - **Geofence opsional**: aktif/nonaktif + titik (lintang/bujur) + **radius 10–5000 m** (default 150).
+  - `distanceMeters()` (haversine) + `geofenceStatus()` → **validasi di backend**. Koordinat guru **tidak disimpan** (hanya keputusan izin) — meminimalkan pengumpulan data lokasi.
+- **Halaman Pengaturan Absensi GTK** mendapat kartu **"Toleransi Keterlambatan & Lokasi Scan QR"**: input toleransi, switch wajib-lokasi, titik lintang/bujur + radius, dan tombol **"Gunakan Lokasi Saya"** (mengambil titik dari perangkat admin).
+  - **Kewenangan dibatasi**: hanya TU/Kepala/Wakil/Kurikulum (403 untuk lainnya; kartu disembunyikan bagi yang tidak berwenang).
+- **Scan QR guru**: chip status lokasi + tombol "Ambil Ulang Lokasi"; koordinat dikirim melalui **POST body** (URL signed tetap valid; CSRF disertakan).
+  - Tanpa izin/kegagalan GPS → pesan jelas & scan tidak dilanjutkan; **di luar radius** → pesan jarak & batas radius.
+- **Sidebar Satuan Pendidikan**: menu **"Pengaturan Toleransi & Lokasi"** (TU/Struktural/Kurikulum).
+- **Histori tidak berubah**: status & `late_minutes` tersimpan pada saat scan — mengubah konfigurasi TIDAK mengubah riwayat lama.
+- **Test baru `QrAttendanceSettingsTest`** (4 test / 17 assertion): default 5 menit; geofence nonaktif/tanpa titik/dalam radius/luar radius; simpan pengaturan & dibaca ulang; guru biasa 403. Regresi `TeacherQrScanControllerTest + JadwalPergantianJamTest` = **18 test / 198 assertion — 0 gagal**; `view:cache` sukses.
+
+## 142. Absensi QR — Modal Wajib, Izin Sekali, Toleransi per Jenis, Notifikasi Keterlambatan, Audit Log, & Kelonggaran GPS
+- **Modal wajib di halaman scan** (`outcome` dari backend → modal berbeda):
+  - **success** — lord-icon + "Absensi Berhasil!" (detail jadwal, status, keterlambatan);
+  - **error** — QR tidak valid/kadaluarsa, akses sekolah salah;
+  - **warning** — kendala lokasi (di luar area/GPS), lewat batas scan masuk/keluar;
+  - **info** — jam belum dimulai, salah kelas/tidak ada jadwal, sudah absen lengkap, belum waktunya scan keluar.
+  - Semua modal memakai tombol besar + pesan bahasa sederhana + tombol **Scan Ulang**.
+- **Izin kamera & lokasi cukup sekali**: diminta otomatis saat pertama membuka halaman, hasil di-cache (`localStorage`); kartu panduan dengan tombol besar **"Izinkan Kamera"/"Izinkan Lokasi"** + panduan jika pernah ditolak (ikon gembok peramban). Jika izin peramban berubah, browser akan menanyakannya lagi saat dipakai.
+- **Modal sukses di halaman Pengaturan** setelah menyimpan toleransi/lokasi (lord-icon) menggantikan sekadar alert.
+- **Toleransi per jenis** (dapat diatur): **Scan Awal** (default 15 mnt) · **Keterlambatan** (default 5 mnt) · **Batas Scan Terlambat** (default 5 mnt) · **Pulang Cepat** (default 10 mnt).
+- **Notifikasi keterlambatan** in-app otomatis ke satuan kerja sekolah (Waka/Kepala/TU/Kurikulum): nama GTK, menit terlambat, kelas, dan jam jadwal.
+- **Audit log pengaturan** (`activity_log`, `log_name = qr-settings`): siapa mengubah, kapan, **nilai lama → baru** (toleransi & geometri).
+- **Verifikasi GPS dengan kelonggaran akurasi**: jarak efektif = `jarak − akurasi perangkat`, sehingga tidak sering menolak palsu di dalam gedung; pesan penolakan menyertakan info akurasi.
+- Test: `QrAttendanceSettingsTest` + `TeacherQrScanControllerTest` + `JadwalPergantianJamTest` = **22 test / 221 assertion — 0 gagal**; `view:cache` sukses.
+
+## 143. Izin Sekali Saat Login + Opsi B (QR Cetak Tetap): Kunci Perangkat & Proteksi Berlapis
+- **Modal izin sekali saat login/pertama akses** (partial `layouts/partials/permission-setup`): untuk pengguna guru/struktural —
+  tombol besar **Izinkan Kamera**, **Izinkan Lokasi**, **Izinkan Notifikasi** + **Atur nanti**; tampil **sekali per peramban**
+  (localStorage), dengan panduan jika pernah ditolak (ikon gembok). Halaman scan tetap memiliki panduan izin sebagai cadangan.
+- **Opsi B — QR cetak tetap dengan proteksi berlapis**:
+  1. **Jendela waktu scan** (toleransi awal/akhir) — sudah aktif.
+  2. **Satu check-in & satu check-out per jadwal per hari** — sudah aktif.
+  3. **Kunci perangkat (opsional, baru)**: tabel `teacher_attendance_devices`; perangkat pertama yang dipakai GTK
+     didaftarkan otomatis; scan berikutnya wajib dari perangkat yang sama. Dapat diaktifkan per satuan
+     (switch di Pengaturan Toleransi & Lokasi) dan tercatat di audit log. ID perangkat persisten dibuat di peramban
+     (`alim_device_id_v1`) dan dikirim bersama koordinat.
+- **Test baru `TeacherDeviceBindingTest`** (nonaktif → bebas; aktif tanpa perangkat → ditolak; perangkat pertama terdaftar;
+  perangkat sama → diizinkan; perangkat lain → ditolak; satu baris per user).
+- Test gabungan `TeacherDeviceBinding + QrAttendanceSettings + TeacherQrScanController + JadwalPergantianJam` =
+  **23 test / 232 assertion — 0 gagal**; `view:cache` sukses.
 
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.

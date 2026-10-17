@@ -55,7 +55,7 @@ class LjkLaluSopianSeeder extends Seeder
 
     private const JENIS_UJIAN = 'sts';
 
-    private const JUMLAH_SOAL = 20;
+    private const JUMLAH_SOAL = 23;
 
     private const KKM = 70;
 
@@ -165,6 +165,10 @@ class LjkLaluSopianSeeder extends Seeder
 
         $bank->forceFill(['total_soal' => $soalList->count()])->save();
 
+        // ── Wacana / soal cerita (contoh format) ──────────────────────────
+        $wacana = $this->seedWacana($bank, $user, $soalList);
+        $wacanaDipakai = $wacana['dipakai'];
+
         // ── 2. Kisi-kisi ──────────────────────────────────────────────────
         $kisi = KisiKisiSoal::firstOrCreate(
             [
@@ -207,21 +211,28 @@ class LjkLaluSopianSeeder extends Seeder
             ]
         );
 
-        if ($paket->items()->count() === 0) {
-            $soalList->values()->each(function (Soal $soal, int $i) use ($paket) {
-                PaketSoalItem::create([
-                    'paket_soal_id' => $paket->id,
-                    'soal_id' => $soal->id,
-                    'urutan' => $i + 1,
-                    'nomor' => $i + 1,
-                    'jenis_soal' => 'pg',
-                ]);
-            });
-        }
+        $existingSoalIds = $paket->items()->pluck('soal_id')->all();
+        $itemsChanged = false;
+
+        $soalList->values()->each(function (Soal $soal, int $i) use ($paket, $existingSoalIds, &$itemsChanged) {
+            if (in_array($soal->id, $existingSoalIds, true)) {
+                return;
+            }
+
+            PaketSoalItem::create([
+                'paket_soal_id' => $paket->id,
+                'soal_id' => $soal->id,
+                'urutan' => $i + 1,
+                'nomor' => $i + 1,
+                'jenis_soal' => 'pg',
+            ]);
+            $itemsChanged = true;
+        });
 
         $paket->recomputeTotals();
 
-        if (! $paket->hasSnapshot()) {
+        // Butir berubah → beku ulang naskah agar wacana & soal baru terikut.
+        if (! $paket->hasSnapshot() || $itemsChanged) {
             app(PaketNaskahService::class)->snapshot($paket);
         }
 
@@ -315,6 +326,7 @@ class LjkLaluSopianSeeder extends Seeder
             ['Buku nilai', $subject->name.' · '.$group->name.' · '.$book->semester],
             ['Bank soal', $bank->nama.' ('.$soalList->count().' soal, '.$soalBaru.' baru)'],
             ['Kisi-kisi', $kisi->judul],
+            ['Wacana contoh', $wacana['judul'].' (soal '.implode(', ', array_map(fn ($w) => $w['rentang'], $wacanaDipakai)).')'],
             ['Paket soal', $paket->kode_paket.' ('.$paket->jumlah_soal_aktual.' butir, final)'],
             ['Santri di rombel', $jumlahSantri],
             ['Ujian LJK', $exam->code.' ('.($exam->status).')'],
@@ -352,7 +364,62 @@ class LjkLaluSopianSeeder extends Seeder
     }
 
     /**
-     * 20 soal PG Bahasa Inggris kelas 1 (mudah) + kunci berotasi A/B/C/D.
+     * Buat dua wacana contoh: bacaan Inggris (soal 11–13) dan teks Arab
+     * (soal 21–23), lalu tautkan ke soal terkait.
+     *
+     * @param  \Illuminate\Support\Collection<int, Soal>  $soalList
+     * @return array{judul: string, dipakai: array<int, array{judul: string, rentang: string}>}
+     */
+    private function seedWacana(\App\Models\BankSoal $bank, \App\Models\User $user, $soalList): array
+    {
+        $english = \App\Models\WacanaSoal::firstOrCreate(
+            ['bank_soal_id' => $bank->id, 'judul' => 'Aisyah\'s Day (contoh wacana)'],
+            [
+                'school_id' => $bank->school_id,
+                'teks' => 'Aisyah is a student of class one. Every morning she wakes up at five o\'clock. '
+                    .'She takes a bath, wears her uniform, and has breakfast with her family. '
+                    .'At seven o\'clock she goes to school with her father. She is never late.',
+                'sumber' => 'Contoh bacaan pendek kelas 1',
+                'created_by' => $user->id,
+            ]
+        );
+
+        $arabic = \App\Models\WacanaSoal::firstOrCreate(
+            ['bank_soal_id' => $bank->id, 'judul' => 'الحِوَار (contoh wacana Arab)'],
+            [
+                'school_id' => $bank->school_id,
+                'teks' => 'أَحْمَدُ تِلْمِيذٌ. هُوَ يَذْهَبُ إِلَى المَدْرَسَةِ صَبَاحًا. '
+                    .'يَقْرَأُ الكِتَابَ فِي الفَصْلِ ثُمَّ يَعُودُ إِلَى البَيْتِ. هُوَ طَالِبٌ مُجْتَهِدٌ.',
+                'sumber' => 'Contoh teks Arab tanpa harakat lengkap',
+                'created_by' => $user->id,
+            ]
+        );
+
+        // Soal 11–13 memakai bacaan Inggris; soal 21–23 memakai teks Arab.
+        $map = [10, 11, 12];
+        foreach ($map as $index) {
+            if (isset($soalList[$index])) {
+                $soalList[$index]->forceFill(['wacana_id' => $english->id])->saveQuietly();
+            }
+        }
+
+        foreach ([20, 21, 22] as $index) {
+            if (isset($soalList[$index])) {
+                $soalList[$index]->forceFill(['wacana_id' => $arabic->id])->saveQuietly();
+            }
+        }
+
+        return [
+            'judul' => 'Aisyah\'s Day + الحِوَار',
+            'dipakai' => [
+                ['judul' => 'Aisyah\'s Day (Inggris)', 'rentang' => '11–13'],
+                ['judul' => 'الحِوَار (Arab)', 'rentang' => '21–23'],
+            ],
+        ];
+    }
+
+    /**
+     * 23 soal PG: 20 Bahasa Inggris + 3 contoh soal Bahasa Arab (format ponpes).
      *
      * @return array<int, array{q:string, options:array<int,string>, key:int}>
      */
@@ -379,6 +446,10 @@ class LjkLaluSopianSeeder extends Seeder
             ['The first day of the week is ...', ['Monday', 'Friday', 'Saturday', 'Sunday']],
             ['We go to ... to study.', ['Market', 'School', 'Beach', 'Hospital']],
             ['The color of milk is ...', ['White', 'Black', 'Blue', 'Green']],
+            // ── Contoh soal Bahasa Arab (tanpa harakat lengkap) ─────────────
+            ['مَا اسْمُ هَذَا الشَّيْءُ؟ (gambar buku)', ['كِتَابٌ', 'قَلَمٌ', 'كُرْسِيٌّ', 'بَابٌ']],
+            ['أَحْمَدُ تِلْمِيذٌ مُجْتَهِدٌ. هُوَ ... إِلَى المَدْرَسَةِ صَبَاحًا.', ['يَذْهَبُ', 'يَأْكُلُ', 'يَنَامُ', 'يَلْعَبُ']],
+            ['الكِتَابُ فِي الفَصْلِ. مَعْنَى الفَصْلِ ...', ['Kelas', 'Kantor', 'Perpustakaan', 'Kamar']],
         ];
 
         $out = [];

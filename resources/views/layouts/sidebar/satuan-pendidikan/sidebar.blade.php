@@ -1189,6 +1189,15 @@
     </li>
     @endif
 
+    @if($showAll || $isAdminTU || $isStruktural || $isKoorKurik || $isTimKurikulum)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi-gtk.settings']) ? ' active' : '' }}"
+           href="{{ route('user.absensi-gtk.settings', ['userId' => $userId]) }}">
+            <i class="ri-settings-3-line"></i><span>Pengaturan Toleransi &amp; Lokasi</span>
+        </a>
+    </li>
+    @endif
+
     @if($showAll || $canManualAbsen)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.manual']) ? ' active' : '' }}"

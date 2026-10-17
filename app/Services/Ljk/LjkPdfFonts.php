@@ -83,21 +83,9 @@ final class LjkPdfFonts
                 continue;
             }
 
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::SELF_FIRST
-            );
-
-            $depth = 0;
-            foreach ($iterator as $file) {
-                if ($depth++ > 400) {
-                    break;
-                }
-
-                if ($file instanceof \SplFileInfo && $file->isFile()
-                    && preg_match('/\.(ttf|otf)$/i', $file->getFilename())
-                    && preg_match('/cambria|caladea/i', $file->getFilename())) {
-                    $files[] = $file->getPathname();
+            foreach (self::filesIn($dir) as $file) {
+                if (preg_match('/cambria|caladea/i', basename($file))) {
+                    $files[] = $file;
                 }
             }
         }
@@ -174,6 +162,139 @@ final class LjkPdfFonts
         // Tanpa berkas Cambria: Cambria/Caladea bila terpasang di sistem,
         // selebihnya serif bawaan Dompdf (keduanya didaftarkan Dompdf bila ada).
         return "Cambria, Caladea, 'DejaVu Serif', serif";
+    }
+
+    /**
+     * Font Arab terdaftar (bila ada berkas yang memuat bentuk presentasi Arab).
+     */
+    public static function arabicFontPath(): ?string
+    {
+        static $resolved = false;
+        static $path = null;
+
+        if ($resolved) {
+            return $path;
+        }
+
+        $resolved = true;
+
+        foreach ((array) config('ljk.pdf.fonts.arabic_paths', []) as $dir) {
+            if (! is_string($dir) || ! is_dir($dir)) {
+                continue;
+            }
+
+            foreach (self::filesIn($dir) as $file) {
+                if (! preg_match('/amiri|scheherazade|kfgqpc|naskh|arabic|lateef|geeza|nile|thabit/i', basename($file))) {
+                    continue;
+                }
+
+                if (self::hasArabicPresentationForms($file)) {
+                    return $path = $file;
+                }
+            }
+        }
+
+        return $path = null;
+    }
+
+    /**
+     * @font-face untuk font Arab terdaftar ('' bila memakai DejaVu Sans bawaan).
+     */
+    public static function arabicFaceCss(): string
+    {
+        if (self::arabicFontPath() === null) {
+            return '';
+        }
+
+        $file = self::arabicFontPath();
+
+        return "@font-face { font-family: 'LJK-Arabic'; src: url('file://".$file."') format('truetype'); font-weight: normal; font-style: normal; }\n"
+            ."@font-face { font-family: 'LJK-Arabic'; src: url('file://".$file."') format('truetype'); font-weight: bold; font-style: normal; }\n";
+    }
+
+    /**
+     * Stack font untuk teks Arab — DejaVu Sans bawaan Dompdf memuat bentuk
+     * presentasi Arab (U+FE70–FEFC) sehingga shaping PHP tetap terbaca.
+     */
+    public static function arabicStack(): string
+    {
+        return self::arabicFontPath() !== null
+            ? "'LJK-Arabic', 'DejaVu Sans', sans-serif"
+            : "'DejaVu Sans', sans-serif";
+    }
+
+    /**
+     * Cek apakah berkas font memuat bentuk presentasi Arab (ctx: U+FEE0/U+FEFB).
+     */
+    public static function hasArabicPresentationForms(string $ttfPath): bool
+    {
+        try {
+            return \Illuminate\Support\Facades\Cache::rememberForever(
+                'ljk:arabic-forms:'.sha1($ttfPath.':'.@filemtime($ttfPath)),
+                function () use ($ttfPath) {
+                    $font = \FontLib\Font::load($ttfPath);
+                    $font->parse();
+                    $map = $font->getUnicodeCharMap();
+
+                    return isset($map[0xFEE0], $map[0xFEFB]);
+                }
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function filesIn(string $dir): array
+    {
+        $files = [];
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            $limit = 0;
+            foreach ($iterator as $file) {
+                if ($limit++ > 400) {
+                    break;
+                }
+                if ($file instanceof \SplFileInfo && $file->isFile() && preg_match('/\.(ttf|otf)$/i', $file->getFilename())) {
+                    $files[] = $file->getPathname();
+                }
+            }
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return $files;
+    }
+
+    /**
+     * Apakah font Cambria/Caladea tersedia (bukan font pengganti serif bawaan).
+     */
+    public static function hasCambria(): bool
+    {
+        $faces = self::faces();
+
+        if ($faces === []) {
+            return false;
+        }
+
+        $name = mb_strtolower((string) ($faces['normal'] ?? ''));
+
+        return str_contains($name, 'cambria') || str_contains($name, 'caladea');
+    }
+
+    /**
+     * Faktor skala ukuran font agar setara Cambria pada pt yang sama.
+     */
+    public static function sizeScale(): float
+    {
+        return self::hasCambria() ? 1.0 : (float) config('ljk.soal.font_size_fallback_scale', 0.9);
     }
 
     /**

@@ -32,6 +32,7 @@ class CapaianPembelajaran extends Model
         'id',
         'school_id',
         'subject_id',
+        'academic_year_id',
         'fase',
         'elemen',
         'deskripsi',
@@ -53,6 +54,11 @@ class CapaianPembelajaran extends Model
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class);
     }
 
     public function creator(): BelongsTo
@@ -86,5 +92,25 @@ class CapaianPembelajaran extends Model
     public function scopeByFase($query, ?string $fase)
     {
         return $fase ? $query->where('fase', $fase) : $query;
+    }
+
+    /**
+     * ARSIP PERIODE: baris versi TA terpilih + baris lama (NULL) sebagai fallback.
+     */
+    public function scopeForAcademicYear($query, ?string $academicYearId)
+    {
+        if (! $academicYearId) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($academicYearId) {
+            $q->where('academic_year_id', $academicYearId)
+                ->orWhereNull('academic_year_id');
+        });
+    }
+
+    public function scopeOrderByAcademicYearFirst($query)
+    {
+        return $query->orderByRaw('academic_year_id IS NULL ASC');
     }
 }

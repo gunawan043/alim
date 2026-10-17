@@ -52,7 +52,15 @@ class PaketSoalItem extends Model
     public function kontenFinal(): array
     {
         if (is_array($this->konten_snapshot) && $this->konten_snapshot !== []) {
-            return $this->konten_snapshot;
+            $konten = $this->konten_snapshot;
+
+            // Naskah lama (sebelum fitur wacana) belum menyimpan kunci ini —
+            // lengkapi dari data soal agar lembar tetap menampilkan wacana.
+            if (! array_key_exists('wacana', $konten)) {
+                $konten['wacana'] = $this->soal?->wacanaPayload();
+            }
+
+            return $konten;
         }
 
         $soal = $this->soal;
@@ -61,6 +69,7 @@ class PaketSoalItem extends Model
             'nomor' => $this->nomor ?? $this->urutan,
             'jenis' => $this->jenis_soal ?? $soal?->tipe_soal,
             'soal_id' => $soal?->id,
+            'wacana' => $soal?->wacanaPayload(),
             'tp_id' => $soal?->tp_id,
             'pertanyaan' => $soal?->pertanyaan,
             'opsi' => $soal?->options->map(fn ($option) => [

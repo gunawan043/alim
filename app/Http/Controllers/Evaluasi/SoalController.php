@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\Soal;
+use App\Models\WacanaSoal;
 use App\Models\SoalOption;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
@@ -43,6 +44,43 @@ class SoalController extends Controller
     /**
      * Show create form for a new Soal within a BankSoal.
      */
+    /**
+     * Resolusi wacana untuk soal: buat baru (bila teks diisi) atau pakai yang ada.
+     * Mengembalikan null bila soal tidak memakai wacana.
+     */
+    private function resolveWacana(Request $request, BankSoal $bank, string $userId): ?string
+    {
+        $teks = trim((string) $request->input('wacana_teks', ''));
+
+        if ($teks !== '') {
+            $wacana = WacanaSoal::create([
+                'bank_soal_id' => $bank->id,
+                'school_id' => $bank->school_id,
+                'judul' => ($judul = trim((string) $request->input('wacana_judul', ''))) !== '' ? $judul : null,
+                'teks' => $teks,
+                'sumber' => ($sumber = trim((string) $request->input('wacana_sumber', ''))) !== '' ? $sumber : null,
+                'created_by' => $userId,
+            ]);
+
+            return $wacana->id;
+        }
+
+        $wacanaId = (string) $request->input('wacana_id', '');
+
+        if ($wacanaId !== '') {
+            $exists = WacanaSoal::query()
+                ->where('id', $wacanaId)
+                ->where(function ($q) use ($bank) {
+                    $q->where('bank_soal_id', $bank->id)->orWhereNull('bank_soal_id');
+                })
+                ->exists();
+
+            return $exists ? $wacanaId : null;
+        }
+
+        return null;
+    }
+
     public function create(string $userId, string $bankId)
     {
         $bank = BankSoal::findOrFail($bankId);
@@ -59,7 +97,17 @@ class SoalController extends Controller
             'uraian' => 'Uraian',
         ];
 
-        return view('evalusi.soal.create', compact('bank', 'tps', 'tipeSoal', 'userId'));
+        $wacanas = WacanaSoal::query()
+            ->where('bank_soal_id', $bank->id)
+            ->orderByDesc('created_at')
+            ->get(['id', 'judul', 'teks']);
+
+        $wacanas = WacanaSoal::query()
+            ->where('bank_soal_id', $bank->id)
+            ->orderByDesc('created_at')
+            ->get(['id', 'judul', 'teks']);
+
+        return view('evalusi.soal.create', compact('bank', 'tps', 'tipeSoal', 'wacanas', 'userId'));
     }
 
     /**
@@ -100,6 +148,7 @@ class SoalController extends Controller
             $soal->fill([
                 'bank_soal_id' => $bank->id,
                 'tp_id' => $validated['tp_id'] ?? null,
+                'wacana_id' => $this->resolveWacana($request, $bank, $userId),
                 'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
                 'pertanyaan' => $validated['pertanyaan'],
@@ -147,6 +196,7 @@ class SoalController extends Controller
     {
         $soal = Soal::with([
             'options',
+            'wacana',
             'reviewAssignments:id,reviewable_type,reviewable_id,reviewer_id,status',
             'similarities:id,soal_id,compared_soal_id,score,level',
             'similarities.comparedSoal:id,bank_soal_id,pertanyaan,dibuat_oleh,materi',
@@ -210,6 +260,9 @@ class SoalController extends Controller
 
             $soal->fill([
                 'tp_id' => $validated['tp_id'] ?? null,
+                'wacana_id' => $request->has('wacana_id') || $request->filled('wacana_teks')
+                    ? $this->resolveWacana($request, $bank, $userId)
+                    : $soal->wacana_id,
                 'materi' => $validated['materi'] ?? null,
                 'tipe_soal' => $validated['tipe_soal'],
                 'pertanyaan' => $validated['pertanyaan'],

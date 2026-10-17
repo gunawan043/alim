@@ -209,6 +209,40 @@
                 @endif
 
 @php $canManualAbsen = canPermission('teacher-attendance_manual'); @endphp
+
+                @if($geo['enabled'] ?? false)
+                    <div class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert" id="geoStatusBox">
+                        <span id="geoStatusText"><i class="ri-map-pin-line me-1"></i>Mendeteksi lokasi Anda…</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="captureGeo()">
+                            <i class="ri-focus-3-line me-1"></i>Ambil Ulang Lokasi
+                        </button>
+                    </div>
+                @endif
+
+                <div class="alert alert-primary border-0 mb-3" id="permGuide" role="alert">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="ri-shield-check-line" style="font-size:1.8rem;"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-bold">Sebelum mulai absen, izinkan akses berikut (cukup sekali)</h6>
+                            <p class="mb-2 small" style="opacity:.85;">
+                                Izinkan <strong>Kamera</strong> untuk scan QR{{ ($geo['enabled'] ?? false) ? ' dan Lokasi untuk verifikasi area sekolah' : '' }}.
+                                Jika pernah ditolak, buka ikon kunci di alamat situs → izinkan Kamera/Lokasi.
+                            </p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-primary px-4" onclick="requestCameraPermission()" id="btnPermCamera">
+                                    <i class="ri-camera-line me-1"></i> Izinkan Kamera
+                                </button>
+                                @if($geo['enabled'] ?? false)
+                                    <button type="button" class="btn btn-outline-primary px-4" onclick="requestGeoPermission()" id="btnPermGeo">
+                                        <i class="ri-map-pin-line me-1"></i> Izinkan Lokasi
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="mt-2 small fw-semibold" id="permStatusText"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <ul class="nav nav-pills nav-pills-custom mb-3" id="scanTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-panel" type="button" role="tab">
@@ -493,6 +527,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.lordicon.com/lordicon.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const userId = {{ Js::from($userId) }};
@@ -500,6 +535,155 @@ const scanUrls = @json($scanUrls);
 
 let html5QrCode = null;
 let isProcessing = false;
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || @json(csrf_token());
+const GEO_ENABLED = @json($geo['enabled'] ?? false);
+const GEO_RADIUS_HINT = @json($geo['radius_m'] ?? 150);
+window.__geo = null;
+
+function setGeoStatus(message, ok) {
+    var box = document.getElementById('geoStatusBox');
+    var text = document.getElementById('geoStatusText');
+    if (!box || !text) return;
+    box.classList.remove('alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+    box.classList.add(ok ? 'alert-success' : 'alert-warning');
+    text.innerHTML = '<i class="ri-map-pin-line me-1"></i>' + message;
+}
+
+function captureGeo() {
+    if (!GEO_ENABLED) return;
+
+    if (!('geolocation' in navigator)) {
+        setGeoStatus('Perangkat tidak mendukung layanan lokasi.', false);
+        return;
+    }
+
+    setGeoStatus('Mendeteksi lokasi Anda… (radius scan ± ' + GEO_RADIUS_HINT + ' m)', true);
+
+    navigator.geolocation.getCurrentPosition(
+        function (pos) {
+            window.__geo = {
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: Math.round(pos.coords.accuracy || 0)
+            };
+            setGeoStatus('Lokasi terdeteksi (akurasi ± ' + window.__geo.accuracy + ' m). Anda siap scan.', true);
+        },
+        function (err) {
+            window.__geo = null;
+            if (err && err.code === 1) {
+                setGeoStatus('Izin lokasi ditolak. Aktifkan izin lokasi pada peramban, lalu klik "Ambil Ulang Lokasi".', false);
+            } else {
+                setGeoStatus('Lokasi belum terdeteksi (GPS tidak aktif/sinyal lemah). Coba lagi di tempat terbuka.', false);
+            }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (GEO_ENABLED) captureGeo();
+});
+
+/* ── Izin kamera & lokasi: diminta sekali, hasil di-cache ── */
+const PERM_CACHE_KEY = 'alim_qr_perm_v2';
+const DEVICE_KEY = 'alim_device_id_v1';
+
+// ID perangkat persisten (untuk kunci perangkat opsional Opsi B).
+function getDeviceId() {
+    try {
+        var id = localStorage.getItem(DEVICE_KEY);
+        if (!id) {
+            id = 'dev-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+            localStorage.setItem(DEVICE_KEY, id);
+        }
+        return id;
+    } catch (e) {
+        return 'dev-fallback';
+    }
+}
+
+function setPermStatus(text) {
+    var el = document.getElementById('permStatusText');
+    if (el) el.innerHTML = text;
+}
+
+function markPermissionDone() {
+    try { localStorage.setItem(PERM_CACHE_KEY, '1'); } catch (e) {}
+    document.getElementById('permGuide')?.classList.add('d-none');
+}
+
+function maybeFinishPermissions() {
+    var cam = document.getElementById('btnPermCamera');
+    var geoBtn = document.getElementById('btnPermGeo');
+
+    var camDone = !cam || cam.dataset.done === '1';
+    var geoDone = !GEO_ENABLED || !geoBtn || geoBtn.dataset.done === '1';
+
+    if (camDone && geoDone) markPermissionDone();
+}
+
+function requestCameraPermission() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setPermStatus('Perangkat ini tidak mendukung kamera.');
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function (stream) {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            var cam = document.getElementById('btnPermCamera');
+            if (cam) { cam.dataset.done = '1'; cam.classList.remove('btn-primary'); cam.classList.add('btn-success'); }
+            setPermStatus('✅ Kamera diizinkan.');
+            maybeFinishPermissions();
+        })
+        .catch(function () {
+            setPermStatus('❌ Izin kamera ditolak. Klik ikon kunci/gembok di alamat situs → izinkan Kamera, lalu muat ulang halaman.');
+        });
+}
+
+function requestGeoPermission() {
+    if (!GEO_ENABLED) {
+        maybeFinishPermissions();
+        return;
+    }
+
+    if (!('geolocation' in navigator)) {
+        setPermStatus('Perangkat ini tidak mendukung layanan lokasi.');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function () {
+            var geoBtn = document.getElementById('btnPermGeo');
+            if (geoBtn) { geoBtn.dataset.done = '1'; geoBtn.classList.remove('btn-outline-primary'); geoBtn.classList.add('btn-success'); }
+            setPermStatus('✅ Lokasi diizinkan.');
+            captureGeo();
+            maybeFinishPermissions();
+        },
+        function () {
+            setPermStatus('❌ Izin lokasi ditolak. Klik ikon kunci/gembok di alamat situs → izinkan Lokasi, lalu muat ulang halaman.');
+        },
+        { enableHighAccuracy: true, timeout: 12000 }
+    );
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var guide = document.getElementById('permGuide');
+    if (!guide) return;
+
+    var cached = false;
+    try { cached = localStorage.getItem(PERM_CACHE_KEY) === '1'; } catch (e) {}
+
+    if (cached) {
+        guide.classList.add('d-none');
+        return;
+    }
+
+    // Permintaan pertama kali (sesuai permintaan: cukup sekali; jika izin berubah, browser akan menanyakan lagi saat dipakai).
+    requestCameraPermission();
+    if (GEO_ENABLED) requestGeoPermission();
+});
 
 /* ── Jam live + countdown ───────────────────────────────────── */
 function tickClock() {
@@ -626,10 +810,25 @@ async function processScan(studyGroupId) {
         return;
     }
 
+    if (GEO_ENABLED && !window.__geo) {
+        captureGeo();
+        showResult(false, 'Lokasi belum terdeteksi. Izinkan akses lokasi lalu coba scan lagi.');
+        return;
+    }
+
     isProcessing = true;
     showLoadingModal();
     try {
-        const response = await fetch(url, { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify(Object.assign({ device_id: getDeviceId() }, window.__geo || {})),
+        });
         let data = {};
         try { data = await response.json(); } catch (e) { /* ignore */ }
 
@@ -646,7 +845,17 @@ async function processScan(studyGroupId) {
 }
 
 /* ── Modal hasil ────────────────────────────────────────────── */
-function buildModal(ok, message, extraHtml) {
+const SCAN_OUTCOMES = {
+    success: { icon: 'ri-checkbox-circle-fill', cls: 'text-success', btn: 'btn-success', title: 'Absensi Berhasil!', close: 'Selesai' },
+    error:   { icon: 'ri-close-circle-fill',    cls: 'text-danger',  btn: 'btn-danger',  title: 'Absensi Gagal',   close: 'Tutup' },
+    warning: { icon: 'ri-alert-fill',           cls: 'text-warning', btn: 'btn-warning', title: 'Perhatian',       close: 'Mengerti' },
+    info:    { icon: 'ri-information-fill',     cls: 'text-info',    btn: 'btn-info',    title: 'Informasi',       close: 'Mengerti' },
+};
+
+function buildModal(outcome, message, extraHtml) {
+    const cfg = SCAN_OUTCOMES[outcome] || SCAN_OUTCOMES.error;
+    const isSuccess = outcome === 'success';
+
     const existing = document.getElementById('scanResultModal');
     if (existing) existing.remove();
 
@@ -656,15 +865,20 @@ function buildModal(ok, message, extraHtml) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center p-4">
-                        <div class="result-icon ${ok ? 'ok' : 'fail'}">
-                            <i class="${ok ? 'ri-checkbox-circle-fill' : 'ri-close-circle-fill'}"></i>
+                        <div class="${isSuccess ? '' : 'd-none'}">
+                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop"
+                                       colors="primary:#121331,secondary:#08a88a"
+                                       style="width:120px;height:120px;"></lord-icon>
                         </div>
-                        <h5 class="mb-2 ${ok ? 'text-success' : 'text-danger'}">${ok ? 'Berhasil!' : 'Gagal'}</h5>
-                        <p class="text-muted mb-2">${message}</p>
+                        <div class="${isSuccess ? 'd-none' : ''}">
+                            <i class="${cfg.icon} ${cfg.cls}" style="font-size:4rem;"></i>
+                        </div>
+                        <h4 class="mt-2 mb-2 ${cfg.cls}">${cfg.title}</h4>
+                        <p class="text-muted mb-2" style="font-size:1.05rem;">${message}</p>
                         ${extraHtml || ''}
-                        <div class="d-flex gap-2 justify-content-center mt-3">
-                            <button type="button" class="btn btn-${ok ? 'success' : 'danger'}" data-bs-dismiss="modal">${ok ? 'Selesai' : 'Tutup'}</button>
-                            ${ok ? '' : '<button type="button" class="btn btn-outline-primary" id="btn-retry-scan"><i class="ri-refresh-line me-1"></i>Scan Ulang</button>'}
+                        <div class="d-flex gap-2 justify-content-center mt-4 flex-wrap">
+                            <button type="button" class="btn ${cfg.btn} btn-lg px-4" data-bs-dismiss="modal">${cfg.close}</button>
+                            ${isSuccess ? '' : '<button type="button" class="btn btn-outline-primary btn-lg px-4" id="btn-retry-scan"><i class="ri-camera-line me-1"></i>Scan Ulang</button>'}
                         </div>
                     </div>
                 </div>
@@ -676,7 +890,7 @@ function buildModal(ok, message, extraHtml) {
     const modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
     el.addEventListener('hidden.bs.modal', () => {
         el.remove();
-        if (ok) {
+        if (isSuccess) {
             window.location.reload();
         } else {
             startScanner();
@@ -723,7 +937,8 @@ function showResult(ok, message, data) {
     if (data && data.already_completed) {
         extra += '<p class="small text-warning mb-0"><i class="ri-alert-line me-1"></i>Absensi kelas ini sudah lengkap hari ini.</p>';
     }
-    buildModal(ok, message, extra);
+    const outcome = (data && data.outcome) ? data.outcome : (ok ? 'success' : 'error');
+    buildModal(outcome, message, extra);
 }
 
 /* ── Inisialisasi ───────────────────────────────────────────── */

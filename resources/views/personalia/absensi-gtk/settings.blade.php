@@ -37,6 +37,99 @@
 <div class="row g-4">
     {{-- Left Column: Settings Form --}}
     <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line text-primary me-1"></i> Toleransi Keterlambatan &amp; Lokasi Scan QR</h5>
+            </div>
+            <div class="card-body">
+                @if(! ($canManageQr ?? false))
+                    <div class="alert alert-warning small mb-0">
+                        <i class="ri-lock-line me-1"></i> Hanya satuan pendidikan berwenang (TU, Kepala/Wakil, Kurikulum) yang dapat mengubah pengaturan ini.
+                    </div>
+                @else
+                    <form action="{{ route('user.absensi-gtk.settings.qr', $userId) }}" method="POST" id="qrSettingsForm">
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Toleransi Keterlambatan</label>
+                                <input type="number" name="late_threshold_minutes" class="form-control form-control-sm" min="0" max="120" required
+                                       value="{{ old('late_threshold_minutes', $qrTime['qr_late_threshold_minutes'] ?? 5) }}">
+                                <div class="form-text small">Menit setelah jam mulai → <strong>Terlambat</strong>. Default 5.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Toleransi Scan Awal</label>
+                                <input type="number" name="tolerance_before_minutes" class="form-control form-control-sm" min="0" max="120" required
+                                       value="{{ old('tolerance_before_minutes', $qrTime['qr_tolerance_before_minutes'] ?? 15) }}">
+                                <div class="form-text small">Boleh scan sebelum jam mulai. Default 15.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Batas Scan Terlambat</label>
+                                <input type="number" name="tolerance_after_minutes" class="form-control form-control-sm" min="0" max="120" required
+                                       value="{{ old('tolerance_after_minutes', $qrTime['qr_tolerance_after_minutes'] ?? 5) }}">
+                                <div class="form-text small">Setelah ini scan masuk ditolak. Default 5.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Toleransi Pulang Cepat</label>
+                                <input type="number" name="early_leave_threshold_minutes" class="form-control form-control-sm" min="0" max="180" required
+                                       value="{{ old('early_leave_threshold_minutes', $qrTime['qr_early_leave_threshold_minutes'] ?? 10) }}">
+                                <div class="form-text small">Scan keluar lebih awal dari ini → <strong>Pulang Cepat</strong>. Default 10.</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="geoEnabledSwitch" name="geo_enabled" value="1"
+                                           {{ old('geo_enabled', $qrGeo['enabled'] ?? false) ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-medium" for="geoEnabledSwitch">Wajibkan verifikasi lokasi saat scan QR</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="deviceBindingSwitch" name="device_binding_enabled" value="1"
+                                           {{ old('device_binding_enabled', \App\Models\AbsensiGtkSetting::get(\App\Services\TeacherDeviceBinding::KEY_ENABLED, false)) ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-medium" for="deviceBindingSwitch">Kunci perangkat (opsional)</label>
+                                </div>
+                                <div class="form-text small">Perangkat pertama yang dipakai GTK didaftarkan otomatis; scan berikutnya wajib dari perangkat yang sama. Ganti perangkat hanya melalui TU.</div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row g-3" id="geoFields">
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Lintang (Latitude)</label>
+                                <input type="text" name="geo_lat" id="geoLat" class="form-control form-control-sm"
+                                       value="{{ old('geo_lat', $qrGeo['lat'] ?? '') }}" placeholder="-8.5833">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Bujur (Longitude)</label>
+                                <input type="text" name="geo_lng" id="geoLng" class="form-control form-control-sm"
+                                       value="{{ old('geo_lng', $qrGeo['lng'] ?? '') }}" placeholder="116.1167">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium">Radius (meter)</label>
+                                <input type="number" name="geo_radius_m" class="form-control form-control-sm" min="10" max="5000"
+                                       value="{{ old('geo_radius_m', $qrGeo['radius_m'] ?? 150) }}">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="useCurrentLocation()">
+                                    <i class="ri-focus-3-line me-1"></i>Gunakan Lokasi Saya
+                                </button>
+                            </div>
+                            <div class="col-12">
+                                <div class="alert alert-light border small mb-0">
+                                    <i class="ri-information-line me-1 text-primary"></i>
+                                    Titik &amp; radius dipakai <strong>backend</strong> untuk memvalidasi scan. Koordinat guru
+                                    <strong>tidak disimpan</strong> — hanya keputusan izin. Lokasi bukan bukti anti-palsu; deteksi berbasis kejujuran perangkat.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="ri-save-line me-1"></i>Simpan Pengaturan QR</button>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
         <div class="card">
             <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
                 <h5 class="card-title mb-0"><i class="ri-settings-3-line text-primary me-1"></i> Konfigurasi</h5>
@@ -137,4 +230,44 @@
         </div>
     </div>
 </div>
+@if(session('success'))
+    <x-modal-success id="qrSettingsSavedModal" title="Pengaturan Tersimpan!" message="{{ session('success') }}" />
+@endif
+
+@push('scripts')
+<script src="https://cdn.lordicon.com/lordicon.js"></script>
+@if(session('success'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.getElementById('qrSettingsSavedModal');
+        if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show();
+    });
+</script>
+@endif
+<script>
+function useCurrentLocation() {
+    var latEl = document.getElementById('geoLat');
+    var lngEl = document.getElementById('geoLng');
+    if (!latEl || !lngEl) return;
+
+    if (!('geolocation' in navigator)) {
+        alert('Perangkat tidak mendukung layanan lokasi.');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function (pos) {
+            latEl.value = pos.coords.latitude.toFixed(6);
+            lngEl.value = pos.coords.longitude.toFixed(6);
+            var sw = document.getElementById('geoEnabledSwitch');
+            if (sw) sw.checked = true;
+        },
+        function () {
+            alert('Lokasi tidak terdeteksi. Pastikan izin lokasi aktif lalu coba lagi.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+</script>
+@endpush
 @endsection

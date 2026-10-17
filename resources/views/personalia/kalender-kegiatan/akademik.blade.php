@@ -1,215 +1,198 @@
-{{-- Kalender Kegiatan: Akademik --}}
+{{-- Agenda Kegiatan — sumber data tunggal: Kaldik (kategori agenda). --}}
 @extends('layouts.master')
-@section('title') Kalender Akademik @endsection
+@section('title') Agenda Kegiatan @endsection
 
-@push('css')
-<style>
-.stat-card{transition:all .25s ease;cursor:default}.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
-.table-freeze{table-layout:auto;min-width:900px;width:100%;margin-bottom:0}
-.table-freeze th,.table-freeze td{vertical-align:middle;padding:11px 14px;word-break:break-word}
-.table-freeze thead th{position:sticky;top:0;z-index:20;font-weight:600;background:#f8fafc;border-bottom:2px solid #e2e8f0}
-.table-freeze tbody tr:hover td{background:#f1f5f9}
-.page-header-card{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #bbf7d0;padding:1.25rem 1.5rem;border-radius:.625rem}
-[data-bs-theme="dark"] .page-header-card{background:linear-gradient(135deg,#052e16 0%,#0a2e1a 100%);border-color:#166534}
-@media print{.no-print{display:none!important}}
-.badge-status{font-size:.78rem;padding:.35em .7em}
-</style>
-@endpush
+@section('css')
+    @include('shared._styles')
+@endsection
 
 @section('content')
-@php $userId = request()->route('userId') ?? auth()->id(); @endphp
+    @php
+        $today = now()->toDateString();
+        $canCreateAgenda = function_exists('canPermission') && canPermission('kaldik-admin-tu');
+    @endphp
 
-<div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <div style="width:48px;height:48px;background:#22c55e18;color:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="ri-calendar-event-line fs-4"></i>
-        </div>
-        <div>
-            <h4 class="fw-bold text-dark mb-1" style="font-size:1.1rem">Kalender Akademik</h4>
-            <p class="mb-0 text-muted" style="font-size:.8rem">Jadwal dan timeline kegiatan akademik tahun ajaran</p>
-        </div>
-    </div>
-    <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.kalender-kegiatan.kontrak', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-file-paper-2-line me-1"></i> Kontrak
-        </a>
-        <a href="{{ route('user.kalender-kegiatan.evaluasi', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-clipboard-line me-1"></i> Evaluasi GTK
-        </a>
-        <a href="{{ route('user.kalender-kegiatan.training', $userId) }}" class="btn btn-light btn-sm">
-            <i class="ri-graduation-cap-line me-1"></i> Training
-        </a>
-    </div>
-</div>
+    @component('components.breadcrumb')
+        @slot('li_1') Kalender Akademik @endslot
+        @slot('li_2') <a href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">Kalender Pendidikan</a> @endslot
+        @slot('title') Agenda Kegiatan @endslot
+    @endcomponent
 
-{{-- Stat Cards --}}
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #16a34a;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-2" style="background:#22c55e18;">
-                            <i class="ri-file-list-3-line" style="color:#16a34a;"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Total Kegiatan</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $totalKegiatan ?? 0 }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #2563eb;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-primary-subtle rounded-3 fs-2">
-                            <i class="ri-calendar-check-line text-primary"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Berlangsung</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $berlangsung ?? 0 }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #16a34a;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-success-subtle rounded-3 fs-2">
-                            <i class="ri-checkbox-circle-line text-success"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Selesai</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $selesai ?? 0 }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border-left:3px solid #d97706;">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title bg-warning-subtle rounded-3 fs-2">
-                            <i class="ri-time-line text-warning"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;letter-spacing:0.5px;">Akan Datang</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $akanDatang ?? 0 }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- Filter Bar --}}
-<div class="filter-bar rounded-2 border p-3 mb-3 no-print">
-    <form method="GET" action="{{ route('user.kalender-kegiatan.akademik', $userId) }}" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label mb-0" style="font-size:.8rem">Bulan</label>
-            <select name="bulan" class="form-select form-select-sm">
-                <option value="">Semua Bulan</option>
-                @foreach([1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'November',12=>'Desember'] as $num=>$name)
-                    <option value="{{ $num }}">{{ $name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label mb-0" style="font-size:.8rem">Jenis Kegiatan</label>
-            <select name="jenis" class="form-select form-select-sm">
-                <option value="">Semua</option>
-                <option value="ujian">Ujian</option>
-                <option value="pelatihan">Pelatihan</option>
-                <option value="evaluasi">Evaluasi</option>
-                <option value="kegiatan">Kegiatan Sekolah</option>
-            </select>
-        </div>
-        <div class="col-md-3 d-flex align-items-end gap-1">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="ri-filter-3-line me-1"></i>Filter</button>
-            <a href="{{ route('user.kalender-kegiatan.akademik', $userId) }}" class="btn btn-light btn-sm"><i class="ri-reset-right-line me-1"></i>Reset</a>
-        </div>
-        <div class="col-md-3 d-flex align-items-end justify-content-end">
-            <button onclick="window.print()" class="btn btn-light btn-sm"><i class="ri-printer-line me-1"></i>Print</button>
-        </div>
-    </form>
-</div>
-
-{{-- Table --}}
-<div class="card">
-    <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
-        <h5 class="card-title mb-0"><i class="ri-table-2 text-primary me-1"></i> Jadwal Kegiatan Akademik</h5>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle table-freeze">
-            <thead>
-                <tr>
-                    <th class="bg-light text-center" style="width:48px">No</th>
-                    <th class="bg-light">Nama Kegiatan</th>
-                    <th class="bg-light">Tanggal Mulai</th>
-                    <th class="bg-light">Tanggal Selesai</th>
-                    <th class="bg-light">Penanggung Jawab</th>
-                    <th class="bg-light text-center">Status</th>
-                    <th class="bg-light text-center">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($kegiatanList ?? [] as $item)
-                    <tr>
-                        <td class="text-center">{{ $loop->iteration }}</td>
-                        <td class="fw-medium">{{ $item['nama'] ?? '-' }}</td>
-                        <td>{{ $item['tanggal_mulai'] ?? '-' }}</td>
-                        <td>{{ $item['tanggal_selesai'] ?? '-' }}</td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="avatar-xs rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="font-size:.7rem;width:28px;height:28px">
-                                    {{ strtoupper(substr($item['pj'] ?? 'P', 0, 1)) }}
-                                </div>
-                                <span class="small">{{ $item['pj'] ?? '-' }}</span>
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            @php $status = $item['status'] ?? 'akan_datang'; @endphp
-                            @if($status == 'berlangsung')
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">Berlangsung</span>
-                            @elseif($status == 'selesai')
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Selesai</span>
-                            @else
-                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Akan Datang</span>
-                            @endif
-                        </td>
-                        <td class="text-center no-print">
-                            <a href="{{ route('user.kalender-kegiatan.akademik', $userId) }}" class="btn btn-sm btn-light"><i class="ri-eye-line"></i></a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div style="color:#22c55e;opacity:.4"><i class="ri-calendar-event-line" style="font-size:3rem"></i></div>
-                            <h5 class="mt-2 fw-semibold">Belum ada data</h5>
-                            <p class="text-muted mb-0 small">Jadwal kegiatan akademik akan muncul di sini</p>
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    @if(isset($kegiatanList) && method_exists($kegiatanList, 'hasPages') && $kegiatanList->hasPages())
-        <div class="card-footer bg-white py-2 d-flex justify-content-between align-items-center no-print">
-            <span class="text-muted small">Menampilkan {{ $kegiatanList->firstItem() ?? 0 }} - {{ $kegiatanList->lastItem() ?? 0 }} dari {{ $kegiatanList->total() }} data</span>
-            <nav>{{ $kegiatanList->appends(request()->query())->links() }}</nav>
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
-</div>
+
+    {{-- Ringkasan --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-calendar-event-line text-primary"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Agenda</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['total'] }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Agenda satuan &amp; pribadi Anda</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-loader-4-line text-warning"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Berlangsung</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['berlangsung'] }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Sedang berjalan hari ini</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-calendar-check-line text-info"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mendatang</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['mendatang'] }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Belum dimulai</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Selesai</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $stats['selesai'] }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Sudah terlewati</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Daftar Agenda Kegiatan</h5>
+                    <p class="text-muted mb-0 small">
+                        Terhubung dengan <strong>Kalender Pendidikan</strong> — sumber data yang sama.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('user.kaldik.index', ['userId' => $userId]) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="ri-calendar-2-line me-1"></i>Kalender Pendidikan
+                    </a>
+                    <a href="{{ route('user.todos.index', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="ri-task-line me-1"></i>To-do List
+                    </a>
+                    @if($canCreateAgenda)
+                        <a href="{{ route('user.kaldik.create', ['userId' => $userId]) }}" class="btn btn-success btn-sm">
+                            <i class="ri-add-line me-1"></i>Tambah Agenda
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <form method="GET" action="{{ route('user.kalender-kegiatan.akademik', $userId) }}" class="row g-2 align-items-end mb-3">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
+                    <select name="academic_year_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">Semua Tahun Ajaran</option>
+                        @foreach($academicYears as $ay)
+                            <option value="{{ $ay->id }}" {{ request('academic_year_id') === $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-3">
+                    <a href="{{ route('user.kalender-kegiatan.akademik', $userId) }}" class="btn btn-light btn-sm w-100">
+                        <i class="ri-refresh-line me-1"></i>Reset
+                    </a>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:50px" class="text-center">No</th>
+                            <th>Nama Kegiatan</th>
+                            <th style="width:130px">Privasi</th>
+                            <th style="width:210px">Periode</th>
+                            <th style="width:130px" class="text-center">Status</th>
+                            <th style="width:160px">Tahun Ajaran</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($agendaList as $i => $agenda)
+                            @php
+                                $start = $agenda->start_date?->toDateString();
+                                $end = $agenda->end_date?->toDateString();
+                                $status = $start > $today ? ['Mendatang', 'info'] : ($end < $today ? ['Selesai', 'success'] : ['Berlangsung', 'warning']);
+                                $isPribadi = $agenda->visibility === \App\Models\Kaldik::VISIBILITY_PRIBADI;
+                            @endphp
+                            <tr>
+                                <td class="text-center text-muted">{{ $i + 1 }}</td>
+                                <td>
+                                    <span class="fw-semibold">{{ $agenda->name }}</span>
+                                    @if($agenda->description)
+                                        <small class="text-muted d-block">{{ \Illuminate\Support\Str::limit($agenda->description, 90) }}</small>
+                                    @endif
+                                    <small class="text-muted d-block">
+                                        {{ $agenda->type ? (\App\Models\Kaldik::TYPE_OPTIONS[$agenda->type] ?? ucfirst($agenda->type)) : ucfirst((string) $agenda->category) }}
+                                    </small>
+                                </td>
+                                <td>
+                                    @if($isPribadi)
+                                        <span class="badge bg-danger-subtle text-danger"><i class="ri-lock-line me-1"></i>Pribadi</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary"><i class="ri-community-line me-1"></i>Satuan</span>
+                                    @endif
+                                </td>
+                                <td class="small">
+                                    {{ $agenda->start_date?->format('d M Y') ?? '-' }}
+                                    @if($agenda->end_date && $agenda->end_date->ne($agenda->start_date))
+                                        &ndash; {{ $agenda->end_date->format('d M Y') }}
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ $status[1] }}-subtle text-{{ $status[1] }}">{{ $status[0] }}</span>
+                                </td>
+                                <td class="small">{{ $agenda->academicYear?->name ?? '-' }}</td>
+                            </tr>
+                        @empty
+                            <x-empty-state colspan="6"
+                                title="Belum ada agenda kegiatan"
+                                message="Agenda satuan dan agenda pribadi Anda akan tampil di sini — sumbernya sama dengan Kalender Pendidikan." />
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 @endsection

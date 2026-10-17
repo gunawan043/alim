@@ -25,6 +25,7 @@ class Soal extends Model
     protected $fillable = [
         'bank_soal_id',
         'tp_id',
+        'wacana_id',
         'materi',
         'derived_from_soal_id',
         'tipe_soal',
@@ -88,6 +89,32 @@ class Soal extends Model
     public function bankSoal(): BelongsTo
     {
         return $this->belongsTo(BankSoal::class);
+    }
+
+    public function wacana(): BelongsTo
+    {
+        return $this->belongsTo(WacanaSoal::class, 'wacana_id');
+    }
+
+    /**
+     * Wacana untuk lembar soal: judul + teks (null bila tanpa wacana).
+     *
+     * @return array{id: string, judul: ?string, teks: string, sumber: ?string}|null
+     */
+    public function wacanaPayload(): ?array
+    {
+        $wacana = $this->relationLoaded('wacana') ? $this->wacana : $this->wacana()->first();
+
+        if (! $wacana) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $wacana->id,
+            'judul' => $wacana->judul,
+            'teks' => (string) $wacana->teks,
+            'sumber' => $wacana->sumber,
+        ];
     }
 
     public function tujuanPembelajaran(): BelongsTo

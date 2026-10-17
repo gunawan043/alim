@@ -94,6 +94,23 @@ class KaldikPrivasiTest extends TestCase
         $this->assertNotContains('Agenda Pribadi A', $namesB);
     }
 
+    public function test_halaman_agenda_kegiatan_memakai_sumber_kaldik_dan_privasi_sama(): void
+    {
+        $controller = app(\App\Http\Controllers\Personalia\KalenderKegiatanController::class);
+
+        $view = $controller->akademik($this->makeRequest($this->userA, $this->schoolA), $this->userA->id);
+        $names = $view->getData()['agendaList']->pluck('name')->all();
+        $stats = $view->getData()['stats'];
+
+        $this->assertContains('Agenda Satuan A', $names, 'Agenda satuan sendiri tampil di halaman agenda.');
+        $this->assertContains('Agenda Pribadi A', $names, 'Agenda pribadi pemilik tampil.');
+        $this->assertNotContains('Agenda Satuan B', $names, 'Agenda satuan lain tidak bocor.');
+        $this->assertNotContains('Agenda Pribadi B', $names, 'Agenda pribadi GTK lain tidak bocor.');
+        $this->assertNotContains('Kaldik Pondok', $names, 'Kategori kaldik bukan agenda kegiatan.');
+
+        $this->assertSame(2, $stats['total']);
+    }
+
     private function makeRequest(User $user, School $school): Request
     {
         $request = Request::create('/kaldik', 'GET');

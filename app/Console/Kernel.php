@@ -99,6 +99,14 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // ARSIP PERIODE
+
+        // Laporan kelengkapan arsip bulanan (pengingat menjelang penutupan periode)
+        $schedule->command('arsip:laporan-kelengkapan')
+            ->monthlyOn(1, '06:30')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // ASSET INTELLIGENCE
         $schedule->command('sarpras:repair-vs-replace --all')
             ->dailyAt('02:30')

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\NilaiSumatif;
 use App\Models\TeacherAdminBook;
 
 /**
@@ -164,5 +165,56 @@ class AcademicNilai
         }
 
         return $nilai < self::kkm($book);
+    }
+
+    /**
+     * Nilai tampil menurut jenis dokumen: STS → sts; SAS → NR Final (fallback SAS).
+     * Satu aturan untuk Leger, Rapor, export, dan arsip dokumen.
+     */
+    public static function resolveTampil(string $jenis, ?NilaiSumatif $row): ?float
+    {
+        if (! $row) {
+            return null;
+        }
+
+        if ($jenis === 'sas') {
+            if ($row->nr_final !== null) {
+                return (float) $row->nr_final;
+            }
+
+            return $row->sas !== null ? (float) $row->sas : null;
+        }
+
+        return $row->sts !== null ? (float) $row->sts : null;
+    }
+
+    /**
+     * Kelompok mapel: 1–3 = Agama/B.Arab/Hadits (grup AGAMA), 4 = Umum.
+     */
+    public static function subjectGroup(string $name): int
+    {
+        $nameLower = strtolower($name);
+
+        if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits)/i', $nameLower)) {
+            return 1;
+        }
+        if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower)) {
+            return 2;
+        }
+        if (preg_match('/(hadits|hadist)/i', $nameLower)) {
+            return 3;
+        }
+
+        return 4;
+    }
+
+    /**
+     * Urutan mapel: kelompok Agama → Arab → Hadits → Umum, lalu alfabetis.
+     *
+     * @return array{0: int, 1: string}
+     */
+    public static function subjectSortOrder(string $name, string $category): array
+    {
+        return [self::subjectGroup($name), strtolower($name)];
     }
 }

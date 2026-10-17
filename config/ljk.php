@@ -213,6 +213,17 @@ return [
                 '/System/Library/Fonts',
             ],
             'fallback' => 'DejaVu Serif',
+            // Font Arab opsional (Amiri/Scheherazade/KFGQPC/Noto Naskh).
+            // Bila tidak ada, dipakai DejaVu Sans bawaan Dompdf yang sudah
+            // memuat bentuk presentasi Arab (shaping dilakukan di PHP).
+            'arabic_paths' => [
+                storage_path('app/fonts'),
+                storage_path('fonts'),
+                base_path('resources/fonts'),
+                '/usr/share/fonts',
+                '/usr/local/share/fonts',
+                '/Library/Fonts',
+            ],
         ],
     ],
 
@@ -238,8 +249,35 @@ return [
             'Sebaik-baik pengawas adalah Allah Subhanahuwata\'ala!',
         ],
         'instruksi' => 'Pilihlah jawaban yang paling tepat dengan memberikan tanda silang (X) pada huruf A, B, C atau D pada Lembar Jawaban yang disediakan !',
-        // Font lembar soal (pt).
-        'font_size' => 11.5,
+        // Ditampilkan pada lembar soal berbahasa Arab (setelah instruksi Indonesia).
+        'instruksi_arab' => 'اختر الجواب الأصح بوضع علامة (X) على الحرف ا، ب، ج، د في ورقة الجواب المرفقة !',
+
+        // ── Format cetak (default setelan umum MS Word) ─────────────────
+        // Font lembar soal (pt) — Cambria.
+        'font_size' => 12.0,
+        // Faktor kompensasi bila font Cambria/Caladea belum dipasang: font
+        // pengganti (DejaVu Serif) tampil lebih besar pada pt yang sama,
+        // sehingga ukuran dikalikan faktor ini agar setara 12 pt Cambria.
+        'font_size_fallback_scale' => 0.90,
+        // Jarak antar baris "single" (1.0); jarak antar SOAL 1.15.
+        'line_height' => 1.0,
+        'question_gap' => 1.15,
+        // Margin dalam inci (dikonversi otomatis ke mm): atas, bawah, kiri, kanan.
+        'margin_in' => ['top' => 0.20, 'bottom' => 0.10, 'left' => 0.59, 'right' => 0.63],
+        // Kertas: default A4; otomatis naik ke F4 (folio) bila menghemat halaman.
+        'paper' => [
+            'default' => 'a4',
+            'fallback' => 'f4',
+            'auto' => true,
+            'sizes' => [
+                'a4' => ['width_mm' => 210.0, 'height_mm' => 297.0, 'label' => 'A4'],
+                'f4' => ['width_mm' => 215.0, 'height_mm' => 330.0, 'label' => 'F4 (Folio)'],
+            ],
+        ],
+        // Huruf pilihan ganda untuk soal berbahasa Arab (bukan A/B/C/D/E).
+        'huruf_arab' => ['ا', 'ب', 'ج', 'د', 'هـ'],
+        // Identitas: jumlah baris maksimum pada tabel kop (2 pasang per baris).
+        'identitas_baris_maks' => 3,
     ],
 
     /*

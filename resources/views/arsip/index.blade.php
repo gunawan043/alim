@@ -208,6 +208,56 @@
         </div>
     </div>
 
+    {{-- Arsipkan Rapor (PDF) --}}
+    @if($selectedAy)
+        <div class="card">
+            <div class="card-header border-bottom-dashed">
+                <h5 class="card-title mb-0"><i class="ri-file-pdf-2-line text-danger me-1"></i>Arsipkan Rapor (PDF)</h5>
+                <p class="text-muted mb-0 small">
+                    Membuat salinan PDF rapor per santri (termasuk anggota rombel yang sudah pindah/naik kelas)
+                    lalu menyimpannya sebagai dokumen arsip ber-hash. Aman dijalankan ulang — dokumen yang sudah ada dilewati.
+                </p>
+            </div>
+            <div class="card-body">
+                @if($studyGroups->isEmpty())
+                    <p class="text-muted mb-0 small"><i class="ri-information-line me-1"></i>Belum ada rombel pada tahun ajaran ini.</p>
+                @else
+                    <form method="POST" action="{{ route('user.arsip.rapor', ['userId' => $userId, 'id' => $selectedAy->id]) }}"
+                          class="row g-2 align-items-end">
+                        @csrf
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Rombel</label>
+                            <select name="study_group_id" class="form-select" required>
+                                @foreach($studyGroups as $group)
+                                    <option value="{{ $group->id }}">{{ $group->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Semester</label>
+                            <select name="semester" class="form-select">
+                                <option value="ganjil" {{ $selectedAy->semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                <option value="genap" {{ $selectedAy->semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Jenis Dokumen</label>
+                            <select name="jenis" class="form-select">
+                                <option value="sas">SAS — Nilai Akhir</option>
+                                <option value="sts">STS — Tengah Semester</option>
+                            </select>
+                        </div>
+                        <div class="col-md-auto">
+                            <button type="submit" class="btn btn-success">
+                                <i class="ri-archive-drawer-line me-1"></i>Arsipkan Rapor Rombel
+                            </button>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Dokumen Arsip --}}
     <div class="card">
         <div class="card-header border-bottom-dashed">

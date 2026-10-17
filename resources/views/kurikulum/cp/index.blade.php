@@ -112,12 +112,22 @@
                             <h5 class="card-title mb-0">Daftar CP</h5>
                             <p class="text-muted mb-0">
                                 <span class="badge bg-primary-subtle text-primary">{{ $totalCp }} CP</span>
-                                <span class="text-muted small ms-2">Target kompetensi per mapel &amp; fase — dasar penyusunan TP.</span>
+                                @if($isArchiveAy ?? false)
+                                    <span class="badge bg-warning-subtle text-warning"><i class="ri-archive-line me-1"></i>Arsip {{ $selectedAy?->name }}</span>
+                                @endif
+                                <span class="text-muted small ms-2">Target kompetensi per mapel, fase &amp; tahun ajaran — dasar penyusunan TP.</span>
                             </p>
                         </div>
                         <div class="col-sm-auto">
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 <form method="GET" action="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <select name="academic_year_id" class="form-select" style="width:200px" onchange="this.form.submit()">
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->id }}" {{ (string) $academicYearId === (string) $ay->id ? 'selected' : '' }}>
+                                                {{ $ay->name }} ({{ $ay->semester_text }}){{ $ay->is_active ? ' — Aktif' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                     <select name="subject_id" class="form-select" style="width:200px" onchange="this.form.submit()">
                                         <option value="">— Semua Mapel —</option>
                                         @foreach($subjects as $subject)
@@ -171,7 +181,12 @@
                                     <td class="fw-medium">{{ $cp->subject?->name ?? '-' }}</td>
                                     <td class="text-center"><span class="badge bg-info-subtle text-info">{{ $cp->fase }}</span></td>
                                     <td>{{ $cp->elemen ?: '—' }}</td>
-                                    <td class="small text-muted">{{ \Illuminate\Support\Str::limit($cp->deskripsi, 90) }}</td>
+                                    <td class="small text-muted">{{ \Illuminate\Support\Str::limit($cp->deskripsi, 90) }}
+                                        @if(! $cp->academic_year_id)
+                                            <span class="badge bg-secondary-subtle text-secondary ms-1"
+                                                  title="CP lama tanpa versi periode — perubahan berlaku lintas tahun ajaran">Umum</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge {{ ($tpCounts[$cp->id] ?? 0) > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
                                             {{ (int) ($tpCounts[$cp->id] ?? 0) }}
@@ -183,6 +198,7 @@
                                             data-cp="{{ json_encode([
                                                 'id' => $cp->id,
                                                 'subject_id' => $cp->subject_id,
+                                                'academic_year_id' => $cp->academic_year_id,
                                                 'fase' => $cp->fase,
                                                 'elemen' => $cp->elemen,
                                                 'deskripsi' => $cp->deskripsi,
@@ -222,6 +238,7 @@
                 <form method="POST" id="cp-form" action="{{ route('user.kurikulum.cp.store', ['userId' => $userId]) }}">
                     @csrf
                     <input type="hidden" name="_method" id="cp-method" value="POST">
+                    <input type="hidden" name="academic_year_id" id="cp-academic-year" value="{{ $academicYearId }}">
                     <div class="modal-header bg-primary-subtle p-3">
                         <h5 class="modal-title" id="cp-modal-title"><i class="ri-flag-2-line me-1"></i> Tambah CP</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -286,6 +303,7 @@
             document.getElementById('cp-modal-title').innerHTML = '<i class="ri-flag-2-line me-1"></i> Tambah CP';
             document.getElementById('cp-form').action = cpStoreUrl;
             document.getElementById('cp-method').value = 'POST';
+            document.getElementById('cp-academic-year').value = @json($academicYearId);
             document.getElementById('cp-subject').value = '';
             document.getElementById('cp-fase').value = '';
             document.getElementById('cp-urutan').value = 0;
@@ -299,6 +317,7 @@
             document.getElementById('cp-modal-title').innerHTML = '<i class="ri-pencil-line me-1"></i> Edit CP';
             document.getElementById('cp-form').action = cpUpdateUrl.replace('__ID__', cp.id);
             document.getElementById('cp-method').value = 'PUT';
+            document.getElementById('cp-academic-year').value = cp.academic_year_id || '';
             document.getElementById('cp-subject').value = cp.subject_id;
             document.getElementById('cp-fase').value = cp.fase || '';
             document.getElementById('cp-urutan').value = cp.urutan || 0;

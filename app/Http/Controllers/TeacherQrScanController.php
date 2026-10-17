@@ -114,7 +114,10 @@ class TeacherQrScanController extends Controller
         $nextClass = $belumAbsen->first();
         $completion = $stats['total'] > 0 ? (int) round(($stats['checked_out'] / $stats['total']) * 100) : 0;
 
+        $geo = app(\App\Services\QrAttendanceSettings::class)->geoSettings();
+
         return view('teacher.qr.scan.index', compact(
+            'geo',
             'schedules',
             'attendances',
             'needsCheckout',
@@ -171,7 +174,30 @@ class TeacherQrScanController extends Controller
             ->first();
 
         if (! $jadwalKbm) {
-            return $this->scanFailure($request, 'Anda tidak memiliki jadwal mengajar di kelas ini hari ini.');
+            return $this->scanFailure($request, 'Anda tidak memiliki jadwal mengajar di kelas ini hari ini. Pastikan kelas yang Anda pilih sesuai jadwal.', [], 'info');
+        }
+
+        // Geofence opsional (diatur per satuan): validasi lokasi di BACKEND.
+        // Koordinat hanya dipakai untuk keputusan — tidak disimpan.
+        $geoStatus = app(\App\Services\QrAttendanceSettings::class)->geofenceStatus(
+            $request->filled('lat') ? (float) $request->input('lat') : null,
+            $request->filled('lng') ? (float) $request->input('lng') : null,
+            $request->filled('accuracy') ? (float) $request->input('accuracy') : null,
+        );
+
+        if ($geoStatus['required'] && ! $geoStatus['ok']) {
+            return $this->scanFailure($request, $geoStatus['message'] ?? 'Lokasi Anda di luar area yang diizinkan.', [], 'warning');
+        }
+
+        // Opsi B (QR cetak): kunci perangkat opsional — mengurangi titip absen.
+        $deviceStatus = app(\App\Services\TeacherDeviceBinding::class)->verify(
+            $request->user(),
+            $request->input('device_id'),
+            $request->userAgent(),
+        );
+
+        if (! $deviceStatus['ok']) {
+            return $this->scanFailure($request, $deviceStatus['message'] ?? 'Perangkat tidak dikenali.', [], 'error');
         }
 
         // ── School validation — only teachers from same school can scan ──
@@ -193,7 +219,7 @@ class TeacherQrScanController extends Controller
                     'already_completed' => true,
                     'jadwal_kbm_id' => $jadwalKbm->id,
                     'study_group_name' => $jadwalKbm->studyGroup?->name,
-                ]);
+                ], 'info');
         }
 
         $settings = $this->getSettings();
@@ -234,12 +260,12 @@ class TeacherQrScanController extends Controller
 
         // Before window start (too early)
         if ($diffMinutes < -$toleranceBefore) {
-            return $this->scanFailure($request, "QR terlalu dini. Bisa scan maks. {$toleranceBefore} menit sebelum jam ajaran.");
+            return $this->scanFailure($request, "Jam pelajaran belum dimulai. Bisa scan maksimal {$toleranceBefore} menit sebelum jam ajaran.", [], 'info');
         }
 
         // After window end (too late)
         if ($diffMinutes > $toleranceAfter) {
-            return $this->scanFailure($request, "QR sudah lewat waktu. Batas maksimal {$toleranceAfter} menit setelah jam ajaran.");
+            return $this->scanFailure($request, "Sudah lewat batas waktu scan (maksimal {$toleranceAfter} menit setelah jam ajaran).", [], 'warning');
         }
 
         $isLate = $diffMinutes > 0 && $diffMinutes >= $lateThreshold;
@@ -264,6 +290,11 @@ class TeacherQrScanController extends Controller
             'status_keluar' => 'belum_keluar',
             'recorded_by' => $user->id,
         ]);
+
+        // Notifikasi keterlambatan ke petugas satuan (Waka/Kepala/TU/Kurikulum).
+        if ($isLate) {
+            $this->notifyLateAttendance($jadwalKbm, $user, $attendance, $lateMinutes, $startTime);
+        }
 
         $this->safeEvent(new TeacherQrScanned(
             schoolId: $jadwalKbm->school_id,
@@ -316,12 +347,12 @@ class TeacherQrScanController extends Controller
 
         // Too early to check out
         if ($diffMinutes < -$checkoutWindowBefore) {
-            return $this->scanFailure($request, "QR keluar terlalu dini. Bisa scan keluar maks. {$checkoutWindowBefore} menit sebelum jam ajaran selesai.");
+            return $this->scanFailure($request, "Belum waktunya scan keluar. Bisa scan keluar maksimal {$checkoutWindowBefore} menit sebelum jam ajaran selesai.", [], 'info');
         }
 
         // Too late (past tolerance)
         if ($diffMinutes > $checkoutWindowAfter) {
-            return $this->scanFailure($request, "QR keluar sudah lewat batas. Batas maksimal {$checkoutWindowAfter} menit setelah jam ajaran selesai.");
+            return $this->scanFailure($request, "Sudah lewat batas scan keluar (maksimal {$checkoutWindowAfter} menit setelah jam ajaran selesai).", [], 'warning');
         }
 
         $earlyLeaveMinutes = max(0, -$diffMinutes); // positive = early leave
@@ -378,12 +409,39 @@ class TeacherQrScanController extends Controller
 
     private function scanSuccess(Request $request, array $data): JsonResponse|RedirectResponse
     {
-        return $this->scanResponse($request, array_merge(['success' => true], $data));
+        // `outcome` dipakai front-end untuk memilih modal (success/error/warning/info).
+        return $this->scanResponse($request, array_merge(['success' => true, 'outcome' => 'success'], $data));
     }
 
-    private function scanFailure(Request $request, string $message, array $extra = []): JsonResponse|RedirectResponse
+    private function scanFailure(Request $request, string $message, array $extra = [], string $outcome = 'error'): JsonResponse|RedirectResponse
     {
-        return $this->scanResponse($request, array_merge(['success' => false, 'message' => $message], $extra));
+        return $this->scanResponse($request, array_merge([
+            'success' => false,
+            'outcome' => in_array($outcome, ['error', 'warning', 'info'], true) ? $outcome : 'error',
+            'message' => $message,
+        ], $extra));
+    }
+
+    /**
+     * Notifikasi in-app: GTK terlambat masuk kelas (dikirim ke satuan kerja sekolah).
+     */
+    private function notifyLateAttendance(JadwalKbm $jadwalKbm, $user, TeacherClassAttendance $attendance, int $lateMinutes, string $startTime): void
+    {
+        try {
+            $workUnitId = \App\Models\School::find($jadwalKbm->school_id)?->work_unit_id;
+
+            app(\App\Services\NotificationUniversalService::class)->notifyGtk($workUnitId, [
+                'module' => 'teacher-attendance',
+                'reference_type' => 'teacher_class_attendance',
+                'reference_id' => $attendance->id,
+                'type' => 'warning',
+                'action' => 'teacher_late',
+                'title' => 'GTK terlambat: '.($user->name ?? 'GTK'),
+                'message' => 'Terlambat '.$lateMinutes.' menit pada '.($jadwalKbm->studyGroup?->name ?? '-').' (jadwal '.$startTime.').',
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -812,17 +870,8 @@ class TeacherQrScanController extends Controller
 
     private function getSettings(): array
     {
-        $defaultSettings = [
-            'qr_tolerance_before_minutes' => 15,
-            'qr_tolerance_after_minutes' => 5,
-            'qr_late_threshold_minutes' => 15,
-            'qr_checkout_window_before' => 10,
-            'qr_checkout_window_after' => 30,
-            'qr_early_leave_threshold_minutes' => 10,
-        ];
-        $overrides = AbsensiGtkSetting::get('qr_settings', []) ?? [];
-
-        return array_merge($defaultSettings, is_array($overrides) ? $overrides : []);
+        // Sumber tunggal: QrAttendanceSettings (default toleransi terlambat = 5 menit).
+        return app(\App\Services\QrAttendanceSettings::class)->timeSettings();
     }
 
     /**

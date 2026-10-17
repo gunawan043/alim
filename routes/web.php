@@ -851,6 +851,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/izin', [AbsensiGtkController::class, 'izin'])->name('izin');
                 Route::get('/settings', [AbsensiGtkController::class, 'settings'])->name('settings');
                 Route::post('/settings', [AbsensiGtkController::class, 'settingsStore'])->name('settings.store');
+                Route::post('/settings/qr', [AbsensiGtkController::class, 'qrSettingsStore'])->name('settings.qr');
                 Route::post('/store', [AbsensiGtkController::class, 'store'])->name('store');
                 Route::put('/{id}/update', [AbsensiGtkController::class, 'update'])->name('update');
                 Route::post('/datatable', [AbsensiGtkController::class, 'datatable'])->name('datatable');
@@ -1113,6 +1114,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/dokumen/{documentId}', [ArsipInventarisController::class, 'download'])->name('dokumen.download');
                 Route::post('/{id}/kunci', [ArsipInventarisController::class, 'lock'])->name('lock');
                 Route::post('/{id}/buka', [ArsipInventarisController::class, 'unlock'])->name('unlock');
+                Route::post('/{id}/rapor', [ArsipInventarisController::class, 'arsipkanRapor'])->name('rapor');
             });
 
             // ── GRADE LEVELS ───────────────────────────────────────

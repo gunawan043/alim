@@ -3,12 +3,17 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Arsip\ArsipInventarisController;
+use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
+use App\Http\Controllers\Kurikulum\KurikulumController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiKelasController;
+use App\Models\AbsensiGtk;
 use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\ArchiveDocument;
+use App\Models\CapaianPembelajaran;
 use App\Models\GradeLevel;
+use App\Models\GtkProfile;
 use App\Models\NilaiSumatif;
 use App\Models\Permission;
 use App\Models\Role;
@@ -192,6 +197,149 @@ class ArsipInventarisTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // V2 — SNAPSHOT RAPOR PDF, VERSI CP, GUARD ABSENSI GTK
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_arsipkan_rapor_rombel_menyimpan_pdf_ber_hash(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/rapor", [
+                'study_group_id' => $this->activeRombel->id,
+                'semester' => 'ganjil',
+                'jenis' => 'sas',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $document = ArchiveDocument::where('type', 'rapor')
+            ->where('student_id', $this->activeStudent->id)
+            ->first();
+
+        $this->assertNotNull($document, 'PDF rapor harus tersimpan di registri dokumen arsip.');
+        $this->assertSame($this->activeAy->id, $document->academic_year_id);
+        $this->assertSame($this->activeRombel->id, $document->study_group_id);
+        $this->assertTrue(Storage::disk('local')->exists($document->file_path));
+
+        $contents = Storage::disk('local')->get($document->file_path);
+        $this->assertStringStartsWith('%PDF', $contents, 'Berkas arsip harus berupa PDF.');
+        $this->assertSame(hash('sha256', $contents), $document->file_hash);
+
+        // Idempoten: menjalankan ulang tidak menggandakan dokumen.
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/rapor", [
+                'study_group_id' => $this->activeRombel->id,
+                'semester' => 'ganjil',
+                'jenis' => 'sas',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, ArchiveDocument::where('type', 'rapor')
+            ->where('student_id', $this->activeStudent->id)
+            ->count());
+    }
+
+    public function test_cp_berversi_tahun_ajaran_dan_disalin_saat_siapkan(): void
+    {
+        $targetAy = AcademicYear::create([
+            'name' => '2027/2028', 'semester' => 'ganjil', 'is_active' => false,
+            'start_date' => '2027-07-01', 'end_date' => '2028-06-30',
+        ]);
+
+        $cpOld = CapaianPembelajaran::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->subject->id,
+            'academic_year_id' => $this->oldAy->id,
+            'fase' => 'D',
+            'elemen' => 'Bilangan',
+            'deskripsi' => 'CP versi TA lama.',
+            'urutan' => 1,
+            'is_active' => true,
+            'created_by' => $this->editor->id,
+        ]);
+
+        // Filter TA: CP versi TA aktif TIDAK boleh terlihat sebagai milik TA lama, dst.
+        $visibleOld = CapaianPembelajaran::query()->forAcademicYear($this->oldAy->id)->pluck('id');
+        $visibleActive = CapaianPembelajaran::query()->forAcademicYear($this->activeAy->id)->pluck('id');
+
+        $this->assertTrue($visibleOld->contains($cpOld->id));
+        $this->assertFalse($visibleActive->contains($cpOld->id));
+
+        // Controller index menghormati periode.
+        $this->actingAs($this->editor);
+        $viewOld = app(CapaianPembelajaranController::class)
+            ->index($this->makeRequest(['academic_year_id' => $this->oldAy->id]), $this->editor->id)
+            ->getData();
+        $this->assertTrue($viewOld['cpList']->contains('id', $cpOld->id));
+        $this->assertTrue($viewOld['isArchiveAy']);
+
+        $viewActive = app(CapaianPembelajaranController::class)
+            ->index($this->makeRequest(['academic_year_id' => $this->activeAy->id]), $this->editor->id)
+            ->getData();
+        $this->assertFalse($viewActive['cpList']->contains('id', $cpOld->id));
+
+        // Siapkan Peta menyalin CP ke TA tujuan tanpa mengubah TA sumber.
+        app(KurikulumController::class)->siapkan(
+            $this->makeRequest([
+                'academic_year_id' => $targetAy->id,
+                'source_academic_year_id' => $this->oldAy->id,
+            ]),
+            $this->editor->id,
+        );
+
+        $this->assertDatabaseHas('capaian_pembelajaran', [
+            'academic_year_id' => $targetAy->id,
+            'subject_id' => $this->subject->id,
+            'fase' => 'D',
+            'elemen' => 'Bilangan',
+            'deskripsi' => 'CP versi TA lama.',
+        ]);
+        $this->assertDatabaseHas('capaian_pembelajaran', [
+            'id' => $cpOld->id,
+            'academic_year_id' => $this->oldAy->id,
+            'deskripsi' => 'CP versi TA lama.',
+        ]);
+    }
+
+    public function test_absensi_gtk_periode_terkunci_ditolak(): void
+    {
+        $profile = GtkProfile::create([
+            'user_id' => $this->guru->id,
+        ]);
+
+        $oldDate = $this->oldAy->start_date->copy()->addDays(10)->toDateString();
+        $activeDate = $this->activeAy->start_date->copy()->addDays(10)->toDateString();
+
+        // Sebelum dikunci → absensi TA lama masih dapat diisi (selagi bukan arsip tulis).
+        app(AcademicPeriodService::class)->lock($this->oldAy, $this->kepala);
+
+        try {
+            AbsensiGtk::create([
+                'gtk_id' => $profile->id,
+                'tanggal' => $oldDate,
+                'status' => 'hadir',
+                'dibuat_oleh' => $this->tu->id,
+            ]);
+            $this->fail('Absensi GTK pada periode terkunci seharusnya ditolak.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+
+        $this->assertSame(0, AbsensiGtk::count());
+
+        // TA aktif → tersimpan normal.
+        AbsensiGtk::create([
+            'gtk_id' => $profile->id,
+            'tanggal' => $activeDate,
+            'status' => 'hadir',
+            'dibuat_oleh' => $this->tu->id,
+        ]);
+
+        $this->assertSame(1, AbsensiGtk::count());
     }
 
     private function makeRequest(array $data = []): Request

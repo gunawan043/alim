@@ -48,6 +48,9 @@
 <title>{{ $sheet->sheet_code }}{{ $master ? '-MASTER' : '' }}</title>
 <style>
     {!! \App\Services\Ljk\LjkPdfFonts::faceCss() !!}
+    {!! $arabicFaceCss ?? '' !!}
+    .ar { font-family: {!! $arabicStack ?? "'DejaVu Sans', sans-serif" !!}; direction: rtl; unicode-bidi: embed; }
+    .ar-block { text-align: right; }
     @page { margin: 0; size: {{ $paper['width_mm'] }}mm {{ $paper['height_mm'] }}mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!}; color: #111; }
@@ -119,7 +122,7 @@
     </div>
 
     <div class="abs meta" style="left: {{ $contentLeft }}mm; top: {{ $metaTop }}mm; width: {{ $contentWidth }}mm;">
-        {{ $exam->judul }} &middot; {{ $exam->subject?->name ?? '-' }} &middot; {{ $exam->studyGroup?->name ?? '-' }}
+        {!! \App\Services\Ljk\LjkArabicText::toHtml($exam->judul, false) !!} &middot; {{ $exam->subject?->name ?? '-' }} &middot; {{ $exam->studyGroup?->name ?? '-' }}
         &middot; {{ strtoupper($exam->jenis_ujian) }} &middot; Sem. {{ ucfirst($exam->semester) }}
         @if($exam->tanggal) &middot; {{ $exam->tanggal->format('d/m/Y') }} @endif
         @if($master) &nbsp; <span class="master-badge">MASTER FOTOKOPI</span> @endif
@@ -131,7 +134,7 @@
         @if($master)
             Nama: <span class="line"></span> &nbsp;&nbsp; No. Peserta: <span class="line" style="min-width: 26mm;"></span>
         @else
-            Nama: <strong>{{ $student?->name ?? '-' }}</strong>
+            Nama: <strong>{!! \App\Services\Ljk\LjkArabicText::toHtml($student?->name, false) !!}</strong>
             &nbsp;&nbsp; No. Peserta: <strong>{{ $participant->nomor_peserta }}</strong>
             &nbsp;&nbsp; Kode: <strong>{{ $sheet->sheet_code }}</strong>
         @endif
@@ -142,6 +145,12 @@
         menggunakan <strong>pulpen hitam atau biru</strong>. Hindari mencoret kotak lain. Jumlah nomor: {{ count($geometry['questions']) }}.
         @if(($exam->skor_config['manual_count'] ?? 0) > 0)
             Soal uraian/isian dikerjakan di area tulis dan dinilai manual oleh guru.
+        @endif
+        @if(! empty($wacanaRanges))
+            <br><strong>Wacana/soal cerita:</strong> soal nomor {{ implode(', ', $wacanaRanges) }}.
+        @endif
+        @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
+            <br><span class="ar-block"><span class="ar">{!! \App\Services\Ljk\LjkArabicText::toHtml($instruksiArab, false) !!}</span></span>
         @endif
     </div>
 
@@ -161,10 +170,16 @@
                  style="left: {{ $question['x_mm'] + 9 }}mm; top: {{ $question['y_mm'] }}mm; width: {{ ($question['w_mm'] ?? 60) - 10 }}mm; height: {{ $question['h_mm'] ?? 12 }}mm;"></div>
         @else
             @foreach($question['options'] as $i => $option)
-                @php $printed = $labels[$i] ?? $option['label']; @endphp
+                @php
+                    $isArabicQ = in_array((int) $question['nomor'], (array) ($arabicNumbers ?? []), true);
+                    $printed = $labels[$i] ?? $option['label'];
+                    if ($isArabicQ) {
+                        $printed = ($hurufArab[$i] ?? $printed);
+                    }
+                @endphp
                 <div class="abs option-label"
                      style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] - 2.3 }}mm; width: {{ $option['w_mm'] }}mm;">
-                    {{ $printed }}
+                    @if($isArabicQ)<span class="ar">{{ $printed }}</span>@else{{ $printed }}@endif
                 </div>
                 <div class="abs option-box"
                      style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] }}mm; width: {{ $option['w_mm'] }}mm; height: {{ $option['h_mm'] }}mm;"></div>

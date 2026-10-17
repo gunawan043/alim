@@ -335,9 +335,11 @@ class LjkController extends Controller
             .($master ? '-MASTER' : ($participantId ? '-'.$participants->first()?->nomor_peserta : ''))
             .'.pdf';
 
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
         ]);
     }
 
@@ -363,7 +365,7 @@ class LjkController extends Controller
         }
 
         $items = $exam->paketSoal
-            ? $exam->paketSoal->items()->with(['soal.options', 'soal.tujuanPembelajaran'])->orderBy('urutan')->get()
+            ? $exam->paketSoal->items()->with(['soal.options', 'soal.tujuanPembelajaran', 'soal.wacana'])->orderBy('urutan')->get()
             : collect();
 
         $canSeeKeys = $this->kurikulum->canViewAnswerKeys($request->user(), $exam->subject);
@@ -376,6 +378,7 @@ class LjkController extends Controller
                 'jenis' => (string) ($konten['jenis'] ?? 'pg'),
                 'pertanyaan' => (string) ($konten['pertanyaan'] ?? ''),
                 'pembahasan' => $canSeeKeys ? ($konten['pembahasan'] ?? null) : null,
+                'wacana' => $konten['wacana'] ?? null,
                 'bobot' => (float) ($konten['bobot'] ?? 0),
                 'tp' => $item->soal?->tujuanPembelajaran?->kode_tp,
                 'opsi' => collect($konten['opsi'] ?? [])->map(fn ($o) => [
@@ -405,27 +408,17 @@ class LjkController extends Controller
             abort(403, 'Anda tidak berwenang mencetak soal ujian ini.');
         }
 
-        $html = app(\App\Services\Ljk\LjkSoalSheet::class)->render($exam);
-
-        $options = new Options;
-        $options->set('isRemoteEnabled', false);
-        $options->set('isHtml5ParserEnabled', true);
-        LjkPdfFonts::configure($options);
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        // Nomor halaman (kanan bawah).
-        $canvas = $dompdf->getCanvas();
-        $canvas->page_text($canvas->get_width() - 150, $canvas->get_height() - 22, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', 'serif', 9, [0.2, 0.2, 0.2]);
+        // Kertas otomatis: A4 default → F4 (folio) bila menghemat halaman.
+        $rendered = app(\App\Services\Ljk\LjkSoalPdfRenderer::class)->render($exam);
 
         $filename = 'Soal-'.$exam->code.'.pdf';
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
 
-        return response($dompdf->output(), 200, [
+        return response($rendered['bytes'], 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+            'X-LJK-Paper' => $rendered['paper'],
+            'X-LJK-Pages' => (string) $rendered['pages'],
         ]);
     }
 

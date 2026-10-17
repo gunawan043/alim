@@ -185,6 +185,7 @@ class PaketNaskahService
                     'jenis' => $item->jenis_soal ?? $soal->tipe_soal,
                     'soal_id' => $soal->id,
                     'tp_id' => $soal->tp_id,
+                    'wacana' => $soal->wacanaPayload(),
                     'pertanyaan' => $soal->pertanyaan,
                     'opsi' => $soal->options->map(fn ($option) => [
                         'label' => $option->label,

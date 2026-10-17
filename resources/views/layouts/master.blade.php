@@ -44,6 +44,8 @@
                 </div>
                 <!-- container-fluid -->
                 @yield('modal')
+
+                @include('layouts.partials.permission-setup')
             </div>
             <!-- End Page-content -->
             @include('layouts.footer')

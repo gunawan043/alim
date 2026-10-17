@@ -103,6 +103,25 @@ class AcademicPeriodService
     }
 
     /**
+     * Resolusi tahun ajaran dari sebuah tanggal (untuk data berbasis tanggal
+     * yang tidak menyimpan academic_year_id, mis. absensi GTK).
+     */
+    public function academicYearIdForDate(\DateTimeInterface|string|null $date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        $day = $date instanceof \DateTimeInterface ? $date->format('Y-m-d') : (string) $date;
+
+        return AcademicYear::query()
+            ->whereDate('start_date', '<=', $day)
+            ->whereDate('end_date', '>=', $day)
+            ->orderByDesc('start_date')
+            ->value('id');
+    }
+
+    /**
      * Alasan periode tidak dapat dikunci (null = boleh dikunci).
      */
     public function lockBlockReason(AcademicYear $academicYear): ?string

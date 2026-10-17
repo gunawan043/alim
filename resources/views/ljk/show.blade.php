@@ -61,7 +61,11 @@
                         </a>
                         <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id]) }}"
                            target="_blank" class="btn btn-soft-secondary">
-                            <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
+                            <i class="ri-printer-line align-bottom me-1"></i> Cetak Lembar PDF
+                        </a>
+                        <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id, 'download' => 1]) }}"
+                           class="btn btn-soft-success" title="Unduh lembar jawaban sebagai PDF">
+                            <i class="ri-download-2-line align-bottom me-1"></i> Unduh PDF
                         </a>
                         <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id, 'master' => 1]) }}"
                            target="_blank" class="btn btn-soft-warning"
@@ -256,6 +260,10 @@
                             <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id]) }}"
                                target="_blank" class="btn btn-sm btn-success">
                                 <i class="ri-printer-line me-1"></i> Cetak Semua
+                            </a>
+                            <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id, 'download' => 1]) }}"
+                               class="btn btn-sm btn-soft-success" title="Unduh semua lembar jawaban (PDF)">
+                                <i class="ri-download-2-line me-1"></i> Unduh
                             </a>
                         </div>
                     </div>

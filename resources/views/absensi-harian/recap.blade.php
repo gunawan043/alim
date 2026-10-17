@@ -58,6 +58,16 @@
                                 <option value="genap" {{ $selectedSemester == 'genap' ? 'selected' : '' }}>Genap</option>
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tahun Ajaran</label>
+                            <select name="academic_year_id" class="form-control">
+                                @foreach(($academicYears ?? collect()) as $ay)
+                                    <option value="{{ $ay->id }}" {{ (string) ($selectedAyId ?? '') === (string) $ay->id ? 'selected' : '' }}>
+                                        {{ $ay->name }} ({{ $ay->semester_text }}){{ $ay->is_active ? ' — Aktif' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="col-md-3 d-flex align-items-end gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="ri-search-line me-1"></i> Tampilkan

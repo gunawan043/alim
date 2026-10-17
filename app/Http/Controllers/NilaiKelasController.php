@@ -10,7 +10,6 @@ use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
 use App\Models\PenghargaanAkademik;
 use App\Models\RaportRegistration;
-use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
@@ -19,12 +18,11 @@ use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
+use App\Services\Arsip\RaporPdfService;
 use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
 use App\Support\AcademicNilai;
 use App\Support\UserJabatan;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -995,33 +993,26 @@ class NilaiKelasController extends Controller
 
         $this->assertLegerAccess($userId, $studyGroup);
 
-        $academicYears = AcademicYear::orderByDesc('name')->get();
-        $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
+        $selectedAy = AcademicYear::orderByDesc('name')->get()->firstWhere('id', $selectedAyId);
 
         $student = Student::findOrFail($studentId);
 
-        $santri = $this->buildSantriRapor($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
-
-        $kopBase64 = $this->schoolKopBase64($studyGroup->school);
-
-        $html = view('nilai-kelas.rapor-cetak', compact(
-            'santri', 'studyGroup', 'kopBase64',
-        ))->render();
-
-        $options = new Options;
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+        $pdf = app(RaporPdfService::class)->renderSingle(
+            $schoolId,
+            $studyGroup,
+            $selectedAy,
+            (string) $selectedAyId,
+            $selectedSem,
+            $jenis,
+            $student,
+        );
 
         $filename = 'Rapor-'.str_replace(' ', '-', $student->name)
             .'-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 
-        return response($dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
@@ -1082,167 +1073,6 @@ class NilaiKelasController extends Controller
     }
 
     /**
-     * Susun data satu santri untuk dokumen rapor (dipakai cetak per-santri & massal).
-     */
-    private function buildSantriRapor(
-        ?string $schoolId,
-        StudyGroup $studyGroup,
-        ?AcademicYear $selectedAy,
-        string $selectedAyId,
-        string $selectedSem,
-        string $jenis,
-        Student $student
-    ): array {
-        $studentId = $student->id;
-        $studyGroupId = $studyGroup->id;
-
-        // Semua mapel di kelas ini
-        $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->where('semester', $selectedSem)
-            ->where('is_active', true)
-            ->get()
-            ->groupBy('subject_id')
-            ->map(fn ($books, $subjectId) => $books->first())
-            ->values()
-            ->pluck('subject')
-            ->filter()
-            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
-            ->values();
-
-        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
-            $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                ->where('subject_id', $s->id)
-                ->where('study_group_id', $studyGroupId)
-                ->where('academic_year_id', $selectedAyId)
-                ->where('semester', $selectedSem)
-                ->where('is_active', true)->first(),
-        ]);
-
-        // Nilai STS student
-        $nilaiMap = [];
-        $studentNilaiRows = NilaiSumatif::whereIn('admin_book_id', $bookMap->pluck('id'))
-            ->where('student_id', $studentId)
-            ->where('semester', $selectedSem)
-            ->get();
-
-        foreach ($studentNilaiRows as $n) {
-            $nilaiMap[$n->admin_book_id] = $n;
-        }
-
-        // Presensi
-        $presensiRaw = AdminPresensiHarian::where('academic_year_id', $selectedAyId)
-            ->where('study_group_id', $studyGroupId)
-            ->where('student_id', $studentId)
-            ->where('semester', $selectedSem)->get();
-
-        $sCount = $presensiRaw->where('status', 'S')->count();
-        $iCount = $presensiRaw->where('status', 'I')->count();
-        $aCount = $presensiRaw->where('status', 'A')->count();
-
-        // Bangun data mapel baris per baris
-        $mapelRows = [];
-        $jumlahNilai = 0;
-        $jumlahMapel = 0;
-
-        foreach ($subjectMap as $idx => $subject) {
-            $book = $bookMap[$subject->id] ?? null;
-            $n = $book ? ($nilaiMap[$book->id] ?? null) : null;
-            $nilai = $this->resolveNilaiTampil($jenis, $n);
-
-            if ($nilai !== null) {
-                $jumlahNilai += $nilai;
-                $jumlahMapel++;
-            }
-
-            $mapelRows[] = [
-                'no' => $idx + 1,
-                'mapel' => $subject->name,
-                'kkm' => AcademicNilai::kkmLabel($book),
-                'nilai' => $nilai !== null ? number_format($nilai, 1) : '',
-                'keterangan' => AcademicNilai::keterangan($nilai, $book),
-            ];
-        }
-
-        $rata = $jumlahMapel > 0 ? round($jumlahNilai / $jumlahMapel, 1) : null;
-        $predikat = AcademicNilai::predikat($rata);
-
-        // Susun $santri array — format sesuai template
-        $registration = RaportRegistration::where('student_id', $studentId)
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->where('semester', $selectedSem)
-            ->first();
-
-        $catatanWali = $registration?->homeroom_note;
-
-        // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir) pada TA aktif
-        // — cetak ulang rapor TA arsip tidak menulis apa pun ke data periode lama.
-        if ($jenis === 'sas') {
-            $activeYearId = AcademicYear::where('is_active', true)->value('id');
-            $isArchivedAy = $activeYearId && (string) $selectedAyId !== (string) $activeYearId;
-
-            if (! $isArchivedAy) {
-                RaportRegistration::updateOrCreate(
-                    [
-                        'student_id' => $studentId,
-                        'study_group_id' => $studyGroupId,
-                        'academic_year_id' => $selectedAyId,
-                        'semester' => $selectedSem,
-                    ],
-                    [
-                        'final_score' => $rata,
-                        'predicate' => $predikat,
-                    ]
-                );
-            }
-        }
-
-        return [
-            $studentId => [
-                'Nama' => $student->name,
-                'NIS' => $student->nis ?? '-',
-                'NISN' => $student->nisn ?? '-',
-                'Kelas' => $studyGroup->name,
-                'Semester' => ucfirst($selectedSem),
-                'TahunAjaran' => $selectedAy?->name ?? '-',
-                'Jenis' => $jenis,
-                'Mapel' => $mapelRows,
-                'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
-                'Rata' => $rata !== null ? number_format($rata, 1) : '-',
-                'Predikat' => $predikat,
-                'Sakit' => $sCount,
-                'Izin' => $iCount,
-                'Alpa' => $aCount,
-                'CatatanWali' => $catatanWali,
-            ],
-        ];
-    }
-
-    /**
-     * Kop surat sekolah (base64) untuk dokumen PDF.
-     */
-    private function schoolKopBase64(?School $school): ?string
-    {
-        if (! $school || ! $school->kop_path) {
-            return null;
-        }
-
-        $kopAbsolute = storage_path('app/public/'.$school->kop_path);
-        if (! file_exists($kopAbsolute)) {
-            return null;
-        }
-
-        $ext = strtolower(pathinfo($kopAbsolute, PATHINFO_EXTENSION) ?: 'png');
-        $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
-
-        return 'data:'.$mime.';base64,'.base64_encode(file_get_contents($kopAbsolute));
-    }
-
-    /**
      * Cetak Rapor Massal — satu PDF berisi seluruh santri rombel (halaman terpisah per santri).
      */
     public function raporCetakMassal(Request $request, string $userId, string $studyGroupId)
@@ -1271,35 +1101,21 @@ class NilaiKelasController extends Controller
 
         abort_if($students->isEmpty(), 404, 'Belum ada santri aktif di rombel ini.');
 
-        $santri = [];
-        foreach ($students as $history) {
-            $student = $history->student;
-            if (! $student) {
-                continue;
-            }
-
-            $santri += $this->buildSantriRapor($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
-        }
-
-        $html = view('nilai-kelas.rapor-cetak', [
-            'santri' => $santri,
-            'studyGroup' => $studyGroup,
-            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
-        ])->render();
-
-        $options = new Options;
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+        $pdf = app(RaporPdfService::class)->renderMassal(
+            $schoolId,
+            $studyGroup,
+            $selectedAy,
+            (string) $selectedAyId,
+            $selectedSem,
+            $jenis,
+            $students->pluck('student')->filter(),
+        );
 
         $filename = 'Rapor-MASSAL-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 
-        return response($dompdf->output(), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
@@ -1312,19 +1128,7 @@ class NilaiKelasController extends Controller
      */
     private function resolveNilaiTampil(string $jenis, ?NilaiSumatif $row): ?float
     {
-        if (! $row) {
-            return null;
-        }
-
-        if ($jenis === 'sas') {
-            if ($row->nr_final !== null) {
-                return (float) $row->nr_final;
-            }
-
-            return $row->sas !== null ? (float) $row->sas : null;
-        }
-
-        return $row->sts !== null ? (float) $row->sts : null;
+        return AcademicNilai::resolveTampil($jenis, $row);
     }
 
     /**
@@ -1412,19 +1216,7 @@ class NilaiKelasController extends Controller
      */
     private function subjectGroup(string $name): int
     {
-        $nameLower = strtolower($name);
-
-        if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits)/i', $nameLower)) {
-            return 1;
-        }
-        if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'\"]?bir|sharaf)/i', $nameLower)) {
-            return 2;
-        }
-        if (preg_match('/(hadits|hadist)/i', $nameLower)) {
-            return 3;
-        }
-
-        return 4;
+        return AcademicNilai::subjectGroup($name);
     }
 
     private function subjectSortOrder(string $name, string $category): array

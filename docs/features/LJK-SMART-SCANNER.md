@@ -79,6 +79,7 @@ dikunci oleh tes `test_ui_ljk_mengikuti_pola_gtk_index`.
 
 | Tabel | Isi |
 |---|---|
+| `wacana_soal` (+ `soal.wacana_id`) | **Wacana/soal cerita**: bacaan bersama untuk beberapa nomor (judul, teks, sumber). Dicetak sekali per kelompok berurutan dengan keterangan rentang nomor; ikut dibekukan ke `konten_snapshot` saat paket dipublikasikan. |
 | `ljk_templates` | Template **berversi**: kode unik, ukuran kertas, kolom, dan `geometry` JSON (penanda, QR, data strip, area jawaban dalam **mm**). Baris tidak diubah; tata letak baru = versi baru. |
 | `ljk_exams` | Sesi ujian: `paket_soal_id` + `paket_version` + `paket_snapshot_at` + **`paket_digest`** + `template_id` + buku nilai + status (`draft→aktif→pengumpulan→review→final→tersinkron`). |
 | `ljk_participants` | Peserta + `nomor_peserta` + **`mapping`** (urutan soal & opsi aktual per peserta untuk paket yang mengacak). |
@@ -110,14 +111,44 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   tangan pulpen), garis kotak 0,45 mm, label opsi dicetak **di luar** kotak
   agar bagian dalam tetap bersih.
 - **Lembar soal (naskah untuk santri)** — `/{userId}/ljk/{ljkUuid}/soal/pdf`
-  mengikuti format naskah madrasah:
+  (`?download=1` untuk mengunduh) mengikuti format naskah madrasah:
   judul dua baris (mis. *SOAL ASESMEN SUMATIF TENGAH SEMESTER GANJIL* /
   *TAHUN AJARAN 2026/2027*), tabel identitas (Mata Pelajaran, Hari/Tanggal,
   Kelas — *"Sepuluh (X) C & D"*, Waktu — *07.30 – 09.00*, Guru Pengampu,
   Nama Peserta Didik bergaris), **PENANAMAN KARAKTER** (3 butir), instruksi
   pilihan ganda, lalu butir soal. Isi soal **tanpa bobot/poin, jenis, TP,
-  kunci, dan pembahasan**; **opsi jawaban mendatar** (inline) dan hanya turun
-  ke baris berikutnya bila tidak muat.
+  kunci, dan pembahasan**; **opsi jawaban tersusun kolom sejajar** — A, B, C, D
+  pada soal nomor 1 berada tepat di atas A, B, C, D soal berikutnya (tabel
+  `table-layout: fixed`, jumlah kolom = opsi terbanyak pada paket, teks panjang
+  membungkus di dalam kolomnya; **huruf pilihan A/B/C/D tidak dicetak tebal**). **Untuk soal berbahasa Arab, huruf pilihan
+  otomatis memakai ا، ب، ج، د، هـ** — baik di lembar soal maupun pada label
+  kotak di lembar jawaban.
+- **Catatan teknis (Dompdf):** jangan pernah memakai reset `* { margin: 0 }` —
+  pada Dompdf aturan universal itu **menimpa margin `@page`** sehingga isi
+  cetak mepet ke tepi kertas. Reset margin hanya untuk elemen isi
+  (`body, div, table, td, …`); diuji oleh tes format lembar soal.
+- **Setelan cetak (default MS Word)** — dapat diubah di `config/ljk.php → soal`:
+  font **Cambria 12 pt**, **jarak antar baris single (1.0)**, **jarak antar soal
+  1.15**, margin halaman **0.2" / 0.1" / 0.59" / 0.63"** (atas/bawah/kiri/kanan,
+  dikonversi ke mm), dan **tabel identitas maksimal 3 baris** (2 pasang
+  label/nilai per baris; baris *Nama Peserta Didik* bergaris putus-putus).
+- **Kertas otomatis (minimalisasi halaman)** — default **A4**; bila isi tidak
+  muat satu halaman, sistem mencoba **F4 (footscray, 215×330 mm)** dan memakai
+  F4 **hanya bila jumlah halamannya lebih sedikit**. Bila keduanya sama
+  (mis. 2 halaman), tetap A4. Header respons `X-LJK-Paper` menunjukkan pilihan
+  yang dipakai.
+- **Wacana / soal cerita**: bacaan dipasang dari form Bank Soal (*Wacana /
+  Soal Cerita (opsional)* — pilih wacana yang ada atau tulis baru). Saat paket
+  dipublikasikan, wacana ikut dibekukan. Di lembar soal wacana dicetak **sekali
+  per kelompok** dengan keterangan *"Wacana untuk soal nomor 20–25"*; di lembar
+  jawaban ditampilkan legenda *"Wacana/soal cerita: soal nomor 20–25"*.
+- **Bahasa Arab (ponpes)**: teks Arab di-*shaping* deterministik di PHP
+  (`LjkArabicText`: bentuk awal/tengah/akhir/terpisah + ligatur lam-alef) dan
+  disusun ulang kanan-ke-kiri karena Dompdf tidak memiliki mesin bidi/shaping.
+  Kelas `.ar` memakai font yang memuat bentuk presentasi Arab — **DejaVu Sans**
+  bawaan Dompdf (terverifikasi), atau **Amiri/Scheherazade** bila ditaruh di
+  `storage/app/fonts/`. Instruksi juga dicetak dalam bahasa Arab pada lembar
+  yang memuat teks Arab.
 - **Dua varian cetak**: (1) *lembar peserta* dengan nama/nomor/kode + QR +
   data strip; (2) *master fotokopi* (`?master=1`, opsi `&copies=N`) — identitas
   kosong, **tanpa QR/data strip**, untuk difotokopi dan diisi pulpen. Opsi
@@ -282,6 +313,19 @@ verifikasi, periksa peserta.
 
 ---
 
+### Setelan lembar soal (ringkas)
+
+| Kunci `config/ljk.php` | Default | Arti |
+|---|---|---|
+| `soal.font_size` | `12.0` | Ukuran font dasar (pt), Cambria |
+| `soal.font_size_fallback_scale` | `0.90` | Kompensasi ukuran bila Cambria/Caladea belum dipasang (DejaVu Serif tampil lebih besar pada pt yang sama) |
+| `soal.line_height` | `1.0` | Jarak antar baris (single) |
+| `soal.question_gap` | `1.15` | Jarak antar soal (kelipatan satu baris) |
+| `soal.margin_in` | `0.20 / 0.10 / 0.59 / 0.63` | Margin atas/bawah/kiri/kanan (inci) |
+| `soal.paper.default` / `paper.fallback` | `a4` / `f4` | Kertas & cadangan otomatis |
+| `soal.huruf_arab` | `ا، ب، ج، د، هـ` | Huruf pilihan soal Arab |
+| `soal.identitas_baris_maks` | `3` | Baris maksimum tabel identitas |
+
 ### Font PDF (Cambria)
 
 Seluruh PDF LJK memakai **Cambria** melalui resolver `LjkPdfFonts`:
@@ -297,6 +341,12 @@ Pemasangan Cambria resmi cukup dengan menaruh berkasnya:
 `storage/app/fonts/Cambria.ttf` (+ `-Bold`, `-Italic`, `-BoldItalic`) — tidak
 perlu instalasi sistem. Status font aktif ditampilkan di halaman **Lihat Soal**.
 Cache metrik font ditulis ke `storage/app/dompdf/fonts` (pastikan writable).
+
+Untuk teks Arab: shaping & urutan RTL dihitung di PHP, lalu dirender dengan
+font yang memuat *bentuk presentasi* Arab. Bila sekolah ingin tampilan naskh
+yang lebih halus, letakkan `Amiri-Regular.ttf`/`Scheherazade-Regular.ttf`
+(yang memuat blok FE70–FEFC) di `storage/app/fonts/`; sistem memilihnya
+otomatis, jika tidak ada tetap memakai DejaVu Sans.
 
 ## 11. Deployment & operasional
 
@@ -362,9 +412,9 @@ contoh tidak ikut ter-seed di produksi.
 | `tests/Feature/Ljk/LjkFlowTest.php` | Paket → ujian → peserta → lembar → pindai → nilai → koreksi (audit) → sinkron resmi → idempotensi → tolak saat masih review |
 | `tests/Feature/Ljk/LjkWebFlowTest.php` | HTTP guru: index/create/terbit/PDF/scan/koreksi/final/sinkron + 403 guru lain + **kepatuhan UI pola gtk/index** pada semua halaman (termasuk varian filter) |
 | `tests/Feature/Ljk/LjkMobileApiTest.php` | API mobile: daftar, detail, unggah, koreksi, penolakan tanpa identitas |
-| Tambahan | tata letak 2 kolom (kiri 1–10, kanan 11–20), master tanpa nama/QR/strip, auto-sync nilai ke kolom resmi, kunci tersembunyi di halaman *Lihat Soal*, **lembar soal PDF sesuai format naskah (kop, penanaman karakter, opsi mendatar, tanpa bobot)** + font Cambria, regresi route `paket-soal` (parameter `userId`) |
+| Tambahan | tata letak 2 kolom (kiri 1–10, kanan 11–20), master tanpa nama/QR/strip, auto-sync nilai ke kolom resmi, kunci tersembunyi di halaman *Lihat Soal*, lembar soal PDF (kop, penanaman karakter, opsi kolom sejajar, tanpa bobot) + font Cambria, wacana/soal cerita + legenda lembar jawaban, shaping teks Arab, unduh PDF (`?download=1`), **setelan cetak Word (12 pt, spasi 1.0/1.15, margin inci, tabel identitas 3 baris)**, **pemilihan kertas otomatis A4→F4**, **huruf pilihan Arab (ا، ب، ج، د)** di lembar soal & lembar jawaban, regresi route `paket-soal` (parameter `userId`) |
 
-Hasil terakhir: **23 tes, 310 asersi — lulus** (PHP 8.5 + SQLite in-memory;
+Hasil terakhir: **28 tes, 366 asersi — lulus** (PHP 8.5 + SQLite in-memory;
 peringatan `PDO::MYSQL_ATTR_*` berasal dari lingkungan PHP 8.5, bukan fitur).
 
 Regresi terkait yang dijalankan: `BukuNilaiKonsolidasiTest`,
@@ -387,6 +437,10 @@ Regresi terkait yang dijalankan: `BukuNilaiKonsolidasiTest`,
 - Tanda di luar format (centang, coretan, bekas hapus) **diarahkan ke
   pemeriksaan guru**; beberapa coretan padat yang menyerupai X bisa terbaca
   dan tetap dapat dikoreksi manual (tercatat).
+- Arab: tanpa harakat lengkap pun aman (harakat dipertahankan sebagai gugus);
+  bidi penuh (arah campuran bertingkat) tidak didukung — teks Arab + Latin
+  sederhana sudah ditangani. Untuk naskah Arab berat (Quran/hadits berharakat
+  penuh), disarankan menyediakan font Arab khusus di `storage/app/fonts/`.
 - Deteksi QR di aplikasi Expo belum ada (tidak ada modul barcode);
   identitas diambil dari pemilihan peserta + verifikasi data strip di server.
   Web sudah mendukung scan QR memakai html5-qrcode.

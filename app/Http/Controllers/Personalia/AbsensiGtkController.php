@@ -88,7 +88,121 @@ class AbsensiGtkController extends Controller
     {
         $settings = AbsensiGtkSetting::orderBy('key')->get();
 
-        return view('personalia.absensi-gtk.settings', compact('userId', 'settings'));
+        $qr = app(\App\Services\QrAttendanceSettings::class);
+
+        $qrTime = $qr->timeSettings();
+        $qrGeo = $qr->geoSettings();
+        $canManageQr = $this->canManageQrSettings($request);
+
+        return view('personalia.absensi-gtk.settings', compact('userId', 'settings', 'qrTime', 'qrGeo', 'canManageQr'));
+    }
+
+    /**
+     * Simpan pengaturan Toleransi Keterlambatan & Geolokasi Scan QR.
+     * Hanya satuan pendidikan berwenang (TU/Struktural/Kurikulum).
+     */
+    public function qrSettingsStore(Request $request, string $userId)
+    {
+        if (! $this->canManageQrSettings($request)) {
+            abort(403, 'Hanya satuan pendidikan berwenang (TU, Kepala/Wakil, Kurikulum) yang dapat mengubah pengaturan ini.');
+        }
+
+        $validated = $request->validate([
+            'late_threshold_minutes' => 'required|integer|min:0|max:120',
+            'tolerance_before_minutes' => 'required|integer|min:0|max:120',
+            'tolerance_after_minutes' => 'required|integer|min:0|max:120',
+            'early_leave_threshold_minutes' => 'required|integer|min:0|max:180',
+            'geo_enabled' => 'nullable|boolean',
+            'geo_lat' => 'nullable|numeric|between:-90,90|required_if:geo_enabled,1',
+            'geo_lng' => 'nullable|numeric|between:-180,180|required_if:geo_enabled,1',
+            'geo_radius_m' => 'nullable|integer|min:10|max:5000',
+            'device_binding_enabled' => 'nullable|boolean',
+        ], [
+            'geo_lat.required_if' => 'Isi titik lokasi (Lintang) atau gunakan tombol "Gunakan Lokasi Saya".',
+            'geo_lng.required_if' => 'Isi titik lokasi (Bujur) atau gunakan tombol "Gunakan Lokasi Saya".',
+        ]);
+
+        // Toleransi per jenis disimpan pada grup qr_settings (satu sumber dengan scan).
+        $current = AbsensiGtkSetting::get(\App\Services\QrAttendanceSettings::KEY_QR_SETTINGS, []) ?: [];
+        $current = is_array($current) ? $current : [];
+
+        $oldTime = $current;
+        $oldGeo = app(\App\Services\QrAttendanceSettings::class)->geoSettings();
+
+        $current['qr_late_threshold_minutes'] = (int) $validated['late_threshold_minutes'];
+        $current['qr_tolerance_before_minutes'] = (int) $validated['tolerance_before_minutes'];
+        $current['qr_tolerance_after_minutes'] = (int) $validated['tolerance_after_minutes'];
+        $current['qr_early_leave_threshold_minutes'] = (int) $validated['early_leave_threshold_minutes'];
+        AbsensiGtkSetting::set(\App\Services\QrAttendanceSettings::KEY_QR_SETTINGS, $current, 'json', 'Pengaturan QR (toleransi & lainnya)');
+
+        // Geolokasi opsional.
+        AbsensiGtkSetting::set(\App\Services\QrAttendanceSettings::KEY_GEO_ENABLED, $request->boolean('geo_enabled'), 'bool', 'Wajib lokasi saat scan QR');
+        AbsensiGtkSetting::set(\App\Services\QrAttendanceSettings::KEY_GEO_LAT, $validated['geo_lat'] ?? null, 'string', 'Lintang titik satuan');
+        AbsensiGtkSetting::set(\App\Services\QrAttendanceSettings::KEY_GEO_LNG, $validated['geo_lng'] ?? null, 'string', 'Bujur titik satuan');
+        AbsensiGtkSetting::set(\App\Services\QrAttendanceSettings::KEY_GEO_RADIUS, (int) ($validated['geo_radius_m'] ?? 150), 'int', 'Radius area scan (meter)');
+
+        // Opsi B: kunci perangkat (opsional).
+        AbsensiGtkSetting::set(\App\Services\TeacherDeviceBinding::KEY_ENABLED, $request->boolean('device_binding_enabled'), 'bool', 'Scan hanya dari perangkat terdaftar');
+
+        // AUDIT LOG: catat perubahan pengaturan (siapa, kapan, nilai lama → baru).
+        try {
+            activity('qr-settings')
+                ->causedBy($request->user())
+                ->withProperties([
+                    'old' => [
+                        'late' => $oldTime['qr_late_threshold_minutes'] ?? null,
+                        'before' => $oldTime['qr_tolerance_before_minutes'] ?? null,
+                        'after' => $oldTime['qr_tolerance_after_minutes'] ?? null,
+                        'early_leave' => $oldTime['qr_early_leave_threshold_minutes'] ?? null,
+                        'geo_enabled' => $oldGeo['enabled'],
+                        'geo_lat' => $oldGeo['lat'],
+                        'geo_lng' => $oldGeo['lng'],
+                        'geo_radius_m' => $oldGeo['radius_m'],
+                        'device_binding' => (bool) \App\Models\AbsensiGtkSetting::get(\App\Services\TeacherDeviceBinding::KEY_ENABLED, false),
+                    ],
+                    'new' => [
+                        'late' => $current['qr_late_threshold_minutes'],
+                        'before' => $current['qr_tolerance_before_minutes'],
+                        'after' => $current['qr_tolerance_after_minutes'],
+                        'early_leave' => $current['qr_early_leave_threshold_minutes'],
+                        'geo_enabled' => $request->boolean('geo_enabled'),
+                        'geo_lat' => $validated['geo_lat'] ?? null,
+                        'geo_lng' => $validated['geo_lng'] ?? null,
+                        'geo_radius_m' => (int) ($validated['geo_radius_m'] ?? 150),
+                        'device_binding' => $request->boolean('device_binding_enabled'),
+                    ],
+                ])
+                ->log('qr.settings.updated');
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return redirect()->route('user.absensi-gtk.settings', $userId)
+            ->with('success', 'Pengaturan toleransi & lokasi scan QR berhasil disimpan.');
+    }
+
+    /**
+     * Kewenangan mengubah pengaturan QR: TU, Kepala/Wakil, Kurikulum, atau permission khusus.
+     */
+    private function canManageQrSettings(Request $request): bool
+    {
+        $user = $request->user();
+        if (! $user) {
+            return false;
+        }
+
+        if (canPermission('absensi-admin-tu') || canPermission('absensi-tata-usaha') || canPermission('absensi-kepala-sekolah')) {
+            return true;
+        }
+
+        return \App\Support\UserJabatan::hasAny($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala tata usaha',
+            'tata usaha',
+            'staf tata usaha',
+            'koordinator kurikulum',
+        ]) || (method_exists($user, 'tugasTambahan') && in_array('Tim Kurikulum', $user->tugasTambahan->pluck('nama')->all(), true));
     }
 
     public function settingsStore(Request $request, string $userId)

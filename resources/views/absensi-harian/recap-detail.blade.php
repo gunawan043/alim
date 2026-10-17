@@ -47,6 +47,7 @@
                                     <input type="hidden" name="month" value="{{ $selectedMonth }}">
                                     <input type="hidden" name="year" value="{{ $selectedYear }}">
                                     <input type="hidden" name="semester" value="{{ $selectedSemester }}">
+                                    <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
                                     <button type="submit" name="export" value="1" class="btn btn-success btn-sm">
                                         <i class="ri-file-excel-2-line me-1"></i> Export Excel
                                     </button>
@@ -92,6 +93,16 @@
                             <select name="semester" class="form-control" onchange="this.form.submit()">
                                 <option value="ganjil" {{ $selectedSemester == 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                                 <option value="genap" {{ $selectedSemester == 'genap' ? 'selected' : '' }}>Genap</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tahun Ajaran</label>
+                            <select name="academic_year_id" class="form-control" onchange="this.form.submit()">
+                                @foreach(($academicYears ?? collect()) as $ay)
+                                    <option value="{{ $ay->id }}" {{ (string) ($selectedAyId ?? '') === (string) $ay->id ? 'selected' : '' }}>
+                                        {{ $ay->name }} ({{ $ay->semester_text }}){{ $ay->is_active ? ' — Aktif' : '' }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                     </form>

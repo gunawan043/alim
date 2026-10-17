@@ -411,6 +411,15 @@ return redirect()
             ? $request->semester
             : $activeYear?->semester ?? 'ganjil';
 
+        // ARSIP PERIODE: pilih tahun ajaran (default TA aktif).
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : $activeYear?->id;
+        $selectedAy = $academicYears->firstWhere('id', $selectedAyId) ?? $activeYear;
+        $isArchiveAy = $selectedAy && $activeYear
+            && (string) $selectedAy->id !== (string) $activeYear->id;
+
         $isPrivileged = $user && (
             canPermission('absensi-admin-tu') ||
             canPermission('absensi-tata-usaha') ||
@@ -429,8 +438,6 @@ return redirect()
             ->orderBy('name')
             ->get();
 
-        $academicYears = AcademicYear::orderByDesc('name')->get();
-
         $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
         $endDate = $startDate->copy()->endOfMonth();
         $daysInMonth = $startDate->daysInMonth;
@@ -438,19 +445,19 @@ return redirect()
         $studentRows = collect();
         $dateMap = []; // [student_id][date_string] => status
 
-        if ($selectedStudyGroupId && $activeYear) {
+        if ($selectedStudyGroupId && $selectedAy) {
             // ARSIP: tampilkan seluruh anggota rombel pada TA tersebut (termasuk yang
             // sudah pindah) agar rekap kehadiran TA lama tetap lengkap.
             $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
-                ->where('academic_year_id', $activeYear->id)
+                ->where('academic_year_id', $selectedAy->id)
                 ->orderBy('attendance_number')
                 ->get();
 
             // Ambil semua record absensi bulan tersebut dalam 1 query
             $allRecords = AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
-                ->where('academic_year_id', $activeYear->id)
+                ->where('academic_year_id', $selectedAy->id)
                 ->where('semester', $selectedSemester)
                 ->whereBetween('attendance_date', [$startDate, $endDate])
                 ->get();
@@ -486,7 +493,7 @@ return redirect()
                 $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
                 $monthEnd = $monthStart->copy()->endOfMonth();
                 $monthRecords = AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
-                    ->where('academic_year_id', $activeYear->id)
+                    ->where('academic_year_id', $selectedAy->id)
                     ->where('semester', $selectedSemester)
                     ->whereBetween('attendance_date', [$monthStart, $monthEnd])
                     ->get();
@@ -503,7 +510,7 @@ return redirect()
                     $homeroomName,
                     $schoolName,
                     $selectedSemester,
-                    $activeYear?->name ?? '',
+                    $selectedAy?->name ?? '',
                     $year,
                 ),
                 "rekap-absensi-semester-{$rombelName}-".ucfirst($selectedSemester).'.xlsx'
@@ -513,7 +520,7 @@ return redirect()
         return view('absensi-harian.recap-detail', compact(
             'userId', 'studyGroups', 'studentRows', 'dateMap',
             'selectedStudyGroupId', 'selectedMonth', 'selectedYear', 'selectedSemester',
-            'months', 'academicYears', 'startDate', 'endDate', 'daysInMonth',
+            'months', 'academicYears', 'selectedAyId', 'isArchiveAy', 'startDate', 'endDate', 'daysInMonth',
         ));
     }
 
@@ -591,6 +598,15 @@ return redirect()
             ? $request->semester
             : $activeYear?->semester ?? 'ganjil';
 
+        // ARSIP PERIODE: rekap dapat melihat TA lama (seluruh anggota periode tsb).
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : $activeYear?->id;
+        $selectedAy = $academicYears->firstWhere('id', $selectedAyId) ?? $activeYear;
+        $isArchiveAy = $selectedAy && $activeYear
+            && (string) $selectedAy->id !== (string) $activeYear->id;
+
         $isPrivileged = $user && (
             canPermission('absensi-admin-tu') ||
             canPermission('absensi-tata-usaha') ||
@@ -611,11 +627,9 @@ return redirect()
             ->orderBy('name')
             ->get();
 
-        $academicYears = AcademicYear::orderByDesc('name')->get();
-
         // ── Build data rekap
         $rekapData = collect();
-        if ($selectedStudyGroupId && $activeYear) {
+        if ($selectedStudyGroupId && $selectedAy) {
             $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
             $endDate = $startDate->copy()->endOfMonth();
 
@@ -624,14 +638,14 @@ return redirect()
             $histories = StudentClassHistory::withoutGlobalScope('school_context')
                 ->with('student')
                 ->where('study_group_id', $selectedStudyGroupId)
-                ->where('academic_year_id', $activeYear->id)
+                ->where('academic_year_id', $selectedAy->id)
                 ->orderBy('attendance_number')
                 ->get();
 
             foreach ($histories as $history) {
                 $student = $history->student;
                 $records = AdminPresensiHarian::where('student_id', $student->id)
-                    ->where('academic_year_id', $activeYear->id)
+                    ->where('academic_year_id', $selectedAy->id)
                     ->where('semester', $selectedSemester)
                     ->whereBetween('attendance_date', [$startDate, $endDate])
                     ->get();
@@ -670,7 +684,7 @@ return redirect()
         return view('absensi-harian.recap', compact(
             'userId', 'studyGroups', 'rekapData',
             'selectedStudyGroupId', 'selectedMonth', 'selectedYear',
-            'selectedSemester', 'months', 'academicYears',
+            'selectedSemester', 'months', 'academicYears', 'selectedAyId', 'isArchiveAy',
         ));
     }
 

@@ -128,7 +128,10 @@ class KurikulumController extends Controller
                 ->active()
                 ->forSchool($schoolId)
                 ->whereIn('subject_id', $subjectIds)
-                ->get(['subject_id', 'fase'])
+                ->forAcademicYear($academicYearId)
+                ->orderByAcademicYearFirst()
+                ->get(['subject_id', 'fase', 'elemen', 'academic_year_id'])
+                ->unique(fn ($cp) => $cp->subject_id.'|'.$cp->fase.'|'.($cp->elemen ?? ''))
                 ->groupBy(fn ($cp) => $cp->subject_id.'|'.$cp->fase)
                 ->map->count();
 
@@ -268,8 +271,9 @@ class KurikulumController extends Controller
 
         $createdStructure = 0;
         $createdKktp = 0;
+        $createdCp = 0;
 
-        DB::transaction(function () use ($schoolId, $targetAyId, $sourceAyId, $user, &$createdStructure, &$createdKktp) {
+        DB::transaction(function () use ($schoolId, $targetAyId, $sourceAyId, $user, &$createdStructure, &$createdKktp, &$createdCp) {
             $sourceRows = GradeLevelSubject::query()
                 ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
                 ->where('is_active', true)
@@ -333,13 +337,49 @@ class KurikulumController extends Controller
 
                 $createdKktp++;
             }
+
+            // CP juga ber-versi periode: salin CP efektif TA sumber ke TA tujuan.
+            $cpRows = CapaianPembelajaran::query()
+                ->active()
+                ->forSchool($schoolId)
+                ->forAcademicYear($sourceAyId)
+                ->orderByAcademicYearFirst()
+                ->get()
+                ->unique(fn ($cp) => $cp->subject_id.'|'.$cp->fase.'|'.($cp->elemen ?? ''));
+
+            foreach ($cpRows as $cp) {
+                $exists = CapaianPembelajaran::query()
+                    ->where('subject_id', $cp->subject_id)
+                    ->where('fase', $cp->fase)
+                    ->when($cp->elemen === null, fn ($q) => $q->whereNull('elemen'), fn ($q) => $q->where('elemen', $cp->elemen))
+                    ->where('academic_year_id', $targetAyId)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                CapaianPembelajaran::create([
+                    'school_id' => $cp->school_id,
+                    'subject_id' => $cp->subject_id,
+                    'academic_year_id' => $targetAyId,
+                    'fase' => $cp->fase,
+                    'elemen' => $cp->elemen,
+                    'deskripsi' => $cp->deskripsi,
+                    'urutan' => $cp->urutan,
+                    'is_active' => true,
+                    'created_by' => $user?->id,
+                ]);
+
+                $createdCp++;
+            }
         });
 
         $targetAy = AcademicYear::find($targetAyId);
 
         return back()->with(
             'success',
-            "Peta Kurikulum {$targetAy?->name} disiapkan: {$createdStructure} baris struktur dan {$createdKktp} KKTP disalin (TA sumber tidak diubah)."
+            "Peta Kurikulum {$targetAy?->name} disiapkan: {$createdStructure} baris struktur, {$createdKktp} KKTP, dan {$createdCp} CP disalin (TA sumber tidak diubah)."
         );
     }
 

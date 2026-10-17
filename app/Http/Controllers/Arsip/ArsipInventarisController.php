@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Arsip;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ArsipkanRaporRombelJob;
 use App\Models\AcademicYear;
 use App\Models\ArchiveDocument;
+use App\Models\StudyGroup;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
 use App\Services\Arsip\ArsipInventoryService;
@@ -55,6 +57,15 @@ class ArsipInventarisController extends Controller
                 return $document;
             });
 
+        // Rombel pada TA terpilih (untuk aksi arsipkan rapor).
+        $studyGroups = $selectedAcademicYearId
+            ? StudyGroup::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->where('academic_year_id', $selectedAcademicYearId)
+                ->orderBy('name')
+                ->get(['id', 'name', 'grade_level_id'])
+            : collect();
+
         $canManage = $this->canManage($request->user());
         $lockBlockReason = $selectedAy ? $this->periods->lockBlockReason($selectedAy) : null;
         $unsupportedModules = $this->registry->unsupportedModules();
@@ -70,6 +81,7 @@ class ArsipInventarisController extends Controller
             'modules',
             'overview',
             'documents',
+            'studyGroups',
             'canManage',
             'lockBlockReason',
             'unsupportedModules',
@@ -114,6 +126,56 @@ class ArsipInventarisController extends Controller
         $this->periods->unlock($academicYear, $request->user(), $validated['lock_notes'] ?? null);
 
         return back()->with('success', "Kunci arsip tahun ajaran {$academicYear->name} dibuka (tercatat pada audit). Data baru dapat diubah bila tahun ajaran diaktifkan kembali.");
+    }
+
+    public function arsipkanRapor(Request $request, string $userId, string $id)
+    {
+        abort_unless($this->canView($request->user()), 403, 'Arsip hanya untuk pengguna berwenang.');
+
+        $academicYear = AcademicYear::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $validated = $request->validate([
+            'study_group_id' => 'required|exists:study_groups,id',
+            'semester' => 'required|in:ganjil,genap',
+            'jenis' => 'nullable|in:sts,sas',
+        ]);
+
+        $studyGroup = StudyGroup::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($validated['study_group_id']);
+
+        if ((string) $studyGroup->academic_year_id !== (string) $academicYear->id) {
+            return back()->with('error', 'Rombel yang dipilih bukan milik tahun ajaran tersebut.');
+        }
+
+        $semester = $validated['semester'];
+        $jenis = $validated['jenis'] ?? 'sas';
+
+        $contextQuery = fn () => ArchiveDocument::query()
+            ->where('type', 'rapor')
+            ->where('academic_year_id', $academicYear->id)
+            ->where('study_group_id', $studyGroup->id)
+            ->where('semester', $semester);
+
+        $before = $contextQuery()->count();
+
+        ArsipkanRaporRombelJob::dispatch(
+            $studyGroup->id,
+            $academicYear->id,
+            $semester,
+            $jenis,
+            $request->user()?->id,
+        );
+
+        $created = $contextQuery()->count() - $before;
+
+        return back()->with(
+            'success',
+            $created > 0
+                ? "Rapor diarsipkan: {$created} dokumen PDF baru untuk {$studyGroup->name} (Semester ".ucfirst($semester).').'
+                : "Tidak ada dokumen baru — seluruh rapor {$studyGroup->name} pada semester tersebut sudah terarsip."
+        );
     }
 
     public function download(Request $request, string $userId, string $documentId)

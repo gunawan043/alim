@@ -233,6 +233,7 @@ class AppServiceProvider extends ServiceProvider
         StudyGroup::observe(StudyGroupObserver::class);
         DokumenIso::observe(DokumenIsoObserver::class);
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
+        \App\Models\AbsensiGtk::observe(\App\Observers\AbsensiGtkPeriodObserver::class);
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);

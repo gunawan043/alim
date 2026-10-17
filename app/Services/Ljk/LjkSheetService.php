@@ -155,6 +155,14 @@ class LjkSheetService
         $school = $exam->school;
         [$kopBase64, $kopHeightMm] = $this->kopData($school);
 
+        // Wacana/soal cerita & dukungan teks Arab untuk lembar jawaban
+        // (butir diambil sekali agar tidak berulang query).
+        $soalSheet = app(LjkSoalSheet::class);
+        $soalQuestions = $soalSheet->questions($exam);
+        $wacanaRanges = $soalSheet->rangesFromBlocks($soalSheet->blocks($soalQuestions));
+        $arabicNumbers = $soalSheet->arabicNumbersFrom($soalQuestions);
+        $hasArabic = $arabicNumbers !== [];
+
         return view('ljk.sheet-pdf', [
             'exam' => $exam,
             'participant' => $participant,
@@ -169,6 +177,13 @@ class LjkSheetService
             'kopBase64' => $kopBase64,
             'kopHeightMm' => $kopHeightMm,
             'logoBase64' => $this->logoDataUri($school),
+            'arabicStack' => LjkPdfFonts::arabicStack(),
+            'arabicFaceCss' => LjkPdfFonts::arabicFaceCss(),
+            'wacanaRanges' => $wacanaRanges,
+            'hasArabic' => $hasArabic,
+            'arabicNumbers' => $arabicNumbers,
+            'hurufArab' => (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']),
+            'instruksiArab' => (string) config('ljk.soal.instruksi_arab', ''),
             'qrDataUri' => $master ? null : $this->qrDataUri($exam, $participant, $page),
             'stripBits' => $master ? [] : $this->stripBits($exam, $participant, $page),
         ])->render();

@@ -61,6 +61,54 @@
                             </div>
 
                             <div class="col-12">
+                                <div class="border rounded p-3 bg-light-subtle">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <i class="ri-book-open-line text-primary"></i>
+                                        <strong>Wacana / Soal Cerita (opsional)</strong>
+                                    </div>
+                                    <p class="text-muted small mb-2">
+                                        Dipakai untuk bacaan bersama beberapa nomor (mis. cerita untuk soal 20–25).
+                                        Soal yang memakai wacana sama akan dicetak <strong>satu kali</strong> di lembar soal
+                                        lengkap dengan keterangan rentang nomornya.
+                                    </p>
+
+                                    @if(($wacanas ?? collect())->isNotEmpty())
+                                        <div class="mb-2">
+                                            <label class="form-label">Pakai wacana yang sudah ada</label>
+                                            <select name="wacana_id" class="form-select">
+                                                <option value="">— Tidak memakai wacana —</option>
+                                                @foreach($wacanas as $wacana)
+                                                    <option value="{{ $wacana->id }}">
+                                                        {{ $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 60) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    @endif
+
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Judul wacana baru (opsional)</label>
+                                            <input type="text" name="wacana_judul" class="form-control" maxlength="150"
+                                                   value="{{ old('wacana_judul') }}" placeholder="mis. Teks Bacaan 1">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Sumber (opsional)</label>
+                                            <input type="text" name="wacana_sumber" class="form-control" maxlength="150"
+                                                   value="{{ old('wacana_sumber') }}" placeholder="mis. Buku Bahasa Arab hal. 12">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Teks wacana baru</label>
+                                            <textarea name="wacana_teks" rows="4" class="form-control"
+                                                      placeholder="Tulis paragraf/bacaan di sini (mendukung teks Arab)...">{{ old('wacana_teks') }}</textarea>
+                                            <small class="text-muted">Bila diisi, wacana ini dibuat lalu otomatis dipakai soal ini.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="col-12">
                                 <label class="form-label">Pembahasan</label>
                                 <textarea name="pembahasan" rows="3" class="form-control @error('pembahasan') is-invalid @enderror"
                                           placeholder="Penjelasan kunci jawaban...">{{ old('pembahasan') }}</textarea>
