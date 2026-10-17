@@ -178,13 +178,6 @@ class LjkSheetService
             $headerMm = (float) (collect($template->geometry['questions'] ?? [])->min('y_mm') ?: 58.0);
         }
 
-        $meta = trim(implode(' · ', array_filter([
-            (string) ($exam->judul ?? ''),
-            (string) ($exam->subject?->name ?? ''),
-            (string) ($exam->studyGroup?->name ?? ''),
-            $exam->tanggal?->format('d/m/Y'),
-        ])));
-
         return view('ljk.sheet-pdf', [
             'exam' => $exam,
             'participant' => $participant,
@@ -213,7 +206,6 @@ class LjkSheetService
             'instruksiArab' => (string) config('ljk.soal.instruksi_arab', ''),
             // Header LJK (mengikuti format lembar soal)
             'judulLjk' => $soalSheet->judulLjk($exam),
-            'metaLjk' => $meta,
             'identityRows' => $soalSheet->identityRows($exam, $participant),
             'karakter' => (array) config('ljk.soal.penanaman_karakter', []),
             'instruksiLjk' => (string) config('ljk.soal.instruksi_ljk', ''),

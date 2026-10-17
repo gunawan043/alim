@@ -401,18 +401,20 @@ class LjkSoalSheet
     public function identityRows(LjkExam $exam, ?LjkParticipant $participant = null): array
     {
         $nama = '';
+        $nis = '';
 
         if ($participant) {
-            $nama = trim(($participant->nomor_peserta ? $participant->nomor_peserta.' · ' : '')
-                .($participant->student?->name ?? ''));
+            $nama = trim((string) ($participant->student?->name ?? ''));
+            $nis = trim((string) ($participant->student?->nis ?? ''));
             $nama = $nama !== '' ? $nama : '-';
+            $nis = $nis !== '' ? $nis : '-';
         }
 
         $rows = array_chunk([
             ['Mata Pelajaran', (string) ($exam->subject?->name ?? '-')],
             ['Hari/Tanggal', $this->dayDate($exam->tanggal) ?: '-'],
             ['Kelas', $this->kelasLabel($exam)],
-            ['Waktu', $this->waktuLabel($exam) ?: '-'],
+            ['NIS', $nis],
             ['Guru Pengampu', (string) ($exam->adminBook?->teacher?->name ?? '-')],
             ['Nama Peserta Didik', $nama],
         ], 2);

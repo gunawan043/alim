@@ -152,7 +152,7 @@ return [
         'max_options' => 5,
         // Ruang kop lembaga + judul + identitas + penanaman karakter +
         // instruksi di atas area jawaban (lembar soal & lembar jawaban).
-        'header_height_mm' => 98.0,
+        'header_height_mm' => 88.0,
         'footer_margin_mm' => 14.0,
         // Tinggi gambar kop maksimum (mm) bila sekolah mengunggah kop surat.
         'max_kop_height_mm' => 20.0,

@@ -570,11 +570,13 @@ class LjkWebFlowTest extends TestCase
         $this->assertStringContainsString('LEMBAR JAWABAN KOMPUTER (LJK)', $html);
         $this->assertStringContainsString('TAHUN AJARAN', $html);
 
-        // Tabel identitas 3 baris dengan data peserta.
+        // Tabel identitas 3 baris dengan NIS + nama peserta.
         $this->assertStringContainsString('class="identitas"', $html);
         $this->assertStringContainsString('Mata Pelajaran', $html);
         $this->assertStringContainsString('Nama Peserta Didik', $html);
+        $this->assertStringContainsString('NIS', $html);
         $this->assertStringContainsString('Santri Uji', $html);
+        $this->assertStringNotContainsString('Waktu', $html);
 
         // Penanaman karakter + petunjuk pengisian LJK.
         $this->assertStringContainsString('PENANAMAN KARAKTER', $html);
@@ -607,20 +609,30 @@ class LjkWebFlowTest extends TestCase
         $html = $this->actingAs($this->teacher)
             ->get("/{$this->teacher->id}/ljk/{$exam->id}/preview")->getContent();
 
-        // Preview normal: ada QR + strip + identitas.
+        // Preview normal: ada QR + strip + identitas NIS/nama.
         $this->assertStringContainsString('data:image/png;base64,', $html);
         $this->assertStringContainsString('class="abs strip-cell"', $html);
         $this->assertStringContainsString('Santri Uji', $html);
+        $this->assertStringContainsString('NIS', $html);
+        $this->assertStringContainsString('2001', $html);
+        $this->assertStringNotContainsString('Waktu', $html);
+        // Baris meta ujian (judul/mapel/kelas/tanggal) sudah dihapus.
+        $this->assertStringNotContainsString('STS Fiqih', $html);
 
-        // Master (tanpa nama): tanpa QR/strip, identitas kosong.
+        // Master generik: tanpa QR/strip, semua isian identitas kosong.
         $masterHtml = app(\App\Services\Ljk\LjkSheetService::class)
             ->renderSheetHtml($exam->fresh(), \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail(), 1, true);
 
-        $this->assertStringContainsString('MASTER FOTOKOPI', $masterHtml);
+        $this->assertStringNotContainsString('MASTER FOTOKOPI', $masterHtml);
+        $this->assertStringNotContainsString('Master', $masterHtml);
+        $this->assertStringNotContainsString('Master fotokopi', $masterHtml);
         $this->assertStringNotContainsString('data:image/png;base64,', $masterHtml);
         $this->assertStringNotContainsString('class="abs strip-cell"', $masterHtml);
         $this->assertStringNotContainsString('Santri Uji', $masterHtml);
-        $this->assertStringContainsString('Master fotokopi', $masterHtml);
+        $this->assertStringNotContainsString('2001', $masterHtml);
+        $this->assertStringNotContainsString('Fiqih', $masterHtml);
+        // Enam nilai identitas diganti garis putus-putus.
+        $this->assertGreaterThanOrEqual(6, substr_count($masterHtml, 'nama-line'));
     }
 
     public function test_halaman_lihat_soal_dan_kunci_terlindungi(): void

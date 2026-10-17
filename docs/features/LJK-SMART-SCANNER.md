@@ -131,22 +131,25 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   menjorok sejajar teks, bukan sejajar nomor (hanging indent). **Untuk soal berbahasa Arab, huruf pilihan
   otomatis memakai ا، ب، ج، د، هـ** — baik di lembar soal maupun pada label
   kotak di lembar jawaban.
-- **Lembar jawaban (LJK)** — header disamakan dengan lembar soal:
-  kop gambar (maks 22 mm, proporsional), **judul dua baris** (*LEMBAR JAWABAN
-  KOMPUTER (LJK)* / *TAHUN AJARAN 2026/2027*), meta ujian (judul · mapel ·
-  kelas · tanggal), **tabel identitas maksimal 3 baris** (Mata Pelajaran,
-  Hari/Tanggal, Kelas, Waktu, Guru Pengampu, Nama Peserta Didik — berisi
-  *nomor peserta · nama*; pada master fotokopi diganti garis putus-putus),
-  **PENANAMAN KARAKTER** (3 butir), dan instruksi pengisian
-  (`soal.instruksi_ljk`) + legenda wacana. Font, margin kiri (14,99 mm), dan
-  ukuran huruf mengikuti lembar soal (Cambria/Caladea, 12 pt dengan kompensasi
-  `font_size_fallback_scale`). Template baru menyediakan
-  `template.header_height_mm = 98 mm` agar seluruh header selesai sebelum
-  baris jawaban pertama (termasuk instruksi 3 baris + instruksi Arab);
-  template lama memakai tinggi header tersimpan
-  (`geometry.header_height_mm`) dan otomatis melewati blok karakter bila
-  ruangnya tidak cukup. Instruksi Arab dicetak rata kanan di bawah instruksi
-  Indonesia.
+- **Lembar jawaban (LJK)** — kop gambar (maks 22 mm, proporsional),
+  **judul dua baris** (*LEMBAR JAWABAN KOMPUTER (LJK)* / *TAHUN AJARAN
+  2026/2027*), **tanpa baris meta ujian**, lalu **tabel identitas 3 baris**:
+  *Mata Pelajaran | Hari/Tanggal*, *Kelas | **NIS***, *Guru Pengampu | Nama
+  Peserta Didik* (nama saja; nomor peserta tetap ada di QR/data strip/footer).
+  **PENANAMAN KARAKTER** (3 butir), instruksi pengisian (`soal.instruksi_ljk`)
+  + legenda wacana. Font, margin kiri (14,99 mm), dan ukuran huruf mengikuti
+  lembar soal (Cambria/Caladea, 12 pt dengan kompensasi
+  `font_size_fallback_scale`). Template baru memakai
+  `template.header_height_mm = 88 mm` (meta dihapus) agar header selesai
+  sebelum baris jawaban pertama; template lama memakai tinggi header
+  tersimpan dan otomatis melewati blok karakter bila ruangnya tidak cukup.
+  Instruksi Arab dicetak rata kanan.
+- **Master generik (tanpa teks "Master Fotocopy")**: seluruh **nilai**
+  identitas (mapel, hari/tanggal, kelas, NIS, guru, nama) **kosong bergaris
+  putus-putus**, tanpa QR/data strip, tanpa legenda wacana, dan tanpa
+  “Jumlah nomor”; judul dan instruksi tetap generik. Dengan demikian master
+  dapat difotokopi untuk **mapel/soal lain** yang memakai template/ukuran grid
+  yang sama. Tidak ada badge/footer “Master Fotocopy” di lembar.
 - **Catatan teknis (Dompdf):** jangan pernah memakai reset `* { margin: 0 }` —
   pada Dompdf aturan universal itu **menimpa margin `@page`** sehingga isi
   cetak mepet ke tepi kertas. Reset margin hanya untuk elemen isi
@@ -314,7 +317,7 @@ dihitung "tepat seluruhnya". Per-question tetap 99,67 %, false acceptance 0 %,
 dan tidak ada lembar gagal — trade-off yang benar untuk kasus siswa mengganti
 jawaban.
 
-**Hasil v1.2.0 (4 kolom column-major, X=, header 98 mm)** pada dataset
+**Hasil v1.2.0 (4 kolom column-major, X=, header 88 mm)** pada dataset
 60 lembar × 20 soal:
 
 | Metrik | Nilai |
@@ -437,7 +440,7 @@ verifikasi, periksa peserta.
 | `soal.instruksi_ljk` | teks | Petunjuk pengisian khusus lembar jawaban (termasuk aturan X=) |
 | `detection.cancel_long_run_ratio` | `0.55` | Panjang minimum garis horizontal untuk mendeteksi "=" |
 | `detection.cancel_min_lines` | `2` | Jumlah garis horizontal minimum (tanda "=") |
-| `template.header_height_mm` | `98.0` | Tinggi area header template baru (mm) |
+| `template.header_height_mm` | `88.0` | Tinggi area header template baru (mm) |
 | `template.max_kop_height_mm` | `20.0` | Batas tinggi kop di lembar soal (LJK memakai 22 mm) |
 
 ### Font PDF (Cambria)

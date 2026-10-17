@@ -28,6 +28,7 @@ Backend (Laravel):
 - Revisi 11 (header lembar jawaban): **LJK disamakan dengan format lembar soal** — kop gambar saja (maks 22 mm, proporsi asli), judul dua baris (*LEMBAR JAWABAN KOMPUTER (LJK)* / *TAHUN AJARAN …*), meta ujian, **tabel identitas 3 baris** (Mata Pelajaran, Hari/Tanggal, Kelas, Waktu, Guru Pengampu, Nama Peserta Didik berisi nomor + nama; master memakai garis putus-putus), **PENANAMAN KARAKTER** 3 butir, instruksi pengisian LJK + legenda wacana, font dan margin kiri mengikuti lembar soal. Template baru memakai `header_height_mm = 92 mm` dan `LjkSchoolLetterhead` menjaga proporsi kop (lebar ikut mengecil saat tinggi dibatasi); blok karakter otomatis dilewati bila header template lama tidak cukup. Tes `LjkWebFlowTest` ditambah (judul, tabel identitas, karakter, nama peserta, batas header) → 31 tes LJK / 437 asersi hijau.
 - Revisi 12 (grid 4 soal & ganti jawaban): **lembar jawaban memakai grid 4 soal sebaris** (row-major: 1–4, 5–8, …; ujian 5 opsi otomatis 3 kolom; soal uraian selebar baris) sehingga celah horizontal besar hilang dan kolom sejajar dari atas ke bawah. Header dinaikkan ke **98 mm** agar instruksi 3 baris + instruksi Arab tidak menimpa baris jawaban pertama. **Asumsi ganti jawaban** ditetapkan: dua tanda X kuat **selalu `ganda`** dan tidak dipilih otomatis (mesin `omr-v1.1.0`), review guru wajib; UI menampilkan **Terdeteksi: label** dan menyembunyikan tombol terima untuk ganda/meragukan; memilih label otomatis menjadi `terbaca`; koreksi tetap ber-audit dan nilai memakai kunci paket. Petunjuk LJK memuat aturan hapus tanda lama. Tes baru: layout 4 sebaris, dua tanda kuat selalu ganda, alur koreksi ganti jawaban → nilai 100; total **34 tes LJK / 460 asersi**. Kalibrasi v1.1.0 (60 lembar × 20 soal, grid 4 sebaris): per-question **99,67 %**, false acceptance **0,00 %**, review **5,08 %**, 0 lembar gagal; exact-sheet 93,33 % (turun disengaja karena dua tanda kuat kini review, bukan auto-pilih).
 - Revisi 13 (urut ke bawah, kolom otomatis, X=): distribusi LJK diubah menjadi **column-major** — nomor berurut ke bawah dulu (23 soal: 1–6, 7–12, 13–18, 19–23), baru pindah kolom. Jumlah kolom **tidak dipaksa 4**: opsi sampai E otomatis memakai **3 kolom** (lebar minimum per kolom dihitung dari opsi terbanyak). **Siswa tanpa penghapus** dapat menulis **"=" pada X lama (X=)**; mesin mendeteksi dua garis horizontal panjang ber-margin dan **mengabaikan kotak itu**, sehingga X baru langsung terbaca (tanpa review) — dua X sah tetap `ganda`. UI menampilkan chip **dicoret** untuk opsi X=; petunjuk LJK memuat aturan ini. Engine dinaikkan ke **omr-v1.2.0**. Tes: **35 tes LJK / 484 asersi**. Kalibrasi v1.2.0 (60 lembar × 20 soal): per-question 99,67 %, FAR 0,08 %, review 4,92 %, 0 lembar gagal.
+- Revisi 14 (identitas NIS & master generik): kolom **Waktu** pada tabel identitas LJK diganti **NIS** (nilai dari `students.nis`), nama peserta dicetak tanpa prefiks nomor peserta; lebar label/nilai diubah 20/30 sehingga tanggal tidak lagi membungkus. **Baris meta ujian** (*STS Bahasa Inggris 1B · …*) dihapus dari lembar. **Master** kini generik: semua nilai identitas kosong bergaris putus-putus, tanpa legenda wacana/“Jumlah nomor”, tanpa badge/footer **“Master Fotocopy”**; dapat dipakai untuk mapel/soal lain dengan template yang sama. Header diturunkan ke **88 mm** karena meta dihapus. Tes: **35 tes LJK / 495 asersi**.
 - Seeder contoh: `database/seeders/LjkLaluSopianSeeder.php` (idempoten) — menyiapkan akun GTK **Lalu Sopian Harianto** + buku nilai **Bahasa Inggris · kelas 1B**, Bank Soal + 20 soal PG, kisi-kisi, **Paket Soal final ber-snapshot**, dan ujian LJK contoh berikut 22 lembar siap cetak. Jalankan: `php artisan db:seed --class=LjkLaluSopianSeeder`.
 
 Mobile (repo `Alim-Mobile`): fitur `src/features/ljk/` + route `/ljk` (daftar ujian → peserta → **kamera** → hasil & koreksi) memakai `expo-image-picker` yang sudah terpasang (tanpa dependensi native baru), service/hook React Query, dan menu sidebar guru.
@@ -1530,6 +1531,40 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 ### Test
 - `PayrollEngineTest`: kalkulasi (gaji pokok 5 juta + tunjangan 1,5 juta − potongan 250 ribu = 6,25 juta),
   generate→publish→pay, regenerate tidak menimpa paid, render index/master/generate, dan PDF slip = 3 test / 20 assertion.
+
+## 150. Stabilisasi Akademik & Asrama — Keamanan Akses, Kunci Nilai, Presensi, dan Perizinan
+
+### Akademik
+- **Keamanan `{userId}`**: `EnsureRoleAccess` sekarang mewajibkan `{userId}` pada URL sama dengan pengguna efektif
+  (kecuali system/super admin). Sebelumnya pengguna biasa dapat membuka halaman milik user lain hanya dengan
+  mengganti UUID di URL. Test `UserIdScopeTest` (user lain → 403, milik sendiri → 200).
+- **Kunci nilai ditegakkan**: simpan STS (tab mapel & leger), simpan KKTP, dan kelola kolom sumatif menolak
+  `TeacherAdminBook` yang sudah dikunci; pengelolaan kolom juga memeriksa arsip TA.
+- **Rapor**: catatan & cetak rapor memvalidasi bahwa santri benar-benar anggota rombel+TA; pengaturan tanggal
+  pembagian rapor dibatasi ke akses penuh (TU/Kurikulum/Kepala), bukan wali kelas.
+- **Bank Soal**: import `Soal` yang hilang pada `soalList` diperbaiki (endpoint tidak lagi fatal).
+
+### Asrama
+- **Presensi malam/pagi diperbaiki end-to-end**:
+  - Form mengirim `attendance_date`, `student_id`, `room_id`, `selected`, `status` sesuai request.
+  - Controller menyimpan `attendance_date`, `session`, `room_id` (sebelumnya `attendance_date` tidak ikut disimpan
+    sehingga insert gagal), memfilter baris yang tidak dicentang.
+  - Data absensi lama ditampilkan sebagai model (status + catatan) bukan array string.
+  - Filter halaman index memakai `attendance_date`.
+- **Rekap bulanan** dihitung langsung dari presensi nyata: ringkasan hadir/izin/sakit/alpa/pulang, rekap per santri,
+  filter kamar, dan grafik per kamar. `DormitoryService::generateMonthlyRecap()` memperbaiki kolom `resident_id`
+  yang tidak ada → memakai `student_id` + `dormitory_id`.
+- **Perizinan**:
+  - `approve()` tidak lagi memanggil `$this->permitRepository` yang tidak ada.
+  - `CarbonImmutable` diimpor untuk quota-check.
+  - Redirect verifikasi memakai route `user.asrama.permits.verify` yang benar.
+  - Event `LeaveApproved` tidak lagi di-dispatch ganda dari controller (service sudah melakukannya).
+  - Listener notifikasi wali memakai `wali_user_id` (kolom yang benar), bukan `wali_id`.
+
+### Test
+- `UserIdScopeTest` (1 test / 2 assertion).
+- `DormitoryAttendanceFixTest` (1 test / 4 assertion): simpan presensi + rekap bulanan.
+- Regresi gabungan QR, jadwal, surat, laporan, payroll, supervisi, Kaldik, kenaikan kelas = 37 test / 333 assertion — hijau.
 
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.

@@ -39,8 +39,8 @@
 
     $titleY = $y;
     $line2Y = round($y + 5.8, 2);
-    $metaY = round($y + 11.0, 2);
-    $tableY = round($y + 17.2, 2);
+    // Baris meta ujian dihapus; tabel identitas langsung di bawah judul.
+    $tableY = round($y + 11.5, 2);
 
     // Tabel identitas 3 baris; cadangan tinggi aman untuk sel yang membungkus.
     $tableH = max(18.0, count($identityRows ?? []) * 8.0);
@@ -59,7 +59,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>{{ $sheet->sheet_code }}{{ $master ? '-MASTER' : '' }}</title>
+<title>{{ $master ? 'LJK' : $sheet->sheet_code }}</title>
 <style>
     {!! \App\Services\Ljk\LjkPdfFonts::faceCss() !!}
     {!! $arabicFaceCss ?? '' !!}
@@ -97,8 +97,8 @@
         font-size: {{ max(7.5, $fontSize - 1.6) }}pt;
         line-height: 1.15;
     }
-    table.identitas td.label { width: 22%; }
-    table.identitas td.value { width: 28%; }
+    table.identitas td.label { width: 20%; }
+    table.identitas td.value { width: 30%; }
     .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
 
     .karakter-title {
@@ -121,18 +121,6 @@
         line-height: 1.3;
     }
     .small { font-size: 5.5pt; color: #666; }
-    .master-badge {
-        display: inline-block;
-        white-space: nowrap;
-        font-size: 7pt;
-        font-weight: bold;
-        color: #b45309;
-        border: 0.3mm solid #b45309;
-        padding: 0.5mm 1.6mm;
-        margin-left: 2mm;
-        vertical-align: middle;
-        line-height: 1.2;
-    }
 </style>
 </head>
 <body>
@@ -173,11 +161,6 @@
         </div>
     @endif
 
-    <div class="abs meta" style="left: {{ $contentLeft }}mm; top: {{ $metaY }}mm; width: {{ $flowWidth }}mm;">
-        {!! \App\Services\Ljk\LjkArabicText::toHtml($metaLjk ?? '', false) !!}
-        @if($master) &nbsp; <span class="master-badge">MASTER FOTOKOPI</span> @endif
-    </div>
-
     {{-- TABEL IDENTITAS (3 baris × 2 pasang) --}}
     <div class="abs" style="left: {{ $contentLeft }}mm; top: {{ $tableY }}mm; width: {{ $contentWidth }}mm;">
         <table class="identitas">
@@ -186,12 +169,11 @@
                     @foreach($row as [$label, $value])
                         <td class="label">{{ $label }}</td>
                         <td class="value">
-                            @if($label === 'Nama Peserta Didik')
-                                @if($master)
-                                    <span class="nama-line">&nbsp;</span>
-                                @else
-                                    <strong>{!! \App\Services\Ljk\LjkArabicText::toHtml($value, false) !!}</strong>
-                                @endif
+                            @if($master)
+                                {{-- Master fotokopi generik: seluruh isian identitas kosong. --}}
+                                <span class="nama-line">&nbsp;</span>
+                            @elseif($label === 'Nama Peserta Didik')
+                                <strong>{!! \App\Services\Ljk\LjkArabicText::toHtml($value, false) !!}</strong>
                             @else
                                 {!! \App\Services\Ljk\LjkArabicText::toHtml($value, false) !!}
                             @endif
@@ -221,13 +203,15 @@
     {{-- PETUNJUK --}}
     <div class="abs instructions" style="left: {{ $contentLeft }}mm; top: {{ $instructionY }}mm; width: {{ $flowWidth }}mm;">
         <strong>A.</strong> {{ $instruksiLjk }}
-        Jumlah nomor: {{ count($geometry['questions']) }}.
-        @if(($exam->skor_config['manual_count'] ?? 0) > 0)
-            Soal uraian/isian dinilai manual oleh guru.
-        @endif
-        @if(! empty($wacanaRanges))
-            <br><strong>Wacana/soal cerita:</strong> soal nomor
-            @if($arabAngka ?? false)<span class="ar">{{ implode(', ', $wacanaRanges) }}</span>@else{{ implode(', ', $wacanaRanges) }}@endif.
+        @if(! $master)
+            Jumlah nomor: {{ count($geometry['questions']) }}.
+            @if(($exam->skor_config['manual_count'] ?? 0) > 0)
+                Soal uraian/isian dinilai manual oleh guru.
+            @endif
+            @if(! empty($wacanaRanges))
+                <br><strong>Wacana/soal cerita:</strong> soal nomor
+                @if($arabAngka ?? false)<span class="ar">{{ implode(', ', $wacanaRanges) }}</span>@else{{ implode(', ', $wacanaRanges) }}@endif.
+            @endif
         @endif
         @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
             <br><span class="ar-block"><span class="ar">{!! \App\Services\Ljk\LjkArabicText::toHtml($instruksiArab, false) !!}</span></span>
@@ -276,8 +260,7 @@
     {{-- Footer --}}
     <div class="abs small" style="left: {{ $contentLeft }}mm; top: {{ $paper['height_mm'] - 12.5 }}mm; width: {{ $contentWidth + 25 }}mm;">
         @if($master)
-            Master fotokopi — salin sebanyak kebutuhan, isi identitas dengan pulpen.
-            @if($masterNote ?? null) <br><strong>{{ $masterNote }}</strong> @endif
+            LJK
         @else
             {{ $sheet->sheet_code }}
         @endif

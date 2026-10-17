@@ -70,7 +70,7 @@
                         <a href="{{ route('user.ljk.pdf', ['userId' => $userId, 'ljkUuid' => $exam->id, 'master' => 1]) }}"
                            target="_blank" class="btn btn-soft-warning"
                            title="Lembar tanpa nama/QR untuk diperbanyak lalu diisi manual">
-                            <i class="ri-file-copy-2-line align-bottom me-1"></i> Master Fotokopi
+                            <i class="ri-file-copy-2-line align-bottom me-1"></i> Master
                         </a>
                         <a href="{{ route('user.ljk.scan', ['userId' => $userId, 'ljkUuid' => $exam->id]) }}" class="btn btn-success">
                             <i class="ri-camera-line align-bottom me-1"></i> Pindai LJK
@@ -219,7 +219,7 @@
                     @if (! $canonical)
                         <div class="alert alert-warning py-2 mb-2" style="font-size:0.8125rem;">
                             <i class="ri-shuffle-line me-1"></i>
-                            Paket ini <strong>mengacak urutan soal/opsi</strong> — “Master Fotokopi” hanya sah untuk peserta
+                            Paket ini <strong>mengacak urutan soal/opsi</strong> — “Master” hanya sah untuk peserta
                             yang tersalin. Terbitkan ujian baru dengan <strong>Mode Fotokopi</strong> bila ingin satu master
                             berlaku untuk semua santri.
                         </div>
