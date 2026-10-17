@@ -1683,6 +1683,14 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Event `emergency_broadcast` ditambahkan ke Matriks Channel Notifikasi.
 - Test `DormitoryBroadcastTest` (1 test / 2 assertion): broadcast tersimpan + notifikasi wali dibuat.
 
+## 157. Dashboard Asrama & Audit Log
+
+- Widget **Kegiatan Hari Ini** pada dashboard asrama memakai `dormitory_activities` + jumlah presensi.
+- Grafik partisipasi kegiatan memakai sesi kegiatan baru.
+- Statistik/daftar inventaris rusak memakai enum `rusak_ringan/rusak_berat/hilang`.
+- Audit log asrama ditambahkan untuk: izin disetujui/ditolak, mutasi kamar disetujui/ditolak,
+  kegiatan dibuat/ditutup/dibuka, dan broadcast darurat.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
