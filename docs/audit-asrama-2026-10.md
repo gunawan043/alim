@@ -120,3 +120,8 @@ Keterangan status: **Selesai** = berfungsi, **Diperbaiki** = baru diperbaiki pad
 - Pengumuman/broadcast hanya ke wali penghuni asrama terkait.
 - Izin & kunjungan yang diajukan Staf Perizinan/Staf Asrama/wali kamar langsung disetujui.
 - Jika auto-approve gagal, pengajuan tetap pending (tidak hilang).
+
+## 10. Batch 8 — UI Audit Log
+- Halaman Audit Log Asrama (filter aksi/tanggal, pagination, empty state).
+- Data dibatasi pada record asrama terkait.
+- Tautan ditambahkan ke hub laporan.

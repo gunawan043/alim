@@ -74,16 +74,16 @@ class AiProviderService
     }
 
     /**
-     * @param  array<int, array{role: string, content: string}>  $messages
-     * @param  array{temperature?: float, max_tokens?: int, timeout?: int}  $options
-     * @return array{ok: bool, content: string, status: int, error: ?string}
+     * @param  array<int, array<string, mixed>>  $messages
+     * @param  array{temperature?: float, max_tokens?: int, timeout?: int, tools?: array, tool_choice?: string}  $options
+     * @return array{ok: bool, content: string, status: int, error: ?string, tool_calls: array, finish_reason: ?string}
      */
     public function chat(array $messages, array $options = [], ?AiProviderSetting $provider = null): array
     {
         $provider = $provider ?: $this->resolveProvider();
 
         if (! $provider || ! filled($provider->endpoint)) {
-            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => 'Belum ada provider AI yang dikonfigurasi.'];
+            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => 'Belum ada provider AI yang dikonfigurasi.', 'tool_calls' => [], 'finish_reason' => null];
         }
 
         $headers = ['Accept' => 'application/json'];
@@ -105,34 +105,50 @@ class AiProviderService
             }
         }
 
+        $payload = [
+            'model' => $provider->model,
+            'messages' => $messages,
+            'temperature' => $options['temperature'] ?? 0.2,
+            'max_tokens' => $options['max_tokens'] ?? 800,
+        ];
+
+        if (! empty($options['tools'])) {
+            $payload['tools'] = $options['tools'];
+            $payload['tool_choice'] = $options['tool_choice'] ?? 'auto';
+        }
+
         try {
             $response = Http::withHeaders($headers)
                 ->timeout((int) ($options['timeout'] ?? config('arabic_names.ai.timeout', 30)))
-                ->post($provider->endpoint, [
-                    'model' => $provider->model,
-                    'messages' => $messages,
-                    'temperature' => $options['temperature'] ?? 0.2,
-                    'max_tokens' => $options['max_tokens'] ?? 800,
-                ]);
+                ->post($provider->endpoint, $payload);
 
             if (! $response->successful()) {
                 $error = 'HTTP '.$response->status().': '.mb_substr((string) $response->body(), 0, 300);
                 Log::warning('AI provider gagal: '.$error);
 
-                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => $error];
+                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => $error, 'tool_calls' => [], 'finish_reason' => null];
             }
 
-            $content = (string) data_get($response->json(), 'choices.0.message.content', '');
+            $message = (array) data_get($response->json(), 'choices.0.message', []);
+            $content = (string) ($message['content'] ?? '');
+            $toolCalls = (array) ($message['tool_calls'] ?? []);
 
-            if (trim($content) === '') {
-                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => 'Respons AI kosong.'];
+            if (trim($content) === '' && $toolCalls === []) {
+                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => 'Respons AI kosong.', 'tool_calls' => [], 'finish_reason' => null];
             }
 
-            return ['ok' => true, 'content' => $content, 'status' => $response->status(), 'error' => null];
+            return [
+                'ok' => true,
+                'content' => $content,
+                'status' => $response->status(),
+                'error' => null,
+                'tool_calls' => $toolCalls,
+                'finish_reason' => data_get($response->json(), 'choices.0.finish_reason'),
+            ];
         } catch (\Throwable $e) {
             Log::warning('AI provider exception: '.$e->getMessage());
 
-            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => $e->getMessage()];
+            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => $e->getMessage(), 'tool_calls' => [], 'finish_reason' => null];
         }
     }
 

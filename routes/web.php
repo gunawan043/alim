@@ -6,6 +6,7 @@ use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AdminAsramaDashboardController;
 use App\Http\Controllers\AdminTUDashboardController;
 use App\Http\Controllers\AlumniController;
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Arsip\ArsipInventarisController;
@@ -203,6 +204,7 @@ use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
 use App\Http\Controllers\SuperAdmin\AiProviderController;
 use App\Http\Controllers\SuperAdmin\AuditLogController;
 use App\Http\Controllers\SuperAdmin\CurriculumStructureController;
@@ -409,6 +411,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/page', [NotificationPageController::class, 'index'])->name('page');
                 Route::get('/preferensi', [NotificationPreferenceController::class, 'edit'])->name('preferences');
                 Route::put('/preferensi', [NotificationPreferenceController::class, 'update'])->name('preferences.update');
+            });
+
+            // ── CHAT AI (widget pojok kanan) ─────────────────────
+            Route::prefix('ai-chat')->name('ai-chat.')->group(function () {
+                Route::get('/latest', [AiChatController::class, 'latest'])->name('latest');
+                Route::post('/send', [AiChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
+                Route::get('/{conversation}', [AiChatController::class, 'show'])->name('show');
+                Route::delete('/{conversation}', [AiChatController::class, 'destroy'])->name('destroy');
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -658,6 +668,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{id}/approve', [AiContentController::class, 'approve'])->name('approve');
                     Route::delete('/{id}', [AiContentController::class, 'destroy'])->name('destroy');
                 });
+
 
                 // Master Rumpun Mata Pelajaran & penetapan koordinator (Kebijakan Akademik)
                 Route::prefix('rumpun')->name('rumpun.')->group(function () {
@@ -1993,6 +2004,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/laporan/mutasi-kamar', [DormitoryReportController::class, 'roomMoves'])->name('reports.room-moves');
                 Route::get('/{asramaUuid}/laporan/keluar-asrama', [DormitoryReportController::class, 'checkouts'])->name('reports.checkouts');
                 Route::get('/{asramaUuid}/laporan/kegiatan', [DormitoryReportController::class, 'activities'])->name('reports.activities');
+                Route::get('/{asramaUuid}/laporan/audit-log', [DormitoryReportController::class, 'auditLog'])->name('reports.audit');
 
                 // ── STAF PERIZINAN SCOPE MANAGEMENT ─────────────────────────────
                 Route::get('/staf-assignments/{targetUserId}', [DormitoryStaffAssignmentController::class, 'index'])->name('staf-assignments.index');
@@ -2380,6 +2392,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{id}/default', [AiProviderController::class, 'setDefault'])->name('default');
                     Route::post('/{id}/test', [AiProviderController::class, 'test'])->name('test');
                     Route::delete('/{id}', [AiProviderController::class, 'destroy'])->name('destroy');
+                });
+
+                Route::prefix('ai-chat')->name('ai-chat.')->group(function () {
+                    Route::get('/', [AiChatMonitorController::class, 'index'])->name('index');
+                    Route::get('/{conversation}', [AiChatMonitorController::class, 'show'])->name('show');
+                    Route::delete('/{conversation}', [AiChatMonitorController::class, 'destroy'])->name('destroy');
                 });
 
                 Route::post('/users/{user}/unlock', [UserSecurityController::class, 'unlock'])->name('users.unlock');

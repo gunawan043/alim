@@ -1703,6 +1703,14 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Jika auto-approve gagal (mis. kuota/kebijakan), pengajuan tetap tersimpan sebagai pending.
 - Event `dormitory_announcement` ditambahkan ke Matriks Channel Notifikasi.
 
+## 159. Halaman Audit Log Asrama
+
+- Halaman **Laporan → Audit Log** menampilkan riwayat aksi asrama yang tercatat:
+  izin, mutasi kamar, kegiatan, dan broadcast.
+- Filter aksi & tanggal, pagination bersama, empty state lord-icon.
+- Data dibatasi ke record milik asrama terkait (izin/mutasi/kegiatan/broadcast).
+- Ditambahkan ke hub Laporan Asrama.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

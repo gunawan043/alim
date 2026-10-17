@@ -223,6 +223,7 @@
                 ['title' => 'Mutasi Kamar', 'desc' => 'Perpindahan kamar & persetujuan', 'icon' => 'ri-arrow-left-right-line', 'tone' => 'primary', 'route' => 'user.asrama.reports.room-moves'],
                 ['title' => 'Keluar Asrama', 'desc' => 'Santri keluar & alasan check-out', 'icon' => 'ri-logout-box-r-line', 'tone' => 'warning', 'route' => 'user.asrama.reports.checkouts'],
                 ['title' => 'Kegiatan', 'desc' => 'Rekap presensi kegiatan asrama', 'icon' => 'ri-calendar-event-line', 'tone' => 'success', 'route' => 'user.asrama.reports.activities'],
+                ['title' => 'Audit Log', 'desc' => 'Riwayat aksi izin, mutasi, kegiatan, broadcast', 'icon' => 'ri-history-line', 'tone' => 'dark', 'route' => 'user.asrama.reports.audit'],
             ];
         @endphp
         @foreach($extraReports as $report)
