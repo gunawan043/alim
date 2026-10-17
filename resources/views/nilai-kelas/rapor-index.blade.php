@@ -157,10 +157,20 @@
                             </p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas']) }}"
-                               class="btn btn-success btn-sm me-1" target="_blank">
-                                <i class="ri-printer-line me-1"></i> Cetak Rapor Massal (1 PDF)
-                            </a>
+                            <div class="btn-group me-1">
+                                <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="ri-printer-line me-1"></i> Cetak Rapor Massal (1 PDF)
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><h6 class="dropdown-header">SAS — Nilai Akhir</h6></li>
+                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">STS — Tengah Semester</h6></li>
+                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                </ul>
+                            </div>
                             <a href="{{ route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
                                class="btn btn-outline-secondary btn-sm">
                                 <i class="ri-arrow-left-line me-1"></i> Kembali
@@ -233,28 +243,20 @@
                                             </div>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('user.schools.nilai-kelas.rapor.cetak', [
-                                                'userId' => $userId,
-                                                'studyGroupId' => $studyGroup->id,
-                                                'studentId' => $student->id,
-                                                'academic_year_id' => $selectedAyId,
-                                                'semester' => $selectedSem,
-                                                'jenis' => 'sts',
-                                            ]) }}"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="ri-download-2-line me-1"></i> Rapor STS
-                                            </a>
-                                            <a href="{{ route('user.schools.nilai-kelas.rapor.cetak', [
-                                                'userId' => $userId,
-                                                'studyGroupId' => $studyGroup->id,
-                                                'studentId' => $student->id,
-                                                'academic_year_id' => $selectedAyId,
-                                                'semester' => $selectedSem,
-                                                'jenis' => 'sas',
-                                            ]) }}"
-                                               class="btn btn-success btn-sm">
-                                                <i class="ri-download-2-line me-1"></i> Rapor SAS
-                                            </a>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="ri-printer-line me-1"></i> Rapor
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><h6 class="dropdown-header">STS — Tengah Semester</h6></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><h6 class="dropdown-header">SAS — Nilai Akhir</h6></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                                </ul>
+                                            </div>
                                             <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-note"
                                                     data-name="{{ $student->name }}"
                                                     data-note="{{ $registrations[$student->id]->homeroom_note ?? '' }}"

@@ -50,7 +50,13 @@ class ArsipInventarisController extends Controller
         $modules = $this->inventory->summary($selectedAcademicYearId, $schoolId);
         $overview = $this->inventory->overview($selectedAcademicYearId, $schoolId);
 
-        $documents = $this->inventory->documents($selectedAcademicYearId, $schoolId)
+        $documentFilters = [
+            'type' => in_array($request->input('doc_type'), ['snapshot_nilai', 'rapor', 'leger'], true) ? $request->input('doc_type') : null,
+            'jenis' => in_array($request->input('doc_jenis'), ['sts', 'sas'], true) ? $request->input('doc_jenis') : null,
+            'language' => in_array($request->input('doc_language'), ['id', 'ar'], true) ? $request->input('doc_language') : null,
+        ];
+
+        $documents = $this->inventory->documents($selectedAcademicYearId, $schoolId, 50, $documentFilters)
             ->map(function (ArchiveDocument $document) {
                 $document->setAttribute('file_available', $this->documents->exists($document));
                 $document->setAttribute('file_verified', $document->file_available && $this->documents->verify($document));
@@ -82,6 +88,7 @@ class ArsipInventarisController extends Controller
             'modules',
             'overview',
             'documents',
+            'documentFilters',
             'studyGroups',
             'canManage',
             'lockBlockReason',

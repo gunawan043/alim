@@ -55,14 +55,18 @@ class ArsipInventoryService
     }
 
     /**
+     * @param  array{type?: string|null, jenis?: string|null, language?: string|null}  $filters
      * @return Collection<int, ArchiveDocument>
      */
-    public function documents(?string $academicYearId, ?string $schoolId = null, int $limit = 50): Collection
+    public function documents(?string $academicYearId, ?string $schoolId = null, int $limit = 50, array $filters = []): Collection
     {
         return ArchiveDocument::query()
             ->with(['generator:id,name', 'studyGroup:id,name'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->when($filters['type'] ?? null, fn ($q, $type) => $q->where('type', $type))
+            ->when($filters['jenis'] ?? null, fn ($q, $jenis) => $q->where('jenis', $jenis))
+            ->when($filters['language'] ?? null, fn ($q, $language) => $q->where('language', $language))
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();

@@ -317,8 +317,31 @@
     {{-- Dokumen Arsip --}}
     <div class="card">
         <div class="card-header border-bottom-dashed">
-            <h5 class="card-title mb-0"><i class="ri-folder-shield-2-line text-success me-1"></i>Dokumen Arsip Periode Ini</h5>
-            <p class="text-muted mb-0 small">Snapshot dibuat otomatis saat buku nilai dikunci final; berisi hash SHA-256 untuk verifikasi integritas.</p>
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                <div>
+                    <h5 class="card-title mb-0"><i class="ri-folder-shield-2-line text-success me-1"></i>Dokumen Arsip Periode Ini</h5>
+                    <p class="text-muted mb-0 small">Snapshot dibuat otomatis saat buku nilai dikunci final; berisi hash SHA-256 untuk verifikasi integritas.</p>
+                </div>
+                <form method="GET" class="d-flex flex-wrap gap-2">
+                    <input type="hidden" name="academic_year_id" value="{{ $selectedAcademicYearId }}">
+                    <select name="doc_type" class="form-select form-select-sm" onchange="this.form.submit()" title="Jenis dokumen">
+                        <option value="">Semua Dokumen</option>
+                        <option value="rapor" {{ ($documentFilters['type'] ?? null) === 'rapor' ? 'selected' : '' }}>Rapor</option>
+                        <option value="leger" {{ ($documentFilters['type'] ?? null) === 'leger' ? 'selected' : '' }}>Leger</option>
+                        <option value="snapshot_nilai" {{ ($documentFilters['type'] ?? null) === 'snapshot_nilai' ? 'selected' : '' }}>Snapshot Nilai</option>
+                    </select>
+                    <select name="doc_jenis" class="form-select form-select-sm" onchange="this.form.submit()" title="Jenis penilaian">
+                        <option value="">Semua STS/SAS</option>
+                        <option value="sts" {{ ($documentFilters['jenis'] ?? null) === 'sts' ? 'selected' : '' }}>STS</option>
+                        <option value="sas" {{ ($documentFilters['jenis'] ?? null) === 'sas' ? 'selected' : '' }}>SAS</option>
+                    </select>
+                    <select name="doc_language" class="form-select form-select-sm" onchange="this.form.submit()" title="Bahasa dokumen">
+                        <option value="">Semua Bahasa</option>
+                        <option value="id" {{ ($documentFilters['language'] ?? null) === 'id' ? 'selected' : '' }}>Indonesia</option>
+                        <option value="ar" {{ ($documentFilters['language'] ?? null) === 'ar' ? 'selected' : '' }}>Arab</option>
+                    </select>
+                </form>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">

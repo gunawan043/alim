@@ -524,6 +524,83 @@ class ArsipInventarisTest extends TestCase
         $this->assertStringNotContainsString('٨٥', $htmlId);
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // V5 — CETAK MULTIBAHASA, HIJRI, FILTER DOKUMEN
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_cetak_rapor_bahasa_arab_dari_ui(): void
+    {
+        $this->actingAs($this->tu);
+
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/{$this->activeStudent->id}/cetak"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil&jenis=sas&bahasa=ar";
+
+        $response = $this->get($url);
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', (string) $response->getContent());
+    }
+
+    public function test_cetak_rapor_massal_bahasa_arab_dari_ui(): void
+    {
+        $this->actingAs($this->tu);
+
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/cetak-massal"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil&jenis=sas&bahasa=ar";
+
+        $response = $this->get($url);
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', (string) $response->getContent());
+    }
+
+    public function test_tanggal_hijriah_arab_otomatis(): void
+    {
+        $hijri = ArabicText::formatHijriDate('2026-10-20');
+
+        $this->assertNotSame('', $hijri);
+        $this->assertStringContainsString('هـ', $hijri);
+        $this->assertMatchesRegularExpression('/[\x{0660}-\x{0669}]/u', $hijri);
+    }
+
+    public function test_filter_dokumen_arsip_berdasarkan_jenis_dan_bahasa(): void
+    {
+        foreach ([
+            ['type' => 'rapor', 'jenis' => 'sas', 'language' => 'ar', 'title' => 'Rapor Arab'],
+            ['type' => 'rapor', 'jenis' => 'sts', 'language' => 'id', 'title' => 'Rapor Indonesia'],
+            ['type' => 'leger', 'jenis' => 'sas', 'language' => null, 'title' => 'Leger'],
+        ] as $i => $data) {
+            ArchiveDocument::create([
+                'school_id' => $this->school->id,
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'type' => $data['type'],
+                'jenis' => $data['jenis'],
+                'language' => $data['language'],
+                'title' => $data['title'],
+                'file_path' => "arsip/test/{$i}.pdf",
+                'file_hash' => str_repeat('a', 64),
+                'file_size' => 100,
+            ]);
+        }
+
+        $this->actingAs($this->tu);
+
+        $filtered = app(ArsipInventarisController::class)
+            ->index($this->makeRequest([
+                'academic_year_id' => $this->activeAy->id,
+                'doc_type' => 'rapor',
+                'doc_language' => 'ar',
+            ]), $this->tu->id)
+            ->getData();
+
+        $this->assertCount(1, $filtered['documents']);
+        $this->assertSame('Rapor Arab', $filtered['documents']->first()->title);
+        $this->assertSame('rapor', $filtered['documentFilters']['type']);
+        $this->assertSame('ar', $filtered['documentFilters']['language']);
+    }
+
     private function makeRequest(array $data = []): Request
     {
         $request = Request::create('/arsip-inventaris', 'GET', $data);

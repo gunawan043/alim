@@ -27,6 +27,7 @@
     $num = fn ($value) => $isArabic ? \App\Support\ArabicText::digits((string) $value) : (string) $value;
     $printDate = $distributionDate ?? now();
     $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
+    $hijriDate = $isArabic ? \App\Support\ArabicText::formatHijriDate($printDate) : '';
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $isArabic ? 'ar' : 'id' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
@@ -379,6 +380,9 @@
             </td>
             <td class="with-gap center-col" style="width:40%;">
                 {!! $text($printCity) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
+                @if($isArabic && $hijriDate)
+                    <br><span style="font-size:8pt;">{{ $hijriDate }}</span>
+                @endif
                 <br><br><br><br><br>
                 ________________________
                 <br><strong>{!! $text(($isArabic && $studyGroup->homeroomTeacher?->name_ar) ? $studyGroup->homeroomTeacher->name_ar : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong>

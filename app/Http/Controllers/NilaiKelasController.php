@@ -929,6 +929,7 @@ class NilaiKelasController extends Controller
 
         // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
         $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
+        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -948,9 +949,10 @@ class NilaiKelasController extends Controller
             $selectedSem,
             $jenis,
             $student,
+            $bahasa,
         );
 
-        $filename = 'Rapor-'.str_replace(' ', '-', $student->name)
+        $filename = 'Rapor-'.($bahasa === 'ar' ? 'AR-' : '').str_replace(' ', '-', $student->name)
             .'-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
@@ -1026,6 +1028,7 @@ class NilaiKelasController extends Controller
             : AcademicYear::where('is_active', true)->first()?->id;
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
         $jenis = $request->input('jenis') === 'sts' ? 'sts' : 'sas';
+        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -1052,9 +1055,10 @@ class NilaiKelasController extends Controller
             $selectedSem,
             $jenis,
             $students->pluck('student')->filter(),
+            $bahasa,
         );
 
-        $filename = 'Rapor-MASSAL-'.str_replace(' ', '-', $studyGroup->name)
+        $filename = 'Rapor-MASSAL-'.($bahasa === 'ar' ? 'AR-' : '').str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 
