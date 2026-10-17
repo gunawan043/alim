@@ -29,6 +29,8 @@ class ArchiveDocument extends Model
         'school_id',
         'academic_year_id',
         'semester',
+        'jenis',
+        'language',
         'type',
         'title',
         'file_path',

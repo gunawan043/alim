@@ -149,6 +149,14 @@
                                                 </div>
 
                                                 <div class="col-md-6">
+                                                    <label for="name_ar" class="form-label">Nama Lengkap (Arab)</label>
+                                                    <input type="text" class="form-control" id="name_ar" name="name_ar"
+                                                           placeholder="الاسم بالعربية" dir="rtl" maxlength="255"
+                                                           value="{{ old('name_ar', $gtk->name_ar) }}">
+                                                    <div class="form-text">Dipakai pada rapor bahasa Arab (opsional).</div>
+                                                </div>
+
+                                                <div class="col-md-6">
                                                     <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                                                     <input type="email" class="form-control" id="email" name="email"
                                                            placeholder="nama@contoh.com" required

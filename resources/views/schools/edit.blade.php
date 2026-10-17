@@ -137,6 +137,12 @@
                                 <label class="form-label">NIP Kepala Sekolah</label>
                                 <input type="text" name="principal_nip" class="form-control" value="{{ old('principal_nip', $school->principal_nip) }}" maxlength="30">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Kepala Sekolah (Arab)</label>
+                                <input type="text" name="principal_name_ar" class="form-control" dir="rtl" maxlength="255"
+                                       value="{{ old('principal_name_ar', $school->principal_name_ar) }}" placeholder="اسم مدير المدرسة">
+                                <small class="text-muted">Dipakai pada rapor bahasa Arab (opsional).</small>
+                            </div>
                             <div class="col-md-4">
                                 <label class="form-label">Akreditasi</label>
                                 <input type="text" name="accreditation" class="form-control" value="{{ old('accreditation', $school->accreditation) }}" maxlength="10" placeholder="A / B / C">

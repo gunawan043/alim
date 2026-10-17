@@ -16,9 +16,12 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * ARSIP DOKUMEN: arsipkan rapor satu rombel (satu PDF per santri) ke
- * registri `archive_documents` — termasuk anggota rombel yang sudah
- * pindah/naik kelas (arsip periode). Idempoten per santri+semester+jenis.
+ * ARSIP DOKUMEN: arsipkan rapor satu rombel (satu PDF per santri per varian)
+ * ke registri `archive_documents` — termasuk anggota rombel yang sudah
+ * pindah/naik kelas (arsip periode).
+ *
+ * Varian: jenis (STS/SAS) × bahasa (Indonesia/Arab) — idempoten per
+ * santri+semester+jenis+bahasa.
  */
 class ArsipkanRaporRombelJob implements ShouldQueue
 {
@@ -30,6 +33,7 @@ class ArsipkanRaporRombelJob implements ShouldQueue
         public readonly string $semester,
         public readonly string $jenis = 'sas',
         public readonly ?string $userId = null,
+        public readonly string $bahasa = 'id',
     ) {}
 
     /**
@@ -53,6 +57,9 @@ class ArsipkanRaporRombelJob implements ShouldQueue
             ->orderBy('attendance_number')
             ->get();
 
+        $jenisList = $this->jenis === 'all' ? ['sts', 'sas'] : [$this->jenis === 'sts' ? 'sts' : 'sas'];
+        $bahasaList = $this->bahasa === 'all' ? ['id', 'ar'] : [$this->bahasa === 'ar' ? 'ar' : 'id'];
+
         $created = 0;
         $skipped = 0;
 
@@ -63,50 +70,62 @@ class ArsipkanRaporRombelJob implements ShouldQueue
                 continue;
             }
 
-            $exists = ArchiveDocument::query()
-                ->where('type', 'rapor')
-                ->where('academic_year_id', $academicYear->id)
-                ->where('study_group_id', $studyGroup->id)
-                ->where('student_id', $student->id)
-                ->where('semester', $this->semester)
-                ->exists();
+            foreach ($jenisList as $jenis) {
+                foreach ($bahasaList as $bahasa) {
+                    $exists = ArchiveDocument::query()
+                        ->where('type', 'rapor')
+                        ->where('academic_year_id', $academicYear->id)
+                        ->where('study_group_id', $studyGroup->id)
+                        ->where('student_id', $student->id)
+                        ->where('semester', $this->semester)
+                        ->where('jenis', $jenis)
+                        ->where('language', $bahasa)
+                        ->exists();
 
-            if ($exists) {
-                $skipped++;
+                    if ($exists) {
+                        $skipped++;
 
-                continue;
+                        continue;
+                    }
+
+                    $bytes = $pdfService->renderSingle(
+                        $studyGroup->school_id,
+                        $studyGroup,
+                        $academicYear,
+                        (string) $academicYear->id,
+                        $this->semester,
+                        $jenis,
+                        $student,
+                        $bahasa,
+                    );
+
+                    $bahasaLabel = $bahasa === 'ar' ? 'Arab' : 'Indonesia';
+
+                    $documents->store([
+                        'school_id' => $studyGroup->school_id,
+                        'academic_year_id' => $academicYear->id,
+                        'semester' => $this->semester,
+                        'jenis' => $jenis,
+                        'language' => $bahasa,
+                        'type' => 'rapor',
+                        'title' => sprintf(
+                            'Rapor %s (%s) — %s — %s — Semester %s %s',
+                            strtoupper($jenis),
+                            $bahasaLabel,
+                            $student->name,
+                            $studyGroup->name,
+                            ucfirst($this->semester),
+                            $academicYear->name
+                        ),
+                        'student_id' => $student->id,
+                        'study_group_id' => $studyGroup->id,
+                        'generated_by' => $user?->id,
+                        'notes' => "Jenis: {$jenis} · Bahasa: {$bahasaLabel} · Diarsipkan dari halaman Inventaris Arsip.",
+                    ], $bytes, 'pdf');
+
+                    $created++;
+                }
             }
-
-            $bytes = $pdfService->renderSingle(
-                $studyGroup->school_id,
-                $studyGroup,
-                $academicYear,
-                (string) $academicYear->id,
-                $this->semester,
-                $this->jenis,
-                $student,
-            );
-
-            $documents->store([
-                'school_id' => $studyGroup->school_id,
-                'academic_year_id' => $academicYear->id,
-                'semester' => $this->semester,
-                'type' => 'rapor',
-                'title' => sprintf(
-                    'Rapor %s %s — %s — Semester %s %s',
-                    strtoupper($this->jenis),
-                    $student->name,
-                    $studyGroup->name,
-                    ucfirst($this->semester),
-                    $academicYear->name
-                ),
-                'student_id' => $student->id,
-                'study_group_id' => $studyGroup->id,
-                'generated_by' => $user?->id,
-                'notes' => 'Diarsipkan dari halaman Inventaris Arsip.',
-            ], $bytes, 'pdf');
-
-            $created++;
         }
 
         return ['created' => $created, 'skipped' => $skipped];

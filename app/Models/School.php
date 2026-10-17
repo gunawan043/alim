@@ -42,6 +42,7 @@ class School extends Model
         'accreditation',
         'accreditation_year',
         'principal_name',
+        'principal_name_ar',
         'principal_nip',
         'principal_nupy',
         'principal_user_id',

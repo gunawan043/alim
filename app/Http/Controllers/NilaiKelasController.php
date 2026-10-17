@@ -9,6 +9,7 @@ use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
 use App\Models\PenghargaanAkademik;
+use App\Models\RaporDistributionSetting;
 use App\Models\RaportRegistration;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
@@ -18,6 +19,7 @@ use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
+use App\Services\Arsip\LegerPdfService;
 use App\Services\Arsip\RaporPdfService;
 use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
@@ -632,117 +634,18 @@ class NilaiKelasController extends Controller
         // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
         $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
 
-        $academicYears = AcademicYear::orderByDesc('name')->get();
-        $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
+        $selectedAy = AcademicYear::orderByDesc('name')->firstWhere('id', $selectedAyId);
 
-        $subjectMap = TeacherAdminBook::with('subject')
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->where('semester', $selectedSem)
-            ->where('is_active', true)
-            ->get()
-            ->groupBy('subject_id')
-            ->map(fn ($books, $subjectId) => $books->first())
-            ->values()
-            ->pluck('subject')
-            ->filter()
-            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
-            ->values();
+        $data = app(LegerPdfService::class)->buildData(
+            $schoolId,
+            $studyGroup,
+            $selectedAy,
+            (string) $selectedAyId,
+            $selectedSem,
+            $jenis,
+        );
 
-        $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
-            $s->id => TeacherAdminBook::with('subject', 'kktp')
-                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                ->where('subject_id', $s->id)
-                ->where('study_group_id', $studyGroupId)
-                ->where('academic_year_id', $selectedAyId)
-                ->where('semester', $selectedSem)
-                ->where('is_active', true)
-                ->first(),
-        ]);
-
-        $students = StudentClassHistory::with('student')
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->where('is_active', true)
-            ->orderBy('attendance_number')
-            ->get();
-
-        $nilaiMap = [];
-        if ($students->isNotEmpty() && $selectedAyId) {
-            $studentIds = $students->pluck('student_id')->toArray();
-            $subjectIds = $subjectMap->pluck('id')->toArray();
-            $nilaiRows = NilaiSumatif::whereIn('admin_book_id',
-                TeacherAdminBook::whereIn('subject_id', $subjectIds)
-                    ->where('study_group_id', $studyGroupId)
-                    ->where('academic_year_id', $selectedAyId)
-                    ->where('semester', $selectedSem)
-                    ->where('is_active', true)->pluck('id')
-            )->whereIn('student_id', $studentIds)->where('semester', $selectedSem)->get();
-
-            foreach ($nilaiRows as $n) {
-                $nilaiMap[$n->student_id][$n->admin_book_id] = $n;
-            }
-        }
-
-        $presensiMap = [];
-        if ($selectedAyId) {
-            $presensiRaw = AdminPresensiHarian::where('academic_year_id', $selectedAyId)
-                ->where('study_group_id', $studyGroupId)
-                ->where('semester', $selectedSem)->get()->groupBy('student_id');
-            foreach ($presensiRaw as $sid => $rows) {
-                $presensiMap[$sid] = [
-                    's' => $rows->where('status', 'S')->count(),
-                    'i' => $rows->where('status', 'I')->count(),
-                    'a' => $rows->where('status', 'A')->count(),
-                ];
-            }
-        }
-
-        // Nilai tampil: STS → sts; SAS → nilai akhir (NR Final, fallback SAS).
-        $nilaiResolved = [];
-        foreach ($students as $history) {
-            $sid = $history->student_id;
-            foreach ($subjectMap as $subject) {
-                $book = $bookMap[$subject->id] ?? null;
-                if (! $book) {
-                    continue;
-                }
-                $nilaiResolved[$sid][$book->id] = $this->resolveNilaiTampil($jenis, $nilaiMap[$sid][$book->id] ?? null);
-            }
-        }
-
-        $legerAggMap = [];
-        foreach ($students as $history) {
-            $sid = $history->student_id;
-            $total = 0;
-            $count = 0;
-            foreach ($subjectMap as $subject) {
-                $book = $bookMap[$subject->id] ?? null;
-                if (! $book) {
-                    continue;
-                }
-                $val = $nilaiResolved[$sid][$book->id] ?? null;
-                if ($val !== null) {
-                    $total += $val;
-                    $count++;
-                }
-            }
-            $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
-        }
-
-        $rankMap = [];
-        $sorted = collect($legerAggMap)->filter(fn ($v) => $v !== null)->sortDesc();
-        $rank = 1;
-        foreach ($sorted as $sid => $val) {
-            $rankMap[$sid] = $rank++;
-        }
-
-        return view('nilai-kelas.leger-cetak', compact(
-            'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
-            'students', 'nilaiMap', 'selectedAyId', 'selectedSem', 'selectedAy',
-            'presensiMap', 'legerAggMap', 'rankMap', 'jenis', 'nilaiResolved',
-        ));
+        return view('nilai-kelas.leger-cetak', $data + ['userId' => $userId]);
     }
 
     /**
@@ -922,9 +825,49 @@ class NilaiKelasController extends Controller
             'nilai_final' => $registrations->whereNotNull('final_score')->count(),
         ];
 
+        // Pengaturan tanggal pembagian rapor (per sekolah + TA + semester).
+        $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting',
         ));
+    }
+
+    /**
+     * Simpan pengaturan tanggal pembagian rapor (dipakai cetak & arsip).
+     */
+    public function raporSettings(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $this->assertLegerAccess($userId, $studyGroup);
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'distribution_date' => 'nullable|date',
+            'city' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        RaporDistributionSetting::updateOrCreate(
+            [
+                'school_id' => $studyGroup->school_id,
+                'academic_year_id' => $validated['academic_year_id'],
+                'semester' => $validated['semester'],
+            ],
+            [
+                'distribution_date' => $validated['distribution_date'] ?? null,
+                'city' => $validated['city'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        return back()->with('success', 'Tanggal pembagian rapor berhasil disimpan.');
     }
 
     /**

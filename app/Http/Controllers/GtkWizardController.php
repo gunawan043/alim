@@ -1216,6 +1216,7 @@ class GtkWizardController extends Controller
 
         $rules = [
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($userId)],
 
             'nik' => ['required', 'digits:16', Rule::unique('gtk_profiles', 'nik')->ignore($profileId)],
@@ -1310,6 +1311,7 @@ class GtkWizardController extends Controller
         $data = [
             'user' => [
                 'name' => $validated['name'],
+                'name_ar' => $validated['name_ar'] ?? null,
                 'email' => $validated['email'],
                 'password' => Hash::make($this->defaultPassword($nupy)),
                 'is_active' => $request->boolean('is_active', true),

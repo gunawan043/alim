@@ -95,6 +95,52 @@
         </div>
     </div>
 
+    {{-- Pengaturan Tanggal Pembagian Rapor --}}
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-calendar-event-line text-success me-1"></i>Tanggal Pembagian Rapor</h5>
+            <p class="text-muted mb-0 small">Dipakai pada dokumen rapor (cetak &amp; arsip) untuk TA/semester ini — menggantikan tanggal cetak otomatis.</p>
+        </div>
+        <div class="card-body">
+            <form method="POST"
+                  action="{{ route('user.schools.nilai-kelas.rapor.pengaturan', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                  class="row g-2 align-items-end">
+                @csrf
+                <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Tanggal Pembagian</label>
+                    <input type="date" name="distribution_date" class="form-control"
+                           value="{{ $distributionSetting?->distribution_date?->format('Y-m-d') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Kota</label>
+                    <input type="text" name="city" class="form-control" maxlength="100"
+                           value="{{ $distributionSetting?->city ?? $studyGroup->school?->city }}"
+                           placeholder="Mataram">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Catatan</label>
+                    <input type="text" name="notes" class="form-control" maxlength="500"
+                           value="{{ $distributionSetting?->notes }}" placeholder="Opsional">
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-success">
+                        <i class="ri-save-line me-1"></i>Simpan
+                    </button>
+                </div>
+                @if($distributionSetting?->distribution_date)
+                    <div class="col-12">
+                        <span class="badge bg-info-subtle text-info">
+                            Aktif: {{ $distributionSetting->distribution_date->format('d M Y') }}
+                            @if($distributionSetting->city) — {{ $distributionSetting->city }} @endif
+                        </span>
+                    </div>
+                @endif
+            </form>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">

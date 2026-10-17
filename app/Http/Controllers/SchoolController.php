@@ -156,6 +156,7 @@ class SchoolController extends Controller
             'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
             'principal_name' => 'nullable|string|max:255',
+            'principal_name_ar' => 'nullable|string|max:255',
             'principal_nip' => 'nullable|string|max:30',
             'principal_nupy' => 'nullable|string|max:50',
             'principal_user_id' => 'nullable|exists:users,id',
@@ -192,6 +193,10 @@ class SchoolController extends Controller
             $user = User::find($data['principal_user_id']);
             if ($user) {
                 $data['principal_name'] = $user->name;
+
+                if (empty($data['principal_name_ar']) && $user->name_ar) {
+                    $data['principal_name_ar'] = $user->name_ar;
+                }
             }
         }
 
@@ -268,6 +273,7 @@ class SchoolController extends Controller
             'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
             'principal_name' => 'nullable|string|max:255',
+            'principal_name_ar' => 'nullable|string|max:255',
             'principal_nip' => 'nullable|string|max:30',
             'principal_nupy' => 'nullable|string|max:50',
             'principal_user_id' => 'nullable|exists:users,id',

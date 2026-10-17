@@ -326,6 +326,7 @@ class StudentController extends Controller
             'nik' => 'nullable|string|max:30|unique:students,nik',
             'no_kk' => 'nullable|string|max:30',
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
             'gender' => 'required|in:L,P',
             'birth_place' => 'nullable|string|max:100',
             'birth_date' => 'nullable|date',
@@ -472,6 +473,7 @@ class StudentController extends Controller
             'nik' => 'nullable|string|max:30|unique:students,nik,'.$santriUuid,
             'no_kk' => 'nullable|string|max:30',
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
             'gender' => 'required|in:L,P',
             'birth_place' => 'nullable|string|max:100',
             'birth_date' => 'nullable|date',
@@ -699,13 +701,15 @@ class StudentController extends Controller
             $created = $import->getSuccessCount();
             $errors = $import->getErrors();
             $duplicates = $import->getDuplicates();
+            $mahromCreated = $import->getMahromCount();
 
             \Log::info("[IMPORT-PROCESS] Results: created={$created}, errors=".count($errors).', duplicates='.count($duplicates));
 
             if ($created > 0 && empty($errors) && empty($duplicates)) {
                 return redirect()
                     ->route('user.students.import-form', ['userId' => $userId])
-                    ->with('success', "Berhasil mengimport {$created} data santri.");
+                    ->with('success', "Berhasil mengimport {$created} data santri"
+                        .($mahromCreated > 0 ? " dan {$mahromCreated} data mahrom." : '.'));
             }
 
             return redirect()
@@ -714,6 +718,7 @@ class StudentController extends Controller
                     'created' => $created,
                     'errors' => $errors,
                     'duplicates' => $duplicates,
+                    'mahrom_created' => $mahromCreated,
                 ]);
         } catch (\Throwable $e) {
             \Log::error('[IMPORT-PROCESS] OUTER EXCEPTION: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());

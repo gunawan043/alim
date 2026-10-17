@@ -1,5 +1,35 @@
+@php
+    $bahasa = $bahasa ?? 'id';
+    $isArabic = $bahasa === 'ar';
+    $labels = $labels ?? [];
+    $label = fn (string $key) => $labels[$key] ?? $key;
+    $text = fn (?string $value) => $isArabic
+        ? new \Illuminate\Support\HtmlString(\App\Support\ArabicText::toHtml((string) $value, false))
+        : e((string) $value);
+    $ket = fn (?string $value) => $isArabic
+        ? ([
+            'Terlampaui' => 'متجاوز',
+            'Tercapai' => 'محقق',
+            'Belum Tuntas' => 'غير مكتمل',
+        ][$value] ?? $value)
+        : $value;
+    $pred = fn (?string $value) => $isArabic
+        ? ([
+            "Mumtaz Murtafi'" => 'ممتاز مرتفع',
+            'Mumtaz' => 'ممتاز',
+            'Jayyid Jiddan' => 'جيد جدًا',
+            'Jayyid' => 'جيد',
+            'Maqbul' => 'مقبول',
+            'Roosib' => 'راسب',
+        ][$value] ?? $value)
+        : $value;
+    // Angka (nilai, KKTP, rata-rata, tanggal, dsb.) otomatis jadi angka Arab-Indik.
+    $num = fn ($value) => $isArabic ? \App\Support\ArabicText::digits((string) $value) : (string) $value;
+    $printDate = $distributionDate ?? now();
+    $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
+@endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ $isArabic ? 'ar' : 'id' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <title>Rapor — {{ $santri[array_key_first($santri)]['Nama'] ?? '' }}</title>
@@ -19,6 +49,15 @@
             font-size: 11pt;
             line-height: 1.4;
             color: #000;
+        }
+
+        body.ar {
+            font-family: 'DejaVu Sans', sans-serif;
+            direction: rtl;
+        }
+
+        .ar {
+            font-family: 'DejaVu Sans', sans-serif;
         }
 
         /* ── Kop Surat ── */
@@ -216,7 +255,7 @@
         }
     </style>
 </head>
-<body>
+<body class="{{ $isArabic ? 'ar' : '' }}">
 
 @foreach($santri as $key => $data)
 <div class="page{{ !$loop->last ? ' page-break' : '' }}">
@@ -227,28 +266,28 @@
     @endif
 
     {{-- Judul --}}
-    <div class="judul">{{ ($data['Jenis'] ?? 'sts') === 'sas' ? 'Laporan Hasil Belajar Akhir Semester' : 'Laporan Hasil Belajar Tengah Semester' }}</div>
+    <div class="judul">{!! $text($label(($data['Jenis'] ?? 'sts') === 'sas' ? 'title_sas' : 'title_sts')) !!}</div>
 
     {{-- Info Santri --}}
     <table class="info-grid">
         <tr>
-            <td class="lbl">Nama</td>
+            <td class="lbl">{!! $text($label('nama')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $data['Nama'] ?? '-' }}</td>
-            <td class="lbl">Semester</td>
+            <td class="val">{!! $text(($isArabic && ! empty($data['NamaAr'])) ? $data['NamaAr'] : ($data['Nama'] ?? '-')) !!}</td>
+            <td class="lbl">{!! $text($label('semester')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $data['Semester'] ?? '-' }}</td>
+            <td class="val">{{ ucfirst((string) ($data['Semester'] ?? '-')) }}</td>
         </tr>
         <tr>
-            <td class="lbl">Kelas</td>
+            <td class="lbl">{!! $text($label('kelas')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $data['Kelas'] ?? '-' }}</td>
-            <td class="lbl">Tahun Ajaran</td>
+            <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
+            <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
             <td class="colon">:</td>
             <td class="val">{{ $data['TahunAjaran'] ?? '-' }}</td>
         </tr>
         <tr>
-            <td class="lbl">NIS / NISN</td>
+            <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
             <td class="colon">:</td>
             <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
         </tr>
@@ -258,21 +297,21 @@
     <table class="nilai">
         <thead>
             <tr>
-                <th class="no">No</th>
-                <th class="mapel">Mata Pelajaran</th>
-                <th class="kkm">KKTP</th>
-                <th class="nilai-col">Nilai</th>
-                <th class="ket-col">Keterangan</th>
+                <th class="no">{!! $text($label('no')) !!}</th>
+                <th class="mapel">{!! $text($label('mapel')) !!}</th>
+                <th class="kkm">{!! $text($label('kktp')) !!}</th>
+                <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
+                <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
             </tr>
         </thead>
         <tbody>
             @foreach($data['Mapel'] as $row)
             <tr>
-                <td class="no">{{ $row['no'] }}</td>
-                <td class="mapel">{{ $row['mapel'] }}</td>
-                <td class="kkm">{{ $row['kkm'] }}</td>
-                <td class="nilai-col">{{ $row['nilai'] }}</td>
-                <td class="ket-col">{{ $row['keterangan'] }}</td>
+                <td class="no">{{ $num($row['no']) }}</td>
+                <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
+                <td class="kkm">{{ $num($row['kkm']) }}</td>
+                <td class="nilai-col">{{ $num($row['nilai']) }}</td>
+                <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
             </tr>
             @endforeach
         </tbody>
@@ -281,20 +320,20 @@
     {{-- Ringkasan --}}
     <table class="ringkasan-box">
         <tr>
-            <td class="lbl" style="text-align:left; padding-left:16px;">Jumlah Nilai</td>
+            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('jumlah_nilai')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $data['Jumlah'] ?? '-' }}</td>
+            <td class="val">{{ $num($data['Jumlah'] ?? '-') }}</td>
             <td class="empty"></td>
             <td class="empty"></td>
             <td class="empty"></td>
-            <td class="pred-label" style="text-align:center;">Predikat</td>
+            <td class="pred-label" style="text-align:center;">{!! $text($label('predikat')) !!}</td>
             <td class="colon">:</td>
-            <td class="pred-val">{{ $data['Predikat'] ?? '-' }}</td>
+            <td class="pred-val">{!! $text($pred($data['Predikat'] ?? '-')) !!}</td>
         </tr>
         <tr>
-            <td class="lbl" style="text-align:left; padding-left:16px;">Nilai Rata-Rata</td>
+            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('rata_rata')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $data['Rata'] ?? '-' }}</td>
+            <td class="val">{{ $num($data['Rata'] ?? '-') }}</td>
             <td class="empty" colspan="6"></td>
         </tr>
     </table>
@@ -302,18 +341,22 @@
     {{-- Catatan --}}
     <table class="catatan-box">
         <tr>
-            <td class="hdr lbl-col">Catatan Kehadiran</td>
-            <td class="hdr">Catatan Wali Kelas</td>
+            <td class="hdr lbl-col">{!! $text($label('catatan_kehadiran')) !!}</td>
+            <td class="hdr">{!! $text($label('catatan_wali')) !!}</td>
         </tr>
         <tr>
             <td class="lbl-col">
-                1.&nbsp; Sakit &nbsp;: {{ $data['Sakit'] ?? '-' }} Hari<br>
-                2.&nbsp; Izin &nbsp;&nbsp;: {{ $data['Izin'] ?? '-' }} Hari<br>
-                3.&nbsp; Alpa &nbsp;&nbsp;: {{ $data['Alpa'] ?? '-' }} Hari
+                1.&nbsp; {!! $text($label('sakit')) !!} &nbsp;: {{ $num($data['Sakit'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                2.&nbsp; {!! $text($label('izin')) !!} &nbsp;&nbsp;: {{ $num($data['Izin'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                3.&nbsp; {!! $text($label('alpa')) !!} &nbsp;&nbsp;: {{ $num($data['Alpa'] ?? '-') }} {!! $text($label('hari')) !!}
             </td>
             <td>
                 @if(! empty($data['CatatanWali']))
-                    {!! nl2br(e($data['CatatanWali'])) !!}
+                    @if($isArabic)
+                        {!! \App\Support\ArabicText::toHtml($data['CatatanWali']) !!}
+                    @else
+                        {!! nl2br(e($data['CatatanWali'])) !!}
+                    @endif
                 @else
                     <span style="color:#94a3b8;">—</span>
                 @endif
@@ -327,28 +370,28 @@
             <td class="with-gap" style="width:30%;">
                 <br><br><br><br><br>
                 ________________________
-                <br>Orang Tua / Wali
+                <br>{!! $text($label('orang_tua')) !!}
             </td>
             <td class="with-gap" style="width:30%;">
                 <br><br><br><br><br>
                 ________________________
-                <br>Wali Kelas
+                <br>{!! $text($label('wali_kelas')) !!}
             </td>
             <td class="with-gap center-col" style="width:40%;">
-                {{ $studyGroup->school?->city ?? 'Mataram' }}, {{ now()->translatedFormat('d F Y') }}
+                {!! $text($printCity) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
                 <br><br><br><br><br>
                 ________________________
-                <br><strong>{{ $studyGroup->homeroomTeacher?->name ?? '................................' }}</strong>
+                <br><strong>{!! $text(($isArabic && $studyGroup->homeroomTeacher?->name_ar) ? $studyGroup->homeroomTeacher->name_ar : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong>
             </td>
         </tr>
         <tr>
             <td colspan="3" class="ks-row">
                 <br>
-                Mengetahui,&nbsp;&nbsp;Kepala Sekolah
+                {!! $text($label('mengetahui_kepala')) !!}
                 <br><br><br><br><br>
                 ________________________
-                <br><strong>{{ $studyGroup->school?->principal_name ?? '................................' }}</strong>
-                <br>NIP. {{ $studyGroup->school?->principal_nip ?? '...................' }}
+                <br><strong>{!! $text(($isArabic && $studyGroup->school?->principal_name_ar) ? $studyGroup->school->principal_name_ar : ($studyGroup->school?->principal_name ?? '................................')) !!}</strong>
+                <br>{!! $text($label('nip')) !!} {{ $studyGroup->school?->principal_nip ?? '...................' }}
             </td>
         </tr>
     </table>
@@ -362,7 +405,13 @@
     <tr>
         <td class="left">PAH-KSP-FORM-14-02</td>
         <td class="center">REV.01 / 10 September 2025</td>
-        <td class="right">Halaman 1 dari 1</td>
+        <td class="right">
+            @if($isArabic)
+                {!! $text($label('halaman')) !!} {{ $num(1) }} {!! $text($label('dari')) !!} {{ $num(1) }}
+            @else
+                Halaman 1 dari 1
+            @endif
+        </td>
     </tr>
     </table>
 </div>

@@ -58,6 +58,10 @@
                                 <input type="text" name="name" class="form-control" value="{{ old('name') }}" required maxlength="100" placeholder="Contoh: Matematika">
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Nama Mata Pelajaran (Arab)</label>
+                                <input type="text" name="name_ar" class="form-control" value="{{ old('name_ar') }}" maxlength="100" dir="rtl" placeholder="مثال: الرياضيات">
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
                                 <select name="category" class="form-select" required>
                                     <option value="">— Pilih Kategori —</option>

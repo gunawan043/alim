@@ -214,8 +214,9 @@
             <div class="card-header border-bottom-dashed">
                 <h5 class="card-title mb-0"><i class="ri-file-pdf-2-line text-danger me-1"></i>Arsipkan Rapor (PDF)</h5>
                 <p class="text-muted mb-0 small">
-                    Membuat salinan PDF rapor per santri (termasuk anggota rombel yang sudah pindah/naik kelas)
-                    lalu menyimpannya sebagai dokumen arsip ber-hash. Aman dijalankan ulang — dokumen yang sudah ada dilewati.
+                    Membuat salinan PDF rapor per santri — 4 varian: <strong>STS/SAS × Indonesia (LTR)/Arab (RTL)</strong> —
+                    termasuk anggota rombel yang sudah pindah/naik kelas, lalu menyimpannya sebagai dokumen arsip ber-hash.
+                    Aman dijalankan ulang — varian yang sudah ada dilewati.
                 </p>
             </div>
             <div class="card-body">
@@ -243,8 +244,17 @@
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Jenis Dokumen</label>
                             <select name="jenis" class="form-select">
-                                <option value="sas">SAS — Nilai Akhir</option>
+                                <option value="all">Semua (STS &amp; SAS)</option>
+                                <option value="sas" selected>SAS — Nilai Akhir</option>
                                 <option value="sts">STS — Tengah Semester</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Bahasa</label>
+                            <select name="bahasa" class="form-select">
+                                <option value="all" selected>Indonesia &amp; Arab</option>
+                                <option value="id">Indonesia (LTR)</option>
+                                <option value="ar">Arab (RTL)</option>
                             </select>
                         </div>
                         <div class="col-md-auto">
@@ -254,6 +264,52 @@
                         </div>
                     </form>
                 @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- Arsipkan Leger (PDF) --}}
+    @if($selectedAy && $studyGroups->isNotEmpty())
+        <div class="card">
+            <div class="card-header border-bottom-dashed">
+                <h5 class="card-title mb-0"><i class="ri-table-line text-primary me-1"></i>Arsipkan Leger (PDF)</h5>
+                <p class="text-muted mb-0 small">
+                    Menyimpan Leger nilai satu rombel (A4 landscape, ber-hash) sebagai dokumen arsip periode.
+                    Aman dijalankan ulang — leger yang sudah ada dilewati.
+                </p>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('user.arsip.leger', ['userId' => $userId, 'id' => $selectedAy->id]) }}"
+                      class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Rombel</label>
+                        <select name="study_group_id" class="form-select" required>
+                            @foreach($studyGroups as $group)
+                                <option value="{{ $group->id }}">{{ $group->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Semester</label>
+                        <select name="semester" class="form-select">
+                            <option value="ganjil" {{ $selectedAy->semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                            <option value="genap" {{ $selectedAy->semester === 'genap' ? 'selected' : '' }}>Genap</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Jenis Dokumen</label>
+                        <select name="jenis" class="form-select">
+                            <option value="sas">SAS — Nilai Akhir</option>
+                            <option value="sts">STS — Tengah Semester</option>
+                        </select>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="ri-archive-drawer-line me-1"></i>Arsipkan Leger
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     @endif
@@ -287,6 +343,10 @@
                             <td class="small text-muted">
                                 {{ $document->studyGroup?->name ?? '—' }}
                                 @if($document->semester) · {{ ucfirst($document->semester) }} @endif
+                                @if($document->jenis) · {{ strtoupper($document->jenis) }} @endif
+                                @if($document->language)
+                                    · {{ $document->language === 'ar' ? 'Arab (RTL)' : 'Indonesia (LTR)' }}
+                                @endif
                             </td>
                             <td class="small text-muted">
                                 {{ $document->created_at?->format('d M Y H:i') }}

@@ -22,9 +22,12 @@ use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
+use App\Models\SubjectKktp;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
+use App\Services\Arsip\RaporPdfService;
+use App\Support\ArabicText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -212,6 +215,7 @@ class ArsipInventarisTest extends TestCase
                 'study_group_id' => $this->activeRombel->id,
                 'semester' => 'ganjil',
                 'jenis' => 'sas',
+                'bahasa' => 'id',
             ])
             ->assertRedirect()
             ->assertSessionHas('success');
@@ -223,6 +227,8 @@ class ArsipInventarisTest extends TestCase
         $this->assertNotNull($document, 'PDF rapor harus tersimpan di registri dokumen arsip.');
         $this->assertSame($this->activeAy->id, $document->academic_year_id);
         $this->assertSame($this->activeRombel->id, $document->study_group_id);
+        $this->assertSame('sas', $document->jenis);
+        $this->assertSame('id', $document->language);
         $this->assertTrue(Storage::disk('local')->exists($document->file_path));
 
         $contents = Storage::disk('local')->get($document->file_path);
@@ -235,11 +241,104 @@ class ArsipInventarisTest extends TestCase
                 'study_group_id' => $this->activeRombel->id,
                 'semester' => 'ganjil',
                 'jenis' => 'sas',
+                'bahasa' => 'id',
             ])
             ->assertRedirect();
 
         $this->assertSame(1, ArchiveDocument::where('type', 'rapor')
             ->where('student_id', $this->activeStudent->id)
+            ->count());
+    }
+
+    public function test_arsipkan_rapor_empat_varian_jenis_dan_bahasa(): void
+    {
+        Storage::fake('local');
+
+        $payload = [
+            'study_group_id' => $this->activeRombel->id,
+            'semester' => 'ganjil',
+            'jenis' => 'all',
+            'bahasa' => 'all',
+        ];
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/rapor", $payload)
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $documents = ArchiveDocument::where('type', 'rapor')
+            ->where('student_id', $this->activeStudent->id)
+            ->get();
+
+        $this->assertCount(4, $documents, 'Harus ada 4 varian: STS/SAS × Indonesia/Arab.');
+        $this->assertEqualsCanonicalizing(['sts', 'sas'], $documents->pluck('jenis')->unique()->values()->all());
+        $this->assertEqualsCanonicalizing(['id', 'ar'], $documents->pluck('language')->unique()->values()->all());
+
+        foreach ($documents as $document) {
+            $this->assertTrue(Storage::disk('local')->exists($document->file_path));
+            $contents = Storage::disk('local')->get($document->file_path);
+            $this->assertStringStartsWith('%PDF', $contents);
+            $this->assertSame(hash('sha256', $contents), $document->file_hash);
+        }
+
+        $indonesia = $documents->firstWhere('language', 'id');
+        $arab = $documents->firstWhere('language', 'ar');
+
+        $this->assertStringContainsString('Indonesia', $indonesia->title);
+        $this->assertStringContainsString('Arab', $arab->title);
+        $this->assertNotSame($indonesia->file_hash, $arab->file_hash, 'PDF Indonesia & Arab harus berbeda.');
+
+        // Shaping Arab: bentuk presentasi (FE70–FEFF) menghasilkan urutan visual yang berbeda.
+        $this->assertTrue(ArabicText::hasArabic('الاسم'));
+        $shaped = ArabicText::shape('الاسم');
+        $this->assertNotSame('الاسم', $shaped);
+        $this->assertMatchesRegularExpression('/[\x{FE70}-\x{FEFF}]/u', $shaped);
+
+        // Idempoten untuk seluruh varian.
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/rapor", $payload)
+            ->assertRedirect();
+
+        $this->assertSame(4, ArchiveDocument::where('type', 'rapor')
+            ->where('student_id', $this->activeStudent->id)
+            ->count());
+    }
+
+    public function test_arsipkan_leger_rombel_menyimpan_pdf_ber_hash(): void
+    {
+        Storage::fake('local');
+
+        $payload = [
+            'study_group_id' => $this->activeRombel->id,
+            'semester' => 'ganjil',
+            'jenis' => 'sas',
+        ];
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/leger", $payload)
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $document = ArchiveDocument::where('type', 'leger')
+            ->where('study_group_id', $this->activeRombel->id)
+            ->first();
+
+        $this->assertNotNull($document, 'Leger PDF harus tersimpan di registri dokumen arsip.');
+        $this->assertSame('sas', $document->jenis);
+        $this->assertTrue(Storage::disk('local')->exists($document->file_path));
+
+        $contents = Storage::disk('local')->get($document->file_path);
+        $this->assertStringStartsWith('%PDF', $contents);
+        $this->assertSame(hash('sha256', $contents), $document->file_hash);
+        $this->assertStringContainsString('Leger', $document->title);
+
+        // Idempoten per TA+rombel+semester+jenis.
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/arsip/{$this->activeAy->id}/leger", $payload)
+            ->assertRedirect();
+
+        $this->assertSame(1, ArchiveDocument::where('type', 'leger')
+            ->where('study_group_id', $this->activeRombel->id)
             ->count());
     }
 
@@ -340,6 +439,89 @@ class ArsipInventarisTest extends TestCase
         ]);
 
         $this->assertSame(1, AbsensiGtk::count());
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // V4 — NAMA ARAB, ANGKA ARAB OTOMATIS, TANGGAL PEMBAGIAN RAPOR
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_rapor_arab_memakai_nama_arab_dan_angka_otomatis(): void
+    {
+        $this->activeRombel->update(['homeroom_teacher_id' => $this->guru->id]);
+        $this->guru->update(['name_ar' => 'الأستاذ أحمد']);
+        $this->activeStudent->update(['name_ar' => 'الطالب']);
+        $this->subject->update(['name_ar' => 'الرياضيات']);
+        $this->school->update(['principal_name_ar' => 'المدير']);
+
+        $kktp = SubjectKktp::create([
+            'subject_id' => $this->subject->id,
+            'school_id' => $this->school->id,
+            'grade_level_id' => $this->grade->id,
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'kktp_score' => 75,
+            'kkm_score' => 75,
+            'created_by' => $this->tu->id,
+        ]);
+        $this->activeBook->update(['kktp_id' => $kktp->id]);
+
+        // Pengaturan tanggal pembagian rapor (menu Rapor).
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/pengaturan", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'distribution_date' => '2026-10-20',
+                'city' => 'Mataram',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('rapor_distribution_settings', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'city' => 'Mataram',
+        ]);
+
+        // Nilai/predikat/KKTP/tanggal otomatis; nama memakai input Arab.
+        $this->assertSame('٨٥٫٥', ArabicText::digits('85.5'));
+        $this->assertSame('٢٠ أكتوبر ٢٠٢٦', ArabicText::formatDate('2026-10-20'));
+
+        $html = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->activeRombel->fresh(),
+            $this->activeAy,
+            (string) $this->activeAy->id,
+            'ganjil',
+            'sts',
+            $this->activeStudent->fresh(),
+            'ar',
+        );
+
+        $this->assertStringContainsString(ArabicText::shape('الطالب'), $html, 'Nama santri Arab harus dipakai.');
+        $this->assertStringContainsString(ArabicText::shape('الرياضيات'), $html, 'Nama mapel Arab harus dipakai.');
+        $this->assertStringContainsString(ArabicText::shape('الأستاذ'), $html, 'Nama wali kelas Arab harus dipakai.');
+        $this->assertStringContainsString(ArabicText::shape('أحمد'), $html, 'Nama wali kelas Arab harus dipakai.');
+        $this->assertStringContainsString(ArabicText::shape('المدير'), $html, 'Nama KSP Arab harus dipakai.');
+        $this->assertStringContainsString('٢٠ أكتوبر ٢٠٢٦', $html, 'Tanggal pembagian rapor dipakai & berformat Arab.');
+        $this->assertStringContainsString('٨٥', $html, 'Nilai otomatis menjadi angka Arab-Indik.');
+        $this->assertStringContainsString('٧٥', $html, 'KKTP otomatis menjadi angka Arab-Indik.');
+
+        // Versi Indonesia tetap Latin.
+        $htmlId = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->activeRombel->fresh(),
+            $this->activeAy,
+            (string) $this->activeAy->id,
+            'ganjil',
+            'sts',
+            $this->activeStudent->fresh(),
+            'id',
+        );
+
+        $this->assertStringContainsString('Santri Aktif', $htmlId);
+        $this->assertStringContainsString('85', $htmlId);
+        $this->assertStringNotContainsString('٨٥', $htmlId);
     }
 
     private function makeRequest(array $data = []): Request

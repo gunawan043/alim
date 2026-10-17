@@ -30,6 +30,8 @@ class DocumentArchiveService
             'school_id' => $meta['school_id'] ?? null,
             'academic_year_id' => $meta['academic_year_id'] ?? null,
             'semester' => $meta['semester'] ?? null,
+            'jenis' => $meta['jenis'] ?? null,
+            'language' => $meta['language'] ?? null,
             'type' => $meta['type'],
             'title' => $meta['title'],
             'file_path' => $path,

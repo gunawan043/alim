@@ -65,6 +65,10 @@
                                 <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control" value="{{ old('name') }}" required>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Lengkap (Arab)</label>
+                                <input type="text" name="name_ar" class="form-control" value="{{ old('name_ar') }}" maxlength="255" dir="rtl" placeholder="الاسم بالعربية">
+                            </div>
                             <div class="col-md-3">
                                 <label class="form-label">NIK</label>
                                 <input type="text" name="nik" class="form-control" value="{{ old('nik') }}" maxlength="30">

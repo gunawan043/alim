@@ -106,6 +106,7 @@ class SubjectController extends Controller
         $data = $request->validate([
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:100',
+            'name_ar' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
             'allocations' => 'nullable|array',
             'allocations.*' => 'nullable|integer|min:0|max:40',
@@ -176,6 +177,7 @@ class SubjectController extends Controller
         $rules = [
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:100',
+            'name_ar' => 'nullable|string|max:100',
             'category' => 'required|in:nasional,lokal,muatan_lokal',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',
@@ -253,6 +255,7 @@ class SubjectController extends Controller
         $rules = [
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:100',
+            'name_ar' => 'nullable|string|max:100',
             'category' => 'required|in:nasional,lokal,muatan_lokal',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',

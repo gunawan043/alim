@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Arsip;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ArsipkanLegerRombelJob;
 use App\Jobs\ArsipkanRaporRombelJob;
 use App\Models\AcademicYear;
 use App\Models\ArchiveDocument;
@@ -138,7 +139,8 @@ class ArsipInventarisController extends Controller
         $validated = $request->validate([
             'study_group_id' => 'required|exists:study_groups,id',
             'semester' => 'required|in:ganjil,genap',
-            'jenis' => 'nullable|in:sts,sas',
+            'jenis' => 'nullable|in:sts,sas,all',
+            'bahasa' => 'nullable|in:id,ar,all',
         ]);
 
         $studyGroup = StudyGroup::query()
@@ -151,6 +153,7 @@ class ArsipInventarisController extends Controller
 
         $semester = $validated['semester'];
         $jenis = $validated['jenis'] ?? 'sas';
+        $bahasa = $validated['bahasa'] ?? 'all';
 
         $contextQuery = fn () => ArchiveDocument::query()
             ->where('type', 'rapor')
@@ -166,6 +169,63 @@ class ArsipInventarisController extends Controller
             $semester,
             $jenis,
             $request->user()?->id,
+            $bahasa,
+        );
+
+        $created = $contextQuery()->count() - $before;
+
+        $variantLabel = [];
+        $variantLabel[] = $jenis === 'all' ? 'STS & SAS' : strtoupper($jenis);
+        $variantLabel[] = $bahasa === 'all' ? 'Indonesia & Arab' : ($bahasa === 'ar' ? 'Arab' : 'Indonesia');
+
+        return back()->with(
+            'success',
+            $created > 0
+                ? 'Rapor diarsipkan: '.$created.' dokumen PDF baru untuk '.$studyGroup->name
+                    .' ('.implode(' · ', $variantLabel).', Semester '.ucfirst($semester).').'
+                : "Tidak ada dokumen baru — seluruh varian rapor {$studyGroup->name} pada semester tersebut sudah terarsip."
+        );
+    }
+
+    public function arsipkanLeger(Request $request, string $userId, string $id)
+    {
+        abort_unless($this->canView($request->user()), 403, 'Arsip hanya untuk pengguna berwenang.');
+
+        $academicYear = AcademicYear::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $validated = $request->validate([
+            'study_group_id' => 'required|exists:study_groups,id',
+            'semester' => 'required|in:ganjil,genap',
+            'jenis' => 'nullable|in:sts,sas',
+        ]);
+
+        $studyGroup = StudyGroup::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($validated['study_group_id']);
+
+        if ((string) $studyGroup->academic_year_id !== (string) $academicYear->id) {
+            return back()->with('error', 'Rombel yang dipilih bukan milik tahun ajaran tersebut.');
+        }
+
+        $semester = $validated['semester'];
+        $jenis = $validated['jenis'] ?? 'sas';
+
+        $contextQuery = fn () => ArchiveDocument::query()
+            ->where('type', 'leger')
+            ->where('academic_year_id', $academicYear->id)
+            ->where('study_group_id', $studyGroup->id)
+            ->where('semester', $semester)
+            ->where('jenis', $jenis);
+
+        $before = $contextQuery()->count();
+
+        ArsipkanLegerRombelJob::dispatch(
+            $studyGroup->id,
+            $academicYear->id,
+            $semester,
+            $jenis,
+            $request->user()?->id,
         );
 
         $created = $contextQuery()->count() - $before;
@@ -173,8 +233,8 @@ class ArsipInventarisController extends Controller
         return back()->with(
             'success',
             $created > 0
-                ? "Rapor diarsipkan: {$created} dokumen PDF baru untuk {$studyGroup->name} (Semester ".ucfirst($semester).').'
-                : "Tidak ada dokumen baru — seluruh rapor {$studyGroup->name} pada semester tersebut sudah terarsip."
+                ? 'Leger diarsipkan: PDF '.strtoupper($jenis).' untuk '.$studyGroup->name.' (Semester '.ucfirst($semester).').'
+                : "Leger {$studyGroup->name} (".strtoupper($jenis).', Semester '.ucfirst($semester).') sudah terarsip.'
         );
     }
 

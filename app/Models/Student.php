@@ -26,7 +26,7 @@ class Student extends Model
     protected $fillable = [
         'user_id', 'school_id',
         // Identitas
-        'nisn', 'nis', 'nik', 'no_kk', 'name', 'gender',
+        'nisn', 'nis', 'nik', 'no_kk', 'name', 'name_ar', 'gender',
         'birth_place', 'birth_date', 'religion', 'special_needs',
         // Alamat
         'address', 'rt', 'rw', 'hamlet',

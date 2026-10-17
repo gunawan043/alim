@@ -27,6 +27,7 @@ class Subject extends Model
         'school_id',
         'code',
         'name',
+        'name_ar',
         'subject_group_id',
         'category',
         'source',

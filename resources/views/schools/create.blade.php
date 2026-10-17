@@ -107,6 +107,12 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Nama Kepala Sekolah (Arab)</label>
+                                <input type="text" name="principal_name_ar" class="form-control" dir="rtl" maxlength="255"
+                                       value="{{ old('principal_name_ar') }}" placeholder="اسم مدير المدرسة">
+                                <small class="text-muted">Dipakai pada rapor bahasa Arab (opsional).</small>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Nama Kepala Sekolah</label>
                                 <select name="principal_user_id" id="principal_user_id" class="form-control">
                                     <option value="">— Pilih Kepala Sekolah —</option>

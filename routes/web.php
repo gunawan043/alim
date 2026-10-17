@@ -453,6 +453,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{studyGroupId}/leger/cetak', [NilaiKelasController::class, 'legerCetak'])->name('leger.cetak');
                     Route::get('/{studyGroupId}/leger/download', [NilaiKelasController::class, 'legerDownload'])->name('leger.download');
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
+                    Route::post('/{studyGroupId}/rapor/pengaturan', [NilaiKelasController::class, 'raporSettings'])->name('rapor.pengaturan');
                     Route::post('/{studyGroupId}/rapor/{studentId}/catatan', [NilaiKelasController::class, 'raporNote'])->name('rapor.note');
                     Route::get('/{studyGroupId}/rapor/{studentId}/cetak', [NilaiKelasController::class, 'raporCetak'])->name('rapor.cetak');
                     Route::get('/{studyGroupId}/rapor/cetak-massal', [NilaiKelasController::class, 'raporCetakMassal'])->name('rapor.cetak-massal');
@@ -1115,6 +1116,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{id}/kunci', [ArsipInventarisController::class, 'lock'])->name('lock');
                 Route::post('/{id}/buka', [ArsipInventarisController::class, 'unlock'])->name('unlock');
                 Route::post('/{id}/rapor', [ArsipInventarisController::class, 'arsipkanRapor'])->name('rapor');
+                Route::post('/{id}/leger', [ArsipInventarisController::class, 'arsipkanLeger'])->name('leger');
             });
 
             // ── GRADE LEVELS ───────────────────────────────────────

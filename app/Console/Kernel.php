@@ -107,6 +107,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Pengingat harian: periode yang mendekati/sudah berakhir & belum dikunci.
+        $schedule->command('arsip:pengingat-penutupan')
+            ->dailyAt('07:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // ASSET INTELLIGENCE
         $schedule->command('sarpras:repair-vs-replace --all')
             ->dailyAt('02:30')
@@ -128,6 +134,12 @@ class Kernel extends ConsoleKernel
             ->dailyAt('02:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // PENGINGAT JAM PELAJARAN (GURU)
+        // Setiap menit: kirim notifikasi ±5 menit sebelum jam mengajar dimulai.
+        $schedule->command('alim:notify-lesson-reminders --minutes=5')
+            ->everyMinute()
+            ->withoutOverlapping();
     }
 
     /**

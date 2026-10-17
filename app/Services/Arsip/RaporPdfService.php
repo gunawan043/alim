@@ -5,6 +5,7 @@ namespace App\Services\Arsip;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
+use App\Models\RaporDistributionSetting;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
@@ -24,6 +25,82 @@ use Dompdf\Options;
  */
 class RaporPdfService
 {
+    public const BAHASA_ID = 'id';
+
+    public const BAHASA_AR = 'ar';
+
+    /**
+     * Label dokumen per bahasa. Teks Arab di-shape saat dirender oleh view.
+     *
+     * @return array<string, string>
+     */
+    public function labels(string $bahasa): array
+    {
+        if ($bahasa === self::BAHASA_AR) {
+            return [
+                'title_sts' => 'تقرير نتائج التعلم لمنتصف الفصل الدراسي',
+                'title_sas' => 'تقرير نتائج التعلم لنهاية الفصل الدراسي',
+                'nama' => 'الاسم',
+                'semester' => 'الفصل الدراسي',
+                'kelas' => 'الفصل',
+                'tahun_ajaran' => 'السنة الدراسية',
+                'nis_nisn' => 'رقم الطالب / رقم الهوية',
+                'no' => 'الرقم',
+                'mapel' => 'المادة الدراسية',
+                'kktp' => 'الحد الأدنى',
+                'nilai' => 'الدرجة',
+                'keterangan' => 'الملاحظة',
+                'jumlah_nilai' => 'مجموع الدرجات',
+                'predikat' => 'التقدير',
+                'rata_rata' => 'المعدل',
+                'catatan_kehadiran' => 'ملاحظات الحضور',
+                'catatan_wali' => 'ملاحظات ولي الفصل',
+                'sakit' => 'المرض',
+                'izin' => 'الإذن',
+                'alpa' => 'الغياب',
+                'hari' => 'يوم',
+                'orang_tua' => 'الوالد / الولي',
+                'wali_kelas' => 'ولي الفصل',
+                'mengetahui_kepala' => 'يعلم، مدير المدرسة',
+                'nip' => 'رقم الموظف',
+                'halaman' => 'الصفحة',
+                'dari' => 'من',
+                'tanggal' => '',
+            ];
+        }
+
+        return [
+            'title_sts' => 'Laporan Hasil Belajar Tengah Semester',
+            'title_sas' => 'Laporan Hasil Belajar Akhir Semester',
+            'nama' => 'Nama',
+            'semester' => 'Semester',
+            'kelas' => 'Kelas',
+            'tahun_ajaran' => 'Tahun Ajaran',
+            'nis_nisn' => 'NIS / NISN',
+            'no' => 'No',
+            'mapel' => 'Mata Pelajaran',
+            'kktp' => 'KKTP',
+            'nilai' => 'Nilai',
+            'keterangan' => 'Keterangan',
+            'jumlah_nilai' => 'Jumlah Nilai',
+            'predikat' => 'Predikat',
+            'rata_rata' => 'Nilai Rata-Rata',
+            'catatan_kehadiran' => 'Catatan Kehadiran',
+            'catatan_wali' => 'Catatan Wali Kelas',
+            'sakit' => 'Sakit',
+            'izin' => 'Izin',
+            'alpa' => 'Alpa',
+            'hari' => 'Hari',
+            'orang_tua' => 'Orang Tua / Wali',
+            'wali_kelas' => 'Wali Kelas',
+            'mengetahui_kepala' => 'Mengetahui, Kepala Sekolah',
+            'nip' => 'NIP.',
+            'halaman' => 'Halaman',
+            'dari' => 'dari',
+            'tanggal' => '',
+        ];
+    }
+
     /**
      * @return array<string, mixed> peta studentId => data santri (format view rapor)
      */
@@ -100,6 +177,7 @@ class RaporPdfService
             $mapelRows[] = [
                 'no' => $idx + 1,
                 'mapel' => $subject->name,
+                'mapel_ar' => $subject->name_ar,
                 'kkm' => AcademicNilai::kkmLabel($book),
                 'nilai' => $nilai !== null ? number_format($nilai, 1) : '',
                 'keterangan' => AcademicNilai::keterangan($nilai, $book),
@@ -142,6 +220,7 @@ class RaporPdfService
         return [
             $studentId => [
                 'Nama' => $student->name,
+                'NamaAr' => $student->name_ar,
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
                 'Kelas' => $studyGroup->name,
@@ -161,6 +240,35 @@ class RaporPdfService
     }
 
     /**
+     * HTML rapor satu santri (dipakai untuk PDF & pengujian konten).
+     */
+    public function renderHtml(
+        ?string $schoolId,
+        StudyGroup $studyGroup,
+        ?AcademicYear $selectedAy,
+        string $selectedAyId,
+        string $selectedSem,
+        string $jenis,
+        Student $student,
+        string $bahasa = self::BAHASA_ID,
+    ): string {
+        $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
+
+        $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
+        $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+
+        return view('nilai-kelas.rapor-cetak', [
+            'santri' => $santri,
+            'studyGroup' => $studyGroup,
+            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
+            'bahasa' => $bahasa,
+            'labels' => $this->labels($bahasa),
+            'distributionDate' => $setting?->distribution_date,
+            'distributionCity' => $setting?->city,
+        ])->render();
+    }
+
+    /**
      * PDF rapor satu santri (bytes).
      */
     public function renderSingle(
@@ -170,17 +278,12 @@ class RaporPdfService
         string $selectedAyId,
         string $selectedSem,
         string $jenis,
-        Student $student
+        Student $student,
+        string $bahasa = self::BAHASA_ID,
     ): string {
-        $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
-
-        $html = view('nilai-kelas.rapor-cetak', [
-            'santri' => $santri,
-            'studyGroup' => $studyGroup,
-            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
-        ])->render();
-
-        return $this->renderPdf($html);
+        return $this->renderPdf($this->renderHtml(
+            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa
+        ));
     }
 
     /**
@@ -195,8 +298,11 @@ class RaporPdfService
         string $selectedAyId,
         string $selectedSem,
         string $jenis,
-        iterable $students
+        iterable $students,
+        string $bahasa = self::BAHASA_ID,
     ): string {
+        $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
+
         $santri = [];
 
         foreach ($students as $student) {
@@ -207,10 +313,16 @@ class RaporPdfService
             $santri += $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
         }
 
+        $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+
         $html = view('nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
             'kopBase64' => $this->schoolKopBase64($studyGroup->school),
+            'bahasa' => $bahasa,
+            'labels' => $this->labels($bahasa),
+            'distributionDate' => $setting?->distribution_date,
+            'distributionCity' => $setting?->city,
         ])->render();
 
         return $this->renderPdf($html);
