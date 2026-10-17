@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Kurikulum;
 
+use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AdminJurnalPembelajaran;
@@ -23,6 +24,8 @@ use Illuminate\Http\Request;
  */
 class ProsemController extends Controller
 {
+    use AssertsPeriodLock;
+
     public function __construct(
         private readonly KurikulumAccess $access,
         private readonly ProsemService $prosemService,
@@ -114,6 +117,7 @@ class ProsemController extends Controller
         ]);
 
         $prota = Prota::with('subject')->findOrFail($validated['prota_id']);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROSEM');
 
         if (! $this->access->canManageSubject($request->user(), $prota->subject_id, $prota->academic_year_id, $schoolId)) {
             abort(403, 'Anda tidak berwenang menyusun PROSEM untuk mata pelajaran ini.');
@@ -242,6 +246,7 @@ class ProsemController extends Controller
     {
         $prosem = Prosem::findOrFail($id);
         $this->authorizeManage($request, $prosem);
+        $this->assertPeriodNotLocked($prosem->academic_year_id, 'Dokumen PROSEM');
 
         $validated = $request->validate([
             'teacher_id' => 'nullable|exists:users,id',
@@ -262,6 +267,7 @@ class ProsemController extends Controller
     {
         $prosem = Prosem::findOrFail($id);
         $this->authorizeManage($request, $prosem);
+        $this->assertPeriodNotLocked($prosem->academic_year_id, 'Dokumen PROSEM');
 
         $this->prosemService->sync($prosem, $request->boolean('regenerate', true));
 
@@ -276,6 +282,7 @@ class ProsemController extends Controller
     {
         $prosem = Prosem::findOrFail($id);
         $this->authorizeManage($request, $prosem);
+        $this->assertPeriodNotLocked($prosem->academic_year_id, 'Dokumen PROSEM');
 
         $item = ProsemItem::where('prosem_id', $prosem->id)->findOrFail($itemId);
 
@@ -334,6 +341,7 @@ class ProsemController extends Controller
     {
         $prosem = Prosem::findOrFail($id);
         $this->authorizeManage($request, $prosem);
+        $this->assertPeriodNotLocked($prosem->academic_year_id, 'Dokumen PROSEM');
 
         $item = ProsemItem::where('prosem_id', $prosem->id)->findOrFail($itemId);
 
@@ -346,6 +354,7 @@ class ProsemController extends Controller
     {
         $prosem = Prosem::findOrFail($id);
         $this->authorizeManage($request, $prosem);
+        $this->assertPeriodNotLocked($prosem->academic_year_id, 'Dokumen PROSEM');
 
         $prosem->delete();
 

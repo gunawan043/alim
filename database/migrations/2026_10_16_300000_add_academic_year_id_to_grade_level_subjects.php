@@ -33,7 +33,7 @@ return new class extends Migration
             Schema::table('grade_level_subjects', function (Blueprint $table) {
                 $table->dropUnique('unique_grade_level_subject_track');
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Index tidak ada / sudah diganti pada driver ini.
         }
 
@@ -44,7 +44,7 @@ return new class extends Migration
                     'unique_gls_ay_grade_subject_track'
                 );
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Sudah ada.
         }
     }
@@ -56,7 +56,7 @@ return new class extends Migration
                 $table->dropUnique('unique_gls_ay_grade_subject_track');
                 $table->unique(['grade_level_id', 'subject_id', 'track'], 'unique_grade_level_subject_track');
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // abaikan
         }
 

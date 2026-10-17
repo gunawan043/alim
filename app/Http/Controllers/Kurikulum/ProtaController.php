@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Kurikulum;
 
+use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
@@ -24,6 +25,8 @@ use Illuminate\Http\Request;
  */
 class ProtaController extends Controller
 {
+    use AssertsPeriodLock;
+
     public function __construct(
         private readonly KurikulumAccess $access,
         private readonly ProtaService $protaService,
@@ -122,6 +125,7 @@ class ProtaController extends Controller
         ]);
 
         $atp = AlurTujuanPembelajaran::with('subject')->findOrFail($validated['atp_id']);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen PROTA');
 
         if (! $this->access->canManageSubject($request->user(), $atp->subject_id, $atp->academic_year_id, $schoolId)) {
             abort(403, 'Anda tidak berwenang menyusun PROTA untuk mata pelajaran ini.');
@@ -182,6 +186,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         $validated = $request->validate([
             'teacher_id' => 'nullable|exists:users,id',
@@ -198,6 +203,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         $validated = $request->validate([
             'bab' => 'nullable|string|max:150',
@@ -219,6 +225,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         $item = ProtaItem::where('prota_id', $prota->id)->findOrFail($itemId);
 
@@ -239,6 +246,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         ProtaItem::where('prota_id', $prota->id)->findOrFail($itemId)->delete();
         $this->recalculateTotal($prota);
@@ -254,6 +262,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         $rebuild = $request->boolean('rebuild');
         $this->protaService->sync($prota, $rebuild);
@@ -270,6 +279,7 @@ class ProtaController extends Controller
     {
         $prota = Prota::findOrFail($id);
         $this->authorizeManage($request, $prota);
+        $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROTA');
 
         // PROSEM turunan ikut terhapus (FK cascade) — beri peringatan yang jelas.
         $prota->delete();

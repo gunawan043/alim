@@ -1104,6 +1104,15 @@
             <i class="ri-folder-shield-2-line"></i><span>Dokumen Mutu (ISO)</span>
         </a>
     </li>
+
+    @if($showAll || $isKepala || $isWakil || $isAdminTU || $isKoorKurik || $isTimKurikulum)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.arsip.']) ? ' active' : '' }}"
+           href="{{ route('user.arsip.index', ['userId' => $userId]) }}">
+            <i class="ri-archive-2-line"></i><span>Arsip &amp; Penutupan Periode</span>
+        </a>
+    </li>
+    @endif
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════

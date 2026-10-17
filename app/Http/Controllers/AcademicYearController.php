@@ -111,6 +111,9 @@ class AcademicYearController extends Controller
 
         // If set as active, deactivate all others
         if (! empty($data['is_active'])) {
+            if ($academicYear->isLocked()) {
+                return back()->withInput()->with('error', 'Tahun ajaran ini terkunci (arsip). Buka kuncinya di halaman Arsip sebelum mengaktifkan.');
+            }
             AcademicYear::where('is_active', true)->where('id', '!=', $id)->update(['is_active' => false]);
         }
 
@@ -140,6 +143,9 @@ class AcademicYearController extends Controller
         $academicYear = AcademicYear::findOrFail($id);
 
         if (! $academicYear->is_active) {
+            if ($academicYear->isLocked()) {
+                return back()->with('error', 'Tahun ajaran ini terkunci (arsip). Buka kuncinya di halaman Arsip sebelum mengaktifkan.');
+            }
             AcademicYear::where('is_active', true)->update(['is_active' => false]);
         }
 

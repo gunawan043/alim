@@ -6,6 +6,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\BindOrganizationContext;
 use App\Http\Middleware\CheckIpBlocked;
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureBookPeriodWritable;
 use App\Http\Middleware\EnsureEmployeeAccess;
 use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureRoleAccess;
@@ -125,5 +126,6 @@ class Kernel extends HttpKernel
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
         'pos.api-key' => VerifyPosApiKey::class,
+        'period.book' => EnsureBookPeriodWritable::class,
     ];
 }

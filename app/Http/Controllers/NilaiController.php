@@ -12,10 +12,13 @@ use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\AcademicPeriodService;
+use App\Services\Arsip\NilaiBookArchiver;
 use App\Services\Evaluasi\ReviewWorkflowService;
 use App\Services\KurikulumAccess;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\SumatifHarianService;
+use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -52,7 +55,7 @@ class NilaiController extends Controller
         }
 
         // Jabatan dibaca dari semua sumber + varian nama TU (selaras dengan leger).
-        if (\App\Support\UserJabatan::hasAny($user, [
+        if (UserJabatan::hasAny($user, [
             'kepala satuan pendidikan',
             'wakil kepala satuan pendidikan',
             'kepala tata usaha',
@@ -117,10 +120,10 @@ class NilaiController extends Controller
         $isArchiveAy = $selectedAcademicYearId && $activeAcademicYearId
             && (string) $selectedAcademicYearId !== (string) $activeAcademicYearId;
 
-        // Auto-select semester dari request, default ganjil
+        // Auto-select semester dari request; default mengikuti semester TA terpilih.
         $selectedSemester = $request->filled('semester')
             ? $request->semester
-            : 'ganjil';
+            : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
 
         // Base query: TeacherAdminBook — filter semester juga
         $baseQuery = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
@@ -264,10 +267,7 @@ class NilaiController extends Controller
             abort(403, 'Buku nilai sudah dikunci final — hubungi tim kurikulum untuk membuka.');
         }
 
-        $activeYearId = AcademicYear::where('is_active', true)->value('id');
-        if ($activeYearId && (string) $adminBook->academic_year_id !== (string) $activeYearId) {
-            abort(403, 'Buku tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
-        }
+        app(AcademicPeriodService::class)->assertWritable($adminBook->academic_year_id, 'Buku nilai');
 
         $service = app(SumatifHarianService::class);
 
@@ -378,10 +378,7 @@ class NilaiController extends Controller
             abort(403, 'Buku nilai sudah dikunci final — hubungi tim kurikulum untuk membuka.');
         }
 
-        $activeYearId = AcademicYear::where('is_active', true)->value('id');
-        if ($activeYearId && (string) $adminBook->academic_year_id !== (string) $activeYearId) {
-            abort(403, 'Buku tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
-        }
+        app(AcademicPeriodService::class)->assertWritable($adminBook->academic_year_id, 'Buku nilai');
 
         $request->validate([
             'sumatif' => 'required|array',
@@ -479,6 +476,13 @@ class NilaiController extends Controller
         $adminBook->forceFill(['locked_at' => now(), 'locked_by' => $user?->id])->save();
 
         app(ReviewWorkflowService::class)->audit($adminBook, 'book_locked', $user);
+
+        // ARSIP DOKUMEN: simpan snapshot nilai final (ber-hash) pada momen penguncian.
+        try {
+            app(NilaiBookArchiver::class)->snapshot($adminBook->fresh(), $user);
+        } catch (\Throwable $e) {
+            Log::warning('Snapshot arsip nilai gagal: '.$e->getMessage());
+        }
 
         // Notifikasi WA: nilai final & rapor siap ditinjau (mode terpusat/wali).
         try {

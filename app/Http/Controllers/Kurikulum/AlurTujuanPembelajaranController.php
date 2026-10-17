@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Kurikulum;
 
+use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AdminJurnalPembelajaran;
@@ -10,7 +11,6 @@ use App\Models\AlurTujuanPembelajaranItem;
 use App\Models\GradeLevel;
 use App\Models\PerangkatPembelajaran;
 use App\Models\Subject;
-use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
 use App\Services\KurikulumAccess;
@@ -28,6 +28,8 @@ use Illuminate\Http\Request;
  */
 class AlurTujuanPembelajaranController extends Controller
 {
+    use AssertsPeriodLock;
+
     public function __construct(
         private readonly KurikulumAccess $access,
         private readonly PekanEfektifService $pekanService,
@@ -105,6 +107,7 @@ class AlurTujuanPembelajaranController extends Controller
         ]);
 
         $this->authorizeManage($request, $validated['subject_id'], $validated['academic_year_id'], $schoolId);
+        $this->assertPeriodNotLocked($validated['academic_year_id'], 'Dokumen ATP');
 
         $gradeLevel = ! empty($validated['grade_level_id']) ? GradeLevel::find($validated['grade_level_id']) : null;
         $subject = Subject::find($validated['subject_id']);
@@ -223,6 +226,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         $validated = $request->validate([
             'teacher_id' => 'nullable|exists:users,id',
@@ -241,6 +245,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         if (PerangkatPembelajaran::where('atp_id', $atp->id)->exists()) {
             return back()->with('error', 'ATP masih dipakai perangkat pembelajaran. Hapus/ubah perangkat terlebih dahulu.');
@@ -260,6 +265,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         $validated = $request->validate([
             'tujuan_pembelajaran_id' => 'required|exists:tujuan_pembelajaran,id',
@@ -301,6 +307,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         $item = AlurTujuanPembelajaranItem::where('alur_tujuan_pembelajaran_id', $atp->id)->findOrFail($itemId);
 
@@ -320,6 +327,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         $item = AlurTujuanPembelajaranItem::where('alur_tujuan_pembelajaran_id', $atp->id)->findOrFail($itemId);
         $item->delete();
@@ -334,6 +342,7 @@ class AlurTujuanPembelajaranController extends Controller
         $atp = AlurTujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen ATP');
 
         $direction = $request->input('direction') === 'up' ? 'up' : 'down';
 

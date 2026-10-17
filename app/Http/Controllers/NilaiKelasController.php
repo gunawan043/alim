@@ -18,15 +18,16 @@ use App\Models\SubjectKktp;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\AcademicPeriodService;
 use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
 use App\Support\AcademicNilai;
+use App\Support\UserJabatan;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class NilaiKelasController extends Controller
@@ -102,8 +103,10 @@ class NilaiKelasController extends Controller
         $isArchiveAy = $selectedAyId && $activeAyId
             && (string) $selectedAyId !== (string) $activeAyId;
 
-        // Semester
-        $selectedSemester = $request->filled('semester') ? $request->semester : 'ganjil';
+        // Semester — default mengikuti semester TA terpilih (perilaku periode).
+        $selectedSemester = $request->filled('semester')
+            ? $request->semester
+            : ($academicYears->firstWhere('id', $selectedAyId)?->semester === 'genap' ? 'genap' : 'ganjil');
 
         // Wizard leger: sheet STS (default) atau SAS.
         $legerMode = in_array($request->input('leger'), ['sts', 'sas'], true) ? $request->input('leger') : 'sts';
@@ -113,7 +116,6 @@ class NilaiKelasController extends Controller
         $autoProvisionedBooks = $isArchiveAy
             ? 0
             : $this->ensureBooksForSemester($schoolId, $studyGroupId, $selectedAyId, $selectedSemester, $userId);
-
 
         // Semua mapel di kelas ini (dari TeacherAdminBook) + sorting: Agama → Arab → Hadits → Umum
         $subjectMap = TeacherAdminBook::with('subject')
@@ -1201,21 +1203,21 @@ class NilaiKelasController extends Controller
 
         return [
             $studentId => [
-            'Nama' => $student->name,
-            'NIS' => $student->nis ?? '-',
-            'NISN' => $student->nisn ?? '-',
-            'Kelas' => $studyGroup->name,
-            'Semester' => ucfirst($selectedSem),
-            'TahunAjaran' => $selectedAy?->name ?? '-',
-            'Jenis' => $jenis,
-            'Mapel' => $mapelRows,
-            'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
-            'Rata' => $rata !== null ? number_format($rata, 1) : '-',
-            'Predikat' => $predikat,
-            'Sakit' => $sCount,
-            'Izin' => $iCount,
-            'Alpa' => $aCount,
-            'CatatanWali' => $catatanWali,
+                'Nama' => $student->name,
+                'NIS' => $student->nis ?? '-',
+                'NISN' => $student->nisn ?? '-',
+                'Kelas' => $studyGroup->name,
+                'Semester' => ucfirst($selectedSem),
+                'TahunAjaran' => $selectedAy?->name ?? '-',
+                'Jenis' => $jenis,
+                'Mapel' => $mapelRows,
+                'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
+                'Rata' => $rata !== null ? number_format($rata, 1) : '-',
+                'Predikat' => $predikat,
+                'Sakit' => $sCount,
+                'Izin' => $iCount,
+                'Alpa' => $aCount,
+                'CatatanWali' => $catatanWali,
             ],
         ];
     }
@@ -1355,7 +1357,7 @@ class NilaiKelasController extends Controller
 
         // Jabatan dibaca dari semua sumber (employment utama, semua employments, relasi jabatan)
         // + varian nama TU agar akun TU tidak salah ditolak 403.
-        if (\App\Support\UserJabatan::hasAny($user, [
+        if (UserJabatan::hasAny($user, [
             'kepala satuan pendidikan',
             'wakil kepala satuan pendidikan',
             'kepala tata usaha',
@@ -1397,16 +1399,12 @@ class NilaiKelasController extends Controller
     }
 
     /**
-     * ARSIP PERIODE: tolak perubahan nilai pada TA yang bukan TA aktif.
-     * Data TA lama tetap dapat dibaca/dicetak, tetapi tidak boleh diubah.
+     * ARSIP PERIODE: tolak perubahan nilai pada TA yang bukan TA aktif atau
+     * periode yang sudah ditutup (terkunci). Data TA lama tetap dapat dibaca.
      */
     private function assertNotArchivedAcademicYear(?string $academicYearId): void
     {
-        $activeYearId = AcademicYear::where('is_active', true)->value('id');
-
-        if ($activeYearId && $academicYearId && (string) $academicYearId !== (string) $activeYearId) {
-            abort(403, 'Nilai tahun ajaran lalu bersifat arsip — data tidak dapat diubah.');
-        }
+        app(AcademicPeriodService::class)->assertWritable($academicYearId, 'Nilai');
     }
 
     /**

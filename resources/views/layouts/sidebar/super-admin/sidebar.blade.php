@@ -530,6 +530,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.arsip.']) ? ' active' : '' }}"
+       href="{{ route('user.arsip.index', ['userId' => $userId]) }}">
+        <i class="ri-archive-2-line"></i><span>Arsip &amp; Penutupan Periode</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.password-reset-logs.']) ? ' active' : '' }}"
        href="{{ route('user.sa.password-reset-logs.index', ['userId' => $userId]) }}">
         <i class="ri-lock-password-line"></i><span>Password Reset Log</span>

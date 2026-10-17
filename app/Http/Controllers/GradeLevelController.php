@@ -12,6 +12,7 @@ use App\Models\Subject;
 use App\Models\SubjectKktp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class GradeLevelController extends Controller
 {
@@ -150,7 +151,7 @@ class GradeLevelController extends Controller
         $validated = $request->validate([
             'subject_id' => [
                 'required',
-                \Illuminate\Validation\Rule::exists('subjects', 'id')
+                Rule::exists('subjects', 'id')
                     ->where(fn ($q) => $q->where('school_id', $gradeLevel->school_id)->where('is_active', true)),
             ],
             'allocation_hours' => 'nullable|integer|min:0|max:40',

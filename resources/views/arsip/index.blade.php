@@ -1,0 +1,352 @@
+@extends('layouts.master')
+@section('title', 'Inventaris Arsip')
+
+@section('css')
+    @include('kurikulum._styles')
+@endsection
+
+@section('content')
+    @php
+        $userId = $userId ?? auth()->id();
+        $statusColor = match ($status) {
+            'aktif' => 'success',
+            'terkunci' => 'dark',
+            default => 'info',
+        };
+        $typeLabels = [
+            'snapshot_nilai' => 'Snapshot Nilai',
+            'rapor' => 'Rapor',
+            'leger' => 'Leger',
+            'sk' => 'Surat Keputusan',
+        ];
+    @endphp
+
+    @component('components.breadcrumb')
+        @slot('li_1') Administrasi @endslot
+        @slot('title') Inventaris Arsip @endslot
+    @endcomponent
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-check-line me-1"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    {{-- Panel Periode --}}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div>
+                            <h5 class="mb-1">
+                                <i class="ri-archive-2-line text-primary me-1"></i>Arsip Tahun Ajaran
+                            </h5>
+                            <p class="text-muted mb-0 small">
+                                Satu gerbang penutupan periode: status arsip, kelengkapan data per modul, dan dokumen final per tahun ajaran.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-auto">
+                    <form method="GET" action="{{ route('user.arsip.index', ['userId' => $userId]) }}" class="d-flex gap-2">
+                        <select name="academic_year_id" class="form-select" style="min-width:260px" onchange="this.form.submit()">
+                            @foreach($academicYears as $ay)
+                                <option value="{{ $ay->id }}" {{ (string) $selectedAcademicYearId === (string) $ay->id ? 'selected' : '' }}>
+                                    {{ $ay->name }} ({{ $ay->semester_text }})
+                                    @if($ay->is_active) — Aktif @endif
+                                    @if($ay->locked_at) — Terkunci @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            @if($selectedAy)
+                <hr class="my-3">
+                <div class="row g-3 align-items-center">
+                    <div class="col-lg">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge bg-{{ $statusColor }}-subtle text-{{ $statusColor }} fs-6">
+                                <i class="ri-shield-check-line me-1"></i>{{ $statusLabel ?? '-' }}
+                            </span>
+                            <span class="text-muted small">
+                                @if($selectedAy->start_date || $selectedAy->end_date)
+                                    {{ $selectedAy->start_date?->format('d M Y') }} – {{ $selectedAy->end_date?->format('d M Y') }}
+                                @endif
+                            </span>
+                            @if($selectedAy->isLocked())
+                                <span class="text-muted small">
+                                    <i class="ri-lock-line me-1"></i>Dikunci {{ $selectedAy->locked_at?->format('d M Y H:i') }}
+                                    @if($selectedAy->locker) oleh {{ $selectedAy->locker->name }} @endif
+                                </span>
+                                @if($selectedAy->lock_notes)
+                                    <span class="text-muted small fst-italic">“{{ $selectedAy->lock_notes }}”</span>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-lg-auto">
+                        <div class="d-flex flex-wrap gap-2">
+                            @if($canManage && ! $selectedAy->isLocked())
+                                <button type="button" class="btn btn-outline-danger"
+                                        data-bs-toggle="modal" data-bs-target="#lockPeriodModal"
+                                        @if($lockBlockReason) disabled title="{{ $lockBlockReason }}" @endif>
+                                    <i class="ri-lock-line me-1"></i>Tutup &amp; Kunci Periode
+                                </button>
+                            @endif
+                            @if($canManage && $selectedAy->isLocked())
+                                <button type="button" class="btn btn-outline-warning"
+                                        data-bs-toggle="modal" data-bs-target="#unlockPeriodModal">
+                                    <i class="ri-lock-unlock-line me-1"></i>Buka Kunci
+                                </button>
+                            @endif
+                            <a href="{{ route('user.schools.nilai.index', ['userId' => $userId, 'academic_year_id' => $selectedAcademicYearId]) }}"
+                               class="btn btn-outline-info"><i class="ri-file-edit-line me-1"></i>Data Nilai</a>
+                            <a href="{{ route('user.students.index', ['userId' => $userId, 'academic_year_id' => $selectedAcademicYearId]) }}"
+                               class="btn btn-outline-primary"><i class="ri-community-line me-1"></i>Data Santri</a>
+                            <a href="{{ route('user.study-groups.index', ['userId' => $userId, 'academic_year_id' => $selectedAcademicYearId]) }}"
+                               class="btn btn-outline-secondary"><i class="ri-layout-grid-line me-1"></i>Data Rombel</a>
+                        </div>
+                    </div>
+                </div>
+
+                @if($lockBlockReason && ! $selectedAy->isLocked())
+                    <div class="alert alert-info py-2 px-3 small mt-3 mb-0" role="alert">
+                        <i class="ri-information-line me-1"></i>{{ $lockBlockReason }}
+                        <em>Arsip berjalan tetap baca-saja; kunci resmi menambah segel permanen + jejak audit.</em>
+                    </div>
+                @endif
+            @endif
+        </div>
+    </div>
+
+    {{-- Ringkasan --}}
+    <div class="row">
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-stack-line text-primary"></i></span></div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Modul Terisi</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $overview['filled'] }} <small class="fw-normal text-muted fs-6">/ {{ $overview['modules'] }}</small></h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Modul dengan data pada periode ini</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-folder-shield-2-line text-success"></i></span></div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Dokumen Arsip</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($overview['documents']) }}</h3>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-shield-check-line me-1"></i>Snapshot/dokumen final ber-hash</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card card-animate h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0"><span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-lock-2-line text-warning"></i></span></div>
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Status Periode</p>
+                            <h5 class="fw-bold ff-secondary mb-0" style="font-size:16px;">{{ $selectedAy?->name ?? '—' }} ({{ ucfirst($status ?? '-') }})</h5>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Periode terkunci = data tidak dapat diubah</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Inventaris Modul --}}
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-list-check-2 text-primary me-1"></i>Inventaris Data per Modul</h5>
+            <p class="text-muted mb-0 small">Angka diambil langsung dari tabel periode masing-masing (bukan perkiraan).</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                @foreach($modules as $module)
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <div class="border rounded p-3 h-100 d-flex flex-column">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="{{ $module['icon'] ?? 'ri-database-2-line' }} fs-4 text-primary"></i>
+                                <span class="fw-semibold small flex-grow-1">{{ $module['label'] }}</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-auto">
+                                <span class="badge {{ ($module['count'] ?? 0) > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} fs-6">
+                                    {{ number_format($module['count'] ?? 0) }}
+                                </span>
+                                @if(! empty($module['link_route']) && $selectedAcademicYearId)
+                                    <a class="small link-primary"
+                                       href="{{ route($module['link_route'], ['userId' => $userId, 'academic_year_id' => $selectedAcademicYearId]) }}">
+                                        Buka <i class="ri-arrow-right-line"></i>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- Dokumen Arsip --}}
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-folder-shield-2-line text-success me-1"></i>Dokumen Arsip Periode Ini</h5>
+            <p class="text-muted mb-0 small">Snapshot dibuat otomatis saat buku nilai dikunci final; berisi hash SHA-256 untuk verifikasi integritas.</p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Dokumen</th>
+                        <th>Jenis</th>
+                        <th>Konteks</th>
+                        <th>Dibuat</th>
+                        <th class="text-center">Integritas</th>
+                        <th class="text-end" style="width:110px">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($documents as $document)
+                        <tr>
+                            <td>
+                                <div class="fw-medium small">{{ $document->title }}</div>
+                                <div class="text-muted" style="font-size:11px;">hash: {{ $document->short_hash }}… · {{ number_format($document->file_size / 1024, 1) }} KB</div>
+                            </td>
+                            <td><span class="badge bg-primary-subtle text-primary">{{ $typeLabels[$document->type] ?? $document->type }}</span></td>
+                            <td class="small text-muted">
+                                {{ $document->studyGroup?->name ?? '—' }}
+                                @if($document->semester) · {{ ucfirst($document->semester) }} @endif
+                            </td>
+                            <td class="small text-muted">
+                                {{ $document->created_at?->format('d M Y H:i') }}
+                                @if($document->generator) · {{ $document->generator->name }} @endif
+                            </td>
+                            <td class="text-center">
+                                @if($document->file_verified ?? false)
+                                    <span class="badge bg-success-subtle text-success"><i class="ri-shield-check-line me-1"></i>Terverifikasi</span>
+                                @elseif($document->file_available ?? false)
+                                    <span class="badge bg-warning-subtle text-warning"><i class="ri-error-warning-line me-1"></i>Hash berubah</span>
+                                @else
+                                    <span class="badge bg-danger-subtle text-danger"><i class="ri-file-warning-line me-1"></i>Berkas hilang</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if($document->file_available ?? false)
+                                    <a href="{{ route('user.arsip.dokumen.download', ['userId' => $userId, 'documentId' => $document->id]) }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="ri-download-2-line"></i>
+                                    </a>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="ri-folder-open-line fs-3 d-block mb-2"></i>
+                                Belum ada dokumen arsip pada periode ini. Kunci buku nilai untuk membuat snapshot otomatis.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Modul Belum Berperiode --}}
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-error-warning-line text-warning me-1"></i>Modul Belum Dukungan Arsip Periode</h5>
+            <p class="text-muted mb-0 small">Inventaris jujur — item ini perlu perlakuan khusus pada tahap lanjut.</p>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                @foreach($unsupportedModules as $item)
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fw-semibold small mb-1">{{ $item['label'] }}</div>
+                            <div class="text-muted small">{{ $item['note'] }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Kunci --}}
+    @if($selectedAy && $canManage && ! $selectedAy->isLocked())
+        <div class="modal fade" id="lockPeriodModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="POST" action="{{ route('user.arsip.lock', ['userId' => $userId, 'id' => $selectedAy->id]) }}" class="modal-content">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-lock-line me-1"></i>Tutup &amp; Kunci Periode</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted">
+                            Tahun ajaran <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong>
+                            akan dikunci sebagai arsip. Seluruh data periode ini tidak dapat diubah —
+                            termasuk bila tahun ajaran diaktifkan kembali — sampai kuncinya dibuka.
+                        </p>
+                        <label class="form-label small fw-semibold">Catatan penutupan (opsional)</label>
+                        <textarea name="lock_notes" class="form-control" rows="3" maxlength="500"
+                                  placeholder="Mis. ditutup setelah rapor akhir semester dibagikan."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-danger"><i class="ri-lock-line me-1"></i>Kunci Periode</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal Buka Kunci --}}
+    @if($selectedAy && $canManage && $selectedAy->isLocked())
+        <div class="modal fade" id="unlockPeriodModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="POST" action="{{ route('user.arsip.unlock', ['userId' => $userId, 'id' => $selectedAy->id]) }}" class="modal-content">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-lock-unlock-line me-1"></i>Buka Kunci Arsip</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted">
+                            Kunci arsip <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong>
+                            akan dibuka dan tercatat pada audit log.
+                        </p>
+                        <label class="form-label small fw-semibold">Alasan pembukaan (opsional)</label>
+                        <textarea name="lock_notes" class="form-control" rows="3" maxlength="500"
+                                  placeholder="Mis. koreksi nilai hasil rapat verifikasi."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning"><i class="ri-lock-unlock-line me-1"></i>Buka Kunci</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+@endsection

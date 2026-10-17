@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminTUDashboardController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\Arsip\ArsipInventarisController;
 use App\Http\Controllers\AsramaDashboardController;
 use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\Auth\AccessValidatorController;
@@ -72,9 +73,6 @@ use App\Http\Controllers\Evaluasi\PaketSoalController;
 use App\Http\Controllers\Evaluasi\PaketSoalTuController;
 use App\Http\Controllers\Evaluasi\ReviewSoalController;
 use App\Http\Controllers\Evaluasi\SoalController;
-use App\Http\Controllers\Ljk\LjkController;
-use App\Http\Controllers\Ljk\LjkResultController;
-use App\Http\Controllers\Ljk\LjkScanController;
 use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GlobalSearchController;
@@ -107,6 +105,9 @@ use App\Http\Controllers\Kurikulum\ProtaController;
 use App\Http\Controllers\Kurikulum\RealisasiPembelajaranController;
 use App\Http\Controllers\Kurikulum\SubjectGroupController;
 use App\Http\Controllers\Kurikulum\TujuanPembelajaranController;
+use App\Http\Controllers\Ljk\LjkController;
+use App\Http\Controllers\Ljk\LjkResultController;
+use App\Http\Controllers\Ljk\LjkScanController;
 use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\NilaiController;
@@ -458,25 +459,29 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 // ── GURU MAPEL — Buku Admin Guru
+                // Route tulis dibungkus period.book: periode terkunci / bukan TA aktif → 403.
                 Route::prefix('guru-mapel')->name('guru-mapel.')->group(function () {
                     Route::get('/', [NilaiGuruController::class, 'index'])->name('index');
-                    Route::post('/{adminBookId}/autosave', [NilaiGuruController::class, 'autoSave'])->name('autosave');
                     Route::get('/{adminBookId}', [NilaiGuruController::class, 'wizard'])->name('wizard');
                     Route::get('/{adminBookId}/w1', [NilaiGuruController::class, 'wizard1'])->name('w1');
-                    Route::post('/{adminBookId}/w1', [NilaiGuruController::class, 'wizard1Store'])->name('w1.store');
                     Route::get('/{adminBookId}/w2', [NilaiGuruController::class, 'wizard2'])->name('w2');
-                    Route::post('/{adminBookId}/w2', [NilaiGuruController::class, 'wizard2Store'])->name('w2.store');
                     Route::get('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3'])->name('w3');
-                    Route::post('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3Store'])->name('w3.store');
-                    Route::post('/{adminBookId}/w3/bobot', [NilaiGuruController::class, 'wizard3Bobot'])->name('w3.bobot');
-                    Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
                     Route::get('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4'])->name('w4');
-                    Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
-                    Route::post('/{adminBookId}/w4/kolom', [NilaiGuruController::class, 'wizard4Columns'])->name('w4.kolom');
                     Route::get('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5'])->name('w5');
-                    Route::post('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5Store'])->name('w5.store');
                     Route::get('/{adminBookId}/w6', [NilaiGuruController::class, 'wizard6'])->name('w6');
-                    Route::post('/{adminBookId}/w6', [NilaiGuruController::class, 'wizard6Store'])->name('w6.store');
+
+                    Route::middleware('period.book')->group(function () {
+                        Route::post('/{adminBookId}/autosave', [NilaiGuruController::class, 'autoSave'])->name('autosave');
+                        Route::post('/{adminBookId}/w1', [NilaiGuruController::class, 'wizard1Store'])->name('w1.store');
+                        Route::post('/{adminBookId}/w2', [NilaiGuruController::class, 'wizard2Store'])->name('w2.store');
+                        Route::post('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3Store'])->name('w3.store');
+                        Route::post('/{adminBookId}/w3/bobot', [NilaiGuruController::class, 'wizard3Bobot'])->name('w3.bobot');
+                        Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
+                        Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
+                        Route::post('/{adminBookId}/w4/kolom', [NilaiGuruController::class, 'wizard4Columns'])->name('w4.kolom');
+                        Route::post('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5Store'])->name('w5.store');
+                        Route::post('/{adminBookId}/w6', [NilaiGuruController::class, 'wizard6Store'])->name('w6.store');
+                    });
                 });
 
                 // {schoolId} wildcard — harus di BAWAH semua literal routes
@@ -1100,6 +1105,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{id}', [AcademicYearController::class, 'update'])->name('update');
                 Route::delete('/{id}', [AcademicYearController::class, 'destroy'])->name('destroy');
                 Route::get('/{id}/toggle-active', [AcademicYearController::class, 'toggleActive'])->name('toggle-active');
+            });
+
+            // ── ARSIP & PENUTUPAN PERIODE (Inventarisasi Arsip) ────
+            Route::prefix('arsip')->name('arsip.')->group(function () {
+                Route::get('/', [ArsipInventarisController::class, 'index'])->name('index');
+                Route::get('/dokumen/{documentId}', [ArsipInventarisController::class, 'download'])->name('dokumen.download');
+                Route::post('/{id}/kunci', [ArsipInventarisController::class, 'lock'])->name('lock');
+                Route::post('/{id}/buka', [ArsipInventarisController::class, 'unlock'])->name('unlock');
             });
 
             // ── GRADE LEVELS ───────────────────────────────────────

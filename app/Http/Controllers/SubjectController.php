@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
@@ -87,7 +88,7 @@ class SubjectController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $grades = \App\Models\GradeLevel::query()
+        $grades = GradeLevel::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('level')
             ->get(['id', 'level', 'name', 'fase']);
@@ -110,7 +111,7 @@ class SubjectController extends Controller
             'allocations.*' => 'nullable|integer|min:0|max:40',
         ]);
 
-        $subject = \App\Models\Subject::updateOrCreate(
+        $subject = Subject::updateOrCreate(
             ['school_id' => $schoolId, 'code' => strtoupper($data['code'])],
             [
                 'name' => $data['name'],
@@ -231,7 +232,7 @@ class SubjectController extends Controller
     {
         // Kebijakan: mapel PONDOK → satuan pendidikan hanya boleh mengubah NAMA;
         // alokasi jam & kredit terkunci (hanya Super Admin yang boleh).
-        $subject = \App\Models\Subject::findOrFail($id);
+        $subject = Subject::findOrFail($id);
         $user = auth()->user();
         $isSuper = $user && ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
 

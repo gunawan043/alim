@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Kurikulum;
 
+use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
-use App\Models\GradeLevel;
 use App\Models\PerangkatPembelajaran;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
-use App\Services\KurikulumAccess;
 use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 
 /**
@@ -25,6 +25,8 @@ use Illuminate\Http\Request;
  */
 class PerangkatPembelajaranController extends Controller
 {
+    use AssertsPeriodLock;
+
     public function __construct(private readonly KurikulumAccess $access) {}
 
     public function index(Request $request, string $userId)
@@ -134,6 +136,7 @@ class PerangkatPembelajaranController extends Controller
 
         $atp = AlurTujuanPembelajaran::with('subject')->findOrFail($validated['atp_id']);
         $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen RPM/Perangkat');
 
         // Kebijakan Tahap 2: SATU dokumen current per konteks akademik
         // (mapel + jenjang + tahun ajaran + semester). Revisi = versi baru.
@@ -223,6 +226,7 @@ class PerangkatPembelajaranController extends Controller
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
+        $this->assertPeriodNotLocked($perangkat->academic_year_id, 'Dokumen RPM/Perangkat');
 
         // Final terkunci: revisi harus melalui versi baru.
         if ($perangkat->isLocked()) {
@@ -275,6 +279,7 @@ class PerangkatPembelajaranController extends Controller
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
+        $this->assertPeriodNotLocked($perangkat->academic_year_id, 'Dokumen RPM/Perangkat');
 
         if ($perangkat->isLocked()) {
             abort(403, 'RPM final terkunci dan menjadi riwayat — tidak dapat dihapus.');
@@ -294,6 +299,7 @@ class PerangkatPembelajaranController extends Controller
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
+        $this->assertPeriodNotLocked($perangkat->academic_year_id, 'Dokumen RPM/Perangkat');
 
         if ($perangkat->isLocked()) {
             return back()->with('error', 'RPM sudah final dan terkunci — buat versi baru untuk revisi.');
@@ -320,6 +326,7 @@ class PerangkatPembelajaranController extends Controller
     {
         $perangkat = PerangkatPembelajaran::findOrFail($id);
         $this->authorizeEdit($request, $perangkat);
+        $this->assertPeriodNotLocked($perangkat->academic_year_id, 'Dokumen RPM/Perangkat');
 
         $new = $perangkat->createNewVersion();
 

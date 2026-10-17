@@ -9,6 +9,7 @@ use App\Models\PekanEfektif;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
+use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -316,7 +317,7 @@ class PekanEfektifService
         $computed = $this->computeWeeks($schoolId, $academicYearId, $semester);
         $rows = $computed['rows'];
 
-        DB::transaction(function () use ($schoolId, $academicYearId, $semester, $rows, $generatedBy) {
+        DB::transaction(function () use ($schoolId, $academicYearId, $semester, $rows) {
             PekanEfektif::withTrashed()
                 ->where('school_id', $schoolId)
                 ->where('academic_year_id', $academicYearId)
@@ -445,7 +446,7 @@ class PekanEfektifService
      * JP efektif untuk satu mapel (tanpa konteks rombel) — dipakai ATP/Kurikulum.
      * JP efektif = JP per minggu (fallback berjenjang) × minggu efektif semester.
      */
-    public function effectiveJpForSubject(string $schoolId, string $academicYearId, int $semester, \App\Models\Subject $subject, ?string $gradeLevelId = null): int
+    public function effectiveJpForSubject(string $schoolId, string $academicYearId, int $semester, Subject $subject, ?string $gradeLevelId = null): int
     {
         $summary = $this->summary($schoolId, $academicYearId, $semester);
         $mingguEfektif = (int) ($summary['minggu_efektif'] ?? 0);
@@ -458,7 +459,7 @@ class PekanEfektifService
     /**
      * @return array<string, mixed>
      */
-    private function jpRow(\App\Models\Subject $subject, ?string $teacherName, int $weeklyHours, int $mingguEfektif): array
+    private function jpRow(Subject $subject, ?string $teacherName, int $weeklyHours, int $mingguEfektif): array
     {
         return [
             'subject_id' => $subject->id,

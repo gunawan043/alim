@@ -12,6 +12,7 @@ use App\Models\StudyGroup;
 use App\Models\SubjectKktp;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Services\AcademicPeriodService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
@@ -260,6 +261,8 @@ class KurikulumController extends Controller
             'source_academic_year_id' => 'required|exists:academic_years,id|different:academic_year_id',
         ]);
 
+        app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'Peta Kurikulum');
+
         $targetAyId = $data['academic_year_id'];
         $sourceAyId = $data['source_academic_year_id'];
 
@@ -366,6 +369,8 @@ class KurikulumController extends Controller
             'kktp.*' => 'nullable|array',
             'kktp.*.*' => 'nullable|numeric|min:0|max:100',
         ]);
+
+        app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'KKTP Peta Kurikulum');
 
         $saved = 0;
 

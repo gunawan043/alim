@@ -9,6 +9,7 @@ use App\Models\School;
 use App\Models\Subject;
 use App\Models\SubjectGroup;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * SEEDER WAJIB — Struktur Kurikulum Pondok (SD / SMP / SMA-MA).
@@ -142,7 +143,7 @@ class CurriculumStructureSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<string, string>  $groups
+     * @param  Collection<string, string>  $groups
      * @param  array<int, string>  $faseByLevel
      * @param  array<int, array<int, mixed>>  $defs
      */

@@ -17,6 +17,9 @@ class AcademicYear extends Model
         'name',
         'semester',
         'is_active',
+        'locked_at',
+        'locked_by',
+        'lock_notes',
         'start_date',
         'end_date',
         'semester_ganjil_start',
@@ -29,6 +32,7 @@ class AcademicYear extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'locked_at' => 'datetime',
         'start_date' => 'date',
         'end_date' => 'date',
         'semester_ganjil_start' => 'date',
@@ -77,5 +81,20 @@ class AcademicYear extends Model
     public function scopeSemester($q, string $semester)
     {
         return $q->where('semester', $semester);
+    }
+
+    // ── Arsip / Penutupan Periode ─────────────────────────────────
+
+    /**
+     * Periode ditutup resmi (arsip terkunci) — data tidak dapat diubah.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    public function locker()
+    {
+        return $this->belongsTo(User::class, 'locked_by');
     }
 }
