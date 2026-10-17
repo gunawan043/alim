@@ -159,7 +159,7 @@
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </a></li>
                                                 <li>
-                                                    <form action="{{ route('user.asrama.wings.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}" method="POST" onsubmit="return confirm('Yakin hapus blok ini?')">
+                                                    <form action="{{ route('user.asrama.wings.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}" method="POST" data-confirm="Yakin hapus blok ini?">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="dropdown-item text-danger">
                                                             <i class="ri-delete-bin-line me-1"></i> Hapus

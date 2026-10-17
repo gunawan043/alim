@@ -208,7 +208,7 @@
                                                 <form method="POST"
                                                       action="{{ route('user.asrama.broadcasts.destroy', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'broadcastUuid' => $bc->id]) }}"
                                                       class="d-inline"
-                                                      onsubmit="return confirm('Yakin hapus broadcast ini?')">
+                                                      data-confirm="Yakin hapus broadcast ini?">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
                                                         <i class="ri-delete-bin-line"></i>
