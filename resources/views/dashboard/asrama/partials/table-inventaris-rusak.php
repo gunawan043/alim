@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 $items = $this->scopeAsramaQuery(
     DB::table('dormitory_inventories as inv')
         ->leftJoin('dormitory_rooms as r', 'r.id', '=', 'inv.room_id')
-        ->whereIn('inv.condition', ['rusak', 'hilang']),
+        ->whereIn('inv.condition', ['rusak_ringan', 'rusak_berat', 'hilang']),
     $user,
     'inv.room_id',
     'inv.dormitory_id'

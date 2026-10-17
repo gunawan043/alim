@@ -9,6 +9,7 @@ use App\Models\DormitoryActivityLog;
 use App\Models\DormitoryActivityTemplate;
 use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryPost;
+use App\Models\DormitoryResident;
 use App\Services\DormitoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -69,9 +70,28 @@ class DormitoryPostController extends Controller
         $data['needs_response'] = $request->boolean('needs_response');
         $data['is_pinned'] = $request->boolean('is_pinned');
 
-        DB::transaction(function () use ($data) {
-            DormitoryPost::create($data);
-        });
+        $post = DB::transaction(fn () => DormitoryPost::create($data));
+
+        if (in_array($post->visibility, ['wali', 'umum'], true)) {
+            $studentIds = DormitoryResident::where('dormitory_id', $asramaUuid)
+                ->where('academic_year_id', AcademicYear::where('is_active', true)->value('id'))
+                ->where('is_active', true)
+                ->pluck('student_id');
+
+            app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents(
+                $studentIds,
+                [
+                    'module' => 'dormitory',
+                    'reference_type' => 'dormitory_post',
+                    'reference_id' => $post->id,
+                    'type' => 'info',
+                    'action' => 'dormitory_announcement',
+                    'title' => $post->title,
+                    'message' => \Illuminate\Support\Str::limit(strip_tags((string) $post->content), 240),
+                    'priority' => 'medium',
+                ],
+            );
+        }
 
         return redirect()->route('user.asrama.posts.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Informasi berhasil diposting.');
@@ -221,6 +241,8 @@ class DormitoryPostController extends Controller
 
         // Kirim ke wali (in-app + channel sesuai pilihan).
         $this->service->broadcastToDormitoryWalis($dormitory, $data);
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_BROADCAST_SENT', 'dormitory_emergency_broadcasts', $broadcast->id);
 
         return back()->with('success', 'Broadcast darurat berhasil dikirim.');
     }

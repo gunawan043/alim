@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 $days = collect(range(6, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
 
 $rows = $this->scopeAsramaQuery(
-    DB::table('dormitory_activity_logs')->whereIn('activity_date', $days->all()),
+    DB::table('dormitory_activities')->whereIn('activity_date', $days->all()),
     $user,
     'dormitory_id',
     'dormitory_id'
@@ -27,9 +27,9 @@ return [
     '_type'  => 'chart',
     '_col'   => 'col-xl-6 col-md-12',
     'key'    => 'partisipasi-kegiatan',
-    'label'  => 'Pencatatan Kegiatan (7 Hari)',
+    'label'  => 'Sesi Kegiatan (7 Hari)',
     'type'   => 'bar',
-    'series' => [['name' => 'Catatan Kegiatan', 'data' => $data]],
+    'series' => [['name' => 'Sesi Kegiatan', 'data' => $data]],
     'options' => [
         'xaxis'       => ['categories' => $categories],
         'colors'      => ['#8b5cf6'],

@@ -2,31 +2,22 @@
 
 use Illuminate\Support\Facades\DB;
 
-$templates = $this->scopeAsramaQuery(
-    DB::table('dormitory_activity_templates')
-        ->where('is_active', 1)
-        ->whereNull('deleted_at'),
+$activities = $this->scopeAsramaQuery(
+    DB::table('dormitory_activities')->whereDate('activity_date', today()),
     $user,
     'dormitory_id',
     'dormitory_id'
-)->get(['id', 'session', 'activity_items']);
+)->orderBy('start_time')->get(['id', 'name', 'start_time', 'status']);
 
-$logs = $this->scopeAsramaQuery(
-    DB::table('dormitory_activity_logs')->where('activity_date', today()),
-    $user,
-    'dormitory_id',
-    'dormitory_id'
-)->selectRaw('session, COUNT(*) as total')
-    ->groupBy('session')
-    ->pluck('total', 'session');
-
-$items = $templates->map(function ($template) use ($logs) {
-    $items = json_decode($template->activity_items ?? '[]', true);
+$items = $activities->map(function ($activity) {
+    $recorded = DB::table('dormitory_activity_attendances')
+        ->where('activity_id', $activity->id)
+        ->count();
 
     return (object) [
-        'session'  => ucfirst((string) $template->session),
-        'kegiatan' => is_array($items) ? count($items) : 0,
-        'tercatat' => (int) ($logs[$template->session] ?? 0),
+        'session'  => $activity->start_time ? substr($activity->start_time, 0, 5) : 'Kegiatan',
+        'kegiatan' => $activity->name,
+        'tercatat' => $recorded,
     ];
 })->all();
 

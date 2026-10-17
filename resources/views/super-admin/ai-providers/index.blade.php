@@ -25,10 +25,10 @@
 
     <div class="alert alert-info py-3 small" role="alert">
         <i class="ri-information-line me-1"></i>
-        <strong>Multi-platform:</strong> gunakan provider berbayar (OpenAI, Anthropic, Gemini) atau <strong>gratis/lokal</strong>
-        (Ollama, LM Studio, free tier Groq/OpenRouter). API key disimpan <strong>terenkripsi</strong>.
-        Provider default aktif dipakai generator nama Arab dan dapat dipakai modul AI berikutnya (RPM, soal, analisis).
-        Bila provider gagal, sistem otomatis memakai kaidah transliterasi.
+        <strong>Multi-platform:</strong> pilih provider gratis/free tier, berbayar, atau lokal. API key disimpan <strong>terenkripsi</strong>.
+        Model dari platform yang sama dapat <strong>berbagi satu API key</strong> (key grup) — cukup isi key di salah satu baris.
+        Baris hasil seeder masih <strong>nonaktif</strong>; isi key lalu aktifkan model yang dipilih dan jadikan default.
+        Provider default dipakai generator nama Arab, AI Assistant RPM/soal, dan chat AI.
     </div>
 
     <div class="card">
@@ -40,6 +40,27 @@
             <button type="button" class="btn btn-success" onclick="openProviderForm()">
                 <i class="ri-add-line me-1"></i>Tambah Provider
             </button>
+        </div>
+
+        <div class="card-body border-bottom py-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input type="search" id="aiProviderSearch" class="form-control"
+                           placeholder="Cari nama, model, atau platform…">
+                </div>
+                <div class="col-md-3">
+                    <select id="aiProviderTier" class="form-select">
+                        <option value="">Semua tier</option>
+                        <option value="free">Gratis / free tier</option>
+                        <option value="local">Lokal</option>
+                        <option value="paid">Berbayar</option>
+                    </select>
+                </div>
+                <div class="col-md-4 text-md-end text-muted small">
+                    <span id="aiProviderCount">{{ $providers->count() }} model</span>
+                    · Baru dari seeder masih nonaktif
+                </div>
+            </div>
         </div>
 
         <div class="table-responsive">
@@ -56,12 +77,43 @@
                 </thead>
                 <tbody>
                     @forelse($providers as $provider)
-                        <tr>
+                        @php
+                            $tier = $provider->extra['tier'] ?? 'paid';
+                            $tierLabel = match ($tier) {
+                                'free' => 'Gratis',
+                                'local' => 'Lokal',
+                                'paid' => 'Berbayar',
+                                default => ucfirst($tier),
+                            };
+                            $tierClass = match ($tier) {
+                                'free' => 'bg-success-subtle text-success',
+                                'local' => 'bg-info-subtle text-info',
+                                default => 'bg-warning-subtle text-warning',
+                            };
+                            $needsKey = $presets[$provider->provider]['needs_key'] ?? true;
+                            $hasOwnKey = filled($provider->api_key);
+                            $hasGroupKey = $provider->keyGroup() && ($keyGroups[$provider->keyGroup()] ?? false);
+                            $hasKey = $hasOwnKey || $hasGroupKey;
+                        @endphp
+                        <tr data-name="{{ strtolower($provider->name.' '.$provider->model.' '.($presets[$provider->provider]['label'] ?? $provider->provider)) }}"
+                            data-tier="{{ $tier }}"
+                            data-platform="{{ $provider->provider }}">
                             <td>
-                                <div class="fw-medium">{{ $provider->name }}</div>
+                                <div class="fw-medium">
+                                    {{ $provider->name }}
+                                    <span class="badge {{ $tierClass }} ms-1">{{ $tierLabel }}</span>
+                                </div>
                                 <div class="text-muted small">{{ $presets[$provider->provider]['label'] ?? $provider->provider }}</div>
+                                @if(! empty($provider->extra['notes']))
+                                    <div class="text-muted" style="font-size:11px;">{{ $provider->extra['notes'] }}</div>
+                                @endif
                             </td>
-                            <td><code>{{ $provider->model }}</code></td>
+                            <td>
+                                <code>{{ $provider->model }}</code>
+                                @if(! empty($provider->extra['pricing']))
+                                    <div class="text-muted" style="font-size:11px;">{{ $provider->extra['pricing'] }}</div>
+                                @endif
+                            </td>
                             <td class="small text-muted text-break" style="max-width:320px">{{ $provider->endpoint }}</td>
                             <td class="text-center">
                                 @if($provider->is_default)
@@ -72,8 +124,16 @@
                                 @else
                                     <span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>
                                 @endif
-                                @if(! $provider->hasApiKey())
-                                    <span class="badge bg-warning-subtle text-warning" title="Endpoint lokal tidak memerlukan kunci">Tanpa kunci</span>
+                                @if($needsKey)
+                                    @if($hasOwnKey)
+                                        <span class="badge bg-success-subtle text-success">Key sendiri</span>
+                                    @elseif($hasGroupKey)
+                                        <span class="badge bg-info-subtle text-info">Key grup {{ $provider->keyGroup() }}</span>
+                                    @else
+                                        <span class="badge bg-warning-subtle text-warning">Tanpa kunci</span>
+                                    @endif
+                                @else
+                                    <span class="badge bg-info-subtle text-info">Lokal — tanpa key</span>
                                 @endif
                             </td>
                             <td class="text-center small">
@@ -264,5 +324,34 @@
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteProviderModal')).show();
             });
         });
+
+        // Filter katalog provider (client-side, ringan).
+        (function () {
+            const search = document.getElementById('aiProviderSearch');
+            const tier = document.getElementById('aiProviderTier');
+            const count = document.getElementById('aiProviderCount');
+            if (! search || ! tier || ! count) return;
+
+            const rows = Array.from(document.querySelectorAll('tbody tr[data-name]'));
+
+            function applyFilter() {
+                const q = (search.value || '').trim().toLowerCase();
+                const selected = tier.value;
+                let visible = 0;
+
+                rows.forEach(function (row) {
+                    const matchesText = ! q || (row.dataset.name || '').includes(q);
+                    const matchesTier = ! selected || row.dataset.tier === selected;
+                    const show = matchesText && matchesTier;
+                    row.classList.toggle('d-none', ! show);
+                    if (show) visible++;
+                });
+
+                count.textContent = visible + ' model';
+            }
+
+            search.addEventListener('input', applyFilter);
+            tier.addEventListener('change', applyFilter);
+        })();
     </script>
 @endsection

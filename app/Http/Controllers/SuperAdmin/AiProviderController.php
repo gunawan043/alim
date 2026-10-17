@@ -18,16 +18,35 @@ class AiProviderController extends Controller
     {
         $this->authorizeSuper($request);
 
-        $providers = AiProviderSetting::query()
-            ->orderByDesc('is_default')
-            ->orderBy('name')
-            ->get();
+        $providers = AiProviderSetting::query()->get()
+            ->sortBy(fn (AiProviderSetting $provider) => sprintf(
+                '%d-%d-%06d-%s',
+                $provider->is_default ? 0 : 1,
+                match ($provider->extra['tier'] ?? 'paid') {
+                    'free' => 0,
+                    'local' => 1,
+                    'paid' => 2,
+                    default => 3,
+                },
+                (int) ($provider->extra['sort_order'] ?? 999),
+                $provider->name,
+            ))
+            ->values();
+
+        $keyGroups = [];
+        foreach ($providers as $provider) {
+            $group = $provider->keyGroup();
+            if ($group && filled($provider->api_key)) {
+                $keyGroups[$group] = true;
+            }
+        }
 
         $presets = AiProviderPresets::all();
 
         return view('super-admin.ai-providers.index', [
             'userId' => $request->route('userId') ?? auth()->id(),
             'providers' => $providers,
+            'keyGroups' => $keyGroups,
             'presets' => $presets,
         ]);
     }

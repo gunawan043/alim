@@ -110,3 +110,13 @@ Keterangan status: **Selesai** = berfungsi, **Diperbaiki** = baru diperbaiki pad
 - ✅ Empty state & pagination halaman kunjungan, pelanggaran, mutasi kamar diseragamkan.
 - ✅ Modal flash global.
 - ⏳ Beberapa halaman detail masih memakai confirm/SweetAlert lokal.
+
+## 8. Batch 6 — Dashboard & Audit Log
+- Dashboard asrama: widget kegiatan hari ini memakai `dormitory_activities` baru; inventaris memakai enum baru.
+- Audit log asrama: izin approve/reject, mutasi kamar approve/reject, kegiatan dibuat/ditutup/dibuka, broadcast.
+- Pengawasan inventaris pada dashboard tidak lagi selalu 0.
+
+## 9. Batch 7 — Cakupan Notifikasi & Auto-Approve
+- Pengumuman/broadcast hanya ke wali penghuni asrama terkait.
+- Izin & kunjungan yang diajukan Staf Perizinan/Staf Asrama/wali kamar langsung disetujui.
+- Jika auto-approve gagal, pengajuan tetap pending (tidak hilang).

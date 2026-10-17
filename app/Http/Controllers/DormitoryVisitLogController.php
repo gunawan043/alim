@@ -10,6 +10,8 @@ use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
+use App\Models\DormitoryStaffAssignment;
+use App\Support\UserJabatan;
 use App\Models\Student;
 use App\Services\Boarding\VisitWorkflowService;
 use Dompdf\Dompdf;
@@ -124,13 +126,25 @@ class DormitoryVisitLogController extends Controller
         }
 
         try {
-            $this->visit->submit(
+            $visit = $this->visit->submit(
                 data: $data,
                 dormitoryId: $asramaUuid,
             );
 
+            $autoApproved = false;
+            if ($this->canAutoApproveRequest($request->user(), $asramaUuid)) {
+                try {
+                    $this->visit->approve($visit->id, $asramaUuid, 'Disetujui otomatis oleh Staf Perizinan/Staf Asrama.');
+                    $autoApproved = true;
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Auto-approve kunjungan gagal: '.$e->getMessage());
+                }
+            }
+
             return redirect()->route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-                ->with('success', 'Permintaan kunjungan berhasil diajukan.');
+                ->with('success', $autoApproved
+                    ? 'Permintaan kunjungan diajukan dan langsung disetujui.'
+                    : 'Permintaan kunjungan berhasil diajukan.');
         } catch (QuotaExceededException $e) {
             \Log::warning('Kuota kunjungan habis', [
                 'student_id' => $data['student_id'] ?? null,
@@ -146,6 +160,26 @@ class DormitoryVisitLogController extends Controller
 
             return back()->with('error', 'Terjadi kesalahan. Silangan coba lagi.');
         }
+    }
+
+    private function canAutoApproveRequest($user, string $dormitoryId): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'perizinanGenderScope') && $user->perizinanGenderScope() !== null) {
+            return true;
+        }
+
+        if (DormitoryStaffAssignment::active()->forUser($user->id)->forDormitory($dormitoryId)->exists()) {
+            return true;
+        }
+
+        return UserJabatan::hasAny($user, [
+            'staf perizinan', 'staff perizinan', 'staf asrama', 'staff asrama',
+            'musyrif', 'musyrifah', 'wali kamar',
+        ]);
     }
 
     public function show(Request $request, string $userId, string $asramaUuid, string $visitUuid)

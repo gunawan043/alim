@@ -40,6 +40,9 @@ class DatabaseSeeder extends Seeder
             SchoolRombelStructureSeeder::class, // WAJIB: rombel SD/SMP/SMA + tautan mapel ke rombel
             ClassScheduleSlotSeeder::class,    // WAJIB: master jam pelajaran (kegiatan/istirahat/pulang)       // master jenis izin (pulang, sakit, dll.)
             DokumenIsoSeeder::class,       // master jenis izin (pulang, sakit, dll.)
+
+            // Katalog AI — semua model nonaktif, tanpa API key.
+            AiProviderSeeder::class,
         ]);
     }
 }

@@ -85,12 +85,14 @@ class DormitoryActivityController extends Controller
             'description' => 'nullable|string|max:2000',
         ]);
 
-        DormitoryActivity::create($validated + [
+        $activity = DormitoryActivity::create($validated + [
             'dormitory_id' => $asramaUuid,
             'academic_year_id' => AcademicYear::where('is_active', true)->value('id'),
             'status' => 'open',
             'created_by' => $request->user()->id,
         ]);
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_ACTIVITY_CREATED', 'dormitory_activities', $activity->id);
 
         return redirect()->route('user.asrama.kegiatan.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Kegiatan berhasil dibuat. Staf dan wali kamar dapat mengisi presensi.');
@@ -352,6 +354,7 @@ class DormitoryActivityController extends Controller
         abort_unless($this->canManage($request->user(), $dormitory), 403, 'Hanya Kepala/Wakil Asrama yang dapat menutup kegiatan.');
 
         DormitoryActivity::where('dormitory_id', $asramaUuid)->findOrFail($activityId)->update(['status' => 'closed']);
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_ACTIVITY_CLOSED', 'dormitory_activities', $activityId);
 
         return back()->with('success', 'Kegiatan ditutup. Presensi dikunci.');
     }
@@ -362,6 +365,7 @@ class DormitoryActivityController extends Controller
         abort_unless($this->canManage($request->user(), $dormitory), 403, 'Hanya Kepala/Wakil Asrama yang dapat membuka kegiatan.');
 
         DormitoryActivity::where('dormitory_id', $asramaUuid)->findOrFail($activityId)->update(['status' => 'open']);
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_ACTIVITY_REOPENED', 'dormitory_activities', $activityId);
 
         return back()->with('success', 'Kegiatan dibuka kembali. Presensi dapat diisi.');
     }

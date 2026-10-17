@@ -13,6 +13,8 @@ use App\Models\Dormitory;
 use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
+use App\Models\DormitoryStaffAssignment;
+use App\Support\UserJabatan;
 use App\Models\StudentHealthPermit;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
@@ -246,8 +248,20 @@ class DormitoryPermitController extends Controller
             ]);
         }
 
+        $autoApproved = false;
+        if ($this->canAutoApproveRequest($request->user(), $asramaUuid)) {
+            try {
+                $this->leave->approve($permit->id, $asramaUuid, 'Disetujui otomatis oleh Staf Perizinan/Staf Asrama.');
+                $autoApproved = true;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto-approve izin gagal: '.$e->getMessage());
+            }
+        }
+
         return redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            ->with('success', 'Permintaan izin berhasil diajukan.');
+            ->with('success', $autoApproved
+                ? 'Permintaan izin diajukan dan langsung disetujui.'
+                : 'Permintaan izin berhasil diajukan.');
     }
 
     public function show(Request $request, string $userId, string $asramaUuid, string $permitUuid)
@@ -303,6 +317,8 @@ class DormitoryPermitController extends Controller
             dormitoryId: $asramaUuid,
             note: $data['approval_note'] ?? null,
         );
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_APPROVED', 'dormitory_permits', $permitUuid);
 
         // Tahap 3: izin pulang mengisi kehadiran harian/mapel otomatis (status: izin).
         // Event LeaveApproved sudah di-dispatch oleh LeaveWorkflowService (hindari ganda).
@@ -378,7 +394,29 @@ class DormitoryPermitController extends Controller
             note: $data['approval_note'] ?? null,
         );
 
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_REJECTED', 'dormitory_permits', $permitUuid);
+
         return back()->with('success', 'Izin ditolak.');
+    }
+
+    private function canAutoApproveRequest($user, string $dormitoryId): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'perizinanGenderScope') && $user->perizinanGenderScope() !== null) {
+            return true;
+        }
+
+        if (DormitoryStaffAssignment::active()->forUser($user->id)->forDormitory($dormitoryId)->exists()) {
+            return true;
+        }
+
+        return UserJabatan::hasAny($user, [
+            'staf perizinan', 'staff perizinan', 'staf asrama', 'staff asrama',
+            'musyrif', 'musyrifah', 'wali kamar',
+        ]);
     }
 
     /**

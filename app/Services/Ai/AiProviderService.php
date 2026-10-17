@@ -88,8 +88,9 @@ class AiProviderService
 
         $headers = ['Accept' => 'application/json'];
 
-        if (filled($provider->api_key)) {
-            $headers['Authorization'] = 'Bearer '.$provider->api_key;
+        $apiKey = $provider->effectiveApiKey();
+        if (filled($apiKey)) {
+            $headers['Authorization'] = 'Bearer '.$apiKey;
         }
 
         if ($provider->provider === 'openrouter') {

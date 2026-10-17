@@ -1691,6 +1691,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Audit log asrama ditambahkan untuk: izin disetujui/ditolak, mutasi kamar disetujui/ditolak,
   kegiatan dibuat/ditutup/dibuka, dan broadcast darurat.
 
+## 158. Cakupan Broadcast/Pengumuman & Auto-Approve Staf Asrama
+
+- **Pengumuman asrama** (`DormitoryPost` visibility `wali`/`umum`) kini mengirim notifikasi hanya ke wali
+  santri penghuni asrama tersebut — tidak lintas asrama.
+- **Broadcast darurat** tetap memakai daftar penghuni aktif asrama terkait saja.
+- **Auto-approve**:
+  - Pengajuan **izin** oleh Staf Perizinan/Staf Asrama (atau wali kamar/musyrif) langsung disetujui
+    melalui `LeaveWorkflowService::approve()` tanpa menunggu Kepala/Wakil.
+  - Pengajuan **kunjungan** oleh peran yang sama langsung disetujui melalui `VisitWorkflowService::approve()`.
+  - Jika auto-approve gagal (mis. kuota/kebijakan), pengajuan tetap tersimpan sebagai pending.
+- Event `dormitory_announcement` ditambahkan ke Matriks Channel Notifikasi.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

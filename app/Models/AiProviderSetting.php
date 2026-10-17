@@ -63,9 +63,45 @@ class AiProviderSetting extends Model
         return $query->where('is_default', true);
     }
 
+    /**
+     * Grup berbagi API key (mis. semua model OpenRouter memakai satu key).
+     */
+    public function keyGroup(): ?string
+    {
+        $extra = is_array($this->extra) ? $this->extra : [];
+        $group = $extra['key_group'] ?? null;
+
+        return filled($group) ? (string) $group : null;
+    }
+
+    /**
+     * API key efektif: key sendiri, atau key dari provider lain dalam grup
+     * yang sama. Key tidak pernah dikirim ke browser.
+     */
+    public function effectiveApiKey(): ?string
+    {
+        if (filled($this->api_key)) {
+            return (string) $this->api_key;
+        }
+
+        $group = $this->keyGroup();
+        if (! $group) {
+            return null;
+        }
+
+        $source = static::query()
+            ->whereKeyNot($this->getKey())
+            ->get(['id', 'api_key', 'is_active', 'is_default', 'extra'])
+            ->filter(fn (self $provider) => filled($provider->api_key) && $provider->keyGroup() === $group)
+            ->sortByDesc(fn (self $provider) => ($provider->is_default ? 2 : 0) + ($provider->is_active ? 1 : 0))
+            ->first();
+
+        return $source?->api_key;
+    }
+
     public function hasApiKey(): bool
     {
-        return filled($this->api_key);
+        return filled($this->effectiveApiKey());
     }
 
     /**

@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\DB;
 
 $count = $this->scopeAsramaQuery(
-    DB::table('dormitory_inventories')->whereIn('condition', ['rusak', 'hilang']),
+    DB::table('dormitory_inventories')->whereIn('condition', ['rusak_ringan', 'rusak_berat', 'hilang']),
     $user
 )->count();
 

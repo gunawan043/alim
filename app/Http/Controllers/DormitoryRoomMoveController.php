@@ -182,6 +182,8 @@ class DormitoryRoomMoveController extends Controller
                 ->update(['room_id' => $move->to_room_id, 'bed_number' => $nextBed]);
         });
 
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_ROOM_MOVE_APPROVED', 'dormitory_room_moves', $move->id);
+
         return back()->with('success', 'Mutasi kamar disetujui dan kamar minimalis telah diperbarui.');
     }
 
@@ -197,6 +199,8 @@ class DormitoryRoomMoveController extends Controller
             'approved_by' => auth()->id(),
             'notes' => $request->notes ?? $move->notes,
         ]);
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_ROOM_MOVE_REJECTED', 'dormitory_room_moves', $move->id);
 
         return back()->with('success', 'Mutasi kamar ditolak.');
     }
