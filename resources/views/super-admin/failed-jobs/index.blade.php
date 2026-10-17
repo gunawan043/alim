@@ -10,7 +10,7 @@
         @slot('title') Failed Jobs @endslot
     @endcomponent
 
-    {-- Statistik ringkas --}
+    {{-- Statistik ringkas --}}
     <div class="row">
         <div class="col-6 col-md-3">
             <div class="card">

@@ -10,7 +10,7 @@
         @slot('title') Token & Sesi @endslot
     @endcomponent
 
-    {-- Statistik ringkas --}
+    {{-- Statistik ringkas --}}
     <div class="row">
         <div class="col-6 col-md-4">
             <div class="card">
