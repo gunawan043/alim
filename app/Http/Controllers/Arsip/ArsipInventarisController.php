@@ -13,6 +13,7 @@ use App\Services\AcademicPeriodService;
 use App\Services\Arsip\ArsipInventoryService;
 use App\Services\Arsip\ArsipRegistry;
 use App\Services\Arsip\DocumentArchiveService;
+use App\Services\Arsip\PeriodClosureChecklistService;
 use App\Services\KurikulumAccess;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
@@ -75,6 +76,12 @@ class ArsipInventarisController extends Controller
 
         $canManage = $this->canManage($request->user());
         $lockBlockReason = $selectedAy ? $this->periods->lockBlockReason($selectedAy) : null;
+        $closure = app(PeriodClosureChecklistService::class)->evaluate($selectedAcademicYearId, $schoolId);
+
+        if (! $lockBlockReason && ($closure['errors'] ?? 0) > 0) {
+            $lockBlockReason = 'Kelengkapan periode belum memenuhi syarat: '.$closure['errors'].' item wajib belum tersedia.';
+        }
+
         $unsupportedModules = $this->registry->unsupportedModules();
 
         return view('arsip.index', compact(
@@ -92,6 +99,7 @@ class ArsipInventarisController extends Controller
             'studyGroups',
             'canManage',
             'lockBlockReason',
+            'closure',
             'unsupportedModules',
         ));
     }
@@ -101,15 +109,27 @@ class ArsipInventarisController extends Controller
         abort_unless($this->canManage($request->user()), 403, 'Penutupan periode hanya untuk kepala/wakil satuan pendidikan.');
 
         $academicYear = AcademicYear::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
 
         $validated = $request->validate([
             'lock_notes' => 'nullable|string|max:500',
+            'confirm_warnings' => 'boolean',
         ]);
 
         $reason = $this->periods->lockBlockReason($academicYear);
 
         if ($reason) {
             return back()->with('error', $reason);
+        }
+
+        $closure = app(PeriodClosureChecklistService::class)->evaluate($academicYear->id, $schoolId);
+
+        if (($closure['errors'] ?? 0) > 0) {
+            return back()->with('error', 'Periode belum dapat ditutup: '.$closure['errors'].' item wajib belum tersedia.');
+        }
+
+        if (($closure['warnings'] ?? 0) > 0 && ! $request->boolean('confirm_warnings')) {
+            return back()->with('error', 'Tinjau dan centang konfirmasi peringatan kelengkapan arsip sebelum menutup periode.');
         }
 
         $this->periods->lock($academicYear, $request->user(), $validated['lock_notes'] ?? null);

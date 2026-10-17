@@ -102,7 +102,9 @@
                                         </form>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-soft-warning" title="Edit"
-                                            onclick='openProviderForm(@json($provider->only(["id","name","provider","endpoint","model","is_default","is_active"])), {{ $provider->hasApiKey() ? 'true' : 'false' }})'>
+                                            data-provider="{{ json_encode($provider->only(['id', 'name', 'provider', 'endpoint', 'model', 'is_default', 'is_active'])) }}"
+                                            data-has-key="{{ $provider->hasApiKey() ? '1' : '0' }}"
+                                            onclick="openProviderForm(JSON.parse(this.dataset.provider), this.dataset.hasKey === '1')">
                                         <i class="ri-pencil-line"></i>
                                     </button>
                                     <button type="button" class="btn btn-sm btn-soft-danger delete-provider" title="Hapus"

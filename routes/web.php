@@ -95,6 +95,7 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JenjangKarirController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
+use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
 use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
@@ -164,7 +165,6 @@ use App\Http\Controllers\Sarpras\SarprasProcurementController;
 use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairVsReplaceController;
-// use App\Http\Controllers\SuperAdmin\AiProviderController;
 use App\Http\Controllers\SuperAdmin\SidebarMenuManagementController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasReportController;
 use App\Http\Controllers\Sarpras\SarprasRuangController;
@@ -203,6 +203,7 @@ use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\SuperAdmin\AiProviderController;
 use App\Http\Controllers\SuperAdmin\AuditLogController;
 use App\Http\Controllers\SuperAdmin\CurriculumStructureController;
 use App\Http\Controllers\SuperAdmin\FailedJobController;
@@ -640,6 +641,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
                 Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
+
+                // ── AI ASSISTANT — DRAFT RPM & SOAL ─────────────────
+                Route::prefix('ai')->name('ai.')->group(function () {
+                    Route::get('/', [AiContentController::class, 'index'])->name('index');
+                    Route::post('/generate', [AiContentController::class, 'generate'])->name('generate');
+                    Route::get('/{id}', [AiContentController::class, 'show'])->name('show');
+                    Route::post('/{id}/items', [AiContentController::class, 'updateItems'])->name('items.update');
+                    Route::post('/{id}/save-bank', [AiContentController::class, 'saveToBank'])->name('save-bank');
+                    Route::post('/{id}/save-rpm', [AiContentController::class, 'saveToRpm'])->name('save-rpm');
+                    Route::post('/{id}/approve', [AiContentController::class, 'approve'])->name('approve');
+                    Route::delete('/{id}', [AiContentController::class, 'destroy'])->name('destroy');
+                });
 
                 // Master Rumpun Mata Pelajaran & penetapan koordinator (Kebijakan Akademik)
                 Route::prefix('rumpun')->name('rumpun.')->group(function () {

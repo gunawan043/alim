@@ -674,6 +674,7 @@ class ArsipInventarisTest extends TestCase
         $this->actingAs($this->kepala)
             ->post("/{$this->kepala->id}/arsip/{$this->oldAy->id}/kunci", [
                 'lock_notes' => 'Ditutup setelah rapor akhir semester.',
+                'confirm_warnings' => 1,
             ])
             ->assertRedirect();
 
@@ -696,6 +697,57 @@ class ArsipInventarisTest extends TestCase
             'action' => 'ACADEMIC_YEAR_UNLOCKED',
             'record_id' => $this->oldAy->id,
         ]);
+    }
+
+    public function test_checklist_kelengkapan_penutupan_periode(): void
+    {
+        $this->actingAs($this->tu);
+
+        $view = app(ArsipInventarisController::class)
+            ->index($this->makeRequest(['academic_year_id' => $this->oldAy->id]), $this->tu->id);
+        $closure = $view->getData()['closure'];
+
+        $keys = collect($closure['items'])->pluck('key')->all();
+
+        $this->assertContains('rombel', $keys);
+        $this->assertContains('penempatan', $keys);
+        $this->assertContains('dokumen', $keys);
+        $this->assertContains('nama_arab', $keys);
+        $this->assertSame(0, $closure['errors'], 'Rombel & penempatan tersedia → tidak ada error.');
+        $this->assertGreaterThan(0, $closure['warnings'], 'Data belum lengkap → ada peringatan.');
+        $this->assertTrue($closure['ready']);
+    }
+
+    public function test_lock_menolak_tanpa_konfirmasi_peringatan(): void
+    {
+        $this->actingAs($this->kepala)
+            ->post("/{$this->kepala->id}/arsip/{$this->oldAy->id}/kunci")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNull($this->oldAy->fresh()->locked_at, 'Tanpa konfirmasi peringatan, periode belum dikunci.');
+
+        $this->actingAs($this->kepala)
+            ->post("/{$this->kepala->id}/arsip/{$this->oldAy->id}/kunci", ['confirm_warnings' => 1])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertNotNull($this->oldAy->fresh()->locked_at);
+    }
+
+    public function test_periode_tanpa_rombel_dan_penempatan_tidak_dapat_dikunci(): void
+    {
+        $emptyAy = AcademicYear::create([
+            'name' => '2028/2029', 'semester' => 'ganjil', 'is_active' => false,
+            'start_date' => '2028-07-01', 'end_date' => '2029-06-30',
+        ]);
+
+        $this->actingAs($this->kepala)
+            ->post("/{$this->kepala->id}/arsip/{$emptyAy->id}/kunci", ['confirm_warnings' => 1])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNull($emptyAy->fresh()->locked_at);
     }
 
     public function test_tahun_ajaran_aktif_tidak_dapat_dikunci(): void

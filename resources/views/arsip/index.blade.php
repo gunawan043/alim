@@ -175,6 +175,70 @@
         </div>
     </div>
 
+    {{-- Kesiapan Penutupan Periode --}}
+    @if($selectedAy)
+        @php
+            $closureItems = collect($closure['items'] ?? []);
+            $closureBadge = ($closure['errors'] ?? 0) > 0
+                ? 'bg-danger-subtle text-danger'
+                : ((($closure['warnings'] ?? 0) > 0) ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success');
+            $closureLabel = ($closure['errors'] ?? 0) > 0
+                ? 'Belum siap — ' . $closure['errors'] . ' item wajib'
+                : ((($closure['warnings'] ?? 0) > 0) ? ($closure['warnings'] . ' peringatan untuk ditinjau') : 'Siap ditutup');
+            $closureUrl = function (?string $name) use ($userId, $selectedAcademicYearId) {
+                if (! $name) {
+                    return null;
+                }
+
+                try {
+                    return route($name, ['userId' => $userId, 'academic_year_id' => $selectedAcademicYearId]);
+                } catch (\Throwable) {
+                    return null;
+                }
+            };
+        @endphp
+        <div class="card">
+            <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                    <h5 class="card-title mb-0"><i class="ri-checklist-2 text-success me-1"></i>Kesiapan Penutupan Periode</h5>
+                    <p class="text-muted mb-0 small">Checklist sebelum periode dikunci. <strong>Item wajib</strong> memblokir penutupan; <strong>peringatan</strong> boleh ditutup setelah dikonfirmasi.</p>
+                </div>
+                <span class="badge {{ $closureBadge }}">{{ $closureLabel }}</span>
+            </div>
+            <div class="card-body">
+                @forelse($closureItems as $item)
+                    <div class="border rounded p-2 mb-2 d-flex align-items-center gap-2">
+                        @if($item['status'] === 'ok')
+                            <i class="ri-checkbox-circle-fill text-success fs-5"></i>
+                        @elseif($item['status'] === 'error')
+                            <i class="ri-close-circle-fill text-danger fs-5"></i>
+                        @else
+                            <i class="ri-error-warning-fill text-warning fs-5"></i>
+                        @endif
+                        <div class="flex-grow-1">
+                            <div class="small fw-semibold">
+                                @php $itemUrl = $closureUrl($item['route'] ?? null); @endphp
+                                @if($itemUrl)
+                                    <a href="{{ $itemUrl }}" class="link-primary">{{ $item['label'] }}</a>
+                                @else
+                                    {{ $item['label'] }}
+                                @endif
+                            </div>
+                            @if(! empty($item['hint']))
+                                <div class="text-muted" style="font-size:11px;">{{ $item['hint'] }}</div>
+                            @endif
+                        </div>
+                        <span class="badge {{ $item['status'] === 'ok' ? 'bg-success-subtle text-success' : ($item['status'] === 'error' ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning') }}">
+                            {{ $item['value'] }}
+                        </span>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0 small">Belum ada data untuk dievaluasi.</p>
+                @endforelse
+            </div>
+        </div>
+    @endif
+
     {{-- Inventaris Modul --}}
     <div class="card">
         <div class="card-header border-bottom-dashed">
@@ -445,6 +509,23 @@
             <label class="form-label small fw-semibold">Catatan penutupan (opsional)</label>
             <textarea name="lock_notes" form="lockPeriodForm" class="form-control" rows="3" maxlength="500"
                       placeholder="Mis. ditutup setelah rapor akhir semester dibagikan."></textarea>
+
+            @if(($closure['warnings'] ?? 0) > 0)
+                <div class="alert alert-warning small mt-3 mb-2">
+                    <strong>{{ $closure['warnings'] }} peringatan kelengkapan:</strong>
+                    <ul class="mb-0 ps-3">
+                        @foreach(collect($closure['items'])->where('status', 'warning')->take(6) as $warning)
+                            <li>{{ $warning['label'] }} ({{ $warning['value'] }})</li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" form="lockPeriodForm" name="confirm_warnings" value="1" id="confirmClosureWarnings" required>
+                    <label class="form-check-label small" for="confirmClosureWarnings">
+                        Saya sudah meninjau peringatan dan tetap menutup periode ini.
+                    </label>
+                </div>
+            @endif
         </x-modal-confirm>
     @endif
 
