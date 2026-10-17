@@ -426,60 +426,47 @@
         </div>
     </div>
 
-    {{-- Modal Kunci --}}
+    {{-- Modal standar: Kunci / Buka Kunci Periode --}}
     @if($selectedAy && $canManage && ! $selectedAy->isLocked())
-        <div class="modal fade" id="lockPeriodModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form method="POST" action="{{ route('user.arsip.lock', ['userId' => $userId, 'id' => $selectedAy->id]) }}" class="modal-content">
-                    @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="ri-lock-line me-1"></i>Tutup &amp; Kunci Periode</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="small text-muted">
-                            Tahun ajaran <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong>
-                            akan dikunci sebagai arsip. Seluruh data periode ini tidak dapat diubah —
-                            termasuk bila tahun ajaran diaktifkan kembali — sampai kuncinya dibuka.
-                        </p>
-                        <label class="form-label small fw-semibold">Catatan penutupan (opsional)</label>
-                        <textarea name="lock_notes" class="form-control" rows="3" maxlength="500"
-                                  placeholder="Mis. ditutup setelah rapor akhir semester dibagikan."></textarea>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-danger"><i class="ri-lock-line me-1"></i>Kunci Periode</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <form id="lockPeriodForm" method="POST"
+              action="{{ route('user.arsip.lock', ['userId' => $userId, 'id' => $selectedAy->id]) }}">
+            @csrf
+        </form>
+
+        <x-modal-confirm id="lockPeriodModal"
+            icon="https://cdn.lordicon.com/lupuorrc.json"
+            primary-color="#f7b84b" secondary-color="#f06548"
+            title="Tutup &amp; Kunci Periode?"
+            message="Tahun ajaran <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong> akan dikunci sebagai arsip. Seluruh data periode ini tidak dapat diubah — termasuk bila tahun ajaran diaktifkan kembali — sampai kuncinya dibuka."
+            submit-label="Ya, Kunci Periode"
+            submit-icon="ri-lock-line"
+            submit-class="btn-danger"
+            form-id="lockPeriodForm">
+            <label class="form-label small fw-semibold">Catatan penutupan (opsional)</label>
+            <textarea name="lock_notes" form="lockPeriodForm" class="form-control" rows="3" maxlength="500"
+                      placeholder="Mis. ditutup setelah rapor akhir semester dibagikan."></textarea>
+        </x-modal-confirm>
     @endif
 
-    {{-- Modal Buka Kunci --}}
     @if($selectedAy && $canManage && $selectedAy->isLocked())
-        <div class="modal fade" id="unlockPeriodModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form method="POST" action="{{ route('user.arsip.unlock', ['userId' => $userId, 'id' => $selectedAy->id]) }}" class="modal-content">
-                    @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="ri-lock-unlock-line me-1"></i>Buka Kunci Arsip</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="small text-muted">
-                            Kunci arsip <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong>
-                            akan dibuka dan tercatat pada audit log.
-                        </p>
-                        <label class="form-label small fw-semibold">Alasan pembukaan (opsional)</label>
-                        <textarea name="lock_notes" class="form-control" rows="3" maxlength="500"
-                                  placeholder="Mis. koreksi nilai hasil rapat verifikasi."></textarea>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-warning"><i class="ri-lock-unlock-line me-1"></i>Buka Kunci</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <form id="unlockPeriodForm" method="POST"
+              action="{{ route('user.arsip.unlock', ['userId' => $userId, 'id' => $selectedAy->id]) }}">
+            @csrf
+        </form>
+
+        <x-modal-confirm id="unlockPeriodModal"
+            icon="https://cdn.lordicon.com/lupuorrc.json"
+            primary-color="#f7b84b" secondary-color="#08a88a"
+            title="Buka Kunci Arsip?"
+            message="Kunci arsip <strong>{{ $selectedAy->name }} ({{ $selectedAy->semester_text }})</strong> akan dibuka dan tercatat pada audit log. Data baru dapat diubah setelah tahun ajaran diaktifkan kembali."
+            submit-label="Ya, Buka Kunci"
+            submit-icon="ri-lock-unlock-line"
+            submit-class="btn-warning"
+            form-id="unlockPeriodForm">
+            <label class="form-label small fw-semibold">Alasan pembukaan (opsional)</label>
+            <textarea name="lock_notes" form="unlockPeriodForm" class="form-control" rows="3" maxlength="500"
+                      placeholder="Mis. koreksi nilai hasil rapat verifikasi."></textarea>
+        </x-modal-confirm>
     @endif
+
 @endsection

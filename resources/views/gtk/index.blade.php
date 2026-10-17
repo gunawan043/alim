@@ -476,6 +476,10 @@
                                         <i class="bx bx-add-to-queue ri-upload-2-line align-bottom me-1"></i> Import
                                     </a>
 
+                                    <a href="{{ route('user.gtk.import-nama-arab-form', ['userId' => $userId]) }}" class="btn btn-outline-dark">
+                                        <i class="ri-translate-2 align-bottom me-1"></i> Import Nama Arab
+                                    </a>
+
                                     <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-warning">
                                         <i class="bx bx-add-to-queue align-bottom me-1"></i> Tambah GTK
                                     </a>

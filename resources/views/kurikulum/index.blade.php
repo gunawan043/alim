@@ -140,9 +140,9 @@
                                     <a href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
                                 @if(($canPrepare ?? false) && $academicYearId && $academicYears->count() > 1)
-                                    <form method="POST" action="{{ route('user.kurikulum.siapkan', ['userId' => $userId]) }}"
-                                          class="d-flex flex-wrap gap-2"
-                                          onsubmit="return confirm('Salin struktur Peta Kurikulum & KKTP dari TA sumber ke TA terpilih? TA sumber tidak akan diubah.');">
+                                    <form id="siapkanPetaForm" method="POST"
+                                          action="{{ route('user.kurikulum.siapkan', ['userId' => $userId]) }}"
+                                          class="d-flex flex-wrap gap-2">
                                         @csrf
                                         <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
                                         <select name="source_academic_year_id" class="form-select" style="width:210px" title="TA sumber salinan">
@@ -151,7 +151,9 @@
                                                 <option value="{{ $ay->id }}" {{ (string) $activeAcademicYearId === (string) $ay->id ? 'selected' : '' }}>Salin dari {{ $ay->name }} ({{ $ay->semester_text }})</option>
                                             @endforeach
                                         </select>
-                                        <button type="submit" class="btn btn-outline-success" title="Siapkan Peta Kurikulum untuk TA terpilih">
+                                        <button type="button" class="btn btn-outline-success"
+                                                data-bs-toggle="modal" data-bs-target="#siapkanPetaModal"
+                                                title="Siapkan Peta Kurikulum untuk TA terpilih">
                                             <i class="ri-archive-drawer-line align-bottom me-1"></i> Siapkan TA Ini
                                         </button>
                                     </form>
@@ -301,4 +303,15 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('modal')
+    <x-modal-confirm id="siapkanPetaModal"
+        icon="https://cdn.lordicon.com/lupuorrc.json"
+        title="Siapkan Peta Kurikulum TA Ini?"
+        message="Struktur mapel, KKTP, dan CP akan disalin dari tahun ajaran sumber ke tahun ajaran terpilih. Tahun ajaran sumber tidak diubah; data yang sudah ada di TA tujuan tidak ditimpa."
+        submit-label="Ya, Siapkan"
+        submit-icon="ri-archive-drawer-line"
+        submit-class="btn-success"
+        form-id="siapkanPetaForm" />
 @endsection

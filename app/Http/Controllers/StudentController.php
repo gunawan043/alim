@@ -287,8 +287,14 @@ class StudentController extends Controller
             ->when($schoolId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('school_id', $schoolId)))
             ->count();
 
+        $showSchoolColumn = $user && (
+            canPermission('super-admin-only')
+            || canPermission('student-all-access')
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['Super Admin', 'Pimpinan', 'Humas Personalia', 'Keuangan']))
+        );
+
         return view('students.index', compact(
-            'students', 'schools', 'userId',
+            'students', 'schools', 'userId', 'showSchoolColumn',
             'totalAll', 'totalActive',
             'byRombel', 'studyGroup', 'capacity', 'inClass',
             'distribusiPerTingkat', 'isFilteredByClass',

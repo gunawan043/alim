@@ -83,6 +83,7 @@ use App\Http\Controllers\GTKEducationController;
 use App\Http\Controllers\GtkPositionController;
 use App\Http\Controllers\GtkRecruitmentController;
 use App\Http\Controllers\GtkRequestController;
+use App\Http\Controllers\GtkArabicNameController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
@@ -178,6 +179,7 @@ use App\Http\Controllers\SchoolUnitController;
 use App\Http\Controllers\SecureAccessController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StudentAchievementController;
+use App\Http\Controllers\StudentArabicNameController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentCounselingRecordController;
 use App\Http\Controllers\StudentHealthCheckupController;
@@ -506,6 +508,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/import', [GtkWizardController::class, 'import'])->name('import');
                 Route::get('/import/template/{workUnitId}', [GtkWizardController::class, 'importTemplate'])->name('import.template');
                 Route::post('/import/store', [GtkWizardController::class, 'importStore'])->name('import.store');
+
+                // ── IMPORT NAMA ARAB GTK (menu terpisah; match NUPY) ──
+                Route::get('/import-nama-arab', [GtkArabicNameController::class, 'form'])->name('import-nama-arab-form');
+                Route::post('/import-nama-arab', [GtkArabicNameController::class, 'import'])->name('import-nama-arab-process');
+                Route::get('/import-nama-arab/template', [GtkArabicNameController::class, 'template'])->name('import-nama-arab-template');
+                Route::post('/import-nama-arab/generate', [GtkArabicNameController::class, 'generate'])->name('import-nama-arab-generate');
                 Route::post('/datatable', [GtkWizardController::class, 'datatable'])->name('datatable');
                 Route::get('/export-preview', [GtkWizardController::class, 'exportPreview'])->name('export.preview');
                 Route::get('/export', [GtkWizardController::class, 'export'])->name('export');
@@ -1418,6 +1426,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/import', [StudentController::class, 'importForm'])->name('import-form')->middleware('dormitory.restrict:students');
                 Route::post('/import', [StudentController::class, 'importProcess'])->name('import-process')->middleware('dormitory.restrict:students');
                 Route::get('/template', [StudentController::class, 'downloadTemplate'])->name('template');
+
+                // ── IMPORT NAMA ARAB SANTRI (menu terpisah; match NIS/NISN) ──
+                Route::get('/import-nama-arab', [StudentArabicNameController::class, 'form'])->name('import-nama-arab-form')->middleware('dormitory.restrict:students');
+                Route::post('/import-nama-arab', [StudentArabicNameController::class, 'import'])->name('import-nama-arab-process')->middleware('dormitory.restrict:students');
+                Route::get('/import-nama-arab/template', [StudentArabicNameController::class, 'template'])->name('import-nama-arab-template');
+                Route::post('/import-nama-arab/generate', [StudentArabicNameController::class, 'generate'])->name('import-nama-arab-generate')->middleware('dormitory.restrict:students');
                 // Global mahrom listing MUST come before {santriUuid} so it isn't shadowed by the show route.
                 Route::get('/mahroms', [StudentMahromController::class, 'globalIndex'])->name('mahroms.global');
                 // Global CRUD for mahrom (cross-student): tambah/edit/hapus dari halaman Data Mahrom.

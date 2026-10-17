@@ -382,6 +382,10 @@
                                         class="btn btn-outline-secondary">
                                         <i class="ri-file-upload-line align-bottom me-1"></i> Import Excel
                                     </a>
+                                    <a href="{{ route('user.students.import-nama-arab-form', ['userId' => $userId]) }}"
+                                        class="btn btn-outline-dark">
+                                        <i class="ri-translate-2 align-bottom me-1"></i> Import Nama Arab
+                                    </a>
                                 @else
                                     <span class="badge bg-info-subtle text-info">
                                         <i class="ri-information-line me-1"></i>
@@ -620,6 +624,7 @@
                                 <th style="width:50px">#</th>
                                 <th style="width:56px">Foto</th>
                                 <th>Nama</th>
+                                <th>Nama Arab</th>
                                 <th>NISN</th>
                                 <th>Rombel
                                     @if (($rombelDisplayAyId ?? null) && ($ay = ($academicYears ?? collect())->firstWhere('id', $rombelDisplayAyId)))
@@ -633,7 +638,9 @@
                                 </th>
                                 <th>JK</th>
                                 <th>Tempat, Tgl Lahir</th>
-                                <th>Sekolah</th>
+                                @if($showSchoolColumn ?? false)
+                                    <th>Sekolah</th>
+                                @endif
                                 <th>Status</th>
                                 <th>Aksi</th>
                             </tr>
@@ -672,6 +679,13 @@
                                                   title="Sudah pindah/naik dari rombel ini — data tetap tersimpan sebagai arsip">Pindah</span>
                                         @endif
                                     </td>
+                                    <td dir="rtl" class="text-end">
+                                        @if($s->name_ar)
+                                            <span class="fw-medium">{{ $s->name_ar }}</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td><code>{{ $s->nisn }}</code></td>
                                     @php
                                         // ARSIP PERIODE: rombel mengikuti TA yang ditampilkan (bukan rombel saat ini).
@@ -708,12 +722,14 @@
                                             {{ $s->birth_date?->format('d M Y') ?? '-' }}
                                         </small>
                                     </td>
-                                    <td>
-                                        <a href="{{ route('user.schools.show', ['userId' => $userId, 'schoolId' => $s->school_id]) }}"
-                                            class="text-muted small">
-                                            {{ $s->school?->name ?? '-' }}
-                                        </a>
-                                    </td>
+                                    @if($showSchoolColumn ?? false)
+                                        <td>
+                                            <a href="{{ route('user.schools.show', ['userId' => $userId, 'schoolId' => $s->school_id]) }}"
+                                                class="text-muted small">
+                                                {{ $s->school?->name ?? '-' }}
+                                            </a>
+                                        </td>
+                                    @endif
                                     <td>
                                         <span
                                             class="badge bg-{{ $s->status === 'active' ? 'success' : ($s->status === 'graduate' ? 'info' : 'secondary') }}-subtle text-{{ $s->status === 'active' ? 'success' : ($s->status === 'graduate' ? 'info' : 'secondary') }}">
@@ -769,7 +785,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <x-empty-state colspan="10"
+                                <x-empty-state colspan="{{ 10 + (($showSchoolColumn ?? false) ? 1 : 0) }}"
                                     title="Belum ada data santri"
                                     message="Data santri yang ditambahkan akan tampil di sini.">
                                     @unless($isDormitoryUser ?? false)
