@@ -47,7 +47,10 @@
     $karakterY = round($tableY + $tableH + 2.0, 2);
 
     // Penanaman karakter hanya bila ruang header (termasuk petunjuk) cukup.
-    $karakterFits = ! empty($karakter) && ($karakterY + 30.0) <= ($headerMm - 1.0);
+    // Pada mode Arab, instruksi Arab menambah satu baris; blok karakter
+    // dilewati agar tidak menimpa baris jawaban pertama.
+    $arabLine = ($hasArabic ?? false) && ($instruksiArab ?? '') !== '';
+    $karakterFits = ! empty($karakter) && ! $arabLine && ($karakterY + 30.0) <= ($headerMm - 1.0);
     $instructionY = $karakterFits
         ? round($karakterY + 18.4, 2)
         : round($tableY + $tableH + 2.4, 2);

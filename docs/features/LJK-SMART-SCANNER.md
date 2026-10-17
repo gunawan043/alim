@@ -142,8 +142,9 @@ sinkronisasi paksa oleh pihak berwenang, tercatat di log).
   `font_size_fallback_scale`). Template baru memakai
   `template.header_height_mm = 88 mm` (meta dihapus) agar header selesai
   sebelum baris jawaban pertama; template lama memakai tinggi header
-  tersimpan dan otomatis melewati blok karakter bila ruangnya tidak cukup.
-  Instruksi Arab dicetak rata kanan.
+  tersimpan dan otomatis melewati blok karakter bila ruangnya tidak cukup
+  (termasuk pada mode Arab yang memuat instruksi Arab, agar tidak menimpa
+  baris jawaban pertama). Instruksi Arab dicetak rata kanan.
 - **Master generik (tanpa teks "Master Fotocopy")**: seluruh **nilai**
   identitas (mapel, hari/tanggal, kelas, NIS, guru, nama) **kosong bergaris
   putus-putus**, tanpa QR/data strip, tanpa legenda wacana, dan tanpa
