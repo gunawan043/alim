@@ -34,6 +34,8 @@ class TeacherAdminBook extends Model
         'is_active',
         'locked_at',
         'locked_by',
+        'published_at',
+        'published_by',
         'nr_final_weight_rs',
         'nr_final_weight_sts',
         'nr_final_weight_sas',
@@ -48,6 +50,7 @@ class TeacherAdminBook extends Model
         'sumatif_columns' => 'array',
         'formatif_columns' => 'array',
         'locked_at' => 'datetime',
+        'published_at' => 'datetime',
     ];
 
     /**
@@ -56,6 +59,11 @@ class TeacherAdminBook extends Model
     public function isLocked(): bool
     {
         return $this->locked_at !== null;
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->published_at !== null;
     }
 
     public function teacher(): BelongsTo

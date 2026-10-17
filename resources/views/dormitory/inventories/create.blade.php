@@ -140,8 +140,9 @@
                                         required>
                                     <option value="">-- Pilih --</option>
                                     <option value="baik" {{ old('condition') === 'baik' ? 'selected' : '' }}>Baik</option>
-                                    <option value="rusak" {{ old('condition') === 'rusak' ? 'selected' : '' }}>Rusak</option>
-                                    <option value="perbaikan" {{ old('condition') === 'perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
+                                    <option value="rusak_ringan" {{ old('condition') === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan / Perlu Perbaikan</option>
+                                    <option value="rusak_berat" {{ old('condition') === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                                    
                                     <option value="hilang" {{ old('condition') === 'hilang' ? 'selected' : '' }}>Hilang</option>
                                 </select>
                                 @error('condition')

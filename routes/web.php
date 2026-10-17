@@ -463,6 +463,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
                     Route::post('/{studyGroupId}/rapor/pengaturan', [NilaiKelasController::class, 'raporSettings'])->name('rapor.pengaturan');
                     Route::post('/{studyGroupId}/rapor/{studentId}/catatan', [NilaiKelasController::class, 'raporNote'])->name('rapor.note');
+                    Route::post('/{studyGroupId}/rapor/finalize', [NilaiKelasController::class, 'raporFinalize'])->name('rapor.finalize');
+                    Route::post('/{studyGroupId}/rapor/publish', [NilaiKelasController::class, 'raporPublish'])->name('rapor.publish');
+                    Route::post('/{studyGroupId}/rapor/unpublish', [NilaiKelasController::class, 'raporUnpublish'])->name('rapor.unpublish');
+                    Route::post('/{studyGroupId}/buku/{adminBookId}/publish', [NilaiKelasController::class, 'bookPublish'])->name('buku.publish');
+                    Route::post('/{studyGroupId}/buku/{adminBookId}/unpublish', [NilaiKelasController::class, 'bookUnpublish'])->name('buku.unpublish');
                     Route::get('/{studyGroupId}/rapor/{studentId}/cetak', [NilaiKelasController::class, 'raporCetak'])->name('rapor.cetak');
                     Route::get('/{studyGroupId}/rapor/cetak-massal', [NilaiKelasController::class, 'raporCetakMassal'])->name('rapor.cetak-massal');
                 });
@@ -1920,6 +1925,23 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/template-kegiatan/{session}/toggle', [DormitoryPostController::class, 'templateToggle'])->name('templates.toggle');
 
                 // Activity Logs
+                // ── PRESENSI KEGIATAN ASRAMA ─────────────────────────
+                Route::prefix('{asramaUuid}/kegiatan')->name('kegiatan.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\DormitoryActivityController::class, 'index'])->name('index');
+                    Route::get('/create', [\App\Http\Controllers\DormitoryActivityController::class, 'create'])->name('create');
+                    Route::post('/', [\App\Http\Controllers\DormitoryActivityController::class, 'store'])->name('store');
+                    Route::get('/rutin', [\App\Http\Controllers\DormitoryActivityController::class, 'schedules'])->name('schedules');
+                    Route::post('/rutin', [\App\Http\Controllers\DormitoryActivityController::class, 'scheduleStore'])->name('schedules.store');
+                    Route::put('/rutin/{scheduleId}', [\App\Http\Controllers\DormitoryActivityController::class, 'scheduleUpdate'])->name('schedules.update');
+                    Route::delete('/rutin/{scheduleId}', [\App\Http\Controllers\DormitoryActivityController::class, 'scheduleDestroy'])->name('schedules.destroy');
+                    Route::post('/rutin/generate', [\App\Http\Controllers\DormitoryActivityController::class, 'scheduleGenerate'])->name('schedules.generate');
+                    Route::get('/{activityId}', [\App\Http\Controllers\DormitoryActivityController::class, 'show'])->name('show');
+                    Route::get('/{activityId}/presensi', [\App\Http\Controllers\DormitoryActivityController::class, 'attendance'])->name('attendance');
+                    Route::post('/{activityId}/presensi', [\App\Http\Controllers\DormitoryActivityController::class, 'attendanceStore'])->name('attendance.store');
+                    Route::post('/{activityId}/tutup', [\App\Http\Controllers\DormitoryActivityController::class, 'close'])->name('close');
+                    Route::post('/{activityId}/buka', [\App\Http\Controllers\DormitoryActivityController::class, 'reopen'])->name('reopen');
+                });
+
                 Route::get('/{asramaUuid}/log-kegiatan', [DormitoryPostController::class, 'activityLogIndex'])->name('activities.index');
 
                 // Emergency Broadcast
@@ -1967,6 +1989,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/laporan/kebersihan', [DormitoryReportController::class, 'sanitationHtml'])->name('reports.sanitation');
                 Route::get('/{asramaUuid}/laporan/penghuni', [DormitoryReportController::class, 'occupancy'])->name('reports.occupancy');
                 Route::get('/{asramaUuid}/laporan/santri/{studentId}', [DormitoryReportController::class, 'studentDetail'])->name('reports.student-detail');
+                Route::get('/{asramaUuid}/laporan/kunjungan', [DormitoryReportController::class, 'visits'])->name('reports.visits');
+                Route::get('/{asramaUuid}/laporan/mutasi-kamar', [DormitoryReportController::class, 'roomMoves'])->name('reports.room-moves');
+                Route::get('/{asramaUuid}/laporan/keluar-asrama', [DormitoryReportController::class, 'checkouts'])->name('reports.checkouts');
+                Route::get('/{asramaUuid}/laporan/kegiatan', [DormitoryReportController::class, 'activities'])->name('reports.activities');
 
                 // ── STAF PERIZINAN SCOPE MANAGEMENT ─────────────────────────────
                 Route::get('/staf-assignments/{targetUserId}', [DormitoryStaffAssignmentController::class, 'index'])->name('staf-assignments.index');

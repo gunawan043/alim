@@ -46,6 +46,7 @@
                 @yield('modal')
 
                 @include('layouts.partials.permission-setup')
+                @include('layouts.partials.flash-modals')
             </div>
             <!-- End Page-content -->
             @include('layouts.footer')

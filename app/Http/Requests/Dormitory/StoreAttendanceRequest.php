@@ -19,7 +19,8 @@ class StoreAttendanceRequest extends FormRequest
             'attendances' => 'required|array|min:1',
             'attendances.*.student_id' => 'required|exists:students,id',
             'attendances.*.room_id' => 'required|exists:dormitory_rooms,id',
-            'attendances.*.status' => 'required|in:hadir,izin,sakit,alpa,pulang',
+            'attendances.*.selected' => 'nullable|boolean',
+            'attendances.*.status' => 'nullable|in:hadir,izin,sakit,alpa,pulang',
             'attendances.*.notes' => 'nullable|string',
         ];
     }

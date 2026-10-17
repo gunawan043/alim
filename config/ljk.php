@@ -265,7 +265,7 @@ return [
         // Ditampilkan pada lembar soal berbahasa Arab (setelah instruksi Indonesia).
         'instruksi_arab' => 'اختر الجواب الأصح بوضع علامة (X) على الحرف ا، ب، ج، د في ورقة الجواب المرفقة !',
         // Petunjuk pengisian pada LEMBAR JAWABAN.
-        'instruksi_ljk' => 'Pilih satu jawaban dengan membuat tanda silang (X) di dalam kotak menggunakan pulpen hitam atau biru. Jika mengganti jawaban, hapus X lama sampai bersih atau tulis tanda = pada X lama, lalu beri X pada kotak baru — dua X tanpa tanda = diperiksa guru.',
+        'instruksi_ljk' => 'Beri tanda silang (X) pada satu kotak jawaban dengan pulpen hitam/biru. Jika mengganti, hapus X lama atau tulis = padanya, lalu silang kotak baru. Dua X tanpa = diperiksa guru.',
 
         // ── Format cetak (default setelan umum MS Word) ─────────────────
         // Font lembar soal (pt) — Cambria.

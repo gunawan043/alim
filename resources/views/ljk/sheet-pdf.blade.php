@@ -77,7 +77,7 @@
     .qr { border: 0; }
     .strip-cell { background: #000; }
     .question-number { font-size: 7pt; color: #333; }
-    .option-label { font-size: 5.5pt; color: #555; text-align: center; }
+    .option-label { font-size: 5.5pt; color: #555; text-align: center; line-height: 1; }
     .option-box { border: 0.45mm solid #000; }
     .manual-area { border: 0.3mm dashed #777; }
     .kop-img { display: block; }
@@ -251,7 +251,7 @@
                     }
                 @endphp
                 <div class="abs option-label"
-                     style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] - 2.3 }}mm; width: {{ $option['w_mm'] }}mm;">
+                     style="left: {{ $option['x_mm'] }}mm; top: {{ $option['y_mm'] - 1.7 }}mm; width: {{ $option['w_mm'] }}mm;">
                     @if($isArabicQ)<span class="ar">{{ $printed }}</span>@else{{ $printed }}@endif
                 </div>
                 <div class="abs option-box"

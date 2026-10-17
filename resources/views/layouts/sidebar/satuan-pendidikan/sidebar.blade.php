@@ -395,6 +395,13 @@
                         Peta Kurikulum
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.ai.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.ai.index', ['userId' => $userId]) }}">
+                        AI Assistant (RPM &amp; Soal)
+                    </a>
+                </li>
             </ul>
         </div>
     </li>

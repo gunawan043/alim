@@ -77,8 +77,8 @@ class DormitoryInventoryController extends Controller
         $stats = [
             'total' => DormitoryInventory::where('dormitory_id', $asramaUuid)->count(),
             'baik' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'baik')->count(),
-            'rusak' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'rusak')->count(),
-            'perbaikan' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'perbaikan')->count(),
+            'rusak' => DormitoryInventory::where('dormitory_id', $asramaUuid)->whereIn('condition', ['rusak_ringan', 'rusak_berat'])->count(),
+            'perbaikan' => DormitoryInventory::where('dormitory_id', $asramaUuid)->where('condition', 'rusak_ringan')->count(),
         ];
 
         // Filter kategori: hilangkan Seni dan Musik dari dropdown

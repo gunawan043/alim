@@ -26,6 +26,9 @@ return [
 
         // Akademik
         'rapor' => ['group' => 'Akademik', 'label' => 'Rapor siap / nilai dikunci'],
+        'rapor_published' => ['group' => 'Akademik', 'label' => 'Rapor dipublikasikan ke wali'],
+        'nilai_published' => ['group' => 'Akademik', 'label' => 'Nilai mapel dipublikasikan ke wali'],
+        'activity_alpa' => ['group' => 'Asrama', 'label' => 'Santri tidak hadir pada kegiatan asrama'],
         'kaldik_created' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan dibuat'],
         'kaldik_updated' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan diperbarui'],
 

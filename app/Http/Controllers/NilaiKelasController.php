@@ -360,6 +360,8 @@ class NilaiKelasController extends Controller
             $adminBook = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($bookId);
 
             $this->assertNotArchivedAcademicYear($adminBook->academic_year_id);
+            abort_if($adminBook->isLocked(), 403, 'Buku nilai '.($adminBook->subject?->name ?? '').' sudah dikunci.');
+            abort_if($adminBook->isPublished(), 403, 'Nilai mapel ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
             $nilaiData = $request->input('nilai', []);
             $savedRows = [];
@@ -497,6 +499,8 @@ class NilaiKelasController extends Controller
                     if (! $book || $kkmVal === null) {
                         continue;
                     }
+                    abort_if($book->isLocked(), 403, 'Buku nilai '.($book->subject?->name ?? '').' sudah dikunci.');
+                    abort_if($book->isPublished(), 403, 'Nilai '.($book->subject?->name ?? 'mapel').' sudah dipublikasikan. Batalkan publikasi terlebih dahulu.');
 
                     $existing = SubjectKktp::where('subject_id', $book->subject_id)
                         ->where('school_id', $schoolId)
@@ -533,6 +537,8 @@ class NilaiKelasController extends Controller
                     if (! $book) {
                         continue;
                     }
+                    abort_if($book->isLocked(), 403, 'Buku nilai '.($book->subject?->name ?? '').' sudah dikunci.');
+                    abort_if($book->isPublished(), 403, 'Nilai '.($book->subject?->name ?? 'mapel').' sudah dipublikasikan. Batalkan publikasi terlebih dahulu.');
 
                     $stsVal = $fields['sts'] ?? null;
                     $stsVal = ($stsVal === '' || $stsVal === null) ? null : $stsVal;
@@ -596,6 +602,10 @@ class NilaiKelasController extends Controller
         $book = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
             ->findOrFail($request->input('admin_book_id'));
+
+        $this->assertNotArchivedAcademicYear($book->academic_year_id);
+        abort_if($book->isLocked(), 403, 'Buku nilai sudah dikunci.');
+        abort_if($book->isPublished(), 403, 'Nilai mapel sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $validated = $request->validate([
             'columns' => 'required|array|min:1',
@@ -794,7 +804,8 @@ class NilaiKelasController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
-        $this->assertLegerAccess($userId, $studyGroup);
+        $access = $this->assertLegerAccess($userId, $studyGroup);
+        $canPublish = $access === 'full';
 
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
@@ -823,14 +834,185 @@ class NilaiKelasController extends Controller
             'total_santri' => $students->count(),
             'catatan_terisi' => $registrations->filter(fn ($r) => filled($r->homeroom_note))->count(),
             'nilai_final' => $registrations->whereNotNull('final_score')->count(),
+            'published' => $registrations->filter(fn ($r) => $r->isPublished())->count(),
         ];
 
         // Pengaturan tanggal pembagian rapor (per sekolah + TA + semester).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
 
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting', 'canPublish',
         ));
+    }
+
+    public function raporFinalize(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId);
+
+        abort_unless($this->assertLegerAccess($userId, $studyGroup) === 'full', 403, 'Finalisasi rapor hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+        ]);
+
+        $this->assertNotArchivedAcademicYear($validated['academic_year_id']);
+
+        $studentIds = StudentClassHistory::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('is_active', true)
+            ->pluck('student_id');
+
+        foreach ($studentIds as $studentId) {
+            RaportRegistration::updateOrCreate(
+                [
+                    'student_id' => $studentId,
+                    'study_group_id' => $studyGroupId,
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'semester' => $validated['semester'],
+                ],
+                [
+                    'status' => 'finalized',
+                    'finalized_at' => now(),
+                    'finalized_by' => $request->user()?->id,
+                ],
+            );
+        }
+
+        return back()->with('success', 'Rapor difinalisasi untuk '.$studentIds->count().' santri.');
+    }
+
+    public function raporPublish(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId);
+
+        abort_unless($this->assertLegerAccess($userId, $studyGroup) === 'full', 403, 'Publikasi rapor hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+        ]);
+
+        $this->assertNotArchivedAcademicYear($validated['academic_year_id']);
+
+        $studentIds = StudentClassHistory::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('is_active', true)
+            ->pluck('student_id');
+
+        foreach ($studentIds as $studentId) {
+            RaportRegistration::updateOrCreate(
+                [
+                    'student_id' => $studentId,
+                    'study_group_id' => $studyGroupId,
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'semester' => $validated['semester'],
+                ],
+                [
+                    'status' => 'finalized',
+                    'is_published' => true,
+                    'finalized_at' => now(),
+                    'finalized_by' => $request->user()?->id,
+                    'published_at' => now(),
+                    'published_by' => $request->user()?->id,
+                ],
+            );
+        }
+
+        $academicYear = \App\Models\AcademicYear::find($validated['academic_year_id']);
+
+        app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
+            'module' => 'academic',
+            'reference_type' => 'raport_registration',
+            'reference_id' => $studyGroup->id,
+            'type' => 'info',
+            'action' => 'rapor_published',
+            'title' => 'Rapor dipublikasikan',
+            'message' => 'Rapor '.$studyGroup->name.' '.($academicYear?->name ?? '').' semester '.$validated['semester'].' sudah dapat dilihat.',
+            'priority' => 'high',
+        ]);
+
+        return back()->with('success', 'Rapor dipublikasikan untuk '.$studentIds->count().' santri. Wali santri kini dapat melihat rapor.');
+    }
+
+    public function raporUnpublish(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId);
+
+        abort_unless($this->assertLegerAccess($userId, $studyGroup) === 'full', 403, 'Publikasi rapor hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+        ]);
+
+        $this->assertNotArchivedAcademicYear($validated['academic_year_id']);
+
+        RaportRegistration::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('semester', $validated['semester'])
+            ->update([
+                'status' => 'finalized',
+                'is_published' => false,
+                'published_at' => null,
+                'published_by' => null,
+            ]);
+
+        return back()->with('success', 'Publikasi rapor dibatalkan. Wali santri tidak dapat melihat rapor ini.');
+    }
+
+    public function bookPublish(Request $request, string $userId, string $studyGroupId, string $adminBookId)
+    {
+        $book = $this->publishableBook($request, $userId, $studyGroupId, $adminBookId);
+        $book->update(['published_at' => now(), 'published_by' => $request->user()?->id]);
+
+        $studentIds = StudentClassHistory::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $book->academic_year_id)
+            ->where('is_active', true)
+            ->pluck('student_id');
+
+        app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
+            'module' => 'academic',
+            'reference_type' => 'teacher_admin_book',
+            'reference_id' => $book->id,
+            'type' => 'info',
+            'action' => 'nilai_published',
+            'title' => 'Nilai '.($book->subject?->name ?? 'mapel').' dipublikasikan',
+            'message' => 'Nilai '.($book->subject?->name ?? 'mapel').' untuk '.($book->studyGroup?->name ?? 'kelas').' sudah dapat dilihat.',
+            'priority' => 'medium',
+        ]);
+
+        return back()->with('success', 'Nilai '.($book->subject?->name ?? 'mapel').' dipublikasikan ke wali santri.');
+    }
+
+    public function bookUnpublish(Request $request, string $userId, string $studyGroupId, string $adminBookId)
+    {
+        $book = $this->publishableBook($request, $userId, $studyGroupId, $adminBookId);
+        $book->update(['published_at' => null, 'published_by' => null]);
+
+        return back()->with('success', 'Publikasi nilai '.($book->subject?->name ?? 'mapel').' dibatalkan.');
+    }
+
+    private function publishableBook(Request $request, string $userId, string $studyGroupId, string $adminBookId): TeacherAdminBook
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $book = TeacherAdminBook::with('subject')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('study_group_id', $studyGroupId)
+            ->findOrFail($adminBookId);
+
+        $access = self::legerAccessFor($userId, $book->studyGroup);
+        $isOwner = (string) $book->teacher_id === (string) $request->user()?->id;
+
+        abort_unless($access === 'full' || $isOwner, 403, 'Hanya guru pengampu atau TU/Kurikulum yang dapat mempublikasikan nilai ini.');
+
+        $this->assertNotArchivedAcademicYear($book->academic_year_id);
+
+        return $book;
     }
 
     /**
@@ -843,7 +1025,8 @@ class NilaiKelasController extends Controller
         $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
 
-        $this->assertLegerAccess($userId, $studyGroup);
+        $access = $this->assertLegerAccess($userId, $studyGroup);
+        abort_unless($access === 'full', 403, 'Pengaturan rapor hanya untuk TU/Kurikulum/Kepala.');
 
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
@@ -896,6 +1079,7 @@ class NilaiKelasController extends Controller
         $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
 
         $this->assertNotArchivedAcademicYear($selectedAyId);
+        $this->assertStudentInGroup($studentId, $studyGroup->id, $selectedAyId);
 
         $validated = $request->validate([
             'homeroom_note' => 'nullable|string|max:500',
@@ -940,6 +1124,7 @@ class NilaiKelasController extends Controller
         $selectedAy = AcademicYear::orderByDesc('name')->get()->firstWhere('id', $selectedAyId);
 
         $student = Student::findOrFail($studentId);
+        $this->assertStudentInGroup($studentId, $studyGroup->id, $selectedAyId);
 
         $pdf = app(RaporPdfService::class)->renderSingle(
             $schoolId,
@@ -1135,6 +1320,17 @@ class NilaiKelasController extends Controller
         }
 
         return 'none';
+    }
+
+    private function assertStudentInGroup(string $studentId, string $studyGroupId, ?string $academicYearId): void
+    {
+        $exists = StudentClassHistory::query()
+            ->where('student_id', $studentId)
+            ->where('study_group_id', $studyGroupId)
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->exists();
+
+        abort_unless($exists, 404, 'Santri bukan anggota rombel ini pada tahun ajaran yang dipilih.');
     }
 
     private function assertLegerAccess(string $userId, StudyGroup $studyGroup): string

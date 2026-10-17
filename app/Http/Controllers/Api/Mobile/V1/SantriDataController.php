@@ -34,7 +34,7 @@ class SantriDataController extends Controller
     public function attendance(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -90,7 +90,7 @@ class SantriDataController extends Controller
     public function attendanceHistory(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -129,16 +129,17 @@ class SantriDataController extends Controller
     public function grades(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
         $activeYear = AcademicYear::where('is_active', true)->first();
         $yearId = $request->query('academic_year_id', $activeYear?->id);
 
-        $sumatif = NilaiSumatif::with('adminBook:id,subject_id')
+        $sumatif = NilaiSumatif::with('adminBook:id,subject_id,published_at')
             ->where('student_id', $id)
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->whereHas('adminBook', fn ($q) => $q->whereNotNull('published_at'))
             ->orderBy('semester')
             ->get()
             ->map(fn ($n) => [
@@ -162,9 +163,10 @@ class SantriDataController extends Controller
                 'keterangan' => $n->ket,
             ]);
 
-        $formatif = NilaiFormatif::with('adminBook:id,subject_id')
+        $formatif = NilaiFormatif::with('adminBook:id,subject_id,published_at')
             ->where('student_id', $id)
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->whereHas('adminBook', fn ($q) => $q->whereNotNull('published_at'))
             ->orderBy('semester')
             ->get()
             ->map(fn ($n) => [
@@ -198,7 +200,7 @@ class SantriDataController extends Controller
     public function currentClasses(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -242,7 +244,7 @@ class SantriDataController extends Controller
     public function violations(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -282,7 +284,7 @@ class SantriDataController extends Controller
     public function dormitoryInfo(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -329,7 +331,7 @@ class SantriDataController extends Controller
     public function dormitoryAttendance(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -390,7 +392,7 @@ class SantriDataController extends Controller
     public function dormitoryViolations(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -421,7 +423,7 @@ class SantriDataController extends Controller
     public function health(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -460,7 +462,7 @@ class SantriDataController extends Controller
     public function tahfidz(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -554,7 +556,7 @@ class SantriDataController extends Controller
     public function achievements(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -590,7 +592,7 @@ class SantriDataController extends Controller
     public function mahroms(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
-        if (! $this->waliHasAccessTo($user->id, $id)) {
+        if (! $this->waliHasAccessTo($user->id, $id, $request)) {
             return $this->notFoundError('Santri tidak ditemukan atau Anda tidak memiliki akses.');
         }
 
@@ -618,11 +620,11 @@ class SantriDataController extends Controller
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private function waliHasAccessTo(string $userId, string $studentId): bool
+    private function waliHasAccessTo(string $userId, string $studentId, ?Request $request = null): bool
     {
         // Tenant-scoped access check: the wali must have an active link to
         // the student in the active school context.
-        $request = request();
+        $request ??= request();
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId === null) {
             return false;

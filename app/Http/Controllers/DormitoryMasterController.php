@@ -16,9 +16,13 @@ class DormitoryMasterController extends Controller
     {
         abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
         abort_unless(
-            canPermission('dormitory-master-all-access') || canPermission('view_global_school_data'),
+            canPermission('dormitory-master-all-access')
+            || canPermission('view_global_school_data')
+            || canPermission('asrama-view')
+            || canPermission('asrama-manage')
+            || canPermission('asrama-create'),
             403,
-            'Hanya Super Admin dan Administrator yang dapat mengakses halaman ini.'
+            'Anda tidak memiliki akses ke halaman asrama.'
         );
     }
 
@@ -38,6 +42,14 @@ class DormitoryMasterController extends Controller
 
         $query = Dormitory::with(['workUnit', 'school', 'head'])
             ->withCount(['residents as total_residents' => fn ($q) => $q->where('is_active', true)]);
+
+        // Non-admin hanya melihat asrama yang boleh diakses (kepala/staf/wali kamar).
+        if (! canPermission('dormitory-master-all-access') && ! canPermission('view_global_school_data')) {
+            $accessibleIds = Dormitory::pluck('id')
+                ->filter(fn ($id) => auth()->user()?->canAccessDormitory($id))
+                ->values();
+            $query->whereIn('id', $accessibleIds);
+        }
 
         if ($request->filled('search')) {
             $query->where(fn ($sq) => $sq

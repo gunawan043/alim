@@ -117,7 +117,7 @@ class DormitoryRoomMoveController extends Controller
             $data['dormitory_id'] = $asramaUuid;
             $data['academic_year_id'] = $activeYear->id;
             $data['approval_status'] = 'pending';
-            $data['move_type'] = $data['move_type'] ?? 'reguler';
+            $data['move_type'] = $data['move_type'] ?? 'rotasi';
 
             return DormitoryRoomMove::create($data);
         });
@@ -148,7 +148,22 @@ class DormitoryRoomMoveController extends Controller
         $move = DormitoryRoomMove::where('dormitory_id', $asramaUuid)->findOrFail($moveUuid);
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
+        abort_if($move->approval_status !== 'pending', 403, 'Mutasi ini sudah diproses.');
+
         DB::transaction(function () use ($move, $activeYear) {
+            $toRoom = \App\Models\DormitoryRoom::findOrFail($move->to_room_id);
+            $occupancy = DormitoryResident::where('room_id', $toRoom->id)
+                ->where('academic_year_id', $activeYear->id)
+                ->where('is_active', true)
+                ->count();
+
+            abort_if($toRoom->capacity > 0 && $occupancy >= $toRoom->capacity, 422, 'Kamar tujuan sudah penuh.');
+
+            $nextBed = (int) DormitoryResident::where('room_id', $toRoom->id)
+                ->where('academic_year_id', $activeYear->id)
+                ->where('is_active', true)
+                ->max('bed_number') + 1;
+
             $move->update([
                 'approval_status' => 'approved',
                 'approved_by' => auth()->id(),
@@ -158,7 +173,7 @@ class DormitoryRoomMoveController extends Controller
                 ->where('dormitory_id', $move->dormitory_id)
                 ->where('academic_year_id', $activeYear->id)
                 ->where('is_active', true)
-                ->update(['room_id' => $move->to_room_id]);
+                ->update(['room_id' => $move->to_room_id, 'bed_number' => $nextBed]);
         });
 
         return back()->with('success', 'Mutasi kamar disetujui dan kamar minimalis telah diperbarui.');

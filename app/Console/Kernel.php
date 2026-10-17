@@ -147,6 +147,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // KEGIATAN ASRAMA RUTIN
+        // Setiap hari 00:05 bentuk sesi presensi dari jadwal rutin (7 hari ke depan).
+        $schedule->command('dormitory:generate-activities --days=7')
+            ->dailyAt('00:05')
+            ->withoutOverlapping();
+
         // PENGINGAT JAM PELAJARAN (GURU)
         // Setiap menit: kirim notifikasi ±5 menit sebelum jam mengajar dimulai.
         $schedule->command('alim:notify-lesson-reminders --minutes=5')

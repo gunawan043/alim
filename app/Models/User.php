@@ -632,6 +632,14 @@ class User extends Authenticatable
             return true;
         }
 
+        // Wali kamar aktif juga berhak mengakses asrama tempat kamarnya.
+        if (\App\Models\RoomSupervisor::active()
+            ->where('user_id', $this->id)
+            ->where('dormitory_id', $dormitoryId)
+            ->exists()) {
+            return true;
+        }
+
         // Staf Perizinan: akses lintas asrama SESUAI GENDER (saling backup).
         $scope = $this->perizinanGenderScope();
 

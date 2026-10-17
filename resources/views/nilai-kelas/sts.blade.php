@@ -131,6 +131,29 @@
                 </div>
                 <div class="col-sm-auto">
                     {{-- Action Buttons --}}
+                    @if(($activeTab ?? '') === 'mapel' && !empty($activeBook))
+                        @php
+                            $canPublishBook = ($isPrivileged ?? false) || (string) $activeBook->teacher_id === (string) auth()->id();
+                        @endphp
+                        @if($canPublishBook)
+                            @if($activeBook->isPublished())
+                                <span class="badge bg-success-subtle text-success me-1" style="font-size:11px;padding:6px 10px;">
+                                    <i class="ri-eye-line me-1"></i>Dipublikasikan ke wali
+                                </span>
+                                <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.unpublish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'adminBookId' => $activeBook->id]) }}"
+                                      class="d-inline" onsubmit="return confirm('Batalkan publikasi nilai mapel ini?')">
+                                    @csrf
+                                    <button class="btn btn-outline-danger btn-md me-1"><i class="ri-eye-off-line me-1"></i>Batalkan Publish</button>
+                                </form>
+                            @else
+                                <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.publish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'adminBookId' => $activeBook->id]) }}"
+                                      class="d-inline" onsubmit="return confirm('Publikasikan nilai mapel ini ke wali santri?')">
+                                    @csrf
+                                    <button class="btn btn-success btn-md me-1"><i class="ri-send-plane-line me-1"></i>Publish Nilai</button>
+                                </form>
+                            @endif
+                        @endif
+                    @endif
                     <a href="{{ route('user.schools.nilai-kelas.rapor', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester]) }}"
                     class="btn btn-outline-primary btn-md me-1">
                         <i class="ri-file-paper-2-line me-1"></i> Cetak Rapor
@@ -167,6 +190,14 @@
                 </div>
             </div>
         </div>
+
+        @if(($activeTab ?? '') === 'mapel' && !empty($activeBook) && $activeBook->isPublished())
+            <div class="alert alert-success border-0 rounded-0 mb-0 py-2">
+                <i class="ri-eye-line me-1"></i>
+                Nilai <strong>{{ $activeBook->subject?->name ?? 'mapel ini' }}</strong> sudah dipublikasikan ke wali santri.
+                Perubahan nilai dinonaktifkan sampai publikasi dibatalkan.
+            </div>
+        @endif
 
         {{-- Filter inside card header --}}
         <div class="card-header py-2 bg-light border-bottom">

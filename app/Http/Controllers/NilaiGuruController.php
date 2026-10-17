@@ -510,6 +510,8 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
+        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+
         $request->validate([
             'columns' => 'required|array|min:1',
             'columns.*.id' => 'required|string|max:64',
@@ -531,6 +533,8 @@ class NilaiGuruController extends Controller
     public function wizard3Store(Request $request, string $userId, string $adminBookId)
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $request->validate([
             'sumatif' => 'required|array',
@@ -649,6 +653,8 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
+        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+
         $validated = $request->validate([
             'nr_final_weight_rs' => 'required|numeric|min:0|max:100',
             'nr_final_weight_sts' => 'required|numeric|min:0|max:100',
@@ -732,6 +738,8 @@ class NilaiGuruController extends Controller
     public function wizard4Store(Request $request, string $userId, string $adminBookId)
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $request->validate([
             'formatif' => 'required|array',
@@ -1015,6 +1023,8 @@ class NilaiGuruController extends Controller
     public function autoSave(Request $request, string $userId, string $adminBookId)
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
         $semester = $book['adminBook']->semester;
         $academicYearId = $book['adminBook']->academic_year_id;
         $data = $request->all();

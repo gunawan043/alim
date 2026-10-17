@@ -45,7 +45,7 @@ class BroadcastBoardingNotificationToBus implements ShouldQueue
             ],
         ];
 
-        if ($waliId = $event->student->wali_id ?? null) {
+        if ($waliId = $event->student->wali_user_id ?? null) {
             $this->notifier->send($waliId, $data);
         }
         $this->notifier->sendToRole('dormitory_admin', $data);
@@ -65,7 +65,7 @@ class BroadcastBoardingNotificationToBus implements ShouldQueue
             ],
         ];
 
-        if ($waliId = $event->student->wali_id ?? null) {
+        if ($waliId = $event->student->wali_user_id ?? null) {
             $this->notifier->send($waliId, $data);
         }
         $this->notifier->sendToRole('dormitory_admin', $data);
@@ -87,7 +87,7 @@ class BroadcastBoardingNotificationToBus implements ShouldQueue
             ],
         ];
 
-        if ($waliId = $event->student->wali_id ?? null) {
+        if ($waliId = $event->student->wali_user_id ?? null) {
             $this->notifier->send($waliId, $data);
         }
         $this->notifier->sendToRole('dormitory_admin', $data);
@@ -109,7 +109,7 @@ class BroadcastBoardingNotificationToBus implements ShouldQueue
             ],
         ];
 
-        if ($waliId = $event->student->wali_id ?? null) {
+        if ($waliId = $event->student->wali_user_id ?? null) {
             $this->notifier->send($waliId, $data);
         }
         $this->notifier->sendToRole('dormitory_admin', $data);

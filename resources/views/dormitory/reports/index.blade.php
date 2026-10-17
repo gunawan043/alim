@@ -214,4 +214,29 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mt-2">
+        @php
+            $reportQuery = ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'month' => $period['month'], 'year' => $period['year']];
+            $extraReports = [
+                ['title' => 'Kunjungan', 'desc' => 'Daftar kunjungan, status, check-in/out', 'icon' => 'ri-user-voice-line', 'tone' => 'info', 'route' => 'user.asrama.reports.visits'],
+                ['title' => 'Mutasi Kamar', 'desc' => 'Perpindahan kamar & persetujuan', 'icon' => 'ri-arrow-left-right-line', 'tone' => 'primary', 'route' => 'user.asrama.reports.room-moves'],
+                ['title' => 'Keluar Asrama', 'desc' => 'Santri keluar & alasan check-out', 'icon' => 'ri-logout-box-r-line', 'tone' => 'warning', 'route' => 'user.asrama.reports.checkouts'],
+                ['title' => 'Kegiatan', 'desc' => 'Rekap presensi kegiatan asrama', 'icon' => 'ri-calendar-event-line', 'tone' => 'success', 'route' => 'user.asrama.reports.activities'],
+            ];
+        @endphp
+        @foreach($extraReports as $report)
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2"><i class="{{ $report['icon'] }} me-1 text-{{ $report['tone'] }}"></i> {{ $report['title'] }}</h6>
+                        <p class="text-muted small mb-3">{{ $report['desc'] }}</p>
+                        <a href="{{ route($report['route'], $reportQuery) }}" class="btn btn-sm btn-outline-{{ $report['tone'] }} w-100">
+                            <i class="ri-download-2-line me-1"></i>Download CSV
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
 @endsection

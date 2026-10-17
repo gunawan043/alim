@@ -69,6 +69,44 @@ class NotificationUniversalService
      * Send notification to multiple users
      */
     /**
+     * Kirim notifikasi ke seluruh wali aktif dari sekumpulan santri.
+     * Dipakai saat rapor/nilai dipublikasikan (in-app web + API mobile wali).
+     *
+     * @param  iterable<string>  $studentIds
+     */
+    public function notifyGuardiansForStudents(iterable $studentIds, array $data): int
+    {
+        $ids = collect($studentIds)->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        $links = \App\Models\WaliSantri::with('student')
+            ->whereIn('student_id', $ids)
+            ->active()
+            ->get();
+
+        $count = 0;
+        foreach ($links as $link) {
+            $payload = $data;
+            $payload['data'] = array_merge($payload['data'] ?? [], [
+                'student_id' => $link->student_id,
+                'student_name' => $link->student?->name,
+            ]);
+
+            if ($link->access_token) {
+                $payload['action_url'] = route('portal.dashboard', $link->access_token);
+            }
+
+            $this->send($link->user_id, $payload);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * Kirim ke seluruh pengguna pada satu SATUAN KERJA (work unit).
      */
     /**

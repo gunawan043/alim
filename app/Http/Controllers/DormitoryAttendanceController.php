@@ -107,10 +107,10 @@ class DormitoryAttendanceController extends Controller
             ->where('academic_year_id', $activeYear->id)
             ->where('attendance_date', $date)
             ->where('session', $session)
-            ->pluck('status', 'student_id')
-            ->toArray();
+            ->get()
+            ->keyBy('student_id');
 
-        $existingCount = count($existing);
+        $existingCount = $existing->count();
 
         $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
@@ -122,7 +122,7 @@ class DormitoryAttendanceController extends Controller
             'selectedDate' => $date,
             'selectedSession' => $session,
             'residentsByRoom' => $residentsByRoom,
-            'existing' => $existing,
+            'existingAttendance' => $existing,
             'existingCount' => $existingCount,
         ]);
     }
@@ -142,16 +142,22 @@ class DormitoryAttendanceController extends Controller
 
         DB::transaction(function () use ($data, $asramaUuid, $activeYear, $recordedBy, &$created, &$updated) {
             foreach ($data['attendances'] as $item) {
+                if (empty($item['selected']) || empty($item['status'])) {
+                    continue;
+                }
+
                 $existing = DormitoryAttendance::where('student_id', $item['student_id'])
-                    ->where('room_id', $item['room_id'])
                     ->where('attendance_date', $data['attendance_date'])
                     ->where('session', $data['session'])
                     ->first();
 
                 $fields = [
                     'dormitory_id' => $asramaUuid,
+                    'room_id' => $item['room_id'],
                     'academic_year_id' => $activeYear->id,
                     'recorded_by' => $recordedBy,
+                    'attendance_date' => $data['attendance_date'],
+                    'session' => $data['session'],
                     'status' => $item['status'],
                     'notes' => $item['notes'] ?? null,
                 ];
@@ -197,17 +203,57 @@ class DormitoryAttendanceController extends Controller
 
         $month = $request->filled('month') ? (int) $request->month : now()->month;
         $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $roomId = $request->input('room_id');
 
-        $recaps = DormitoryAttendanceRecap::with(['student', 'room'])
+        $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)
+            ->where('is_active', true)->orderBy('code')->get();
+
+        $residents = DormitoryResident::with(['student', 'room'])
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
-            ->where('recap_month', $month)
-            ->where('recap_year', $year)
-            ->orderBy('student_id')
-            ->paginate(20);
+            ->where('is_active', true)
+            ->when($roomId, fn ($q) => $q->where('room_id', $roomId))
+            ->get();
+
+        $attendance = DormitoryAttendance::where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->whereYear('attendance_date', $year)
+            ->whereMonth('attendance_date', $month)
+            ->when($roomId, fn ($q) => $q->where('room_id', $roomId))
+            ->get()
+            ->groupBy('student_id');
+
+        $studentRecap = $residents->map(function (DormitoryResident $resident) use ($attendance) {
+            $rows = $attendance->get($resident->student_id, collect());
+            $counts = $rows->groupBy('status')->map->count()->all();
+
+            return [
+                'resident_id' => $resident->id,
+                'name' => $resident->student?->name ?? '-',
+                'nisn' => $resident->student?->nisn ?? '-',
+                'gender' => $resident->student?->gender ?? 'L',
+                'room' => $resident->room?->name ?? 'Tanpa Kamar',
+                'bed_number' => $resident->bed_number,
+                'counts' => $counts,
+                'total' => $rows->count(),
+            ];
+        })->sortBy('name')->values();
+
+        $summary = [
+            'hadir' => $studentRecap->sum(fn ($r) => $r['counts']['hadir'] ?? 0),
+            'izin' => $studentRecap->sum(fn ($r) => $r['counts']['izin'] ?? 0),
+            'sakit' => $studentRecap->sum(fn ($r) => $r['counts']['sakit'] ?? 0),
+            'alpa' => $studentRecap->sum(fn ($r) => $r['counts']['alpa'] ?? 0),
+            'pulang' => $studentRecap->sum(fn ($r) => $r['counts']['pulang'] ?? 0),
+            'total' => $studentRecap->sum('total'),
+        ];
+
+        $selectedYear = $year;
+        $selectedMonth = $month;
 
         return view('dormitory.attendance.recap', compact(
-            'dormitory', 'recaps', 'userId', 'activeYear', 'month', 'year'
+            'dormitory', 'userId', 'activeYear', 'month', 'year',
+            'rooms', 'studentRecap', 'summary', 'selectedYear', 'selectedMonth'
         ));
     }
 }

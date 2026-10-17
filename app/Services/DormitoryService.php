@@ -258,7 +258,8 @@ class DormitoryService
 
         $count = 0;
         foreach ($residents as $resident) {
-            $records = DormitoryAttendance::where('resident_id', $resident->id)
+            $records = DormitoryAttendance::where('student_id', $resident->student_id)
+                ->where('dormitory_id', $dormitoryId)
                 ->whereMonth('attendance_date', $month)
                 ->whereYear('attendance_date', $year)
                 ->get();

@@ -185,11 +185,11 @@
                                         class="form-select @error('move_type') is-invalid @enderror"
                                         required>
                                     <option value="">-- Pilih Jenis --</option>
-                                    <option value="reguler" {{ old('move_type') === 'reguler' ? 'selected' : '' }}>Reguler</option>
-                                    <option value="disciplinary" {{ old('move_type') === 'disciplinary' ? 'selected' : '' }}>Disipliner</option>
-                                    <option value="medical" {{ old('move_type') === 'medical' ? 'selected' : '' }}>Medis</option>
-                                    <option value="upgrade" {{ old('move_type') === 'upgrade' ? 'selected' : '' }}>Upgrade Kamar</option>
-                                    <option value="other" {{ old('move_type') === 'other' ? 'selected' : '' }}>Lainnya</option>
+                                    <option value="rotasi" {{ old('move_type') === 'reguler' ? 'selected' : '' }}>Rotasi</option>
+                                    <option value="permintaan" {{ old('move_type') === 'disciplinary' ? 'selected' : '' }}>Permintaan</option>
+                                    <option value="sanksi" {{ old('move_type') === 'medical' ? 'selected' : '' }}>Sanksi</option>
+                                    <option value="kondisi_kesehatan" {{ old('move_type') === 'upgrade' ? 'selected' : '' }}>Kondisi Kesehatan</option>
+                                    <option value="lainnya" {{ old('move_type') === 'other' ? 'selected' : '' }}>Lainnya</option>
                                 </select>
                                 @error('move_type')
                                     <div class="invalid-feedback">{{ $message }}</div>

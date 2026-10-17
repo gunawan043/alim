@@ -17,6 +17,7 @@ use App\Models\StudentHealthPermit;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\RedirectResponse;
@@ -284,7 +285,7 @@ class DormitoryPermitController extends Controller
 
         // If admin changed the permit_type at approval time, persist that first.
         if (! empty($data['permit_type'])) {
-            $permit = $this->permitRepository->findByUuid($permitUuid);
+            $permit = DormitoryPermit::find($permitUuid);
             if ($permit && $permit->status === 'pending' && $permit->permit_type !== $data['permit_type']) {
                 $permit->permit_type = $data['permit_type'];
                 $permit->save();
@@ -300,10 +301,8 @@ class DormitoryPermitController extends Controller
         );
 
         // Tahap 3: izin pulang mengisi kehadiran harian/mapel otomatis (status: izin).
+        // Event LeaveApproved sudah di-dispatch oleh LeaveWorkflowService (hindari ganda).
         $approvedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
-        if ($approvedPermit && $approvedPermit->student) {
-            \App\Events\Boarding\LeaveApproved::dispatch($approvedPermit, $approvedPermit->student, $data['approval_note'] ?? null);
-        }
 
         // Notifikasi IN-APP petugas asrama: izin disetujui.
         try {
@@ -1137,7 +1136,7 @@ class DormitoryPermitController extends Controller
                     actualReturnDatetime: $request->actual_return_datetime ?? now(),
                 );
 
-                return redirect()->route('permits.verify', ['t' => $request->token])
+                return redirect()->route('user.asrama.permits.verify', ['userId' => $request->route('userId'), 't' => $request->token])
                     ->with('success', 'Santri berhasil ditandai sudah kembali.');
             } catch (\Exception $e) {
                 return back()->withErrors(['return' => $e->getMessage()])->withInput();
@@ -1161,7 +1160,7 @@ class DormitoryPermitController extends Controller
                 ],
             ]);
 
-            return redirect()->route('permits.verify', ['t' => $request->token])
+            return redirect()->route('user.asrama.permits.verify', ['userId' => $request->route('userId'), 't' => $request->token])
                 ->with('success', 'Penjemputan berhasil dicatat. Status sekarang: Sudah Dijemput.');
         }
 

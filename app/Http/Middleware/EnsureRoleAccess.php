@@ -27,21 +27,22 @@ class EnsureRoleAccess
         $viewAs = app(ViewAsService::class);
         $effectiveId = $viewAs->effectiveUserId($user) ?? $user->id;
 
-        // If {userId} param is present in URL, validate against effective id.
-        // While Login-As is active, the SA is allowed to access the target user's pages.
-        // In role-only mode (View As without Login As): SAs keep full access;
-        // regular users can only access users sharing the impersonated role.
-        if ($urlUserId !== null && $viewAs->isViewingAs()) {
-            $isSuperAdmin = method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()
-                || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
+        // {userId} pada URL WAJIB cocok dengan pengguna efektif.
+        // Pengecualian hanya untuk system/super admin.
+        $isSuperAdmin = (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
 
-            if ($isSuperAdmin) {
-                // SAs retain full access regardless of View-As role
-            } elseif ($viewAs->isRoleOnly()) {
-                // Role-only View-As is admin-only; regular users have no access in this mode.
-                abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        if ($urlUserId !== null && ! $isSuperAdmin) {
+            if ($viewAs->isViewingAs()) {
+                if ($viewAs->isRoleOnly()) {
+                    abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+                }
+
+                if ((string) $effectiveId !== (string) $urlUserId) {
+                    abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+                }
             } elseif ((string) $effectiveId !== (string) $urlUserId) {
-                abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+                abort(403, 'Anda tidak memiliki akses ke halaman pengguna lain.');
             }
         }
 

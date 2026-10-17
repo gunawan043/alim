@@ -580,7 +580,7 @@ class LjkWebFlowTest extends TestCase
 
         // Penanaman karakter + petunjuk pengisian LJK.
         $this->assertStringContainsString('PENANAMAN KARAKTER', $html);
-        $this->assertStringContainsString('Pilih satu jawaban dengan membuat tanda silang', $html);
+        $this->assertStringContainsString('Beri tanda silang (X) pada satu kotak jawaban', $html);
         $this->assertStringContainsString('Jumlah nomor:', $html);
 
         // Header tidak boleh menimpa butir pertama (template baru).

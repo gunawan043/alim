@@ -48,6 +48,23 @@
                     </div>
                 </div>
                 <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    @php $ab = $book['adminBook']; @endphp
+                    @if($ab->isPublished())
+                        <span class="badge bg-success-subtle text-success" style="font-size:11px;padding:6px 10px;">
+                            <i class="ri-eye-line me-1"></i>Dipublikasikan ke wali
+                        </span>
+                        <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.unpublish', ['userId' => $userId, 'studyGroupId' => $ab->study_group_id, 'adminBookId' => $ab->id]) }}"
+                              class="d-inline" onsubmit="return confirm('Batalkan publikasi nilai buku ini?')">
+                            @csrf
+                            <button class="btn btn-outline-danger btn-sm"><i class="ri-eye-off-line me-1"></i>Batalkan Publish</button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.publish', ['userId' => $userId, 'studyGroupId' => $ab->study_group_id, 'adminBookId' => $ab->id]) }}"
+                              class="d-inline" onsubmit="return confirm('Publikasikan nilai buku ini ke wali santri?')">
+                            @csrf
+                            <button class="btn btn-success btn-sm"><i class="ri-send-plane-line me-1"></i>Publish ke Wali</button>
+                        </form>
+                    @endif
                     <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $book['adminBook']->academic_year_id, 'semester' => $book['adminBook']->semester]) }}" class="btn btn-soft-primary btn-sm">
                         <i class="ri-line-chart-line me-1"></i> Realisasi
                     </a>

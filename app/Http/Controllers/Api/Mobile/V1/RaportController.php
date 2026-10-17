@@ -27,11 +27,12 @@ class RaportController extends Controller
             ->active()
             ->pluck('student_id');
 
-        $query = RaportRegistration::whereIn('student_id', $studentIds);
+        $query = RaportRegistration::whereIn('student_id', $studentIds)
+            ->where('is_published', true);
 
         if ($schoolId) {
-            // RaportRegistration has academic_year_id, join SchoolYear
-            $query->whereHas('academicYear', fn ($q) => $q->where('school_id', $schoolId));
+            // academic_years tidak lagi memiliki school_id — scope lewat santri.
+            $query->whereHas('student', fn ($q) => $q->where('school_id', $schoolId));
         }
 
         $registrations = $query->orderByDesc('created_at')
@@ -46,10 +47,13 @@ class RaportController extends Controller
                 'tahun_ajaran' => $r->academicYear?->name ?? '',
                 'status' => $r->status,
                 'status_label' => $this->raportStatusLabel($r->status),
+                'is_published' => $r->isPublished(),
+                'pipeline_status' => $r->pipeline_status,
+                'published_at' => $r->published_at?->toIso8601String(),
                 'finalized_at' => $r->finalized_at?->toIso8601String(),
             ]);
 
-        $anyPublished = $registrations->contains(fn ($r) => $r['status'] === 'published');
+        $anyPublished = $registrations->isNotEmpty();
 
         return response()->json([
             'success' => true,
@@ -86,20 +90,24 @@ class RaportController extends Controller
         $query = RaportRegistration::where('student_id', $studentId);
 
         if ($schoolId) {
-            $query->whereHas('academicYear', fn ($q) => $q->where('school_id', $schoolId));
+            $query->whereHas('student', fn ($q) => $q->where('school_id', $schoolId));
         }
 
-        // Get the latest finalized one, or current one
-        $reg = $query->orderByDesc('created_at')->first();
+        // Hanya rapor yang sudah dipublikasikan yang boleh dilihat wali.
+        $reg = (clone $query)->where('is_published', true)->orderByDesc('created_at')->first();
 
         if (! $reg) {
+            $hasRegistration = (clone $query)->exists();
+
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'code' => 'RAPORT_NOT_FOUND',
-                    'message' => 'Belum ada data raport untuk santri ini.',
+                    'code' => $hasRegistration ? 'RAPORT_NOT_PUBLISHED' : 'RAPORT_NOT_FOUND',
+                    'message' => $hasRegistration
+                        ? 'Rapor belum dipublikasikan oleh sekolah.'
+                        : 'Belum ada data raport untuk santri ini.',
                 ],
-            ], 404);
+            ], $hasRegistration ? 403 : 404);
         }
 
         $regWithRelations = $reg->loadMissing(['academicYear', 'student']);
@@ -111,6 +119,7 @@ class RaportController extends Controller
             ->where('student_id', $studentId)
             ->where('academic_year_id', $reg->academic_year_id)
             ->where('semester', $reg->semester)
+            ->whereHas('adminBook', fn ($q) => $q->whereNotNull('published_at'))
             ->get()
             ->map(function ($row) use ($sumatifService) {
                 return [
@@ -165,6 +174,9 @@ class RaportController extends Controller
                     'tahun_ajaran' => $regWithRelations->academicYear?->name ?? '',
                     'status' => $reg->status,
                     'status_label' => $this->raportStatusLabel($reg->status),
+                    'is_published' => $reg->isPublished(),
+                    'pipeline_status' => $reg->pipeline_status,
+                    'published_at' => $reg->published_at?->toIso8601String(),
                     'final_score' => $reg->final_score,
                     'predicate' => $reg->predicate,
                     'class_rank' => $reg->class_rank,

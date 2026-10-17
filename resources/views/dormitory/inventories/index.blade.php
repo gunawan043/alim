@@ -158,8 +158,9 @@
                             <select name="condition" class="form-control">
                                 <option value="">Semua Kondisi</option>
                                 <option value="baik" {{ request('condition') === 'baik' ? 'selected' : '' }}>Baik</option>
-                                <option value="rusak" {{ request('condition') === 'rusak' ? 'selected' : '' }}>Rusak</option>
-                                <option value="perbaikan" {{ request('condition') === 'perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
+                                <option value="rusak_ringan" {{ request('condition') === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                                <option value="rusak_berat" {{ request('condition') === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                                
                                 <option value="hilang" {{ request('condition') === 'hilang' ? 'selected' : '' }}>Hilang</option>
                             </select>
                         </div>
@@ -251,11 +252,11 @@
                                                 @case('baik')
                                                     <span class="badge bg-success text-white"><i class="ri-checkbox-circle-line me-1"></i>Baik</span>
                                                 @break
-                                                @case('rusak')
-                                                    <span class="badge bg-warning text-dark"><i class="ri-alert-line me-1"></i>Rusak</span>
+                                                @case('rusak_ringan')
+                                                    <span class="badge bg-warning text-dark"><i class="ri-tools-line me-1"></i>Rusak Ringan</span>
                                                 @break
-                                                @case('perbaikan')
-                                                    <span class="badge bg-danger text-white"><i class="ri-tools-line me-1"></i>Perlu Perbaikan</span>
+                                                @case('rusak_berat')
+                                                    <span class="badge bg-danger text-white"><i class="ri-alert-line me-1"></i>Rusak Berat</span>
                                                 @break
                                                 @case('hilang')
                                                     <span class="badge bg-info text-dark"><i class="ri-exclamation-line me-1"></i>Hilang</span>

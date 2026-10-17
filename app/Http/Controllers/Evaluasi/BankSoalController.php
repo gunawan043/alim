@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BankSoal;
 use App\Models\School;
+use App\Models\Soal;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Http\Request;

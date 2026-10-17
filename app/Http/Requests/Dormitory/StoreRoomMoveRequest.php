@@ -19,7 +19,7 @@ class StoreRoomMoveRequest extends FormRequest
             'to_room_id' => 'required|exists:dormitory_rooms,id|different:from_room_id',
             'move_date' => 'required|date',
             'reason' => 'nullable|string',
-            'move_type' => 'nullable|in:reguler,disciplinary,medical,upgrade,other',
+            'move_type' => 'nullable|in:rotasi,permintaan,sanksi,kondisi_kesehatan,lainnya',
             'notes' => 'nullable|string',
         ];
     }

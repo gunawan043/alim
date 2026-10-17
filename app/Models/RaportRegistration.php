@@ -33,6 +33,9 @@ class RaportRegistration extends Model
         'finalized_at',
         'printed_at',
         'finalized_by',
+        'is_published',
+        'published_at',
+        'published_by',
     ];
 
     protected $casts = [
@@ -40,7 +43,22 @@ class RaportRegistration extends Model
         'class_rank' => 'integer',
         'finalized_at' => 'datetime',
         'printed_at' => 'datetime',
+        'is_published' => 'boolean',
+        'published_at' => 'datetime',
     ];
+
+    public function isPublished(): bool
+    {
+        return (bool) $this->is_published;
+    }
+
+    /**
+     * Status pipeline yang ditampilkan ke UI/API.
+     */
+    public function getPipelineStatusAttribute(): string
+    {
+        return $this->isPublished() ? 'published' : (string) $this->status;
+    }
 
     public function student(): BelongsTo
     {

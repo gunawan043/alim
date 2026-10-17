@@ -148,11 +148,11 @@
                             <div class="fw-semibold">
                                 @php
                                     $typeLabels = [
-                                        'reguler' => 'Reguler',
-                                        'disciplinary' => 'Disipliner',
-                                        'medical' => 'Medis',
-                                        'upgrade' => 'Upgrade Kamar',
-                                        'other' => 'Lainnya',
+                                        'rotasi' => 'Rotasi',
+                                        'permintaan' => 'Permintaan',
+                                        'sanksi' => 'Sanksi',
+                                        'kondisi_kesehatan' => 'Kondisi Kesehatan',
+                                        'lainnya' => 'Lainnya',
                                     ];
                                 @endphp
                                 <span class="badge bg-info-subtle text-info">

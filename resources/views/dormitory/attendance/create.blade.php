@@ -43,12 +43,12 @@
                     <div class="col-md-4">
                         <label class="form-label">Tanggal Absensi <span class="text-danger">*</span></label>
                         <input type="date"
-                               name="date"
+                               name="attendance_date"
                                id="attendance_date"
-                               class="form-control @error('date') is-invalid @enderror"
-                               value="{{ old('date', $selectedDate ?? now()->toDateString()) }}"
+                               class="form-control @error('attendance_date') is-invalid @enderror"
+                               value="{{ old('attendance_date', $selectedDate ?? now()->toDateString()) }}"
                                required>
-                        @error('date')
+                        @error('attendance_date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -132,8 +132,11 @@
                                                    data-resident-id="{{ $resident->id }}"
                                                    {{ $prefilledStatus ? 'checked' : '' }}>
                                             <input type="hidden"
-                                                   name="attendances[{{ $resident->id }}][resident_id]"
-                                                   value="{{ $resident->id }}">
+                                                   name="attendances[{{ $resident->id }}][student_id]"
+                                                   value="{{ $resident->student_id }}">
+                                            <input type="hidden"
+                                                   name="attendances[{{ $resident->id }}][room_id]"
+                                                   value="{{ $resident->room_id }}">
                                         </td>
                                         <td class="text-center text-muted">{{ $idx + 1 }}</td>
                                         <td>

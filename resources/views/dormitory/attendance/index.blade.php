@@ -144,7 +144,7 @@
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="form-label small text-muted">Tanggal</label>
-                            <input type="date" name="date" class="form-control" value="{{ $selectedDate ?? '' }}">
+                            <input type="date" name="attendance_date" class="form-control" value="{{ $selectedDate ?? '' }}">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small text-muted">Sesi</label>

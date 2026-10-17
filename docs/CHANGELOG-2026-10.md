@@ -1566,6 +1566,84 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - `DormitoryAttendanceFixTest` (1 test / 4 assertion): simpan presensi + rekap bulanan.
 - Regresi gabungan QR, jadwal, surat, laporan, payroll, supervisi, Kaldik, kenaikan kelas = 37 test / 333 assertion — hijau.
 
+## 151. Publikasi Rapor & Buku Nilai — Wali Hanya Melihat Data yang Dipublikasikan
+
+- **Kolom publikasi baru**:
+  - `raport_registrations.is_published`, `published_at`, `published_by`.
+  - `teacher_admin_books.published_at`, `published_by`.
+- **Publikasi rapor** per **rombel + tahun ajaran + semester**:
+  - Tombol **Publikasikan Rapor / Batalkan Publikasi** di halaman Cetak Rapor.
+  - Hanya akses penuh (TU/Kurikulum/Kepala) yang dapat mempublikasikan.
+  - Publikasi otomatis membuat/menandai `RaportRegistration` seluruh santri aktif di rombel tersebut.
+- **Publikasi buku nilai mapel**:
+  - Tombol **Publish Nilai / Batalkan Publish** di halaman Leger (tab mapel) dan wizard Nilai Sumatif guru.
+  - Dapat dilakukan oleh guru pengampu atau TU/Kurikulum.
+  - Setelah dipublikasikan, penyimpanan nilai (STS, KKTP, kolom sumatif, autosave wizard, formatif, bobot) **ditolak**
+    sampai publikasi dibatalkan — mencegah nilai berubah setelah dilihat wali.
+- **API wali santri**:
+  - `/api/mobile/v1/santri/{id}/grades` hanya mengembalikan nilai dari buku mapel yang `published_at` terisi.
+  - `/api/mobile/v1/raport/status` hanya menampilkan rapor yang dipublikasikan.
+  - `/api/mobile/v1/raport/{student_id}` menolak rapor yang belum dipublikasikan (`RAPORT_NOT_PUBLISHED`, 403)
+    dan hanya mengirim nilai dari buku yang sudah dipublikasikan.
+  - Filter sekolah pada API rapor diperbaiki: memakai `students.school_id` (bukan `academic_years.school_id`
+    yang sudah dihapus).
+- **UI**: badge status publikasi + peringatan baca-saja pada buku nilai yang sudah dipublikasikan.
+- **Test `RaporPublishTest`** (1 test / 11 assertion): sebelum publish wali tidak melihat nilai/rapor; setelah publish
+  terlihat; unpublish buku menyembunyikan nilai; unpublish rapor menolak akses wali.
+
+## 152. Pipeline Rapor, Notifikasi Wali, Presensi Kegiatan Asrama, & Audit Asrama
+
+### Pipeline rapor
+- Status pipeline: **Draft → In Progress → Finalized → Published**.
+- Tombol **Finalisasi Rapor** (TU/Kurikulum/Kepala) menandai seluruh santri aktif menjadi `finalized`
+  (`finalized_at`, `finalized_by`).
+- **Publikasi** mengeset status `finalized` + `is_published`, sehingga wali hanya melihat rapor yang sudah
+  dipublikasikan. **Batalkan Publikasi** mengembalikan status ke `finalized`.
+- API mobile wali mengembalikan `pipeline_status` dan hanya rapor published yang dapat dibuka.
+
+### Notifikasi wali (siap untuk aplikasi mobile)
+- Service baru `notifyGuardiansForStudents()` mengirim notifikasi ke seluruh wali aktif (in-app website + API
+  mobile wali nantinya).
+- Notifikasi dikirim saat **rapor dipublikasikan** (`rapor_published`) dan **nilai mapel dipublikasikan**
+  (`nilai_published`), dengan tautan portal wali.
+- Event baru ditambahkan ke **Matriks Channel Notifikasi** (dapat dimatikan per channel).
+
+### Presensi kegiatan asrama
+- Tabel `dormitory_activities` & `dormitory_activity_attendances`; menu **Asrama → Presensi Kegiatan**.
+- **Kepala/Wakil Asrama**: menambah kegiatan (nama, tanggal, waktu, lokasi, deskripsi), menutup/membuka kegiatan.
+- **Staf Asrama & Wali Kamar**: mengisi presensi (hadir/izin/sakit/alpa + catatan), dikelompokkan per kamar,
+  ada tombol “Tandai Semua Hadir”.
+- Kegiatan ditutup → presensi terkunci.
+
+### Perbaikan audit asrama
+- Presensi harian & rekap bulanan diperbaiki end-to-end.
+- Perizinan: `permitRepository`, `CarbonImmutable`, route verifikasi, dispatch event ganda, dan `wali_user_id`.
+- Inventaris: enum kondisi diselaraskan (`baik/rusak_ringan/rusak_berat/hilang`).
+- Mutasi kamar: enum `move_type` diselaraskan; approve mengecek kapasitas & mengisi nomor bed.
+- Dokumen audit: `docs/audit-asrama-2026-10.md` (daftar fitur + rekomendasi P0/P1/P2).
+
+### Test
+- `RaporPublishTest` (1 test / 13 assertion) — pipeline, publish, filter API wali, notifikasi.
+- `DormitoryActivityTest` (1 test / 7 assertion) — buat kegiatan, presensi staf, rekap, tutup kegiatan.
+- `DormitoryAttendanceFixTest` + `UserIdScopeTest` tetap hijau.
+
+## 153. Kegiatan Rutin Asrama, Laporan Modul Asrama, & Modal Flash Global
+
+- **Kegiatan rutin asrama**:
+  - Tabel `dormitory_activity_schedules` + `schedule_id`/target pada `dormitory_activities`.
+  - Jadwal harian atau hari tertentu (1–7), periode, jam, lokasi, target semua penghuni/kelas tertentu.
+  - Generator `DormitoryActivityGenerator` + command `dormitory:generate-activities --days=7` (scheduler 00:05).
+  - Sesi otomatis 14 hari saat simpan, 30 hari via tombol, idempoten.
+  - Presensi hanya menampilkan santri sesuai target kelas; alpa mengirim notifikasi ke wali (`activity_alpa`).
+- **Laporan CSV baru**: kunjungan, mutasi kamar, keluar asrama/check-out, dan kegiatan asrama (rekap status).
+  Kartu laporan ditambahkan di halaman Laporan Asrama.
+- **Perbaikan akses asrama**: master asrama dapat diakses Kepala/Wakil/Staf/Wali Kamar sesuai kewenangan;
+  daftar asrama dibatasi; `canAccessDormitory` menghitung wali kamar aktif.
+- **Modal flash global** (`x-modal-notify` + `layouts.partials.flash-modals`) untuk success/gagal/warning/info
+  berbasis lord-icon, dipasang di layout utama dan waka.
+- **Perbaikan audit**: enum inventaris & mutasi kamar diselaraskan; approve mutasi cek kapasitas & bed.
+- Test: `DormitoryActivityScheduleTest` (2 test / 6 assertion); regresi kegiatan/rapor/payroll hijau.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

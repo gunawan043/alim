@@ -568,6 +568,22 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ 
+        isActiveAsr($currentRoute, 'user.asrama.kegiatan.')
+        ? ' active' : '' 
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.kegiatan.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-user-follow-line"></i>
+        <span>Presensi Kegiatan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ 
         isActiveAsr($currentRoute, 'user.asrama.activities.')
         ? ' active' : '' 
     }}"

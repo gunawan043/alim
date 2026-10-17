@@ -59,7 +59,7 @@
 
                     @else
                         {{-- Normal form --}}
-                        <form method="GET" action="{{ route('permits.verify') }}">
+                        <form method="GET" action="{{ route('user.asrama.permits.verify', ['userId' => request()->route('userId')]) }}">
                             <input type="hidden" name="t" value="{{ $token ?? old('token', '') }}">
                             <div class="mb-3">
                                 <p class="text-muted">Scan QR Code dari surat izin santri untuk verifikasi pengambilan atau pencatatan kepulangan.</p>

@@ -70,8 +70,9 @@
                                 <select name="condition" id="edit_condition" class="form-control @error('condition') is-invalid @enderror" required>
                                     <option value="">— Pilih —</option>
                                     <option value="baik" {{ old('condition', $item->condition) == 'baik' ? 'selected' : '' }}>Baik</option>
-                                    <option value="rusak" {{ old('condition', $item->condition) == 'rusak' ? 'selected' : '' }}>Rusak</option>
-                                    <option value="perbaikan" {{ old('condition', $item->condition) == 'perbaikan' ? 'selected' : '' }}>Perlu Perbaikan</option>
+                                    <option value="rusak_ringan" {{ old('condition', $item->condition) == 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan / Perlu Perbaikan</option>
+                                    <option value="rusak_berat" {{ old('condition', $item->condition) == 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                                    
                                     <option value="hilang" {{ old('condition', $item->condition) == 'hilang' ? 'selected' : '' }}>Hilang</option>
                                 </select>
                                 @error('condition')<div class="invalid-feedback">{{ $message }}</div>@enderror

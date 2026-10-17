@@ -8,14 +8,17 @@ use Maatwebsite\Excel\Facades\Excel;
 
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryActivity;
 use App\Models\DormitoryAttendance;
 use App\Models\DormitoryInventory;
 use App\Exports\DormitoryPermitsExport;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
+use App\Models\DormitoryRoomMove;
 use App\Models\DormitoryReward;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryViolation;
+use App\Models\DormitoryVisitLog;
 use App\Models\SanitationInspection;
 use App\Models\Student;
 use Illuminate\Http\Request;
@@ -376,6 +379,159 @@ class DormitoryReportController extends Controller
     }
 
     // ── Student Profile Tab ───────────────────���───────────────────
+
+    // ── Laporan Kunjungan (CSV) ──────────────────────────────────
+
+    public function visits(Request $request, string $userId, string $asramaUuid): StreamedResponse
+    {
+        $dormitory = $this->enforceScope($asramaUuid);
+        $period = $this->getPeriod($request);
+        $month = $period['month'];
+        $year = $period['year'];
+
+        $records = DormitoryVisitLog::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->whereYear('expected_arrival_datetime', $year)
+            ->whereMonth('expected_arrival_datetime', $month)
+            ->orderByDesc('expected_arrival_datetime')
+            ->get();
+
+        return $this->streamCsv('laporan_kunjungan_'.$dormitory->code.'_'.$month.'_'.$year.'.csv', function () use ($records) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Tanggal', 'Santri', 'Kamar', 'Pengunjung', 'Hubungan', 'Tujuan', 'Status', 'Check-in', 'Check-out']);
+            foreach ($records as $row) {
+                fputcsv($out, [
+                    $row->expected_arrival_datetime?->format('Y-m-d H:i'),
+                    $row->student?->name,
+                    $row->room?->name,
+                    $row->visitor_name,
+                    $row->visitor_relationship,
+                    $row->purpose,
+                    $row->status,
+                    $row->check_in_at?->format('d/m/Y H:i'),
+                    $row->check_out_at?->format('d/m/Y H:i'),
+                ]);
+            }
+            fclose($out);
+        });
+    }
+
+    // ── Laporan Mutasi Kamar (CSV) ───────────────────────────────
+
+    public function roomMoves(Request $request, string $userId, string $asramaUuid): StreamedResponse
+    {
+        $dormitory = $this->enforceScope($asramaUuid);
+        $period = $this->getPeriod($request);
+        $month = $period['month'];
+        $year = $period['year'];
+
+        $records = DormitoryRoomMove::with(['student', 'fromRoom', 'toRoom', 'approvedBy'])
+            ->where('dormitory_id', $asramaUuid)
+            ->whereYear('move_date', $year)
+            ->whereMonth('move_date', $month)
+            ->orderByDesc('move_date')
+            ->get();
+
+        return $this->streamCsv('laporan_mutasi_kamar_'.$dormitory->code.'_'.$month.'_'.$year.'.csv', function () use ($records) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Tanggal', 'Santri', 'Dari Kamar', 'Ke Kamar', 'Jenis', 'Alasan', 'Status', 'Disetujui Oleh']);
+            foreach ($records as $row) {
+                fputcsv($out, [
+                    $row->move_date?->format('Y-m-d'),
+                    $row->student?->name,
+                    $row->fromRoom?->name,
+                    $row->toRoom?->name,
+                    $row->move_type,
+                    $row->reason,
+                    $row->approval_status,
+                    $row->approvedBy?->name,
+                ]);
+            }
+            fclose($out);
+        });
+    }
+
+    // ── Laporan Keluar Asrama / Check-out (CSV) ───────────────────
+
+    public function checkouts(Request $request, string $userId, string $asramaUuid): StreamedResponse
+    {
+        $dormitory = $this->enforceScope($asramaUuid);
+        $period = $this->getPeriod($request);
+        $month = $period['month'];
+        $year = $period['year'];
+
+        $records = DormitoryResident::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('is_active', false)
+            ->whereNotNull('check_out_date')
+            ->whereYear('check_out_date', $year)
+            ->whereMonth('check_out_date', $month)
+            ->orderByDesc('check_out_date')
+            ->get();
+
+        return $this->streamCsv('laporan_keluar_asrama_'.$dormitory->code.'_'.$month.'_'.$year.'.csv', function () use ($records) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Tanggal Keluar', 'Santri', 'Kamar', 'Alasan', 'Catatan']);
+            foreach ($records as $row) {
+                fputcsv($out, [
+                    $row->check_out_date?->format('Y-m-d'),
+                    $row->student?->name,
+                    $row->room?->name,
+                    $row->check_out_reason,
+                    $row->notes,
+                ]);
+            }
+            fclose($out);
+        });
+    }
+
+    // ── Laporan Kegiatan Asrama (CSV) ─────────────────────────────
+
+    public function activities(Request $request, string $userId, string $asramaUuid): StreamedResponse
+    {
+        $dormitory = $this->enforceScope($asramaUuid);
+        $period = $this->getPeriod($request);
+        $month = $period['month'];
+        $year = $period['year'];
+
+        $records = DormitoryActivity::query()
+            ->where('dormitory_id', $asramaUuid)
+            ->whereYear('activity_date', $year)
+            ->whereMonth('activity_date', $month)
+            ->withCount([
+                'attendances as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
+                'attendances as izin_count' => fn ($q) => $q->where('status', 'izin'),
+                'attendances as sakit_count' => fn ($q) => $q->where('status', 'sakit'),
+                'attendances as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
+                'attendances as total_count',
+            ])
+            ->orderByDesc('activity_date')
+            ->get();
+
+        return $this->streamCsv('laporan_kegiatan_'.$dormitory->code.'_'.$month.'_'.$year.'.csv', function () use ($records) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Tanggal', 'Kegiatan', 'Waktu', 'Lokasi', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Total']);
+            foreach ($records as $row) {
+                fputcsv($out, [
+                    $row->activity_date?->format('Y-m-d'),
+                    $row->name,
+                    trim(($row->start_time ? substr($row->start_time, 0, 5) : '').' - '.($row->end_time ? substr($row->end_time, 0, 5) : ''), ' -'),
+                    $row->location,
+                    $row->status,
+                    $row->hadir_count,
+                    $row->izin_count,
+                    $row->sakit_count,
+                    $row->alpa_count,
+                    $row->total_count,
+                ]);
+            }
+            fclose($out);
+        });
+    }
 
     public function studentDetail(string $userId, string $asramaUuid, string $studentId)
     {

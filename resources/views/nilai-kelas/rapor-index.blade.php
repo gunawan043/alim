@@ -95,6 +95,69 @@
         </div>
     </div>
 
+    {{-- Publikasi Rapor ke Wali Santri --}}
+    <div class="card mb-3">
+        <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <h5 class="card-title mb-0"><i class="ri-send-plane-line text-success me-1"></i>Publikasi Rapor</h5>
+                <p class="text-muted mb-0 small">Hanya rapor yang dipublikasikan yang dapat dilihat oleh wali santri.</p>
+            </div>
+            @php
+                $pipeline = [
+                    'draft' => $registrations->where('status', 'draft')->where('is_published', false)->count(),
+                    'in_progress' => $registrations->where('status', 'in_progress')->where('is_published', false)->count(),
+                    'finalized' => $registrations->where('status', 'finalized')->where('is_published', false)->count(),
+                    'published' => $stats['published'] ?? 0,
+                ];
+            @endphp
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-secondary-subtle text-secondary">Draft {{ $pipeline['draft'] }}</span>
+                <span class="badge bg-warning-subtle text-warning">Proses {{ $pipeline['in_progress'] }}</span>
+                <span class="badge bg-info-subtle text-info">Final {{ $pipeline['finalized'] }}</span>
+                <span class="badge bg-success-subtle text-success">Published {{ $pipeline['published'] }}</span>
+            </div>
+        </div>
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="small text-muted">
+                <i class="ri-information-line me-1"></i>
+                Pipeline: <strong>Draft → In Progress → Finalized → Published</strong>.
+                Publikasi mencakup seluruh santri aktif di {{ $studyGroup->name }} untuk
+                {{ $selectedAy?->name ?? 'TA aktif' }} — {{ ucfirst($selectedSem) }}.
+            </div>
+            @if($canPublish ?? false)
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="POST" action="{{ route('user.schools.nilai-kelas.rapor.finalize', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                          onsubmit="return confirm('Finalisasi rapor rombel ini? Status berubah menjadi Finalized.')">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <button type="submit" class="btn btn-outline-info btn-sm">
+                            <i class="ri-check-double-line me-1"></i>Finalisasi Rapor
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('user.schools.nilai-kelas.rapor.unpublish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                          onsubmit="return confirm('Batalkan publikasi rapor? Wali tidak akan dapat melihat rapor ini.')">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="ri-eye-off-line me-1"></i>Batalkan Publikasi
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('user.schools.nilai-kelas.rapor.publish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                          onsubmit="return confirm('Publikasikan rapor ini ke wali santri?')">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="ri-send-plane-line me-1"></i>Publikasikan Rapor
+                        </button>
+                    </form>
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- Pengaturan Tanggal Pembagian Rapor --}}
     <div class="card">
         <div class="card-header border-bottom-dashed">
