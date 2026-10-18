@@ -213,6 +213,7 @@ use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\Tahfidz\HalaqahController;
+use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\SubjectController;
@@ -458,6 +459,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::prefix('mutabaah')->name('mutabaah.')->group(function () {
+                    Route::get('/', [MutabaahController::class, 'index'])->name('index');
+                    Route::post('/', [MutabaahController::class, 'store'])->name('store');
+                    Route::put('/{id}', [MutabaahController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [MutabaahController::class, 'destroy'])->name('destroy');
+                    Route::get('/{studentId}/print', [MutabaahController::class, 'print'])->name('print');
+                });
+
                 Route::prefix('halaqah')->name('halaqah.')->group(function () {
                     Route::get('/', [HalaqahController::class, 'index'])->name('index');
                     Route::get('/create', [HalaqahController::class, 'create'])->name('create');

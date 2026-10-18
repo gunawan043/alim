@@ -46,6 +46,11 @@ class TahfidzMutabaah extends Model
         return $this->belongsTo(Student::class);
     }
 
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(TahfidzGroup::class, 'tahfidz_group_id');
+    }
+
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');

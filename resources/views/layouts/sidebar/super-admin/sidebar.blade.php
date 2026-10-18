@@ -621,6 +621,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.mutabaah.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
         <i class="ri-pulse-line"></i><span>Monitoring</span>

@@ -134,6 +134,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.mutabaah.index') }}">
+            <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link text-muted" href="#" onclick="return false"
            style="cursor:not-allowed">
             <i class="ri-ruler-2-line"></i>
