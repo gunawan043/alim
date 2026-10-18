@@ -202,6 +202,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.executive.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.executive.index') }}">
+            <i class="ri-bar-chart-box-line"></i><span>Laporan Eksekutif</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
            href="{{ $tahfidzUrl('user.tahfidz.interventions.index') }}">
             <i class="ri-task-line"></i><span>Tindak Lanjut</span>
