@@ -60,6 +60,7 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.aset.index') ? ' active' : '' }}" href="{{ route('sarpras.aset.index', ['userId' => $userId]) }}">Daftar Aset</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.movements') ? ' active' : '' }}" href="{{ route('sarpras.movements.index', ['userId' => $userId]) }}">Mutasi Aset</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.perpindahan') ? ' active' : '' }}" href="{{ route('sarpras.perpindahan.index', ['userId' => $userId]) }}">Perpindahan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.data-exchange') ? ' active' : '' }}" href="{{ route('sarpras.data-exchange.index', ['userId' => $userId]) }}">Import / Export</a></li>
             @endif
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.aset') ? ' active' : '' }}" href="{{ route('sarpras.user.aset.index', ['userId' => $userId]) }}">Aset Saya</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.assets.passport') || $isAdminFn($currentRoute, 'sarpras.qr.scanner') ? ' active' : '' }}" href="{{ route('sarpras.qr.scanner', ['userId' => $userId]) }}">Scan Passport</a></li>

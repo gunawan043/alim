@@ -29,6 +29,7 @@ class AssetPhoto extends Model
         'context_type',
         'context_id',
         'photo_path',
+        'photo_url',
         'file_path',
         'file_name',
         'mime_type',

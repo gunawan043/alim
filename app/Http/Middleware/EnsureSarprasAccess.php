@@ -48,6 +48,16 @@ class EnsureSarprasAccess
             }
         }
 
+        // Tindak lanjut hasil scan: lihat jadwal perawatan dan lakukan pengecekan aset.
+        if (in_array($routeName, [
+            'sarpras.pemeliharaan.schedule.index',
+            'sarpras.pemeliharaan.schedule.show',
+            'sarpras.qr.audit',
+            'sarpras.qr.audit.submit',
+        ], true)) {
+            return $next($request);
+        }
+
         // Cek permission (kalau ada). Jangan 500 bila permission belum di-seed.
         try {
             if (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('sarpras_access')) {

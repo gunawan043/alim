@@ -31,7 +31,7 @@
     $showAll = $isSystemAdmin ?? false;
 
     /* ── Helper URL ──────────────────────────────────────────────────── */
-    /* Semua route sarpras.* TIDAK butuh userId (di luar prefix) */
+    /* Route sarpras.* memakai prefix {userId}; URL default otomatis mengisi userId. */
     $sarprasUrl = function (string $routeName, array $extra = []) {
         try {
             return route($routeName, $extra);
@@ -186,6 +186,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.audit.']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.audit.index') }}">
             <i class="ri-shield-check-line"></i><span>Audit Data Sarpras</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.data-exchange']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.data-exchange.index') }}">
+            <i class="ri-file-excel-2-line"></i><span>Import / Export</span>
         </a>
     </li>
 

@@ -165,6 +165,7 @@ use App\Http\Controllers\Sarpras\SarprasCameraController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasDataAuditController;
+use App\Http\Controllers\Sarpras\SarprasDataExchangeController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasWasteController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
@@ -2736,6 +2737,14 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::delete('/aset/{id}', [SarprasAsetController::class, 'destroy'])->name('aset.destroy');
     Route::post('/aset/{id}/photo', [SarprasAsetController::class, 'addPhoto'])->name('aset.photo.add');
     Route::delete('/aset/{id}/photo/{photoId}', [SarprasAsetController::class, 'deletePhoto'])->name('aset.photo.delete');
+
+    // Import / Export data Sarpras
+    Route::prefix('data-exchange')->name('data-exchange.')->group(function () {
+        Route::get('/', [SarprasDataExchangeController::class, 'index'])->name('index');
+        Route::get('/{dataset}/template', [SarprasDataExchangeController::class, 'template'])->name('template');
+        Route::get('/{dataset}/export', [SarprasDataExchangeController::class, 'export'])->name('export');
+        Route::post('/{dataset}/import', [SarprasDataExchangeController::class, 'import'])->name('import');
+    });
 
     // Kategori (Ajax)
     Route::get('/kategori/list', [SarprasController::class, 'kategoriList'])->name('kategori.list');

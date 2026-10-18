@@ -9,6 +9,7 @@ use App\Models\Asset;
 use App\Models\AssetPhoto;
 use App\Models\QrScanHistory;
 use App\Services\Sarpras\AssetEventLogger;
+use App\Services\Sarpras\PhotoProofService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +18,11 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SarprasQRController extends SarprasBaseController
 {
-    public function __construct(public AssetEventLogger $eventLogger)
-    {
-        view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
+    public function __construct(
+        public AssetEventLogger $eventLogger,
+        protected PhotoProofService $photos,
+    ) {
+        parent::__construct();
     }
 
     /**
@@ -166,7 +169,11 @@ class SarprasQRController extends SarprasBaseController
      */
     public function scanner(Request $request)
     {
-        return view('sarpras.qr.scanner');
+        $canManage = $this->isCentralSarpras()
+            || $this->isUnitSarprasOfficer()
+            || $this->canViewAll($request);
+
+        return view('sarpras.qr.scanner', compact('canManage'));
     }
 
     /**
@@ -281,10 +288,11 @@ class SarprasQRController extends SarprasBaseController
         // Upload foto audit
         if (! empty($validated['photos'])) {
             foreach ($validated['photos'] as $photo) {
-                $path = $photo->store('assets/photos', 'public');
+                $stored = $this->photos->store($photo, null, 'assets/audit');
                 AssetPhoto::create([
                     'asset_id' => $asset->id,
-                    'photo_path' => $path,
+                    'photo_path' => $stored['path'],
+                    'photo_url' => $stored['url'],
                     'caption' => 'Audit - '.Carbon::now()->format('d/m/Y H:i'),
                     'uploaded_by' => auth()->id(),
                 ]);

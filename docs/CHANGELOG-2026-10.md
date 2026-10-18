@@ -2188,6 +2188,29 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Memperbaiki halaman 403/404/500: akses personal GTK, layout `layouts.sarpras`, view mutasi,
   portal divisi, pagination laporan kondisi aset, dashboard intelligence, dan sparepart/vendor.
 
+## 194. Tindak Lanjut Scan, Import/Export & Watermark Vertikal
+
+- Hasil scan QR sekarang menampilkan tiga tindakan yang jelas:
+  - **Perbaikan** → antrean perbaikan (URT/admin) atau form laporan kerusakan (pengguna unit);
+  - **Perawatan** → jadwal dan riwayat pemeliharaan aset;
+  - **Pengecekan** → form audit kondisi aset hasil scan.
+  Halaman passport tetap tersedia sebagai tindakan utama.
+- Modul **Import / Export Data Sarpras** (`/sarpras/data-exchange`):
+  - template, export, dan import untuk **Aset, Gedung, Ruang, Kategori, Vendor, Sparepart**;
+  - registry dataset mudah diperluas;
+  - import memakai kode sebagai kunci pembaruan;
+  - import aset tetap memakai halaman import aset lengkap (validasi/dry-run).
+- Foto bukti kerusakan dan audit QR sekarang melewati `PhotoProofService`:
+  - otomatis upload ke Google Drive bila aktif;
+  - URL Drive disimpan di laporan/foto aset;
+  - fallback lokal bila Drive belum dikonfigurasi.
+- Watermark kamera ditata ulang:
+  - header logo/brand dan waktu WITA;
+  - blok tanggal, judul, konteks halaman;
+  - blok lokasi (nama lokasi + koordinat);
+  - footer akun pengambil foto dan copyright Ponpes Abu Hurairah;
+  - pilihan orientasi **Otomatis** atau **Vertikal 3:4** dengan crop tengah.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

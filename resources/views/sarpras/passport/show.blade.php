@@ -203,7 +203,8 @@
                             <div class="row g-2">
                                 @foreach($asset->photos as $photo)
                                     <div class="col-6">
-                                        <img src="{{ asset('storage/' . $photo->photo_path) }}" class="img-fluid rounded" style="aspect-ratio:1/1;object-fit:cover;width:100%;height:100px;">
+                                        @php $photoSrc = $photo->photo_url ?: ($photo->photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($photo->photo_path) : null); @endphp
+                                        @if($photoSrc)<img src="{{ $photoSrc }}" class="img-fluid rounded" style="aspect-ratio:1/1;object-fit:cover;width:100%;height:100px;">@endif
                                     </div>
                                 @endforeach
                             </div>

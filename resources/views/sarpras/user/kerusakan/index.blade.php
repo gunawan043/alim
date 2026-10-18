@@ -35,7 +35,7 @@
             <div><h5 class="card-title mb-0"><i class="ri-error-warning-line me-2 text-danger"></i>Riwayat Laporan Kerusakan</h5><p class="text-muted small mb-0">Laporan otomatis masuk ke antrean perbaikan URT.</p></div>
             <a href="{{ route('sarpras.user.kerusakan.create', ['userId' => $userId]) }}" class="btn btn-danger btn-sm"><i class="ri-add-line me-1"></i>Buat Laporan</a>
         </div>
-        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>No</th><th>No. Laporan</th><th>Aset</th><th>Tingkat</th><th>Deskripsi</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead><tbody>
+        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>No</th><th>No. Laporan</th><th>Aset</th><th>Tingkat</th><th>Deskripsi</th><th>Status</th><th>Tanggal</th><th>Foto</th><th class="text-end">Aksi</th></tr></thead><tbody>
             @forelse($reports as $i => $report)
                 @php
                     $lvl = ['ringan'=>'success','sedang'=>'warning','berat'=>'danger'][$report->damage_level] ?? 'secondary';
@@ -49,10 +49,18 @@
                     <td class="small">{{ \Illuminate\Support\Str::limit($report->description, 60) }}</td>
                     <td><span class="badge bg-{{ $st }}-subtle text-{{ $st }}">{{ ucfirst(str_replace('_',' ', $report->status)) }}</span></td>
                     <td class="small">{{ $report->created_at?->format('d/m/Y') }}</td>
+                    @php
+                        $photoList = collect($report->photos ?? [])->filter();
+                        $firstPhoto = $photoList->first();
+                        $firstPhotoUrl = $firstPhoto
+                            ? (\Illuminate\Support\Str::startsWith($firstPhoto, ['http://', 'https://']) ? $firstPhoto : \Illuminate\Support\Facades\Storage::disk('public')->url($firstPhoto))
+                            : null;
+                    @endphp
+                    <td>@if($firstPhotoUrl)<a href="{{ $firstPhotoUrl }}" target="_blank" class="btn btn-sm btn-outline-info"><i class="ri-image-line"></i>{{ $photoList->count() > 1 ? ' '.$photoList->count() : '' }}</a>@else <span class="text-muted small">-</span>@endif</td>
                     <td class="text-end">@if($report->asset)<a href="{{ route('sarpras.user.aset.show', ['userId' => $userId, 'id' => $report->asset_id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a>@endif</td>
                 </tr>
             @empty
-                <x-empty-state colspan="8" title="Belum ada laporan kerusakan" message="Laporkan kerusakan aset agar URT dapat menjadwalkan perbaikan.">
+                <x-empty-state colspan="9" title="Belum ada laporan kerusakan" message="Laporkan kerusakan aset agar URT dapat menjadwalkan perbaikan.">
                     <a href="{{ route('sarpras.user.kerusakan.create', ['userId' => $userId]) }}" class="btn btn-danger mt-3"><i class="ri-add-line me-1"></i>Buat Laporan</a>
                 </x-empty-state>
             @endforelse

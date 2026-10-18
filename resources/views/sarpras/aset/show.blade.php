@@ -88,7 +88,8 @@
                     <div class="row g-2">
                         @foreach($aset->photos as $photo)
                         <div class="col-6">
-                            <img src="{{ asset('storage/'.$photo->photo_path) }}" class="img-fluid rounded" alt="{{ $photo->caption }}">
+                            @php $photoSrc = $photo->photo_url ?: ($photo->photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($photo->photo_path) : null); @endphp
+                            @if($photoSrc)<img src="{{ $photoSrc }}" class="img-fluid rounded" alt="{{ $photo->caption }}">@endif
                             <form action="{{ route('sarpras.aset.photo.delete', ['id' => $aset->id, 'photoId' => $photo->id]) }}" method="POST" class="mt-1">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-outline-danger w-100" data-confirm="Hapus?"><i class="ri-delete-bin-line"></i></button>

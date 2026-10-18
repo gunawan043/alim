@@ -19,6 +19,7 @@ use App\Models\ProcurementRequest;
 use App\Models\ProcurementRequestItem;
 use App\Models\School;
 use App\Models\User;
+use App\Services\Sarpras\PhotoProofService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +29,9 @@ use Maatwebsite\Excel\Validators\ValidationException;
 
 class SarprasUserController extends SarprasBaseController
 {
-    public function __construct()
+    public function __construct(protected PhotoProofService $photos)
     {
-        view()->share('userId', request()->route('userId') ?? (auth()->check() ? auth()->id() : null));
+        parent::__construct();
     }
 
     /**
@@ -545,13 +546,21 @@ class SarprasUserController extends SarprasBaseController
         $school = $schoolId ? School::find($schoolId) : null;
 
         $photos = [];
+        $photoUrls = array_values(array_filter($validated['photo_urls'] ?? []));
+        $index = 0;
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photos[] = $photo->store('sarpras/damage-reports', 'public');
+                $stored = $this->photos->store($photo, $photoUrls[$index] ?? null, 'sarpras/damage-reports');
+                if (! empty($stored['url'])) {
+                    $photos[] = $stored['url'];
+                } elseif (! empty($stored['path'])) {
+                    $photos[] = $stored['path'];
+                }
+                $index++;
             }
         }
-        foreach (($validated['photo_urls'] ?? []) as $url) {
-            if ($url) $photos[] = $url;
+        foreach (array_slice($photoUrls, $index) as $url) {
+            $photos[] = $url;
         }
 
         $report = AssetDamageReport::create([

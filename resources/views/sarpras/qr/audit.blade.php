@@ -59,7 +59,8 @@
             <div class="card-header"><h5 class="card-title mb-0">Foto Aset</h5></div>
             <div class="card-body">
                 @foreach($asset->photos as $photo)
-                <img src="{{ asset('storage/'.$photo->photo_path) }}" class="img-fluid rounded mb-2" alt="{{ $photo->caption }}">
+                @php $photoSrc = $photo->photo_url ?: ($photo->photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($photo->photo_path) : null); @endphp
+                @if($photoSrc)<img src="{{ $photoSrc }}" class="img-fluid rounded mb-2" alt="{{ $photo->caption }}">@endif
                 @endforeach
             </div>
         </div>

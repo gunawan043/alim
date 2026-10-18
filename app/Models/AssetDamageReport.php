@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class AssetDamageReport extends Model
 {
+    use HasUuids;
+
     protected $table = 'asset_damage_reports';
 
     protected $fillable = [
