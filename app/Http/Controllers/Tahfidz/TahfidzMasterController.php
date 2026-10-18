@@ -45,8 +45,16 @@ class TahfidzMasterController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        $stats = [
+            'total' => $plans->count(),
+            'active' => $plans->where('is_active', true)->count(),
+            'months' => $plans->sum('months_count'),
+            'schools' => $plans->pluck('school_id')->filter()->unique()->count(),
+        ];
+        $canManage = $this->access->canManageCurriculum($request->user());
+
         return view('tahfidz.muqorror.index', compact(
-            'userId', 'plans', 'academicYears', 'academicYearId', 'semester'
+            'userId', 'plans', 'academicYears', 'academicYearId', 'semester', 'stats', 'canManage'
         ));
     }
 
@@ -144,7 +152,16 @@ class TahfidzMasterController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('tahfidz.rpp.index', compact('userId', 'plans', 'academicYears', 'academicYearId'));
+        $stats = [
+            'total' => $plans->count(),
+            'tahfizh' => $plans->where('type', 'tahfizh')->count(),
+            'iqro' => $plans->where('type', 'iqro')->count(),
+            'items' => $plans->sum('items_count'),
+        ];
+        $canManage = $this->access->canManageCurriculum($request->user())
+            || $this->access->isSchoolCoordinator($request->user(), $schoolId);
+
+        return view('tahfidz.rpp.index', compact('userId', 'plans', 'academicYears', 'academicYearId', 'stats', 'canManage'));
     }
 
     public function rppCreate(Request $request, string $userId)

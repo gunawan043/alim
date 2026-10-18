@@ -20,23 +20,43 @@ class SetoranController extends Controller
         $groupIds = $groups->pluck('id');
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
 
-        $setorans = TahfidzSetoran::with(['student:id,name,nis', 'group:id,name,school_id', 'teacher:id,name', 'verifier:id,name'])
+        $query = TahfidzSetoran::query()
             ->whereIn('tahfidz_group_id', $groupIds)
             ->when($request->filled('group_id'), fn ($q) => $q->where('tahfidz_group_id', $request->group_id))
             ->when($request->filled('student_id'), fn ($q) => $q->where('student_id', $request->student_id))
             ->when($request->filled('date_from'), fn ($q) => $q->whereDate('setoran_date', '>=', $request->date_from))
             ->when($request->filled('date_to'), fn ($q) => $q->whereDate('setoran_date', '<=', $request->date_to))
-            ->when($request->filled('verification'), fn ($q) => $q->where('verification_status', $request->verification))
+            ->when($request->filled('verification'), fn ($q) => $q->where('verification_status', $request->verification));
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('verification_status', 'pending')->count(),
+            'verified' => (clone $query)->where('verification_status', 'verified')->count(),
+            'today' => (clone $query)->whereDate('setoran_date', now()->toDateString())->count(),
+        ];
+
+        $setorans = $query->with(['student:id,name,nis', 'group:id,name,school_id', 'teacher:id,name', 'verifier:id,name'])
             ->orderByDesc('setoran_date')
             ->orderByDesc('created_at')
             ->paginate(30)
             ->withQueryString();
 
+        $membersByGroup = TahfidzGroupMember::with('student:id,name,nis')
+            ->whereIn('tahfidz_group_id', $groupIds)
+            ->where('status', 'aktif')
+            ->get()
+            ->groupBy('tahfidz_group_id')
+            ->map(fn ($members) => $members->map(fn ($member) => [
+                'id' => $member->student?->id,
+                'name' => $member->student?->name,
+                'nis' => $member->student?->nis,
+            ])->filter(fn ($student) => $student['id'])->values());
+
         $canVerify = $this->access->isSuperAdmin($request->user())
             || $this->access->isDepartment($request->user())
             || $this->access->isSchoolCoordinator($request->user(), $this->schoolId($request));
 
-        return view('tahfidz.setoran.index', compact('userId', 'setorans', 'groups', 'academicYears', 'canVerify'));
+        return view('tahfidz.setoran.index', compact('userId', 'setorans', 'groups', 'academicYears', 'canVerify', 'stats', 'membersByGroup'));
     }
 
     public function create(Request $request, string $userId)

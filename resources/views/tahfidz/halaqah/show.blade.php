@@ -19,7 +19,7 @@
                     <div class="table-responsive"><table class="table table-sm align-middle"><thead class="table-light"><tr><th>Nama</th><th>NIS</th><th>Status</th>@if($canManage)<th></th>@endif</tr></thead><tbody>
                         @forelse($group->members as $member)
                             <tr><td>{{ $member->student?->name ?? '—' }}</td><td>{{ $member->student?->nis ?? '—' }}</td><td><span class="badge {{ $member->status==='aktif' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $member->status }}</span></td>
-                            @if($canManage && $member->status==='aktif')<td class="text-end"><form method="POST" action="{{ route('user.tahfidz.halaqah.members.remove', ['userId'=>$userId,'id'=>$group->id,'memberId'=>$member->id]) }}" onsubmit="return confirm('Keluarkan santri ini dari halaqah?')">@csrf<button class="btn btn-sm btn-outline-danger"><i class="ri-user-unfollow-line"></i></button></form></td>@endif
+                            @if($canManage && $member->status==='aktif')<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-member" title="Keluarkan" data-action="{{ route('user.tahfidz.halaqah.members.remove', ['userId'=>$userId,'id'=>$group->id,'memberId'=>$member->id]) }}" data-name="{{ $member->student?->name }}"><i class="ri-user-unfollow-line"></i></button></td>@endif
                             </tr>
                         @empty<tr><td colspan="{{ $canManage ? 4 : 3 }}" class="text-center text-muted py-3">Belum ada anggota.</td></tr>@endforelse
                     </tbody></table></div>
@@ -42,4 +42,24 @@
             </div>
         </div>
     </div>
+
+    @if($canManage)
+        <form id="removeMemberForm" method="POST" class="d-none">@csrf</form>
+        <x-modal-confirm id="removeMemberModal" title="Keluarkan Santri?" message="<strong id='removeMemberName'>Santri</strong> akan dikeluarkan dari halaqah ini."
+            submit-label="Ya, Keluarkan" submit-icon="ri-user-unfollow-line" submit-class="btn-danger" form-id="removeMemberForm" />
+    @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.remove-member').forEach(function (button) {
+            button.addEventListener('click', function () {
+                document.getElementById('removeMemberForm').action = this.dataset.action;
+                document.getElementById('removeMemberName').textContent = this.dataset.name;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('removeMemberModal')).show();
+            });
+        });
+    });
+</script>
+@endpush

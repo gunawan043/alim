@@ -41,8 +41,15 @@ class HalaqahController extends Controller
         $schools = $this->access->canViewAllSchools($request->user()) ? School::orderBy('name')->get(['id', 'name']) : collect();
         $canManage = $this->access->isSuperAdmin($request->user())
             || $this->access->isSchoolCoordinator($request->user(), $schoolId, $academicYearId);
+        $stats = [
+            'total' => $groups->count(),
+            'active' => $groups->where('is_active', true)->count(),
+            'members' => $groups->sum('members_count'),
+            'teachers' => $groups->pluck('teacher_id')->filter()->unique()->count(),
+        ];
+        $form = $this->formData($request);
 
-        return view('tahfidz.halaqah.index', compact('userId', 'groups', 'academicYears', 'academicYearId', 'schools', 'canManage'));
+        return view('tahfidz.halaqah.index', compact('userId', 'groups', 'academicYears', 'academicYearId', 'schools', 'canManage', 'stats', 'form'));
     }
 
     public function create(Request $request, string $userId)
