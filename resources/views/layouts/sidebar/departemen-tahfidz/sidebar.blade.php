@@ -225,10 +225,9 @@
     <li class="menu-title"><span>Ujian & Sertifikasi</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-calendar-todo-line"></i>
-            <span>Jadwal Ujian Marhalah <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.tasmi.index') }}">
+            <i class="ri-award-line"></i><span>Sesi Tasmi’ & Penilaian</span>
         </a>
     </li>
 
@@ -257,10 +256,9 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-certificate-line"></i>
-            <span>Penerbitan Syahadah <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.certificates', 'user.tahfidz.tasmi.certificate.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.tasmi.certificates') }}">
+            <i class="ri-certificate-line"></i><span>Penerbitan Syahadah</span>
         </a>
     </li>
 @endif

@@ -1313,6 +1313,13 @@
             <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.tasmi.index', ['userId' => $userId]) }}">
+            <i class="ri-award-line"></i><span>Tasmi’ & Syahadah</span>
+        </a>
+    </li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
            href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
