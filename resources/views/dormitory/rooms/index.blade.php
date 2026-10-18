@@ -216,21 +216,18 @@
                                     </td>
                                 </tr>
                                 @empty
-                                <tr>
-                                    <td colspan="11" class="text-center text-muted py-4">
-                                        <i class="ri-door-open-line fs-1 d-block mb-2"></i>
-                                        Belum ada data kamar.
-                                        <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah kamar baru</a>
-                                    </td>
-                                </tr>
+                                    <x-empty-state colspan="11" title="Belum ada kamar"
+                                        message="Tambahkan kamar untuk mulai menempatkan penghuni.">
+                                        <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                           class="btn btn-primary btn-sm mt-3"><i class="ri-add-line me-1"></i>Tambah Kamar</a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">Menampilkan {{ $rooms->firstItem() ?? 0 }} - {{ $rooms->lastItem() ?? 0 }} dari {{ $rooms->total() }} data</div>
-                        <div>{{ $rooms->withQueryString()->links() }}</div>
-                    </div>
+                    @if($rooms->hasPages())
+                        @include('shared._pagination', ['paginator' => $rooms])
+                    @endif
                 </div>
             </div>
         </div>

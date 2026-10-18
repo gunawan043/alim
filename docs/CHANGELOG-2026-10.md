@@ -1831,6 +1831,12 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Test `DormitoryResidentLifecycleTest`**: mutasi keluar menutup penghuni (alasan `keluar`, tanggal,
   catatan) tanpa menghapus baris (1 test / 5 assertion).
 
+## 171. Master Kamar & Wing — Standarisasi UI
+
+- Halaman **Kamar** dan **Gedung/Wing** memakai `x-empty-state` (lord-icon) dan `shared._pagination`.
+- Filter, statistik, tabel, dan aksi tetap dipertahankan.
+- Konfirmasi hapus kamar/wing memakai modal global `data-confirm`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

@@ -171,22 +171,18 @@
                                     </td>
                                 </tr>
                                 @empty
-                                <tr>
-                                    <td colspan="9" class="text-center py-5">
-                                        <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
-                                        <h6 class="text-muted mb-1 mt-3">Belum Ada Data Blok</h6>
-                                        <p class="text-muted mb-3">Belum ada data blok yang terdaftar.</p>
+                                    <x-empty-state colspan="8" title="Belum ada gedung/wing"
+                                        message="Tambahkan gedung untuk mengelompokkan kamar asrama.">
                                         <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                           class="btn btn-primary btn-sm">
-                                            <i class="ri-add-line me-1"></i> Tambah Blok Baru
-                                        </a>
-                                    </td>
-                                </tr>
+                                           class="btn btn-primary btn-sm mt-3"><i class="ri-add-line me-1"></i>Tambah Gedung</a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-                    <x-pagination :paginator="$wings" />
+                    @if($wings->hasPages())
+                        @include('shared._pagination', ['paginator' => $wings])
+                    @endif
                 </div>
             </div>
         </div>
