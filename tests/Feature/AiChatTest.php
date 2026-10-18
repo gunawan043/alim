@@ -9,11 +9,15 @@ use App\Models\AiChatConversation;
 use App\Models\AiChatMessage;
 use App\Models\AiProviderSetting;
 use App\Models\GradeLevel;
+use App\Models\InstitutionDecree;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\Subject;
+use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\Ai\AiChatService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -222,6 +226,62 @@ class AiChatTest extends TestCase
             return ! collect($request['messages'] ?? [])->contains(
                 fn ($message) => str_contains((string) ($message['content'] ?? ''), 'TOPIK_LAMA_JANGAN_DIBawa')
             );
+        });
+    }
+
+    public function test_konteks_kelas_yang_diampu_dikirim_ke_ai(): void
+    {
+        $teacher = User::create([
+            'name' => 'Guru Kelas Chat', 'email' => 'guru.kelas.chat@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
+        $subject = Subject::create([
+            'school_id' => $this->school->id, 'code' => 'FIQ', 'name' => 'Fiqih',
+            'credit_hours' => 2, 'is_active' => true,
+        ]);
+
+        $decree = InstitutionDecree::create([
+            'decree_number' => 'SK-CHAT-001',
+            'decree_type' => 'SK Pembagian Tugas',
+            'title' => 'SK Uji Chat',
+            'academic_year_id' => $this->year->id,
+            'school_id' => $this->school->id,
+            'issued_date' => now()->toDateString(),
+            'effective_date' => now()->toDateString(),
+            'status' => 'active',
+        ]);
+
+        TeachingAssignment::create([
+            'decree_id' => $decree->id,
+            'teacher_id' => $teacher->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id,
+            'study_group_id' => $this->group->id,
+            'subject_id' => $subject->id,
+            'status' => 'active',
+        ]);
+
+        Http::fake([
+            'ai.chat.test/*' => Http::response([
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'Anda mengajar 7A.'], 'finish_reason' => 'stop']],
+            ], 200),
+        ]);
+
+        $request = Request::create('/ai-chat/send', 'POST', [
+            'message' => 'Berapa jumlah santri di kelas yang aku ajar?',
+        ]);
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $teacher);
+
+        app(AiChatController::class)->send($request, $teacher->id, app(AiChatService::class));
+
+        Http::assertSent(function ($request) {
+            $payload = json_encode($request->data());
+
+            return str_contains($payload, 'my_teaching')
+                && str_contains($payload, '7A')
+                && str_contains($payload, 'count_my_students');
         });
     }
 
