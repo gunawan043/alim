@@ -163,6 +163,7 @@ use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasCameraController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
+use App\Http\Controllers\Sarpras\SarprasPertamananController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasDataAuditController;
 use App\Http\Controllers\Sarpras\SarprasDataExchangeController;
@@ -2815,6 +2816,14 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Kebersihan / CS
     Route::get('/kebersihan', [SarprasCleaningController::class, 'index'])->name('kebersihan.index');
+
+    // Agenda harian pertamanan
+    Route::prefix('pertamanan')->name('pertamanan.')->group(function () {
+        Route::get('/agenda', [SarprasPertamananController::class, 'agenda'])->name('agenda.index');
+        Route::post('/agenda', [SarprasPertamananController::class, 'saveAgenda'])->name('agenda.save');
+        Route::post('/agenda/items', [SarprasPertamananController::class, 'storeItem'])->name('agenda.items.store');
+        Route::delete('/agenda/items/{itemId}', [SarprasPertamananController::class, 'destroyItem'])->name('agenda.items.destroy');
+    });
     Route::get('/kebersihan/area', [SarprasCleaningController::class, 'areas'])->name('kebersihan.areas');
     Route::get('/kebersihan/laporan', [SarprasCleaningController::class, 'reports'])->name('kebersihan.reports');
     Route::get('/kebersihan/program', [SarprasCleaningController::class, 'programs'])->name('kebersihan.programs');

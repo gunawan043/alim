@@ -2318,6 +2318,22 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - tabel penugasan menampilkan kolom **Koordinator**, sehingga Petugas Pertamanan berada di bawah Koordinator Kebersihan/area.
 - Modal penugasan menampilkan supervisor otomatis sebelum petugas ditugaskan.
 
+## 202. Agenda Harian Pertamanan
+
+- Modul baru `/sarpras/pertamanan/agenda` dengan format:
+  - TA otomatis berdasarkan tanggal (Juli–Juni);
+  - bagian A. Agenda Pemeliharaan, B. Agenda Pembibitan Tanaman, C. Permintaan Darurat;
+  - kelompok pekerjaan dan sub-lokasi taman;
+  - status Belum/Selesai/Tunda;
+  - petugas, keterangan, dan hapus item.
+- Agenda awal otomatis dibuat saat pertama membuka tanggal:
+  - penyiraman taman asrama SMA putri, taman depan SD, UKS putra, MA Plus, SMP putra;
+  - penataan taman masjid jami';
+  - pemangkasan pohon kelapa SMA putri;
+  - penimbunan sampah organik untuk kompos;
+  - membantu membersihkan jalan utama.
+- Menu **Agenda Harian Pertamanan** ditambahkan di sidebar Pertamanan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

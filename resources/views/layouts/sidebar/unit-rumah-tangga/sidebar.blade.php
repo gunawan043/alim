@@ -490,6 +490,13 @@
     <li class="menu-title"><span>Pertamanan</span></li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.pertamanan.agenda']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.pertamanan.agenda.index') }}">
+            <i class="ri-calendar-task-line"></i><span>Agenda Harian Pertamanan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.index']) && request('area_type') === 'taman' ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.kebersihan.index', ['area_type' => 'taman']) }}">
             <i class="ri-plant-line"></i><span>Dashboard Pertamanan</span>
