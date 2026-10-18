@@ -1804,6 +1804,16 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Klik tanggal** = daftar agenda hari itu; tidak lagi membuka form edit.
 - Test Kaldik/Privasi/Pekan Efektif = 14 test / 85 assertion — hijau.
 
+## 169. Dashboard Waka — Monitoring Guru Realtime
+
+- Monitoring absensi guru (`user.teacher-qr.waka-dashboard`) kini:
+  - **Scoped ke satuan kerja** (jadwal & absensi).
+  - Filter pencarian guru/kelas/mapel dan filter guru.
+  - Statistik jadwal/hadir/terlambat/absen/persentase (sudah ada, dipertahankan).
+  - **Auto-refresh 60 detik** + tombol refresh manual.
+  - Tetap menampilkan daftar belum check-out dan belum absen.
+- Test QR/jadwal = 1 test / 23 assertion — hijau.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

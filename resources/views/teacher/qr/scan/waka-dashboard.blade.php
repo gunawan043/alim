@@ -42,13 +42,40 @@
 @endif
 
 {{-- Live status indicator --}}
-<div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-3">
     <i class="ri-live-line realtime-indicator fs-5"></i>
     <span>Live update — {{ now()->format('H:i:s') }}</span>
-    <div class="ms-auto">
+    <span class="badge bg-white text-info border ms-1" id="autoRefreshStatus">Auto-refresh 60 detik</span>
+    <div class="ms-auto d-flex gap-2">
         <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
             <i class="ri-refresh-line"></i> Refresh
         </button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold mb-1">Cari</label>
+                <input type="text" name="q" class="form-control form-control-sm" value="{{ $search ?? '' }}" placeholder="Guru / kelas / mapel…">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Guru</label>
+                <select name="teacher_id" class="form-select form-select-sm">
+                    <option value="">Semua Guru</option>
+                    @foreach($teacherOptions ?? [] as $teacher)
+                        <option value="{{ $teacher->id }}" {{ ($teacherId ?? '') === $teacher->id ? 'selected' : '' }}>{{ $teacher->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary btn-sm w-100"><i class="ri-filter-3-line me-1"></i>Filter</button>
+            </div>
+            <div class="col-md-2">
+                <a href="{{ route('user.teacher-qr.waka-dashboard', ['userId' => $userId]) }}" class="btn btn-light btn-sm w-100">Reset</a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -356,6 +383,19 @@
     </div>
 </div>
 
+@endsection
+
+@section('script')
+<script>
+    (function () {
+        var enabled = localStorage.getItem('alim_waka_autorefresh') !== '0';
+        var status = document.getElementById('autoRefreshStatus');
+        if (status) status.textContent = enabled ? 'Auto-refresh 60 detik' : 'Auto-refresh nonaktif';
+        if (enabled) {
+            setTimeout(function () { location.reload(); }, 60000);
+        }
+    })();
+</script>
 @endsection
 
 @push('scripts')

@@ -433,6 +433,8 @@
             font-size: 11px;
         }
         .ai-chat-error.is-visible { display: block; }
+        .ai-chat-support-link { color: var(--ai-brand); font-weight: 600; }
+        .ai-chat-support-link:hover { color: var(--ai-brand-2); }
         .ai-chat-history {
             flex: 1 1 auto;
             min-height: 0;
@@ -564,7 +566,7 @@
 
         <div class="ai-chat-composer">
             <div class="d-flex align-items-center justify-content-between px-3 pt-2" style="font-size:11px;">
-                <button type="button" id="aiChatSupportToggle" class="btn btn-link btn-sm p-0 text-decoration-none">
+                <button type="button" id="aiChatSupportToggle" class="btn btn-link btn-sm p-0 text-decoration-none ai-chat-support-link">
                     <i class="ri-customer-service-2-line me-1"></i>Hubungi Super Admin
                 </button>
                 <span id="aiChatModeBadge" class="badge bg-info-subtle text-info">AI</span>

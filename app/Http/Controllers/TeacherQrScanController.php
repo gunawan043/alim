@@ -681,26 +681,41 @@ class TeacherQrScanController extends Controller
         $dayOfWeek = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
         $academicYear = AcademicYear::where('is_active', true)->first();
 
-        // All active jadwal for today
+        $schoolId = $request->attributes->get('schoolContextId');
+        $search = trim((string) $request->input('q'));
+        $teacherId = $request->input('teacher_id');
+
+        // All active jadwal for today (scoped ke satuan kerja)
         $schedules = JadwalKbm::where('is_active', true)
             ->where('day_of_week', $dayOfWeek)
             ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
+            ->when($schoolId, fn ($q) => $q->whereHas('studyGroup', fn ($g) => $g->where('school_id', $schoolId)))
+            ->when($teacherId, fn ($q) => $q->where('teacher_id', $teacherId))
+            ->when($search !== '', fn ($q) => $q->where(function ($w) use ($search) {
+                $w->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('studyGroup', fn ($g) => $g->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('subject', fn ($s) => $s->where('name', 'like', "%{$search}%"));
+            }))
             ->with(['teacher:id,name', 'studyGroup:name,code', 'subject:name'])
             ->orderBy('slot_index')
             ->get();
 
         // Today's attendances
         $attendances = TeacherClassAttendance::where('attendance_date', $today)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->with(['teacher:id,name', 'jadwalKbm.studyGroup:name,code'])
             ->get()
             ->keyBy(fn ($a) => $a->teacher_id.'|'.$a->jadwal_kbm_id);
 
         // Teachers who haven't checked out yet
         $notCheckedOut = TeacherClassAttendance::where('attendance_date', $today)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('status_keluar', 'belum_keluar')
             ->whereNull('actual_time_out')
             ->with(['teacher:name', 'jadwalKbm.studyGroup:name,code', 'jadwalKbm:end_time'])
             ->get();
+
+        $teacherOptions = $schedules->pluck('teacher')->filter()->unique('id')->sortBy('name')->values();
 
         // Not present today
         $notPresent = $schedules->filter(function ($jadwal) use ($attendances) {
@@ -717,7 +732,10 @@ class TeacherQrScanController extends Controller
             'attendances',
             'notCheckedOut',
             'notPresent',
-            'schoolId'
+            'schoolId',
+            'teacherOptions',
+            'search',
+            'teacherId',
         ));
     }
 

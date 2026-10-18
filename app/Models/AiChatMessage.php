@@ -17,11 +17,17 @@ class AiChatMessage extends Model
     protected static function boot(): void
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->id = $m->id ?: (string) Str::uuid();
+
+            if (empty($m->sequence) && $m->conversation_id) {
+                $m->sequence = ((int) static::query()->where('conversation_id', $m->conversation_id)->max('sequence')) + 1;
+            }
+        });
     }
 
     protected $fillable = [
-        'conversation_id', 'role', 'content', 'metadata',
+        'conversation_id', 'role', 'sequence', 'content', 'metadata',
     ];
 
     protected $casts = [

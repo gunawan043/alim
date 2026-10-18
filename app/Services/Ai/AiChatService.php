@@ -101,7 +101,8 @@ class AiChatService
         ]);
 
         $history = $conversation->messages()
-            ->latest()
+            ->orderByDesc('sequence')
+            ->orderByDesc('created_at')
             ->limit((int) config('ai_chat.max_history_messages', 10))
             ->get()
             ->reverse();

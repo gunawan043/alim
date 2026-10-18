@@ -67,7 +67,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="{{ URL::asset('build/js/sidebar-scroll.js') }}"></script>
-    @include('layouts.partials.ai-chat-widget')
+    @unless(request()->routeIs('user.sa.ai-chat.*'))
+        @include('layouts.partials.ai-chat-widget')
+    @endunless
     {{-- Skrip khusus halaman: @yield('script') dirender di vendor-scripts (jangan ganda!) --}}
     @stack('script')
     @stack('scripts')

@@ -42,7 +42,10 @@ class AiChatConversation extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(AiChatMessage::class, 'conversation_id')->orderBy('created_at');
+        return $this->hasMany(AiChatMessage::class, 'conversation_id')
+            ->orderBy('sequence')
+            ->orderBy('created_at')
+            ->orderBy('id');
     }
 
     public function scopeOwnedBy($query, string $userId)
