@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
+use App\Models\NotificationUniversal;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudyGroup;
+use App\Models\TahfidzCoordinator;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzJuzProgress;
@@ -95,12 +97,38 @@ class TahfidzMonitoringTest extends TestCase
             'tilawah_halaman' => 2, 'tikror_mandiri_halaman' => 1,
         ]);
 
+        $coordinator = User::create([
+            'name' => 'Koordinator Monitoring', 'email' => 'koordinator.monitoring@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        TahfidzCoordinator::create([
+            'school_id' => $school->id, 'user_id' => $coordinator->id,
+            'academic_year_id' => $year->id, 'is_active' => true,
+        ]);
+
+        $query = 'academic_year_id='.$year->id.'&date_from='.now()->subDays(30)->toDateString().'&date_to='.now()->toDateString();
+
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
-            ->get("/{$admin->id}/tahfidz/monitoring?academic_year_id={$year->id}&date_from=".now()->subDays(30)->toDateString().'&date_to='.now()->toDateString())
+            ->get("/{$admin->id}/tahfidz/monitoring?{$query}")
             ->assertOk()
             ->assertSee('Santri Rajin')
             ->assertSee('Santri Tertinggal')
             ->assertSee('Perlu Perhatian')
             ->assertSee('Setoran Menunggu Verifikasi');
+
+        $export = $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/monitoring?{$query}&export=1");
+        $export->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $export->headers->get('content-disposition'));
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->post("/{$admin->id}/tahfidz/monitoring/notify", [
+                'academic_year_id' => $year->id,
+                'school_id' => $school->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(1, NotificationUniversal::where('user_id', $coordinator->id)->count());
     }
 }

@@ -26,7 +26,7 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-certificate-line text-primary me-1"></i>Rekap Syahadah Tasmi’</h5><p class="text-muted mb-0 small">Syahadah diterbitkan dari peserta tasmi’ yang sudah memiliki nilai.</p></div>
-            <a href="{{ route('user.tahfidz.tasmi.index', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-award-line me-1"></i>Sesi Tasmi’</a>
+            <div class="d-flex gap-2"><a href="{{ route('user.tahfidz.tasmi.certificate.audit', ['userId'=>$userId]) }}" class="btn btn-warning"><i class="ri-shield-check-line me-1"></i>Audit Syahadah</a><a href="{{ route('user.tahfidz.tasmi.index', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-award-line me-1"></i>Sesi Tasmi’</a></div>
         </div>
         <div class="card-body border-bottom">
             <form method="GET" class="row g-2 align-items-end">

@@ -348,6 +348,72 @@ class TasmiController extends Controller
         ));
     }
 
+    public function certificateAudit(Request $request, string $userId)
+    {
+        $this->authorizeView($request);
+
+        $academicYears = AcademicYear::orderByDesc('start_date')->get();
+        $activeYear = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
+        $academicYearId = $request->input('academic_year_id', $activeYear?->id);
+        $schoolId = $this->schoolId($request);
+
+        $certificates = TahfidzCertificate::with([
+            'student:id,name,nis,name_ar', 'school:id,name,npsn', 'academicYear:id,name',
+            'participant.score', 'participant.session:id,session_name',
+        ])
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->when(! $this->access->canViewAllSchools($request->user()), fn ($q) => $q->where('school_id', $schoolId))
+            ->orderByDesc('issued_date')
+            ->get();
+
+        $audit = $certificates->map(function (TahfidzCertificate $certificate) {
+            $problems = [];
+
+            if (! $certificate->student) {
+                $problems[] = 'Data santri tidak ditemukan.';
+            }
+            if (blank($certificate->student?->name_ar)) {
+                $problems[] = 'Nama Arab (A) belum diisi.';
+            }
+            if (blank($certificate->certificate_number)) {
+                $problems[] = 'Nomor syahadah kosong.';
+            }
+            if ($certificate->nilai_akhir === null) {
+                $problems[] = 'Nilai akhir kosong.';
+            }
+            if (blank($certificate->predikat)) {
+                $problems[] = 'Predikat kosong.';
+            }
+            if (! $certificate->participant?->score) {
+                $problems[] = 'Nilai peserta tasmi’ tidak ditemukan.';
+            }
+
+            $juzCount = count($certificate->juz_detail ?? []);
+            if ($certificate->total_juz_completed && $juzCount > 0 && $juzCount !== (int) $certificate->total_juz_completed) {
+                $problems[] = 'Jumlah juz tidak sama dengan daftar juz.';
+            }
+
+            if ($certificate->total_juz_completed) {
+                $expectedType = $this->tasmi->certificateType((int) $certificate->total_juz_completed);
+                if ($certificate->certificate_type !== $expectedType) {
+                    $problems[] = 'Jenis syahadah tidak sesuai jumlah juz.';
+                }
+            }
+
+            return ['certificate' => $certificate, 'problems' => $problems];
+        })->filter(fn ($row) => ! empty($row['problems']))->values();
+
+        $stats = [
+            'total' => $certificates->count(),
+            'complete' => $certificates->count() - $audit->count(),
+            'issues' => $audit->count(),
+        ];
+
+        return view('tahfidz.tasmi.certificate-audit', compact(
+            'userId', 'audit', 'academicYears', 'academicYearId', 'stats'
+        ));
+    }
+
     public function issueCertificate(Request $request, string $userId, string $participantId)
     {
         $participant = TahfidzTasmianParticipant::with(['session.school', 'session.academicYear', 'student', 'score'])->findOrFail($participantId);

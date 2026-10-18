@@ -464,11 +464,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
                 Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
+                Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
 
                 Route::prefix('tasmi')->name('tasmi.')->group(function () {
                     Route::get('/', [TasmiController::class, 'index'])->name('index');
                     Route::post('/', [TasmiController::class, 'store'])->name('store');
                     Route::get('/certificates', [TasmiController::class, 'certificates'])->name('certificates');
+                    Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/{certificateId}/print', [TasmiController::class, 'certificatePrint'])->name('certificate.print');
                     Route::post('/participants/{participantId}/score', [TasmiController::class, 'score'])->name('participant.score');

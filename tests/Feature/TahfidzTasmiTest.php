@@ -134,6 +134,12 @@ class TahfidzTasmiTest extends TestCase
             ->assertSee($certificate->certificate_number);
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/tasmi/certificates/audit")
+            ->assertOk()
+            ->assertSee('Audit Akhir Syahadah')
+            ->assertSee('Semua syahadah lengkap');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/tasmi/certificates/{$certificate->id}/print")
             ->assertOk()
             ->assertSee('Syahadah Tasmi')

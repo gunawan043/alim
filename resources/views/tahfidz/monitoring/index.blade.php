@@ -27,9 +27,13 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-line-chart-line text-primary me-1"></i>Rekap & Monitoring Santri</h5><p class="text-muted mb-0 small">Gabungan setoran, progres juz, target, mutaba’ah, dan tasmi’.</p></div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ route('user.tahfidz.monitoring.index', array_merge(request()->query(), ['userId'=>$userId,'export'=>1])) }}" class="btn btn-soft-success"><i class="ri-download-2-line me-1"></i>Export Excel</a>
                 <a href="{{ route('user.tahfidz.setoran.index', ['userId'=>$userId,'verification'=>'pending']) }}" class="btn btn-soft-warning"><i class="ri-time-line me-1"></i>Verifikasi ({{ $stats['pending'] }})</a>
                 <a href="{{ route('user.tahfidz.tasmi.certificates', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-certificate-line me-1"></i>Syahadah ({{ $stats['certificates'] }})</a>
+                @if($stats['behind'] > 0 || $stats['pending'] > 0)
+                    <button type="button" class="btn btn-warning notify-monitoring"><i class="ri-notification-3-line me-1"></i>Kirim Pengingat</button>
+                @endif
             </div>
         </div>
         <div class="card-body border-bottom">
@@ -104,4 +108,25 @@
             </div>
         </div>
     </div>
+
+    @if($stats['behind'] > 0 || $stats['pending'] > 0)
+        <form id="notifyMonitoringForm" method="POST" action="{{ route('user.tahfidz.monitoring.notify', ['userId'=>$userId]) }}" class="d-none">
+            @csrf
+            <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
+            <input type="hidden" name="school_id" value="{{ $schoolId }}">
+        </form>
+        <x-modal-confirm id="notifyMonitoringModal" title="Kirim Pengingat Monitoring?" message="Pengingat akan dikirim ke koordinator Tahfidz dan guru halaqah pada filter ini." submit-label="Kirim" submit-icon="ri-notification-3-line" submit-class="btn-warning" form-id="notifyMonitoringForm" />
+    @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.notify-monitoring').forEach(function (button) {
+            button.addEventListener('click', function () {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('notifyMonitoringModal')).show();
+            });
+        });
+    });
+</script>
+@endpush

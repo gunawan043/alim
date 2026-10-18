@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Tahfidz;
 
+use App\Exports\TahfidzMonitoringExport;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\GtkAdditionalTask;
 use App\Models\School;
 use App\Models\TahfidzCertificate;
+use App\Models\TahfidzCoordinator;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzJuzProgress;
@@ -14,10 +17,12 @@ use App\Models\TahfidzProgressRecap;
 use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
 use App\Models\TahfidzTasmianParticipant;
+use App\Services\NotificationUniversalService;
 use App\Services\TahfidzAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TahfidzMonitoringController extends Controller
 {
@@ -44,7 +49,7 @@ class TahfidzMonitoringController extends Controller
 
         $members = TahfidzGroupMember::with([
             'student:id,name,nis,school_id',
-            'group:id,name,school_id,teacher_id',
+            'group:id,name,school_id,teacher_id', 'group.school:id,name',
         ])
             ->whereIn('tahfidz_group_id', $groupIds)
             ->where('academic_year_id', $academicYearId)
@@ -146,6 +151,13 @@ class TahfidzMonitoringController extends Controller
             ];
         })->sortByDesc(fn ($row) => count($row['reasons']))->values();
 
+        if ($request->boolean('export')) {
+            return Excel::download(
+                new TahfidzMonitoringExport($memberRows),
+                'Monitoring-Tahfidz-'.now()->format('Ymd-His').'.xlsx'
+            );
+        }
+
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 25;
         $memberPaginator = new LengthAwarePaginator(
@@ -183,6 +195,69 @@ class TahfidzMonitoringController extends Controller
             'userId', 'groups', 'schools', 'academicYears', 'academicYearId', 'schoolId',
             'dateFrom', 'dateTo', 'memberPaginator', 'pendingSetorans', 'tasmiPending', 'stats'
         ));
+    }
+
+    public function notify(Request $request, string $userId)
+    {
+        $this->authorizeView($request);
+
+        $academicYearId = $request->input('academic_year_id')
+            ?: AcademicYear::where('is_active', true)->value('id');
+        $schoolId = $request->input('school_id') ?: $this->schoolId($request);
+        $groups = $this->accessibleGroups($request, $academicYearId);
+        if ($schoolId) {
+            $groups = $groups->where('school_id', $schoolId)->values();
+        }
+
+        $schoolIds = $groups->pluck('school_id')->filter()->unique()->values();
+        $workUnitIds = School::whereIn('id', $schoolIds)->pluck('work_unit_id')->filter()->unique();
+
+        $recipients = TahfidzCoordinator::query()
+            ->whereIn('school_id', $schoolIds)
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->where('is_active', true)
+            ->pluck('user_id')
+            ->merge(GtkAdditionalTask::query()
+                ->whereIn('work_unit_id', $workUnitIds)
+                ->where('nama_tugas', 'like', '%Koordinator Guru Tahfidz%')
+                ->pluck('user_id'))
+            ->merge($groups->pluck('coordinator_id'))
+            ->merge($groups->pluck('teacher_id'))
+            ->filter()
+            ->unique()
+            ->reject(fn ($id) => (string) $id === (string) $request->user()->id)
+            ->values();
+
+        if ($recipients->isEmpty()) {
+            return back()->with('error', 'Belum ada koordinator/guru halaqah yang dapat menerima pengingat.');
+        }
+
+        $sent = 0;
+        foreach ($recipients as $recipientId) {
+            $actionUrl = route('user.tahfidz.monitoring.index', [
+                'userId' => $recipientId,
+                'academic_year_id' => $academicYearId,
+                'school_id' => $schoolId,
+            ]);
+
+            app(NotificationUniversalService::class)->send($recipientId, [
+                'module' => 'education',
+                'reference_type' => 'tahfidz_monitoring',
+                'reference_id' => $groups->first()?->id,
+                'type' => 'warning',
+                'action' => 'tahfidz_monitoring',
+                'title' => 'Monitoring Tahfidz perlu ditindaklanjuti',
+                'message' => 'Ada setoran/aktivitas Tahfidz yang perlu dicek. Buka menu Monitoring Tahfidz untuk melihat santri perlu perhatian dan antrean verifikasi.',
+                'action_url' => $actionUrl,
+                'action_text' => 'Buka Monitoring',
+                'priority' => 'high',
+                'work_unit_id' => $workUnitIds->first(),
+                'data' => ['school_ids' => $schoolIds->all(), 'academic_year_id' => $academicYearId],
+            ]);
+            $sent++;
+        }
+
+        return back()->with('success', $sent.' pengingat monitoring Tahfidz dikirim.');
     }
 
     private function accessibleGroups(Request $request, ?string $academicYearId)
