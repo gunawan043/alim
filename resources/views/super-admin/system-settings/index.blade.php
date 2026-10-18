@@ -607,9 +607,14 @@
                                     <div class="card border h-100">
                                         <div class="card-header"><h6 class="mb-0">Status Konfigurasi</h6></div>
                                         <div class="card-body small">
+                                            <div class="mb-2 d-flex justify-content-between"><span class="text-muted">Status</span>@if(($settings['google_drive_enabled'] ?? '0') === '1')<span class="badge bg-success-subtle text-success">Aktif</span>@else<span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>@endif</div>
                                             <div class="mb-2"><span class="text-muted">Service Account:</span><br><strong>{{ $settings['google_drive_service_account_email'] ?? 'Belum diset' }}</strong></div>
                                             <div class="mb-2"><span class="text-muted">Project ID:</span><br><strong>{{ $settings['google_drive_project_id'] ?? '-' }}</strong></div>
-                                            <div class="mb-3"><span class="text-muted">Folder:</span><br><strong>{{ $settings['google_drive_folder_id'] ?? 'Belum diset' }}</strong></div>
+                                            <div class="mb-2"><span class="text-muted">Folder:</span><br><strong>{{ $settings['google_drive_folder_id'] ?? 'Belum diset' }}</strong></div>
+                                            <div class="mb-3"><span class="text-muted">JSON Service Account:</span><br>@if(!empty($settings['google_drive_service_account_email']))<span class="badge bg-success-subtle text-success">Tersimpan terenkripsi</span>@else<span class="badge bg-danger-subtle text-danger">Belum diisi</span>@endif</div>
+                                            @if(empty($settings['google_drive_service_account_email']))
+                                                <div class="alert alert-warning py-2 px-2 mb-3" style="font-size:.75rem">Tempel JSON service account, lalu klik <strong>Test Koneksi Drive</strong>. Tombol Test akan menyimpan kredensial terlebih dahulu.</div>
+                                            @endif
                                             <button type="submit" class="btn btn-outline-primary w-100" formaction="{{ route('user.sa.system-settings.test-google-drive', ['userId' => $userId]) }}"><i class="ri-plug-line me-1"></i>Test Koneksi Drive</button>
                                             <div class="text-muted mt-2" style="font-size:.72rem">Jika aktif, foto bukti diunggah ke Drive. Jika gagal, sistem fallback ke penyimpanan lokal.</div>
                                         </div>

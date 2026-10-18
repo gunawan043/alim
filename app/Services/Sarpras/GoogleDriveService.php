@@ -94,8 +94,24 @@ class GoogleDriveService
 
     public function testConnection(): array
     {
-        if (! $this->isConfigured()) {
-            return ['ok' => false, 'message' => 'Pengaturan Google Drive belum lengkap/aktif.'];
+        $settings = $this->settings();
+        $missing = [];
+
+        if (! $settings['enabled']) {
+            $missing[] = 'status belum diaktifkan';
+        }
+        if (empty($settings['folder_id'])) {
+            $missing[] = 'ID folder belum diisi';
+        }
+        if (empty($settings['service_account']['client_email'])) {
+            $missing[] = 'Service Account JSON belum diisi (client_email tidak ditemukan)';
+        }
+        if (empty($settings['service_account']['private_key'])) {
+            $missing[] = 'private_key service account tidak ditemukan';
+        }
+
+        if ($missing !== []) {
+            return ['ok' => false, 'message' => 'Pengaturan Google Drive belum lengkap: '.implode('; ', $missing).'.'];
         }
 
         try {

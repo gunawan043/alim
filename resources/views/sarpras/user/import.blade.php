@@ -91,6 +91,11 @@
                         @enderror
                     </div>
 
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="preview" value="1" id="importPreview">
+                        <label class="form-check-label" for="importPreview">Mode audit / dry-run — validasi file tanpa menyimpan data</label>
+                    </div>
+
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ $backHref }}" class="btn btn-light">Batal</a>
                         <button type="submit" class="btn btn-success" id="btnImport">

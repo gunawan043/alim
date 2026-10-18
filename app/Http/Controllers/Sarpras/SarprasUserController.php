@@ -449,11 +449,18 @@ class SarprasUserController extends SarprasBaseController
             $allowedRoomIds = (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer())
                 ? $this->responsibleRoomIds()
                 : null;
-            $import = new AssetImport($userId, $schoolId, $roomId, $this->isCentralSarpras(), $allowedRoomIds);
+            $preview = $request->boolean('preview');
+            $import = new AssetImport($userId, $schoolId, $roomId, $this->isCentralSarpras(), $allowedRoomIds, $preview);
             Excel::import($import, $request->file('file'));
 
             $errors = $import->getErrors();
             $createdCount = $import->getSuccessCount();
+
+            if ($preview) {
+                return redirect()->route('sarpras.user.aset.import', ['userId' => $userId])
+                    ->with($errors === [] ? 'success' : 'warning', "Validasi selesai: {$createdCount} baris siap diimport, ".count($errors).' baris bermasalah. Tidak ada data yang disimpan.')
+                    ->with('import_errors', $errors);
+            }
 
             if ($createdCount > 0 && empty($errors)) {
                 return redirect()->route('sarpras.user.aset.index', ['userId' => $userId])

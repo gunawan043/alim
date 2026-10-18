@@ -23,6 +23,8 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
 
     protected bool $central;
 
+    protected bool $preview;
+
     protected ?array $allowedRoomIds;
 
     protected ?AssetRoom $forcedRoom = null;
@@ -40,13 +42,15 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         ?string $schoolContextId = null,
         ?string $forcedRoomId = null,
         bool $central = false,
-        ?array $allowedRoomIds = null
+        ?array $allowedRoomIds = null,
+        bool $preview = false
     ) {
         $this->userId = $userId;
         $this->schoolContextId = $schoolContextId;
         $this->forcedRoomId = $forcedRoomId;
         $this->central = $central;
         $this->allowedRoomIds = $allowedRoomIds;
+        $this->preview = $preview;
 
         // Pre-load forced room
         if ($forcedRoomId) {
@@ -57,10 +61,11 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             $this->forcedRoom = $roomQuery->find($forcedRoomId);
         }
 
-        // Pre-load category map (name => id)
+        // Pre-load category map (name/code => id)
         $categories = AssetCategory::where('is_active', true)->get();
         foreach ($categories as $cat) {
-            $this->categoryMap[strtolower($cat->name)] = $cat->id;
+            $this->categoryMap[strtolower(trim($cat->name))] = $cat->id;
+            $this->categoryMap['code:'.strtolower(trim($cat->code))] = $cat->id;
         }
 
         // Pre-load room map (room_name or room_code => room)
@@ -95,22 +100,31 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
                     continue;
                 }
 
-                $result = $this->processRow($rowData, $rowNumber);
-                if ($result === true) {
-                    $created++;
-                } else {
+                try {
+                    $result = $this->processRow($rowData, $rowNumber);
+                    if ($result === true) {
+                        $created++;
+                    } else {
+                        $skipped++;
+                        $this->errors[] = $result;
+                    }
+                } catch (\Throwable $e) {
                     $skipped++;
-                    $this->errors[] = $result;
+                    $this->errors[] = "Baris {$rowNumber}: ".$e->getMessage();
+                    Log::warning('AssetImport row failed', ['row' => $rowNumber, 'error' => $e->getMessage()]);
                 }
             }
 
-            if ($created > 0) {
+            if ($this->preview) {
+                DB::rollBack();
+                Log::info("AssetImport PREVIEW: {$created} valid, {$skipped} skipped.");
+            } elseif ($created > 0) {
                 DB::commit();
+                Log::info("AssetImport: {$created} created, {$skipped} skipped.");
             } else {
                 DB::rollBack();
+                Log::info("AssetImport: 0 created, {$skipped} skipped.");
             }
-
-            Log::info("AssetImport: {$created} created, {$skipped} skipped.");
         } catch (\Throwable $e) {
             DB::rollBack();
             $this->errors[] = 'Error fatal: '.$e->getMessage();
@@ -123,7 +137,7 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         return [
             'nama_aset' => 'required|string|max:191',
             'kode_aset' => 'nullable|string|max:50',
-            'ruang' => 'required|string|max:191',
+            'ruang' => $this->forcedRoomId ? 'nullable|string|max:191' : 'required|string|max:191',
             'kategori' => 'required|string|max:191',
             'merk' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
@@ -238,7 +252,7 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             'acquisition_year' => $acqYear ?: $acqDate?->year,
             'acquisition_price' => $acqPrice,
             'current_value' => $acqPrice,
-            'acquisition_source' => $acqSource ?: null,
+            'acquisition_source' => $acqSource ?: 'pembelian',
             'funding_source' => trim($row['sumber_dana'] ?? '') ?: null,
             'condition' => $condition,
             'status' => $status,
@@ -289,6 +303,9 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         if (isset($this->categoryMap[$refLower])) {
             return AssetCategory::find($this->categoryMap[$refLower]);
         }
+        if (isset($this->categoryMap['code:'.$refLower])) {
+            return AssetCategory::find($this->categoryMap['code:'.$refLower]);
+        }
 
         // Fuzzy match
         $found = AssetCategory::whereRaw('LOWER(name) LIKE ?', ["%{$refLower}%"])
@@ -319,15 +336,19 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
     private function normalizeCondition(?string $val): string
     {
         $map = [
+            'b' => 'baik',
             'baik' => 'baik',
             'bagus' => 'baik',
             'baik sekali' => 'baik',
+            'kb' => 'rusak_ringan',
+            'kurang baik' => 'rusak_ringan',
             'rusak ringan' => 'rusak_ringan',
             'rusak_ringan' => 'rusak_ringan',
             'ringan' => 'rusak_ringan',
             'rusak sedang' => 'rusak_sedang',
             'rusak_sedang' => 'rusak_sedang',
             'sedang' => 'rusak_sedang',
+            'rb' => 'rusak_berat',
             'rusak berat' => 'rusak_berat',
             'rusak_berat' => 'rusak_berat',
             'berat' => 'rusak_berat',

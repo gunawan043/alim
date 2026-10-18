@@ -177,6 +177,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.audit.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.audit.index') }}">
+            <i class="ri-shield-check-line"></i><span>Audit Data Sarpras</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.electricity']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.electricity.index') }}">
             <i class="ri-flashlight-line"></i><span>Listrik &amp; Token</span>

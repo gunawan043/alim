@@ -2118,6 +2118,33 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Analisis sampah DLH diperbarui: rancangan tabel sudah diimplementasikan pada `waste_sources`,
   `waste_logs`, dan `waste_handovers`.
 
+## 190. Audit Import Aset & Audit Data Sarpras
+
+- Import aset diperbaiki:
+  - `ruang` tidak wajib saat import per ruang (forced room);
+  - sumber perolehan kosong otomatis `pembelian` (menghindari error kolom non-null);
+  - normalisasi kondisi **B / KB / RB**;
+  - pencarian kategori mendukung kode kategori;
+  - error satu baris tidak membatalkan seluruh import (dilaporkan per baris);
+  - tambah **mode dry-run/audit** — file divalidasi dan dihitung tanpa menyimpan data.
+- Halaman baru **Audit Data Sarpras** (`/sarpras/audit-data`):
+  - aset pending verifikasi;
+  - aset tanpa ruang/harga;
+  - ruang tanpa PIC/gedung;
+  - gedung tanpa ruang;
+  - duplikat nama aset per ruang;
+  - inventaris asrama belum sinkron.
+- Bug kolom `dormitory_inventories.asset_id` yang belum ada diperbaiki lewat migrasi.
+- Form import pusat yang memanggil `$forcedRoom` tanpa variabel diperbaiki.
+
+## 191. Google Drive — Test Menyimpan Kredensial
+
+- Tombol **Test Koneksi Drive** sekarang menyimpan field Google Drive terlebih dahulu, sehingga
+  tidak gagal hanya karena pengguna belum menekan tombol Simpan.
+- Pesan kegagalan menyebut field yang kurang secara spesifik:
+  status, folder ID, `client_email`, atau `private_key`.
+- JSON service account tetap disimpan terenkripsi.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

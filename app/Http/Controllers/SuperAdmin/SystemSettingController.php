@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SystemSettingController extends Controller
 {
@@ -141,24 +142,15 @@ class SystemSettingController extends Controller
         // pembuatan token) — keluarkan dari penyimpanan generik.
         unset($validated['pos_api_header'], $validated['pos_api_allowed_ips']);
 
-        // Google Drive: service account disimpan terenkripsi, bukan plain text.
-        $driveJson = $validated['google_drive_service_account_json'] ?? null;
-        unset($validated['google_drive_service_account_json']);
+        if ($request->hasAny([
+            'google_drive_enabled', 'google_drive_folder_id', 'google_drive_folder_url',
+            'google_drive_shared_drive_id', 'google_drive_service_account_json',
+        ])) {
+            $this->saveGoogleDriveSettings($request);
+        }
 
-        $validated['google_drive_enabled'] = $request->boolean('google_drive_enabled') ? '1' : '0';
-
-        if (is_string($driveJson) && trim($driveJson) !== '') {
-            $decoded = json_decode($driveJson, true);
-            if (! is_array($decoded) || empty($decoded['client_email']) || empty($decoded['private_key'])) {
-                return redirect()->back()->withInput()->with('error', 'JSON service account Google Drive tidak valid. Wajib berisi client_email dan private_key.');
-            }
-
-            SystemSetting::updateOrCreate(
-                ['key' => 'google_drive_service_account_json'],
-                ['value' => Crypt::encryptString(json_encode($decoded)), 'group' => 'google_drive']
-            );
-            SystemSetting::set('google_drive_service_account_email', $decoded['client_email'], 'google_drive');
-            SystemSetting::set('google_drive_project_id', $decoded['project_id'] ?? null, 'google_drive');
+        foreach (['google_drive_enabled', 'google_drive_folder_id', 'google_drive_folder_url', 'google_drive_shared_drive_id', 'google_drive_service_account_json'] as $driveKey) {
+            unset($validated[$driveKey]);
         }
 
         foreach ($validated as $key => $value) {
@@ -248,11 +240,61 @@ class SystemSettingController extends Controller
             ->with('success', $posFlash ?? 'Pengaturan berhasil disimpan.');
     }
 
-    public function testGoogleDrive()
+    public function testGoogleDrive(Request $request)
     {
+        // Simpan dulu nilai dari form, karena tombol Test ada di form pengaturan.
+        try {
+            $this->saveGoogleDriveSettings($request);
+        } catch (ValidationException $e) {
+            throw $e;
+        }
+
         $result = app(GoogleDriveService::class)->testConnection();
 
         return redirect()->back()->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    private function saveGoogleDriveSettings(Request $request): void
+    {
+        $validated = $request->validate([
+            'google_drive_enabled' => 'boolean',
+            'google_drive_folder_id' => 'nullable|string|max:191',
+            'google_drive_folder_url' => 'nullable|url|max:500',
+            'google_drive_shared_drive_id' => 'nullable|string|max:191',
+            'google_drive_service_account_json' => 'nullable|string',
+        ]);
+
+        $enabled = $request->boolean('google_drive_enabled');
+        $folderId = trim((string) ($validated['google_drive_folder_id'] ?? ''));
+
+        if ($enabled && $folderId === '') {
+            throw ValidationException::withMessages([
+                'google_drive_folder_id' => 'ID folder Google Drive wajib diisi saat Drive diaktifkan.',
+            ]);
+        }
+
+        SystemSetting::set('google_drive_enabled', $enabled ? '1' : '0', 'google_drive');
+        SystemSetting::set('google_drive_folder_id', $folderId ?: null, 'google_drive');
+        SystemSetting::set('google_drive_folder_url', $validated['google_drive_folder_url'] ?? null, 'google_drive');
+        SystemSetting::set('google_drive_shared_drive_id', $validated['google_drive_shared_drive_id'] ?? null, 'google_drive');
+
+        $driveJson = trim((string) ($validated['google_drive_service_account_json'] ?? ''));
+
+        if ($driveJson !== '') {
+            $decoded = json_decode($driveJson, true);
+            if (! is_array($decoded) || empty($decoded['client_email']) || empty($decoded['private_key'])) {
+                throw ValidationException::withMessages([
+                    'google_drive_service_account_json' => 'JSON service account tidak valid. Wajib berisi client_email dan private_key.',
+                ]);
+            }
+
+            SystemSetting::updateOrCreate(
+                ['key' => 'google_drive_service_account_json'],
+                ['value' => Crypt::encryptString(json_encode($decoded)), 'group' => 'google_drive']
+            );
+            SystemSetting::set('google_drive_service_account_email', $decoded['client_email'], 'google_drive');
+            SystemSetting::set('google_drive_project_id', $decoded['project_id'] ?? null, 'google_drive');
+        }
     }
 
     /**

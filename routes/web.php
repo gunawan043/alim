@@ -163,6 +163,7 @@ use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
+use App\Http\Controllers\Sarpras\SarprasDataAuditController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasWasteController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
@@ -215,6 +216,7 @@ use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
+use App\Http\Controllers\Tahfidz\TasmiController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
@@ -459,6 +461,21 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::prefix('tasmi')->name('tasmi.')->group(function () {
+                    Route::get('/', [TasmiController::class, 'index'])->name('index');
+                    Route::post('/', [TasmiController::class, 'store'])->name('store');
+                    Route::get('/certificates', [TasmiController::class, 'certificates'])->name('certificates');
+                    Route::get('/certificates/{certificateId}/print', [TasmiController::class, 'certificatePrint'])->name('certificate.print');
+                    Route::post('/participants/{participantId}/score', [TasmiController::class, 'score'])->name('participant.score');
+                    Route::get('/participants/{participantId}/instrument', [TasmiController::class, 'instrument'])->name('participant.instrument');
+                    Route::post('/participants/{participantId}/certificate', [TasmiController::class, 'issueCertificate'])->name('participant.certificate');
+                    Route::get('/{id}', [TasmiController::class, 'show'])->name('show');
+                    Route::put('/{id}', [TasmiController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [TasmiController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/participants', [TasmiController::class, 'addParticipant'])->name('participants.store');
+                    Route::delete('/{id}/participants/{participantId}', [TasmiController::class, 'removeParticipant'])->name('participants.destroy');
+                });
+
                 Route::prefix('mutabaah')->name('mutabaah.')->group(function () {
                     Route::get('/', [MutabaahController::class, 'index'])->name('index');
                     Route::post('/', [MutabaahController::class, 'store'])->name('store');
@@ -2747,6 +2764,9 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/listrik/padam/{outageId}', [SarprasElectricityController::class, 'showOutage'])->name('electricity.outage.show');
     Route::post('/listrik/padam/{outageId}/action', [SarprasElectricityController::class, 'storeAction'])->name('electricity.outage.action');
     Route::post('/listrik/padam/{outageId}/resolve', [SarprasElectricityController::class, 'resolveOutage'])->name('electricity.outage.resolve');
+
+    // Audit kualitas data Sarpras
+    Route::get('/audit-data', [SarprasDataAuditController::class, 'index'])->name('audit.index');
 
     // Pengelolaan sampah DLH
     Route::get('/sampah', [SarprasWasteController::class, 'index'])->name('waste.index');

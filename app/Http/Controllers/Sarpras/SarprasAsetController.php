@@ -340,8 +340,10 @@ class SarprasAsetController extends SarprasBaseController
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
+        $forcedRoom = null;
+        $isForcedRoom = false;
 
-        return view('sarpras.aset.import', compact('rooms', 'categories', 'schoolId'));
+        return view('sarpras.aset.import', compact('rooms', 'categories', 'schoolId', 'forcedRoom', 'isForcedRoom'));
     }
 
     public function importProcess(AssetImportRequest $request)
@@ -350,11 +352,18 @@ class SarprasAsetController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
 
         try {
-            $import = new AssetImport(auth()->id(), $schoolId, null, $this->isCentralSarpras());
+            $preview = $request->boolean('preview');
+            $import = new AssetImport(auth()->id(), $schoolId, null, $this->isCentralSarpras(), null, $preview);
             Excel::import($import, $request->file('file'));
 
             $errors = $import->getErrors();
             $createdCount = $import->getSuccessCount();
+
+            if ($preview) {
+                return redirect()->route('sarpras.aset.import')
+                    ->with($errors === [] ? 'success' : 'warning', "Validasi selesai: {$createdCount} baris siap diimport, ".count($errors).' baris bermasalah. Tidak ada data yang disimpan.')
+                    ->with('import_errors', $errors);
+            }
 
             if ($createdCount > 0 && empty($errors)) {
                 return redirect()->route('sarpras.aset.index')
