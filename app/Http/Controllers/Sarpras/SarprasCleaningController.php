@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SarprasCleaningController extends SarprasBaseController
 {
@@ -373,6 +374,15 @@ class SarprasCleaningController extends SarprasBaseController
                 $input = $validated['items'][$task->id] ?? null;
                 if (! $input) {
                     continue;
+                }
+
+                $hasBefore = ! empty($input['before_url']) || $request->hasFile("before_files.{$task->id}");
+                $hasAfter = ! empty($input['after_url']) || $request->hasFile("after_files.{$task->id}");
+
+                if (! $hasBefore || ! $hasAfter) {
+                    throw ValidationException::withMessages([
+                        "items.{$task->id}.before_url" => "Foto/link bukti sebelum dan sesudah wajib diisi untuk: {$task->title}",
+                    ]);
                 }
 
                 $before = $this->photos->store(
