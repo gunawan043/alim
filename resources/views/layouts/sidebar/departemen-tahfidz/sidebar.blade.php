@@ -120,6 +120,20 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.halaqah.index') }}">
+            <i class="ri-team-line"></i><span>Halaqah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.setoran.index') }}">
+            <i class="ri-file-add-line"></i><span>Setoran & Verifikasi</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link text-muted" href="#" onclick="return false"
            style="cursor:not-allowed">
             <i class="ri-ruler-2-line"></i>

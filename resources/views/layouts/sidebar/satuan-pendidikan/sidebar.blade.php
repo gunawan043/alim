@@ -1294,6 +1294,19 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
+            <i class="ri-team-line"></i><span>Halaqah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}">
+            <i class="ri-file-add-line"></i><span>Setoran Hafalan</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
            href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
             <i class="ri-file-list-3-line"></i><span>RPP Tahfizh</span>

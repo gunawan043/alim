@@ -23,7 +23,7 @@ class TahfidzSetoran extends Model
     protected $fillable = [
         'student_id', 'teacher_id', 'tahfidz_group_id', 'academic_year_id',
         'setoran_date', 'week_number', 'setoran_type', 'metode_pembelajaran',
-        'surah_start_id', 'ayat_start', 'surah_end_id', 'ayat_end',
+        'surah_start_id', 'surah_start_name', 'ayat_start', 'surah_end_id', 'surah_end_name', 'ayat_end',
         'juz', 'halaman_start', 'halaman_end', 'jumlah_halaman', 'jumlah_baris',
         'hasil_hafalan', 'khofi', 'jali', 'nilai_setoran',
         'capaian_target', 'keterangan_capaian',

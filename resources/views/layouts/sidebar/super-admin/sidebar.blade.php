@@ -607,6 +607,20 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
+        <i class="ri-team-line"></i><span>Halaqah</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}">
+        <i class="ri-file-add-line"></i><span>Setoran & Verifikasi</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
         <i class="ri-pulse-line"></i><span>Monitoring</span>
