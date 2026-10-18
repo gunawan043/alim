@@ -149,11 +149,11 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fs-12 text-muted mb-1">Status Aktif</label>
-                            <select name="is_active" class="form-select">
-                                <option value="">Semua</option>
-                                <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Aktif</option>
-                                <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Nonaktif</option>
+                            <label class="form-label fs-12 text-muted mb-1">Status Penghuni</label>
+                            <select name="status" class="form-select">
+                                <option value="aktif" {{ ($status ?? 'aktif') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                                <option value="keluar" {{ ($status ?? '') === 'keluar' ? 'selected' : '' }}>Keluar</option>
+                                <option value="semua" {{ ($status ?? '') === 'semua' ? 'selected' : '' }}>Semua</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -183,6 +183,7 @@
                                     <th style="width: 12%">Ruang / Kamar</th>
                                     <th class="text-center" style="width: 7%">Tempat Tidur</th>
                                     <th class="text-center" style="width: 10%">Status</th>
+                                    <th style="width: 14%">Keluar</th>
                                     <th class="text-center" style="width: 10%">Aksi</th>
                                 </tr>
                             </thead>
@@ -245,6 +246,14 @@
                                                 </span>
                                             @endif
                                         </td>
+                                        <td class="small">
+                                            @if(! $resident->is_active)
+                                                <div class="text-muted">{{ $resident->check_out_date?->format('d/m/Y') ?? '—' }}</div>
+                                                <span class="badge bg-secondary-subtle text-secondary">{{ ucfirst(str_replace('_', ' ', (string) $resident->check_out_reason)) }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             <div class="d-flex justify-content-center gap-1">
                                                 <a href="{{ route('user.asrama.residents.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id]) }}"
@@ -257,10 +266,11 @@
                                                 @if($resident->is_active)
                                                     <form method="POST"
                                                           action="{{ route('user.asrama.residents.checkout', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id]) }}"
-                                                          class="d-inline">
+                                                          class="d-inline"
+                                                          data-confirm="Keluarkan penghuni ini dari asrama? Data tetap tersimpan sebagai riwayat.">
                                                         @csrf
-                                                        <button type="button"
-                                                                class="btn btn-sm btn-outline-danger checkout-btn"
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-outline-danger"
                                                                 title="Check-out">
                                                             <i class="ri-logout-box-r-line"></i>
                                                         </button>
@@ -270,17 +280,13 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5">
-                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
-                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Santri</h6>
-                                            <p class="text-muted mb-3">Belum ada data santri yang ditempatkan di asrama ini.</p>
-                                            <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="ri-add-line me-1"></i> Tempatkan Santri
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    <x-empty-state colspan="8" title="Belum ada penghuni"
+                                        message="Belum ada santri yang ditempatkan di asrama ini pada filter tersebut.">
+                                        <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                           class="btn btn-primary btn-sm mt-3">
+                                            <i class="ri-add-line me-1"></i> Tempatkan Santri
+                                        </a>
+                                    </x-empty-state>
                                 @endforelse
                             </tbody>
                         </table>
@@ -294,32 +300,3 @@
     </div>
 @endsection
 
-@section('script')
-<script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-<script>
-    // Check-out confirmation
-    document.querySelectorAll('.checkout-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var form = btn.closest('form');
-            var studentName = btn.closest('tr').querySelector('.fw-semibold')?.textContent ?? 'santri ini';
-
-            Swal.fire({
-                title: 'Konfirmasi Keluar',
-                html: '<p>Yakin ingin mengeluarkan <strong>' + studentName + '</strong> dari asrama?</p><p class="text-muted small">Status akan berubah menjadi nonaktif.</p>',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: '<i class="ri-logout-box-r-line me-1"></i> Ya, Keluarkan',
-                cancelButtonText: 'Batal',
-                confirmButtonClass: 'btn btn-warning me-2',
-                cancelButtonClass: 'btn btn-light',
-                reverseButtons: true
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
-    });
-</script>
-@endsection

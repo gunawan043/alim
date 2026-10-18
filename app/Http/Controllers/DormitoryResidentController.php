@@ -43,11 +43,19 @@ class DormitoryResidentController extends Controller
             'room.wing',
         ])
             ->where('dormitory_id', $asramaUuid)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('is_active', true);
+            ->where('academic_year_id', $activeYear?->id);
 
-        if ($request->filled('is_active')) {
-            $query->where('is_active', $request->boolean('is_active'));
+        // Default: penghuni aktif. Riwayat keluar tetap tersedia via filter.
+        $status = $request->input('status');
+        if ($status === null && $request->filled('is_active')) {
+            $status = $request->boolean('is_active') ? 'aktif' : 'keluar';
+        }
+        $status = $status ?: 'aktif';
+
+        if ($status === 'aktif') {
+            $query->where('is_active', true);
+        } elseif ($status === 'keluar') {
+            $query->where('is_active', false);
         }
 
         if ($request->filled('room_id')) {
@@ -84,10 +92,11 @@ class DormitoryResidentController extends Controller
                 $q->where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true);
             })->count(),
             'total_rooms' => DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->count(),
+            'keluar' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', false)->count(),
         ];
 
         return view('dormitory.residents.index', compact(
-            'dormitory', 'residents', 'rooms', 'userId', 'stats', 'activeYear', 'activePermits'
+            'dormitory', 'residents', 'rooms', 'userId', 'stats', 'activeYear', 'activePermits', 'status'
         ));
     }
 
@@ -238,8 +247,9 @@ class DormitoryResidentController extends Controller
         ]);
 
         $this->lookup->invalidateCache($resident->student_id);
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_RESIDENT_CHECKOUT', 'dormitory_residents', $resident->id);
 
-        return back()->with('success', 'Penghuni berhasil dikeluarkan.');
+        return back()->with('success', 'Penghuni dikeluarkan. Riwayat tetap tersimpan dan dapat dilihat pada filter Keluar.');
     }
 
     /**

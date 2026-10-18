@@ -2,16 +2,18 @@
 
 namespace App\Listeners;
 
+use App\Events\StudentExitedFromRombel;
 use App\Events\StudentGraduated;
 use App\Events\StudentMutatedOut;
 use App\Models\DormitoryResident;
+use App\Models\Student;
 use App\Services\NotificationUniversalService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Mutasi keluar / kelulusan → tutup penghuni asrama aktif:
- * kamar dikosongkan, status boarding menjadi non-boarding (via observer),
- * dan petugas asrama mendapat notifikasi in-app.
+ * Mutasi keluar / kelulusan / keluar rombel → tutup penghuni asrama aktif.
+ * Data TIDAK dihapus: is_active=false + tanggal/alasan check-out tersimpan
+ * sebagai riwayat yang dapat dilihat pada filter "Keluar".
  */
 class CloseDormitoryResidentOnStudentExit
 {
@@ -20,7 +22,8 @@ class CloseDormitoryResidentOnStudentExit
         $this->close(
             studentId: $event->student->id,
             studentName: $event->student->name,
-            reason: 'Mutasi keluar ('.$event->outType.')',
+            reason: 'keluar',
+            note: 'Mutasi keluar ('.$event->outType.')',
             date: $event->leaveDate,
         );
     }
@@ -30,12 +33,29 @@ class CloseDormitoryResidentOnStudentExit
         $this->close(
             studentId: $event->student->id,
             studentName: $event->student->name,
-            reason: 'Lulus ('.$event->graduationDate.')',
+            reason: 'lulus',
+            note: 'Lulus ('.$event->graduationDate.')',
             date: $event->graduationDate,
         );
     }
 
-    private function close(string $studentId, string $studentName, string $reason, ?string $date): void
+    public function handleExitedFromRombel(StudentExitedFromRombel $event): void
+    {
+        $student = Student::find($event->studentId);
+        if (! $student) {
+            return;
+        }
+
+        $this->close(
+            studentId: $student->id,
+            studentName: $student->name,
+            reason: $event->reason === 'graduated' ? 'lulus' : 'keluar',
+            note: 'Keluar rombel: '.$event->reason,
+            date: $event->leaveDate,
+        );
+    }
+
+    private function close(string $studentId, string $studentName, string $reason, string $note, ?string $date): void
     {
         try {
             $residents = DormitoryResident::query()
@@ -44,10 +64,12 @@ class CloseDormitoryResidentOnStudentExit
                 ->get();
 
             foreach ($residents as $resident) {
+                $existingNote = trim((string) $resident->notes);
                 $resident->update([
                     'is_active' => false,
                     'check_out_date' => $date ?: now()->toDateString(),
                     'check_out_reason' => $reason,
+                    'notes' => $existingNote !== '' ? $existingNote.' | '.$note : $note,
                 ]);
 
                 app(NotificationUniversalService::class)->notifyDormitoryStaff($resident->dormitory_id, [
@@ -57,7 +79,7 @@ class CloseDormitoryResidentOnStudentExit
                     'type' => 'warning',
                     'action' => 'resident_closed_lifecycle',
                     'title' => 'Asrama: '.$studentName.' keluar',
-                    'message' => $reason.'. Kamar/ranjang otomatis dikosongkan.',
+                    'message' => $note.'. Kamar/ranjang otomatis dikosongkan; data tetap tersimpan sebagai riwayat.',
                     'priority' => 'medium',
                 ]);
             }

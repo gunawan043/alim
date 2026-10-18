@@ -1814,6 +1814,23 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Tetap menampilkan daftar belum check-out dan belum absen.
 - Test QR/jadwal = 1 test / 23 assertion — hijau.
 
+## 170. Data Penghuni — Siklus Mutasi Keluar & Standarisasi UI
+
+- **Bug kritis diperbaiki**: listener mutasi/kelulusan mengisi `check_out_reason` dengan teks bebas yang
+  tidak sesuai enum DB (`lulus/pindah_kamar/keluar/sakit/lainnya`). Sekarang memakai enum yang benar
+  dan detail alasan disimpan di `notes`.
+- Listener juga terdaftar untuk **StudentExitedFromRombel** (mutasi/keluar rombel), bukan hanya
+  `StudentMutatedOut`/`StudentGraduated`.
+- **Data tidak dihapus**: penghuni nonaktif tetap tersimpan sebagai riwayat (`is_active=false`,
+  tanggal & alasan check-out, catatan).
+- **UI Data Penghuni**:
+  - filter status **Aktif / Keluar / Semua** (default Aktif),
+  - kolom **Keluar** (tanggal + alasan),
+  - konfirmasi check-out memakai modal lord-icon global,
+  - empty state & pagination standar.
+- **Test `DormitoryResidentLifecycleTest`**: mutasi keluar menutup penghuni (alasan `keluar`, tanggal,
+  catatan) tanpa menghapus baris (1 test / 5 assertion).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

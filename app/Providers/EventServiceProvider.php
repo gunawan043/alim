@@ -149,6 +149,7 @@ class EventServiceProvider extends ServiceProvider
 
         StudentExitedFromRombel::class => [
             DeactivateStudentAcademicRecordsListener::class,
+            [CloseDormitoryResidentOnStudentExit::class, 'handleExitedFromRombel'],
         ],
 
         StudentGraduated::class => [
