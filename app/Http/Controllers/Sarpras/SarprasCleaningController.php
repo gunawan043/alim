@@ -30,10 +30,12 @@ class SarprasCleaningController extends SarprasBaseController
         abort_unless($canManage || $canReport, 403, 'Anda tidak memiliki akses ke modul kebersihan.');
 
         $user = auth()->user();
-        $areaQuery = $this->cleaningAreaQuery($canManage, $user);
+        $areaQuery = $this->cleaningAreaQuery($canManage, $user)
+            ->when($request->filled('area_type'), fn ($q) => $q->where('area_type', $request->area_type));
         $areas = $areaQuery->get();
 
-        $reportQuery = $this->cleaningReportQuery($request, $canManage, $user);
+        $reportQuery = $this->cleaningReportQuery($request, $canManage, $user)
+            ->when($request->filled('area_type'), fn ($q) => $q->whereHas('area', fn ($a) => $a->where('area_type', $request->area_type)));
 
         $stats = [
             'areas' => $areas->count(),
@@ -110,7 +112,9 @@ class SarprasCleaningController extends SarprasBaseController
         abort_unless($canManage || $canReport, 403, 'Anda tidak memiliki akses ke modul kebersihan.');
 
         $user = auth()->user();
-        $areas = $this->cleaningAreaQuery($canManage, $user)->get();
+        $areas = $this->cleaningAreaQuery($canManage, $user)
+            ->when($request->filled('area_type'), fn ($q) => $q->where('area_type', $request->area_type))
+            ->get();
         $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $buildings = AssetBuilding::query()->orderBy('building_name')->get(['id', 'building_name']);
         $rooms = \App\Models\AssetRoom::with('building')->where('is_active', true)->orderBy('room_name')
@@ -130,6 +134,7 @@ class SarprasCleaningController extends SarprasBaseController
         $user = auth()->user();
         $areas = $this->cleaningAreaQuery($canManage, $user)->get();
         $reports = $this->cleaningReportQuery($request, $canManage, $user)
+            ->when($request->filled('area_type'), fn ($q) => $q->whereHas('area', fn ($a) => $a->where('area_type', $request->area_type)))
             ->with(['area.building', 'officer', 'substituteFor', 'verifier'])
             ->orderByDesc('report_date')->orderByDesc('created_at')
             ->paginate(20)->withQueryString();
@@ -148,7 +153,9 @@ class SarprasCleaningController extends SarprasBaseController
         $programs = CleaningProgram::with([
             'area', 'building', 'assignee',
             'checks' => fn ($q) => $q->where('year', $year),
-        ])->where('is_active', true)->orderBy('title')->get();
+        ])->where('is_active', true)
+            ->when($request->filled('area_type'), fn ($q) => $q->whereHas('area', fn ($a) => $a->where('area_type', $request->area_type)))
+            ->orderBy('title')->get();
 
         $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $areas = CleaningArea::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
@@ -431,7 +438,8 @@ class SarprasCleaningController extends SarprasBaseController
 
         $user = auth()->user();
         $areaQuery = CleaningArea::with(['tasks' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->when($request->filled('area_type'), fn ($q) => $q->where('area_type', $request->area_type));
 
         if (! $canManage) {
             $areaIds = CleaningAssignment::query()
@@ -630,7 +638,7 @@ class SarprasCleaningController extends SarprasBaseController
 
         $jabatan = Str::upper(GtkWorkUnit::query()->where('user_id', $user->id)->pluck('jabatan')->implode(' '));
 
-        return str_contains($jabatan, 'KEBERSIHAN') || $user->hasRole('Petugas Kebersihan');
+        return str_contains($jabatan, 'KEBERSIHAN') || str_contains($jabatan, 'PERTAMANAN') || $user->hasRole('Petugas Kebersihan');
     }
 
     private function authorizeCleaningArea(CleaningArea $area): void

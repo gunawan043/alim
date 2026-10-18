@@ -10,7 +10,7 @@
     @php $months = [1=>'Jan',2=>'Feb',3=>'Mar',4=>'Apr',5=>'Mei',6=>'Jun',7=>'Jul',8=>'Agu',9=>'Sep',10=>'Okt',11=>'Nov',12=>'Des']; @endphp
 
     <div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-end gap-2">
-        <form method="GET" action="{{ route('sarpras.kebersihan.programs') }}" class="d-flex gap-2 align-items-end"><div><label class="form-label small fw-semibold">Tahun Program</label><input type="number" name="year" class="form-control" value="{{ $year }}" min="2000" max="2100"></div><button class="btn btn-primary">Tampilkan</button></form>
+        <form method="GET" action="{{ route('sarpras.kebersihan.programs') }}" class="d-flex gap-2 align-items-end">@if(request('area_type'))<input type="hidden" name="area_type" value="{{ request('area_type') }}">@endif<div><label class="form-label small fw-semibold">Tahun Program</label><input type="number" name="year" class="form-control" value="{{ $year }}" min="2000" max="2100"></div><button class="btn btn-primary">Tampilkan</button></form>
         <div class="d-flex gap-2"><a href="{{ route('sarpras.kebersihan.index') }}" class="btn btn-light"><i class="ri-arrow-left-line me-1"></i>Kembali</a>@if($canManage)<button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProgramModal"><i class="ri-add-line me-1"></i>Tambah Program</button>@endif</div>
     </div></div>
 

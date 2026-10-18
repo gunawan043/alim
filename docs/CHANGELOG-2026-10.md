@@ -2270,6 +2270,23 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Catatan sampah dapat ditautkan ke fasilitas (`waste_logs.facility_id`).
 - Menu Fasilitas Sampah ditambahkan ke sidebar URT.
 
+## 199. Petugas Pertamanan
+
+- Jabatan **Petugas Pertamanan** ditambahkan sebagai bagian role **Unit Rumah Tangga**.
+- Sidebar URT sekarang memiliki section **Pertamanan**:
+  - Dashboard Pertamanan;
+  - Area Taman;
+  - Checklist Pertamanan;
+  - Laporan Pertamanan;
+  - Program Pertamanan;
+  - Lapor Kerusakan.
+- Semua tautan memakai filter `area_type=taman`, sehingga petugas pertamanan hanya melihat area taman/halaman/kolam.
+- Akses laporan kebersihan mengenali jabatan `Petugas Pertamanan`.
+- Uraian pekerjaan dan program taman yang sudah ada tetap digunakan:
+  penyiraman, kebersihan taman, pemangkasan, pemupukan, pengecekan hama,
+  Pemeliharaan Taman dan Kolam, serta Pemangkasan Pohon.
+- Petugas Pertamanan tidak memperoleh hak verifikasi/manajemen area; verifikasi tetap oleh koordinator/URT.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

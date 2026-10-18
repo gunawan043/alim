@@ -260,6 +260,7 @@ class JenisGtkSeeder extends Seeder
                     'Teknisi Maintenance',
                     'Teknisi',
                     'Petugas Kebersihan',
+                    'Petugas Pertamanan',
                     'Janitor',
                     'Driver',
                     'Pengemudi',

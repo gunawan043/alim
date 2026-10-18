@@ -53,11 +53,12 @@
     $isKoorSarpras   = $hasJabatan('Koordinator Sarana Prasarana');
     $isTeknisi       = $hasJabatan('Teknisi Maintenance');
     $isKebersihan    = $hasJabatan('Petugas Kebersihan');
+    $isPertamanan    = $hasJabatan('Petugas Pertamanan') || $hasJabatan('Petugas Taman');
     $isDriver        = $hasJabatan('Driver') || $hasJabatan('Pengemudi');
     $isTuUrt         = $hasJabatan('Tata Usaha') || $hasJabatan('Kepala Tata Usaha');
 
     $isStruktural    = $isKepalaURT || $isKoorSarpras || $isTuUrt;
-    $isOperasional   = $isTeknisi || $isKebersihan || $isDriver;
+    $isOperasional   = $isTeknisi || $isKebersihan || $isPertamanan || $isDriver;
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -479,6 +480,56 @@
         </a>
     </li>
     @endif
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 9B — PERTAMANAN
+     Akses: Kepala/Koordinator + Petugas Pertamanan
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if(($showAll || $isKepalaURT || $isTuUrt || $isKoorSarpras || $isPertamanan) && menu_allowed('rumah-tangga'))
+    <li class="menu-title"><span>Pertamanan</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.index']) && request('area_type') === 'taman' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.index', ['area_type' => 'taman']) }}">
+            <i class="ri-plant-line"></i><span>Dashboard Pertamanan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.area']) && request('area_type') === 'taman' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.areas', ['area_type' => 'taman']) }}">
+            <i class="ri-map-pin-2-line"></i><span>Area Taman</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.report.create']) && request('area_type') === 'taman' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.report.create', ['area_type' => 'taman']) }}">
+            <i class="ri-checkbox-multiple-line"></i><span>Checklist Pertamanan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.reports', 'sarpras.kebersihan.report.show']) && request('area_type') === 'taman' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.reports', ['area_type' => 'taman']) }}">
+            <i class="ri-file-list-2-line"></i><span>Laporan Pertamanan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.program']) && request('area_type') === 'taman' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.programs', ['area_type' => 'taman']) }}">
+            <i class="ri-calendar-todo-line"></i><span>Program Pertamanan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.user.kerusakan.create') }}">
+            <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
+        </a>
+    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════

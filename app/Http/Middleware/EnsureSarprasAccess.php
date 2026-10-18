@@ -85,6 +85,7 @@ class EnsureSarprasAccess
             'Teknisi Maintenance',
             'Teknisi',
             'Petugas Kebersihan',
+            'Petugas Pertamanan',
             'Driver',
             'Pengemudi',
         ];

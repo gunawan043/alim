@@ -7,7 +7,7 @@
         @slot('title') Laporan Kebersihan
     @endcomponent
 
-    <div class="card mb-3"><div class="card-body"><form method="GET" action="{{ route('sarpras.kebersihan.reports') }}" class="row g-2 align-items-end">
+    <div class="card mb-3"><div class="card-body"><form method="GET" action="{{ route('sarpras.kebersihan.reports') }}" class="row g-2 align-items-end">@if(request('area_type'))<input type="hidden" name="area_type" value="{{ request('area_type') }}">@endif
         <div class="col-md-3"><label class="form-label small fw-semibold">Area</label><select name="area_id" class="form-select"><option value="">Semua</option>@foreach($areas as $area)<option value="{{ $area->id }}" {{ request('area_id') === $area->id ? 'selected' : '' }}>{{ $area->name }}</option>@endforeach</select></div>
         <div class="col-md-2"><label class="form-label small fw-semibold">Tanggal</label><input type="date" name="date" class="form-control" value="{{ request('date') }}"></div>
         <div class="col-md-2"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><option value="">Semua</option>@foreach(['submitted'=>'Menunggu Verifikasi','verified'=>'Diverifikasi','rejected'=>'Dikembalikan'] as $key=>$label)<option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>{{ $label }}</option>@endforeach</select></div>

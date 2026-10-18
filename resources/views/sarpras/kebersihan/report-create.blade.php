@@ -9,7 +9,7 @@
 
     <div class="card mb-3">
         <div class="card-body">
-            <form method="GET" action="{{ route('sarpras.kebersihan.report.create') }}" class="row g-2 align-items-end">
+            <form method="GET" action="{{ route('sarpras.kebersihan.report.create') }}" class="row g-2 align-items-end">@if(request('area_type'))<input type="hidden" name="area_type" value="{{ request('area_type') }}">@endif
                 <div class="col-md-5"><label class="form-label small fw-semibold">Area Kerja</label><select name="area_id" class="form-select" required><option value="">— Pilih Area —</option>@foreach($areas as $area)<option value="{{ $area->id }}" {{ $selectedArea?->id === $area->id ? 'selected' : '' }}>{{ $area->name }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label small fw-semibold">Tanggal</label><input type="date" name="report_date" class="form-control" value="{{ $today }}"></div>
                 <div class="col-md-2"><button class="btn btn-primary w-100"><i class="ri-eye-line me-1"></i>Tampilkan</button></div>
