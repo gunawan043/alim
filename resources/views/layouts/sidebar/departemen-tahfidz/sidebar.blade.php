@@ -180,12 +180,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Leger Hafalan (rekap total juz per santri) --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-table-line"></i>
-            <span>Leger Hafalan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.monitoring.index') }}">
+            <i class="ri-line-chart-line"></i><span>Monitoring & Leger Hafalan</span>
         </a>
     </li>
 

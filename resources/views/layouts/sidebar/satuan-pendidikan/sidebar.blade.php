@@ -1320,6 +1320,13 @@
             <i class="ri-award-line"></i><span>Tasmi’ & Syahadah</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.monitoring.index', ['userId' => $userId]) }}">
+            <i class="ri-line-chart-line"></i><span>Monitoring Tahfidz</span>
+        </a>
+    </li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
            href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">

@@ -216,6 +216,7 @@ use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
+use App\Http\Controllers\Tahfidz\TahfidzMonitoringController;
 use App\Http\Controllers\Tahfidz\TasmiController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\SubjectController;
@@ -461,6 +462,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
+
                 Route::prefix('tasmi')->name('tasmi.')->group(function () {
                     Route::get('/', [TasmiController::class, 'index'])->name('index');
                     Route::post('/', [TasmiController::class, 'store'])->name('store');
