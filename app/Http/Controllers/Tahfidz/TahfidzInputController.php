@@ -11,6 +11,7 @@ use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzProgressRecap;
 use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
+use App\Models\TahfidzSurahMaster;
 use App\Services\TahfidzAccess;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,8 @@ class TahfidzInputController extends Controller
             ->orderBy('name')
             ->limit(1000)
             ->get(['id', 'name', 'nis', 'school_id']);
+
+        $surahs = TahfidzSurahMaster::query()->orderBy('number')->get(['number', 'name_latin', 'name_arabic']);
 
         $selected = null;
         $selectedMember = null;
@@ -115,7 +118,7 @@ class TahfidzInputController extends Controller
         }
 
         return view('tahfidz.input.index', compact(
-            'userId', 'academicYear', 'ownGroups', 'schoolGroups', 'members', 'schoolStudents', 'studentClassMap',
+            'userId', 'academicYear', 'ownGroups', 'schoolGroups', 'members', 'schoolStudents', 'studentClassMap', 'surahs',
             'selected', 'selectedMember', 'selectedGroup', 'isSubstitute', 'history',
             'lastSetoran', 'target', 'progress', 'recap', 'canInput'
         ));

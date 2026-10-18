@@ -146,7 +146,9 @@ class TahfidzMasterController extends Controller
 
         $plans = TahfidzLessonPlan::with(['school:id,name', 'gradeLevel:id,name', 'academicYear:id,name'])
             ->withCount('items')
-            ->when(! $this->access->canViewAllSchools($request->user()), fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->access->canViewAllSchools($request->user()), function ($q) use ($schoolId) {
+                $q->where(fn ($scope) => $scope->whereNull('school_id')->orWhere('school_id', $schoolId));
+            })
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
             ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
             ->orderByDesc('created_at')
@@ -499,7 +501,8 @@ class TahfidzMasterController extends Controller
         }
 
         abort_unless(
-            (string) $plan->school_id === (string) $this->schoolId($request),
+            $plan->school_id === null
+            || (string) $plan->school_id === (string) $this->schoolId($request),
             403,
             'Anda tidak berwenang melihat RPP ini.'
         );

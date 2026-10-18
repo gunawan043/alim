@@ -77,7 +77,7 @@
         <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center"><h5 class="card-title mb-0"><i class="ri-history-line text-primary me-1"></i>Riwayat Setoran</h5><span class="badge bg-primary-subtle text-primary">{{ $history->count() }}</span></div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 tahfidz-table">
-                <thead class="table-light"><tr><th>Tanggal</th><th>Jenis</th><th>Materi</th><th class="text-center">Halaman</th><th class="text-center">Nilai</th><th>Status</th><th>Verifikasi</th><th>Guru</th></tr></thead>
+                <thead class="table-light"><tr><th>Tanggal</th><th>Jenis</th><th>Materi</th><th class="text-center">Halaman</th><th class="text-center">Nilai</th><th>Status</th><th>Verifikasi</th><th>Guru</th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
                     @forelse($history as $setoran)
                         <tr>
@@ -89,9 +89,16 @@
                             <td><span class="badge {{ $setoran->status==='lulus' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">{{ $setoran->status_label }}</span></td>
                             <td><span class="badge {{ $setoran->verification_status==='verified' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $setoran->verification_status }}</span></td>
                             <td class="small">{{ $setoran->teacher?->name }}</td>
+                            <td class="text-end">
+                                @if($setoran->verification_status !== 'verified')
+                                    <a href="{{ route('user.tahfidz.setoran.edit', ['userId'=>$userId,'id'=>$setoran->id,'return_to'=>'detail']) }}" class="btn btn-sm btn-outline-warning" title="Edit setoran"><i class="ri-edit-line"></i></a>
+                                @else
+                                    <span class="text-muted small">Terkunci</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-4">Belum ada setoran.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">Belum ada setoran.</td></tr>
                     @endforelse
                 </tbody>
             </table>

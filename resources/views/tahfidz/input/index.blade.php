@@ -78,7 +78,7 @@
             <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center"><h5 class="card-title mb-0"><i class="ri-history-line text-primary me-1"></i>Riwayat Hafalan</h5><a href="{{ route('user.tahfidz.setoran.index', ['userId'=>$userId,'student_id'=>$selected->id]) }}" class="btn btn-sm btn-outline-primary">Semua Setoran</a></div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 tahfidz-table">
-                    <thead class="table-light"><tr><th>Tanggal</th><th>Jenis</th><th>Materi</th><th class="text-center">Halaman</th><th class="text-center">Nilai</th><th>Status</th><th>Verifikasi</th><th>Guru</th></tr></thead>
+                    <thead class="table-light"><tr><th>Tanggal</th><th>Jenis</th><th>Materi</th><th class="text-center">Halaman</th><th class="text-center">Nilai</th><th>Status</th><th>Verifikasi</th><th>Guru</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         @forelse($history as $setoran)
                             <tr>
@@ -90,9 +90,16 @@
                                 <td><span class="badge {{ $setoran->status==='lulus' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">{{ $setoran->status_label }}</span></td>
                                 <td><span class="badge {{ $setoran->verification_status==='verified' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $setoran->verification_status }}</span></td>
                                 <td class="small">{{ $setoran->teacher?->name }}</td>
+                                <td class="text-end">
+                                    @if($setoran->verification_status !== 'verified')
+                                        <a href="{{ route('user.tahfidz.setoran.edit', ['userId'=>$userId,'id'=>$setoran->id,'return_to'=>'input']) }}" class="btn btn-sm btn-outline-warning" title="Edit setoran"><i class="ri-edit-line"></i></a>
+                                    @else
+                                        <span class="text-muted small">Terkunci</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="text-center text-muted py-4">Belum ada riwayat hafalan.</td></tr>
+                            <tr><td colspan="9" class="text-center text-muted py-4">Belum ada riwayat hafalan.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -141,7 +148,7 @@
                             ] : null;
                         @endphp
 
-                        <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Isi yang perlu saja. Detail hafalan bisa dibuka jika diperlukan; nilai akhir dan jumlah halaman dihitung otomatis.</div>
+                        <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Ubah jika tidak sesuai; nilai akhir dan jumlah halaman dihitung otomatis.</div>
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" id="smart_setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
                             <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah (hafalan baru)</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
@@ -152,23 +159,26 @@
                                 @if($lastPosition)
                                     <button type="button" class="btn btn-outline-primary btn-sm" id="useLastPosition" data-last="{{ json_encode($lastPosition, JSON_HEX_APOS | JSON_HEX_QUOT) }}"><i class="ri-history-line me-1"></i>Ambil Posisi Terakhir</button>
                                 @endif
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#setoranDetail"><i class="ri-settings-3-line me-1"></i>Isi Detail Hafalan</button>
                                 <span class="badge bg-success-subtle text-success ms-auto" id="scorePreview">Nilai akhir: otomatis</span>
                             </div>
                             <div class="col-12"><label class="form-label">Catatan Guru <span class="text-muted small">(opsional)</span></label><textarea name="catatan_guru" rows="2" class="form-control" placeholder="Catatan singkat...">{{ old('catatan_guru') }}</textarea></div>
                         </div>
 
-                        <div class="collapse mt-3" id="setoranDetail">
+                        <div class="mt-3" id="setoranDetail">
                             <div class="border rounded p-3 bg-light-subtle">
                                 <div class="fw-semibold mb-2"><i class="ri-list-settings-line me-1"></i>Detail Hafalan</div>
                                 <div class="row g-3">
                                     <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
                                     <div class="col-md-4"><label class="form-label small">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><input name="surah_start_name" id="smart_surah_start" class="form-control" value="{{ old('surah_start_name') }}" placeholder="Mis. Al-Fatihah"></div>
-                                    <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start') }}"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><input name="surah_end_name" class="form-control" value="{{ old('surah_end_name') }}"></div>
+                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select select2-surah" data-placeholder="Cari surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+@if(old('surah_start_name') && ! $surahs->contains('name_latin', old('surah_start_name')))<option value="{{ old('surah_start_name') }}" selected>{{ old('surah_start_name') }}</option>@endif
+</select></div>
+                                    <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start', $lastPosition['ayat_start'] ?? null) }}"></div>
+                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" class="form-select select2-surah" data-placeholder="Cari surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+@if(old('surah_end_name') && ! $surahs->contains('name_latin', old('surah_end_name')))<option value="{{ old('surah_end_name') }}" selected>{{ old('surah_end_name') }}</option>@endif
+</select></div>
                                     <div class="col-md-2"><label class="form-label small">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start', $lastPosition['halaman_start'] ?? null) }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="smart_halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="smart_jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
                                     <div class="col-md-2"><label class="form-label small">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
@@ -192,7 +202,6 @@
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
-        const detail = document.getElementById('setoranDetail');
         const pageStart = document.getElementById('smart_halaman_start');
         const pageEnd = document.getElementById('smart_halaman_end');
         const pageCount = document.getElementById('smart_jumlah_halaman');
@@ -231,11 +240,11 @@
             if (data.surah_start_name) document.getElementById('smart_surah_start').value = data.surah_start_name;
             if (data.ayat_start) document.getElementById('smart_ayat_start').value = data.ayat_start;
             if (data.halaman_start) document.getElementById('smart_halaman_start').value = data.halaman_start;
-            if (detail && window.bootstrap) bootstrap.Collapse.getOrCreateInstance(detail).show();
         });
 
         if (window.jQuery && jQuery.fn.select2) {
             jQuery('.select2').select2({ width: '100%', placeholder: 'Ketik kelas, NIS, atau nama santri...', allowClear: true });
+            jQuery('.select2-surah').select2({ width: '100%', placeholder: 'Cari surah...', allowClear: true });
         }
         @if($selected && $canInput && $errors->any())
             openHafalanModal();

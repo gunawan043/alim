@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzSetoran;
+use App\Models\TahfidzSurahMaster;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use Illuminate\Http\Request;
@@ -75,8 +76,9 @@ class SetoranController extends Controller
         $groupId = $request->input('group_id', $groups->first()->id);
         $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
         $students = $this->members($group);
+        $surahs = TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']);
 
-        return view('tahfidz.setoran.form', compact('userId', 'groups', 'group', 'students'));
+        return view('tahfidz.setoran.form', compact('userId', 'groups', 'group', 'students', 'surahs'));
     }
 
     public function store(Request $request, string $userId)
@@ -110,8 +112,9 @@ class SetoranController extends Controller
         $groups = $this->accessibleGroups($request);
         $group = $setoran->group;
         $students = $this->members($group);
+        $surahs = TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']);
 
-        return view('tahfidz.setoran.form', compact('userId', 'groups', 'group', 'students', 'setoran'));
+        return view('tahfidz.setoran.form', compact('userId', 'groups', 'group', 'students', 'setoran', 'surahs'));
     }
 
     public function update(Request $request, string $userId, string $id)
@@ -126,6 +129,18 @@ class SetoranController extends Controller
         $this->assertMember($group, $validated['student_id']);
 
         $setoran->update($this->payload($validated, $group, $request));
+
+        if ($request->input('return_to') === 'input') {
+            return redirect()
+                ->route('user.tahfidz.input.index', ['userId' => $userId, 'student_id' => $validated['student_id']])
+                ->with('success', 'Setoran hafalan diperbarui.');
+        }
+
+        if ($request->input('return_to') === 'detail') {
+            return redirect()
+                ->route('user.tahfidz.santri.show', ['userId' => $userId, 'studentId' => $validated['student_id']])
+                ->with('success', 'Setoran hafalan diperbarui.');
+        }
 
         return redirect()->route('user.tahfidz.setoran.index', ['userId' => $userId, 'group_id' => $group->id])
             ->with('success', 'Setoran diperbarui.');

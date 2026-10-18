@@ -17,6 +17,7 @@ use App\Models\WorkUnit;
 use App\Services\TahfidzAccess;
 use Database\Seeders\TahfidzFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TahfidzInputTest extends TestCase
@@ -108,6 +109,32 @@ class TahfidzInputTest extends TestCase
             ->assertRedirect(route('user.tahfidz.input.index', ['userId' => $admin->id, 'student_id' => $student->id]));
 
         $this->assertSame(2, TahfidzSetoran::count());
+        $this->assertSame(114, DB::table('tahfidz_surah_master')->count());
+
+        $pending = TahfidzSetoran::where('verification_status', 'pending')->latest()->firstOrFail();
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/setoran/{$pending->id}/edit?return_to=input")
+            ->assertOk()
+            ->assertSee('Edit Setoran')
+            ->assertSee('Al-Fatihah');
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->put("/{$admin->id}/tahfidz/setoran/{$pending->id}", [
+                'return_to' => 'input',
+                'tahfidz_group_id' => $group->id,
+                'student_id' => $student->id,
+                'setoran_date' => now()->toDateString(),
+                'setoran_type' => 'murajaah',
+                'juz' => 1,
+                'surah_start_name' => 'Al-Fatihah',
+                'ayat_start' => 1,
+                'surah_end_name' => 'Al-Fatihah',
+                'ayat_end' => 7,
+                'jumlah_halaman' => 1,
+                'hasil_hafalan' => 92,
+                'status' => 'lulus',
+            ])
+            ->assertRedirect(route('user.tahfidz.input.index', ['userId' => $admin->id, 'student_id' => $student->id]));
 
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
             ->get("/{$admin->id}/tahfidz/santri/{$student->id}")

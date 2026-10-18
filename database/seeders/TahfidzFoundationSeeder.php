@@ -43,6 +43,7 @@ class TahfidzFoundationSeeder extends Seeder
         );
 
         $this->call(TahfidzJuzMasterSeeder::class);
+        $this->call(TahfidzSurahMasterSeeder::class);
 
         TahfidzAssessmentRubric::firstOrCreate(
             [
