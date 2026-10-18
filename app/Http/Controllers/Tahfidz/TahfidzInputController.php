@@ -24,24 +24,41 @@ class TahfidzInputController extends Controller
 
         $academicYear = AcademicYear::where('is_active', true)->first()
             ?? AcademicYear::orderByDesc('start_date')->first();
-        $groups = $this->accessibleGroups($request, $academicYear?->id);
-        $groupIds = $groups->pluck('id');
-        $q = trim((string) $request->input('q'));
-
-        $members = TahfidzGroupMember::with(['student:id,name,nis,school_id', 'group:id,name,school_id'])
-            ->whereIn('tahfidz_group_id', $groupIds)
+        $schoolId = $this->schoolId($request);
+        $ownGroups = $this->accessibleGroups($request, $academicYear?->id);
+        $schoolGroups = $this->schoolGroups($request, $academicYear?->id);
+        $ownGroupIds = $ownGroups->pluck('id');
+        $schoolGroupIds = $schoolGroups->pluck('id');
+        $studentClassMap = TahfidzGroupMember::with('group.studyGroup')
+            ->whereIn('tahfidz_group_id', $schoolGroupIds)
             ->when($academicYear, fn ($query) => $query->where('academic_year_id', $academicYear->id))
             ->where('status', 'aktif')
-            ->when($q !== '', fn ($query) => $query->whereHas('student', function ($student) use ($q) {
-                $student->where('name', 'like', '%'.$q.'%')->orWhere('nis', 'like', '%'.$q.'%');
-            }))
-            ->orderBy('student_id')
-            ->limit(30)
-            ->get();
+            ->get()
+            ->mapWithKeys(fn ($member) => [
+                $member->student_id => $member->group?->studyGroup?->name ?? $member->group?->name ?? '—',
+            ]);
+
+        // Tabel utama hanya menampilkan santri di halaqah guru yang sedang login.
+        $members = TahfidzGroupMember::with(['student:id,name,nis,school_id', 'group:id,name,school_id'])
+            ->whereIn('tahfidz_group_id', $ownGroupIds)
+            ->when($academicYear, fn ($query) => $query->where('academic_year_id', $academicYear->id))
+            ->where('status', 'aktif')
+            ->get()
+            ->sortBy(fn ($member) => $member->student?->name)
+            ->values();
+
+        // Dropdown pencarian mencakup seluruh santri aktif di satuan pendidikan.
+        $schoolStudents = Student::with('currentClassHistory.studyGroup')
+            ->where('status', 'active')
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->orderBy('name')
+            ->limit(1000)
+            ->get(['id', 'name', 'nis', 'school_id']);
 
         $selected = null;
         $selectedMember = null;
         $selectedGroup = null;
+        $isSubstitute = false;
         $history = collect();
         $lastSetoran = null;
         $target = null;
@@ -58,7 +75,7 @@ class TahfidzInputController extends Controller
             }
 
             $selectedMember = TahfidzGroupMember::with('group.school')
-                ->whereIn('tahfidz_group_id', $groupIds)
+                ->whereIn('tahfidz_group_id', $schoolGroupIds)
                 ->where('student_id', $selected->id)
                 ->where('status', 'aktif')
                 ->when($academicYear, fn ($query) => $query->where('academic_year_id', $academicYear->id))
@@ -67,9 +84,11 @@ class TahfidzInputController extends Controller
             if (! $selectedMember) {
                 return redirect()
                     ->route('user.tahfidz.input.index', ['userId' => $userId])
-                    ->with('error', 'Santri tidak berada dalam halaqah yang dapat Anda akses.');
+                    ->with('error', 'Santri belum terdaftar dalam halaqah pada satuan pendidikan ini.');
             }
+
             $selectedGroup = $selectedMember->group;
+            $isSubstitute = ! $ownGroupIds->contains($selectedGroup->id);
             $canInput = $this->access->canInputSetoran($request->user(), $selectedGroup);
 
             $history = TahfidzSetoran::with(['teacher:id,name', 'verifier:id,name'])
@@ -96,10 +115,25 @@ class TahfidzInputController extends Controller
         }
 
         return view('tahfidz.input.index', compact(
-            'userId', 'academicYear', 'groups', 'members', 'q', 'selected',
-            'selectedMember', 'selectedGroup', 'history', 'lastSetoran', 'target',
-            'progress', 'recap', 'canInput'
+            'userId', 'academicYear', 'ownGroups', 'schoolGroups', 'members', 'schoolStudents', 'studentClassMap',
+            'selected', 'selectedMember', 'selectedGroup', 'isSubstitute', 'history',
+            'lastSetoran', 'target', 'progress', 'recap', 'canInput'
         ));
+    }
+
+    private function schoolGroups(Request $request, ?string $academicYearId)
+    {
+        $user = $request->user();
+        $schoolId = $this->schoolId($request);
+
+        return TahfidzGroup::query()
+            ->with(['school:id,name', 'studyGroup:id,name'])
+            ->where('is_active', true)
+            ->when($academicYearId, fn ($query) => $query->where('academic_year_id', $academicYearId))
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->when(! $this->access->canViewAllSchools($user) && ! $schoolId, fn ($query) => $query->whereIn('id', $this->accessibleGroups($request, $academicYearId)->pluck('id')))
+            ->orderBy('name')
+            ->get();
     }
 
     private function accessibleGroups(Request $request, ?string $academicYearId)

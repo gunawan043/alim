@@ -176,12 +176,26 @@ class TahfidzAccess
             return true;
         }
 
+        if ($this->canSubstituteSetoran($user, $group)) {
+            return true;
+        }
+
         return TahfidzGroupTeacher::query()
             ->where('tahfidz_group_id', $group->id)
             ->where('user_id', $user->id)
             ->where('is_active', true)
             ->where('can_input_setoran', true)
             ->exists();
+    }
+
+    /**
+     * Guru Tahfidz di sekolah yang sama dapat mengisi setoran saat
+     * menggantikan guru halaqah yang berhalangan.
+     */
+    public function canSubstituteSetoran(User $user, TahfidzGroup $group): bool
+    {
+        return $this->isTahfidzTeacher($user)
+            && $this->hasSchoolAssignment($user, $group->school_id);
     }
 
     public function canVerifySetoran(User $user, TahfidzGroup $group): bool

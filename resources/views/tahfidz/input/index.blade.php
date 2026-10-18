@@ -11,13 +11,13 @@
 
     <div class="card">
         <div class="card-header border-bottom-dashed">
-            <h5 class="card-title mb-0"><i class="ri-search-eye-line text-primary me-1"></i>Cari Santri</h5>
-            <p class="text-muted mb-0 small">Cari nama atau NIS, klik santri untuk melihat riwayat hafalan terakhir lalu tambahkan setoran baru.</p>
+            <h5 class="card-title mb-0"><i class="ri-search-eye-line text-primary me-1"></i>Pilih Santri</h5>
+            <p class="text-muted mb-0 small">Cari seluruh santri di satuan pendidikan. Format: <strong>Kelas | NIS | Nama</strong>.</p>
         </div>
         <div class="card-body">
-            <form method="GET" class="row g-2">
-                <div class="col-md-9"><input type="search" name="q" value="{{ $q }}" class="form-control" placeholder="Ketik nama atau NIS santri..." autofocus></div>
-                <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="ri-search-line me-1"></i>Cari Santri</button></div>
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" class="form-select select2" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select><div class="form-text">Pencarian mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda.</div></div>
+                <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="ri-eye-line me-1"></i>Tampilkan Riwayat</button></div>
             </form>
         </div>
     </div>
@@ -35,6 +35,9 @@
                 </div>
             </div>
             <div class="card-body">
+                @if($isSubstitute)
+                    <div class="alert alert-info mb-3"><i class="ri-user-shared-line me-1"></i>Mode guru pengganti: Anda menginput untuk halaqah <strong>{{ $selectedGroup?->name }}</strong>, bukan halaqah utama Anda.</div>
+                @endif
                 @unless($canInput)
                     <div class="alert alert-warning mb-3"><i class="ri-lock-line me-1"></i>Anda hanya dapat melihat riwayat santri ini. Input setoran memerlukan penugasan halaqah.</div>
                 @endunless
@@ -81,7 +84,7 @@
         </div>
     @else
         <div class="card mt-3">
-            <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-user-search-line text-primary me-1"></i>{{ $q !== '' ? 'Hasil Pencarian' : 'Santri di Halaqah Anda' }}</h5></div>
+            <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-user-search-line text-primary me-1"></i>Santri di Halaqah Anda</h5></div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 tahfidz-table">
                     <thead class="table-light"><tr><th>Nama Santri</th><th>NIS</th><th>Halaqah</th><th class="text-end">Aksi</th></tr></thead>
@@ -91,10 +94,10 @@
                                 <td class="fw-medium">{{ $member->student?->name }}</td>
                                 <td>{{ $member->student?->nis }}</td>
                                 <td>{{ $member->group?->name }}</td>
-                                <td class="text-end"><a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId,'student_id'=>$member->student_id,'q'=>$q]) }}" class="btn btn-sm btn-success"><i class="ri-arrow-right-line me-1"></i>Pilih</a></td>
+                                <td class="text-end"><a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId,'student_id'=>$member->student_id]) }}" class="btn btn-sm btn-success"><i class="ri-arrow-right-line me-1"></i>Pilih</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="text-center text-muted py-5"><i class="ri-user-search-line fs-3 d-block mb-2"></i>Tidak ada santri yang cocok.</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-5"><i class="ri-user-search-line fs-3 d-block mb-2"></i>Belum ada santri di halaqah Anda. Gunakan pencarian di atas untuk santri dari halaqah lain.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -147,6 +150,9 @@
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('.select2').select2({ width: '100%', placeholder: 'Ketik kelas, NIS, atau nama santri...', allowClear: true });
+        }
         @if($selected && $canInput && $errors->any())
             openHafalanModal();
         @endif

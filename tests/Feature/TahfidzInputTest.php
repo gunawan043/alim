@@ -57,6 +57,14 @@ class TahfidzInputTest extends TestCase
             'tahfidz_package_id' => $package->id, 'name' => 'Halaqah Input',
             'gender' => 'putra', 'teacher_id' => $teacher->id, 'is_active' => true,
         ]);
+        $otherTeacher = User::create(['name' => 'Guru Halaqah Lain', 'email' => 'guru.lain.input@test.local', 'password' => bcrypt('password'), 'is_active' => true]);
+        $otherGroup = TahfidzGroup::create([
+            'work_unit_id' => $unit->id, 'school_id' => $school->id,
+            'study_group_id' => $studyGroup->id, 'academic_year_id' => $year->id,
+            'tahfidz_package_id' => $package->id, 'name' => 'Halaqah Lain',
+            'gender' => 'putra', 'teacher_id' => $otherTeacher->id, 'is_active' => true,
+        ]);
+
         TahfidzGroupMember::create([
             'tahfidz_group_id' => $group->id, 'student_id' => $student->id,
             'academic_year_id' => $year->id, 'join_date' => now()->toDateString(), 'status' => 'aktif',
@@ -72,6 +80,7 @@ class TahfidzInputTest extends TestCase
             ->get("/{$admin->id}/tahfidz/input-hafalan")
             ->assertOk()
             ->assertSee('Santri Input')
+            ->assertSee('7A | IN-1 | Santri Input')
             ->assertSee('Input Hafalan Santri');
 
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
@@ -100,5 +109,6 @@ class TahfidzInputTest extends TestCase
 
         $this->assertSame(2, TahfidzSetoran::count());
         $this->assertTrue(app(TahfidzAccess::class)->isTahfidzTeacher($teacher));
+        $this->assertTrue(app(TahfidzAccess::class)->canSubstituteSetoran($teacher, $otherGroup));
     }
 }
