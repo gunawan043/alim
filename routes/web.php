@@ -160,6 +160,7 @@ use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasOccupancyController;
+use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
@@ -208,6 +209,7 @@ use App\Http\Controllers\StudentViolationController;
 use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
+use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
 use App\Http\Controllers\SuperAdmin\AiProviderController;
@@ -426,6 +428,31 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{conversation}/resume-ai', [AiChatController::class, 'resumeAi'])->name('resume-ai');
                 Route::get('/{conversation}', [AiChatController::class, 'show'])->name('show');
                 Route::delete('/{conversation}', [AiChatController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── TAHFIDZ: MASTER MUQORROR & RPP ─────────────────────
+            Route::prefix('tahfidz')->name('tahfidz.')->group(function () {
+                Route::prefix('muqorror')->name('muqorror.')->group(function () {
+                    Route::get('/', [TahfidzMasterController::class, 'muqorrorIndex'])->name('index');
+                    Route::get('/create', [TahfidzMasterController::class, 'muqorrorCreate'])->name('create');
+                    Route::post('/', [TahfidzMasterController::class, 'muqorrorStore'])->name('store');
+                    Route::get('/{id}', [TahfidzMasterController::class, 'muqorrorShow'])->name('show');
+                    Route::get('/{id}/edit', [TahfidzMasterController::class, 'muqorrorEdit'])->name('edit');
+                    Route::put('/{id}', [TahfidzMasterController::class, 'muqorrorUpdate'])->name('update');
+                    Route::delete('/{id}', [TahfidzMasterController::class, 'muqorrorDestroy'])->name('destroy');
+                    Route::get('/{id}/print', [TahfidzMasterController::class, 'muqorrorPrint'])->name('print');
+                });
+
+                Route::prefix('rpp')->name('rpp.')->group(function () {
+                    Route::get('/', [TahfidzMasterController::class, 'rppIndex'])->name('index');
+                    Route::get('/create', [TahfidzMasterController::class, 'rppCreate'])->name('create');
+                    Route::post('/', [TahfidzMasterController::class, 'rppStore'])->name('store');
+                    Route::get('/{id}', [TahfidzMasterController::class, 'rppShow'])->name('show');
+                    Route::get('/{id}/edit', [TahfidzMasterController::class, 'rppEdit'])->name('edit');
+                    Route::put('/{id}', [TahfidzMasterController::class, 'rppUpdate'])->name('update');
+                    Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
+                    Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
+                });
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -2670,6 +2697,9 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::post('/pemeliharaan/jadwal/{id}/approve', [SarprasMaintenanceController::class, 'approveSchedule'])->name('pemeliharaan.schedule.approve');
     Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
     Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');
+
+    // Agenda kerja petugas Sarpras
+    Route::get('/agenda', [SarprasAgendaController::class, 'index'])->name('agenda.index');
 
     // Checklist pemeliharaan
     Route::get('/checklist', [SarprasChecklistController::class, 'index'])->name('checklist.index');

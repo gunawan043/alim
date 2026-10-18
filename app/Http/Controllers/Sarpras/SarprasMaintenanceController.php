@@ -54,6 +54,9 @@ class SarprasMaintenanceController extends SarprasBaseController
         if ($request->filled('work_unit_id')) {
             $query->where('work_unit_id', $request->work_unit_id);
         }
+        if ($request->filled('asset_id')) {
+            $query->where('asset_id', $request->asset_id);
+        }
         if ($request->filled('status')) {
             if ($request->status === 'overdue') {
                 $query->where('is_active', true)->whereDate('next_maintenance_date', '<', Carbon::today());
@@ -330,6 +333,12 @@ class SarprasMaintenanceController extends SarprasBaseController
 
             return $workOrder;
         });
+
+        try {
+            app(\App\Services\Sarpras\SarprasNotificationService::class)->dispatchWorkOrderCreated($workOrder);
+        } catch (\Throwable $e) {
+            Log::warning('Notifikasi work order perawatan gagal: '.$e->getMessage());
+        }
 
         return back()->with('success', 'Work order '.$workOrder->order_number.' dibuat dan ditugaskan ke teknisi.');
     }

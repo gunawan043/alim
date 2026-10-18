@@ -4,12 +4,18 @@ namespace Database\Seeders;
 
 use App\Models\AssetBuilding;
 use App\Models\AssetRoom;
+use App\Models\Dormitory;
+use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Database\Seeder;
 
 /**
- * Seed master gedung yang nama dan areanya sudah jelas dari formulir pemeliharaan.
+ * Seed master gedung dan kamar mandi yang nama/areanya jelas dari formulir pemeliharaan.
+ *
+ * Pemilik dianalisis dari kelompok gedung:
+ * - asrama putra/putri dan MA/SMA;
+ * - gedung umum (kantor, masjid, UKS, dapur, tower, perumahan) → Unit Rumah Tangga.
  *
  * Peralatan AC, genset, pompa/panel, jaringan listrik, air minum, dan septic tank
  * TIDAK di-seed karena lokasi ruang, unit pemilik, jumlah, merek, dan data perolehan
@@ -71,32 +77,42 @@ class SarprasBuildingLocationSeeder extends Seeder
             ['Lawata', 'Muawiyah', 'asrama', 'GD-LW-03'],
         ];
 
+        $owners = $this->buildOwnerMap($urt);
+
         $created = 0;
+        $updated = 0;
         $skipped = 0;
 
         foreach ($buildings as [$area, $name, $type, $code]) {
-            $existing = AssetBuilding::query()
-                ->where('work_unit_id', $urt->id)
-                ->where('building_name', $name)
-                ->first();
+            [$ownerUnitId, $ownerSchoolId, $ownerLabel] = $owners[$name] ?? [$urt->id, null, 'Unit Rumah Tangga'];
+
+            $existing = AssetBuilding::query()->where('building_name', $name)->first();
 
             if ($existing) {
-                $skipped++;
+                if ($existing->work_unit_id === $urt->id && str_starts_with((string) $existing->notes, 'Data awal dari formulir')) {
+                    $existing->update([
+                        'work_unit_id' => $ownerUnitId,
+                        'school_id' => $ownerSchoolId,
+                        'notes' => 'Data awal dari formulir pemeliharaan — Area '.$area.'; pemilik: '.$ownerLabel.'. Lengkapi luas, tahun, dan IMB bila tersedia.',
+                    ]);
+                    $updated++;
+                } else {
+                    $skipped++;
+                }
                 continue;
             }
 
-            $code = $this->uniqueCode($code);
-
             AssetBuilding::create([
-                'work_unit_id' => $urt->id,
-                'building_code' => $code,
+                'work_unit_id' => $ownerUnitId,
+                'school_id' => $ownerSchoolId,
+                'building_code' => $this->uniqueCode($code),
                 'building_name' => $name,
                 'building_type' => $type,
                 'structure_condition' => 'baik',
                 'ownership_status' => 'milik_sendiri',
                 'is_active' => true,
                 'created_by' => $createdBy,
-                'notes' => 'Data awal dari formulir pemeliharaan — Area '.$area.'. Lengkapi luas, tahun, dan IMB bila tersedia.',
+                'notes' => 'Data awal dari formulir pemeliharaan — Area '.$area.'; pemilik: '.$ownerLabel.'. Lengkapi luas, tahun, dan IMB bila tersedia.',
             ]);
 
             $created++;
@@ -112,13 +128,9 @@ class SarprasBuildingLocationSeeder extends Seeder
         $roomsCreated = 0;
 
         foreach ($toiletBuildings as $buildingName) {
-            $building = AssetBuilding::query()
-                ->where('work_unit_id', $urt->id)
-                ->where('building_name', $buildingName)
-                ->first();
+            $building = AssetBuilding::query()->where('building_name', $buildingName)->first();
 
-            if (! $building || ! $building->school_id) {
-                // Satuan pendidikan/unit kamar belum jelas — jangan membuat data asli.
+            if (! $building) {
                 continue;
             }
 
@@ -141,7 +153,42 @@ class SarprasBuildingLocationSeeder extends Seeder
             $roomsCreated += $room->wasRecentlyCreated ? 1 : 0;
         }
 
-        $this->command?->info("SarprasBuildingLocationSeeder: {$created} gedung dibuat, {$skipped} sudah ada, {$roomsCreated} kamar mandi dibuat.");
+        $this->command?->info("SarprasBuildingLocationSeeder: {$created} gedung dibuat, {$updated} diperbarui, {$skipped} dilewati, {$roomsCreated} kamar mandi dibuat.");
+    }
+
+    /**
+     * @return array<string, array{0:string,1:?string,2:string}>
+     */
+    private function buildOwnerMap(WorkUnit $urt): array
+    {
+        $map = [];
+
+        $assign = function (string $unitName, array $buildingNames, ?string $fallbackLabel = null) use (&$map, $urt) {
+            $unit = WorkUnit::query()->where('name', $unitName)->first() ?? $urt;
+            $schoolId = Dormitory::query()->where('work_unit_id', $unit->id)->value('school_id')
+                ?? School::query()->where('work_unit_id', $unit->id)->value('id');
+            $label = $fallbackLabel ?? $unit->name;
+
+            foreach ($buildingNames as $name) {
+                $map[$name] = [$unit->id, $schoolId, $label];
+            }
+        };
+
+        $assign('Asrama SMP IT Putra Abu Hurairah Mataram', [
+            'Abu Bakar As Siddiq', 'Umar bin Khattab', 'Ustman bin Affan',
+            'Ali bin Abi Thalib', 'Thalhah bin Ubaidillah', 'Zubair bin Awwam',
+        ]);
+        $assign('Asrama MA Plus Abu Hurairah Mataram', ['Laila Hizam', 'Abdurrahman bin Auf']);
+        $assign('Asrama SMP IT Putri Abu Hurairah Mataram', [
+            'Hafshah', 'Zainab', 'Sarah', 'Hawa', 'Hajar', 'Aisyah',
+        ]);
+        $assign('Asrama SMA IT Putri Abu Hurairah Mataram', [
+            'Shafiyah', 'Maimunah', 'Saudah', 'Ummu Kultsum', 'Ruqayyah',
+        ]);
+        $assign('SMP & SMA IT Putra Abu Hurairah Mataram', ['Hamzah', 'Usamah', 'Muawiyah']);
+        $assign('Departemen Tahfidz', ['Kantor Departemen Tahfidz']);
+
+        return $map;
     }
 
     private function uniqueCode(string $base): string

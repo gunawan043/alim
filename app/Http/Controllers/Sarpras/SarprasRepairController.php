@@ -114,6 +114,12 @@ class SarprasRepairController extends SarprasBaseController
             return $workOrder;
         });
 
+        try {
+            app(\App\Services\Sarpras\SarprasNotificationService::class)->dispatchWorkOrderCreated($workOrder);
+        } catch (\Throwable $e) {
+            \Log::warning('Notifikasi work order perbaikan gagal: '.$e->getMessage());
+        }
+
         return redirect()->route('sarpras.repair.show', $repair->id)
             ->with('success', 'Work order '.$workOrder->order_number.' dibuat dan petugas sudah ditugaskan.');
     }

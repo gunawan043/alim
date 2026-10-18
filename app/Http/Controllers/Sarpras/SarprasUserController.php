@@ -199,6 +199,14 @@ class SarprasUserController extends SarprasBaseController
         }
         $damagedAssets = $damagedQuery->orderBy('asset_name')->get();
 
+        $selectedAssetId = $request->query('asset_id');
+        if ($selectedAssetId && ! $damagedAssets->contains('id', $selectedAssetId)) {
+            $selectedAsset = Asset::with('room.building')->find($selectedAssetId);
+            if ($selectedAsset && ($this->isCentralSarpras() || $this->canAccess($request, $selectedAsset))) {
+                $damagedAssets->prepend($selectedAsset);
+            }
+        }
+
         return view('sarpras.user.kerusakan.create', compact('damagedAssets', 'userId'));
     }
 

@@ -11,9 +11,14 @@
 
 <div class="row mb-3">
     <div class="col-12">
-        <ol class="breadcrumb mb-3">
+        <ol class="breadcrumb mb-2">
             <li><a href="{{ route('sarpras.aset.index') }}" class="text-muted"><i class="mdi mdi-arrow-left"></i> Kembali ke Daftar Aset</a></li>
         </ol>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('sarpras.user.kerusakan.create', ['asset_id' => $asset->id]) }}" class="btn btn-sm btn-outline-danger"><i class="ri-error-warning-line me-1"></i>Laporkan Kerusakan</a>
+            <a href="{{ route('sarpras.repair.index', ['search' => $asset->asset_code]) }}" class="btn btn-sm btn-outline-warning"><i class="ri-tools-line me-1"></i>Antrean Perbaikan</a>
+            <a href="{{ route('sarpras.pemeliharaan.schedule.index', ['asset_id' => $asset->id]) }}" class="btn btn-sm btn-outline-info"><i class="ri-calendar-todo-line me-1"></i>Jadwal Perawatan</a>
+        </div>
     </div>
 </div>
 

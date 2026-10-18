@@ -45,6 +45,11 @@
                         <a id="result-passport-link" href="#" class="btn btn-primary">
                             <i class="ri-eye-line me-1"></i> Buka Asset Passport
                         </a>
+                        <div class="row g-2">
+                            <div class="col-md-4"><a id="result-report-link" href="#" class="btn btn-outline-danger w-100"><i class="ri-error-warning-line me-1"></i>Laporkan Kerusakan</a></div>
+                            <div class="col-md-4"><a id="result-repair-link" href="#" class="btn btn-outline-warning w-100"><i class="ri-tools-line me-1"></i>Antrean Perbaikan</a></div>
+                            <div class="col-md-4"><a id="result-schedule-link" href="#" class="btn btn-outline-info w-100"><i class="ri-calendar-todo-line me-1"></i>Jadwal Perawatan</a></div>
+                        </div>
                         <a id="result-detail-link" href="#" class="btn btn-outline-secondary">
                             <i class="mdi mdi-information-outline me-1"></i> Lihat Detail Sederhana
                         </a>
@@ -125,9 +130,14 @@ function showResult(passport, asset) {
     $('#result-pic').text(identity.pic || '-');
     $('#result-category').text(identity.category || '-');
 
-    const passportUrl = '/sarpras/assets/' + (identity.asset_id || decodedText) + '/passport';
+    const passportUrl = '/sarpras/assets/' + (identity.asset_id || '') + '/passport';
+    const assetId = identity.asset_id || '';
+    const assetCode = identity.asset_code || '';
     $('#result-passport-link').attr('href', passportUrl);
-    $('#result-detail-link').attr('href', '/sarpras/aset/' + (identity.asset_id || decodedText));
+    $('#result-detail-link').attr('href', '/sarpras/aset/' + assetId);
+    $('#result-report-link').attr('href', '/sarpras/user/kerusakan/create?asset_id=' + encodeURIComponent(assetId));
+    $('#result-repair-link').attr('href', '/sarpras/perbaikan?search=' + encodeURIComponent(assetCode));
+    $('#result-schedule-link').attr('href', '/sarpras/pemeliharaan/jadwal?asset_id=' + encodeURIComponent(assetId));
 
     $('#qr-result').removeClass('d-none');
     $('#qr-error').addClass('d-none');
@@ -150,6 +160,9 @@ function showFallbackResult(code, asset) {
 
     $('#result-passport-link').attr('href', '/sarpras/assets/' + asset.id + '/passport');
     $('#result-detail-link').attr('href', '/sarpras/aset/' + asset.id);
+    $('#result-report-link').attr('href', '/sarpras/user/kerusakan/create?asset_id=' + encodeURIComponent(asset.id));
+    $('#result-repair-link').attr('href', '/sarpras/perbaikan?search=' + encodeURIComponent(asset.asset_code || ''));
+    $('#result-schedule-link').attr('href', '/sarpras/pemeliharaan/jadwal?asset_id=' + encodeURIComponent(asset.id));
 
     $('#qr-result').removeClass('d-none');
     $('#qr-error').addClass('d-none');

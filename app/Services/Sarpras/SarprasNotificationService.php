@@ -3,76 +3,90 @@
 namespace App\Services\Sarpras;
 
 use App\Models\RepairRequest;
-use App\Models\User;
 use App\Models\WorkOrder;
-use App\Notifications\SarprasLifecycleNotification;
-use Illuminate\Support\Collection;
+use App\Services\Sarpras\Automation\SarprasNotificationService as UniversalNotifier;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 
 /**
- * Thin notification dispatcher for Sarpras lifecycle events. Logs structured
- * events; if a queue notification class exists it will be dispatched.
+ * Notifikasi lifecycle Sarpras untuk pemohon dan petugas yang ditugaskan.
  */
 class SarprasNotificationService
 {
-    public function dispatchRepairStatusChange(RepairRequest $repair): void
+    public function dispatchRepairStatusChange(RepairRequest|WorkOrder $subject): void
     {
-        Log::info('sarpras.repair.status_changed', [
-            'repair_id' => $repair->id,
-            'request_number' => $repair->request_number,
-            'status' => $repair->status,
-            'asset_id' => $repair->asset_id,
-            'reporter_id' => $repair->reported_by,
-            'assigned_to' => $repair->assigned_to,
-        ]);
+        if ($subject instanceof WorkOrder) {
+            $this->dispatchWorkOrderCreated($subject);
+            return;
+        }
 
-        $this->broadcast($repair);
+        $recipients = collect([$subject->reported_by, $subject->assigned_to])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->send(
+            eventType: 'RepairStatusChanged',
+            recipientUserIds: $recipients,
+            title: 'Status perbaikan: '.str_replace('_', ' ', $subject->status),
+            message: "Permintaan {$subject->request_number} — {$subject->title}",
+            context: [
+                'reference_type' => 'repair_request',
+                'reference_id' => $subject->id,
+                'reference_code' => $subject->request_number,
+                'action_url' => route('sarpras.repair.show', $subject->id),
+                'action_text' => 'Buka Antrean Perbaikan',
+            ],
+            priority: $subject->priority ?? 'medium'
+        );
     }
 
     public function dispatchWorkOrderCreated(WorkOrder $wo): void
     {
-        Log::info('sarpras.wo.created', [
-            'wo_id' => $wo->id,
-            'wo_number' => $wo->wo_number,
-            'asset_id' => $wo->asset_id,
-            'technician_id' => $wo->technician_id,
-        ]);
+        $recipients = collect([$wo->assignee_id, $wo->created_by])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-        $this->broadcast($wo);
+        $this->send(
+            eventType: 'WorkOrderAssigned',
+            recipientUserIds: $recipients,
+            title: 'Work Order baru: '.$wo->order_number,
+            message: 'Anda ditugaskan pada work order '.$wo->order_number.'.',
+            context: [
+                'reference_type' => 'work_order',
+                'reference_id' => $wo->id,
+                'reference_code' => $wo->order_number,
+                'action_url' => route('sarpras.teknisi.show', $wo->id),
+                'action_text' => 'Buka Work Order',
+            ],
+            priority: $wo->maintenance_schedule_id ? 'medium' : 'high'
+        );
     }
 
-    protected function broadcast($subject): void
-    {
+    private function send(
+        string $eventType,
+        array $recipientUserIds,
+        string $title,
+        string $message,
+        array $context = [],
+        string $priority = 'medium'
+    ): void {
         try {
-            $recipients = $this->resolveRecipients($subject);
-            if ($recipients->isNotEmpty()) {
-                Notification::send($recipients, new SarprasLifecycleNotification($subject));
-            }
+            app(UniversalNotifier::class)->dispatch(
+                eventType: $eventType,
+                recipientUserIds: $recipientUserIds,
+                title: $title,
+                message: $message,
+                context: $context,
+                priority: $priority
+            );
         } catch (\Throwable $e) {
-            Log::warning('sarpras.notification.broadcast_failed', [
+            Log::warning('sarpras.notification.failed', [
+                'event' => $eventType,
                 'message' => $e->getMessage(),
-                'subject_type' => $subject::class,
             ]);
         }
-    }
-
-    protected function resolveRecipients($subject): Collection
-    {
-        if ($subject instanceof RepairRequest) {
-            return collect([$subject->reported_by, $subject->assigned_to])
-                ->filter()
-                ->unique()
-                ->map(fn ($id) => User::find($id))
-                ->filter();
-        }
-        if ($subject instanceof WorkOrder) {
-            return collect([$subject->technician_id])
-                ->filter()
-                ->map(fn ($id) => User::find($id))
-                ->filter();
-        }
-
-        return collect();
     }
 }

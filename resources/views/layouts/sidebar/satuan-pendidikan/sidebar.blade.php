@@ -1021,6 +1021,15 @@
         </a>
     </li>
 
+    @if($showAll || $isKepala || $isKoorSarpras || $isAdminTU)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.agenda']) ? ' active' : '' }}"
+           href="{{ route('sarpras.agenda.index') }}">
+            <i class="ri-calendar-task-line"></i><span>Agenda Kerja Sarpras</span>
+        </a>
+    </li>
+    @endif
+
     @if($showAll || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"

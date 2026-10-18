@@ -21,7 +21,7 @@
                             <select name="asset_id" class="form-select" required>
                                 <option value="">-- Pilih Aset --</option>
                                 @foreach($damagedAssets as $asset)
-                                    <option value="{{ $asset->id }}">
+                                    <option value="{{ $asset->id }}" {{ (string) old('asset_id', request('asset_id')) === (string) $asset->id ? 'selected' : '' }}>
                                         {{ $asset->asset_name }}
                                         @if($asset->room) — {{ $asset->room->room_name }}@endif
                                     </option>

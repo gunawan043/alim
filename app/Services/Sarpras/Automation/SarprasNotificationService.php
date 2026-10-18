@@ -41,7 +41,7 @@ class SarprasNotificationService
         ];
 
         SendSarprasNotificationJob::dispatch(
-            array_map('intval', $recipientUserIds),
+            array_values(array_map('strval', $recipientUserIds)),
             $payload,
         );
     }
@@ -49,7 +49,7 @@ class SarprasNotificationService
     /**
      * Direct delivery (synchronous — for caller who already has Service).
      */
-    public function deliver(int $userId, array $payload): void
+    public function deliver(string $userId, array $payload): void
     {
         try {
             NotificationUniversal::create([

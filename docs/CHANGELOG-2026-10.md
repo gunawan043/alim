@@ -2028,6 +2028,34 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Request class `GedungStoreRequest`/`GedungUpdateRequest` yang sebelumnya hilang sudah dibuat,
   sehingga form gedung tidak lagi error. Gedung dapat dibuat tanpa sekolah dan otomatis menjadi master URT.
 
+## 186. Sarpras — Kamar Mandi, Scan Aksi Cepat, Notifikasi & Agenda Kerja
+
+- **Kamar mandi terdata**:
+  - `asset_rooms.school_id` dibuat opsional untuk fasilitas URT yang tidak terikat sekolah;
+  - 17 kamar mandi dibuat dari daftar gedung yang jelas;
+  - pemilik gedung dianalisis: asrama putra/putri, MA Plus, SMA Putri, Lawata, Departemen Tahfidz,
+    dan gedung umum menjadi Unit Rumah Tangga.
+- **Scan QR punya aksi cepat**:
+  - Laporkan Kerusakan → form laporan dengan aset terpilih otomatis;
+  - Antrean Perbaikan → filter kode aset;
+  - Jadwal Perawatan → filter aset pada jadwal;
+  - tombol yang sama ditambahkan pada halaman Asset Passport.
+- **Notifikasi petugas**:
+  - UUID pengguna tidak lagi dikonversi ke integer pada job notifikasi;
+  - work order perawatan dan perbaikan mengirim notifikasi ke petugas yang ditugaskan;
+  - notifikasi berisi nomor WO, target, dan tautan langsung ke workspace teknisi.
+- **Agenda Kerja** (`/sarpras/agenda`):
+  - work order, jadwal pemeliharaan, checklist berjalan, dan stock opname dalam satu daftar;
+  - statistik terlambat/hari ini/akan datang;
+  - pegawai melihat agenda sendiri; TU/Kepala URT dan kepala unit dapat melihat agenda tim.
+- **Sidebar URT disesuaikan per jabatan**:
+  - Kepala/TU/Koordinator: monitoring, petugas, aset, gedung, perbaikan, stock opname, laporan;
+  - Teknisi: work order, jadwal, checklist, aset;
+  - Kebersihan/Driver: agenda dan menu operasionalnya;
+  - Agenda Kerja tampil untuk semua jabatan URT.
+- **Work order preventif** sudah bisa dibuat dari jadwal yang disetujui unit; penyelesaiannya
+  memperbarui jadwal berikutnya, log perawatan, riwayat aset, dan passport QR.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

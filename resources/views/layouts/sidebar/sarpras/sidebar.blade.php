@@ -32,6 +32,13 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
     </a>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.agenda') ? ' active' : '' }}"
+       href="{{ route('sarpras.agenda.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-task-line"></i><span>Agenda Kerja</span>
+    </a>
+</li>
+
 {{-- Aset & Inventaris --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.aset') || $isAdminFn($currentRoute, 'sarpras.movements') || $isAdminFn($currentRoute, 'sarpras.perpindahan') ? ' active' : '' }}"

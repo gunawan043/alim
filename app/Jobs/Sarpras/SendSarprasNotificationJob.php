@@ -25,7 +25,7 @@ class SendSarprasNotificationJob implements ShouldQueue
     public function handle(SarprasNotificationService $service): void
     {
         foreach ($this->recipientUserIds as $uid) {
-            $service->deliver((int) $uid, $this->payload);
+            $service->deliver((string) $uid, $this->payload);
         }
     }
 }

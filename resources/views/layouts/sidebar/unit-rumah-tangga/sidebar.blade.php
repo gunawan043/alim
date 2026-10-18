@@ -127,6 +127,13 @@
 </li>
 @endif
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.agenda']) ? ' active' : '' }}"
+       href="{{ $sarprasUrl('sarpras.agenda.index') }}">
+        <i class="ri-calendar-task-line"></i><span>Agenda Kerja</span>
+    </a>
+</li>
+
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 3 — ASET & BANGUNAN
      Akses: Kepala, Koordinator (full) | Operasional (view)
@@ -245,7 +252,7 @@
 @if(($showAll || $isStruktural || $isTeknisi) && menu_allowed('rumah-tangga'))
     <li class="menu-title"><span>Pemeliharaan</span></li>
 
-    @if($showAll || $isStruktural)
+    @if($showAll || $isStruktural || $isTeknisi)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.pemeliharaan.schedule']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.pemeliharaan.schedule.index') }}">
@@ -261,6 +268,21 @@
     </li>
     @endif
 
+    @if($showAll || $isStruktural)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.repair']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.repair.index') }}">
+            <i class="ri-tools-line"></i><span>Antrean Perbaikan</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.stock-opname']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.stock-opname.index') }}">
+            <i class="ri-clipboard-line"></i><span>Stock Opname</span>
+        </a>
+    </li>
+    @endif
+
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.pemeliharaan.log']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.pemeliharaan.log.index') }}">
@@ -269,7 +291,7 @@
     </li>
 
     {{-- Teknisi Workspace: hanya teknisi & kepala --}}
-    @if($showAll || $isTeknisi || $isKepalaURT)
+    @if($showAll || $isTeknisi || $isKepalaURT || $isTuUrt || $isKoorSarpras)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.teknisi.']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.teknisi.dashboard') }}">
