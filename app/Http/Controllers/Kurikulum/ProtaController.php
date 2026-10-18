@@ -127,8 +127,8 @@ class ProtaController extends Controller
         $atp = AlurTujuanPembelajaran::with('subject')->findOrFail($validated['atp_id']);
         $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen PROTA');
 
-        if (! $this->access->canManageSubject($request->user(), $atp->subject_id, $atp->academic_year_id, $schoolId)) {
-            abort(403, 'Anda tidak berwenang menyusun PROTA untuk mata pelajaran ini.');
+        if (! $this->access->canAuthorSubject($request->user(), $atp->subject_id, $atp->academic_year_id, $schoolId)) {
+            abort(403, 'Anda hanya dapat menyusun PROTA untuk mata pelajaran yang diampu.');
         }
 
         $existing = Prota::query()

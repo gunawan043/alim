@@ -128,7 +128,7 @@
                                     </select>
                                     <select name="subject_id" class="form-select" style="width:180px" onchange="this.form.submit()">
                                         <option value="">— Semua Mapel —</option>
-                                        @foreach($subjects as $subject)
+                                        @foreach($filterSubjects as $subject)
                                             <option value="{{ $subject->id }}" {{ request('subject_id') === $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
                                         @endforeach
                                     </select>

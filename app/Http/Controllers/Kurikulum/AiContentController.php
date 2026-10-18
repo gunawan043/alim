@@ -41,9 +41,12 @@ class AiContentController extends Controller
         $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
         $activeAy = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
 
+        $taughtSubjectIds = $this->access->taughtSubjectIds($user, $schoolId, $activeAy?->id);
+
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
+            ->when($taughtSubjectIds !== null, fn ($q) => $q->whereIn('id', $taughtSubjectIds ?: ['-']))
             ->orderBy('name')
             ->get(['id', 'name', 'name_ar']);
 
@@ -105,6 +108,12 @@ class AiContentController extends Controller
         if (! app(AiProviderService::class)->isConfigured()) {
             return back()->withInput()->with('error', 'Provider AI belum dikonfigurasi. Hubungi Super Admin untuk mengisi API key di Pengaturan AI.');
         }
+
+        abort_unless(
+            $this->access->canAuthorSubject($user, $validated['subject_id'], $validated['academic_year_id'], $schoolId),
+            403,
+            'Anda hanya dapat membuat draft AI untuk mata pelajaran yang diampu.'
+        );
 
         $subject = Subject::find($validated['subject_id']);
         $grade = ! empty($validated['grade_level_id']) ? GradeLevel::find($validated['grade_level_id']) : null;
@@ -278,6 +287,11 @@ class AiContentController extends Controller
 
         $schoolId = $record->school_id ?: $request->attributes->get('schoolContextId');
         abort_unless($schoolId && $record->subject_id, 422, 'Konteks sekolah/mapel draft tidak lengkap.');
+        abort_unless(
+            $this->access->canAuthorSubject($request->user(), $record->subject_id, (string) $record->academic_year_id, $schoolId),
+            403,
+            'Anda hanya dapat menyimpan draft untuk mata pelajaran yang diampu.'
+        );
 
         $bank = DB::transaction(function () use ($record, $items, $schoolId, $request) {
             $onlyPg = collect($items)->every(fn ($item) => ($item['bentuk'] ?? 'pg') === 'pg');
@@ -384,9 +398,9 @@ class AiContentController extends Controller
         abort_unless($record->school_id && $record->subject_id && $record->academic_year_id, 422, 'Konteks draft RPM tidak lengkap.');
 
         abort_unless(
-            $this->access->canManageSubject($request->user(), $record->subject_id, $record->academic_year_id, $record->school_id),
+            $this->access->canAuthorSubject($request->user(), $record->subject_id, $record->academic_year_id, $record->school_id),
             403,
-            'Anda tidak berwenang mengelola perangkat untuk mata pelajaran ini.'
+            'Anda hanya dapat menyimpan RPM untuk mata pelajaran yang diampu.'
         );
         $this->assertPeriodNotLocked($record->academic_year_id, 'Dokumen RPM/Perangkat');
 

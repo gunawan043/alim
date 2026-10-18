@@ -8,11 +8,14 @@ use App\Models\AiGeneratedContent;
 use App\Models\AiProviderSetting;
 use App\Models\BankSoal;
 use App\Models\GradeLevel;
+use App\Models\InstitutionDecree;
 use App\Models\PerangkatPembelajaran;
 use App\Models\School;
 use App\Models\Soal;
 use App\Models\SoalOption;
+use App\Models\StudyGroup;
 use App\Models\Subject;
+use App\Models\TeachingAssignment;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
 use App\Services\Ai\AiContentGenerator;
@@ -588,6 +591,74 @@ class AiContentGenerationTest extends TestCase
         }
 
         $this->assertDatabaseHas('ai_generated_contents', ['id' => $record->id]);
+    }
+
+    public function test_guru_hanya_melihat_dan_membuat_draft_mapel_yang_diampu(): void
+    {
+        $otherSubject = Subject::create([
+            'school_id' => $this->school->id, 'code' => 'BIO', 'name' => 'Biologi',
+            'credit_hours' => 2, 'is_active' => true,
+        ]);
+
+        $teacher = User::create([
+            'name' => 'Guru AI Mapel', 'email' => 'guru.ai.mapel@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
+        $group = StudyGroup::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'grade_level_id' => $this->grade->id,
+            'name' => '7A', 'code' => '7A', 'is_active' => true,
+        ]);
+
+        $decree = InstitutionDecree::create([
+            'decree_number' => 'SK-AI-001',
+            'decree_type' => 'SK Pembagian Tugas',
+            'title' => 'SK Uji AI',
+            'academic_year_id' => $this->academicYear->id,
+            'school_id' => $this->school->id,
+            'issued_date' => now()->toDateString(),
+            'effective_date' => now()->toDateString(),
+            'status' => 'active',
+        ]);
+
+        TeachingAssignment::create([
+            'decree_id' => $decree->id,
+            'teacher_id' => $teacher->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'study_group_id' => $group->id,
+            'subject_id' => $this->subject->id,
+            'status' => 'active',
+        ]);
+
+        $request = Request::create('/ai', 'GET');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $teacher);
+
+        $view = app(AiContentController::class)->index($request, $teacher->id);
+        $subjects = $view->getData()['subjects'];
+
+        $this->assertTrue($subjects->contains('id', $this->subject->id));
+        $this->assertFalse($subjects->contains('id', $otherSubject->id));
+
+        $request = Request::create('/ai/generate', 'POST', [
+            'type' => 'soal',
+            'subject_id' => $otherSubject->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester' => 'ganjil',
+            'topik' => 'Sel',
+        ]);
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $teacher);
+
+        try {
+            app(AiContentController::class)->generate($request, $teacher->id, app(AiContentGenerator::class));
+            $this->fail('Guru tidak boleh membuat draft untuk mapel yang tidak diampu.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
     }
 
     public function test_halaman_ai_dapat_dirender(): void

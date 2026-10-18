@@ -119,8 +119,8 @@ class ProsemController extends Controller
         $prota = Prota::with('subject')->findOrFail($validated['prota_id']);
         $this->assertPeriodNotLocked($prota->academic_year_id, 'Dokumen PROSEM');
 
-        if (! $this->access->canManageSubject($request->user(), $prota->subject_id, $prota->academic_year_id, $schoolId)) {
-            abort(403, 'Anda tidak berwenang menyusun PROSEM untuk mata pelajaran ini.');
+        if (! $this->access->canAuthorSubject($request->user(), $prota->subject_id, $prota->academic_year_id, $schoolId)) {
+            abort(403, 'Anda hanya dapat menyusun PROSEM untuk mata pelajaran yang diampu.');
         }
 
         $existing = Prosem::where('prota_id', $prota->id)->first();

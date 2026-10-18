@@ -33,9 +33,23 @@ class AiChatController extends Controller
             }
         }
 
+        $user = $request->user();
+        $isSuper = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+
         $context = [
             'school_id' => $request->attributes->get('schoolContextId'),
             'global' => (bool) $request->attributes->get('isGlobalView', false),
+            'can_view_students' => $isSuper
+                || canPermission('student_view')
+                || canPermission('student-all-access'),
+            'can_view_gtk' => $isSuper
+                || canPermission('gtk_view')
+                || canPermission('gtk_detail_view')
+                || canPermission('gtk-view-all')
+                || canPermission('gtk-view-school'),
+            'can_view_gtk_detail' => $isSuper
+                || canPermission('gtk_detail_view')
+                || canPermission('gtk-view-all'),
         ];
 
         $result = $chat->send(

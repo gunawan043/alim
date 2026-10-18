@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudentAttendance;
 use App\Models\StudyGroup;
 use App\Models\Subject;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -20,9 +21,11 @@ use Illuminate\Support\Facades\Schema;
  * Akses data read-only untuk AI Chat.
  *
  * Prinsip:
- * - hanya agregat / master data non-sensitif;
- * - tidak pernah mengembalikan nama santri, NIS/NISN, alamat, kontak,
- *   data kesehatan, keluarga, bank, gaji, atau kredensial;
+ * - agregat untuk semua pegawai;
+ * - identitas/riwayat individu hanya jika pengguna punya izin
+ *   student_view / gtk_view / gtk_detail_view;
+ * - NIK/KK/NPWP, rekening, kesehatan, gaji, dan kredensial tidak pernah
+ *   dikembalikan;
  * - selalu dibatasi school context pengguna (kecuali global view).
  */
 class AiDataToolService
@@ -31,14 +34,23 @@ class AiDataToolService
 
     private bool $global = false;
 
+    private bool $canViewStudents = false;
+
+    private bool $canViewGtk = false;
+
+    private bool $canViewGtkDetail = false;
+
     /**
      * Definisi tool gaya OpenAI Chat Completions.
      *
+     * @param  array{school_id?: ?string, global?: bool, can_view_students?: bool, can_view_gtk?: bool, can_view_gtk_detail?: bool}  $context
      * @return array<int, array<string, mixed>>
      */
-    public function definitions(): array
+    public function definitions(array $context = []): array
     {
-        return [
+        $this->applyContext($context);
+
+        $tools = [
             $this->tool('count_students', 'Hitung jumlah santri (agregat, tanpa identitas) berdasarkan gender, status, tingkat, rombel, atau tahun ajaran.', [
                 'gender' => ['type' => 'string', 'enum' => ['L', 'P'], 'description' => 'L = laki-laki, P = perempuan'],
                 'status' => ['type' => 'string', 'description' => 'Status santri: active, inactive, graduate, dropped, transfer_in, transfer_out'],
@@ -69,6 +81,44 @@ class AiDataToolService
                 'type' => ['type' => 'string', 'enum' => ['subjects', 'grade_levels', 'rombel', 'academic_years']],
             ]),
         ];
+
+        if ($this->canViewStudents) {
+            $tools[] = $this->tool('search_students', 'Cari santri dan tampilkan identitas dasar (nama, NIS/NISN, gender, status, sekolah, rombel, alamat). Gunakan hanya untuk tugas yang sah.', [
+                'query' => ['type' => 'string', 'description' => 'Nama, NIS, atau NISN'],
+                'status' => ['type' => 'string', 'description' => 'active, inactive, graduate, dropped, transfer_in, transfer_out'],
+                'gender' => ['type' => 'string', 'enum' => ['L', 'P']],
+                'grade_level' => ['type' => 'string'],
+                'rombel' => ['type' => 'string'],
+                'academic_year' => ['type' => 'string'],
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+            ]);
+            $tools[] = $this->tool('student_detail', 'Ambil identitas lengkap dan riwayat individu santri: alamat, kontak, riwayat rombel, presensi 30 hari, dan rapor terakhir. NIK/KK/rekening/kesehatan tidak tersedia.', [
+                'student_id' => ['type' => 'string'],
+                'nis' => ['type' => 'string'],
+                'nisn' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+            ]);
+        }
+
+        if ($this->canViewGtk) {
+            $tools[] = $this->tool('search_gtk', 'Cari GTK (guru/tenaga kependidikan) dan tampilkan identitas dasar: nama, email, NUPY, jenis GTK, jabatan, posisi, sekolah, status kepegawaian.', [
+                'query' => ['type' => 'string', 'description' => 'Nama, email, atau NUPY'],
+                'jenis_gtk' => ['type' => 'string'],
+                'jabatan' => ['type' => 'string'],
+                'position_type' => ['type' => 'string'],
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+            ]);
+        }
+
+        if ($this->canViewGtkDetail) {
+            $tools[] = $this->tool('gtk_detail', 'Ambil detail GTK: kontak, alamat, dan riwayat penugasan. NIK/KK/NPWP, gaji, dan data kesehatan tidak tersedia.', [
+                'user_id' => ['type' => 'string'],
+                'nupy' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+            ]);
+        }
+
+        return $tools;
     }
 
     /**
@@ -78,8 +128,7 @@ class AiDataToolService
      */
     public function execute(string $name, array $args, array $context): array
     {
-        $this->schoolId = $context['school_id'] ?? null;
-        $this->global = (bool) ($context['global'] ?? false);
+        $this->applyContext($context);
 
         try {
             return match ($name) {
@@ -89,6 +138,10 @@ class AiDataToolService
                 'attendance_summary' => $this->attendanceSummary($args),
                 'academic_overview' => $this->academicOverview(),
                 'list_master_data' => $this->listMasterData($args),
+                'search_students' => $this->searchStudents($args),
+                'student_detail' => $this->studentDetail($args),
+                'search_gtk' => $this->searchGtk($args),
+                'gtk_detail' => $this->gtkDetail($args),
                 default => ['error' => 'Tool tidak dikenal.'],
             };
         } catch (\Throwable $e) {
@@ -125,8 +178,20 @@ class AiDataToolService
             'attendance_7_days' => $this->attendanceSummary(['days' => 7]),
             'raport' => $this->raportSummary(),
             'tahfidz' => $this->tahfidzCounts(),
-            'note' => 'Hanya agregat; identitas pribadi tidak tersedia untuk AI.',
+            'note' => 'Snapshot ini hanya agregat. Data pribadi tersedia lewat tool jika pengguna berwenang.',
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function applyContext(array $context): void
+    {
+        $this->schoolId = $context['school_id'] ?? null;
+        $this->global = (bool) ($context['global'] ?? false);
+        $this->canViewStudents = (bool) ($context['can_view_students'] ?? false);
+        $this->canViewGtk = (bool) ($context['can_view_gtk'] ?? false);
+        $this->canViewGtkDetail = (bool) ($context['can_view_gtk_detail'] ?? false);
     }
 
     /**
@@ -299,6 +364,330 @@ class AiDataToolService
         };
 
         return ['type' => $type, 'count' => count($items), 'items' => $items];
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     * @return array<string, mixed>
+     */
+    private function searchStudents(array $args): array
+    {
+        if (! $this->canViewStudents) {
+            return ['error' => 'Anda tidak berwenang mengakses data pribadi santri.'];
+        }
+
+        $query = $this->studentQuery();
+        $search = trim((string) ($args['query'] ?? ''));
+
+        if ($search !== '') {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('name_ar', 'like', '%'.$search.'%')
+                    ->orWhere('nis', 'like', '%'.$search.'%')
+                    ->orWhere('nisn', 'like', '%'.$search.'%');
+            });
+        }
+
+        if (! empty($args['gender']) && in_array($args['gender'], ['L', 'P'], true)) {
+            $query->where('gender', $args['gender']);
+        }
+        if (! empty($args['status'])) {
+            $query->where('status', $args['status']);
+        }
+
+        $groupIds = $this->resolveStudyGroupIds($args);
+        if ($groupIds !== null) {
+            if ($groupIds === []) {
+                return ['count' => 0, 'items' => [], 'note' => 'Tidak ada rombel yang cocok.'];
+            }
+            $query->whereHas('classHistories', fn (Builder $q) => $q->whereIn('study_group_id', $groupIds)->where('is_active', true));
+        }
+
+        $limit = max(1, min(20, (int) ($args['limit'] ?? 10)));
+        $students = $query
+            ->with([
+                'school:id,name',
+                'classHistories' => fn ($q) => $q->where('is_active', true)
+                    ->with(['studyGroup:id,name,grade_level_id', 'studyGroup.gradeLevel:id,name'])
+                    ->orderByDesc('created_at'),
+            ])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'count' => $students->count(),
+            'items' => $students->map(fn (Student $student) => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'name_ar' => $student->name_ar,
+                'nis' => $student->nis,
+                'nisn' => $student->nisn,
+                'gender' => $student->gender,
+                'status' => $student->status,
+                'school' => $student->school?->name,
+                'rombel' => $student->classHistories->first()?->studyGroup?->name,
+                'address' => $student->address,
+            ])->all(),
+            'note' => 'Data pribadi. Gunakan hanya untuk tugas yang sah.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     * @return array<string, mixed>
+     */
+    private function studentDetail(array $args): array
+    {
+        if (! $this->canViewStudents) {
+            return ['error' => 'Anda tidak berwenang mengakses data pribadi santri.'];
+        }
+
+        $student = $this->findStudent($args);
+        if (! $student) {
+            return ['error' => 'Santri tidak ditemukan. Sertakan nama, NIS, NISN, atau ID yang valid.'];
+        }
+
+        $student->load([
+            'school:id,name',
+            'classHistories' => fn ($q) => $q->with([
+                'studyGroup:id,name,grade_level_id',
+                'studyGroup.gradeLevel:id,name',
+                'academicYear:id,name',
+            ])->orderByDesc('created_at'),
+        ]);
+
+        $attendance = StudentAttendance::query()
+            ->where('student_id', $student->id)
+            ->whereBetween('attendance_date', [now()->subDays(29)->toDateString(), now()->toDateString()])
+            ->select('status', DB::raw('COUNT(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->all();
+
+        $raports = RaportRegistration::query()
+            ->where('student_id', $student->id)
+            ->with(['academicYear:id,name', 'studyGroup:id,name'])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (RaportRegistration $raport) => [
+                'academic_year' => $raport->academicYear?->name,
+                'semester' => $raport->semester,
+                'rombel' => $raport->studyGroup?->name,
+                'status' => $raport->status,
+                'published' => (bool) $raport->is_published,
+                'final_score' => $raport->final_score,
+                'predicate' => $raport->predicate,
+            ])->all();
+
+        return [
+            'identity' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'name_ar' => $student->name_ar,
+                'nis' => $student->nis,
+                'nisn' => $student->nisn,
+                'gender' => $student->gender,
+                'status' => $student->status,
+                'birth_place' => $student->birth_place,
+                'birth_date' => $student->birth_date?->toDateString(),
+                'religion' => $student->religion,
+                'address' => $student->address,
+                'rt' => $student->rt,
+                'rw' => $student->rw,
+                'hamlet' => $student->hamlet,
+                'postal_code' => $student->postal_code,
+                'phone' => $student->phone,
+                'mobile_phone' => $student->mobile_phone,
+                'email' => $student->email,
+                'school' => $student->school?->name,
+                'entry_date' => $student->entry_date?->toDateString(),
+                'father_name' => $student->father_name,
+                'mother_name' => $student->mother_name,
+                'guardian_name' => $student->guardian_name,
+            ],
+            'class_history' => $student->classHistories->map(fn ($history) => [
+                'rombel' => $history->studyGroup?->name,
+                'grade_level' => $history->studyGroup?->gradeLevel?->name,
+                'academic_year' => $history->academicYear?->name,
+                'is_active' => (bool) $history->is_active,
+                'join_date' => $history->join_date?->toDateString(),
+                'leave_date' => $history->leave_date?->toDateString(),
+            ])->all(),
+            'attendance_30_days' => [
+                'hadir' => (int) ($attendance['hadir'] ?? 0),
+                'izin' => (int) ($attendance['izin'] ?? 0),
+                'sakit' => (int) ($attendance['sakit'] ?? 0),
+                'alpa' => (int) ($attendance['alpa'] ?? 0),
+            ],
+            'raport' => $raports,
+            'note' => 'NIK/KK, rekening, data kesehatan, dan data sensitif lain tidak ditampilkan.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     * @return array<string, mixed>
+     */
+    private function searchGtk(array $args): array
+    {
+        if (! $this->canViewGtk) {
+            return ['error' => 'Anda tidak berwenang mengakses data GTK.'];
+        }
+
+        $query = User::query()->whereHas('employment', function (Builder $q) {
+            $q->when($this->schoolId && ! $this->global, fn (Builder $e) => $e->where('school_id', $this->schoolId));
+        });
+
+        $search = trim((string) ($args['query'] ?? ''));
+        if ($search !== '') {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhereHas('employment', fn (Builder $e) => $e->where('nupy', 'like', '%'.$search.'%'));
+            });
+        }
+
+        foreach (['jenis_gtk', 'jabatan', 'position_type'] as $field) {
+            if (! empty($args[$field])) {
+                $query->whereHas('employment', fn (Builder $q) => $q->where($field, 'like', '%'.$args[$field].'%'));
+            }
+        }
+
+        $limit = max(1, min(20, (int) ($args['limit'] ?? 10)));
+        $users = $query
+            ->with(['employment' => fn ($q) => $q->with('school:id,name')])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'count' => $users->count(),
+            'items' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'nupy' => $user->employment?->nupy,
+                'jenis_gtk' => $user->employment?->jenis_gtk,
+                'jabatan' => $user->employment?->jabatan,
+                'position_type' => $user->employment?->position_type,
+                'status_kepegawaian' => $user->employment?->status_kepegawaian,
+                'school' => $user->employment?->school?->name,
+            ])->all(),
+            'note' => 'Data pribadi GTK. Gunakan hanya untuk tugas yang sah.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     * @return array<string, mixed>
+     */
+    private function gtkDetail(array $args): array
+    {
+        if (! $this->canViewGtkDetail) {
+            return ['error' => 'Anda tidak berwenang mengakses detail GTK.'];
+        }
+
+        $user = $this->findGtk($args);
+        if (! $user) {
+            return ['error' => 'GTK tidak ditemukan. Sertakan nama, NUPY, atau ID yang valid.'];
+        }
+
+        $user->load([
+            'gtkProfile.addresses',
+            'contact',
+            'employments' => fn ($q) => $q->with(['school:id,name', 'academicYear:id,name'])->orderByDesc('created_at'),
+        ]);
+
+        $profile = $user->gtkProfile;
+        $contact = $user->contact;
+
+        return [
+            'identity' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'tempat_lahir' => $profile?->tempat_lahir,
+                'tanggal_lahir' => $profile?->tanggal_lahir?->toDateString(),
+                'jenis_kelamin' => $profile?->jenis_kelamin,
+                'agama' => $profile?->agama,
+                'status_perkawinan' => $profile?->status_perkawinan,
+            ],
+            'contact' => [
+                'no_hp' => $contact?->no_hp,
+                'no_whatsapp' => $contact?->no_whatsapp,
+                'kontak_darurat' => $contact?->kontak_darurat,
+            ],
+            'addresses' => $profile?->addresses->map(fn ($address) => [
+                'type' => $address->type,
+                'jalan' => $address->jalan,
+                'rt_rw' => $address->rt_rw,
+                'dusun' => $address->dusun,
+                'desa' => $address->desa,
+                'kecamatan' => $address->kecamatan,
+                'kab_kota' => $address->kab_kota,
+                'provinsi' => $address->provinsi,
+                'kode_pos' => $address->kode_pos,
+            ])->all() ?? [],
+            'employments' => $user->employments->map(fn (GtkEmployment $employment) => [
+                'school' => $employment->school?->name,
+                'academic_year' => $employment->academicYear?->name,
+                'nupy' => $employment->nupy,
+                'jenis_gtk' => $employment->jenis_gtk,
+                'jabatan' => $employment->jabatan,
+                'position_type' => $employment->position_type,
+                'status_kepegawaian' => $employment->status_kepegawaian,
+                'tmt' => $employment->tmt?->toDateString(),
+            ])->all(),
+            'note' => 'NIK/KK/NPWP, gaji, dan data kesehatan tidak ditampilkan.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     */
+    private function findStudent(array $args): ?Student
+    {
+        $query = $this->studentQuery();
+
+        if (! empty($args['student_id'])) {
+            return $query->whereKey($args['student_id'])->first();
+        }
+        if (! empty($args['nis'])) {
+            return $query->where('nis', $args['nis'])->first();
+        }
+        if (! empty($args['nisn'])) {
+            return $query->where('nisn', $args['nisn'])->first();
+        }
+        if (! empty($args['name'])) {
+            return $query->where(fn (Builder $q) => $q->where('name', 'like', '%'.$args['name'].'%')->orWhere('name_ar', 'like', '%'.$args['name'].'%'))->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     */
+    private function findGtk(array $args): ?User
+    {
+        if (! empty($args['user_id'])) {
+            return User::query()->find($args['user_id']);
+        }
+        if (! empty($args['nupy'])) {
+            return User::query()->whereHas('employment', fn (Builder $q) => $q->where('nupy', $args['nupy']))->first();
+        }
+        if (! empty($args['name'])) {
+            $search = (string) $args['name'];
+
+            return User::query()
+                ->where(fn (Builder $q) => $q->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%'))
+                ->whereHas('employment')
+                ->first();
+        }
+
+        return null;
     }
 
     private function raportSummary(): array

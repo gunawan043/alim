@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\KurikulumEditGrant;
+use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 
@@ -91,7 +93,7 @@ class KurikulumAccess
      * SERUMPUN (mengampu mapel dalam rumpun yang sama, aktif) dan tim
      * kurikulum. Pihak lain hanya pelihat — kunci disamarkan.
      */
-    public function canViewAnswerKeys(User $user, ?\App\Models\Subject $subject = null): bool
+    public function canViewAnswerKeys(User $user, ?Subject $subject = null): bool
     {
         if ($this->isKurikulumTeam($user)) {
             return true;
@@ -101,7 +103,7 @@ class KurikulumAccess
             return false;
         }
 
-        $resolver = app(\App\Services\SubjectGroupResolver::class);
+        $resolver = app(SubjectGroupResolver::class);
         $group = $resolver->groupForSubject($subject);
 
         if (! $group) {
@@ -123,6 +125,40 @@ class KurikulumAccess
     }
 
     /**
+     * ID mapel yang benar-benar diampu (bukan serumpun).
+     * Tim kurikulum editor → null (semua mapel).
+     *
+     * @return array<int, string>|null
+     */
+    public function taughtSubjectIds(User $user, ?string $schoolId = null, ?string $academicYearId = null): ?array
+    {
+        if ($this->isKurikulumEditor($user)) {
+            return null;
+        }
+
+        return TeachingAssignment::query()
+            ->where('teacher_id', $user->id)
+            ->where('status', 'active')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->pluck('subject_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Boleh MEMBUAT dokumen baru (ATP/PROTA/PROSEM/RPM/AI draft) untuk mapel ini?
+     * Hanya editor kurikulum atau guru pengampu — edit grant tidak memberi hak
+     * membuat dokumen baru untuk mapel yang tidak diampu.
+     */
+    public function canAuthorSubject(User $user, string $subjectId, string $academicYearId, ?string $schoolId = null): bool
+    {
+        return $this->isKurikulumEditor($user)
+            || $this->teachesSubject($user, $subjectId, $academicYearId, $schoolId);
+    }
+
+    /**
      * Boleh mengelola TP/ATP/Perangkat untuk mapel ini?
      */
     public function canManageSubject(User $user, string $subjectId, string $academicYearId, ?string $schoolId = null): bool
@@ -137,11 +173,11 @@ class KurikulumAccess
      */
     public function hasEditGrant(User $user, string $subjectId, string $academicYearId, ?string $schoolId = null): bool
     {
-        return \App\Models\KurikulumEditGrant::query()
+        return KurikulumEditGrant::query()
             ->where('requested_by', $user->id)
             ->where('subject_id', $subjectId)
             ->where('academic_year_id', $academicYearId)
-            ->where('status', \App\Models\KurikulumEditGrant::STATUS_APPROVED)
+            ->where('status', KurikulumEditGrant::STATUS_APPROVED)
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->exists();
     }
@@ -209,10 +245,10 @@ class KurikulumAccess
             ->values()
             ->all();
 
-        $groupIds = app(\App\Services\SubjectGroupResolver::class)->groupsForTeacher($user)->pluck('id')->all();
+        $groupIds = app(SubjectGroupResolver::class)->groupsForTeacher($user)->pluck('id')->all();
 
         $rumpun = $groupIds
-            ? \App\Models\Subject::query()
+            ? Subject::query()
                 ->whereIn('subject_group_id', $groupIds)
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->pluck('id')

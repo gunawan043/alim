@@ -67,7 +67,7 @@ class AiChatService
 
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        $tools = $this->dataTools->definitions();
+        $tools = $this->dataTools->definitions($context);
         $toolsEnabled = true;
         $usedTools = [];
         $reply = null;

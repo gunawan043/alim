@@ -502,7 +502,7 @@
                 </button>
             </div>
             <div class="ai-chat-foot">
-                <span>AI dapat membuat kesalahan. Verifikasi data penting.</span>
+                <span>Data pribadi hanya untuk tugas resmi. Verifikasi data penting.</span>
                 <span class="ai-chat-count" id="aiChatCount">0/2000</span>
             </div>
         </div>

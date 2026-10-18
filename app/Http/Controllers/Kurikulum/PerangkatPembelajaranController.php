@@ -135,7 +135,9 @@ class PerangkatPembelajaranController extends Controller
         ]);
 
         $atp = AlurTujuanPembelajaran::with('subject')->findOrFail($validated['atp_id']);
-        $this->authorizeManage($request, $atp->subject_id, $atp->academic_year_id, $schoolId);
+        if (! $this->access->canAuthorSubject($request->user(), $atp->subject_id, $atp->academic_year_id, $schoolId)) {
+            abort(403, 'Anda hanya dapat menyusun RPM untuk mata pelajaran yang diampu.');
+        }
         $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen RPM/Perangkat');
 
         // Kebijakan Tahap 2: SATU dokumen current per konteks akademik

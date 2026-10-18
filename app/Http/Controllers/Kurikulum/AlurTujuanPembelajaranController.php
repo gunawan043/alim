@@ -66,14 +66,23 @@ class AlurTujuanPembelajaranController extends Controller
             ->orderBy('subject_id')
             ->get();
 
-        $subjects = Subject::query()
+        // Filter daftar: guru boleh melihat mapel serumpun.
+        $filterSubjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
-                // Guru: mapel yang diampu / serumpun (penyusunan tetap dibatasi editor/pengampu).
                 $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
                 $q->whereIn('id', $viewable ?: ['-']);
             })
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        // Form Susun ATP: hanya mapel yang benar-benar diampu (editor: semua).
+        $taughtSubjectIds = $this->access->taughtSubjectIds($request->user(), $schoolId, $academicYearId);
+        $subjects = Subject::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->when($taughtSubjectIds !== null, fn ($q) => $q->whereIn('id', $taughtSubjectIds ?: ['-']))
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
@@ -89,6 +98,7 @@ class AlurTujuanPembelajaranController extends Controller
             'semester',
             'atpList',
             'subjects',
+            'filterSubjects',
             'gradeLevels'
         ));
     }
@@ -106,7 +116,9 @@ class AlurTujuanPembelajaranController extends Controller
             'catatan' => 'nullable|string|max:2000',
         ]);
 
-        $this->authorizeManage($request, $validated['subject_id'], $validated['academic_year_id'], $schoolId);
+        if (! $this->access->canAuthorSubject($request->user(), $validated['subject_id'], $validated['academic_year_id'], $schoolId)) {
+            abort(403, 'Anda hanya dapat menyusun ATP untuk mata pelajaran yang diampu.');
+        }
         $this->assertPeriodNotLocked($validated['academic_year_id'], 'Dokumen ATP');
 
         $gradeLevel = ! empty($validated['grade_level_id']) ? GradeLevel::find($validated['grade_level_id']) : null;
