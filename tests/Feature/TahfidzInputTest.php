@@ -108,6 +108,13 @@ class TahfidzInputTest extends TestCase
             ->assertRedirect(route('user.tahfidz.input.index', ['userId' => $admin->id, 'student_id' => $student->id]));
 
         $this->assertSame(2, TahfidzSetoran::count());
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/santri/{$student->id}")
+            ->assertOk()
+            ->assertSee('Progres Juz')
+            ->assertSee('Riwayat Setoran')
+            ->assertSee('Santri Input');
         $this->assertTrue(app(TahfidzAccess::class)->isTahfidzTeacher($teacher));
         $this->assertTrue(app(TahfidzAccess::class)->canSubstituteSetoran($teacher, $otherGroup));
     }

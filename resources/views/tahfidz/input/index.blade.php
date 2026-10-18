@@ -1,4 +1,16 @@
 @extends('layouts.master')
+
+@push('styles')
+<style>
+    .hafalan-modal .modal-content { display: flex; flex-direction: column; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
+    .hafalan-modal .modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1 1 auto; }
+    .hafalan-modal .modal-footer { flex-shrink: 0; }
+    @media (max-width: 767.98px) {
+        .hafalan-modal .modal-dialog { margin: .5rem; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
+        .hafalan-modal .modal-body { padding: 1rem; }
+    }
+</style>
+@endpush
 @section('title', 'Input Hafalan Santri')
 @section('content')
     @php $userId = $userId ?? auth()->id(); @endphp
@@ -15,9 +27,12 @@
             <p class="text-muted mb-0 small">Cari seluruh santri di satuan pendidikan. Format: <strong>Kelas | NIS | Nama</strong>.</p>
         </div>
         <div class="card-body">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" class="form-select select2" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select><div class="form-text">Pencarian mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda.</div></div>
-                <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="ri-eye-line me-1"></i>Tampilkan Riwayat</button></div>
+            <form method="GET">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" class="form-select select2" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select></div>
+                    <div class="col-md-3"><button class="btn btn-primary w-100" style="min-height:38px;"><i class="ri-eye-line me-1"></i>Tampilkan Riwayat</button></div>
+                </div>
+                <div class="form-text mt-1">Pencarian mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda.</div>
             </form>
         </div>
     </div>
@@ -30,6 +45,7 @@
                     <div class="text-muted small">{{ $selected->nis }} · {{ $selectedGroup?->name }} · {{ $selectedGroup?->school?->name }}</div>
                 </div>
                 <div class="d-flex gap-2">
+                    <a href="{{ route('user.tahfidz.santri.show', ['userId'=>$userId,'studentId'=>$selected->id]) }}" class="btn btn-outline-primary"><i class="ri-profile-line me-1"></i>Detail Tahfidz</a>
                     @if($canInput)<button type="button" class="btn btn-success" onclick="openHafalanModal()"><i class="ri-add-line me-1"></i>Tambah Setoran</button>@endif
                     <a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId]) }}" class="btn btn-light">Cari Santri Lain</a>
                 </div>
@@ -106,7 +122,7 @@
     @endif
 
     @if($selected && $canInput)
-        <div class="modal fade" id="hafalanModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade hafalan-modal" id="hafalanModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <form method="POST" action="{{ route('user.tahfidz.setoran.store', ['userId'=>$userId]) }}">
@@ -115,28 +131,54 @@
                         <input type="hidden" name="tahfidz_group_id" value="{{ $selectedGroup?->id }}">
                         <input type="hidden" name="student_id" value="{{ $selected->id }}">
                         <div class="modal-header bg-success-subtle"><h5 class="modal-title"><i class="ri-add-line me-1"></i>Tambah Setoran — {{ $selected->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                        <div class="modal-body"><div class="row g-3">
-                            <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                            <div class="col-md-2"><label class="form-label">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
-                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
-                            <div class="col-md-4"><label class="form-label">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                            <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" min="1" max="30" class="form-control" value="{{ old('juz', $target?->juz_start) }}"></div>
+                        <div class="modal-body">
+                        @php
+                            $lastPosition = $lastSetoran ? [
+                                'juz' => $lastSetoran->juz,
+                                'surah_start_name' => $lastSetoran->surah_end_name ?: $lastSetoran->surah_start_name,
+                                'ayat_start' => $lastSetoran->ayat_end ? ((int) $lastSetoran->ayat_end + 1) : $lastSetoran->ayat_start,
+                                'halaman_start' => $lastSetoran->halaman_end ? ((float) $lastSetoran->halaman_end + 1) : $lastSetoran->halaman_start,
+                            ] : null;
+                        @endphp
+
+                        <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Isi yang perlu saja. Detail hafalan bisa dibuka jika diperlukan; nilai akhir dan jumlah halaman dihitung otomatis.</div>
+                        <div class="row g-3">
+                            <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" id="smart_setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah (hafalan baru)</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
+                            <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" id="smart_juz" min="1" max="30" class="form-control" value="{{ old('juz', $target?->juz_start ?? $lastSetoran?->juz) }}" placeholder="Otomatis"></div>
+                            <div class="col-md-2"><label class="form-label">Nilai Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="smart_hasil" class="form-control" value="{{ old('hasil_hafalan') }}" placeholder="0–100"></div>
                             <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
-                            <div class="col-md-4"><label class="form-label">Surah Awal</label><input name="surah_start_name" class="form-control" value="{{ old('surah_start_name') }}" placeholder="Mis. Al-Fatihah"></div>
-                            <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_start" class="form-control" value="{{ old('ayat_start') }}"></div>
-                            <div class="col-md-4"><label class="form-label">Surah Akhir</label><input name="surah_end_name" class="form-control" value="{{ old('surah_end_name') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" class="form-control" value="{{ old('halaman_start') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Hasil Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" class="form-control" value="{{ old('hasil_hafalan') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" class="form-control" value="{{ old('khofi') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" class="form-control" value="{{ old('jali') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis"></div>
-                            <div class="col-12"><label class="form-label">Catatan Guru</label><textarea name="catatan_guru" rows="2" class="form-control">{{ old('catatan_guru') }}</textarea></div>
-                        </div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
+                            <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                                @if($lastPosition)
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="useLastPosition" data-last="{{ json_encode($lastPosition, JSON_HEX_APOS | JSON_HEX_QUOT) }}"><i class="ri-history-line me-1"></i>Ambil Posisi Terakhir</button>
+                                @endif
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#setoranDetail"><i class="ri-settings-3-line me-1"></i>Isi Detail Hafalan</button>
+                                <span class="badge bg-success-subtle text-success ms-auto" id="scorePreview">Nilai akhir: otomatis</span>
+                            </div>
+                            <div class="col-12"><label class="form-label">Catatan Guru <span class="text-muted small">(opsional)</span></label><textarea name="catatan_guru" rows="2" class="form-control" placeholder="Catatan singkat...">{{ old('catatan_guru') }}</textarea></div>
+                        </div>
+
+                        <div class="collapse mt-3" id="setoranDetail">
+                            <div class="border rounded p-3 bg-light-subtle">
+                                <div class="fw-semibold mb-2"><i class="ri-list-settings-line me-1"></i>Detail Hafalan</div>
+                                <div class="row g-3">
+                                    <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
+                                    <div class="col-md-4"><label class="form-label small">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
+                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><input name="surah_start_name" id="smart_surah_start" class="form-control" value="{{ old('surah_start_name') }}" placeholder="Mis. Al-Fatihah"></div>
+                                    <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start') }}"></div>
+                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><input name="surah_end_name" class="form-control" value="{{ old('surah_end_name') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="smart_halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="smart_jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
+                                    <div class="col-md-2"><label class="form-label small">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" id="smart_khofi" class="form-control" value="{{ old('khofi') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" id="smart_jali" class="form-control" value="{{ old('jali') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" id="smart_nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
                     </form>
                 </div>
             </div>
@@ -150,6 +192,48 @@
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
+        const detail = document.getElementById('setoranDetail');
+        const pageStart = document.getElementById('smart_halaman_start');
+        const pageEnd = document.getElementById('smart_halaman_end');
+        const pageCount = document.getElementById('smart_jumlah_halaman');
+        const scorePreview = document.getElementById('scorePreview');
+
+        function calculatePages() {
+            if (! pageStart || ! pageEnd || ! pageCount) return;
+            const start = parseFloat(pageStart.value);
+            const end = parseFloat(pageEnd.value);
+            if (! Number.isNaN(start) && ! Number.isNaN(end) && end >= start) {
+                pageCount.value = Math.max(0, end - start + 1).toFixed(1).replace('.0', '');
+            }
+        }
+
+        function calculateScore() {
+            if (! scorePreview) return;
+            const values = ['smart_hasil', 'smart_khofi', 'smart_jali']
+                .map(id => parseFloat(document.getElementById(id)?.value))
+                .filter(value => ! Number.isNaN(value));
+            if (! values.length) {
+                scorePreview.textContent = 'Nilai akhir: otomatis';
+                return;
+            }
+            const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+            scorePreview.textContent = 'Nilai akhir: ' + average.toFixed(2);
+        }
+
+        [pageStart, pageEnd].forEach(input => input?.addEventListener('input', calculatePages));
+        ['smart_hasil', 'smart_khofi', 'smart_jali'].forEach(id => document.getElementById(id)?.addEventListener('input', calculateScore));
+        calculatePages();
+        calculateScore();
+
+        document.getElementById('useLastPosition')?.addEventListener('click', function () {
+            const data = JSON.parse(this.dataset.last || '{}');
+            if (data.juz) document.getElementById('smart_juz').value = data.juz;
+            if (data.surah_start_name) document.getElementById('smart_surah_start').value = data.surah_start_name;
+            if (data.ayat_start) document.getElementById('smart_ayat_start').value = data.ayat_start;
+            if (data.halaman_start) document.getElementById('smart_halaman_start').value = data.halaman_start;
+            if (detail && window.bootstrap) bootstrap.Collapse.getOrCreateInstance(detail).show();
+        });
+
         if (window.jQuery && jQuery.fn.select2) {
             jQuery('.select2').select2({ width: '100%', placeholder: 'Ketik kelas, NIS, atau nama santri...', allowClear: true });
         }

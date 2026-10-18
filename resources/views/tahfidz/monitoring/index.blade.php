@@ -73,7 +73,7 @@
                                 @endif
                             </td>
                             <td class="text-end text-nowrap">
-                                @if($student?->id)<a href="{{ route('user.students.show', ['userId'=>$userId,'santriUuid'=>$student->id]) }}" class="btn btn-sm btn-outline-primary" title="Detail santri"><i class="ri-user-line"></i></a>@endif
+                                @if($student?->id)<a href="{{ route('user.tahfidz.santri.show', ['userId'=>$userId,'studentId'=>$student->id]) }}" class="btn btn-sm btn-outline-primary" title="Detail Tahfidz"><i class="ri-book-read-line"></i></a><a href="{{ route('user.students.show', ['userId'=>$userId,'santriUuid'=>$student->id]) }}" class="btn btn-sm btn-outline-secondary" title="Profil santri"><i class="ri-user-line"></i></a>@endif
                                 @if($row['group']?->id)<a href="{{ route('user.tahfidz.halaqah.show', ['userId'=>$userId,'id'=>$row['group']->id]) }}" class="btn btn-sm btn-outline-info" title="Halaqah"><i class="ri-team-line"></i></a>@endif
                             </td>
                         </tr>

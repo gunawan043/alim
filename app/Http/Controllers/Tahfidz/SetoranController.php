@@ -232,9 +232,18 @@ class SetoranController extends Controller
         $scores = collect([$validated['hasil_hafalan'] ?? null, $validated['khofi'] ?? null, $validated['jali'] ?? null])->filter(fn ($v) => $v !== null && $v !== '');
         $nilai = $validated['nilai_setoran'] ?? ($scores->isNotEmpty() ? round((float) $scores->avg(), 2) : null);
 
+        $jumlahHalaman = $validated['jumlah_halaman'] ?? null;
+        if ($jumlahHalaman === null
+            && isset($validated['halaman_start'], $validated['halaman_end'])
+            && $validated['halaman_start'] !== null
+            && $validated['halaman_end'] !== null) {
+            $jumlahHalaman = max(0, (float) $validated['halaman_end'] - (float) $validated['halaman_start'] + 1);
+        }
+
         return array_merge($validated, [
             'teacher_id' => $request->user()?->id,
             'academic_year_id' => $group->academic_year_id,
+            'jumlah_halaman' => $jumlahHalaman,
             'nilai_setoran' => $nilai,
         ]);
     }
