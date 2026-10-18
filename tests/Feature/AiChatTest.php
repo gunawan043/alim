@@ -364,6 +364,54 @@ class AiChatTest extends TestCase
         $this->assertSame(1, $conversation->messages()->where('role', 'admin')->where('content', 'Balasan sama.')->count());
     }
 
+    public function test_kembali_ke_ai_mempertahankan_percakapan_dan_konteks(): void
+    {
+        $conversation = AiChatConversation::create([
+            'user_id' => $this->admin->id,
+            'school_id' => $this->school->id,
+            'title' => 'Bantuan yang dilanjutkan AI',
+            'mode' => 'support',
+            'status' => 'replied',
+            'last_message_at' => now(),
+        ]);
+        AiChatMessage::create(['conversation_id' => $conversation->id, 'role' => 'user', 'content' => 'Pertanyaan awal.']);
+        AiChatMessage::create(['conversation_id' => $conversation->id, 'role' => 'admin', 'content' => 'Jawaban Super Admin sebelumnya.']);
+
+        $this->actingAs($this->admin)
+            ->postJson("/{$this->admin->id}/ai-chat/{$conversation->id}/resume-ai")
+            ->assertOk()
+            ->assertJsonPath('mode', 'ai');
+
+        $this->assertSame('ai', $conversation->fresh()->mode);
+        $this->assertSame(2, $conversation->messages()->count());
+
+        Http::fake([
+            'ai.chat.test/*' => Http::response([
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'Lanjutan AI.'], 'finish_reason' => 'stop']],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/ai-chat/send", [
+                'conversation_id' => $conversation->id,
+                'message' => 'Lanjutkan dengan AI.',
+                'mode' => 'ai',
+            ])
+            ->assertOk()
+            ->assertJsonPath('reply', 'Lanjutan AI.');
+
+        Http::assertSent(function ($request) {
+            $payload = json_encode($request->data());
+
+            return str_contains($payload, 'Pertanyaan awal.')
+                && str_contains($payload, 'Jawaban Super Admin sebelumnya.')
+                && str_contains($payload, 'Lanjutkan dengan AI.');
+        });
+
+        $this->assertSame(1, AiChatConversation::count());
+    }
+
     public function test_widget_chat_tampil_di_layout(): void
     {
         $this->actingAs($this->admin)

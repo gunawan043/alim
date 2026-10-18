@@ -733,6 +733,7 @@
                 conversations: @json(route('user.ai-chat.conversations', ['userId' => $chatUserId])),
                 send: @json(route('user.ai-chat.send', ['userId' => $chatUserId])),
                 show: @json(route('user.ai-chat.show', ['userId' => $chatUserId, 'conversation' => '__ID__'])),
+                resumeAi: @json(route('user.ai-chat.resume-ai', ['userId' => $chatUserId, 'conversation' => '__ID__'])),
             };
 
             const initialEmpty = body.querySelector('.ai-chat-empty')?.cloneNode(true);
@@ -1094,6 +1095,42 @@
                 input.focus();
             };
 
+            const resumeAi = async function () {
+                if (! conversationId) {
+                    supportMode = false;
+                    supportClosed = false;
+                    updateModeUi();
+                    addSystem('Mode AI aktif kembali. Silakan lanjutkan pertanyaan pada sesi ini.');
+                    input.focus();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(urls.resumeAi.replace('__ID__', encodeURIComponent(conversationId)), {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                        },
+                    });
+                    const data = await response.json().catch(function () { return {}; });
+
+                    if (! response.ok || ! data.ok) {
+                        addSystem(data.message || 'Gagal kembali ke mode AI.');
+                        return;
+                    }
+
+                    supportMode = false;
+                    supportClosed = false;
+                    stopPolling();
+                    updateModeUi();
+                    addSystem('Mode AI aktif kembali pada percakapan ini. Riwayat percakapan tetap tersimpan.');
+                    input.focus();
+                } catch (e) {
+                    addSystem('Gagal kembali ke mode AI. Coba lagi.');
+                }
+            };
+
             const sendMessage = async function () {
                 const message = (input.value || '').trim();
                 if (! message || loading || supportClosed) return;
@@ -1161,7 +1198,7 @@
                 if (historyOpen) hideHistory(); else showHistory();
             });
             supportToggle.addEventListener('click', function () {
-                if (supportMode) resetChat(); else startSupport();
+                if (supportMode) resumeAi(); else startSupport();
             });
             themeBtn?.addEventListener('click', function () {
                 const dark = ! panel.classList.contains('is-dark');

@@ -418,6 +418,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/latest', [AiChatController::class, 'latest'])->name('latest');
                 Route::get('/conversations', [AiChatController::class, 'conversations'])->name('conversations');
                 Route::post('/send', [AiChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
+                Route::post('/{conversation}/resume-ai', [AiChatController::class, 'resumeAi'])->name('resume-ai');
                 Route::get('/{conversation}', [AiChatController::class, 'show'])->name('show');
                 Route::delete('/{conversation}', [AiChatController::class, 'destroy'])->name('destroy');
             });

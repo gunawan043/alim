@@ -125,7 +125,19 @@ class AiChatService
         $messages = [['role' => 'system', 'content' => $system]];
 
         foreach ($history as $item) {
-            if (! in_array($item->role, ['user', 'assistant'], true) || trim((string) $item->content) === '') {
+            if (trim((string) $item->content) === '') {
+                continue;
+            }
+
+            // Pesan Super Admin ikut menjadi konteks AI saat pengguna kembali
+            // ke mode AI pada percakapan yang sama.
+            if ($item->role === 'admin') {
+                $messages[] = ['role' => 'assistant', 'content' => (string) $item->content];
+
+                continue;
+            }
+
+            if (! in_array($item->role, ['user', 'assistant'], true)) {
                 continue;
             }
 

@@ -1857,6 +1857,16 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Statistik: total aset, menunggu verifikasi, kondisi rusak, dipinjam.
 - Data aset baru dari unit tetap `pending` sampai diverifikasi URT; kepemilikan `work_unit_id` tidak berubah.
 
+## 174. Sarpras — Sinkronisasi Inventaris Asrama ke Master Aset
+
+- Command `sarpras:sync-dormitory-inventory [--dry-run]`.
+- Memetakan setiap asrama → `asset_buildings`, setiap kamar → `asset_rooms` (`dormitory_room_id`),
+  dan setiap `dormitory_inventories` tanpa `asset_id` → `assets` (kategori Inventaris Asrama,
+  `verification_status=verified`, lokasi kamar asrama).
+- PIC ruang otomatis dari wali kamar aktif/kepala asrama.
+- Jumlah barang disimpan pada catatan aset; `dormitory_inventories.asset_id` diisi agar tidak dobel.
+- Data asrama tetap dapat dilihat dari modul asrama, tetapi sumber inventaris kini master `assets`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

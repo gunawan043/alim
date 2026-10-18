@@ -157,6 +157,35 @@ class AiChatController extends Controller
         ]);
     }
 
+    public function resumeAi(Request $request, string $userId, string $conversationId)
+    {
+        $conversation = AiChatConversation::query()
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($conversationId);
+
+        if ($conversation->mode !== 'support') {
+            return response()->json([
+                'ok' => true,
+                'conversation_id' => $conversation->id,
+                'mode' => 'ai',
+                'status' => $conversation->status ?: 'open',
+            ]);
+        }
+
+        $conversation->forceFill([
+            'mode' => 'ai',
+            'status' => 'open',
+            'closed_at' => null,
+        ])->save();
+
+        return response()->json([
+            'ok' => true,
+            'conversation_id' => $conversation->id,
+            'mode' => 'ai',
+            'status' => 'open',
+        ]);
+    }
+
     public function destroy(Request $request, string $userId, string $conversationId)
     {
         $conversation = AiChatConversation::query()
