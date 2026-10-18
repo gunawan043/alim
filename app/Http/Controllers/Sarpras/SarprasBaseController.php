@@ -93,6 +93,37 @@ abstract class SarprasBaseController extends Controller
     }
 
     /**
+     * TU/Kepala Unit Rumah Tangga (bukan TU satuan pendidikan).
+     */
+    protected function isUrtLeadership(?object $user = null): bool
+    {
+        $user ??= auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['Unit Rumah Tangga', 'Admin Sarpras'])) {
+            return true;
+        }
+
+        $urtUnitIds = \App\Models\WorkUnit::query()
+            ->where('code', 'DEP-URT')
+            ->orWhere('name', 'like', '%Rumah Tangga%')
+            ->pluck('id')
+            ->all();
+
+        if ($urtUnitIds === []) {
+            return false;
+        }
+
+        return array_intersect($this->accessibleWorkUnitIds($user), $urtUnitIds) !== [];
+    }
+
+    /**
      * Work unit yang boleh diakses user: unit GTK + penugasan petugas sarpras + unit sekolah.
      *
      * @return array<int, string>

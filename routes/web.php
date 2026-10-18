@@ -159,6 +159,7 @@ use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
 use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
+use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
@@ -2616,6 +2617,9 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/ruang/{id}/edit', [SarprasRuangController::class, 'edit'])->name('ruang.edit');
     Route::put('/ruang/{id}', [SarprasRuangController::class, 'update'])->name('ruang.update');
     Route::delete('/ruang/{id}', [SarprasRuangController::class, 'destroy'])->name('ruang.destroy');
+
+    // Monitoring rombel & kamar untuk Sarpras/Kebersihan (TU/Kepala URT)
+    Route::get('/monitoring/rombel-kamar', [SarprasOccupancyController::class, 'index'])->name('monitoring.rombel-kamar');
 
     // Petugas Sarpras Satuan Kerja
     Route::get('/petugas', [SarprasOfficerController::class, 'index'])->name('petugas.index');

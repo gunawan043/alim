@@ -115,6 +115,21 @@ class WorkUnit extends Model
             ->where('is_primary', true);
     }
 
+    public function assets()
+    {
+        return $this->hasMany(Asset::class, 'work_unit_id');
+    }
+
+    public function assetRooms()
+    {
+        return $this->hasMany(AssetRoom::class, 'work_unit_id');
+    }
+
+    public function schools()
+    {
+        return $this->hasMany(School::class, 'work_unit_id');
+    }
+
     public function transferRequestsFrom()
     {
         return $this->hasMany(GtkTransferRequest::class, 'from_work_unit_id');

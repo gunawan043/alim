@@ -32,9 +32,13 @@ class EnsureSarprasAccess
             return $next($request);
         }
 
-        // Cek permission (kalau ada)
-        if (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('sarpras_access')) {
-            return $next($request);
+        // Cek permission (kalau ada). Jangan 500 bila permission belum di-seed.
+        try {
+            if (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('sarpras_access')) {
+                return $next($request);
+            }
+        } catch (\Throwable $e) {
+            // Permission belum tersedia pada instalasi ini — lanjut ke pemeriksaan role/jabatan.
         }
 
         // Cek role
@@ -66,7 +70,12 @@ class EnsureSarprasAccess
             return $next($request);
         }
 
-        // Petugas Sarpras Satuan Kerja yang ditunjuk URT.
+        // Kepala satuan kerja berwenang menunjuk petugas sarpras unitnya.
+        if (method_exists($user, 'isWorkUnitHead') && $user->isWorkUnitHead()) {
+            return $next($request);
+        }
+
+        // Petugas Sarpras Satuan Kerja yang ditunjuk kepala unit / URT.
         if (WorkUnitSarprasOfficer::query()->active()->where('user_id', $user->id)->exists()) {
             return $next($request);
         }

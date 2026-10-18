@@ -1011,7 +1011,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 8 — LABORATORIUM & SARPRAS
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras'))) || $isAdminTU)
+@if($showAll || $isKepala || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')) || $isAdminTU)
     <li class="menu-title"><span>Laboratorium &amp; Sarpras</span></li>
 
     <li class="nav-item">
@@ -1028,6 +1028,15 @@
             <i class="ri-door-open-line"></i><span>Ruang &amp; Laboratorium</span>
         </a>
     </li>
+
+    @if($showAll || $isKepala)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.petugas.']) ? ' active' : '' }}"
+           href="{{ route('sarpras.petugas.index') }}">
+            <i class="ri-user-star-line"></i><span>Petugas Sarpras Unit</span>
+        </a>
+    </li>
+    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) ? ' active' : '' }}"

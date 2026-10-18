@@ -54,8 +54,9 @@
     $isTeknisi       = $hasJabatan('Teknisi Maintenance');
     $isKebersihan    = $hasJabatan('Petugas Kebersihan');
     $isDriver        = $hasJabatan('Driver') || $hasJabatan('Pengemudi');
+    $isTuUrt         = $hasJabatan('Tata Usaha') || $hasJabatan('Kepala Tata Usaha');
 
-    $isStruktural    = $isKepalaURT || $isKoorSarpras;
+    $isStruktural    = $isKepalaURT || $isKoorSarpras || $isTuUrt;
     $isOperasional   = $isTeknisi || $isKebersihan || $isDriver;
 @endphp
 
@@ -165,6 +166,20 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.ruang.']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.ruang.index') }}">
             <i class="ri-door-open-line"></i><span>Ruang</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.monitoring.rombel-kamar']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.monitoring.rombel-kamar') }}">
+            <i class="ri-group-line"></i><span>Monitoring Rombel &amp; Kamar</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.petugas.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.petugas.index') }}">
+            <i class="ri-user-star-line"></i><span>Petugas Sarpras Unit</span>
         </a>
     </li>
     @endif

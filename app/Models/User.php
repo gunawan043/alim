@@ -105,6 +105,51 @@ class User extends Authenticatable
         return $this->hasOne(GtkWorkUnit::class)->where('is_primary', true);
     }
 
+    /**
+     * Satuan kerja yang dipimpin user.
+     * Sumber: kepala sekolah, kepala asrama, jabatan KEPALA... pada GTK Work Unit,
+     * atau metadata work unit (head_user_id).
+     *
+     * @return array<int, string>
+     */
+    public function headedWorkUnitIds(): array
+    {
+        $ids = collect();
+
+        $ids = $ids->merge(
+            School::query()->where('principal_user_id', $this->id)->pluck('work_unit_id')
+        );
+
+        $ids = $ids->merge(
+            Dormitory::query()->where('head_id', $this->id)->pluck('work_unit_id')
+        );
+
+        $ids = $ids->merge(
+            GtkWorkUnit::query()
+                ->where('user_id', $this->id)
+                ->where('jabatan', 'like', 'KEPALA%')
+                ->where('jabatan', 'not like', 'KEPALA TATA USAHA%')
+                ->pluck('work_unit_id')
+        );
+
+        $ids = $ids->merge(
+            WorkUnit::query()
+                ->where('metadata->head_user_id', $this->id)
+                ->pluck('id')
+        );
+
+        return $ids->filter()->unique()->values()->all();
+    }
+
+    public function isWorkUnitHead(?string $workUnitId = null): bool
+    {
+        $headedIds = $this->headedWorkUnitIds();
+
+        return $workUnitId
+            ? in_array($workUnitId, $headedIds, true)
+            : $headedIds !== [];
+    }
+
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);

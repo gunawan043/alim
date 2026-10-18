@@ -8,6 +8,8 @@ $isSarprasAdmin = canPermission('sarpras_all_access');
 $isTU = $currentUser->hasRole('Satuan Pendidikan');
 $isSuperAdmin = canPermission('super-admin-only');
 $isAdmin = $isSarprasAdmin || $isTU || $isSuperAdmin;
+$isUnitHead = method_exists($currentUser, 'isWorkUnitHead') && $currentUser->isWorkUnitHead();
+$isUrtRole = $currentUser->hasRole('Unit Rumah Tangga');
 
 if (! function_exists('isActiveSarpras')) {
 function isActiveSarpras($routeName, $pattern) {
@@ -67,6 +69,12 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.gedung') ? ' active' : '' }}" href="{{ route('sarpras.gedung.index', ['userId' => $userId]) }}">Daftar Gedung</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.ruang') ? ' active' : '' }}" href="{{ route('sarpras.ruang.index', ['userId' => $userId]) }}">Daftar Ruangan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.petugas') ? ' active' : '' }}" href="{{ route('sarpras.petugas.index', ['userId' => $userId]) }}">Petugas Sarpras</a></li>
+            @if($isSarprasAdmin || $isSuperAdmin || $isUrtRole)
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.monitoring.rombel-kamar') ? ' active' : '' }}" href="{{ route('sarpras.monitoring.rombel-kamar', ['userId' => $userId]) }}">Monitoring Rombel &amp; Kamar</a></li>
+            @endif
+            @endif
+            @if($isUnitHead && ! $isAdmin)
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.petugas') ? ' active' : '' }}" href="{{ route('sarpras.petugas.index', ['userId' => $userId]) }}">Petugas Sarpras Unit</a></li>
             @endif
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.ruang') ? ' active' : '' }}" href="{{ route('sarpras.user.ruang.index', ['userId' => $userId]) }}">Ruangan Saya</a></li>
         </ul>

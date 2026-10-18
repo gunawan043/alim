@@ -1965,6 +1965,25 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   dengan data lama; enum status jadwal tidak lagi ditimpa nilai approval.
 - Export PDF Buku Induk/KIR/laporan Sarpras memakai Dompdf langsung (wrapper `PDF` tidak tersedia).
 
+## 183. Sarpras — Kewenangan Kepala Unit & Monitoring Rombel/Kamar
+
+- Penunjukan **Petugas Sarpras** kini dapat dilakukan oleh **kepala masing-masing unit**,
+  bukan hanya URT.
+  - Unit head dikenali dari kepala sekolah, kepala asrama, jabatan `KEPALA...` pada GTK Work Unit,
+    atau metadata `work_units.metadata.head_user_id`.
+  - `KEPALA TATA USAHA` satuan pendidikan tidak dianggap kepala unit.
+  - Kepala unit hanya melihat/mengelola petugas unit yang dipimpinnya.
+- **TU URT/Kepala URT** tetap dapat melihat dan mengelola petugas seluruh unit sebagai monitoring.
+  Istilah “TU” di sini adalah TU Unit Rumah Tangga, bukan TU satuan pendidikan.
+- Halaman baru **Monitoring Rombel & Kamar** (`/sarpras/monitoring/rombel-kamar`) untuk TU/Kepala URT:
+  - jumlah santri per rombel, kapasitas, keterisian, wali kelas;
+  - jumlah penghuni per kamar asrama, kapasitas, wali kamar, wing/lantai;
+  - santri belum berombol dan belum tercatat di kamar;
+  - ringkasan jumlah ruang, aset, kamar asrama, dan penghuni per satuan kerja.
+- Sidebar URT dan satuan pendidikan ditambah akses Petugas Sarpras; menu monitoring hanya
+  untuk TU/Kepala URT.
+- Middleware `sarpras.access` tidak lagi 500 bila permission `sarpras_access` belum di-seed.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

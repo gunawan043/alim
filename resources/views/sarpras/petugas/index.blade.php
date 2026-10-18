@@ -7,6 +7,12 @@
         @slot('title') Petugas Sarpras Satuan Kerja
     @endcomponent
 
+    @if($isCentral ?? false)
+        <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-eye-line fs-5"></i><span>TU/Kepala URT dapat memantau petugas seluruh satuan kerja. Penunjukan petugas dapat dilakukan oleh kepala unit masing-masing atau oleh URT.</span></div>
+    @else
+        <div class="alert alert-primary d-flex align-items-center gap-2"><i class="ri-user-star-line fs-5"></i><span>Anda dapat menunjuk petugas Sarpras untuk satuan kerja yang Anda pimpin. Data unit lain tidak ditampilkan.</span></div>
+    @endif
+
     <div class="row g-3 mb-3">
         @foreach([
             ['Petugas Aktif', $stats['active'] ?? 0, 'success', 'ri-user-star-line'],
@@ -93,7 +99,7 @@
                     @csrf
                     <div class="modal-header"><h5 class="modal-title"><i class="ri-user-add-line me-1"></i>Tugaskan Petugas Sarpras</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
-                        <div class="mb-3"><label class="form-label">Satuan Kerja <span class="text-danger">*</span></label><select name="work_unit_id" class="form-select" required><option value="">— Pilih —</option>@foreach($workUnits as $unit)<option value="{{ $unit->id }}" {{ old('work_unit_id') === $unit->id ? 'selected' : '' }}>{{ $unit->name }}</option>@endforeach</select></div>
+                        <div class="mb-3"><label class="form-label">Satuan Kerja <span class="text-danger">*</span></label><select name="work_unit_id" class="form-select" required><option value="">— Pilih —</option>@foreach($workUnits as $unit)<option value="{{ $unit->id }}" {{ old('work_unit_id', $workUnits->count() === 1 ? $workUnits->first()->id : null) === $unit->id ? 'selected' : '' }}>{{ $unit->name }}</option>@endforeach</select></div>
                         <div class="mb-3"><label class="form-label">GTK <span class="text-danger">*</span></label><select name="user_id" class="form-select" required><option value="">— Pilih GTK —</option>@foreach($users as $user)<option value="{{ $user->id }}" {{ old('user_id') === $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select><small class="text-muted">Petugas ini mendapat akses pendataan seluruh aset pada unit tersebut.</small></div>
                         <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" name="is_primary" value="1" id="isPrimaryOfficer" {{ old('is_primary') ? 'checked' : '' }}><label class="form-check-label" for="isPrimaryOfficer">Jadikan petugas utama satuan kerja</label></div>
                         <div><label class="form-label">Catatan</label><textarea name="notes" class="form-control" rows="2" placeholder="Tugas khusus / keterangan…">{{ old('notes') }}</textarea></div>
