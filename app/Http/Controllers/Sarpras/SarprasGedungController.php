@@ -77,7 +77,7 @@ class SarprasGedungController extends SarprasBaseController
             ->with('success', 'Gedung berhasil ditambahkan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $gedung = AssetBuilding::with(['school', 'rooms', 'creator'])->findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
@@ -85,7 +85,7 @@ class SarprasGedungController extends SarprasBaseController
         return view('sarpras.gedung.show', ['gedung' => $gedung, 'canManage' => $this->isCentralSarpras()]);
     }
 
-    public function edit(Request $request, string $id)
+    public function edit(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::findOrFail($id);
@@ -97,7 +97,7 @@ class SarprasGedungController extends SarprasBaseController
         return view('sarpras.gedung.edit', compact('gedung', 'schools'));
     }
 
-    public function update(GedungUpdateRequest $request, string $id)
+    public function update(string $userId, GedungUpdateRequest $request, string $id)
     {
         $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::findOrFail($id);
@@ -115,11 +115,11 @@ class SarprasGedungController extends SarprasBaseController
         $gedung->update($validated);
         $this->bumpDashboardCache();
 
-        return redirect()->route('sarpras.gedung.show', $gedung->id)
+        return redirect()->route('sarpras.gedung.show', ['id' => $gedung->id])
             ->with('success', 'Gedung berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::with('rooms')->findOrFail($id);

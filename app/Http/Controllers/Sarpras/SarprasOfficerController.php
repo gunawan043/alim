@@ -115,7 +115,7 @@ class SarprasOfficerController extends SarprasBaseController
         return back()->with('success', 'Petugas Sarpras satuan kerja berhasil disimpan.');
     }
 
-    public function toggle(Request $request, string $id)
+    public function toggle(string $userId, Request $request, string $id)
     {
         $officer = WorkUnitSarprasOfficer::findOrFail($id);
         $this->authorizeOfficerManagement($officer->work_unit_id);
@@ -134,7 +134,7 @@ class SarprasOfficerController extends SarprasBaseController
             : 'Petugas Sarpras dinonaktifkan.');
     }
 
-    public function setPrimary(Request $request, string $id)
+    public function setPrimary(string $userId, Request $request, string $id)
     {
         $officer = WorkUnitSarprasOfficer::findOrFail($id);
         $this->authorizeOfficerManagement($officer->work_unit_id);

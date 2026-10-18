@@ -75,7 +75,7 @@
     <div class="col-12 text-center py-5">
         <i class="ri-qr-code-line fs-1 text-muted"></i>
         <h5 class="text-muted mt-2">Tidak ada aset dengan QR code</h5>
-        <a href="{{ route('sarpras.qr.generate-all') }}" class="btn btn-primary btn-sm mt-2" onclick="return confirm('Generate QR untuk semua aset?')">
+        <a href="{{ route('sarpras.qr.generate-all') }}" class="btn btn-primary btn-sm mt-2" data-confirm="Generate QR untuk semua aset?">
             <i class="ri-qr-code-line me-1"></i> Generate QR Dahulu
         </a>
     </div>

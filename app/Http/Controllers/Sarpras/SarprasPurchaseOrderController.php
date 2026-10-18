@@ -127,7 +127,7 @@ class SarprasPurchaseOrderController extends Controller
         return redirect()->route('sarpras.po.index')->with('success', 'PO dibuat');
     }
 
-    public function show(PurchaseOrder $po)
+    public function show(string $userId, PurchaseOrder $po)
     {
         $po->load(['vendor', 'items.sparepart', 'items.warehouse']);
 
@@ -136,7 +136,7 @@ class SarprasPurchaseOrderController extends Controller
         ]);
     }
 
-    public function approve(PurchaseOrder $po)
+    public function approve(string $userId, PurchaseOrder $po)
     {
         if (! in_array($po->status, ['submitted'])) {
             return back()->with('error', 'PO sudah dalam proses lain');
@@ -151,7 +151,7 @@ class SarprasPurchaseOrderController extends Controller
         return back()->with('success', 'PO disetujui');
     }
 
-    public function cancel(PurchaseOrder $po)
+    public function cancel(string $userId, PurchaseOrder $po)
     {
         if (in_array($po->status, ['received', 'cancelled'])) {
             return back()->with('error', 'Tidak dapat membatalkan PO ini');
@@ -161,7 +161,7 @@ class SarprasPurchaseOrderController extends Controller
         return back()->with('success', 'PO dibatalkan');
     }
 
-    public function receive(Request $request, PurchaseOrder $po)
+    public function receive(string $userId, Request $request, PurchaseOrder $po)
     {
         $validated = $request->validate([
             'items' => 'required|array',

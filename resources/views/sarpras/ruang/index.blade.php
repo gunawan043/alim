@@ -1,10 +1,6 @@
 @extends('layouts.master')
 @section('title') Sarana Prasarana — Ruang @endsection
 
-@section('css')
-    <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
-@endsection
-
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
@@ -159,7 +155,7 @@
                                                     <li><hr class="dropdown-divider"></li>
                                                     <li>
                                                         <a class="dropdown-item text-danger delete-ruang" href="javascript:void(0)"
-                                                           data-id="{{ $r->id }}" data-name="{{ $r->room_name }}">
+                                                           data-id="{{ $r->id }}" data-action="{{ route('sarpras.ruang.destroy', ['id' => $r->id]) }}" data-name="{{ $r->room_name }}">
                                                             <i class="ri-delete-bin-line me-2"></i>Hapus
                                                         </a>
                                                     </li>
@@ -191,41 +187,22 @@
             </div>
         </div>
     </div>
+    <x-modal-confirm id="deleteRuangModal" icon="https://cdn.lordicon.com/gsqxdxog.json" title="Hapus Ruang?" submitLabel="Ya, Hapus" submitIcon="ri-delete-bin-line" submitClass="btn-danger" formId="deleteRuangForm">
+        <p class="text-center text-muted mb-0" id="deleteRuangMessage">Ruang akan dihapus.</p>
+    </x-modal-confirm>
+    <form id="deleteRuangForm" method="POST" class="d-none">@csrf @method('DELETE')</form>
 @endsection
 
-@section('script')
-    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-    <script>
-        document.querySelectorAll('.delete-ruang').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                var name = this.dataset.name;
-                Swal.fire({
-                    title: 'Yakin ingin menghapus?',
-                    text: 'Ruang "' + name + '" akan dihapus permanen.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '/sarpras/ruang/' + id;
-                        ['_token','_method'].forEach(function(n, i) {
-                            var inp = document.createElement('input');
-                            inp.type = 'hidden';
-                            inp.name = n;
-                            inp.value = i === 0 ? '{{ csrf_token() }}' : 'DELETE';
-                            form.appendChild(inp);
-                        });
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
-            });
+@push('script')
+<script>
+    document.querySelectorAll('.delete-ruang').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var form = document.getElementById('deleteRuangForm');
+            if (!form) return;
+            form.action = button.dataset.action;
+            document.getElementById('deleteRuangMessage').textContent = 'Ruang "' + button.dataset.name + '" akan dihapus permanen.';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteRuangModal')).show();
         });
-    </script>
-@endsection
+    });
+</script>
+@endpush

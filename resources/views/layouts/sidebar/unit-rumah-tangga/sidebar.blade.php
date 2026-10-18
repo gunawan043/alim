@@ -133,6 +133,12 @@
         <i class="ri-calendar-task-line"></i><span>Agenda Kerja</span>
     </a>
 </li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.camera']) ? ' active' : '' }}"
+       href="{{ $sarprasUrl('sarpras.camera.index') }}">
+        <i class="ri-camera-line"></i><span>Kamera Dokumentasi</span>
+    </a>
+</li>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 3 — ASET & BANGUNAN

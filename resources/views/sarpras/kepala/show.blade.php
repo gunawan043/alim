@@ -61,7 +61,7 @@
                 <h5 class="card-title mb-0"><i class="ri-verified-badge-line me-1"></i> Persetujuan</h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('sarpras.kepala.approve', $order->id) }}" method="POST">
+                <form action="{{ route('sarpras.kepala.approve', ['id' => $order->id]) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label for="notes" class="form-label">Catatan Kepala Sarpras</label>

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.pemeliharaan.schedule.index') }}">Jadwal Pemeliharaan</a> @endslot
-        @slot('li_2') <a href="{{ route('sarpras.pemeliharaan.schedule.show', $schedule->id) }}">Detail Jadwal</a> @endslot
+        @slot('li_2') <a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]) }}">Detail Jadwal</a> @endslot
         @slot('title') Mulai Checklist
     @endcomponent
 
@@ -18,7 +18,7 @@
                         <div class="small text-muted">{{ $schedule->workUnit?->name ?? '-' }} · {{ $schedule->next_maintenance_date?->format('d/m/Y') }}</div>
                         <div class="small text-muted mt-1">Target: {{ $schedule->asset?->asset_name ?? $schedule->room?->room_name ?? $schedule->building?->building_name ?? '-' }}</div>
                     </div>
-                    <form method="POST" action="{{ route('sarpras.checklist.store', $schedule->id) }}">
+                    <form method="POST" action="{{ route('sarpras.checklist.store', ['scheduleId' => $schedule->id]) }}">
                         @csrf
                         <label class="form-label">Pilih Template Checklist <span class="text-danger">*</span></label>
                         <select name="template_id" class="form-select" required>
@@ -28,7 +28,7 @@
                             @endforeach
                         </select>
                         @if($suggested)<div class="form-text">Disarankan: <strong>{{ $suggested->name }}</strong> berdasarkan jenis pemeliharaan.</div>@endif
-                        <div class="d-flex gap-2 mt-4"><button class="btn btn-success"><i class="ri-play-line me-1"></i>Mulai Checklist</button><a href="{{ route('sarpras.pemeliharaan.schedule.show', $schedule->id) }}" class="btn btn-light">Batal</a></div>
+                        <div class="d-flex gap-2 mt-4"><button class="btn btn-success"><i class="ri-play-line me-1"></i>Mulai Checklist</button><a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]) }}" class="btn btn-light">Batal</a></div>
                     </form>
                 </div>
             </div>

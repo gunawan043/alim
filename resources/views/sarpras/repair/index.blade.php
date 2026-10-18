@@ -45,14 +45,14 @@
                         @endphp
                         <tr>
                             <td>{{ $repairs->firstItem() + $i }}</td>
-                            <td><a href="{{ route('sarpras.repair.show', $repair->id) }}" class="fw-medium link-primary"><code>{{ $repair->request_number }}</code></a><div class="small text-muted">{{ $repair->title }}</div></td>
+                            <td><a href="{{ route('sarpras.repair.show', ['repairId' => $repair->id]) }}" class="fw-medium link-primary"><code>{{ $repair->request_number }}</code></a><div class="small text-muted">{{ $repair->title }}</div></td>
                             <td><div class="fw-medium">{{ $repair->asset?->asset_name ?? '-' }}</div><small class="text-muted">{{ $repair->asset?->room?->building?->building_name ? $repair->asset->room->building->building_name.' — ' : '' }}{{ $repair->asset?->room?->room_name ?? '-' }}</small></td>
                             <td class="small">{{ $repair->reportedBy?->name ?? '-' }}</td>
                             <td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ ucfirst($repair->priority) }}</span></td>
                             <td><span class="badge bg-{{ $statusTone }}-subtle text-{{ $statusTone }}">{{ $statusLabel }}</span></td>
                             <td class="text-center">{{ $repair->work_orders_count }}</td>
                             <td class="small">{{ $repair->created_at?->format('d/m/Y') }}</td>
-                            <td class="text-end"><a href="{{ route('sarpras.repair.show', $repair->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
+                            <td class="text-end"><a href="{{ route('sarpras.repair.show', ['repairId' => $repair->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
                         </tr>
                     @empty
                         <x-empty-state colspan="9" title="Belum ada permintaan perbaikan" message="Laporan kerusakan dari satuan kerja akan muncul di sini." />

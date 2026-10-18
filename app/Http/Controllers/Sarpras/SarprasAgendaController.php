@@ -55,7 +55,7 @@ class SarprasAgendaController extends SarprasBaseController
                     'location' => $order->target_location,
                     'status' => ucfirst(str_replace('_', ' ', $order->status)),
                     'tone' => $order->status === 'in_progress' ? 'warning' : 'info',
-                    'url' => route('sarpras.teknisi.show', $order->id),
+                    'url' => route('sarpras.teknisi.show', ['orderId' => $order->id]),
                     'icon' => $type === 'Perbaikan' ? 'ri-tools-line' : 'ri-calendar-check-line',
                 ]);
             });
@@ -74,7 +74,7 @@ class SarprasAgendaController extends SarprasBaseController
                     'location' => $schedule->asset?->asset_name ?? $schedule->room?->room_name ?? $schedule->building?->building_name ?? '-',
                     'status' => 'Terjadwal',
                     'tone' => $schedule->next_maintenance_date?->isPast() ? 'danger' : 'success',
-                    'url' => route('sarpras.pemeliharaan.schedule.show', $schedule->id),
+                    'url' => route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]),
                     'icon' => 'ri-calendar-todo-line',
                 ]);
             });
@@ -92,7 +92,7 @@ class SarprasAgendaController extends SarprasBaseController
                     'location' => $session->room?->room_name ?? $session->workUnit?->name ?? '-',
                     'status' => $session->status === 'in_progress' ? 'Berjalan' : 'Direncanakan',
                     'tone' => $session->status === 'in_progress' ? 'warning' : 'secondary',
-                    'url' => route('sarpras.stock-opname.show', $session->id),
+                    'url' => route('sarpras.stock-opname.show', ['sessionId' => $session->id]),
                     'icon' => 'ri-clipboard-line',
                 ]);
             });
@@ -113,7 +113,7 @@ class SarprasAgendaController extends SarprasBaseController
                         : '-',
                     'status' => 'Berjalan',
                     'tone' => 'info',
-                    'url' => route('sarpras.checklist.instance', $instance->id),
+                    'url' => route('sarpras.checklist.instance', ['instanceId' => $instance->id]),
                     'icon' => 'ri-clipboard-check-line',
                 ]);
             });

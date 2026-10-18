@@ -795,7 +795,7 @@ class AssetPassportService
     protected function buildActions(Asset $asset): array
     {
         $actions = [
-            'view_history' => route('sarpras.aset.show', $asset->id),
+            'view_history' => route('sarpras.aset.show', ['id' => $asset->id]),
             'report_damage' => null, // configurable
             'request_move' => null,
         ];

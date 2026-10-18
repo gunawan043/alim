@@ -60,7 +60,7 @@
                                 <p class="text-muted small">Generate QR code untuk semua aset yang belum punya</p>
                                 <form action="{{ route('sarpras.qr.generate-all') }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="btn btn-primary btn-sm w-100" onclick="return confirm('Generate QR untuk semua aset?')">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100" data-confirm="Generate QR untuk semua aset?">
                                         <i class="ri-qr-code-line me-1"></i> Generate Sekarang
                                     </button>
                                 </form>

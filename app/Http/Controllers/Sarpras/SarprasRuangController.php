@@ -73,7 +73,7 @@ class SarprasRuangController extends SarprasBaseController
             ->with('success', 'Ruang berhasil ditambahkan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $ruang = AssetRoom::with(['school', 'building', 'assets', 'responsibleUser'])->findOrFail($id);
         $this->authorizeRoomAccess($ruang, $request);
@@ -81,7 +81,7 @@ class SarprasRuangController extends SarprasBaseController
         return view('sarpras.ruang.show', compact('ruang'));
     }
 
-    public function edit(Request $request, string $id)
+    public function edit(string $userId, Request $request, string $id)
     {
         $ruang = AssetRoom::findOrFail($id);
         $this->authorizeRoomAccess($ruang, $request);
@@ -95,7 +95,7 @@ class SarprasRuangController extends SarprasBaseController
         return view('sarpras.ruang.edit', compact('ruang', 'schools', 'gedungs'));
     }
 
-    public function update(RuangUpdateRequest $request, string $id)
+    public function update(string $userId, RuangUpdateRequest $request, string $id)
     {
         $ruang = AssetRoom::findOrFail($id);
         $this->authorizeRoomAccess($ruang, $request);
@@ -109,11 +109,11 @@ class SarprasRuangController extends SarprasBaseController
         $ruang->update($validated);
         $this->bumpDashboardCache();
 
-        return redirect()->route('sarpras.ruang.show', $ruang->id)
+        return redirect()->route('sarpras.ruang.show', ['id' => $ruang->id])
             ->with('success', 'Ruang berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(string $userId, Request $request, string $id)
     {
         $ruang = AssetRoom::with('assets')->findOrFail($id);
         $this->authorizeRoomAccess($ruang, $request);

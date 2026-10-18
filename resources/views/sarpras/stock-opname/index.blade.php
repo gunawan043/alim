@@ -60,13 +60,13 @@
                         @endphp
                         <tr>
                             <td>{{ $sessions->firstItem() + $i }}</td>
-                            <td><a href="{{ route('sarpras.stock-opname.show', $session->id) }}" class="fw-medium link-primary">{{ $session->title }}</a><div class="small text-muted"><code>{{ $session->session_code }}</code></div></td>
+                            <td><a href="{{ route('sarpras.stock-opname.show', ['sessionId' => $session->id]) }}" class="fw-medium link-primary">{{ $session->title }}</a><div class="small text-muted"><code>{{ $session->session_code }}</code></div></td>
                             <td>{{ $session->workUnit?->name ?? '-' }}</td>
                             <td class="small">@if($session->room)<div><i class="ri-door-open-line me-1"></i>{{ $session->room->room_name }}</div>@else<span class="text-muted">Seluruh ruang unit</span>@endif @if($session->category)<div class="text-muted"><i class="ri-price-tag-3-line me-1"></i>{{ $session->category->name }}</div>@endif</td>
                             <td class="small">{{ $session->scheduled_date?->format('d/m/Y') }}</td>
                             <td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $label }}</span></td>
                             <td style="min-width:130px"><div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-{{ $tone }}" style="width:{{ $percent }}%"></div></div><small class="text-muted">{{ $percent }}%</small></div><small class="text-muted">{{ $session->observed_count }}/{{ $session->items_count }} aset</small></td>
-                            <td class="text-end"><a href="{{ route('sarpras.stock-opname.show', $session->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
+                            <td class="text-end"><a href="{{ route('sarpras.stock-opname.show', ['sessionId' => $session->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
                         </tr>
                     @empty
                         <x-empty-state colspan="8" title="Belum ada sesi stock opname" message="Buat sesi untuk mencocokkan data aset dengan kondisi fisik di lapangan.">

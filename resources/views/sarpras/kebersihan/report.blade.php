@@ -60,6 +60,6 @@
             <select name="decision" form="verifyReportForm" class="form-select mb-2"><option value="verified">Verifikasi — sesuai standar</option><option value="rejected">Kembalikan — perlu perbaikan</option></select>
             <textarea name="coordinator_note" form="verifyReportForm" class="form-control" rows="3" placeholder="Catatan koordinator…"></textarea>
         </x-modal-confirm>
-        <form id="verifyReportForm" method="POST" action="{{ route('sarpras.kebersihan.report.verify', $report->id) }}" class="d-none">@csrf</form>
+        <form id="verifyReportForm" method="POST" action="{{ route('sarpras.kebersihan.report.verify', ['reportId' => $report->id]) }}" class="d-none">@csrf</form>
     @endif
 @endsection

@@ -13,7 +13,7 @@ class SarprasPredictiveMaintenanceController extends SarprasBaseController
 
     public function index(Request $request)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $level = $request->get('level');
         $predictions = $this->service->predictForSchool($schoolId);
 
@@ -27,9 +27,9 @@ class SarprasPredictiveMaintenanceController extends SarprasBaseController
         ]);
     }
 
-    public function show(Request $request, string $assetId)
+    public function show(string $userId, Request $request, string $assetId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $asset = Asset::with(['category', 'room.building'])
             ->where('school_id', $schoolId)
             ->findOrFail($assetId);
@@ -42,7 +42,7 @@ class SarprasPredictiveMaintenanceController extends SarprasBaseController
 
     public function highRisk(Request $request): JsonResponse
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
 
         return response()->json([
             'ok' => true,
@@ -50,13 +50,4 @@ class SarprasPredictiveMaintenanceController extends SarprasBaseController
         ]);
     }
 
-    protected function resolveSchoolId(Request $request): int
-    {
-        $schoolId = $request->attributes->get('schoolContextId');
-        if (! $schoolId) {
-            abort(403, 'School context required.');
-        }
-
-        return (int) $schoolId;
-    }
 }

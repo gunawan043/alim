@@ -42,7 +42,7 @@
                 <h5 class="card-title mb-0">Detail Booking Ruangan</h5>
                 <div class="d-flex gap-1 flex-wrap">
                     @if($booking->status === 'pending')
-                        <a href="{{ route('sarpras.booking.approve', ['id' => $booking->id]) }}" class="btn btn-success btn-sm" onclick="return confirm('Setuju dengan booking ini?')">
+                        <a href="{{ route('sarpras.booking.approve', ['id' => $booking->id]) }}" class="btn btn-success btn-sm" data-confirm="Setuju dengan booking ini?">
                             <i class="ri-check-line me-1"></i> Approve
                         </a>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
@@ -50,12 +50,12 @@
                         </button>
                     @endif
                     @if($booking->status === 'approved')
-                        <a href="{{ route('sarpras.booking.complete', ['id' => $booking->id]) }}" class="btn btn-primary btn-sm" onclick="return confirm('Tandai booking ini selesai?')">
+                        <a href="{{ route('sarpras.booking.complete', ['id' => $booking->id]) }}" class="btn btn-primary btn-sm" data-confirm="Tandai booking ini selesai?">
                             <i class="ri-check-double-line me-1"></i> Selesai
                         </a>
                     @endif
                     @if($booking->booked_by === auth()->id() && in_array($booking->status, ['pending','approved']))
-                        <a href="{{ route('sarpras.booking.cancel', ['id' => $booking->id]) }}" class="btn btn-outline-secondary btn-sm" onclick="return confirm('Batalkan booking ini?')">
+                        <a href="{{ route('sarpras.booking.cancel', ['id' => $booking->id]) }}" class="btn btn-outline-secondary btn-sm" data-confirm="Batalkan booking ini?">
                             <i class="ri-close-circle-line me-1"></i> Batalkan
                         </a>
                     @endif

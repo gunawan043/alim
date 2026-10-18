@@ -7,7 +7,7 @@
     <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ $sparepart->name }}</h5>
         <div>
-            <a href="{{ route('sarpras.sparepart.edit', $sparepart) }}" class="btn btn-light btn-sm">Edit</a>
+            <a href="{{ route('sarpras.sparepart.edit', ['id' => $sparepart]) }}" class="btn btn-light btn-sm">Edit</a>
             <a href="{{ route('sarpras.sparepart.index') }}" class="btn btn-outline-light btn-sm">Kembali</a>
         </div>
     </div>

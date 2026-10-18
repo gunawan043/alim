@@ -278,7 +278,7 @@ class DivisionPortalService
                 'type' => 'breached',
                 'title' => 'SLA Breached: '.$wo->wo_number,
                 'message' => "Aset {$wo->asset?->asset_name} melewati batas waktu penyelesaian.",
-                'link' => route('sarpras.teknisi.show', $wo->id),
+                'link' => route('sarpras.teknisi.show', ['orderId' => $wo->id]),
             ];
         }
 

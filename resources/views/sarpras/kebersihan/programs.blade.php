@@ -33,7 +33,7 @@
                     @endphp
                     <td class="text-center p-1">
                         @if($canManage)
-                            <form method="POST" action="{{ route('sarpras.kebersihan.program.check', $program->id) }}">
+                            <form method="POST" action="{{ route('sarpras.kebersihan.program.check', ['programId' => $program->id]) }}">
                                 @csrf
                                 <input type="hidden" name="year" value="{{ $year }}">
                                 <input type="hidden" name="month" value="{{ $m }}">

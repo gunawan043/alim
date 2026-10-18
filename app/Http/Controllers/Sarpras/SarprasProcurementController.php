@@ -89,7 +89,7 @@ class SarprasProcurementController extends SarprasBaseController
             ->with('success', 'Request pengadaan berhasil diajukan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::with(['requester', 'approver', 'receiver', 'items.category', 'items.room.building'])
             ->findOrFail($id);
@@ -98,26 +98,26 @@ class SarprasProcurementController extends SarprasBaseController
         return view('sarpras.pengadaan.show', compact('procurement'));
     }
 
-    public function edit(Request $request, string $id)
+    public function edit(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::with(['items.room.building', 'requester', 'school'])->findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
 
         if (in_array($procurement->status, ['delivered', 'completed'])) {
-            return redirect()->route('sarpras.pengadaan.show', $id)
+            return redirect()->route('sarpras.pengadaan.show', ['id' => $id])
                 ->with('error', 'Request yang sudah diproses tidak bisa diedit.');
         }
 
         return view('sarpras.pengadaan.edit', compact('procurement'));
     }
 
-    public function update(Request $request, string $id)
+    public function update(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
 
         if (in_array($procurement->status, ['delivered', 'completed'])) {
-            return redirect()->route('sarpras.pengadaan.show', $id)
+            return redirect()->route('sarpras.pengadaan.show', ['id' => $id])
                 ->with('error', 'Request yang sudah diproses tidak bisa diedit.');
         }
 
@@ -126,24 +126,24 @@ class SarprasProcurementController extends SarprasBaseController
         $procurement->update($validated);
         $this->bumpDashboardCache();
 
-        return redirect()->route('sarpras.pengadaan.show', $procurement->id)
+        return redirect()->route('sarpras.pengadaan.show', ['id' => $procurement->id])
             ->with('success', 'Request pengadaan berhasil diperbarui.');
     }
 
-    public function receiveForm(Request $request, string $id)
+    public function receiveForm(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::with(['items', 'requester', 'school'])->findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
 
         if (! in_array($procurement->status, ['approved', 'ordered'])) {
-            return redirect()->route('sarpras.pengadaan.show', $id)
+            return redirect()->route('sarpras.pengadaan.show', ['id' => $id])
                 ->with('error', 'Pengadaan belum bisa diterima.');
         }
 
         return view('sarpras.pengadaan.receive', compact('procurement'));
     }
 
-    public function approve(Request $request, string $id)
+    public function approve(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
@@ -162,20 +162,20 @@ class SarprasProcurementController extends SarprasBaseController
         return back()->with('success', 'Request pengadaan disetujui.');
     }
 
-    public function convertForm(Request $request, string $id)
+    public function convertForm(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::with(['items.room.building', 'items.category', 'requester', 'school'])->findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
 
         if ($procurement->status !== 'delivered') {
-            return redirect()->route('sarpras.pengadaan.show', $id)
+            return redirect()->route('sarpras.pengadaan.show', ['id' => $id])
                 ->with('error', 'Pengadaan belum diterima, tidak bisa dikonversi.');
         }
 
         return view('sarpras.pengadaan.convert', compact('procurement'));
     }
 
-    public function reject(ProcurementRejectRequest $request, string $id)
+    public function reject(string $userId, ProcurementRejectRequest $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
@@ -220,7 +220,7 @@ class SarprasProcurementController extends SarprasBaseController
         return back()->with('success', 'PO berhasil dibuat.');
     }
 
-    public function receive(ProcurementReceiveRequest $request, string $id)
+    public function receive(string $userId, ProcurementReceiveRequest $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
@@ -261,7 +261,7 @@ class SarprasProcurementController extends SarprasBaseController
         return back()->with('success', 'Barang berhasil diterima.');
     }
 
-    public function convertToAsset(ProcurementConvertRequest $request, string $id)
+    public function convertToAsset(string $userId, ProcurementConvertRequest $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);
@@ -329,7 +329,7 @@ class SarprasProcurementController extends SarprasBaseController
             ->with('success', "Berhasil mengkonversi {$converted} item menjadi aset.");
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(string $userId, Request $request, string $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
         $this->authorizeProcurementAccess($procurement, $request);

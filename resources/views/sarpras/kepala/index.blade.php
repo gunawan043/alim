@@ -45,7 +45,7 @@
                                     <td><span class="badge bg-secondary">{{ $wo->type }}</span></td>
                                     <td class="small text-muted">{{ $wo->completed_at?->diffForHumans() ?? '-' }}</td>
                                     <td class="text-end">
-                                        <a href="{{ route('sarpras.kepala.show', $wo->id) }}" class="btn btn-sm btn-success">
+                                        <a href="{{ route('sarpras.kepala.show', ['id' => $wo->id]) }}" class="btn btn-sm btn-success">
                                             <i class="ri-eye-line"></i> Review
                                         </a>
                                     </td>

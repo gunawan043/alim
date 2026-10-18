@@ -99,7 +99,7 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('sarpras.sparepart.show', $sp) }}" class="btn btn-sm btn-outline-primary">Detail</a>
+                                <a href="{{ route('sarpras.sparepart.show', ['id' => $sp]) }}" class="btn btn-sm btn-outline-primary">Detail</a>
                             </td>
                         </tr>
                     @empty

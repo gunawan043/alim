@@ -162,7 +162,7 @@
                                                         <li><hr class="dropdown-divider"></li>
                                                         <li>
                                                             <a class="dropdown-item text-danger delete-gedung" href="javascript:void(0)"
-                                                               data-id="{{ $g->id }}" data-name="{{ $g->building_name }}">
+                                                               data-id="{{ $g->id }}" data-action="{{ route('sarpras.gedung.destroy', ['id' => $g->id]) }}" data-name="{{ $g->building_name }}">
                                                                 <i class="ri-delete-bin-line me-2"></i>Hapus
                                                             </a>
                                                         </li>
@@ -211,7 +211,7 @@
         button.addEventListener('click', function () {
             var form = document.getElementById('deleteGedungForm');
             if (!form) return;
-            form.action = '/sarpras/gedung/' + button.dataset.id;
+            form.action = button.dataset.action;
             document.getElementById('deleteGedungMessage').textContent = 'Gedung "' + button.dataset.name + '" akan dihapus.';
             bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteGedungModal')).show();
         });

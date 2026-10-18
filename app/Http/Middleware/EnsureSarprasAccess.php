@@ -32,6 +32,22 @@ class EnsureSarprasAccess
             return $next($request);
         }
 
+        // Halaman personal/read-only boleh diakses semua GTK yang login.
+        // Hak tulis tetap diperiksa oleh controller masing-masing.
+        $routeName = (string) $request->route()?->getName();
+        foreach ([
+            'sarpras.user.',
+            'sarpras.camera.',
+            'sarpras.qr.scanner',
+            'sarpras.qr.lookup',
+            'sarpras.assets.passport',
+            'sarpras.assets.scan',
+        ] as $prefix) {
+            if (str_starts_with($routeName, $prefix)) {
+                return $next($request);
+            }
+        }
+
         // Cek permission (kalau ada). Jangan 500 bila permission belum di-seed.
         try {
             if (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('sarpras_access')) {

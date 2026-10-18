@@ -2164,6 +2164,30 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Diagnosa localhost: render backend 35–82 ms per halaman; kelambatan utama berasal dari aset CDN/browser,
   bukan query database. Debug mode (`APP_DEBUG=true`) juga menambah beban.
 
+## 193. Sarpras — Prefix User, Scanner, Kamera & Watermark Baru
+
+- Seluruh route Sarpras sekarang wajib memakai prefix `/{userId}/sarpras/...`.
+  - URL lama `/sarpras/...` tetap diarahkan ke URL baru.
+  - `URL::defaults(['userId' => ...])` membuat tautan lama di view/controller tetap bekerja.
+  - Signature controller diperbaiki agar parameter route tidak tertukar dengan `userId`.
+- Scanner QR:
+  - halaman scanner memakai library lokal `html5-qrcode`;
+  - tombol mulai/hentikan kamera, input kode manual, hasil scan, dan aksi cepat;
+  - lookup mendukung `asset_code` maupun UUID;
+  - QR label memakai URL scan yang stabil.
+- Halaman **Kamera Dokumentasi** mandiri ditambahkan di menu Sarpras/URT.
+- Halaman **Laporan Kerusakan** memakai pola `gtk/index`: statistik, filter, tabel, empty state,
+  pagination, form standar, dan kamera bukti.
+- Konfirmasi global `data-confirm` dipakai untuk form, tautan, dan tombol; menghapus `confirm()`
+  dan SweetAlert lokal pada aksi hapus.
+- Watermark kamera didesain ulang:
+  - tanggal besar + aksen kuning, judul dokumentasi, waktu WITA;
+  - koordinat GPS dan **nama lokasi** hasil reverse geocoding (proxy Nominatim + fallback BigDataCloud);
+  - nama akun pengambil foto;
+  - copyright **Ponpes Abu Hurairah** dan logo ALIM.
+- Memperbaiki halaman 403/404/500: akses personal GTK, layout `layouts.sarpras`, view mutasi,
+  portal divisi, pagination laporan kondisi aset, dashboard intelligence, dan sparepart/vendor.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

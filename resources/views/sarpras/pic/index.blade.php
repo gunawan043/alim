@@ -64,7 +64,7 @@
                                     <td><span class="badge {{ $statusBadge }}">{{ str_replace('_', ' ', $r->status) }}</span></td>
                                     <td class="small text-muted">{{ $r->created_at?->diffForHumans() }}</td>
                                     <td class="text-end">
-                                        <a href="{{ route('sarpras.pic.show', $r->id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ route('sarpras.pic.show', ['id' => $r->id]) }}" class="btn btn-sm btn-primary">
                                             <i class="ri-eye-line"></i> Verifikasi
                                         </a>
                                     </td>

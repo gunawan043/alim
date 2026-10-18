@@ -56,7 +56,7 @@
                             <td class="small">{{ $schedule->responsibleUser?->name ?? '-' }}</td>
                             <td><span class="badge bg-{{ $approvalTone }}-subtle text-{{ $approvalTone }}">{{ $schedule->approval_label }}</span>@if($schedule->unit_proposed_date)<div class="small text-muted mt-1">Usulan: {{ $schedule->unit_proposed_date->format('d/m/Y') }}</div>@endif</td>
                             <td>@if($isOverdue)<span class="badge bg-danger-subtle text-danger">Terlambat</span>@elseif($schedule->next_maintenance_date && $schedule->next_maintenance_date->diffInDays(now()) <= 7)<span class="badge bg-warning-subtle text-warning">Mendekati</span>@else<span class="badge bg-success-subtle text-success">Terjadwal</span>@endif</td>
-                            <td class="text-end"><a href="{{ route('sarpras.pemeliharaan.schedule.show', $schedule->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a>@if($canManage)<a href="{{ route('sarpras.pemeliharaan.schedule.edit', $schedule->id) }}" class="btn btn-sm btn-outline-warning"><i class="ri-edit-line"></i></a>@endif</td>
+                            <td class="text-end"><a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a>@if($canManage)<a href="{{ route('sarpras.pemeliharaan.schedule.edit', ['id' => $schedule->id]) }}" class="btn btn-sm btn-outline-warning"><i class="ri-edit-line"></i></a>@endif</td>
                         </tr>
                     @empty
                         <x-empty-state colspan="10" title="Belum ada jadwal pemeliharaan" message="URT dapat menyusun jadwal perawatan gedung, ruang, atau unit aset.">

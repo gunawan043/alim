@@ -31,7 +31,7 @@
                     <div class="card-body p-2">
                         @forelse($items as $schedule)
                             @php $tone = ['pending'=>'warning','approved'=>'success','reschedule_requested'=>'info','rejected'=>'danger'][$schedule->unit_approval_status] ?? 'secondary'; @endphp
-                            <a href="{{ route('sarpras.pemeliharaan.schedule.show', $schedule->id) }}" class="d-block border rounded p-2 mb-2 text-decoration-none text-dark">
+                            <a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]) }}" class="d-block border rounded p-2 mb-2 text-decoration-none text-dark">
                                 <div class="d-flex justify-content-between align-items-start gap-2"><div><div class="small fw-semibold">{{ $schedule->maintenance_type }}</div><div class="text-muted" style="font-size:.72rem">{{ $schedule->asset?->asset_name ?? $schedule->room?->room_name ?? $schedule->building?->building_name ?? '-' }}</div></div><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}" style="font-size:.65rem">{{ $schedule->approval_label }}</span></div>
                                 <div class="d-flex justify-content-between mt-1" style="font-size:.7rem"><span class="text-muted">{{ $schedule->next_maintenance_date?->format('d/m/Y') }}</span><span class="text-muted">{{ $schedule->workUnit?->name }}</span></div>
                             </a>

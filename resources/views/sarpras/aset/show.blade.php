@@ -91,7 +91,7 @@
                             <img src="{{ asset('storage/'.$photo->photo_path) }}" class="img-fluid rounded" alt="{{ $photo->caption }}">
                             <form action="{{ route('sarpras.aset.photo.delete', ['id' => $aset->id, 'photoId' => $photo->id]) }}" method="POST" class="mt-1">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Hapus?')"><i class="ri-delete-bin-line"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" data-confirm="Hapus?"><i class="ri-delete-bin-line"></i></button>
                             </form>
                         </div>
                         @endforeach

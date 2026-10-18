@@ -20,9 +20,8 @@
                     <tr><th>NPWP:</th><td>{{ $vendor->npwp ?? '-' }}</td></tr>
                     <tr><th>Tipe:</th><td>{{ ucfirst(str_replace('_', ' ', $vendor->vendor_type ?? '')) }}</td></tr>
                     <tr><th>Status:</th><td>
-                        <span class="badge bg-{{ match($vendor->status) {
-                            'active' => 'success', 'inactive' => 'secondary', 'blacklist' => 'danger', default => 'info'
-                        }}">{{ ucfirst($vendor->status) }}</span>
+                        @php $statusColor = ['active' => 'success', 'inactive' => 'secondary', 'blacklist' => 'danger'][$vendor->status] ?? 'info'; @endphp
+                        <span class="badge bg-{{ $statusColor }}">{{ ucfirst($vendor->status) }}</span>
                     </td></tr>
                     <tr><th>Kategori:</th><td>{{ $vendor->category->name ?? '-' }}</td></tr>
                     <tr><th>Risk:</th><td>{{ ucfirst($vendor->risk_classification ?? '-') }}</td></tr>

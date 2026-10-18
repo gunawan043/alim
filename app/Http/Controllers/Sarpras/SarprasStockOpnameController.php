@@ -161,11 +161,11 @@ class SarprasStockOpnameController extends SarprasBaseController
             return $session;
         });
 
-        return redirect()->route('sarpras.stock-opname.show', $session->id)
+        return redirect()->route('sarpras.stock-opname.show', ['sessionId' => $session->id])
             ->with('success', 'Sesi stock opname dibuat dengan '.$assets->count().' aset.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $session = StockOpnameSession::with(['workUnit', 'creator', 'room.building', 'category', 'officers.user'])
             ->findOrFail($id);
@@ -208,7 +208,7 @@ class SarprasStockOpnameController extends SarprasBaseController
         return view('sarpras.stock-opname.show', compact('session', 'items', 'stats', 'rooms', 'canManage'));
     }
 
-    public function start(Request $request, string $id)
+    public function start(string $userId, Request $request, string $id)
     {
         $session = StockOpnameSession::findOrFail($id);
         $this->authorizeWorkUnitAccess($session->work_unit_id, $request);
@@ -222,7 +222,7 @@ class SarprasStockOpnameController extends SarprasBaseController
         return back()->with('success', 'Stock opname dimulai. Petugas dapat melakukan scan.');
     }
 
-    public function record(Request $request, string $id, string $itemId)
+    public function record(string $userId, Request $request, string $id, string $itemId)
     {
         $session = StockOpnameSession::findOrFail($id);
         $this->authorizeWorkUnitAccess($session->work_unit_id, $request);
@@ -266,7 +266,7 @@ class SarprasStockOpnameController extends SarprasBaseController
         return back()->with('success', 'Temuan aset berhasil dicatat.');
     }
 
-    public function scan(Request $request, string $id)
+    public function scan(string $userId, Request $request, string $id)
     {
         $session = StockOpnameSession::findOrFail($id);
         $this->authorizeWorkUnitAccess($session->work_unit_id, $request);
@@ -300,7 +300,7 @@ class SarprasStockOpnameController extends SarprasBaseController
         return back()->with('success', 'Aset ditemukan: '.$asset->asset_name.' ('.$asset->asset_code.').');
     }
 
-    public function close(Request $request, string $id)
+    public function close(string $userId, Request $request, string $id)
     {
         $session = StockOpnameSession::findOrFail($id);
         $this->authorizeWorkUnitAccess($session->work_unit_id, $request);
@@ -330,11 +330,11 @@ class SarprasStockOpnameController extends SarprasBaseController
             'summary_notes' => trim(($validated['summary_notes'] ?? '').' '.$summary),
         ]);
 
-        return redirect()->route('sarpras.stock-opname.show', $session->id)
+        return redirect()->route('sarpras.stock-opname.show', ['sessionId' => $session->id])
             ->with('success', 'Stock opname ditutup. Rekap: '.$summary);
     }
 
-    public function cancel(Request $request, string $id)
+    public function cancel(string $userId, Request $request, string $id)
     {
         $session = StockOpnameSession::findOrFail($id);
         $this->authorizeWorkUnitAccess($session->work_unit_id, $request);

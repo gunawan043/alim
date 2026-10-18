@@ -161,6 +161,7 @@ use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
+use App\Http\Controllers\Sarpras\SarprasCameraController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasDataAuditController;
@@ -2649,7 +2650,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 | Dikelola oleh akun Sarpras / Unit Rumah Tangga (PAH-ADM-003)
 | Akses langsung di /sarpras/* — TIDAK menggunakan prefix {userId}
 */
-Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.')->group(function () {
+Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name('sarpras.')->group(function () {
 
     // Dashboard
     Route::get('/', [SarprasDashboardController::class, 'index'])->name('dashboard');
@@ -2735,6 +2736,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::delete('/aset/{id}/photo/{photoId}', [SarprasAsetController::class, 'deletePhoto'])->name('aset.photo.delete');
 
     // Kategori (Ajax)
+    Route::get('/kategori/list', [SarprasController::class, 'kategoriList'])->name('kategori.list');
     Route::post('/kategori', [SarprasController::class, 'kategoriStore'])->name('kategori.store');
 
     // Peminjaman Aset
@@ -2806,6 +2808,10 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/kebersihan/laporan/{reportId}', [SarprasCleaningController::class, 'showReport'])->name('kebersihan.report.show');
     Route::post('/kebersihan/laporan/{reportId}/verify', [SarprasCleaningController::class, 'verifyReport'])->name('kebersihan.report.verify');
 
+    // Kamera dokumentasi mandiri
+    Route::get('/kamera', [SarprasCameraController::class, 'index'])->name('camera.index');
+    Route::get('/kamera/geocode', [SarprasCameraController::class, 'reverseGeocode'])->name('camera.geocode');
+
     // Agenda kerja petugas Sarpras
     Route::get('/agenda', [SarprasAgendaController::class, 'index'])->name('agenda.index');
 
@@ -2868,6 +2874,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/qr/print', [SarprasQRController::class, 'printLabel'])->name('qr.print');
     Route::get('/qr/pdf', [SarprasQRController::class, 'downloadPdf'])->name('qr.pdf');
     Route::get('/qr/lookup-page', [SarprasQRController::class, 'lookupPage'])->name('qr.lookup-page');
+    Route::get('/qr/lookup', [SarprasQRController::class, 'lookup'])->name('qr.lookup.get');
     Route::get('/qr/scanner', [SarprasQRController::class, 'scanner'])->name('qr.scanner');
     Route::post('/qr/lookup', [SarprasQRController::class, 'lookup'])->name('qr.lookup');
     Route::get('/qr/audit/{id}', [SarprasQRController::class, 'audit'])->name('qr.audit');
@@ -3235,6 +3242,14 @@ Route::middleware(['auth', EnsureSuperAdminOrSystemAdmin::class])
 // ── WEBHOOK WHATSAPP CLOUD API (META) ────────────────────────────────────────
 Route::get('/webhook/whatsapp', [WhatsAppWebhookController::class, 'verify']);
 Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'receive']);
+
+// Redirect tautan Sarpras lama tanpa userId ke format wajib /{userId}/sarpras.
+Route::middleware(['auth'])->get('/sarpras/{path?}', function (\Illuminate\Http\Request $request, ?string $path = null) {
+    $target = '/'.auth()->id().'/sarpras'.($path ? '/'.$path : '');
+    $query = $request->getQueryString();
+
+    return redirect($target.($query ? '?'.$query : ''));
+})->where('path', '.*')->name('sarpras.legacy');
 
 Route::fallback([HomeController::class, 'index']);
 

@@ -99,7 +99,7 @@ class SarprasSparepartController extends Controller
         return redirect()->route('sarpras.sparepart.index')->with('success', 'Sparepart ditambahkan');
     }
 
-    public function show(Sparepart $sparepart)
+    public function show(string $userId, Sparepart $sparepart)
     {
         $sparepart->load(['category', 'unit', 'primaryVendor', 'warehouse', 'bin']);
 
@@ -119,7 +119,7 @@ class SarprasSparepartController extends Controller
         ]);
     }
 
-    public function edit(Sparepart $sparepart)
+    public function edit(string $userId, Sparepart $sparepart)
     {
         return view('sarpras.sparepart.edit', [
             'sparepart' => $sparepart,
@@ -130,7 +130,7 @@ class SarprasSparepartController extends Controller
         ]);
     }
 
-    public function update(Request $request, Sparepart $sparepart)
+    public function update(string $userId, Request $request, Sparepart $sparepart)
     {
         $validated = $request->validate([
             'part_number' => 'required|string|max:100|unique:spareparts,part_number,'.$sparepart->id,
@@ -151,10 +151,10 @@ class SarprasSparepartController extends Controller
 
         $sparepart->update($validated);
 
-        return redirect()->route('sarpras.sparepart.show', $sparepart)->with('success', 'Sparepart diperbarui');
+        return redirect()->route('sarpras.sparepart.show', ['id' => $sparepart])->with('success', 'Sparepart diperbarui');
     }
 
-    public function receive(Request $request, Sparepart $sparepart)
+    public function receive(string $userId, Request $request, Sparepart $sparepart)
     {
         $validated = $request->validate([
             'quantity' => 'required|numeric|min:0.01',
@@ -175,7 +175,7 @@ class SarprasSparepartController extends Controller
         return back()->with('success', 'Stok bertambah: '.$validated['quantity'].' '.($sparepart->unit?->symbol ?? ''));
     }
 
-    public function adjust(Request $request, Sparepart $sparepart)
+    public function adjust(string $userId, Request $request, Sparepart $sparepart)
     {
         $validated = $request->validate([
             'new_stock' => 'required|numeric|min:0',
@@ -194,24 +194,25 @@ class SarprasSparepartController extends Controller
 
     public function lowStock(Request $request)
     {
-        $recommendations = $this->automation->detectLowStock();
+        $items = Sparepart::with(['category', 'unit', 'warehouse', 'primaryVendor'])
+            ->where('is_active', true)
+            ->whereColumn('stock', '<=', 'reorder_point')
+            ->orderBy('stock')
+            ->get();
 
-        return view('sarpras.sparepart.low_stock', [
-            'recommendations' => $recommendations,
-        ]);
+        return view('sarpras.sparepart.low-stock', compact('items'));
     }
 
     public function deadStock(Request $request)
     {
-        $deadStock = Sparepart::where('is_active', true)
+        $items = Sparepart::where('is_active', true)
             ->whereDoesntHave('stockMovements', function ($q) {
                 $q->where('occurred_at', '>=', now()->subMonths(6));
             })
-            ->with(['category', 'warehouse'])
+            ->with(['category', 'unit', 'warehouse'])
+            ->orderBy('name')
             ->get();
 
-        return view('sarpras.sparepart.dead_stock', [
-            'spareparts' => $deadStock,
-        ]);
+        return view('sarpras.sparepart.dead-stock', compact('items'));
     }
 }

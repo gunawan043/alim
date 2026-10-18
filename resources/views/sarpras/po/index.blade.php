@@ -55,7 +55,7 @@
                         </td>
                         <td>{{ $po->payment_term_days ?? '-' }} hari</td>
                         <td class="text-end">
-                            <a href="{{ route('sarpras.po.show', $po) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('sarpras.po.show', ['id' => $po]) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-eye me-1"></i>Lihat
                             </a>
                         </td>

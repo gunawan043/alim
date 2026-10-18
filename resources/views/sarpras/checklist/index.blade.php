@@ -40,7 +40,7 @@
                         </div>
                         <h5 class="mt-3 mb-1">{{ $template->name }}</h5>
                         <div class="text-muted small"><code>{{ $template->code }}</code> · {{ ucfirst(str_replace('-', ' ', $template->category_slug ?? '-')) }}</div>
-                        <div class="mt-3 d-flex gap-2"><a href="{{ route('sarpras.checklist.template', $template->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat Item</a></div>
+                        <div class="mt-3 d-flex gap-2"><a href="{{ route('sarpras.checklist.template', ['templateId' => $template->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat Item</a></div>
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                             <td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $label }}</span></td>
                             <td>{{ $instance->failed_items_count }} / {{ $instance->total_items_count }}</td>
                             <td class="small">{{ $instance->created_at?->format('d/m/Y H:i') }}</td>
-                            <td class="text-end"><a href="{{ route('sarpras.checklist.instance', $instance->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
+                            <td class="text-end"><a href="{{ route('sarpras.checklist.instance', ['instanceId' => $instance->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
                         </tr>
                     @empty
                         <x-empty-state colspan="7" title="Belum ada checklist" message="Mulai checklist dari halaman detail jadwal pemeliharaan." />

@@ -29,7 +29,7 @@ body { font-family: 'Arial', sans-serif; background: white; color: #222; }
 <div class="grid">
     @foreach($assets as $asset)
     <div class="label">
-        <img src="data:image/png;base64,{{ $qrData[$asset->id] ?? '' }}" alt="QR">
+        <img src="{{ $qrData[$asset->id] ?? '' }}" alt="QR">
         <div class="name">{{ Str::limit($asset->asset_name, 40) }}</div>
         <div class="code">{{ $asset->asset_code ?? '-' }}</div>
         <div class="room">{{ $asset->room?->room_name ?? '-' }}</div>

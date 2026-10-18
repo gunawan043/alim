@@ -26,8 +26,9 @@ class SarprasDivisionPortalController extends SarprasBaseController
     {
         $divisionId = $this->resolveDivisionId($request);
         $overview = $this->service->overview($divisionId);
+        $overview['slaAlerts'] = collect($overview['slaAlerts'] ?? []);
 
-        return view('sarpras.division.dashboard', compact('overview'));
+        return view('sarpras.division.index', array_merge($overview, ['overview' => $overview]));
     }
 
     public function assets(Request $request)
@@ -40,14 +41,14 @@ class SarprasDivisionPortalController extends SarprasBaseController
         return view('sarpras.division.assets', compact('assets'));
     }
 
-    public function showAsset(Request $request, string $assetId)
+    public function showAsset(string $userId, Request $request, string $assetId)
     {
         $asset = Asset::with(['room', 'category', 'healthMetric'])->findOrFail($assetId);
 
         return view('sarpras.division.asset_detail', compact('asset'));
     }
 
-    public function showReportForm(Request $request, string $assetId)
+    public function showReportForm(string $userId, Request $request, string $assetId)
     {
         $asset = Asset::with(['room', 'category'])->findOrFail($assetId);
 

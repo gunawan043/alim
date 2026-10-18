@@ -17,7 +17,7 @@ class AssetPassportController extends SarprasBaseController
      * Asset Passport — full lifecycle view for a single asset.
      * URL: /sarpras/assets/{uuid}/passport
      */
-    public function show(Request $request, string $uuid)
+    public function show(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::with([
             'room', 'room.building', 'room.school',
@@ -38,7 +38,7 @@ class AssetPassportController extends SarprasBaseController
     /**
      * API endpoint for passport JSON (mobile / AJAX).
      */
-    public function json(Request $request, string $uuid)
+    public function json(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::findOrFail($uuid);
         $this->authorizeAssetAccess($asset, $request);
@@ -49,7 +49,7 @@ class AssetPassportController extends SarprasBaseController
     /**
      * Passport 2.0 — adds TCO + Repair-vs-Replace + predictive insights.
      */
-    public function showV2(Request $request, string $uuid)
+    public function showV2(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::with([
             'room', 'room.building', 'room.school',
@@ -66,7 +66,7 @@ class AssetPassportController extends SarprasBaseController
         ]);
     }
 
-    public function jsonV2(Request $request, string $uuid)
+    public function jsonV2(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::findOrFail($uuid);
         $this->authorizeAssetAccess($asset, $request);
@@ -77,7 +77,7 @@ class AssetPassportController extends SarprasBaseController
     /**
      * Lookup by QR scan — dispatches event and returns redirect to passport or contextual page.
      */
-    public function scan(Request $request, string $code)
+    public function scan(string $userId, Request $request, string $code)
     {
         $user = $request->user();
 
@@ -124,6 +124,6 @@ class AssetPassportController extends SarprasBaseController
             return view('sarpras.passport.scan_inactive', ['asset' => $asset]);
         }
 
-        return redirect()->route('sarpras.assets.passport', $asset->id);
+        return redirect()->route('sarpras.assets.passport', ['uuid' => $asset->id]);
     }
 }

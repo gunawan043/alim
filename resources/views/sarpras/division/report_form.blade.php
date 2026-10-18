@@ -77,7 +77,7 @@
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ route('sarpras.divisi.asset_show', $asset->id) }}" class="btn btn-light">
+                        <a href="{{ route('sarpras.divisi.asset_show', ['assetId' => $asset->id]) }}" class="btn btn-light">
                             <i class="ri-arrow-left-line me-1"></i> Kembali
                         </a>
                         <button type="submit" class="btn btn-warning">

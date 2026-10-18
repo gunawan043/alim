@@ -24,12 +24,18 @@ class DivisionPortalController extends Controller
 
         if (empty($divisis)) {
             return view('sarpras.division.index', [
-                'dashboard' => [],
-                'stat_widgets' => [],
-                'recent_assets' => collect(),
-                'pending_wo' => collect(),
-                'open_repairs' => collect(),
-                'sla_alerts' => collect(),
+                'divisis' => [],
+                'stats' => [
+                    'total_assets' => 0,
+                    'good' => 0,
+                    'maintenance' => 0,
+                    'broken' => 0,
+                    'active_count' => 0,
+                ],
+                'recentAssets' => collect(),
+                'pendingWOs' => collect(),
+                'openRepairs' => collect(),
+                'slaAlerts' => collect(),
             ]);
         }
 
@@ -39,7 +45,7 @@ class DivisionPortalController extends Controller
         $stats = $this->calculateStats($assets);
 
         // Recent assets
-        $recentAssets = $assets->with('room', 'category', 'room.studyGroup', 'location.workUnit')
+        $recentAssets = $assets->with('room.building', 'category')
             ->where('is_active', true)
             ->latest()
             ->take(10)
@@ -49,7 +55,7 @@ class DivisionPortalController extends Controller
         $woQuery = WorkOrder::whereIn('asset_id', $assets->pluck('id'));
         $pendingWOs = $woQuery->whereIn('status', ['assigned', 'accepted', 'in_progress'])
             ->with(['asset' => function ($q) {
-                $q->select('id', 'asset_name', 'asset_code', 'category_id');
+                $q->select('id', 'asset_name', 'asset_code', 'asset_category_id');
             }, 'technician.profile'])
             ->orderBy('due_date')
             ->take(20)
@@ -66,23 +72,6 @@ class DivisionPortalController extends Controller
         // SLA breaches / alerts
         $slaAlerts = collect();
         foreach ($pendingWOs as $wo) {
-            if ($wo->sla_tracker) {
-                if ($wo->sla_tracker->breached) {
-                    $slaAlerts->push([
-                        'type' => 'breached',
-                        'title' => $wo->asset->asset_name ?? 'Unknown',
-                        'message' => 'SLA sudah terlewat: '.$wo->sla_tracker->breach_description,
-                        'link' => route('sarpras.work-orders.show', $wo->id),
-                    ]);
-                } elseif ($wo->sla_tracker->is_imminent) {
-                    $slaAlerts->push([
-                        'type' => 'warning',
-                        'title' => $wo->asset->asset_name ?? 'Unknown',
-                        'message' => 'SLA mendekati batas: '.$wo->sla_tracker->time_remaining_text,
-                        'link' => route('sarpras.work-orders.show', $wo->id),
-                    ]);
-                }
-            }
         }
 
         return view('sarpras.division.index', compact(
@@ -110,7 +99,7 @@ class DivisionPortalController extends Controller
         // Filter by category
         if ($request->filled('category')) {
             $assets->whereHas('category', function ($q) use ($request) {
-                $q->where('kode', $request->category);
+                $q->where('name', $request->category);
             });
         }
 
@@ -118,9 +107,9 @@ class DivisionPortalController extends Controller
         if ($request->filled('search')) {
             $q = $request->search;
             $assets->where(function ($q2) use ($q) {
-                $q2->where('asset_name', 'ilike', "%{$q}%")
-                    ->orWhere('asset_code', 'ilike', "%{$q}%")
-                    ->orWhere('merek', 'ilike', "%{$q}%");
+                $q2->where('asset_name', 'like', "%{$q}%")
+                    ->orWhere('asset_code', 'like', "%{$q}%")
+                    ->orWhere('brand', 'like', "%{$q}%");
             });
         }
 
@@ -130,10 +119,10 @@ class DivisionPortalController extends Controller
         ]);
     }
 
-    public function showAsset($assetId)
+    public function showAsset(string $userId, $assetId)
     {
         // Check ownership
-        $asset = Asset::with(['category', 'room', 'pic'])->find($assetId);
+        $asset = Asset::with(['category', 'room'])->find($assetId);
 
         if (! $asset || ! $this->userOwnsAsset($asset)) {
             abort(403, 'Aset tidak ada di division Anda');
@@ -148,15 +137,10 @@ class DivisionPortalController extends Controller
      */
     private function getDivisionAssets(array $divisiIds)
     {
-        return Asset::whereHas('room', function ($q) use ($divisiIds) {
-            $q->whereHas('workUnit', function ($q2) use ($divisiIds) {
-                $q2->whereIn('divisi_id', $divisiIds);
-            });
-        })->orWhere(function ($q) use ($divisiIds) {
-            $q->whereHas('location', function ($q2) use ($divisiIds) {
-                $q2->whereIn('divisi_id', $divisiIds);
-            });
-        })->orWhereIn('divisi_id', $divisiIds); // direct division on asset
+        return Asset::where(function ($q) use ($divisiIds) {
+            $q->whereHas('workUnit', fn ($q2) => $q2->whereIn('divisi_id', $divisiIds))
+                ->orWhereHas('room.workUnit', fn ($q2) => $q2->whereIn('divisi_id', $divisiIds));
+        });
     }
 
     private function userOwnsAsset(Asset $asset): bool
@@ -171,14 +155,12 @@ class DivisionPortalController extends Controller
 
     private function calculateStats($assets): array
     {
-        $total = $assets->count();
-
         return [
-            'total_assets' => $total,
-            'good' => $assets->where('condition', 'baik')->count(),
-            'maintenance' => $assets->where('status', 'maintenance')->count(),
-            'broken' => $assets->whereIn('status', ['rusak', 'maintenance'])->count(),
-            'active_count' => $assets->where('is_active', true)->count(),
+            'total_assets' => (clone $assets)->count(),
+            'good' => (clone $assets)->where('condition', 'baik')->count(),
+            'maintenance' => (clone $assets)->whereIn('condition', ['rusak_ringan', 'rusak_sedang'])->count(),
+            'broken' => (clone $assets)->where('condition', 'rusak_berat')->count(),
+            'active_count' => (clone $assets)->where('is_active', true)->count(),
         ];
     }
 }

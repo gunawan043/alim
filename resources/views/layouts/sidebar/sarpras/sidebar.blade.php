@@ -38,6 +38,12 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
         <i class="ri-calendar-task-line"></i><span>Agenda Kerja</span>
     </a>
 </li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.camera') ? ' active' : '' }}"
+       href="{{ route('sarpras.camera.index', ['userId' => $userId]) }}">
+        <i class="ri-camera-line"></i><span>Kamera Dokumentasi</span>
+    </a>
+</li>
 
 {{-- Aset & Inventaris --}}
 <li class="nav-item">

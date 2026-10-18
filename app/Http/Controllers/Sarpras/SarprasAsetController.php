@@ -159,7 +159,7 @@ class SarprasAsetController extends SarprasBaseController
             ->with('success', 'Aset berhasil ditambahkan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $aset = Asset::with(['room', 'room.school', 'category', 'creator', 'photos'])
             ->findOrFail($id);
@@ -177,7 +177,7 @@ class SarprasAsetController extends SarprasBaseController
         return view('sarpras.aset.show', compact('aset', 'riwayatPinjaman', 'riwayatMaintenance', 'riwayatPerpindahan'));
     }
 
-    public function edit(Request $request, string $id)
+    public function edit(string $userId, Request $request, string $id)
     {
         $aset = Asset::with(['room', 'room.school', 'category', 'creator'])->findOrFail($id);
         $this->authorizeAssetAccess($aset, $request);
@@ -194,7 +194,7 @@ class SarprasAsetController extends SarprasBaseController
     /**
      * Verifikasi aset oleh Unit Rumah Tangga.
      */
-    public function verify(Request $request, string $id)
+    public function verify(string $userId, Request $request, string $id)
     {
         $asset = Asset::findOrFail($id);
         $user = $request->user();
@@ -226,7 +226,7 @@ class SarprasAsetController extends SarprasBaseController
             : 'Aset ditolak. Catatan verifikasi disimpan.');
     }
 
-    public function update(AsetUpdateRequest $request, string $id)
+    public function update(string $userId, AsetUpdateRequest $request, string $id)
     {
         $aset = Asset::with(['room', 'creator'])->findOrFail($id);
         $this->authorizeAssetAccess($aset, $request);
@@ -306,11 +306,11 @@ class SarprasAsetController extends SarprasBaseController
 
         $this->bumpDashboardCache();
 
-        return redirect()->route('sarpras.aset.show', $aset->id)
+        return redirect()->route('sarpras.aset.show', ['id' => $aset->id])
             ->with('success', 'Aset berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(string $userId, Request $request, string $id)
     {
         $aset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($aset, $request);
@@ -406,7 +406,7 @@ class SarprasAsetController extends SarprasBaseController
     }
 
     // === AJAX ===
-    public function addPhoto(AssetPhotoUploadRequest $request, string $id)
+    public function addPhoto(string $userId, AssetPhotoUploadRequest $request, string $id)
     {
         $aset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($aset, $request);
@@ -436,7 +436,7 @@ class SarprasAsetController extends SarprasBaseController
         return $this->ok(['photo' => $photo], 'Foto berhasil diunggah.');
     }
 
-    public function deletePhoto(Request $request, string $id, string $photoId)
+    public function deletePhoto(string $userId, Request $request, string $id, string $photoId)
     {
         $aset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($aset, $request);

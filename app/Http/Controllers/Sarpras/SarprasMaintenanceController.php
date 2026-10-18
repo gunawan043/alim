@@ -188,7 +188,7 @@ class SarprasMaintenanceController extends SarprasBaseController
             ->with('success', 'Jadwal pemeliharaan dikirim ke satuan kerja untuk disetujui.');
     }
 
-    public function scheduleShow(Request $request, string $id)
+    public function scheduleShow(string $userId, Request $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::with(['asset', 'building', 'room', 'responsibleUser', 'logs', 'unitApprover', 'workUnit'])
             ->findOrFail($id);
@@ -213,7 +213,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         return view('sarpras.pemeliharaan.schedule.show', compact('schedule', 'canManage', 'canApprove', 'checklistInstances', 'workOrders', 'technicians'));
     }
 
-    public function scheduleEdit(Request $request, string $id)
+    public function scheduleEdit(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
@@ -238,7 +238,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         return view('sarpras.pemeliharaan.schedule.edit', compact('schedule', 'assets', 'buildings', 'rooms', 'users'));
     }
 
-    public function scheduleUpdate(MaintenanceScheduleUpdateRequest $request, string $id)
+    public function scheduleUpdate(string $userId, MaintenanceScheduleUpdateRequest $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
         $this->authorizeMaintenanceAccess($schedule, $request);
@@ -264,13 +264,13 @@ class SarprasMaintenanceController extends SarprasBaseController
         $this->cacheInvalidator->invalidateMaintenance();
         $this->cacheInvalidator->invalidateAll();
 
-        return redirect()->route('sarpras.pemeliharaan.schedule.show', $schedule->id)
+        return redirect()->route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id])
             ->with('success', $dateChanged
                 ? 'Jadwal diperbarui dan dikirim ulang ke satuan kerja untuk disetujui.'
                 : 'Jadwal pemeliharaan berhasil diperbarui.');
     }
 
-    public function scheduleDestroy(Request $request, string $id)
+    public function scheduleDestroy(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
@@ -285,7 +285,7 @@ class SarprasMaintenanceController extends SarprasBaseController
             ->with('success', 'Jadwal pemeliharaan berhasil dihapus.');
     }
 
-    public function storeScheduleWorkOrder(Request $request, string $id)
+    public function storeScheduleWorkOrder(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
 
@@ -343,7 +343,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         return back()->with('success', 'Work order '.$workOrder->order_number.' dibuat dan ditugaskan ke teknisi.');
     }
 
-    public function approveSchedule(Request $request, string $id)
+    public function approveSchedule(string $userId, Request $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
         $this->authorizeScheduleApproval($schedule, $request);
@@ -365,7 +365,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         return back()->with('success', 'Jadwal pemeliharaan disetujui satuan kerja.');
     }
 
-    public function requestReschedule(Request $request, string $id)
+    public function requestReschedule(string $userId, Request $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
         $this->authorizeScheduleApproval($schedule, $request);
@@ -388,7 +388,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         return back()->with('success', 'Permintaan jadwal ulang dikirim ke Unit Rumah Tangga.');
     }
 
-    public function rejectSchedule(Request $request, string $id)
+    public function rejectSchedule(string $userId, Request $request, string $id)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($id);
         $this->authorizeScheduleApproval($schedule, $request);
@@ -595,7 +595,7 @@ class SarprasMaintenanceController extends SarprasBaseController
             ->with('success', 'Riwayat perawatan berhasil ditambahkan.');
     }
 
-    public function logShow(Request $request, string $id)
+    public function logShow(string $userId, Request $request, string $id)
     {
         $log = AssetMaintenanceLog::with(['schedule', 'asset', 'building', 'room', 'performer', 'creator'])
             ->findOrFail($id);

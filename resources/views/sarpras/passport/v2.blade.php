@@ -4,7 +4,7 @@
 @section('content')
 @component('components.breadcrumb')
     @slot('li_1') <a href="{{ route('sarpras.aset.index') }}">Aset</a> @endslot
-    @slot('li_2') <a href="{{ route('sarpras.assets.passport', $asset->id) }}">Passport</a> @endslot
+    @slot('li_2') <a href="{{ route('sarpras.assets.passport', ['uuid' => $asset->id]) }}">Passport</a> @endslot
     @slot('title') Passport 2.0 @endslot
 @endcomponent
 
@@ -129,7 +129,7 @@
 </div>
 
 <div class="text-center mt-4">
-    <a href="{{ route('sarpras.assets.passport', $asset->id) }}" class="btn btn-outline-secondary">
+    <a href="{{ route('sarpras.assets.passport', ['uuid' => $asset->id]) }}" class="btn btn-outline-secondary">
         <i class="ri-arrow-left-line"></i> Kembali ke Passport Klasik
     </a>
 </div>

@@ -8,7 +8,7 @@
         <h5 class="mb-0">Edit Sparepart — {{ $sparepart->name }}</h5>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('sarpras.sparepart.update', $sparepart) }}">
+        <form method="POST" action="{{ route('sarpras.sparepart.update', ['id' => $sparepart]) }}">
             @csrf
             @method('PUT')
             <div class="row g-3">

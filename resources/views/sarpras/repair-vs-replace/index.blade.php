@@ -83,7 +83,7 @@
                         <span class="badge bg-{{ $badge }}">{{ $r->recommendation }}</span>
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('sarpras.rvr.show', $r->asset_id) }}" class="btn btn-sm btn-outline-primary">Detail</a>
+                        <a href="{{ route('sarpras.rvr.show', ['asset' => $r->asset_id]) }}" class="btn btn-sm btn-outline-primary">Detail</a>
                     </td>
                 </tr>
                 @empty

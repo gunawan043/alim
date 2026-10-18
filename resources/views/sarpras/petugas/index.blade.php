@@ -73,9 +73,9 @@
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-1">
                                         @if($officer->is_active && ! $officer->is_primary)
-                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#primaryOfficerModal" data-action="{{ route('sarpras.petugas.primary', $officer->id) }}" data-name="{{ $officer->user?->name }}" title="Jadikan utama"><i class="ri-star-line"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#primaryOfficerModal" data-action="{{ route('sarpras.petugas.primary', ['id' => $officer->id]) }}" data-name="{{ $officer->user?->name }}" title="Jadikan utama"><i class="ri-star-line"></i></button>
                                         @endif
-                                        <button type="button" class="btn btn-sm {{ $officer->is_active ? 'btn-outline-danger' : 'btn-outline-success' }}" data-bs-toggle="modal" data-bs-target="#toggleOfficerModal" data-action="{{ route('sarpras.petugas.toggle', $officer->id) }}" data-name="{{ $officer->user?->name }}" data-active="{{ $officer->is_active ? '1' : '0' }}" title="{{ $officer->is_active ? 'Nonaktifkan' : 'Aktifkan' }}"><i class="{{ $officer->is_active ? 'ri-user-unfollow-line' : 'ri-user-follow-line' }}"></i></button>
+                                        <button type="button" class="btn btn-sm {{ $officer->is_active ? 'btn-outline-danger' : 'btn-outline-success' }}" data-bs-toggle="modal" data-bs-target="#toggleOfficerModal" data-action="{{ route('sarpras.petugas.toggle', ['id' => $officer->id]) }}" data-name="{{ $officer->user?->name }}" data-active="{{ $officer->is_active ? '1' : '0' }}" title="{{ $officer->is_active ? 'Nonaktifkan' : 'Aktifkan' }}"><i class="{{ $officer->is_active ? 'ri-user-unfollow-line' : 'ri-user-follow-line' }}"></i></button>
                                     </div>
                                 </td>
                             @endif

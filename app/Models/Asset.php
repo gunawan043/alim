@@ -249,6 +249,11 @@ class Asset extends Model
         return $this->hasMany(AssetMovement::class, 'asset_id');
     }
 
+    public function divisionInventory()
+    {
+        return $this->hasMany(DivisionInventory::class, 'asset_id');
+    }
+
     public function healthMetric()
     {
         return $this->hasOne(AssetHealthMetric::class, 'asset_id');

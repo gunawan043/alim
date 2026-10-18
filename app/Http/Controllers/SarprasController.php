@@ -668,6 +668,18 @@ class SarprasController extends Controller
 
     // ─── KATEGORI (AJAX) ───────────────────────────────────────────────
 
+    public function kategoriList(Request $request, string $userId)
+    {
+        abort_unless(auth()->check() && canAccessUser($userId), 403);
+
+        $categories = AssetCategory::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        return response()->json(['categories' => $categories]);
+    }
+
     public function kategoriStore(Request $request, string $userId)
     {
         abort_unless(auth()->check() && canAccessUser($userId), 403);

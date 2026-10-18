@@ -27,7 +27,7 @@ class SarprasDisposalController extends SarprasBaseController
         return view('sarpras.disposal.pending', compact('candidates'));
     }
 
-    public function approve(Asset $asset, Request $request): RedirectResponse|JsonResponse
+    public function approve(string $userId, Asset $asset, Request $request): RedirectResponse|JsonResponse
     {
         if (! canPermission('sarpras_disposal_approve')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
@@ -69,7 +69,7 @@ class SarprasDisposalController extends SarprasBaseController
         return redirect()->back()->with('success', 'Aset telah dihapus dari inventaris.');
     }
 
-    public function reject(Asset $asset, Request $request): RedirectResponse|JsonResponse
+    public function reject(string $userId, Asset $asset, Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'reason' => 'required|string|max:500',
@@ -97,7 +97,7 @@ class SarprasDisposalController extends SarprasBaseController
         return redirect()->back()->with('success', 'Penolakan penghapusan aset dicatat.');
     }
 
-    public function recordSale(Asset $asset, Request $request): JsonResponse
+    public function recordSale(string $userId, Asset $asset, Request $request): JsonResponse
     {
         if (! in_array($asset->condition, ['dihapus', null], true)) {
             return response()->json([

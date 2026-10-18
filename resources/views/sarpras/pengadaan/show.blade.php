@@ -59,7 +59,7 @@
             <div class="card-header"><h5 class="card-title mb-0">Aksi</h5></div>
             <div class="card-body">
                 @if($procurement->status === 'pending')
-                <a href="{{ route('sarpras.pengadaan.approve', ['id' => $procurement->id]) }}" class="btn btn-success w-100 mb-2" onclick="return confirm('Setuju?')"><i class="ri-check-line me-1"></i> Approve</a>
+                <a href="{{ route('sarpras.pengadaan.approve', ['id' => $procurement->id]) }}" class="btn btn-success w-100 mb-2" data-confirm="Setuju?"><i class="ri-check-line me-1"></i> Approve</a>
                 <a href="{{ route('sarpras.pengadaan.reject', ['id' => $procurement->id]) }}" class="btn btn-danger w-100 mb-2"><i class="ri-close-line me-1"></i> Tolak</a>
                 @endif
                 @if($procurement->status === 'approved')

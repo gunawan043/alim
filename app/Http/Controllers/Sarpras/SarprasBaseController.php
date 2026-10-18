@@ -85,6 +85,32 @@ abstract class SarprasBaseController extends Controller
         ], true);
     }
 
+    /**
+     * School context untuk halaman analitik. Pengguna pusat tanpa konteks sekolah
+     * memakai sekolah pertama agar dashboard tetap dapat dibuka.
+     */
+    protected function resolveSchoolContextId(Request $request): string
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId) {
+            return (string) $schoolId;
+        }
+
+        if ($this->isCentralSarpras()) {
+            $requested = $request->query('school_id');
+            if ($requested && School::query()->whereKey($requested)->exists()) {
+                return (string) $requested;
+            }
+
+            $fallback = School::query()->orderBy('name')->value('id');
+            if ($fallback) {
+                return (string) $fallback;
+            }
+        }
+
+        abort(403, 'Konteks sekolah belum dipilih.');
+    }
+
     protected function authorizeCentralSarpras(): void
     {
         if (! $this->isCentralSarpras()) {

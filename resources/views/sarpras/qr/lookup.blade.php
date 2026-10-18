@@ -82,7 +82,7 @@
                             <td>{{ $a->room?->room_name ?? '-' }}</td>
                             <td>{{ ucfirst(str_replace('_',' ', $a->condition)) }}</td>
                             <td>
-                                <a href="/sarpras/assets/{{ $a->id }}/passport" class="btn btn-sm btn-link p-0" title="Passport">
+                                <a href="{{ route('sarpras.assets.passport', ['uuid' => $a->id]) }}" class="btn btn-sm btn-link p-0" title="Passport">
                                     <i class="ri-passport-line text-info"></i>
                                 </a>
                                 <button class="btn btn-sm btn-link p-0" onclick="lookupByCode('{{ $a->id }}')" title="Lookup">
@@ -112,15 +112,19 @@ function lookupByCode(id) {
     performLookup(id);
 }
 
+const lookupEndpoint = @json(route('sarpras.qr.lookup.get'));
+const detailTemplate = @json(route('sarpras.aset.show', ['id' => '__ID__']));
+const passportTemplate = @json(route('sarpras.assets.passport', ['uuid' => '__ID__']));
+
 function performLookup(code) {
     document.getElementById('lookup-result').classList.add('d-none');
     document.getElementById('lookup-error').classList.add('d-none');
 
-    fetch('/sarpras/qr/lookup?code=' + encodeURIComponent(code))
+    fetch(lookupEndpoint + '?code=' + encodeURIComponent(code))
         .then(r => r.json())
         .then(data => {
-            if (data.success && data.asset) {
-                const a = data.asset;
+            const a = data.data?.asset || data.asset;
+            if (data.success && a) {
                 document.getElementById('result-name').textContent = a.asset_name;
                 document.getElementById('result-code').textContent = 'Kode: ' + (a.asset_code || '-');
                 document.getElementById('result-brand').textContent = a.brand && a.model ? a.brand + ' ' + a.model : '-';
@@ -131,8 +135,8 @@ function performLookup(code) {
                 document.getElementById('result-condition').innerHTML = '<span class="badge bg-warning-subtle text-warning">' + cond.charAt(0).toUpperCase() + cond.slice(1) + '</span>';
                 document.getElementById('result-status').innerHTML = '<span class="badge bg-success-subtle text-success">' + (a.status || '-').replace('_',' ') + '</span>';
 
-                document.getElementById('result-link').href = '/sarpras/aset/' + a.id;
-                document.getElementById('result-passport-link').href = '/sarpras/assets/' + a.id + '/passport';
+                document.getElementById('result-link').href = detailTemplate.replace('__ID__', encodeURIComponent(a.id));
+                document.getElementById('result-passport-link').href = passportTemplate.replace('__ID__', encodeURIComponent(a.id));
                 document.getElementById('lookup-result').classList.remove('d-none');
             } else {
                 document.getElementById('error-text').textContent = data.error || 'Aset tidak ditemukan.';

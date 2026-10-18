@@ -20,7 +20,7 @@
                 <div class="card-body">
                     <div class="table-responsive"><table class="table table-borderless mb-0"><tbody>
                         <tr><td class="text-muted" style="width:180px">No Permintaan</td><td><code>{{ $repair->request_number }}</code></td></tr>
-                        <tr><td class="text-muted">Aset</td><td>@if($repair->asset)<a href="{{ route('sarpras.aset.show', $repair->asset_id) }}" class="fw-medium">{{ $repair->asset->asset_name }}</a><br><code class="small">{{ $repair->asset->asset_code }}</code>@else - @endif</td></tr>
+                        <tr><td class="text-muted">Aset</td><td>@if($repair->asset)<a href="{{ route('sarpras.aset.show', ['id' => $repair->asset_id]) }}" class="fw-medium">{{ $repair->asset->asset_name }}</a><br><code class="small">{{ $repair->asset->asset_code }}</code>@else - @endif</td></tr>
                         <tr><td class="text-muted">Lokasi</td><td>{{ $repair->asset?->room?->building?->building_name ? $repair->asset->room->building->building_name.' — ' : '' }}{{ $repair->asset?->room?->room_name ?? '-' }}</td></tr>
                         <tr><td class="text-muted">Pelapor</td><td>{{ $repair->reportedBy?->name ?? '-' }} · {{ $repair->created_at?->format('d/m/Y H:i') }}</td></tr>
                         <tr><td class="text-muted">Judul</td><td><strong>{{ $repair->title }}</strong></td></tr>
@@ -53,7 +53,7 @@
 
     @if($canManage)
         <div class="modal fade" id="workOrderModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.repair.work-order', $repair->id) }}" class="modal-content">@csrf
+            <div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.repair.work-order', ['repairId' => $repair->id]) }}" class="modal-content">@csrf
                 <div class="modal-header"><h5 class="modal-title"><i class="ri-calendar-check-line me-1"></i>Jadwalkan Perbaikan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label">Petugas <span class="text-danger">*</span></label><select name="assignee_id" class="form-select" required><option value="">— Pilih —</option>@foreach($technicians as $technician)<option value="{{ $technician->id }}">{{ $technician->name }}</option>@endforeach</select></div>

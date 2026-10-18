@@ -89,7 +89,7 @@
                     </div>
 
                     <div class="hstack gap-2 mt-4">
-                        <button type="submit" class="btn btn-success" onclick="return confirm('Konversi item yang dicentang menjadi aset?')">
+                        <button type="submit" class="btn btn-success" data-confirm="Konversi item yang dicentang menjadi aset?">
                             <i class="ri-arrow-left-right-line me-1"></i> Konversi ke Aset
                         </button>
                         <a href="{{ route('sarpras.pengadaan.show', ['id' => $procurement->id]) }}" class="btn btn-light">Batal</a>

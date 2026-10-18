@@ -76,8 +76,8 @@
                             <td class="text-end">
                                 <div class="d-inline-flex gap-1">
                                     @if(($canVerify ?? false) && ($a->verification_status ?? 'verified') === 'pending')
-                                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#verifyAssetModal" data-action="{{ route('sarpras.aset.verify', $a->id) }}" data-name="{{ $a->asset_name }}" title="Verifikasi"><i class="ri-check-line"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectAssetModal" data-action="{{ route('sarpras.aset.verify', $a->id) }}" data-name="{{ $a->asset_name }}" title="Tolak"><i class="ri-close-line"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#verifyAssetModal" data-action="{{ route('sarpras.aset.verify', ['id' => $a->id]) }}" data-name="{{ $a->asset_name }}" title="Verifikasi"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectAssetModal" data-action="{{ route('sarpras.aset.verify', ['id' => $a->id]) }}" data-name="{{ $a->asset_name }}" title="Tolak"><i class="ri-close-line"></i></button>
                                     @endif
                                     <a href="{{ route('sarpras.aset.show', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-info"><i class="ri-eye-line"></i></a>
                                     <a href="{{ route('sarpras.aset.edit', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-warning"><i class="ri-edit-line"></i></a>

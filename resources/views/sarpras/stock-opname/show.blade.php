@@ -22,7 +22,7 @@
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     @if($session->status === 'planned')
-                        <form method="POST" action="{{ route('sarpras.stock-opname.start', $session->id) }}">@csrf<button class="btn btn-primary"><i class="ri-play-line me-1"></i>Mulai Opname</button></form>
+                        <form method="POST" action="{{ route('sarpras.stock-opname.start', ['sessionId' => $session->id]) }}">@csrf<button class="btn btn-primary"><i class="ri-play-line me-1"></i>Mulai Opname</button></form>
                         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelSessionModal"><i class="ri-close-circle-line me-1"></i>Batalkan</button>
                     @elseif($session->status === 'in_progress')
                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#closeSessionModal"><i class="ri-check-double-line me-1"></i>Tutup Sesi</button>
@@ -59,7 +59,7 @@
     @if($session->status === 'in_progress')
         <div class="card mb-3 border-info">
             <div class="card-body">
-                <form method="POST" action="{{ route('sarpras.stock-opname.scan', $session->id) }}" class="row g-2 align-items-end">
+                <form method="POST" action="{{ route('sarpras.stock-opname.scan', ['sessionId' => $session->id]) }}" class="row g-2 align-items-end">
                     @csrf
                     <div class="col-md-8"><label class="form-label small fw-semibold">Scan QR / Kode Aset</label><input type="text" name="code" class="form-control" placeholder="Scan QR label unit aset atau ketik kode…" autofocus required></div>
                     <div class="col-md-4"><button class="btn btn-info w-100 text-white"><i class="ri-scan-2-line me-1"></i>Tandai Ditemukan</button></div>
@@ -141,12 +141,12 @@
         <p class="text-center text-muted">Pastikan seluruh aset sudah dicek. Aset yang belum dicek tetap tercatat sebagai belum dicek.</p>
         <textarea name="summary_notes" form="closeSessionForm" class="form-control" rows="3" placeholder="Catatan penutup / tindak lanjut…"></textarea>
     </x-modal-confirm>
-    <form id="closeSessionForm" method="POST" action="{{ route('sarpras.stock-opname.close', $session->id) }}" class="d-none">@csrf</form>
+    <form id="closeSessionForm" method="POST" action="{{ route('sarpras.stock-opname.close', ['sessionId' => $session->id]) }}" class="d-none">@csrf</form>
 
     <x-modal-confirm id="cancelSessionModal" icon="https://cdn.lordicon.com/gsqxdxog.json" title="Batalkan Sesi?" submitLabel="Ya, Batalkan" submitIcon="ri-close-line" submitClass="btn-danger" formId="cancelSessionForm">
         <p class="text-center text-muted mb-0">Sesi yang dibatalkan tidak dapat digunakan lagi.</p>
     </x-modal-confirm>
-    <form id="cancelSessionForm" method="POST" action="{{ route('sarpras.stock-opname.cancel', $session->id) }}" class="d-none">@csrf</form>
+    <form id="cancelSessionForm" method="POST" action="{{ route('sarpras.stock-opname.cancel', ['sessionId' => $session->id]) }}" class="d-none">@csrf</form>
 @endsection
 
 @push('script')

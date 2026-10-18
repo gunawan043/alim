@@ -92,7 +92,7 @@ class SarprasBookingController extends SarprasBaseController
             ->with('success', 'Request booking ruangan berhasil diajukan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $booking = RoomBooking::with(['room.building', 'user', 'approver'])->findOrFail($id);
         $this->authorizeBookingAccess($booking, $request);
@@ -100,7 +100,7 @@ class SarprasBookingController extends SarprasBaseController
         return view('sarpras.booking.show', compact('booking'));
     }
 
-    public function approve(Request $request, string $id)
+    public function approve(string $userId, Request $request, string $id)
     {
         $booking = RoomBooking::findOrFail($id);
         $this->authorizeBookingAccess($booking, $request);
@@ -119,7 +119,7 @@ class SarprasBookingController extends SarprasBaseController
         return back()->with('success', 'Booking ruangan berhasil disetujui.');
     }
 
-    public function reject(BookingRejectRequest $request, string $id)
+    public function reject(string $userId, BookingRejectRequest $request, string $id)
     {
         $booking = RoomBooking::findOrFail($id);
         $this->authorizeBookingAccess($booking, $request);
@@ -137,7 +137,7 @@ class SarprasBookingController extends SarprasBaseController
         return back()->with('success', 'Booking ruangan ditolak.');
     }
 
-    public function cancel(Request $request, string $id)
+    public function cancel(string $userId, Request $request, string $id)
     {
         $booking = RoomBooking::findOrFail($id);
 
@@ -152,7 +152,7 @@ class SarprasBookingController extends SarprasBaseController
             ->with('success', 'Booking berhasil dibatalkan.');
     }
 
-    public function complete(Request $request, string $id)
+    public function complete(string $userId, Request $request, string $id)
     {
         $booking = RoomBooking::findOrFail($id);
         $this->authorizeBookingAccess($booking, $request);

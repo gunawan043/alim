@@ -53,7 +53,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         return view('sarpras.auditor.show', compact('session', 'progress', 'audits'));
     }
 
-    public function markFound(Request $request, string $sessionId, string $assetId): JsonResponse
+    public function markFound(string $userId, Request $request, string $sessionId, string $assetId): JsonResponse
     {
         $session = AuditSession::findOrFail($sessionId);
         StateMachineRegistry::assertValidTransition('stock_opname_session', $session->status, 'in_progress');
@@ -62,7 +62,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         return response()->json(['success' => true, 'result' => $result]);
     }
 
-    public function markMissing(Request $request, string $sessionId, string $assetId): JsonResponse
+    public function markMissing(string $userId, Request $request, string $sessionId, string $assetId): JsonResponse
     {
         $data = $request->validate([
             'reason' => 'required|string|max:255',
@@ -75,7 +75,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         return response()->json(['success' => true, 'result' => $result]);
     }
 
-    public function updateCondition(Request $request, string $sessionId, string $assetId): JsonResponse
+    public function updateCondition(string $userId, Request $request, string $sessionId, string $assetId): JsonResponse
     {
         $data = $request->validate([
             'condition' => 'required|string',
@@ -88,7 +88,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         return response()->json(['success' => true, 'asset' => $result]);
     }
 
-    public function closeSession(Request $request, string $sessionId): RedirectResponse|JsonResponse
+    public function closeSession(string $userId, Request $request, string $sessionId): RedirectResponse|JsonResponse
     {
         $session = AuditSession::findOrFail($sessionId);
         StateMachineRegistry::assertValidTransition('stock_opname_session', $session->status, 'closed');
@@ -101,7 +101,7 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
         return redirect()->route('sarpras.auditor.dashboard')->with('success', 'Session audit ditutup.');
     }
 
-    public function progress(string $sessionId): JsonResponse
+    public function progress(string $userId, string $sessionId): JsonResponse
     {
         $session = AuditSession::findOrFail($sessionId);
 

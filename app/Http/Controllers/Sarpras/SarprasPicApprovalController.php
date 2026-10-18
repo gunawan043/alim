@@ -36,14 +36,14 @@ class SarprasPicApprovalController extends Controller
         return view('sarpras.pic.index', compact('pending'));
     }
 
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $repair = RepairRequest::with(['asset', 'reportedBy', 'workOrders'])->findOrFail($id);
 
         return view('sarpras.pic.show', compact('repair'));
     }
 
-    public function verify(Request $request, string $id): RedirectResponse
+    public function verify(string $userId, Request $request, string $id): RedirectResponse
     {
         $repair = RepairRequest::findOrFail($id);
 

@@ -71,7 +71,7 @@ class SarprasElectricityController extends SarprasBaseController
         return back()->with('success', 'Meter listrik ditambahkan.');
     }
 
-    public function toggleMeter(string $meterId)
+    public function toggleMeter(string $userId, string $meterId)
     {
         $this->authorizeElectricity();
         $meter = ElectricityMeter::findOrFail($meterId);
@@ -80,7 +80,7 @@ class SarprasElectricityController extends SarprasBaseController
         return back()->with('success', 'Status meter diperbarui.');
     }
 
-    public function storePurchase(Request $request, string $meterId)
+    public function storePurchase(string $userId, Request $request, string $meterId)
     {
         $this->authorizeElectricity();
         $meter = ElectricityMeter::findOrFail($meterId);
@@ -146,7 +146,7 @@ class SarprasElectricityController extends SarprasBaseController
         return back()->with('success', 'Kejadian listrik padam dicatat.');
     }
 
-    public function showOutage(string $outageId)
+    public function showOutage(string $userId, string $outageId)
     {
         $this->authorizeElectricity();
 
@@ -156,7 +156,7 @@ class SarprasElectricityController extends SarprasBaseController
         return view('sarpras.electricity.outage', compact('outage', 'users'));
     }
 
-    public function storeAction(Request $request, string $outageId)
+    public function storeAction(string $userId, Request $request, string $outageId)
     {
         $this->authorizeElectricity();
         $outage = ElectricityOutage::findOrFail($outageId);
@@ -172,7 +172,7 @@ class SarprasElectricityController extends SarprasBaseController
         return back()->with('success', 'Tindakan penanganan ditambahkan.');
     }
 
-    public function resolveOutage(Request $request, string $outageId)
+    public function resolveOutage(string $userId, Request $request, string $outageId)
     {
         $this->authorizeElectricity();
         $outage = ElectricityOutage::findOrFail($outageId);

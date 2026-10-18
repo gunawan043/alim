@@ -48,6 +48,16 @@ class AssetMovement extends Model
         'condition_after' => 'array',
     ];
 
+    public function approvals()
+    {
+        return $this->hasMany(MovementApproval::class, 'movement_id');
+    }
+
+    public function photos()
+    {
+        return $this->morphMany(AssetPhoto::class, 'context');
+    }
+
     public function asset()
     {
         return $this->belongsTo(Asset::class);

@@ -15,7 +15,7 @@ class SarprasRepairVsReplaceController extends SarprasBaseController
 
     public function index(Request $request)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
 
         $query = AssetRecommendation::query()
             ->select('asset_recommendations.*')
@@ -41,9 +41,9 @@ class SarprasRepairVsReplaceController extends SarprasBaseController
         ]);
     }
 
-    public function show(Request $request, string $assetId)
+    public function show(string $userId, Request $request, string $assetId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $asset = Asset::with(['category', 'room.building'])
             ->where('school_id', $schoolId)
             ->findOrFail($assetId);
@@ -58,9 +58,9 @@ class SarprasRepairVsReplaceController extends SarprasBaseController
         ]);
     }
 
-    public function evaluate(Request $request, string $assetId): JsonResponse
+    public function evaluate(string $userId, Request $request, string $assetId): JsonResponse
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $asset = Asset::where('school_id', $schoolId)->findOrFail($assetId);
         $rec = $this->engine->persist($asset);
 
@@ -74,13 +74,13 @@ class SarprasRepairVsReplaceController extends SarprasBaseController
 
     public function evaluateSchool(Request $request): JsonResponse
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $count = $this->engine->evaluateSchool($schoolId);
 
         return response()->json(['ok' => true, 'evaluated' => $count]);
     }
 
-    protected function summary(int $schoolId): array
+    protected function summary(string $schoolId): array
     {
         $rows = AssetRecommendation::query()
             ->select('asset_recommendations.recommendation', DB::raw('COUNT(*) as total'))
@@ -99,13 +99,4 @@ class SarprasRepairVsReplaceController extends SarprasBaseController
         ];
     }
 
-    protected function resolveSchoolId(Request $request): int
-    {
-        $schoolId = $request->attributes->get('schoolContextId');
-        if (! $schoolId) {
-            abort(403, 'School context required.');
-        }
-
-        return (int) $schoolId;
-    }
 }

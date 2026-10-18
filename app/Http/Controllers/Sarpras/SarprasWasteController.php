@@ -108,7 +108,7 @@ class SarprasWasteController extends SarprasBaseController
         return back()->with('success', 'Catatan sampah berhasil disimpan.');
     }
 
-    public function verifyLog(Request $request, string $logId)
+    public function verifyLog(string $userId, Request $request, string $logId)
     {
         $this->authorizeWaste();
         $log = WasteLog::findOrFail($logId);

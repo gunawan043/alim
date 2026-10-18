@@ -12,7 +12,7 @@ class SarprasIntelligenceDashboardController extends SarprasBaseController
 
     public function index(Request $request)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $months = (int) $request->get('months', 6);
 
         $data = $this->dashboard->build($schoolId, $months);
@@ -22,19 +22,10 @@ class SarprasIntelligenceDashboardController extends SarprasBaseController
 
     public function json(Request $request): JsonResponse
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $schoolId = $this->resolveSchoolContextId($request);
         $data = $this->dashboard->build($schoolId, (int) $request->get('months', 6));
 
         return response()->json(['ok' => true, 'data' => $data]);
     }
 
-    protected function resolveSchoolId(Request $request): int
-    {
-        $schoolId = $request->attributes->get('schoolContextId');
-        if (! $schoolId) {
-            abort(403, 'School context required.');
-        }
-
-        return (int) $schoolId;
-    }
 }

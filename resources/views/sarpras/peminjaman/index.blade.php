@@ -106,11 +106,11 @@
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('sarpras.peminjaman.show', ['id' => $l->id]) }}"><i class="ri-eye-line me-2"></i>Detail</a></li>
                                             @if($l->status === 'pending')
-                                            <li><a class="dropdown-item text-success" href="{{ route('sarpras.peminjaman.approve', ['id' => $l->id]) }}" onclick="return confirm('Setuju?')"><i class="ri-check-line me-2"></i>Approve</a></li>
+                                            <li><a class="dropdown-item text-success" href="{{ route('sarpras.peminjaman.approve', ['id' => $l->id]) }}" data-confirm="Setuju?"><i class="ri-check-line me-2"></i>Approve</a></li>
                                             <li><a class="dropdown-item text-danger" href="{{ route('sarpras.peminjaman.reject', ['id' => $l->id]) }}"><i class="ri-close-line me-2"></i>Tolak</a></li>
                                             @endif
                                             @if($l->status === 'approved')
-                                            <li><a class="dropdown-item text-primary" href="{{ route('sarpras.peminjaman.handover', ['id' => $l->id]) }}" onclick="return confirm('Serahkan aset?')"><i class="ri-hand coin-line me-2"></i>Serahkan</a></li>
+                                            <li><a class="dropdown-item text-primary" href="{{ route('sarpras.peminjaman.handover', ['id' => $l->id]) }}" data-confirm="Serahkan aset?"><i class="ri-hand coin-line me-2"></i>Serahkan</a></li>
                                             @endif
                                             @if($l->status === 'dipinjam')
                                             <li>

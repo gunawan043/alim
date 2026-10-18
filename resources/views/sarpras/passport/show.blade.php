@@ -5,7 +5,7 @@
 @component('components.breadcrumb')
     @slot('li_1') Sarana Prasarana @endslot
     @slot('li_2') <a href="{{ route('sarpras.aset.index') }}">Aset</a> @endslot
-    @slot('li_3') <a href="{{ route('sarpras.aset.show', $asset->id) }}">Detail</a> @endslot
+    @slot('li_3') <a href="{{ route('sarpras.aset.show', ['id' => $asset->id]) }}">Detail</a> @endslot
     @slot('title') Passport @endslot
 @endcomponent
 
@@ -189,7 +189,7 @@
                         <h5 class="card-title mb-0">QR Code</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ route('sarpras.qr.generate', $asset->id) }}" alt="QR" class="img-fluid mb-3" style="max-height: 250px;">
+                        <img src="{{ route('sarpras.qr.generate', ['id' => $asset->id]) }}" alt="QR" class="img-fluid mb-3" style="max-height: 250px;">
                         <p class="text-muted">Scan untuk melihat passport aset</p>
                     </div>
                 </div>

@@ -72,7 +72,7 @@ class SarprasQRController extends SarprasBaseController
     /**
      * Generate QR untuk aset tertentu
      */
-    public function generateOne(Request $request, string $id)
+    public function generateOne(string $userId, Request $request, string $id)
     {
         $asset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($asset, $request);
@@ -113,12 +113,9 @@ class SarprasQRController extends SarprasBaseController
         // Generate QR codes inline using base64
         $qrData = [];
         foreach ($assets as $asset) {
-            $url = url('/sarpras/aset/'.$asset->id);
-            $qrImage = QrCode::format('png')
-                ->size(150)
-                ->margin(1)
-                ->generate($url);
-            $qrData[$asset->id] = 'data:image/png;base64,'.base64_encode($qrImage);
+            $url = url('/sarpras/scan/'.$asset->asset_code);
+            $qrImage = QrCode::format('svg')->size(150)->margin(1)->generate($url);
+            $qrData[$asset->id] = 'data:image/svg+xml;base64,'.base64_encode((string) $qrImage);
         }
 
         return view('sarpras.qr.print', compact('assets', 'qrData'));
@@ -148,18 +145,20 @@ class SarprasQRController extends SarprasBaseController
         // Generate QR codes
         $qrData = [];
         foreach ($assets as $asset) {
-            $url = url('/sarpras/aset/'.$asset->id);
-            $qrImage = QrCode::format('png')
-                ->size(120)
-                ->margin(1)
-                ->generate($url);
-            $qrData[$asset->id] = base64_encode($qrImage);
+            $url = url('/sarpras/scan/'.$asset->asset_code);
+            $qrImage = QrCode::format('svg')->size(120)->margin(1)->generate($url);
+            $qrData[$asset->id] = 'data:image/svg+xml;base64,'.base64_encode((string) $qrImage);
         }
 
-        $pdf = \PDF::loadView('sarpras.qr.pdf', compact('assets', 'qrData'));
+        $pdf = new \Dompdf\Dompdf(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
+        $pdf->loadHtml(view('sarpras.qr.pdf', compact('assets', 'qrData'))->render());
         $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
 
-        return $pdf->download('qr-labels-'.date('Ymd').'.pdf');
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="qr-labels-'.date('Ymd').'.pdf"',
+        ]);
     }
 
     /**
@@ -180,7 +179,10 @@ class SarprasQRController extends SarprasBaseController
         // Support both URL format and asset code format
         if ($code && str_contains($code, '/sarpras/aset/')) {
             $parts = explode('/sarpras/aset/', $code);
-            $id = end($parts);
+            $id = trim(end($parts));
+        } elseif ($code && str_contains($code, '/sarpras/scan/')) {
+            $parts = explode('/sarpras/scan/', $code);
+            $id = trim(end($parts));
         } else {
             $id = $code;
         }
@@ -189,7 +191,10 @@ class SarprasQRController extends SarprasBaseController
             return $this->fail('Kode QR tidak valid.', 422);
         }
 
-        $asset = Asset::with(['room', 'room.school', 'category', 'photos'])->find($id);
+        $asset = Asset::with(['room', 'room.school', 'category', 'photos'])
+            ->where('id', $id)
+            ->orWhere('asset_code', $id)
+            ->first();
 
         if (! $asset) {
             return $this->notFound('Aset tidak ditemukan.');
@@ -216,11 +221,12 @@ class SarprasQRController extends SarprasBaseController
                 $scan = QrScanHistory::create([
                     'asset_id' => $asset->id,
                     'scanned_by' => $request->user()->id,
-                    'scanned_at' => now(),
+                    'scan_type' => 'qr',
+                    'lookup_value' => (string) ($asset->asset_code ?: $code),
                     'source' => $request->header('X-QR-Source', 'mobile-scanner'),
                     'ip_address' => $request->ip(),
                     'user_agent' => substr((string) $request->userAgent(), 0, 255),
-                    'raw_code' => (string) $code,
+                    'purpose' => 'scan',
                 ]);
                 AssetQrScanned::dispatch($asset, $scan, $request->user());
             } catch (\Throwable $e) {
@@ -246,7 +252,7 @@ class SarprasQRController extends SarprasBaseController
     /**
      * Audit aset via QR scan
      */
-    public function audit(Request $request, string $id)
+    public function audit(string $userId, Request $request, string $id)
     {
         $asset = Asset::with(['room', 'room.school', 'category', 'photos', 'loans'])
             ->findOrFail($id);
@@ -258,7 +264,7 @@ class SarprasQRController extends SarprasBaseController
     /**
      * Submit audit hasil scan
      */
-    public function auditSubmit(QrAuditSubmitRequest $request, string $id)
+    public function auditSubmit(string $userId, QrAuditSubmitRequest $request, string $id)
     {
         $asset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($asset, $request);

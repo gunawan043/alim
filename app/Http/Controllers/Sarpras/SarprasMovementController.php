@@ -79,7 +79,7 @@ class SarprasMovementController extends SarprasBaseController
             ->with('success', 'Riwayat perpindahan berhasil dicatat.');
     }
 
-    public function byAsset(Request $request, string $assetId)
+    public function byAsset(string $userId, Request $request, string $assetId)
     {
         $asset = Asset::findOrFail($assetId);
         $this->authorizeAssetAccess($asset, $request);
@@ -92,7 +92,7 @@ class SarprasMovementController extends SarprasBaseController
         return view('sarpras.perpindahan.by-asset', compact('asset', 'histories'));
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $history = AssetLocationHistory::with(['asset', 'fromRoom', 'toRoom', 'mover', 'asset.room.building'])
             ->findOrFail($id);

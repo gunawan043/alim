@@ -110,7 +110,7 @@
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('sarpras.po.approve', $po) }}">
+            <form method="POST" action="{{ route('sarpras.po.approve', ['id' => $po]) }}">
                 @csrf
                 <div class="modal-header"><h5 class="modal-title">Setujui PO</h5></div>
                 <div class="modal-body">
@@ -131,7 +131,7 @@
 <div class="modal fade" id="cancelModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('sarpras.po.cancel', $po) }}">
+            <form method="POST" action="{{ route('sarpras.po.cancel', ['id' => $po]) }}">
                 @csrf
                 <div class="modal-header"><h5 class="modal-title">Batalkan PO</h5></div>
                 <div class="modal-body">
@@ -151,7 +151,7 @@
 <div class="modal fade" id="receiveModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST" action="{{ route('sarpras.po.receive', $po) }}">
+            <form method="POST" action="{{ route('sarpras.po.receive', ['id' => $po]) }}">
                 @csrf
                 <div class="modal-header"><h5 class="modal-title">Penerimaan Barang</h5></div>
                 <div class="modal-body">

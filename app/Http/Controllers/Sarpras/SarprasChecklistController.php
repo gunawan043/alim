@@ -48,7 +48,7 @@ class SarprasChecklistController extends SarprasBaseController
         return view('sarpras.checklist.index', compact('templates', 'categories', 'myInstances'));
     }
 
-    public function showTemplate(Request $request, string $templateId)
+    public function showTemplate(string $userId, Request $request, string $templateId)
     {
         $template = ChecklistTemplate::with(['items' => fn ($q) => $q->orderBy('sequence')])
             ->where('workflow_type', 'maintenance')
@@ -57,7 +57,7 @@ class SarprasChecklistController extends SarprasBaseController
         return view('sarpras.checklist.template', compact('template'));
     }
 
-    public function start(Request $request, string $scheduleId)
+    public function start(string $userId, Request $request, string $scheduleId)
     {
         $schedule = AssetMaintenanceSchedule::with(['asset.room.building', 'room.building', 'building', 'workUnit'])
             ->findOrFail($scheduleId);
@@ -74,7 +74,7 @@ class SarprasChecklistController extends SarprasBaseController
         return view('sarpras.checklist.start', compact('schedule', 'templates', 'suggested'));
     }
 
-    public function store(Request $request, string $scheduleId)
+    public function store(string $userId, Request $request, string $scheduleId)
     {
         $schedule = AssetMaintenanceSchedule::findOrFail($scheduleId);
         $this->authorizeMaintenanceAccess($schedule, $request);
@@ -89,11 +89,11 @@ class SarprasChecklistController extends SarprasBaseController
 
         $instance = $this->engine->start($schedule, $template, auth()->id());
 
-        return redirect()->route('sarpras.checklist.instance', $instance->id)
+        return redirect()->route('sarpras.checklist.instance', ['instanceId' => $instance->id])
             ->with('success', 'Checklist pemeliharaan dimulai.');
     }
 
-    public function showInstance(Request $request, string $instanceId)
+    public function showInstance(string $userId, Request $request, string $instanceId)
     {
         $instance = ChecklistInstance::with(['template.items', 'responses', 'executor', 'context'])
             ->findOrFail($instanceId);
@@ -108,7 +108,7 @@ class SarprasChecklistController extends SarprasBaseController
         return view('sarpras.checklist.instance', compact('instance', 'progress', 'responses', 'canEdit', 'context'));
     }
 
-    public function save(Request $request, string $instanceId)
+    public function save(string $userId, Request $request, string $instanceId)
     {
         $instance = ChecklistInstance::with(['template.items', 'responses'])->findOrFail($instanceId);
         $this->authorizeInstance($instance, $request);
@@ -119,7 +119,7 @@ class SarprasChecklistController extends SarprasBaseController
         return back()->with('success', 'Progres checklist disimpan.');
     }
 
-    public function complete(Request $request, string $instanceId)
+    public function complete(string $userId, Request $request, string $instanceId)
     {
         $instance = ChecklistInstance::with(['template.items', 'responses'])->findOrFail($instanceId);
         $this->authorizeInstance($instance, $request);
@@ -141,7 +141,7 @@ class SarprasChecklistController extends SarprasBaseController
             $repairMessage = $this->createRepairFromFindings($instance);
         }
 
-        return redirect()->route('sarpras.checklist.instance', $instance->id)
+        return redirect()->route('sarpras.checklist.instance', ['instanceId' => $instance->id])
             ->with('success', $instance->status === 'failed'
                 ? 'Checklist selesai dengan temuan penyimpangan. Tindak lanjuti item bertanda X.'.$repairMessage
                 : 'Checklist selesai tanpa temuan.');

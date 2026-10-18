@@ -91,7 +91,7 @@ class RepairVsReplaceService
     /**
      * Bulk evaluate all active assets in a school — used by artisan command.
      */
-    public function evaluateSchool(int $schoolId): int
+    public function evaluateSchool(string $schoolId): int
     {
         $count = 0;
         Asset::query()

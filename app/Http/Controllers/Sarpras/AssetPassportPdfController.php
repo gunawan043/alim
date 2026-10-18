@@ -11,7 +11,7 @@ class AssetPassportPdfController extends SarprasBaseController
 {
     public function __construct(private readonly AssetPassportService $passportService) {}
 
-    public function download(Request $request, string $uuid)
+    public function download(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::with([
             'room', 'room.building',
@@ -38,7 +38,7 @@ class AssetPassportPdfController extends SarprasBaseController
         return $pdf->download($filename);
     }
 
-    public function stream(Request $request, string $uuid)
+    public function stream(string $userId, Request $request, string $uuid)
     {
         $asset = Asset::with([
             'room', 'room.building',

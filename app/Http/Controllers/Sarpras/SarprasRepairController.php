@@ -58,7 +58,7 @@ class SarprasRepairController extends SarprasBaseController
         return view('sarpras.repair.index', compact('repairs', 'stats', 'technicians'));
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $repair = RepairRequest::with([
             'asset.room.building', 'asset.workUnit', 'reportedBy', 'assignedTo',
@@ -79,7 +79,7 @@ class SarprasRepairController extends SarprasBaseController
         return view('sarpras.repair.show', compact('repair', 'technicians', 'canManage'));
     }
 
-    public function storeWorkOrder(Request $request, string $id)
+    public function storeWorkOrder(string $userId, Request $request, string $id)
     {
         $this->authorizeCentralSarpras();
 
@@ -120,7 +120,7 @@ class SarprasRepairController extends SarprasBaseController
             \Log::warning('Notifikasi work order perbaikan gagal: '.$e->getMessage());
         }
 
-        return redirect()->route('sarpras.repair.show', $repair->id)
+        return redirect()->route('sarpras.repair.show', ['repairId' => $repair->id])
             ->with('success', 'Work order '.$workOrder->order_number.' dibuat dan petugas sudah ditugaskan.');
     }
 }

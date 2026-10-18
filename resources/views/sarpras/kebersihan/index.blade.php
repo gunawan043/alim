@@ -39,7 +39,7 @@
         <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Tanggal</th><th>Area</th><th>Petugas</th><th>Kondisi</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
             @forelse($recentReports as $report)
                 @php $tone = ['submitted'=>'warning','verified'=>'success','rejected'=>'danger'][$report->status] ?? 'secondary'; @endphp
-                <tr><td class="small">{{ $report->report_date?->format('d/m/Y') }}</td><td class="small">{{ $report->area?->name }}</td><td class="small">{{ $report->officer?->name }}</td><td class="small">{{ ucfirst(str_replace('_',' ',$report->overall_condition)) }}</td><td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ ucfirst($report->status) }}</span></td><td class="text-end"><a href="{{ route('sarpras.kebersihan.report.show', $report->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td></tr>
+                <tr><td class="small">{{ $report->report_date?->format('d/m/Y') }}</td><td class="small">{{ $report->area?->name }}</td><td class="small">{{ $report->officer?->name }}</td><td class="small">{{ ucfirst(str_replace('_',' ',$report->overall_condition)) }}</td><td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ ucfirst($report->status) }}</span></td><td class="text-end"><a href="{{ route('sarpras.kebersihan.report.show', ['reportId' => $report->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td></tr>
             @empty
                 <x-empty-state colspan="6" title="Belum ada laporan" message="Laporan harian petugas akan tampil di sini." />
             @endforelse

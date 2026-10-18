@@ -162,18 +162,16 @@ class SarprasReportController extends SarprasBaseController
             $query->where('condition', $request->condition);
         }
 
-        $assets = $query->orderBy('condition')->orderBy('asset_name')->get();
-        $schools = $viewAll ? School::orderBy('name')->get() : collect();
-
-        // Summary
         $summary = [
             'baik' => (clone $query)->where('condition', 'baik')->count(),
             'rusak_ringan' => (clone $query)->where('condition', 'rusak_ringan')->count(),
             'rusak_sedang' => (clone $query)->where('condition', 'rusak_sedang')->count(),
             'rusak_berat' => (clone $query)->where('condition', 'rusak_berat')->count(),
             'hilang' => (clone $query)->where('condition', 'hilang')->count(),
-            'total' => $assets->count(),
+            'total' => (clone $query)->count(),
         ];
+        $assets = $query->orderBy('condition')->orderBy('asset_name')->paginate(30)->withQueryString();
+        $schools = $viewAll ? School::orderBy('name')->get() : collect();
 
         return view('sarpras.laporan.kondisi-aset', compact('assets', 'schools', 'summary'));
     }

@@ -71,7 +71,7 @@
                                     <a href="{{ route('sarpras.user.aset.edit', ['userId' => $userId, 'id' => $a->id]) }}" class="btn btn-sm btn-soft-warning py-0 px-1">
                                         <i class="ri-pencil-line"></i>
                                     </a>
-                                    <form action="{{ route('sarpras.user.aset.destroy', ['userId' => $userId, 'id' => $a->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus aset ini?')">
+                                    <form action="{{ route('sarpras.user.aset.destroy', ['userId' => $userId, 'id' => $a->id]) }}" method="POST" class="d-inline" data-confirm="Hapus aset ini?">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-soft-danger py-0 px-1"><i class="ri-delete-bin-line"></i></button>
                                     </form>

@@ -55,7 +55,7 @@
                 <h5 class="card-title mb-0"><i class="ri-shield-check-line me-1"></i> Keputusan PIC</h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('sarpras.pic.verify', $repair->id) }}" method="POST">
+                <form action="{{ route('sarpras.pic.verify', ['id' => $repair->id]) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label">Rekomendasi <span class="text-danger">*</span></label>

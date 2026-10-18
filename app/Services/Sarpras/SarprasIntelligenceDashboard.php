@@ -11,7 +11,7 @@ class SarprasIntelligenceDashboard
 {
     public function __construct(private readonly PredictiveMaintenanceService $predictive) {}
 
-    public function build(int $schoolId, int $months = 6): array
+    public function build(string $schoolId, int $months = 6): array
     {
         return [
             'overview' => $this->overview($schoolId),
@@ -26,7 +26,7 @@ class SarprasIntelligenceDashboard
         ];
     }
 
-    public function overview(int $schoolId): array
+    public function overview(string $schoolId): array
     {
         $assets = Asset::where('school_id', $schoolId);
 
@@ -38,11 +38,23 @@ class SarprasIntelligenceDashboard
         ];
     }
 
-    public function kpis(int $schoolId): array
+    public function kpis(string $schoolId): array
     {
-        $open = RepairRequest::where('school_id', $schoolId)->whereIn('status', ['pending', 'approved', 'in_progress'])->count();
-        $closed30 = RepairRequest::where('school_id', $schoolId)->where('status', 'resolved')->where('resolved_at', '>=', now()->subDays(30))->count();
-        $spend30 = (float) DB::table('repair_cost_history')->where('school_id', $schoolId)->where('created_at', '>=', now()->subDays(30))->sum('amount');
+        $open = RepairRequest::whereHas('asset', fn ($q) => $q->where('school_id', $schoolId))
+            ->whereIn('status', [
+                RepairRequest::STATUS_VERIFICATION_PENDING,
+                RepairRequest::STATUS_APPROVAL_PENDING,
+                RepairRequest::STATUS_EXECUTION_PENDING,
+                RepairRequest::STATUS_STARTED,
+            ])->count();
+        $closed30 = RepairRequest::whereHas('asset', fn ($q) => $q->where('school_id', $schoolId))
+            ->whereIn('status', [RepairRequest::STATUS_COMPLETED, RepairRequest::STATUS_CLOSED])
+            ->where('closed_at', '>=', now()->subDays(30))->count();
+        $spend30 = (float) DB::table('repair_cost_histories as r')
+            ->join('assets as a', 'a.id', '=', 'r.asset_id')
+            ->where('a.school_id', $schoolId)
+            ->where('r.incurred_date', '>=', now()->subDays(30))
+            ->sum('r.amount');
 
         return [
             'open_repairs' => $open,
@@ -52,16 +64,16 @@ class SarprasIntelligenceDashboard
         ];
     }
 
-    public function tcoSnapshot(int $schoolId): array
+    public function tcoSnapshot(string $schoolId): array
     {
         $tco = DB::table('asset_cost_snapshots as s')
             ->join('assets as a', 'a.id', '=', 's.asset_id')
             ->where('a.school_id', $schoolId)
-            ->selectRaw('COALESCE(SUM(s.acquisition_cost_total), 0) as acquisition')
-            ->selectRaw('COALESCE(SUM(s.maintenance_cost_total), 0) as maintenance')
-            ->selectRaw('COALESCE(SUM(s.repair_cost_total), 0) as repair')
-            ->selectRaw('COALESCE(SUM(s.downtime_cost_total), 0) as downtime')
-            ->selectRaw('COALESCE(SUM(s.tco_total), 0) as total')
+            ->selectRaw('COALESCE(SUM(s.purchase_cost), 0) as acquisition')
+            ->selectRaw('COALESCE(SUM(s.maintenance_cost), 0) as maintenance')
+            ->selectRaw('COALESCE(SUM(s.repair_cost), 0) as repair')
+            ->selectRaw('COALESCE(SUM(s.sparepart_cost + s.operational_cost), 0) as downtime')
+            ->selectRaw('COALESCE(SUM(s.total_cost), 0) as total')
             ->first();
 
         return [
@@ -73,12 +85,11 @@ class SarprasIntelligenceDashboard
         ];
     }
 
-    public function rvrDistribution(int $schoolId): array
+    public function rvrDistribution(string $schoolId): array
     {
-        $rows = DB::table('repair_vs_replace_evaluations as e')
+        $rows = DB::table('asset_recommendations as e')
             ->join('assets as a', 'a.id', '=', 'e.asset_id')
             ->where('a.school_id', $schoolId)
-            ->where('e.is_current', true)
             ->select('e.recommendation', DB::raw('COUNT(*) as count'))
             ->groupBy('e.recommendation')
             ->get();
@@ -91,7 +102,7 @@ class SarprasIntelligenceDashboard
         return $distribution;
     }
 
-    public function predictiveSummary(int $schoolId): array
+    public function predictiveSummary(string $schoolId): array
     {
         $predictions = $this->predictive->predictForSchool($schoolId);
         $byLevel = ['LOW' => 0, 'MEDIUM' => 0, 'HIGH' => 0, 'CRITICAL' => 0];
@@ -107,12 +118,13 @@ class SarprasIntelligenceDashboard
         ];
     }
 
-    public function spendTrend(int $schoolId, int $months): array
+    public function spendTrend(string $schoolId, int $months): array
     {
-        $rows = DB::table('repair_cost_history')
-            ->where('school_id', $schoolId)
-            ->where('created_at', '>=', now()->subMonths($months))
-            ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, COALESCE(SUM(amount),0) as total")
+        $rows = DB::table('repair_cost_histories as r')
+            ->join('assets as a', 'a.id', '=', 'r.asset_id')
+            ->where('a.school_id', $schoolId)
+            ->where('r.incurred_date', '>=', now()->subMonths($months))
+            ->selectRaw("DATE_FORMAT(r.incurred_date, '%Y-%m') as month, COALESCE(SUM(r.amount),0) as total")
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -123,10 +135,10 @@ class SarprasIntelligenceDashboard
         ])->toArray();
     }
 
-    public function categoryBreakdown(int $schoolId): array
+    public function categoryBreakdown(string $schoolId): array
     {
         return DB::table('assets as a')
-            ->leftJoin('asset_categories as c', 'c.id', '=', 'a.category_id')
+            ->leftJoin('asset_categories as c', 'c.id', '=', 'a.asset_category_id')
             ->where('a.school_id', $schoolId)
             ->groupBy('c.name')
             ->selectRaw('c.name as category, COUNT(*) as count')
@@ -135,18 +147,18 @@ class SarprasIntelligenceDashboard
             ->toArray();
     }
 
-    protected function avgResolutionDays(int $schoolId): float
+    protected function avgResolutionDays(string $schoolId): float
     {
-        $resolved = RepairRequest::where('school_id', $schoolId)
-            ->whereNotNull('resolved_at')
-            ->where('resolved_at', '>=', now()->subDays(90))
-            ->get(['created_at', 'resolved_at']);
+        $resolved = RepairRequest::whereHas('asset', fn ($q) => $q->where('school_id', $schoolId))
+            ->whereNotNull('closed_at')
+            ->where('closed_at', '>=', now()->subDays(90))
+            ->get(['created_at', 'closed_at']);
 
         if ($resolved->isEmpty()) {
             return 0;
         }
 
-        $total = $resolved->sum(fn ($r) => Carbon::parse($r->created_at)->diffInDays($r->resolved_at));
+        $total = $resolved->sum(fn ($r) => Carbon::parse($r->created_at)->diffInDays($r->closed_at));
 
         return round($total / $resolved->count(), 1);
     }

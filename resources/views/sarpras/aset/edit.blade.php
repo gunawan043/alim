@@ -240,7 +240,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="ri-loader-4-line me-1"></i> Menyimpan...';
 
-        fetch('/sarpras/kategori', {
+        fetch('{{ route('sarpras.kategori.store') }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,

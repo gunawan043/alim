@@ -32,7 +32,7 @@ class SarprasKepalaApprovalController extends Controller
         return view('sarpras.kepala.index', compact('pending'));
     }
 
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $order = WorkOrder::with(['asset', 'technician', 'repairRequest', 'progressNotes.user'])
             ->findOrFail($id);
@@ -40,7 +40,7 @@ class SarprasKepalaApprovalController extends Controller
         return view('sarpras.kepala.show', compact('order'));
     }
 
-    public function approve(Request $request, string $id): RedirectResponse
+    public function approve(string $userId, Request $request, string $id): RedirectResponse
     {
         $order = WorkOrder::findOrFail($id);
 

@@ -103,7 +103,7 @@ class SarprasCleaningController extends SarprasBaseController
         return view('sarpras.kebersihan.programs', compact('programs', 'year', 'users', 'areas', 'buildings', 'canManage'));
     }
 
-    public function toggleProgramCheck(Request $request, string $programId)
+    public function toggleProgramCheck(string $userId, Request $request, string $programId)
     {
         abort_unless($this->cleaningCanManage(), 403, 'Hanya koordinator yang dapat mencentang program.');
 
@@ -158,7 +158,7 @@ class SarprasCleaningController extends SarprasBaseController
             ->when($request->filled('date'), fn ($q) => $q->whereDate('report_date', $request->date));
     }
 
-    public function showArea(Request $request, string $areaId)
+    public function showArea(string $userId, Request $request, string $areaId)
     {
         $area = CleaningArea::with([
             'building', 'room', 'coordinator',
@@ -207,7 +207,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Area kerja kebersihan berhasil ditambahkan.');
     }
 
-    public function updateArea(Request $request, string $areaId)
+    public function updateArea(string $userId, Request $request, string $areaId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $area = CleaningArea::findOrFail($areaId);
@@ -235,7 +235,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Area kerja diperbarui.');
     }
 
-    public function toggleArea(Request $request, string $areaId)
+    public function toggleArea(string $userId, Request $request, string $areaId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $area = CleaningArea::findOrFail($areaId);
@@ -244,7 +244,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Status area kerja diperbarui.');
     }
 
-    public function storeTask(Request $request, string $areaId)
+    public function storeTask(string $userId, Request $request, string $areaId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $area = CleaningArea::findOrFail($areaId);
@@ -267,7 +267,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Uraian pekerjaan ditambahkan.');
     }
 
-    public function updateTask(Request $request, string $taskId)
+    public function updateTask(string $userId, Request $request, string $taskId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $task = CleaningTask::findOrFail($taskId);
@@ -285,7 +285,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Uraian pekerjaan diperbarui.');
     }
 
-    public function toggleTask(Request $request, string $taskId)
+    public function toggleTask(string $userId, Request $request, string $taskId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $task = CleaningTask::findOrFail($taskId);
@@ -294,7 +294,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Status uraian pekerjaan diperbarui.');
     }
 
-    public function storeAssignment(Request $request, string $areaId)
+    public function storeAssignment(string $userId, Request $request, string $areaId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $area = CleaningArea::findOrFail($areaId);
@@ -324,7 +324,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Petugas area berhasil ditugaskan.');
     }
 
-    public function toggleAssignment(Request $request, string $assignmentId)
+    public function toggleAssignment(string $userId, Request $request, string $assignmentId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $assignment = CleaningAssignment::findOrFail($assignmentId);
@@ -361,7 +361,7 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Program kebersihan berkala berhasil ditambahkan.');
     }
 
-    public function toggleProgram(Request $request, string $programId)
+    public function toggleProgram(string $userId, Request $request, string $programId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $program = CleaningProgram::findOrFail($programId);
@@ -499,11 +499,11 @@ class SarprasCleaningController extends SarprasBaseController
             return $report;
         });
 
-        return redirect()->route('sarpras.kebersihan.report.show', $report->id)
+        return redirect()->route('sarpras.kebersihan.report.show', ['reportId' => $report->id])
             ->with('success', 'Laporan kebersihan berhasil dikirim.');
     }
 
-    public function showReport(Request $request, string $reportId)
+    public function showReport(string $userId, Request $request, string $reportId)
     {
         $report = CleaningReport::with([
             'area.building', 'area.room', 'officer', 'substituteFor', 'verifier', 'items.task',
@@ -520,7 +520,7 @@ class SarprasCleaningController extends SarprasBaseController
         return view('sarpras.kebersihan.report', compact('report', 'canVerify'));
     }
 
-    public function verifyReport(Request $request, string $reportId)
+    public function verifyReport(string $userId, Request $request, string $reportId)
     {
         abort_unless($this->cleaningCanManage(), 403);
         $report = CleaningReport::findOrFail($reportId);

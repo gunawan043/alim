@@ -74,7 +74,7 @@ class SarprasLoanController extends SarprasBaseController
             ->with('success', 'Permintaan peminjaman berhasil diajukan.');
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::with(['asset', 'borrower', 'approver', 'returnedToUser'])->findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);
@@ -82,7 +82,7 @@ class SarprasLoanController extends SarprasBaseController
         return view('sarpras.peminjaman.show', compact('loan'));
     }
 
-    public function approve(Request $request, string $id)
+    public function approve(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);
@@ -101,7 +101,7 @@ class SarprasLoanController extends SarprasBaseController
         return back()->with('success', 'Peminjaman berhasil disetujui.');
     }
 
-    public function reject(Request $request, string $id)
+    public function reject(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);
@@ -120,7 +120,7 @@ class SarprasLoanController extends SarprasBaseController
         return back()->with('success', 'Peminjaman ditolak.');
     }
 
-    public function handover(Request $request, string $id)
+    public function handover(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);
@@ -142,7 +142,7 @@ class SarprasLoanController extends SarprasBaseController
         return back()->with('success', 'Aset berhasil diserahkan ke peminjam.');
     }
 
-    public function return(Request $request, string $id)
+    public function return(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);
@@ -178,7 +178,7 @@ class SarprasLoanController extends SarprasBaseController
             ->with('success', 'Aset berhasil dikembalikan.');
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(string $userId, Request $request, string $id)
     {
         $loan = AssetLoan::findOrFail($id);
         $this->authorizeLoanAccess($loan, $request);

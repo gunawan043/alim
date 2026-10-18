@@ -18,6 +18,10 @@ class UserDamageReportStoreRequest extends FormRequest
             'damage_level' => 'required|in:ringan,sedang,berat',
             'description' => 'required|string',
             'notes' => 'nullable|string',
+            'photos' => 'nullable|array|max:5',
+            'photos.*' => 'image|max:8192',
+            'photo_urls' => 'nullable|array|max:5',
+            'photo_urls.*' => 'nullable|url|max:2000',
         ];
     }
 }

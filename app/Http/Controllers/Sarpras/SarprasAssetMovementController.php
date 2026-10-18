@@ -53,7 +53,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         ], 201);
     }
 
-    public function show(string $id)
+    public function show(string $userId, string $id)
     {
         $movement = AssetMovement::with([
             'asset', 'fromRoom', 'toRoom', 'requester', 'approver', 'carrier', 'receiver', 'verifier',
@@ -63,7 +63,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return view('sarpras.movements.show', compact('movement'));
     }
 
-    public function approve(Request $request, string $id): JsonResponse
+    public function approve(string $userId, Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
             'notes' => 'nullable|string',
@@ -76,7 +76,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function reject(Request $request, string $id): JsonResponse
+    public function reject(string $userId, Request $request, string $id): JsonResponse
     {
         $data = $request->validate(['reason' => 'required|string']);
 
@@ -86,7 +86,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function startTransit(Request $request, string $id): JsonResponse
+    public function startTransit(string $userId, Request $request, string $id): JsonResponse
     {
         $movement = AssetMovement::findOrFail($id);
         $updated = $this->workflow->startTransit($movement, Auth::user(), $request->all());
@@ -94,7 +94,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function confirmReceived(Request $request, string $id): JsonResponse
+    public function confirmReceived(string $userId, Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
             'condition_after' => 'nullable|string',
@@ -106,7 +106,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function verify(Request $request, string $id): JsonResponse
+    public function verify(string $userId, Request $request, string $id): JsonResponse
     {
         $data = $request->validate(['notes' => 'nullable|string']);
 
@@ -116,7 +116,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function complete(string $id): JsonResponse
+    public function complete(string $userId, string $id): JsonResponse
     {
         $movement = AssetMovement::findOrFail($id);
         $updated = $this->workflow->complete($movement, Auth::user());
@@ -124,7 +124,7 @@ class SarprasAssetMovementController extends SarprasBaseController
         return response()->json(['success' => true, 'movement' => $updated]);
     }
 
-    public function snapshot(string $id): JsonResponse
+    public function snapshot(string $userId, string $id): JsonResponse
     {
         $movement = AssetMovement::with(['asset', 'approvals.user', 'photos'])
             ->findOrFail($id);

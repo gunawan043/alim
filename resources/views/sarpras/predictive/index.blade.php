@@ -45,7 +45,7 @@
                 @endphp
                 <tr>
                     <td><code>{{ $p['asset_code'] }}</code></td>
-                    <td><a href="{{ route('sarpras.predictive.show', $p['asset_id']) }}">{{ $p['asset_name'] }}</a></td>
+                    <td><a href="{{ route('sarpras.predictive.show', ['asset' => $p['asset_id']]) }}">{{ $p['asset_name'] }}</a></td>
                     <td><span class="badge bg-{{ $color }}">{{ $p['risk_level'] }}</span></td>
                     <td class="text-center">{{ round($p['mtbf_days']) }} hari</td>
                     <td class="text-center">{{ round($p['mttr_days']) }} hari</td>

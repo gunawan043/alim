@@ -41,7 +41,7 @@
                 <h5 class="card-title mb-0">Detail Peminjaman</h5>
                 <div class="d-flex gap-1 flex-wrap">
                     @if($loan->status === 'pending')
-                        <a href="{{ route('sarpras.peminjaman.approve', ['id' => $loan->id]) }}" class="btn btn-success btn-sm" onclick="return confirm('Setuju dengan peminjaman ini?')">
+                        <a href="{{ route('sarpras.peminjaman.approve', ['id' => $loan->id]) }}" class="btn btn-success btn-sm" data-confirm="Setuju dengan peminjaman ini?">
                             <i class="ri-check-line me-1"></i> Approve
                         </a>
                         <a href="{{ route('sarpras.peminjaman.reject', ['id' => $loan->id]) }}" class="btn btn-outline-danger btn-sm">
@@ -49,12 +49,12 @@
                         </a>
                     @endif
                     @if($loan->status === 'approved')
-                        <a href="{{ route('sarpras.peminjaman.handover', ['id' => $loan->id]) }}" class="btn btn-primary btn-sm" onclick="return confirm('Serahkan aset ke peminjam sekarang?')">
+                        <a href="{{ route('sarpras.peminjaman.handover', ['id' => $loan->id]) }}" class="btn btn-primary btn-sm" data-confirm="Serahkan aset ke peminjam sekarang?">
                             <i class="ri-hand-coin-line me-1"></i> Serahkan Aset
                         </a>
                     @endif
                     @if(!in_array($loan->status, ['dipinjam']))
-                        <form action="{{ route('sarpras.peminjaman.destroy', ['id' => $loan->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data peminjaman ini?')">
+                        <form action="{{ route('sarpras.peminjaman.destroy', ['id' => $loan->id]) }}" method="POST" class="d-inline" data-confirm="Hapus data peminjaman ini?">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="ri-delete-bin-line"></i></button>
                         </form>

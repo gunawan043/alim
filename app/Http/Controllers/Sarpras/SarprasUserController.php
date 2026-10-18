@@ -109,7 +109,7 @@ class SarprasUserController extends SarprasBaseController
             ->with('success', 'Ruang berhasil ditambahkan.');
     }
 
-    public function updateRoom(UserRoomStoreRequest $request, string $id)
+    public function updateRoom(string $userId, UserRoomStoreRequest $request, string $id)
     {
         $room = AssetRoom::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
@@ -129,7 +129,7 @@ class SarprasUserController extends SarprasBaseController
             ->with('success', 'Ruang berhasil diperbarui.');
     }
 
-    public function destroyRoom(Request $request, string $id)
+    public function destroyRoom(string $userId, Request $request, string $id)
     {
         $room = AssetRoom::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
@@ -176,15 +176,36 @@ class SarprasUserController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
         $user = auth()->user();
-        $reports = AssetDamageReport::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('reported_by', $user->id)
-            ->with('asset')
-            ->orderBy('created_at', 'desc')->get();
-        $damagedAssets = Asset::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('is_active', true)->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])
-            ->with('room.building')->orderBy('asset_name')->get();
 
-        return view('sarpras.user.kerusakan.index', compact('reports', 'damagedAssets', 'userId'));
+        $query = AssetDamageReport::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('reported_by', $user->id)
+            ->with(['asset.room.building', 'reviewer'])
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->search;
+                $q->where(fn ($sub) => $sub->where('report_number', 'like', "%{$s}%")
+                    ->orWhere('description', 'like', "%{$s}%")
+                    ->orWhereHas('asset', fn ($a) => $a->where('asset_name', 'like', "%{$s}%")->orWhere('asset_code', 'like', "%{$s}%")));
+            })
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('damage_level'), fn ($q) => $q->where('damage_level', $request->damage_level));
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'progress' => (clone $query)->whereIn('status', ['reviewed', 'scheduled', 'in_progress'])->count(),
+            'completed' => (clone $query)->where('status', 'completed')->count(),
+        ];
+        $reports = $query->orderByDesc('created_at')->paginate(15)->withQueryString();
+
+        $damagedQuery = Asset::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])
+            ->with('room.building');
+        if (! $this->isCentralSarpras()) {
+            $damagedQuery = $this->scopeToResponsibility($damagedQuery, $request);
+        }
+        $damagedAssets = $damagedQuery->orderBy('asset_name')->get();
+
+        return view('sarpras.user.kerusakan.index', compact('reports', 'damagedAssets', 'userId', 'stats'));
     }
 
     public function createKerusakan(Request $request)
@@ -231,7 +252,7 @@ class SarprasUserController extends SarprasBaseController
         return view('sarpras.user.pengadaan.create', compact('userId'));
     }
 
-    public function showRoom(Request $request, string $id)
+    public function showRoom(string $userId, Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
@@ -288,7 +309,7 @@ class SarprasUserController extends SarprasBaseController
         return view('sarpras.user.aset.create', compact('categories', 'rooms', 'buildings'));
     }
 
-    public function showAsset(Request $request, string $id)
+    public function showAsset(string $userId, Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
@@ -343,7 +364,7 @@ class SarprasUserController extends SarprasBaseController
             ->with('success', 'Aset berhasil ditambahkan dan menunggu verifikasi Unit Rumah Tangga.');
     }
 
-    public function updateAsset(UserAssetUpdateRequest $request, string $id)
+    public function updateAsset(string $userId, UserAssetUpdateRequest $request, string $id)
     {
         $asset = Asset::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
@@ -376,7 +397,7 @@ class SarprasUserController extends SarprasBaseController
             ->with('success', 'Aset berhasil diperbarui.');
     }
 
-    public function editAsset(Request $request, string $id)
+    public function editAsset(string $userId, Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
@@ -399,7 +420,7 @@ class SarprasUserController extends SarprasBaseController
         return view('sarpras.user.aset.edit', compact('asetData', 'categories', 'rooms', 'buildings', 'userId'));
     }
 
-    public function destroyAsset(Request $request, string $id)
+    public function destroyAsset(string $userId, Request $request, string $id)
     {
         $asset = Asset::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
@@ -420,7 +441,7 @@ class SarprasUserController extends SarprasBaseController
     // ============================================================
     // IMPORT ASET
     // ============================================================
-    public function importForm(Request $request, ?string $roomId = null)
+    public function importForm(string $userId, Request $request, ?string $roomId = null)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
@@ -439,7 +460,7 @@ class SarprasUserController extends SarprasBaseController
         return view('sarpras.user.import', compact('rooms', 'categories', 'schoolId', 'forcedRoom', 'userId'));
     }
 
-    public function importProcess(UserAssetImportRequest $request, ?string $roomId = null)
+    public function importProcess(string $userId, UserAssetImportRequest $request, ?string $roomId = null)
     {
 
         $schoolId = $request->attributes->get('schoolContextId');
@@ -501,7 +522,7 @@ class SarprasUserController extends SarprasBaseController
         }
     }
 
-    public function importTemplate(Request $request)
+    public function importTemplate(string $userId, Request $request)
     {
         $exporter = new AssetTemplateExport;
 
@@ -523,6 +544,16 @@ class SarprasUserController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
         $school = $schoolId ? School::find($schoolId) : null;
 
+        $photos = [];
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                $photos[] = $photo->store('sarpras/damage-reports', 'public');
+            }
+        }
+        foreach (($validated['photo_urls'] ?? []) as $url) {
+            if ($url) $photos[] = $url;
+        }
+
         $report = AssetDamageReport::create([
             'report_number' => AssetDamageReport::generateReportNumber(),
             'asset_id' => $validated['asset_id'],
@@ -530,8 +561,9 @@ class SarprasUserController extends SarprasBaseController
             'damage_level' => $validated['damage_level'],
             'description' => $validated['description'],
             'reporter_notes' => $validated['notes'] ?? null,
+            'photos' => $photos ?: null,
             'school_id' => $schoolId,
-            'work_unit_id' => $school?->work_unit_id,
+            'work_unit_id' => $school?->work_unit_id ?? $reportedAsset->work_unit_id,
             'status' => 'pending',
         ]);
 

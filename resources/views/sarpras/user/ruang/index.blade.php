@@ -57,7 +57,7 @@
                                     <a href="{{ route('sarpras.user.ruang.show', ['userId' => $userId, 'id' => $r->id]) }}" class="btn btn-sm btn-soft-primary py-0 px-1">
                                         <i class="ri-eye-line"></i>
                                     </a>
-                                    <form action="{{ route('sarpras.user.ruang.destroy', ['userId' => $userId, 'id' => $r->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus ruang ini?')">
+                                    <form action="{{ route('sarpras.user.ruang.destroy', ['userId' => $userId, 'id' => $r->id]) }}" method="POST" class="d-inline" data-confirm="Hapus ruang ini?">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-soft-danger py-0 px-1" {{ $r->assets->count() > 0 ? 'disabled title=Ruang memiliki aset' : '' }}>
                                             <i class="ri-delete-bin-line"></i>

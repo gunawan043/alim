@@ -90,7 +90,7 @@ class SarprasVendorController extends Controller
         }
     }
 
-    public function show(Vendor $vendor)
+    public function show(string $userId, Vendor $vendor)
     {
         $vendor->load([
             'category', 'contacts', 'addresses', 'banks', 'tax',
@@ -109,7 +109,7 @@ class SarprasVendorController extends Controller
         ]);
     }
 
-    public function edit(Vendor $vendor)
+    public function edit(string $userId, Vendor $vendor)
     {
         return view('sarpras.vendor.edit', [
             'vendor' => $vendor->load(['contacts', 'addresses', 'banks', 'tax']),
@@ -117,20 +117,20 @@ class SarprasVendorController extends Controller
         ]);
     }
 
-    public function update(VendorStoreRequest $request, Vendor $vendor)
+    public function update(string $userId, VendorStoreRequest $request, Vendor $vendor)
     {
         try {
             DB::transaction(function () use ($request, $vendor) {
                 $vendor->update($request->validated());
             });
 
-            return redirect()->route('sarpras.vendor.show', $vendor)->with('success', 'Vendor diperbarui');
+            return redirect()->route('sarpras.vendor.show', ['id' => $vendor])->with('success', 'Vendor diperbarui');
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'Gagal: '.$e->getMessage());
         }
     }
 
-    public function destroy(Vendor $vendor)
+    public function destroy(string $userId, Vendor $vendor)
     {
         try {
             if ($vendor->purchaseOrders()->whereIn('status', ['received', 'partial', 'approved'])->exists()) {

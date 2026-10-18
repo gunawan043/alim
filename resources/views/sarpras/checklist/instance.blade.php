@@ -19,7 +19,7 @@
                     <div class="d-flex align-items-center gap-2 flex-wrap"><h4 class="mb-0">{{ $instance->template?->name }}</h4><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $statusLabel }}</span></div>
                     <div class="text-muted small mt-1">
                         @if($context instanceof \App\Models\AssetMaintenanceSchedule)
-                            <a href="{{ route('sarpras.pemeliharaan.schedule.show', $context->id) }}">{{ $context->maintenance_type }}</a>
+                            <a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $context->id]) }}">{{ $context->maintenance_type }}</a>
                             · {{ $context->next_maintenance_date?->format('d/m/Y') }}
                         @else
                             {{ class_basename($instance->context_type) }}
@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('sarpras.checklist.save', $instance->id) }}">
+    <form method="POST" action="{{ route('sarpras.checklist.save', ['instanceId' => $instance->id]) }}">
         @csrf
         <div class="card">
             <div class="card-header"><h5 class="card-title mb-0"><i class="ri-list-check-2 me-1"></i>Item Pemeriksaan</h5></div>
@@ -81,7 +81,7 @@
                     <div class="small text-muted">Wajib diisi semua sebelum menyelesaikan checklist.</div>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-primary"><i class="ri-save-line me-1"></i>Simpan Progres</button>
-                        <button class="btn btn-success" formaction="{{ route('sarpras.checklist.complete', $instance->id) }}"><i class="ri-check-double-line me-1"></i>Selesaikan Checklist</button>
+                        <button class="btn btn-success" formaction="{{ route('sarpras.checklist.complete', ['instanceId' => $instance->id]) }}"><i class="ri-check-double-line me-1"></i>Selesaikan Checklist</button>
                     </div>
                 </div>
             @endif

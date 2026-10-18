@@ -36,7 +36,7 @@ class PredictiveMaintenanceService
         ];
     }
 
-    public function predictForSchool(int $schoolId): array
+    public function predictForSchool(string $schoolId): array
     {
         $assets = Asset::where('school_id', $schoolId)->get();
         $predictions = [];
@@ -53,7 +53,7 @@ class PredictiveMaintenanceService
             ->toArray();
     }
 
-    public function highRiskAssets(int $schoolId, int $limit = 20): array
+    public function highRiskAssets(string $schoolId, int $limit = 20): array
     {
         return collect($this->predictForSchool($schoolId))
             ->whereIn('risk_level', ['HIGH', 'CRITICAL'])

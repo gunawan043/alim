@@ -34,7 +34,7 @@ class SarprasNotificationService
                 'reference_type' => 'repair_request',
                 'reference_id' => $subject->id,
                 'reference_code' => $subject->request_number,
-                'action_url' => route('sarpras.repair.show', $subject->id),
+                'action_url' => route('sarpras.repair.show', ['repairId' => $subject->id]),
                 'action_text' => 'Buka Antrean Perbaikan',
             ],
             priority: $subject->priority ?? 'medium'
@@ -58,7 +58,7 @@ class SarprasNotificationService
                 'reference_type' => 'work_order',
                 'reference_id' => $wo->id,
                 'reference_code' => $wo->order_number,
-                'action_url' => route('sarpras.teknisi.show', $wo->id),
+                'action_url' => route('sarpras.teknisi.show', ['orderId' => $wo->id]),
                 'action_text' => 'Buka Work Order',
             ],
             priority: $wo->maintenance_schedule_id ? 'medium' : 'high'

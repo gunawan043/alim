@@ -40,7 +40,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return view('sarpras.technician.dashboard', compact('orders', 'available'));
     }
 
-    public function show(Request $request, string $orderId)
+    public function show(string $userId, Request $request, string $orderId)
     {
         $order = WorkOrder::with([
             'asset.room.building', 'room.building', 'building', 'maintenanceSchedule', 'asset.photos', 'repairRequest', 'progressSteps.performer',
@@ -49,7 +49,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return view('sarpras.technician.show', compact('order'));
     }
 
-    public function start(Request $request, string $orderId): JsonResponse|RedirectResponse
+    public function start(string $userId, Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->start($order, Auth::user(), $request->all());
@@ -61,7 +61,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return back()->with('success', 'Work order dimulai.');
     }
 
-    public function pause(Request $request, string $orderId): JsonResponse|RedirectResponse
+    public function pause(string $userId, Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'reason_code' => 'required|string|max:50',
@@ -78,7 +78,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return back()->with('success', 'Work order dijeda.');
     }
 
-    public function resume(Request $request, string $orderId): JsonResponse|RedirectResponse
+    public function resume(string $userId, Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->resume($order, Auth::user(), $request->input('notes'));
@@ -90,7 +90,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return back()->with('success', 'Work order dilanjutkan.');
     }
 
-    public function complete(Request $request, string $orderId): JsonResponse|RedirectResponse
+    public function complete(string $userId, Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->complete($order, Auth::user(), $request->all());
@@ -102,7 +102,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return back()->with('success', 'Work order diselesaikan.');
     }
 
-    public function logNote(Request $request, string $orderId): JsonResponse|RedirectResponse
+    public function logNote(string $userId, Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'note' => 'required|string',
@@ -119,7 +119,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         return back()->with('success', 'Catatan pekerjaan disimpan.');
     }
 
-    public function snapshot(Request $request, string $orderId): JsonResponse
+    public function snapshot(string $userId, Request $request, string $orderId): JsonResponse
     {
         $order = WorkOrder::with(['asset', 'progressNotes', 'pauseEvents'])->findOrFail($orderId);
 
@@ -129,14 +129,14 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         ]);
     }
 
-    public function claim(Request $request, string $orderId): RedirectResponse
+    public function claim(string $userId, Request $request, string $orderId): RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
 
         // Only unassigned or unclaimed work orders can be claimed
         if ($order->assignee_id && $order->assignee_id !== Auth::id()) {
             return redirect()
-                ->route('sarpras.teknisi.show', $order->id)
+                ->route('sarpras.teknisi.show', ['orderId' => $order->id])
                 ->withErrors(['claim' => 'Work Order sudah di-claim teknisi lain.']);
         }
 
@@ -152,7 +152,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         }
 
         return redirect()
-            ->route('sarpras.teknisi.show', $order->id)
+            ->route('sarpras.teknisi.show', ['orderId' => $order->id])
             ->with('success', "Work Order {$order->order_number} berhasil di-claim.");
     }
 }
