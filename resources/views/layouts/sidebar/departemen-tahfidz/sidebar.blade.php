@@ -194,6 +194,13 @@
         </a>
     </li>
 
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.interventions.index') }}">
+            <i class="ri-task-line"></i><span>Tindak Lanjut</span>
+        </a>
+    </li>
+
     {{-- ⏳ SOON: Santri Tertinggal --}}
     <li class="nav-item">
         <a class="nav-link menu-link text-muted" href="#" onclick="return false"

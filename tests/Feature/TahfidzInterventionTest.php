@@ -58,6 +58,17 @@ class TahfidzInterventionTest extends TestCase
         $this->assertSame('open', $intervention->status);
 
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/interventions")
+            ->assertOk()
+            ->assertSee('Santri Intervensi')
+            ->assertSee('Bimbingan Tambahan');
+
+        $export = $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/interventions?export=1");
+        $export->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $export->headers->get('content-disposition'));
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
             ->post("/{$admin->id}/tahfidz/interventions/{$intervention->id}/complete")
             ->assertRedirect();
 

@@ -472,6 +472,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('audit', [TahfidzAuditController::class, 'index'])->name('audit.index');
                 Route::get('santri/{studentId}', [TahfidzSantriController::class, 'show'])->name('santri.show');
                 Route::post('santri/{studentId}/interventions', [TahfidzInterventionController::class, 'store'])->name('santri.interventions.store');
+                Route::get('interventions', [TahfidzInterventionController::class, 'index'])->name('interventions.index');
                 Route::post('interventions/{interventionId}/complete', [TahfidzInterventionController::class, 'complete'])->name('interventions.complete');
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
                 Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');

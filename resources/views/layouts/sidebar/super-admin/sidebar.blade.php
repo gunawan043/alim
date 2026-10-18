@@ -649,6 +649,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.interventions.index', ['userId' => $userId]) }}">
+        <i class="ri-task-line"></i><span>Tindak Lanjut</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
         <i class="ri-pulse-line"></i><span>Monitoring</span>

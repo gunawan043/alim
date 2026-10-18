@@ -351,6 +351,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.interventions.index', ['userId' => $userId]) }}">
+            <i class="ri-task-line"></i><span>Tindak Lanjut</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">
             <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
@@ -1408,6 +1415,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.audit.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.audit.index', ['userId' => $userId]) }}">
             <i class="ri-shield-check-line"></i><span>Audit Akhir Tahfidz</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.interventions.index', ['userId' => $userId]) }}">
+            <i class="ri-task-line"></i><span>Tindak Lanjut</span>
         </a>
     </li>
     <li class="nav-item">
