@@ -33,5 +33,6 @@ class CleaningProgram extends Model
     public function area(): BelongsTo { return $this->belongsTo(CleaningArea::class, 'area_id'); }
     public function building(): BelongsTo { return $this->belongsTo(AssetBuilding::class, 'building_id'); }
     public function assignee(): BelongsTo { return $this->belongsTo(User::class, 'assigned_to'); }
+    public function checks(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(CleaningProgramCheck::class, 'program_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
 }

@@ -260,6 +260,30 @@ class WorkUnit extends Model
         return $this->hasMany(Dormitory::class);
     }
 
+    public function dormitoryRooms()
+    {
+        return $this->hasManyThrough(
+            \App\Models\DormitoryRoom::class,
+            \App\Models\Dormitory::class,
+            'work_unit_id',
+            'dormitory_id',
+            'id',
+            'id'
+        );
+    }
+
+    public function dormitoryResidents()
+    {
+        return $this->hasManyThrough(
+            \App\Models\DormitoryResident::class,
+            \App\Models\Dormitory::class,
+            'work_unit_id',
+            'dormitory_id',
+            'id',
+            'id'
+        );
+    }
+
     public function recruitmentJobs()
     {
         return $this->hasMany(RecruitmentJob::class, 'work_unit_id', 'uuid');

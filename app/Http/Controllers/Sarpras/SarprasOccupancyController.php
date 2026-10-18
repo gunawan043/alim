@@ -125,26 +125,16 @@ class SarprasOccupancyController extends SarprasBaseController
         ];
 
         $unitSummary = WorkUnit::query()
-            ->withCount(['assets', 'assetRooms'])
+            ->withCount([
+                'assets',
+                'assetRooms',
+                'dormitoryRooms as dorm_rooms_count' => fn ($q) => $q->where('dormitory_rooms.is_active', true),
+                'dormitoryResidents as residents_count' => fn ($q) => $q->where('dormitory_residents.is_active', true)
+                    ->when($activeYear, fn ($q2) => $q2->where('dormitory_residents.academic_year_id', $activeYear->id)),
+            ])
             ->when($schoolId, fn ($q) => $q->where('id', School::query()->whereKey($schoolId)->value('work_unit_id')))
             ->orderBy('name')
-            ->get()
-            ->map(function (WorkUnit $unit) use ($activeYear) {
-                $dormQuery = Dormitory::query()->where('work_unit_id', $unit->id);
-
-                $unit->dorm_rooms_count = DormitoryRoom::query()
-                    ->whereIn('dormitory_id', (clone $dormQuery)->pluck('id'))
-                    ->where('is_active', true)
-                    ->count();
-
-                $unit->residents_count = DormitoryResident::query()
-                    ->whereIn('dormitory_id', (clone $dormQuery)->pluck('id'))
-                    ->where('is_active', true)
-                    ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))
-                    ->count();
-
-                return $unit;
-            });
+            ->get();
 
         return view('sarpras.monitoring.rombel-kamar', compact(
             'activeYear',

@@ -470,9 +470,16 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ $currentRoute === 'sarpras.kebersihan.index' ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.kebersihan.index') }}">
-            <i class="ri-map-pin-line"></i><span>Area &amp; Laporan Kebersihan</span>
+            <i class="ri-dashboard-3-line"></i><span>Dashboard Kebersihan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.area', 'sarpras.kebersihan.task']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.areas') }}">
+            <i class="ri-map-pin-line"></i><span>Area Kerja</span>
         </a>
     </li>
 
@@ -484,9 +491,16 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.report.']) ? ' active' : '' }}"
-           href="{{ $sarprasUrl('sarpras.kebersihan.index') }}">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.reports', 'sarpras.kebersihan.report.show']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.reports') }}">
             <i class="ri-file-list-2-line"></i><span>Laporan Kebersihan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.program']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.programs') }}">
+            <i class="ri-calendar-todo-line"></i><span>Program Tahunan</span>
         </a>
     </li>
 

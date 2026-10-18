@@ -27,34 +27,13 @@ class SarprasCleaningController extends SarprasBaseController
     {
         $canManage = $this->cleaningCanManage();
         $canReport = $canManage || $this->cleaningCanReport();
-
         abort_unless($canManage || $canReport, 403, 'Anda tidak memiliki akses ke modul kebersihan.');
 
         $user = auth()->user();
+        $areaQuery = $this->cleaningAreaQuery($canManage, $user);
+        $areas = $areaQuery->get();
 
-        $areaQuery = CleaningArea::with(['building', 'room', 'coordinator', 'activeAssignments.user', 'activeAssignments.backupUser'])
-            ->withCount([
-                'tasks as tasks_count' => fn ($q) => $q->where('is_active', true),
-                'reports as today_reports_count' => fn ($q) => $q->whereDate('report_date', today()),
-            ])
-            ->where('is_active', true);
-
-        if (! $canManage) {
-            $areaIds = CleaningAssignment::query()
-                ->where('is_active', true)
-                ->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('backup_user_id', $user->id))
-                ->pluck('area_id');
-
-            $areaQuery->whereIn('id', $areaIds);
-        }
-
-        $areas = $areaQuery->orderBy('name')->get();
-
-        $reportQuery = CleaningReport::with(['area', 'officer', 'substituteFor', 'verifier'])
-            ->when(! $canManage, fn ($q) => $q->where('officer_id', $user->id))
-            ->when($request->filled('area_id'), fn ($q) => $q->where('area_id', $request->area_id))
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('date'), fn ($q) => $q->whereDate('report_date', $request->date));
+        $reportQuery = $this->cleaningReportQuery($request, $canManage, $user);
 
         $stats = [
             'areas' => $areas->count(),
@@ -63,26 +42,120 @@ class SarprasCleaningController extends SarprasBaseController
             'pending' => (clone $reportQuery)->where('status', 'submitted')->count(),
         ];
 
-        $reports = $reportQuery->orderByDesc('report_date')->orderByDesc('created_at')->paginate(15)->withQueryString();
+        $recentReports = (clone $reportQuery)->with(['area', 'officer', 'substituteFor', 'verifier'])
+            ->orderByDesc('report_date')->limit(5)->get();
+        $programCount = CleaningProgram::where('is_active', true)->count();
 
-        $programs = CleaningProgram::with(['area', 'building', 'assignee'])
-            ->where('is_active', true)
-            ->orderBy('title')
-            ->get();
+        return view('sarpras.kebersihan.index', compact('stats', 'recentReports', 'programCount', 'canManage', 'canReport'));
+    }
 
+    public function areas(Request $request)
+    {
+        $canManage = $this->cleaningCanManage();
+        $canReport = $canManage || $this->cleaningCanReport();
+        abort_unless($canManage || $canReport, 403, 'Anda tidak memiliki akses ke modul kebersihan.');
+
+        $user = auth()->user();
+        $areas = $this->cleaningAreaQuery($canManage, $user)->get();
         $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $buildings = AssetBuilding::query()->orderBy('building_name')->get(['id', 'building_name']);
-        $rooms = \App\Models\AssetRoom::with('building')
-            ->where('is_active', true)
-            ->orderBy('room_name')
+        $rooms = \App\Models\AssetRoom::with('building')->where('is_active', true)->orderBy('room_name')
             ->get(['id', 'building_id', 'room_name', 'school_id', 'work_unit_id']);
-
         $officerIds = CleaningAssignment::query()->where('is_active', true)->pluck('user_id');
         $officers = User::query()->whereIn('id', $officerIds)->orderBy('name')->get(['id', 'name']);
 
-        return view('sarpras.kebersihan.index', compact(
-            'areas', 'reports', 'stats', 'programs', 'users', 'officers', 'buildings', 'rooms', 'canManage', 'canReport'
-        ));
+        return view('sarpras.kebersihan.areas', compact('areas', 'users', 'officers', 'buildings', 'rooms', 'canManage', 'canReport'));
+    }
+
+    public function reports(Request $request)
+    {
+        $canManage = $this->cleaningCanManage();
+        $canReport = $canManage || $this->cleaningCanReport();
+        abort_unless($canManage || $canReport, 403, 'Anda tidak memiliki akses ke modul kebersihan.');
+
+        $user = auth()->user();
+        $areas = $this->cleaningAreaQuery($canManage, $user)->get();
+        $reports = $this->cleaningReportQuery($request, $canManage, $user)
+            ->with(['area.building', 'officer', 'substituteFor', 'verifier'])
+            ->orderByDesc('report_date')->orderByDesc('created_at')
+            ->paginate(20)->withQueryString();
+
+        return view('sarpras.kebersihan.reports', compact('reports', 'areas', 'canManage', 'canReport'));
+    }
+
+    public function programs(Request $request)
+    {
+        $canManage = $this->cleaningCanManage();
+        abort_unless($canManage || $this->cleaningCanReport(), 403, 'Anda tidak memiliki akses ke modul kebersihan.');
+
+        $year = (int) $request->input('year', now()->year);
+        if ($year < 2000 || $year > 2100) $year = now()->year;
+
+        $programs = CleaningProgram::with([
+            'area', 'building', 'assignee',
+            'checks' => fn ($q) => $q->where('year', $year),
+        ])->where('is_active', true)->orderBy('title')->get();
+
+        $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $areas = CleaningArea::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $buildings = AssetBuilding::query()->orderBy('building_name')->get(['id', 'building_name']);
+
+        return view('sarpras.kebersihan.programs', compact('programs', 'year', 'users', 'areas', 'buildings', 'canManage'));
+    }
+
+    public function toggleProgramCheck(Request $request, string $programId)
+    {
+        abort_unless($this->cleaningCanManage(), 403, 'Hanya koordinator yang dapat mencentang program.');
+
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2000|max:2100',
+            'month' => 'required|integer|min:1|max:12',
+            'is_done' => 'required|boolean',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $program = CleaningProgram::findOrFail($programId);
+        $done = (bool) $validated['is_done'];
+
+        \App\Models\CleaningProgramCheck::updateOrCreate(
+            ['program_id' => $program->id, 'year' => $validated['year'], 'month' => $validated['month']],
+            [
+                'is_done' => $done,
+                'checked_by' => $done ? auth()->id() : null,
+                'checked_at' => $done ? now() : null,
+                'notes' => $validated['notes'] ?? null,
+            ]
+        );
+
+        return back()->with('success', $done ? 'Program ditandai terlaksana.' : 'Checklist program dibatalkan.');
+    }
+
+    private function cleaningAreaQuery(bool $canManage, $user)
+    {
+        $query = CleaningArea::with(['building', 'room', 'coordinator', 'activeAssignments.user', 'activeAssignments.backupUser'])
+            ->withCount([
+                'tasks as tasks_count' => fn ($q) => $q->where('is_active', true),
+                'reports as today_reports_count' => fn ($q) => $q->whereDate('report_date', today()),
+            ])
+            ->where('is_active', true);
+
+        if (! $canManage) {
+            $areaIds = CleaningAssignment::query()->where('is_active', true)
+                ->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('backup_user_id', $user->id))
+                ->pluck('area_id');
+            $query->whereIn('id', $areaIds);
+        }
+
+        return $query->orderBy('name');
+    }
+
+    private function cleaningReportQuery(Request $request, bool $canManage, $user)
+    {
+        return CleaningReport::query()
+            ->when(! $canManage, fn ($q) => $q->where('officer_id', $user->id))
+            ->when($request->filled('area_id'), fn ($q) => $q->where('area_id', $request->area_id))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('date'), fn ($q) => $q->whereDate('report_date', $request->date));
     }
 
     public function showArea(Request $request, string $areaId)

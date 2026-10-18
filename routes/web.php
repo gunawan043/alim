@@ -463,11 +463,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
+                Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
 
                 Route::prefix('tasmi')->name('tasmi.')->group(function () {
                     Route::get('/', [TasmiController::class, 'index'])->name('index');
                     Route::post('/', [TasmiController::class, 'store'])->name('store');
                     Route::get('/certificates', [TasmiController::class, 'certificates'])->name('certificates');
+                    Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/{certificateId}/print', [TasmiController::class, 'certificatePrint'])->name('certificate.print');
                     Route::post('/participants/{participantId}/score', [TasmiController::class, 'score'])->name('participant.score');
                     Route::get('/participants/{participantId}/instrument', [TasmiController::class, 'instrument'])->name('participant.instrument');
@@ -2782,6 +2784,10 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
 
     // Kebersihan / CS
     Route::get('/kebersihan', [SarprasCleaningController::class, 'index'])->name('kebersihan.index');
+    Route::get('/kebersihan/area', [SarprasCleaningController::class, 'areas'])->name('kebersihan.areas');
+    Route::get('/kebersihan/laporan', [SarprasCleaningController::class, 'reports'])->name('kebersihan.reports');
+    Route::get('/kebersihan/program', [SarprasCleaningController::class, 'programs'])->name('kebersihan.programs');
+    Route::post('/kebersihan/program/{programId}/check', [SarprasCleaningController::class, 'toggleProgramCheck'])->name('kebersihan.program.check');
     Route::post('/kebersihan/area', [SarprasCleaningController::class, 'storeArea'])->name('kebersihan.area.store');
     Route::get('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'showArea'])->name('kebersihan.area.show');
     Route::put('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'updateArea'])->name('kebersihan.area.update');

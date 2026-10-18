@@ -2145,6 +2145,25 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   status, folder ID, `client_email`, atau `private_key`.
 - JSON service account tetap disimpan terenkripsi.
 
+## 192. Kebersihan Dipisah & Optimasi Localhost
+
+- Halaman kebersihan dipisah:
+  - `/sarpras/kebersihan` → dashboard ringkas;
+  - `/sarpras/kebersihan/area` → area kerja dan penugasan;
+  - `/sarpras/kebersihan/laporan` → daftar/filter/verifikasi laporan;
+  - `/sarpras/kebersihan/program` → program tahunan 12 bulan.
+- Program kebersihan tahunan:
+  - checklist per bulan (`cleaning_program_checks`);
+  - bulan rencana dan bulan terlaksana dibedakan;
+  - koordinator mencentang/membatalkan pelaksanaan.
+- Optimasi performa:
+  - SweetAlert2 dan Toastify memakai aset lokal;
+  - jQuery, Select2, Pusher, dan Laravel Echo dipindahkan dari CDN ke `public/build/vendor`;
+  - preconnect/dns-prefetch disiapkan;
+  - query monitoring rombel/kamar diubah dari N+1 menjadi `withCount`.
+- Diagnosa localhost: render backend 35–82 ms per halaman; kelambatan utama berasal dari aset CDN/browser,
+  bukan query database. Debug mode (`APP_DEBUG=true`) juga menambah beban.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
