@@ -11,14 +11,21 @@ use App\Models\TahfidzCurriculum;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzGroupTeacher;
+use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzPackage;
+use App\Models\TahfidzProgressRecap;
+use App\Models\TahfidzStudentTarget;
 use App\Models\User;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzProgressService;
 use Illuminate\Http\Request;
 
 class HalaqahController extends Controller
 {
-    public function __construct(private readonly TahfidzAccess $access) {}
+    public function __construct(
+        private readonly TahfidzAccess $access,
+        private readonly TahfidzProgressService $progress,
+    ) {}
 
     public function index(Request $request, string $userId)
     {
@@ -124,8 +131,34 @@ class HalaqahController extends Controller
             ->get(['id', 'name', 'nis']);
 
         $canManage = $this->access->canManageGroup($request->user(), $group);
+        $canTarget = $this->access->canInputSetoran($request->user(), $group)
+            || $canManage;
+        $activeMembers = $group->members->where('status', 'aktif')->values();
+        $memberIds = $activeMembers->pluck('student_id');
 
-        return view('tahfidz.halaqah.show', compact('userId', 'group', 'availableStudents', 'canManage'));
+        $targets = TahfidzStudentTarget::with('student:id,name,nis')
+            ->where('tahfidz_group_id', $group->id)
+            ->where('academic_year_id', $group->academic_year_id)
+            ->orderBy('target_bulan')
+            ->get();
+
+        $juzProgress = TahfidzJuzProgress::query()
+            ->whereIn('student_id', $memberIds)
+            ->where('academic_year_id', $group->academic_year_id)
+            ->orderBy('juz_number')
+            ->get()
+            ->groupBy('student_id');
+
+        $recaps = TahfidzProgressRecap::query()
+            ->whereIn('student_id', $memberIds)
+            ->where('academic_year_id', $group->academic_year_id)
+            ->get()
+            ->keyBy('student_id');
+
+        return view('tahfidz.halaqah.show', compact(
+            'userId', 'group', 'availableStudents', 'canManage', 'canTarget',
+            'activeMembers', 'targets', 'juzProgress', 'recaps'
+        ));
     }
 
     public function edit(Request $request, string $userId, string $id)
@@ -218,6 +251,83 @@ class HalaqahController extends Controller
         return back()->with('success', 'Santri dikeluarkan dari halaqah.');
     }
 
+    public function storeTarget(Request $request, string $userId, string $id)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeTarget($request, $group);
+        $validated = $this->validateTarget($request, $group);
+
+        TahfidzStudentTarget::updateOrCreate(
+            [
+                'student_id' => $validated['student_id'],
+                'tahfidz_group_id' => $group->id,
+                'academic_year_id' => $group->academic_year_id,
+                'semester' => $validated['semester'],
+                'target_bulan' => $validated['target_bulan'],
+            ],
+            [
+                'juz_start' => $validated['juz_start'] ?? null,
+                'juz_end' => $validated['juz_end'] ?? null,
+                'target_halaman' => $validated['target_halaman'] ?? null,
+                'target_hadits' => $validated['target_hadits'] ?? 0,
+                'assigned_by' => $request->user()?->id,
+                'notes' => $validated['notes'] ?? null,
+            ]
+        );
+
+        $this->progress->recalculateStudent(
+            $validated['student_id'],
+            $group->academic_year_id,
+            $group->id,
+            $validated['semester'],
+        );
+
+        return back()->with('success', 'Target hafalan santri disimpan.');
+    }
+
+    public function updateTarget(Request $request, string $userId, string $id, string $targetId)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeTarget($request, $group);
+        $target = TahfidzStudentTarget::where('tahfidz_group_id', $group->id)->findOrFail($targetId);
+        $validated = $this->validateTarget($request, $group);
+
+        $target->update([
+            'student_id' => $validated['student_id'],
+            'semester' => $validated['semester'],
+            'target_bulan' => $validated['target_bulan'],
+            'juz_start' => $validated['juz_start'] ?? null,
+            'juz_end' => $validated['juz_end'] ?? null,
+            'target_halaman' => $validated['target_halaman'] ?? null,
+            'target_hadits' => $validated['target_hadits'] ?? 0,
+            'assigned_by' => $request->user()?->id,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        $this->progress->recalculateStudent(
+            $target->student_id,
+            $group->academic_year_id,
+            $group->id,
+            $target->semester,
+        );
+
+        return back()->with('success', 'Target hafalan diperbarui.');
+    }
+
+    public function destroyTarget(Request $request, string $userId, string $id, string $targetId)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeTarget($request, $group);
+        $target = TahfidzStudentTarget::where('tahfidz_group_id', $group->id)->findOrFail($targetId);
+        $studentId = $target->student_id;
+        $semester = $target->semester;
+        $target->delete();
+
+        $this->progress->recalculateStudent($studentId, $group->academic_year_id, $group->id, $semester);
+
+        return back()->with('success', 'Target hafalan dihapus.');
+    }
+
     public function destroy(Request $request, string $userId, string $id)
     {
         $group = TahfidzGroup::findOrFail($id);
@@ -228,6 +338,40 @@ class HalaqahController extends Controller
         $group->delete();
 
         return redirect()->route('user.tahfidz.halaqah.index', ['userId' => $userId])->with('success', 'Halaqah dihapus.');
+    }
+
+    private function validateTarget(Request $request, TahfidzGroup $group): array
+    {
+        $validated = $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'semester' => 'required|in:ganjil,genap',
+            'target_bulan' => 'required|integer|min:1|max:12',
+            'juz_start' => 'nullable|integer|min:1|max:30',
+            'juz_end' => 'nullable|integer|min:1|max:30|gte:juz_start',
+            'target_halaman' => 'nullable|numeric|min:0|max:604',
+            'target_hadits' => 'nullable|integer|min:0|max:1000',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $isMember = TahfidzGroupMember::query()
+            ->where('tahfidz_group_id', $group->id)
+            ->where('student_id', $validated['student_id'])
+            ->where('status', 'aktif')
+            ->exists();
+
+        abort_unless($isMember, 422, 'Santri bukan anggota aktif halaqah ini.');
+
+        return $validated;
+    }
+
+    private function authorizeTarget(Request $request, TahfidzGroup $group): void
+    {
+        abort_unless(
+            $this->access->canInputSetoran($request->user(), $group)
+            || $this->access->canManageGroup($request->user(), $group),
+            403,
+            'Anda tidak berwenang mengatur target halaqah ini.'
+        );
     }
 
     private function formData(Request $request, ?TahfidzGroup $group = null): array

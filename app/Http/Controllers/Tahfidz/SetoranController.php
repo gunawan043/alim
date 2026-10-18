@@ -8,11 +8,15 @@ use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzSetoran;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzProgressService;
 use Illuminate\Http\Request;
 
 class SetoranController extends Controller
 {
-    public function __construct(private readonly TahfidzAccess $access) {}
+    public function __construct(
+        private readonly TahfidzAccess $access,
+        private readonly TahfidzProgressService $progress,
+    ) {}
 
     public function index(Request $request, string $userId)
     {
@@ -130,7 +134,9 @@ class SetoranController extends Controller
             'verification_notes' => $request->input('verification_notes'),
         ])->save();
 
-        return back()->with('success', 'Setoran diverifikasi.');
+        $this->progress->recalculateForSetoran($setoran);
+
+        return back()->with('success', 'Setoran diverifikasi dan progres juz diperbarui.');
     }
 
     public function destroy(Request $request, string $userId, string $id)

@@ -9,7 +9,9 @@ use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
+use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzPackage;
+use App\Models\TahfidzProgressRecap;
 use App\Models\TahfidzSetoran;
 use App\Models\User;
 use App\Models\WorkUnit;
@@ -129,6 +131,41 @@ class TahfidzOperationsTest extends TestCase
         $this->assertSame($this->admin->id, $setoran->verified_by);
         $this->assertNotNull($setoran->verified_at);
 
+        $progress = TahfidzJuzProgress::where('student_id', $this->student->id)
+            ->where('academic_year_id', $this->year->id)
+            ->where('juz_number', 1)
+            ->firstOrFail();
+        $this->assertSame('1.0', (string) $progress->halaman_completed);
+        $this->assertSame('5.00', (string) $progress->percentage);
+
+        $recap = TahfidzProgressRecap::where('student_id', $this->student->id)
+            ->where('academic_year_id', $this->year->id)
+            ->firstOrFail();
+        $this->assertSame('1.0', (string) $recap->total_halaman_ziyadah);
+        $this->assertSame('85.00', (string) $recap->rata_rata_nilai);
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/tahfidz/halaqah/{$group->id}/targets", [
+                'student_id' => $this->student->id,
+                'semester' => 'ganjil',
+                'target_bulan' => 1,
+                'juz_start' => 1,
+                'juz_end' => 1,
+                'target_halaman' => 20,
+                'target_hadits' => 5,
+                'notes' => 'Target awal.',
+            ])->assertRedirect();
+
+        $this->assertDatabaseHas('tahfidz_student_targets', [
+            'student_id' => $this->student->id,
+            'tahfidz_group_id' => $group->id,
+            'target_bulan' => 1,
+            'target_halaman' => 20,
+        ]);
+
+        $recap->refresh();
+        $this->assertSame('5.00', (string) $recap->pencapaian_target_persen);
+
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/halaqah")
             ->assertOk()
@@ -137,7 +174,9 @@ class TahfidzOperationsTest extends TestCase
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/halaqah/{$group->id}")
             ->assertOk()
-            ->assertSee('Santri Tahfidz');
+            ->assertSee('Santri Tahfidz')
+            ->assertSee('Target Hafalan Santri')
+            ->assertSee('Progres Juz');
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/setoran")

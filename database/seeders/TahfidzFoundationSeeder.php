@@ -42,6 +42,8 @@ class TahfidzFoundationSeeder extends Seeder
             ]
         );
 
+        $this->call(TahfidzJuzMasterSeeder::class);
+
         TahfidzAssessmentRubric::firstOrCreate(
             [
                 'work_unit_id' => $department->id,

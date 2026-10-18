@@ -467,6 +467,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{id}', [HalaqahController::class, 'update'])->name('update');
                     Route::delete('/{id}', [HalaqahController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/members', [HalaqahController::class, 'addMembers'])->name('members.store');
+                    Route::post('/{id}/targets', [HalaqahController::class, 'storeTarget'])->name('targets.store');
+                    Route::put('/{id}/targets/{targetId}', [HalaqahController::class, 'updateTarget'])->name('targets.update');
+                    Route::delete('/{id}/targets/{targetId}', [HalaqahController::class, 'destroyTarget'])->name('targets.destroy');
                     Route::post('/{id}/members/{memberId}/remove', [HalaqahController::class, 'removeMember'])->name('members.remove');
                 });
 
