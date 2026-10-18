@@ -1,4 +1,17 @@
 @extends('layouts.master')
+
+@push('styles')
+<style>
+    .mutabaah-modal .modal-dialog { max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
+    .mutabaah-modal .modal-content { display: flex; flex-direction: column; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); overflow: hidden; }
+    .mutabaah-modal .modal-body { overflow-y: auto !important; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; flex: 1 1 auto; }
+    .mutabaah-modal .modal-footer { flex-shrink: 0; }
+    @media (max-width: 767.98px) {
+        .mutabaah-modal .modal-dialog { margin: .5rem; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
+        .mutabaah-modal .modal-body { max-height: calc(100vh - 170px) !important; max-height: calc(100dvh - 170px) !important; overflow-y: auto !important; padding: 1rem; }
+    }
+</style>
+@endpush
 @section('title', 'Waraqat al-Mutaba’ah')
 @section('content')
     @php
@@ -35,14 +48,14 @@
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-calendar-check-line text-primary me-1"></i>Waraqat al-Mutaba’ah</h5><p class="text-muted mb-0 small">Pantau ibadah harian, tilawah, dan tikror santri.</p></div>
             <div class="d-flex gap-2">
-                @if($inputGroups->isNotEmpty())<button type="button" class="btn btn-success" onclick="openMutabaahModal()"><i class="ri-add-line me-1"></i>Input Mutaba’ah</button>@endif
+                @if($inputGroups->isNotEmpty())<button type="button" class="btn btn-primary" onclick="openMutabaahModal()"><i class="ri-add-line me-1"></i>Input Mutaba’ah</button>@endif
             </div>
         </div>
         <div class="card-body border-bottom">
             <form method="GET" class="row g-2 align-items-end">
                 <div class="col-md-2"><label class="form-label small">Bulan</label><input type="month" name="month" value="{{ $monthValue }}" class="form-control" onchange="this.form.submit()"></div>
                 <div class="col-md-4"><label class="form-label small">Halaqah</label><select name="group_id" class="form-select" onchange="this.form.submit()"><option value="">Semua</option>@foreach($groups as $group)<option value="{{ $group->id }}" @selected(request('group_id')===$group->id)>{{ $group->name }} — {{ $group->school?->name }}</option>@endforeach</select></div>
-                <div class="col-md-4"><label class="form-label small">Santri</label><select name="student_id" class="form-select" onchange="this.form.submit()"><option value="">Semua</option>@foreach($students as $student)<option value="{{ $student->id }}" @selected(request('student_id')===$student->id)>{{ $student->name }} ({{ $student->nis }})</option>@endforeach</select></div>
+                <div class="col-md-4"><label class="form-label small">Santri</label><select name="student_id" class="form-select mutabaah-filter-student" onchange="this.form.submit()"><option value="">Semua</option>@foreach($students as $student)<option value="{{ $student->id }}" @selected(request('student_id')===$student->id)>{{ $student->name }} ({{ $student->nis }})</option>@endforeach</select></div>
             </form>
         </div>
         <div class="table-responsive">
@@ -95,16 +108,16 @@
     </div>
 
     @if($inputGroups->isNotEmpty())
-        <div class="modal fade" id="mutabaahModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade mutabaah-modal" id="mutabaahModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <form method="POST" action="{{ route('user.tahfidz.mutabaah.store', ['userId'=>$userId]) }}" id="mutabaahForm">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" id="mutabaahMethod" disabled>
-                        <div class="modal-header bg-success-subtle"><h5 class="modal-title" id="mutabaahModalTitle"><i class="ri-calendar-check-line me-1"></i>Input Mutaba’ah Harian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-header bg-primary-subtle"><h5 class="modal-title" id="mutabaahModalTitle"><i class="ri-calendar-check-line me-1"></i>Input Mutaba’ah Harian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body"><div class="row g-3">
                             <div class="col-md-5"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="mutabaahGroup" class="form-select" required onchange="fillMutabaahStudents(this.value)">@foreach($inputGroups as $g)<option value="{{ $g->id }}">{{ $g->name }} — {{ $g->school?->name }}</option>@endforeach</select></div>
-                            <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="mutabaahStudent" class="form-select" required><option value="">—</option></select></div>
+                            <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="mutabaahStudent" class="form-select" required><option value="">—</option></select><div class="form-text">Ketik nama atau NIS untuk mencari.</div></div>
                             <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="record_date" id="mutabaah_record_date" class="form-control" value="{{ old('record_date', now()->toDateString()) }}" required></div>
                             @foreach(['sholat_subuh'=>'Subuh','sholat_dzuhur'=>'Dzuhur','sholat_ashar'=>'Ashar','sholat_maghrib'=>'Maghrib','sholat_isya'=>'Isya'] as $field=>$label)
                                 <div class="col-md-2"><label class="form-label small">{{ $label }}</label><select name="{{ $field }}" id="mutabaah_{{ $field }}" class="form-select"><option value="">—</option>@foreach(['berjamaah'=>'Berjamaah','sendiri'=>'Sendiri','qadha'=>'Qadha','tidak'=>'Tidak','uzur'=>'Uzur'] as $val=>$text)<option value="{{ $val }}" @selected(old($field)===$val)>{{ $text }}</option>@endforeach</select></div>
@@ -119,7 +132,7 @@
                             <div class="col-md-3"><label class="form-label">Tikror (halaman)</label><input type="number" name="tikror_mandiri_halaman" id="mutabaah_tikror_mandiri_halaman" min="0" max="604" class="form-control" value="{{ old('tikror_mandiri_halaman', 0) }}"></div>
                             <div class="col-12"><label class="form-label">Catatan Musyrif</label><textarea name="catatan_musyrif" id="mutabaah_catatan_musyrif" rows="2" class="form-control">{{ old('catatan_musyrif') }}</textarea></div>
                         </div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success" id="mutabaahSubmit"><i class="ri-save-line me-1"></i>Simpan Mutaba’ah</button></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="mutabaahSubmit"><i class="ri-save-line me-1"></i>Simpan Mutaba’ah</button></div>
                     </form>
                 </div>
             </div>
@@ -150,6 +163,18 @@
             if (selected && String(selected) === String(member.id)) option.selected = true;
             select.appendChild(option);
         });
+
+        if (window.jQuery && jQuery.fn.select2) {
+            const $select = jQuery(select);
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            $select.select2({
+                width: '100%',
+                placeholder: 'Cari nama santri...',
+                allowClear: true,
+            });
+        }
     }
     function setMutabaahField(key, value) {
         const field = document.getElementById('mutabaah_' + key);
@@ -187,11 +212,35 @@
         bootstrap.Modal.getOrCreateInstance(document.getElementById('mutabaahModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('.mutabaah-filter-student').select2({
+                width: '100%',
+                placeholder: 'Cari nama santri...',
+                allowClear: true,
+            });
+        }
+
         const group = document.getElementById('mutabaahGroup');
         if (group) fillMutabaahStudents(group.value, @json(old('student_id')));
         @if($errors->any() && $inputGroups->isNotEmpty())
             openMutabaahModal();
         @endif
+
+        const mutabaahModal = document.getElementById('mutabaahModal');
+        function fitMutabaahModal() {
+            if (! mutabaahModal) return;
+            const body = mutabaahModal.querySelector('.modal-body');
+            const header = mutabaahModal.querySelector('.modal-header');
+            const footer = mutabaahModal.querySelector('.modal-footer');
+            if (! body) return;
+            const available = (window.visualViewport?.height || window.innerHeight) - (header?.offsetHeight || 70) - (footer?.offsetHeight || 70) - 24;
+            body.style.maxHeight = Math.max(220, available) + 'px';
+            body.style.overflowY = 'auto';
+        }
+        mutabaahModal?.addEventListener('shown.bs.modal', fitMutabaahModal);
+        window.addEventListener('resize', fitMutabaahModal);
+        window.visualViewport?.addEventListener('resize', fitMutabaahModal);
+
         document.querySelectorAll('.edit-mutabaah').forEach(function (button) {
             button.addEventListener('click', function () { openMutabaahEditModal(JSON.parse(this.dataset.record)); });
         });
