@@ -91,14 +91,23 @@ class AiChatMonitorController extends Controller
         $message = trim($validated['message']);
 
         DB::transaction(function () use ($conversation, $message, $request) {
-            $conversation->messages()->create([
-                'role' => 'admin',
-                'content' => $message,
-                'metadata' => [
-                    'admin_id' => $request->user()?->id,
-                    'admin_name' => $request->user()?->name,
-                ],
-            ]);
+            // Idempotensi: cegah balasan identik ganda dari double-submit.
+            $duplicate = $conversation->messages()
+                ->where('role', 'admin')
+                ->where('content', $message)
+                ->where('created_at', '>=', now()->subSeconds(3))
+                ->exists();
+
+            if (! $duplicate) {
+                $conversation->messages()->create([
+                    'role' => 'admin',
+                    'content' => $message,
+                    'metadata' => [
+                        'admin_id' => $request->user()?->id,
+                        'admin_name' => $request->user()?->name,
+                    ],
+                ]);
+            }
 
             $conversation->forceFill([
                 'status' => 'replied',

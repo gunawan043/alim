@@ -1837,6 +1837,17 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Filter, statistik, tabel, dan aksi tetap dipertahankan.
 - Konfirmasi hapus kamar/wing memakai modal global `data-confirm`.
 
+## 172. P0 Sarpras — Verifikasi Aset & PIC Ruang Otomatis
+
+- Migrasi `assets.verification_status/verified_by/verified_at/verification_note` (default `verified` untuk data lama,
+  aset baru dari unit masuk `pending`).
+- `asset_rooms.dormitory_room_id` untuk memetakan kamar asrama ke master ruang Sarpras.
+- **PIC ruang otomatis**: ruang kelas → wali kelas (`study_group.homeroom_teacher_id`); kamar asrama →
+  wali kamar aktif (`room_supervisors`); fallback manual `responsible_user_id`.
+- CRUD aset diperbaiki: `$aset` undefined pada store dihilangkan; aset baru `verification_status=pending`.
+- Endpoint **verifikasi aset URT** (`POST /sarpras/aset/{id}/verifikasi`) dengan keputusan verified/rejected + catatan.
+- Unit kerja membuat/mendata aset; URT memverifikasi; kepemilikan tetap `assets.work_unit_id`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

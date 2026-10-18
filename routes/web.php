@@ -2620,6 +2620,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/aset/import', [SarprasAsetController::class, 'importForm'])->name('aset.import');
     Route::post('/aset/import', [SarprasAsetController::class, 'importProcess'])->name('aset.import.process');
     Route::get('/aset/template', [SarprasAsetController::class, 'template'])->name('aset.template');
+    Route::post('/aset/{id}/verifikasi', [SarprasAsetController::class, 'verify'])->name('aset.verify');
     Route::get('/aset/{id}', [SarprasAsetController::class, 'show'])->name('aset.show');
     Route::get('/aset/{id}/edit', [SarprasAsetController::class, 'edit'])->name('aset.edit');
     Route::put('/aset/{id}', [SarprasAsetController::class, 'update'])->name('aset.update');

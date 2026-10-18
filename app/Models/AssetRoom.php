@@ -42,6 +42,7 @@ class AssetRoom extends Model
         'school_id',
         'building_id',
         'study_group_id',
+        'dormitory_room_id',
         'room_code',
         'room_name',
         'floor',
@@ -94,6 +95,28 @@ class AssetRoom extends Model
     public function responsibleUser()
     {
         return $this->belongsTo(User::class, 'responsible_user_id');
+    }
+
+    public function dormitoryRoom()
+    {
+        return $this->belongsTo(\App\Models\DormitoryRoom::class, 'dormitory_room_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (AssetRoom $room) {
+            if ($room->responsible_user_id) {
+                return;
+            }
+
+            if ($room->study_group_id) {
+                $room->responsible_user_id = \App\Models\StudyGroup::find($room->study_group_id)?->homeroom_teacher_id;
+            } elseif ($room->dormitory_room_id) {
+                $room->responsible_user_id = \App\Models\RoomSupervisor::active()
+                    ->where('room_id', $room->dormitory_room_id)
+                    ->value('user_id');
+            }
+        });
     }
 
     public function studyGroup()

@@ -58,6 +58,7 @@ class Asset extends Model
         'purchase_document_path',
         'condition',
         'status',
+        'verification_status', 'verified_by', 'verified_at', 'verification_note',
         'is_bookable',
         'current_value',
         'depreciation_per_year',
@@ -82,6 +83,7 @@ class Asset extends Model
     ];
 
     protected $casts = [
+        'verified_at' => 'datetime',
         'acquisition_date' => 'date',
         'acquisition_price' => 'decimal:2',
         'current_value' => 'decimal:2',

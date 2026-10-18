@@ -77,7 +77,10 @@ class SarprasAsetController extends SarprasBaseController
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['status'] = $aset->status; // preserve existing status, must go through workflow
+        $validated['status'] = $validated['status'] ?? 'tersedia';
+        $validated['verification_status'] = 'pending'; // unit/URT memverifikasi via workflow
+        $validated['verified_by'] = null;
+        $validated['verified_at'] = null;
         $validated['created_by'] = auth()->id();
         $validated['current_value'] = $validated['acquisition_price'] ?? null;
 
@@ -152,6 +155,41 @@ class SarprasAsetController extends SarprasBaseController
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
         return view('sarpras.aset.edit', compact('aset', 'rooms', 'categories'));
+    }
+
+    /**
+     * Verifikasi aset oleh Unit Rumah Tangga.
+     */
+    public function verify(Request $request, string $id)
+    {
+        $asset = Asset::findOrFail($id);
+        $user = $request->user();
+
+        abort_unless(
+            $user && (
+                (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+                || canPermission('sarpras.asset.manage')
+                || canPermission('sarpras.asset.verify')
+            ),
+            403,
+            'Hanya Unit Rumah Tangga yang dapat memverifikasi aset.'
+        );
+
+        $data = $request->validate([
+            'decision' => 'required|in:verified,rejected',
+            'verification_note' => 'nullable|string|max:1000',
+        ]);
+
+        $asset->update([
+            'verification_status' => $data['decision'],
+            'verified_by' => $user->id,
+            'verified_at' => now(),
+            'verification_note' => $data['verification_note'] ?? null,
+        ]);
+
+        return back()->with('success', $data['decision'] === 'verified'
+            ? 'Aset berhasil diverifikasi.'
+            : 'Aset ditolak. Catatan verifikasi disimpan.');
     }
 
     public function update(AsetUpdateRequest $request, string $id)

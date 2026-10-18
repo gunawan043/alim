@@ -1,6 +1,37 @@
 @extends('layouts.master')
 @section('title', 'Monitoring Chat AI')
 
+@section('css')
+<style>
+    .ai-monitor-admin .ctext-wrap-content {
+        background: linear-gradient(135deg, #0d8f7a, #08a88a) !important;
+        color: #fff !important;
+    }
+    .ai-monitor-admin .ctext-wrap-content p { color: #fff; }
+    .ai-monitor-admin .chat-time { color: #55706b; }
+    .chat-list.right .ctext-wrap-content {
+        background: linear-gradient(135deg, #405189, #356f91) !important;
+        color: #fff !important;
+    }
+    .chat-list.right .ctext-wrap-content p { color: #fff; }
+
+    [data-bs-theme="dark"] .ai-monitor-conversation,
+    [data-bs-theme="dark"] .chat-conversation { background: #141a26 !important; }
+    [data-bs-theme="dark"] .ai-monitor-admin .ctext-wrap-content {
+        background: linear-gradient(135deg, #0b6b5c, #0d8f7a) !important;
+    }
+    [data-bs-theme="dark"] .chat-leftsidebar,
+    [data-bs-theme="dark"] .user-chat { background: #1b2230; }
+    [data-bs-theme="dark"] .chat-leftsidebar .chat-list.active { background: #22304a; }
+    [data-bs-theme="dark"] .chat-input {
+        background: #20293a !important;
+        border-color: #344158 !important;
+        color: #e8eefb;
+    }
+    [data-bs-theme="dark"] .chat-input::placeholder { color: #9aa8c0; }
+</style>
+@endsection
+
 @section('content')
     @php
         $userId = $userId ?? auth()->id();
@@ -153,8 +184,8 @@
                             </div>
                         </div>
 
-                        <div class="chat-conversation p-3 p-lg-4" id="adminChatConversation" data-simplebar
-                             style="max-height:calc(100vh - 300px);overflow-y:auto;background:#f8f9fc;">
+                        <div class="chat-conversation ai-monitor-conversation p-3 p-lg-4" id="adminChatConversation" data-simplebar
+                             style="max-height:calc(100vh - 300px);overflow-y:auto;">
                             <ul class="list-unstyled chat-conversation-list mb-0" id="adminConversationList">
                                 @forelse($messages as $message)
                                     @php
@@ -163,7 +194,7 @@
                                         $label = $isAdmin ? 'Super Admin' : ($isUser ? 'Pengguna' : 'ALIM AI');
                                         $initial = $isAdmin ? 'SA' : strtoupper(substr($selected->user?->name ?: '?', 0, 1));
                                     @endphp
-                                    <li class="chat-list {{ $isUser ? 'right' : 'left' }}">
+                                    <li class="chat-list {{ $isUser ? 'right' : 'left' }} {{ $isAdmin ? 'ai-monitor-admin' : '' }}">
                                         <div class="conversation-list">
                                             <div class="chat-avatar">
                                                 <div class="avatar-xs rounded-circle {{ $isAdmin ? 'bg-success' : ($isUser ? 'bg-primary' : 'bg-info') }} text-white d-flex align-items-center justify-content-center fw-semibold">
@@ -204,7 +235,7 @@
                                             </div>
                                             <div class="col">
                                                 <input type="text" name="message" id="adminReplyInput"
-                                                       class="form-control chat-input bg-light border-light"
+                                                       class="form-control chat-input"
                                                        placeholder="Balas sebagai Super Admin..." autocomplete="off" required maxlength="2000">
                                                 <div id="adminReplyError" class="text-danger small mt-1 d-none"></div>
                                             </div>
@@ -267,6 +298,9 @@
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
+            event.stopImmediatePropagation();
+            if (form.dataset.busy === '1') return;
+            form.dataset.busy = '1';
             const message = (input.value || '').trim();
             if (! message) return;
 
@@ -341,6 +375,7 @@
                     errorBox.classList.remove('d-none');
                 }
             } finally {
+                form.dataset.busy = '0';
                 submit.disabled = false;
             }
         });

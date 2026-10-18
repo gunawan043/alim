@@ -345,6 +345,25 @@ class AiChatTest extends TestCase
         ]);
     }
 
+    public function test_balasan_identik_tidak_tersimpan_ganda(): void
+    {
+        $conversation = AiChatConversation::create([
+            'user_id' => $this->admin->id,
+            'school_id' => $this->school->id,
+            'title' => 'Bantuan Idempoten',
+            'mode' => 'support',
+            'status' => 'open',
+            'last_message_at' => now(),
+        ]);
+
+        $url = "/{$this->admin->id}/sa/ai-chat/{$conversation->id}/reply";
+
+        $this->actingAs($this->admin)->postJson($url, ['message' => 'Balasan sama.'])->assertOk();
+        $this->actingAs($this->admin)->postJson($url, ['message' => 'Balasan sama.'])->assertOk();
+
+        $this->assertSame(1, $conversation->messages()->where('role', 'admin')->where('content', 'Balasan sama.')->count());
+    }
+
     public function test_widget_chat_tampil_di_layout(): void
     {
         $this->actingAs($this->admin)
