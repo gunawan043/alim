@@ -25,11 +25,11 @@
             <div class="col-md-3"><label class="form-label">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ $val('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
             <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" min="1" max="30" class="form-control" value="{{ $val('juz') }}"></div>
             <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected($val('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected($val('status')==='ulang')>Ulang</option><option value="ditunda" @selected($val('status')==='ditunda')>Ditunda</option></select></div>
-            <div class="col-md-4"><label class="form-label">Surah Awal</label><select name="surah_start_name" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected($val('surah_start_name')===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+            <div class="col-md-4"><label class="form-label">Surah Awal</label><select name="surah_start_name" id="surahStartForm" class="form-select surah-picker"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected($val('surah_start_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if($val('surah_start_name') && ! $surahs->contains('name_latin', $val('surah_start_name')))<option value="{{ $val('surah_start_name') }}" selected>{{ $val('surah_start_name') }}</option>@endif
 </select></div>
             <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_start" class="form-control" value="{{ $val('ayat_start') }}"></div>
-            <div class="col-md-4"><label class="form-label">Surah Akhir</label><select name="surah_end_name" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected($val('surah_end_name')===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+            <div class="col-md-4"><label class="form-label">Surah Akhir</label><select name="surah_end_name" id="surahEndForm" class="form-select surah-picker"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected($val('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if($val('surah_end_name') && ! $surahs->contains('name_latin', $val('surah_end_name')))<option value="{{ $val('surah_end_name') }}" selected>{{ $val('surah_end_name') }}</option>@endif
 </select></div>
             <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_end" class="form-control" value="{{ $val('ayat_end') }}"></div>
@@ -50,7 +50,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery('.select2-surah').select2({ width: '100%', placeholder: 'Cari surah...', allowClear: true });
+            jQuery('#surahStartForm, #surahEndForm').select2({ width: '100%', placeholder: 'Cari nama surah...', allowClear: true });
         }
     });
 </script>

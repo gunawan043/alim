@@ -2,12 +2,13 @@
 
 @push('styles')
 <style>
-    .hafalan-modal .modal-content { display: flex; flex-direction: column; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
-    .hafalan-modal .modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1 1 auto; }
+    .hafalan-modal .modal-dialog { max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
+    .hafalan-modal .modal-content { display: flex; flex-direction: column; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); overflow: hidden; }
+    .hafalan-modal .modal-body { overflow-y: auto !important; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; flex: 1 1 auto; }
     .hafalan-modal .modal-footer { flex-shrink: 0; }
     @media (max-width: 767.98px) {
         .hafalan-modal .modal-dialog { margin: .5rem; max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
-        .hafalan-modal .modal-body { padding: 1rem; }
+        .hafalan-modal .modal-body { max-height: calc(100vh - 170px) !important; max-height: calc(100dvh - 170px) !important; overflow-y: auto !important; padding: 1rem; }
     }
 </style>
 @endpush
@@ -29,10 +30,10 @@
         <div class="card-body">
             <form method="GET">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" class="form-select select2" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select></div>
+                    <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" id="studentPicker" class="form-select" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select></div>
                     <div class="col-md-3"><button class="btn btn-primary w-100" style="min-height:38px;"><i class="ri-eye-line me-1"></i>Tampilkan Riwayat</button></div>
                 </div>
-                <div class="form-text mt-1">Pencarian mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda.</div>
+                <div class="form-text mt-1">Pencarian santri mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda. Dropdown surah hanya berisi nama surah, bukan nama santri.</div>
             </form>
         </div>
     </div>
@@ -170,11 +171,11 @@
                                 <div class="row g-3">
                                     <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
                                     <div class="col-md-4"><label class="form-label small">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select select2-surah" data-placeholder="Cari surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_start_name') && ! $surahs->contains('name_latin', old('surah_start_name')))<option value="{{ old('surah_start_name') }}" selected>{{ old('surah_start_name') }}</option>@endif
 </select></div>
                                     <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start', $lastPosition['ayat_start'] ?? null) }}"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" class="form-select select2-surah" data-placeholder="Cari surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" id="surahEndPicker" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_end_name') && ! $surahs->contains('name_latin', old('surah_end_name')))<option value="{{ old('surah_end_name') }}" selected>{{ old('surah_end_name') }}</option>@endif
 </select></div>
                                     <div class="col-md-2"><label class="form-label small">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
@@ -243,12 +244,27 @@
         });
 
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery('.select2').select2({ width: '100%', placeholder: 'Ketik kelas, NIS, atau nama santri...', allowClear: true });
-            jQuery('.select2-surah').select2({ width: '100%', placeholder: 'Cari surah...', allowClear: true });
+            jQuery('#studentPicker').select2({ width: '100%', placeholder: 'Ketik kelas, NIS, atau nama santri...', allowClear: true });
+            jQuery('#smart_surah_start, #surahEndPicker').select2({ width: '100%', placeholder: 'Cari nama surah...', allowClear: true });
         }
         @if($selected && $canInput && $errors->any())
             openHafalanModal();
         @endif
+
+        const hafalanModal = document.getElementById('hafalanModal');
+        function fitHafalanModal() {
+            if (! hafalanModal) return;
+            const body = hafalanModal.querySelector('.modal-body');
+            const header = hafalanModal.querySelector('.modal-header');
+            const footer = hafalanModal.querySelector('.modal-footer');
+            if (! body) return;
+            const available = (window.visualViewport?.height || window.innerHeight) - (header?.offsetHeight || 70) - (footer?.offsetHeight || 70) - 24;
+            body.style.maxHeight = Math.max(220, available) + 'px';
+            body.style.overflowY = 'auto';
+        }
+        hafalanModal?.addEventListener('shown.bs.modal', fitHafalanModal);
+        window.addEventListener('resize', fitHafalanModal);
+        window.visualViewport?.addEventListener('resize', fitHafalanModal);
     });
 </script>
 @endpush
