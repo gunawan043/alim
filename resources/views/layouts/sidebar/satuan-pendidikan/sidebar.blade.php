@@ -1279,3 +1279,39 @@
         </a>
     </li>
 @endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 15 — TAHFIDZ
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isGuruTahfidz || $isKoorGuruTahfidz || $isKepala || $isWakil || $isKoorKurik || $isTimKurikulum)
+    <li class="menu-title"><span>Tahfidz</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">
+            <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
+            <i class="ri-file-list-3-line"></i><span>RPP Tahfizh</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') === 'iqro' ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId, 'type' => 'iqro']) }}">
+            <i class="ri-book-read-line"></i><span>RPP Iqro’</span>
+        </a>
+    </li>
+
+    @if($isKoorGuruTahfidz || $isKepala || $isWakil || $isKoorKurik || $isTimKurikulum)
+        <li class="nav-item">
+            <a class="nav-link menu-link" href="{{ route('user.tahfidz.rpp.create', ['userId' => $userId]) }}">
+                <i class="ri-add-circle-line"></i><span>Susun RPP Tahfizh</span>
+            </a>
+        </li>
+    @endif
+@endif

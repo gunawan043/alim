@@ -106,18 +106,16 @@
     <li class="menu-title"><span>Master Kurikulum</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-target-line"></i>
-            <span>Target per Marhalah <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.muqorror.index') }}">
+            <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-list-settings-line"></i>
-            <span>Marhalah & Jilid <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.rpp.index') }}">
+            <i class="ri-file-list-3-line"></i><span>RPP Tahfizh & Iqro’</span>
         </a>
     </li>
 

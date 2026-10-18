@@ -53,12 +53,32 @@ class TahfidzAccess
             return false;
         }
 
-        return TahfidzCoordinator::query()
+        $registered = TahfidzCoordinator::query()
             ->where('user_id', $user->id)
             ->where('is_active', true)
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
             ->exists();
+
+        if ($registered) {
+            return true;
+        }
+
+        // Kompatibilitas data lama: tugas tambahan Koordinator Guru Tahfidz
+        // tetap diakui sebagai koordinator sekolah.
+        $tasks = method_exists($user, 'tugasTambahan')
+            ? $user->tugasTambahan->pluck('nama')->map(fn ($name) => strtolower(trim((string) $name)))->all()
+            : [];
+
+        if (! in_array('koordinator guru tahfidz', $tasks, true)) {
+            return false;
+        }
+
+        if (! $schoolId) {
+            return true;
+        }
+
+        return GtkEmployment::query()->where('user_id', $user->id)->where('school_id', $schoolId)->exists();
     }
 
     public function isSchoolLeader(User $user): bool

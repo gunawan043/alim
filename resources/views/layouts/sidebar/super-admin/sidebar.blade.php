@@ -590,6 +590,22 @@
     </a>
 </li>
 
+<li class="menu-title"><span>Tahfidz</span></li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">
+        <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
+        <i class="ri-file-list-3-line"></i><span>RPP Tahfizh & Iqro’</span>
+    </a>
+</li>
+
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
