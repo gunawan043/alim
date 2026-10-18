@@ -1867,6 +1867,14 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Jumlah barang disimpan pada catatan aset; `dormitory_inventories.asset_id` diisi agar tidak dobel.
 - Data asrama tetap dapat dilihat dari modul asrama, tetapi sumber inventaris kini master `assets`.
 
+## 175. Sarpras — Laporan Kerusakan Terhubung ke Repair Request
+
+- Kolom `asset_damage_reports.repair_request_id`.
+- Saat unit mengirim laporan kerusakan, sistem otomatis membuat **repair request** (status submitted)
+  melalui `RepairRequestWorkflow`, dengan prioritas dari tingkat kerusakan (berat→high, sedang→normal, ringan→low).
+- Laporan tetap tersimpan walau pembuatan repair request gagal; error dicatat di log.
+- URT dapat menjadwalkan perbaikan dari antrean repair request yang sudah terstruktur.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

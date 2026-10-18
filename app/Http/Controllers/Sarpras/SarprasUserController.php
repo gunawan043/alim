@@ -434,7 +434,7 @@ class SarprasUserController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
         $school = $schoolId ? School::find($schoolId) : null;
 
-        AssetDamageReport::create([
+        $report = AssetDamageReport::create([
             'report_number' => AssetDamageReport::generateReportNumber(),
             'asset_id' => $validated['asset_id'],
             'reported_by' => auth()->id(),
@@ -446,8 +446,26 @@ class SarprasUserController extends SarprasBaseController
             'status' => 'pending',
         ]);
 
+        // Laporan terstruktur langsung masuk antrean repair request URT.
+        try {
+            $asset = Asset::findOrFail($validated['asset_id']);
+            $priority = match ($validated['damage_level']) {
+                'berat' => 'high', 'sedang' => 'normal', default => 'low',
+            };
+            $repair = app(\App\Services\Sarpras\RepairRequestWorkflow::class)->submitDamageReport(
+                $asset,
+                auth()->user(),
+                'Laporan kerusakan: '.$asset->asset_name,
+                trim($report->report_number.' — '.$validated['description'].' '.($validated['notes'] ?? '')),
+                $priority,
+            );
+            $report->update(['repair_request_id' => $repair->id]);
+        } catch (\Throwable $e) {
+            \Log::warning('Auto repair request dari laporan kerusakan gagal: '.$e->getMessage());
+        }
+
         return redirect()->route('sarpras.user.kerusakan.index', ['userId' => $request->route('userId')])
-            ->with('success', 'Laporan kerusakan berhasil dikirim.');
+            ->with('success', 'Laporan kerusakan berhasil dikirim dan masuk antrean perbaikan URT.');
     }
 
     // ============================================================

@@ -11,6 +11,7 @@ class AssetDamageReport extends Model
 
     protected $fillable = [
         'asset_id',
+        'repair_request_id',
         'reported_by',
         'report_number',
         'damage_level',
