@@ -40,28 +40,36 @@
             <div class="card">
                 <div class="card-header"><h5 class="card-title mb-0"><i class="ri-list-check-2 me-1"></i>Checklist Pekerjaan</h5><p class="text-muted small mb-0">Isi status, kondisi, catatan, serta foto/link Google Drive sebelum dan sesudah.</p></div>
                 <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0"><thead class="table-light"><tr><th style="width:40px">No</th><th>Uraian Pekerjaan</th><th style="width:150px">Hasil</th><th style="width:170px">Kondisi</th><th style="width:190px">Catatan</th><th style="width:190px">Foto Sebelum</th><th style="width:190px">Foto Sesudah</th></tr></thead><tbody>
-                    @forelse($tasks as $index => $task)
-                        <tr>
-                            <td class="text-center">{{ $index + 1 }}</td>
-                            <td><div class="fw-medium">{{ $task->title }}</div><small class="text-muted">{{ $task->standard }}</small></td>
-                            <td><select name="items[{{ $task->id }}][result]" class="form-select form-select-sm" required>@foreach(App\Models\CleaningReportItem::RESULT_OPTIONS as $result)<option value="{{ $result }}" {{ old('items.'.$task->id.'.result', 'sudah') === $result ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $result)) }}</option>@endforeach</select></td>
-                            <td><select name="items[{{ $task->id }}][condition]" class="form-select form-select-sm">@foreach(App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></td>
-                            <td><input name="items[{{ $task->id }}][notes]" class="form-control form-control-sm" value="{{ old('items.'.$task->id.'.notes') }}" placeholder="Keterangan"></td>
-                            <td>
-                                <input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive">
-                                <input type="file" id="before_file_{{ $task->id }}" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
-                                <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                <div id="before_preview_{{ $task->id }}"></div>
-                            </td>
-                            <td>
-                                <input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive">
-                                <input type="file" id="after_file_{{ $task->id }}" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
-                                <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                <div id="after_preview_{{ $task->id }}"></div>
-                            </td>
-                        </tr>
+                    @php
+                        $groupedTasks = $tasks->groupBy(fn ($task) => $task->group_label ?: 'Pekerjaan');
+                        $taskNumber = 0;
+                    @endphp
+                    @forelse($groupedTasks as $groupLabel => $groupTasks)
+                        <tr class="table-secondary"><td colspan="7" class="fw-semibold"><i class="ri-folder-line me-1"></i>{{ $groupLabel }}</td></tr>
+                        @foreach($groupTasks as $task)
+                            @php $taskNumber++; @endphp
+                            <tr>
+                                <td class="text-center">{{ $taskNumber }}</td>
+                                <td><div class="fw-medium">{{ $task->title }}</div><small class="text-muted">{{ $task->standard }}</small></td>
+                                <td><select name="items[{{ $task->id }}][result]" class="form-select form-select-sm" required>@foreach(App\Models\CleaningReportItem::RESULT_OPTIONS as $result)<option value="{{ $result }}" {{ old('items.'.$task->id.'.result', 'sudah') === $result ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $result)) }}</option>@endforeach</select></td>
+                                <td><select name="items[{{ $task->id }}][condition]" class="form-select form-select-sm">@foreach(App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></td>
+                                <td><input name="items[{{ $task->id }}][notes]" class="form-control form-control-sm" value="{{ old('items.'.$task->id.'.notes') }}" placeholder="Keterangan"></td>
+                                <td>
+                                    <input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive">
+                                    <input type="file" id="before_file_{{ $task->id }}" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                    <div id="before_preview_{{ $task->id }}"></div>
+                                </td>
+                                <td>
+                                    <input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive">
+                                    <input type="file" id="after_file_{{ $task->id }}" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                    <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                    <div id="after_preview_{{ $task->id }}"></div>
+                                </td>
+                            </tr>
+                        @endforeach
                     @empty
-                        <tr><td colspan="7" class="text-center py-4 text-muted">Area ini belum memiliki uraian pekerjaan.</td></tr>
+                        <tr><td colspan="7" class="text-center py-4 text-muted">Belum ada uraian pekerjaan untuk area ini.</td></tr>
                     @endforelse
                 </tbody></table></div></div>
                 @if($tasks->isNotEmpty())<div class="card-footer d-flex justify-content-end gap-2"><a href="{{ route('sarpras.kebersihan.index') }}" class="btn btn-light">Batal</a><button class="btn btn-success"><i class="ri-send-plane-line me-1"></i>Kirim Laporan</button></div>@endif

@@ -19,7 +19,7 @@ class CleaningTask extends Model
     }
 
     protected $fillable = [
-        'area_id', 'title', 'standard', 'method', 'frequency',
+        'area_id', 'group_label', 'title', 'standard', 'method', 'frequency',
         'sort_order', 'is_active', 'created_by',
     ];
 

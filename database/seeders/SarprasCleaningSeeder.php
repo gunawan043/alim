@@ -127,11 +127,42 @@ class SarprasCleaningSeeder extends Seeder
         ];
 
         $gardenTasks = [
-            ['Penyiraman tanaman', 'Tanah cukup lembab', 'Visual', 'harian'],
-            ['Kebersihan taman', 'Tidak ada sampah/rumput liar', 'Visual', 'mingguan'],
-            ['Pemangkasan tanaman', 'Taman tertata rapi', 'Visual', 'bulanan'],
-            ['Pemupukan', 'Tanaman tumbuh sehat', 'Visual', 'bulanan'],
-            ['Pengecekan hama', 'Bebas hama/penyakit', 'Visual', 'mingguan'],
+            // Penyiraman & kelembapan
+            ['Penyiraman tanaman hias', 'Tanah cukup lembab, tidak tergenang', 'Visual', 'harian', 'Penyiraman & Kelembapan'],
+            ['Penyiraman pohon muda', 'Akar dan media tanam lembab', 'Visual', 'harian', 'Penyiraman & Kelembapan'],
+            ['Pemeriksaan kelembapan tanah', 'Tidak kering dan tidak beku', 'Visual', 'harian', 'Penyiraman & Kelembapan'],
+            ['Pengaturan jadwal irigasi', 'Irigasi berjalan sesuai jadwal', 'Manual', 'mingguan', 'Penyiraman & Kelembapan'],
+            // Kebersihan taman
+            ['Pembersihan sampah daun dan ranting', 'Taman bersih dari sampah organik', 'Visual', 'harian', 'Kebersihan & Kerapian Taman'],
+            ['Pembersihan jalur pejalan kaki', 'Jalur bersih dan tidak licin', 'Visual', 'harian', 'Kebersihan & Kerapian Taman'],
+            ['Pembersihan rumput liar', 'Tidak ada gulma di bedeng dan jalur', 'Manual', 'mingguan', 'Kebersihan & Kerapian Taman'],
+            ['Pemangkasan rumput halaman', 'Rumput rapi dan tidak terlalu tinggi', 'Mesin/Manual', 'mingguan', 'Kebersihan & Kerapian Taman'],
+            ['Perapian pagar tanaman/hedge', 'Bentuk rapi dan tidak menghalangi jalur', 'Manual', 'bulanan', 'Kebersihan & Kerapian Taman'],
+            // Pemangkasan & penataan
+            ['Pemangkasan tanaman hias', 'Tanaman rapi dan tidak rimbun berlebihan', 'Manual', 'mingguan', 'Pemangkasan & Penataan'],
+            ['Pemangkasan pohon dan ranting', 'Ranting tidak mengganggu bangunan/jalur', 'Manual', 'bulanan', 'Pemangkasan & Penataan'],
+            ['Pemangkasan pohon tinggi', 'Pohon aman dan tidak berisiko tumbang', 'Manual', 'triwulan', 'Pemangkasan & Penataan'],
+            ['Penataan bedeng dan tanaman', 'Bedeng tertata dan mudah dirawat', 'Manual', 'bulanan', 'Pemangkasan & Penataan'],
+            // Pemupukan & kesehatan tanaman
+            ['Pemupukan tanaman', 'Tanaman tumbuh sehat dan subur', 'Manual', 'bulanan', 'Pemupukan & Kesehatan Tanaman'],
+            ['Pengendalian hama dan penyakit', 'Tidak ada serangan hama berarti', 'Visual/Manual', 'mingguan', 'Pemupukan & Kesehatan Tanaman'],
+            ['Penyulaman tanaman mati', 'Tidak ada titik tanam kosong', 'Manual', 'bulanan', 'Pemupukan & Kesehatan Tanaman'],
+            ['Pemeriksaan kesehatan tanaman', 'Daun, batang, dan akar sehat', 'Visual', 'mingguan', 'Pemupukan & Kesehatan Tanaman'],
+            // Kolam & irigasi
+            ['Pembersihan kolam', 'Air kolam bersih dan tidak bau', 'Manual', 'mingguan', 'Kolam & Irigasi'],
+            ['Pengecekan pompa dan filter kolam', 'Pompa/filter berfungsi normal', 'Visual', 'mingguan', 'Kolam & Irigasi'],
+            ['Pembersihan saluran irigasi taman', 'Air mengalir lancar', 'Manual', 'bulanan', 'Kolam & Irigasi'],
+            ['Pengecekan kebocoran saluran', 'Tidak ada kebocoran/rembesan', 'Visual', 'bulanan', 'Kolam & Irigasi'],
+            // Fasilitas & alat
+            ['Pembersihan gazebo dan bangku taman', 'Bersih dan nyaman digunakan', 'Manual', 'mingguan', 'Fasilitas & Alat Taman'],
+            ['Pemeriksaan lampu taman', 'Lampu menyala dan aman', 'Visual', 'mingguan', 'Fasilitas & Alat Taman'],
+            ['Pemeriksaan alat pertamanan', 'Alat lengkap dan berfungsi', 'Visual', 'bulanan', 'Fasilitas & Alat Taman'],
+            ['Perawatan mesin potong rumput', 'Mesin siap pakai dan aman', 'Manual', 'bulanan', 'Fasilitas & Alat Taman'],
+            ['Pengecekan tempat sampah taman', 'Tidak penuh dan tidak bau', 'Visual', 'harian', 'Fasilitas & Alat Taman'],
+            // Keselamatan
+            ['Pengecekan pohon berisiko tumbang', 'Tidak ada pohon rawan tumbang', 'Visual', 'bulanan', 'Keselamatan & Lingkungan'],
+            ['Pembersihan area genangan', 'Tidak ada genangan yang lama', 'Manual', 'harian', 'Keselamatan & Lingkungan'],
+            ['Pemeriksaan bahan kimia pertamanan', 'Pupuk/pestisida tersimpan aman', 'Visual', 'bulanan', 'Keselamatan & Lingkungan'],
         ];
 
         $drainTasks = [
@@ -149,10 +180,14 @@ class SarprasCleaningSeeder extends Seeder
                 default => $generalTasks,
             };
 
-            foreach ($tasks as $index => [$title, $standard, $method, $frequency]) {
-                CleaningTask::firstOrCreate(
+            foreach ($tasks as $index => $taskData) {
+                [$title, $standard, $method, $frequency] = $taskData;
+                $groupLabel = $taskData[4] ?? null;
+
+                $task = CleaningTask::firstOrCreate(
                     ['area_id' => $area->id, 'title' => $title],
                     [
+                        'group_label' => $groupLabel,
                         'standard' => $standard,
                         'method' => $method,
                         'frequency' => $frequency,
@@ -161,6 +196,10 @@ class SarprasCleaningSeeder extends Seeder
                         'created_by' => $createdBy,
                     ]
                 );
+
+                if ($groupLabel && $task->group_label !== $groupLabel) {
+                    $task->update(['group_label' => $groupLabel]);
+                }
             }
         }
 
@@ -189,6 +228,11 @@ class SarprasCleaningSeeder extends Seeder
             ['Pemeliharaan Plang Nama Pondok Jalan Utama', 'plang_nama', 'bulanan', [1, 3, 5, 9, 11]],
             ['Pemeliharaan Taman dan Kolam', 'taman', 'bulanan', [1,2,3,4,5,6,7,8,9,10,11,12]],
             ['Pemangkasan Pohon dan Perawatan Taman', 'pemangkasan', 'bulanan', [1,2,3,4,5,6,7,8,9,10,11,12]],
+            ['Perawatan Taman Hias dan Bedeng', 'taman', 'bulanan', [1,2,3,4,5,6,7,8,9,10,11,12]],
+            ['Pengendalian Hama dan Penyakit Tanaman', 'taman', 'bulanan', [2,5,8,11]],
+            ['Perawatan Kolam dan Irigasi Taman', 'taman', 'bulanan', [1,2,3,4,5,6,7,8,9,10,11,12]],
+            ['Perawatan Alat Pertamanan', 'taman', 'triwulan', [3,6,9,12]],
+            ['Penataan dan Penanaman Musiman', 'taman', 'triwulan', [1,4,7,10]],
         ];
 
         foreach ($programs as [$title, $category, $frequency, $months]) {

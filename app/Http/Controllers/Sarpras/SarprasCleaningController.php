@@ -311,6 +311,7 @@ class SarprasCleaningController extends SarprasBaseController
         $area = CleaningArea::findOrFail($areaId);
 
         $validated = $request->validate([
+            'group_label' => 'nullable|string|max:100',
             'title' => 'required|string|max:191',
             'standard' => 'nullable|string|max:1000',
             'method' => 'nullable|string|max:60',
@@ -334,6 +335,7 @@ class SarprasCleaningController extends SarprasBaseController
         $task = CleaningTask::findOrFail($taskId);
 
         $validated = $request->validate([
+            'group_label' => 'nullable|string|max:100',
             'title' => 'required|string|max:191',
             'standard' => 'nullable|string|max:1000',
             'method' => 'nullable|string|max:60',

@@ -2287,6 +2287,25 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   Pemeliharaan Taman dan Kolam, serta Pemangkasan Pohon.
 - Petugas Pertamanan tidak memperoleh hak verifikasi/manajemen area; verifikasi tetap oleh koordinator/URT.
 
+## 200. Checklist Pertamanan Terstruktur
+
+- Uraian pekerjaan Pertamanan diperluas menjadi 34 item dalam 7 kelompok:
+  - Penyiraman & Kelembapan;
+  - Kebersihan & Kerapian Taman;
+  - Pemangkasan & Penataan;
+  - Pemupukan & Kesehatan Tanaman;
+  - Kolam & Irigasi;
+  - Fasilitas & Alat Taman;
+  - Keselamatan & Lingkungan.
+- Checklist laporan menampilkan header kelompok agar petugas pertamanan lebih mudah mengisi.
+- Program tahunan ditambah:
+  - Perawatan Taman Hias dan Bedeng;
+  - Pengendalian Hama dan Penyakit Tanaman;
+  - Perawatan Kolam dan Irigasi Taman;
+  - Perawatan Alat Pertamanan;
+  - Penataan dan Penanaman Musiman.
+- Kolom `cleaning_tasks.group_label` ditambahkan dan form tambah uraian mendukung kelompok pekerjaan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
