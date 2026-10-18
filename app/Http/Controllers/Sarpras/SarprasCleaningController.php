@@ -72,12 +72,16 @@ class SarprasCleaningController extends SarprasBaseController
 
         $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $buildings = AssetBuilding::query()->orderBy('building_name')->get(['id', 'building_name']);
+        $rooms = \App\Models\AssetRoom::with('building')
+            ->where('is_active', true)
+            ->orderBy('room_name')
+            ->get(['id', 'building_id', 'room_name', 'school_id', 'work_unit_id']);
 
         $officerIds = CleaningAssignment::query()->where('is_active', true)->pluck('user_id');
         $officers = User::query()->whereIn('id', $officerIds)->orderBy('name')->get(['id', 'name']);
 
         return view('sarpras.kebersihan.index', compact(
-            'areas', 'reports', 'stats', 'programs', 'users', 'officers', 'buildings', 'canManage', 'canReport'
+            'areas', 'reports', 'stats', 'programs', 'users', 'officers', 'buildings', 'rooms', 'canManage', 'canReport'
         ));
     }
 
@@ -93,9 +97,14 @@ class SarprasCleaningController extends SarprasBaseController
 
         $canManage = $this->cleaningCanManage();
         $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $buildings = AssetBuilding::query()->orderBy('building_name')->get(['id', 'building_name']);
+        $rooms = \App\Models\AssetRoom::with('building')
+            ->where('is_active', true)
+            ->orderBy('room_name')
+            ->get(['id', 'building_id', 'room_name', 'school_id', 'work_unit_id']);
         $reports = $area->reports()->with(['officer', 'substituteFor', 'verifier'])->latest('report_date')->limit(20)->get();
 
-        return view('sarpras.kebersihan.area', compact('area', 'users', 'reports', 'canManage'));
+        return view('sarpras.kebersihan.area', compact('area', 'users', 'buildings', 'rooms', 'reports', 'canManage'));
     }
 
     public function storeArea(Request $request)
@@ -140,8 +149,13 @@ class SarprasCleaningController extends SarprasBaseController
             'is_active' => 'nullable|boolean',
         ]);
 
+        $building = $validated['building_id'] ? AssetBuilding::find($validated['building_id']) : null;
+        $room = $validated['room_id'] ? \App\Models\AssetRoom::find($validated['room_id']) : null;
+
         $area->update([
             ...$validated,
+            'work_unit_id' => $room?->work_unit_id ?? $building?->work_unit_id ?? $area->work_unit_id,
+            'school_id' => $room?->school_id ?? $building?->school_id,
             'is_active' => $request->boolean('is_active', true),
         ]);
 

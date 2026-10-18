@@ -102,7 +102,8 @@
         <div class="modal fade" id="addAreaModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.kebersihan.area.store') }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Tambah Area Kerja</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
             <div class="mb-3"><label class="form-label">Nama Area <span class="text-danger">*</span></label><input name="name" class="form-control" required placeholder="Contoh: Kamar Mandi Gedung A"></div>
             <div class="mb-3"><label class="form-label">Jenis Area <span class="text-danger">*</span></label><select name="area_type" class="form-select" required>@foreach(App\Models\CleaningArea::TYPE_OPTIONS as $type)<option value="{{ $type }}">{{ ucfirst(str_replace('_',' ', $type)) }}</option>@endforeach</select></div>
-            <div class="mb-3"><label class="form-label">Gedung</label><select name="building_id" class="form-select"><option value="">— Tidak ada —</option>@foreach($buildings as $building)<option value="{{ $building->id }}">{{ $building->building_name }}</option>@endforeach</select></div>
+            <div class="mb-3"><label class="form-label">Gedung <span class="text-muted">(master Sarpras, opsional)</span></label><select name="building_id" id="cleaningBuildingSelect" class="form-select"><option value="">— Tidak terikat gedung —</option>@foreach($buildings as $building)<option value="{{ $building->id }}">{{ $building->building_name }}</option>@endforeach</select></div>
+            <div class="mb-3"><label class="form-label">Ruang <span class="text-muted">(master Sarpras, opsional)</span></label><select name="room_id" id="cleaningRoomSelect" class="form-select"><option value="">— Tidak terikat ruang —</option>@foreach($rooms as $room)<option value="{{ $room->id }}" data-building="{{ $room->building_id }}">{{ $room->building?->building_name ? $room->building->building_name.' — ' : '' }}{{ $room->room_name }}</option>@endforeach</select><small class="text-muted">Kosongkan untuk area non-ruang seperti taman, gorong-gorong, atau area umum.</small></div>
             <div class="mb-3"><label class="form-label">Koordinator</label><select name="coordinator_id" class="form-select"><option value="">— Pilih —</option>@foreach($officers as $officer)<option value="{{ $officer->id }}">{{ $officer->name }}</option>@endforeach</select></div>
             <div><label class="form-label">Catatan Lokasi</label><textarea name="location_notes" class="form-control" rows="2"></textarea></div>
         </div><div class="modal-footer"><button class="btn btn-primary">Simpan Area</button></div></form></div></div>
@@ -121,3 +122,24 @@
         </div></div><div class="modal-footer"><button class="btn btn-primary">Simpan Program</button></div></form></div></div>
     @endif
 @endsection
+
+@push('script')
+<script>
+    (function () {
+        const building = document.getElementById('cleaningBuildingSelect');
+        const room = document.getElementById('cleaningRoomSelect');
+        if (!building || !room) return;
+
+        function filterRooms() {
+            const selected = building.value;
+            Array.from(room.options).forEach(function (option) {
+                if (!option.value) return;
+                option.hidden = selected !== '' && option.dataset.building !== selected;
+            });
+            if (room.selectedOptions[0] && room.selectedOptions[0].hidden) room.value = '';
+        }
+        building.addEventListener('change', filterRooms);
+        filterRooms();
+    })();
+</script>
+@endpush
