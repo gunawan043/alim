@@ -219,6 +219,7 @@ use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
+use App\Http\Controllers\Tahfidz\TahfidzConsistencyController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzInterventionController;
 use App\Http\Controllers\Tahfidz\TahfidzInputController;
@@ -470,6 +471,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
                 Route::get('input-hafalan', [TahfidzInputController::class, 'index'])->name('input.index');
                 Route::get('audit', [TahfidzAuditController::class, 'index'])->name('audit.index');
+                Route::get('consistency', [TahfidzConsistencyController::class, 'index'])->name('consistency.index');
                 Route::post('audit/auto-verify', [TahfidzAuditController::class, 'autoVerifyPending'])->name('audit.auto-verify');
                 Route::get('santri/{studentId}', [TahfidzSantriController::class, 'show'])->name('santri.show');
                 Route::post('santri/{studentId}/interventions', [TahfidzInterventionController::class, 'store'])->name('santri.interventions.store');

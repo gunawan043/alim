@@ -195,6 +195,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.consistency.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.consistency.index') }}">
+            <i class="ri-list-check-2"></i><span>Konsistensi Rapor–Leger</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
            href="{{ $tahfidzUrl('user.tahfidz.interventions.index') }}">
             <i class="ri-task-line"></i><span>Tindak Lanjut</span>
