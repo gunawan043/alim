@@ -18,6 +18,7 @@ use App\Models\SchoolVendor;
 use App\Models\StockOpnameItem;
 use App\Models\WorkOrder;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Builds the complete Asset Passport returned when a QR is scanned.
@@ -42,6 +43,8 @@ class AssetPassportService
             'costs' => $this->buildCostSummary($asset, $related),
             'documents' => $this->buildDocuments($asset),
             'lifecycle' => $this->buildLifecycleTimeline($asset, $related['events']),
+            'maint_histories' => $related['maintHistories'],
+            'maintenance_due' => $this->buildMaintenanceSchedule($asset),
         ];
     }
 
@@ -57,6 +60,7 @@ class AssetPassportService
     public function buildFull(Asset $asset): array
     {
         $data = $this->getForAsset($asset);
+        $related = $this->fetchRelations($asset);
         $data['loans'] = $this->buildLoanHistory($asset);
         $data['transfers'] = $this->buildTransferHistory($asset);
         $data['audits'] = $this->buildAuditHistory($asset);
@@ -65,7 +69,7 @@ class AssetPassportService
         $data['qr_scans'] = $this->buildScanHistory($asset);
         $data['photos'] = $this->buildPhotos($asset);
         $data['spareparts_used'] = $this->buildSparepartHistory($asset);
-        $data['technician_performance'] = $this->buildTechnicianNotes($asset, $related = $this->fetchRelations($asset));
+        $data['technician_performance'] = $this->buildTechnicianNotes($related);
 
         return $data;
     }
@@ -458,11 +462,21 @@ class AssetPassportService
     protected function buildSparepartHistory(Asset $asset): array
     {
         return RepairCostHistory::where('asset_id', $asset->id)
-            ->whereNotNull('sparepart_used')
-            ->orWhere('cost_category', 'sparepart')
+            ->where(function ($query) {
+                $query->where('cost_category', 'sparepart')
+                    ->orWhere('description', 'like', '%sparepart%');
+            })
             ->orderByDesc('incurred_date')
             ->take(20)
-            ->get(['id', 'work_order_id', 'cost_category', 'sparepart_used', 'amount', 'incurred_date'])
+            ->get(['id', 'work_order_id', 'cost_category', 'description', 'amount', 'incurred_date'])
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'work_order_id' => $row->work_order_id,
+                'cost_category' => $row->cost_category,
+                'sparepart_used' => $row->description,
+                'amount' => $row->amount,
+                'incurred_date' => $row->incurred_date?->toDateString(),
+            ])
             ->toArray();
     }
 
@@ -484,11 +498,24 @@ class AssetPassportService
             ->orderByDesc('maintenance_date')
             ->first();
 
+        if (! $log) {
+            $history = MaintenanceHistory::where('asset_id', $asset->id)
+                ->orderByDesc('performed_date')
+                ->first();
+
+            return [
+                'last_performed' => $history?->performed_date?->toDateString(),
+                'next_due' => $history?->next_due_date?->toDateString(),
+                'overdue' => $history?->next_due_date && $history->next_due_date->lt(now()),
+                'frequency' => $history?->maintenance_type,
+            ];
+        }
+
         return [
-            'last_performed' => $log?->maintenance_date?->toDateString(),
-            'next_due' => $log?->next_due_date?->toDateString(),
-            'overdue' => $log?->next_due_date && $log->next_due_date->lt(now()),
-            'frequency' => $log?->maintenance_type,
+            'last_performed' => $log->maintenance_date?->toDateString(),
+            'next_due' => $log->next_due_date?->toDateString(),
+            'overdue' => $log->next_due_date && $log->next_due_date->lt(now()),
+            'frequency' => $log->maintenance_type,
         ];
     }
 
@@ -523,7 +550,7 @@ class AssetPassportService
         return AssetLoan::where('asset_id', $asset->id)
             ->orderByDesc('created_at')
             ->take(20)
-            ->get(['id', 'loan_number', 'borrower_name', 'start_date', 'end_date', 'status'])
+            ->get(['id', 'borrower_id', 'loan_date', 'expected_return_date', 'actual_return_date', 'status'])
             ->toArray();
     }
 
@@ -542,7 +569,7 @@ class AssetPassportService
 
     protected function buildAuditHistory(Asset $asset): array
     {
-        if (! class_exists('App\\Models\\AssetAudit')) {
+        if (! class_exists('App\\Models\\AssetAudit') || ! Schema::hasTable('asset_audits')) {
             return [];
         }
 
@@ -561,7 +588,7 @@ class AssetPassportService
 
         return StockOpnameItem::with('session')
             ->where('asset_id', $asset->id)
-            ->orderByDesc('observed_at')
+            ->orderByDesc('created_at')
             ->take(20)
             ->get()
             ->toArray();
@@ -587,7 +614,7 @@ class AssetPassportService
     {
         return QrScanHistory::with('scanner')
             ->where('asset_id', $asset->id)
-            ->orderByDesc('scanned_at')
+            ->orderByDesc('created_at')
             ->take(50)
             ->get()
             ->toArray();
@@ -644,7 +671,7 @@ class AssetPassportService
                 ->get(),
             'repairRequests' => RepairRequest::where('asset_id', $asset->id)
                 ->orderByDesc('created_at')
-                ->with(['repairRequests.workOrders'])
+                ->with(['workOrders'])
                 ->get(),
             'workOrders' => WorkOrder::where('asset_id', $asset->id)
                 ->orderByDesc('created_at')

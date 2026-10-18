@@ -18,7 +18,7 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-12">
-                        <strong>Total Aset:</strong> {{ number_format($totalAset') }} &nbsp;|&nbsp;
+                        <strong>Total Aset:</strong> {{ number_format($totalAset) }} &nbsp;|&nbsp;
                         <strong>Total Nilai:</strong> {{ 'Rp '.number_format($totalNilai, 0, ',', '.') }}
                     </div>
                 </div>

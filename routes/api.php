@@ -341,11 +341,12 @@ Route::middleware(['auth:sanctum', 'organization.context'])->prefix('sarpras/v2'
     Route::prefix('opname')->group(function () {
         Route::get('sessions', [StockOpnameController::class, 'sessions']);
         Route::post('sessions', [StockOpnameController::class, 'createSession']);
-        Route::get('sessions/{id}', [StockOpnameController::class, 'showSession']);
-        Route::post('sessions/{id}/close', [StockOpnameController::class, 'closeSession']);
-        Route::post('sessions/{id}/variance', [StockOpnameController::class, 'varianceReport']);
-        Route::post('sessions/{id}/items/{itemId}', [StockOpnameController::class, 'recordObservation']);
-        Route::post('sessions/{id}/qr-scan', [StockOpnameController::class, 'qrScan']);
+        Route::get('sessions/{sessionId}', [StockOpnameController::class, 'showSession']);
+        Route::post('sessions/{sessionId}/start', [StockOpnameController::class, 'startSession']);
+        Route::post('sessions/{sessionId}/close', [StockOpnameController::class, 'closeSession']);
+        Route::post('sessions/{sessionId}/variance', [StockOpnameController::class, 'varianceReport']);
+        Route::post('sessions/{sessionId}/items/{itemId}', [StockOpnameController::class, 'recordObservation']);
+        Route::post('sessions/{sessionId}/qr-scan', [StockOpnameController::class, 'qrScan']);
     });
 
     // ── OFFLINE MOBILE SYNC (batch operations) ──────────────────────

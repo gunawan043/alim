@@ -34,6 +34,11 @@ class SarprasCacheInvalidator
         $this->invalidateAll();
     }
 
+    public function invalidateMaintenance(): void
+    {
+        $this->invalidateAll();
+    }
+
     public function invalidateWorkOrder(WorkOrder $order): void
     {
         $this->invalidateAll();

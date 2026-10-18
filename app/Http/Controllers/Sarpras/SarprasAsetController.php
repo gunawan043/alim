@@ -30,9 +30,11 @@ class SarprasAsetController extends SarprasBaseController
 
     public function index(Request $request)
     {
-        $query = Asset::with(['room', 'room.school', 'category']);
+        $query = Asset::with(['room', 'room.school', 'room.building', 'category', 'workUnit']);
 
-        if (! $this->canViewAll($request)) {
+        if (! $this->canViewAll($request) && ! $this->isCentralSarpras()) {
+            $query = $this->scopeToAccessibleWorkUnits($query, $request);
+        } elseif (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
 
@@ -41,7 +43,8 @@ class SarprasAsetController extends SarprasBaseController
             $query->where(fn ($q) => $q
                 ->where('asset_name', 'like', "%{$s}%")
                 ->orWhere('asset_code', 'like', "%{$s}%")
-                ->orWhere('brand', 'like', "%{$s}%"));
+                ->orWhere('brand', 'like', "%{$s}%")
+                ->orWhere('work_unit_sequence', 'like', "%{$s}%"));
         }
         if ($request->filled('condition')) {
             $query->where('condition', $request->condition);
@@ -64,7 +67,9 @@ class SarprasAsetController extends SarprasBaseController
         ];
 
         $asets = $query->orderBy('asset_name')->paginate(15)->withQueryString();
-        $rooms = AssetRoom::where('is_active', true)->orderBy('room_name')->get();
+        $rooms = AssetRoom::with('building')->where('is_active', true)
+            ->when(! $this->isCentralSarpras(), fn ($q) => $q->whereIn('work_unit_id', $this->accessibleWorkUnitIds()))
+            ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
         $canVerify = auth()->user() && (
             (method_exists(auth()->user(), 'isSystemAdmin') && auth()->user()->isSystemAdmin())
@@ -78,8 +83,9 @@ class SarprasAsetController extends SarprasBaseController
     public function create(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $rooms = AssetRoom::where('is_active', true)
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $rooms = AssetRoom::with('building')->where('is_active', true)
+            ->when($schoolId && ! $this->isCentralSarpras(), fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->isCentralSarpras(), fn ($q) => $q->whereIn('work_unit_id', $this->accessibleWorkUnitIds()))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
@@ -89,20 +95,33 @@ class SarprasAsetController extends SarprasBaseController
     public function store(AsetStoreRequest $request)
     {
         $validated = $request->validated();
+        $isCentral = $this->isCentralSarpras();
 
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['status'] = $validated['status'] ?? 'tersedia';
-        $validated['verification_status'] = 'pending'; // unit/URT memverifikasi via workflow
-        $validated['verified_by'] = null;
-        $validated['verified_at'] = null;
+        $validated['quantity'] = $validated['quantity'] ?? 1;
+        $validated['unit'] = $validated['unit'] ?? 'unit';
+
+        // Aset yang dibuat unit harus diverifikasi URT. Aset yang dibuat URT langsung sah.
+        $validated['verification_status'] = $isCentral ? 'verified' : 'pending';
+        $validated['verified_by'] = $isCentral ? auth()->id() : null;
+        $validated['verified_at'] = $isCentral ? now() : null;
         $validated['created_by'] = auth()->id();
         $validated['current_value'] = $validated['acquisition_price'] ?? null;
 
+        if (! empty($validated['useful_life_years']) && ! empty($validated['acquisition_price'])) {
+            $validated['depreciation_per_year'] = $validated['depreciation_per_year']
+                ?? round(((float) $validated['acquisition_price']) / max(1, (int) $validated['useful_life_years']), 2);
+        }
+
         if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
+            $this->authorizeWorkUnitAccess($room->work_unit_id, $request);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
+        } else {
+            abort_unless($isCentral, 403, 'Satuan kerja wajib memilih ruang aset.');
         }
 
         $asset = Asset::create($validated);
@@ -164,7 +183,7 @@ class SarprasAsetController extends SarprasBaseController
         $this->authorizeAssetAccess($aset, $request);
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $rooms = AssetRoom::where('is_active', true)
+        $rooms = AssetRoom::with('building')->where('is_active', true)
             ->when($aset->school_id, fn ($q) => $q->where('school_id', $aset->school_id))
             ->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
@@ -217,10 +236,15 @@ class SarprasAsetController extends SarprasBaseController
         $validated['is_bookable'] = $request->boolean('is_bookable', true);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['status'] = $aset->status; // preserve existing status, must go through workflow
-        $validated['current_value'] = $validated['acquisition_price'] ?? null;
+
+        if (! empty($validated['useful_life_years']) && ! empty($validated['acquisition_price'])) {
+            $validated['depreciation_per_year'] = $validated['depreciation_per_year']
+                ?? round(((float) $validated['acquisition_price']) / max(1, (int) $validated['useful_life_years']), 2);
+        }
 
         if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
+            $this->authorizeWorkUnitAccess($room->work_unit_id, $request);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
         }
@@ -326,7 +350,7 @@ class SarprasAsetController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
 
         try {
-            $import = new AssetImport(auth()->id(), $schoolId);
+            $import = new AssetImport(auth()->id(), $schoolId, null, $this->isCentralSarpras());
             Excel::import($import, $request->file('file'));
 
             $errors = $import->getErrors();

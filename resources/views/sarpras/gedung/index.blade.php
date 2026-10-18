@@ -32,15 +32,20 @@
                             <h5 class="card-title mb-0">Daftar Gedung</h5>
                             <p class="text-muted mb-0">Kelola gedung pada satuan pendidikan.</p>
                         </div>
-                        <div class="col-sm-auto">
-                            <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
-                                <i class="ri-add-line align-bottom me-1"></i> Tambah Gedung
-                            </a>
-                        </div>
+                        @if($canManage ?? false)
+                            <div class="col-sm-auto">
+                                <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
+                                    <i class="ri-add-line align-bottom me-1"></i> Tambah Gedung
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 <div class="card-body">
+                    @if(!($canManage ?? false))
+                        <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-lock-line fs-5"></i><span>Nama dan data gedung ditetapkan oleh Kepala/TU Unit Rumah Tangga. Satuan kerja memilih gedung dan ruang yang tersedia.</span></div>
+                    @endif
                     <form method="GET" class="row g-3 mb-4">
                         @if(!$schools->count() || $schools->count() > 1)
                         <div class="col-md-3">
@@ -148,18 +153,20 @@
                                                             <i class="ri-community-line me-2"></i>Daftar Ruang
                                                         </a>
                                                     </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('sarpras.gedung.edit', ['id' => $g->id]) }}">
-                                                            <i class="ri-pencil-line me-2"></i>Edit
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger delete-gedung" href="javascript:void(0)"
-                                                           data-id="{{ $g->id }}" data-name="{{ $g->building_name }}">
-                                                            <i class="ri-delete-bin-line me-2"></i>Hapus
-                                                        </a>
-                                                    </li>
+                                                    @if($canManage ?? false)
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('sarpras.gedung.edit', ['id' => $g->id]) }}">
+                                                                <i class="ri-pencil-line me-2"></i>Edit
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger delete-gedung" href="javascript:void(0)"
+                                                               data-id="{{ $g->id }}" data-name="{{ $g->building_name }}">
+                                                                <i class="ri-delete-bin-line me-2"></i>Hapus
+                                                            </a>
+                                                        </li>
+                                                    @endif
                                                 </ul>
                                             </div>
                                         </td>
@@ -174,9 +181,11 @@
                                             </div>
                                             <h5 class="text-muted">Belum ada data gedung</h5>
                                             <p class="text-muted">Tambah gedung untuk memulai pencatatan sarana prasarana.</p>
-                                            <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
-                                                <i class="ri-add-line me-1"></i>Tambah Gedung
-                                            </a>
+                                            @if($canManage ?? false)
+                                                <a href="{{ route('sarpras.gedung.create') }}" class="btn btn-success">
+                                                    <i class="ri-add-line me-1"></i>Tambah Gedung
+                                                </a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforelse
@@ -188,41 +197,24 @@
             </div>
         </div>
     </div>
+    @if($canManage ?? false)
+        <x-modal-confirm id="deleteGedungModal" icon="https://cdn.lordicon.com/gsqxdxog.json" title="Hapus Gedung?" submitLabel="Ya, Hapus" submitIcon="ri-delete-bin-line" submitClass="btn-danger" formId="deleteGedungForm">
+            <p class="text-center text-muted mb-0" id="deleteGedungMessage">Gedung akan dihapus.</p>
+        </x-modal-confirm>
+        <form id="deleteGedungForm" method="POST" class="d-none">@csrf @method('DELETE')</form>
+    @endif
 @endsection
 
-@section('script')
-    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-    <script>
-        document.querySelectorAll('.delete-gedung').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.dataset.id;
-                var name = this.dataset.name;
-                Swal.fire({
-                    title: 'Yakin ingin menghapus?',
-                    text: 'Gedung "' + name + '" akan dihapus permanen.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '/sarpras/gedung/' + id;
-                        ['_token','_method'].forEach(function(n, i) {
-                            var inp = document.createElement('input');
-                            inp.type = 'hidden';
-                            inp.name = n;
-                            inp.value = i === 0 ? '{{ csrf_token() }}' : 'DELETE';
-                            form.appendChild(inp);
-                        });
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
-            });
+@push('script')
+<script>
+    document.querySelectorAll('.delete-gedung').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var form = document.getElementById('deleteGedungForm');
+            if (!form) return;
+            form.action = '/sarpras/gedung/' + button.dataset.id;
+            document.getElementById('deleteGedungMessage').textContent = 'Gedung "' + button.dataset.name + '" akan dihapus.';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteGedungModal')).show();
         });
-    </script>
-@endsection
+    });
+</script>
+@endpush

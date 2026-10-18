@@ -1,198 +1,53 @@
 @extends('layouts.master')
-@section('title') WO {{ $order->order_number }} @endsection
+@section('title') Work Order {{ $order->order_number }} @endsection
 
 @section('content')
-@component('components.breadcrumb')
-    @slot('li_1') Teknisi @endslot
-    @slot('li_2') <a href="{{ route('sarpras.teknisi.dashboard') }}">Dashboard</a> @endslot
-    @slot('title') {{ $order->order_number }} @endslot
-@endcomponent
+    @component('components.breadcrumb')
+        @slot('li_1') <a href="{{ route('sarpras.teknisi.dashboard') }}">Workspace Teknisi</a> @endslot
+        @slot('title') {{ $order->order_number }}
+    @endcomponent
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between">
-                <h5 class="card-title mb-0">{{ $order->title ?? $order->order_number }}</h5>
-                <span class="badge {{ $order->status == 'in_progress' ? 'bg-success' : ($order->status == 'paused' ? 'bg-warning text-dark' : 'bg-info') }}">
-                    {{ ucfirst($order->status) }}
-                </span>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-sm-6">
-                        <h6 class="text-muted">Aset</h6>
-                        <p>
-                            <a href="{{ route('sarpass.assets.passport.show', $order->asset?->uuid ?? $order->asset?->id) }}" class="text-decoration-none">
-                                {{ $order->asset?->asset_name ?? '-' }}
-                            </a>
-                            <code class="ms-1">{{ $order->asset?->asset_code }}</code>
-                        </p>
-                    </div>
-                    <div class="col-sm-6">
-                        <h6 class="text-muted">Lokasi</h6>
-                        <p>{{ $order->asset?->room?->room_name ?? '-' }}</p>
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col-sm-6">
-                        <h6 class="text-muted">Tipe</h6>
-                        <p>{{ ucfirst(str_replace('_', ' ', $order->type ?? '-')) }}</p>
-                    </div>
-                    <div class="col-sm-6">
-                        <h6 class="text-muted">Batas Waktu</h6>
-                        <p>{{ $order->due_date?->format('d/m/Y H:i') ?? '-' }}</p>
-                    </div>
-                </div>
-                @if($order->description)
-                <div class="mt-3">
-                    <h6 class="text-muted">Deskripsi</h6>
-                    <p>{{ $order->description }}</p>
-                </div>
-                @endif
-            </div>
-        </div>
-
-        {{-- Progress Notes --}}
-        <div class="card">
-            <div class="card-header"><h5 class="card-title mb-0"><i class="ri-file-list-line me-1"></i> Catatan Progres</h5></div>
-            <div class="card-body">
-                @forelse($order->progressNotes as $note)
-                <div class="border-start border-primary border-3 ps-3 mb-2">
-                    <div class="d-flex justify-content-between">
-                        <strong>{{ $note->user->name ?? '-' }}</strong>
-                        <small class="text-muted">{{ $note->created_at->diffForHumans() }}</small>
-                    </div>
-                    <p class="mb-0">{{ $note->note }}</p>
-                </div>
-                @empty
-                <p class="text-muted mb-0">Belum ada catatan</p>
-                @endforelse
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        {{-- Action Panel --}}
-        <div class="card mb-3">
-            <div class="card-header"><h5 class="card-title mb-0"><i class="ri-gamepad-line me-1"></i> Aksi</h5></div>
-            <div class="card-body">
-                @if($order->status == 'assigned')
-                <form method="POST" action="{{ route('sarpras.teknisi.start', $order->id) }}" class="mb-2">
-                    @csrf
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="ri-play-line me-1"></i> Mulai Pengerjaan
-                    </button>
-                </form>
-                @endif
-
-                @if($order->status == 'in_progress')
-                <button class="btn btn-warning w-100 mb-2" data-bs-toggle="modal" data-bs-target="#pauseModal">
-                    <i class="ri-pause-line me-1"></i> Pause
-                </button>
-                <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#noteModal">
-                    <i class="ri-file-list-line me-1"></i> Catatan
-                </button>
-                <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#completeModal">
-                    <i class="ri-check-double-line me-1"></i> Selesaikan
-                </button>
-                @endif
-
-                @if($order->status == 'paused')
-                <form method="POST" action="{{ route('sarpras.teknisi.resume', $order->id) }}" class="mb-2">
-                    @csrf
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="ri-play-line me-1"></i> Lanjutkan
-                    </button>
-                </form>
-                @endif
-            </div>
-        </div>
-
-        {{-- SLA Card --}}
-        @if($order->sla_tracker)
-        <div class="card">
-            <div class="card-header"><h6 class="mb-0">SLA Tracker</h6></div>
-            <div class="card-body">
-                <p class="mb-1"><strong>Status:</strong>
-                    @if($order->sla_tracker->breached)
-                        <span class="badge bg-danger">BREACHED</span>
-                    @elseif($order->sla_tracker->is_imminent)
-                        <span class="badge bg-warning text-dark">SOON</span>
-                    @else
-                        <span class="badge bg-success">OK</span>
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center"><h5 class="card-title mb-0">Detail Work Order</h5><span class="badge bg-info-subtle text-info">{{ ucfirst(str_replace('_',' ', $order->status)) }}</span></div>
+                <div class="card-body"><table class="table table-borderless mb-0"><tbody>
+                    <tr><td class="text-muted" style="width:160px">Aset</td><td>@if($order->asset)<a href="{{ route('sarpras.assets.passport', $order->asset->id) }}" class="fw-medium">{{ $order->asset->asset_name }}</a><br><code class="small">{{ $order->asset->asset_code }}</code>@else - @endif</td></tr>
+                    <tr><td class="text-muted">Lokasi</td><td>{{ $order->asset?->room?->building?->building_name ? $order->asset->room->building->building_name.' — ' : '' }}{{ $order->asset?->room?->room_name ?? '-' }}</td></tr>
+                    <tr><td class="text-muted">Jenis</td><td>{{ ucfirst($order->type) }}</td></tr>
+                    <tr><td class="text-muted">Jadwal</td><td>{{ $order->scheduled_date?->format('d/m/Y') ?? '-' }}</td></tr>
+                    <tr><td class="text-muted">Lingkup Pekerjaan</td><td>{{ $order->scope_of_work }}</td></tr>
+                    @if($order->completion_notes)<tr><td class="text-muted">Hasil</td><td>{{ $order->completion_notes }}</td></tr>@endif
+                    <tr><td class="text-muted">Biaya</td><td>Rp {{ number_format($order->total_cost,0,',','.') }}</td></tr>
+                </tbody></table></div>
+                <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
+                    @if(in_array($order->status, ['dispatched','draft']))
+                        <form method="POST" action="{{ route('sarpras.teknisi.start', $order->id) }}">@csrf<button class="btn btn-success"><i class="ri-play-line me-1"></i>Mulai</button></form>
+                    @elseif($order->status === 'in_progress')
+                        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#pauseModal"><i class="ri-pause-line me-1"></i>Jeda</button>
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#completeModal"><i class="ri-check-line me-1"></i>Selesaikan</button>
+                    @elseif($order->status === 'paused')
+                        <form method="POST" action="{{ route('sarpras.teknisi.resume', $order->id) }}">@csrf<button class="btn btn-primary"><i class="ri-play-line me-1"></i>Lanjutkan</button></form>
                     @endif
-                </p>
-                <p class="mb-1"><strong>Sisa:</strong> {{ $order->sla_tracker->time_remaining_text }}</p>
-                <p class="mb-0"><strong>Deadline:</strong> {{ $order->sla_tracker->deadline_at?->format('d/m/Y H:i') }}</p>
+                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#noteModal"><i class="ri-chat-1-line me-1"></i>Catatan</button>
+                </div>
             </div>
         </div>
-        @endif
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-history-line me-1"></i>Progres Pekerjaan</h5></div>
+                <div class="card-body p-0">
+                    @forelse($order->progressSteps->sortByDesc('created_at') as $step)
+                        <div class="border-bottom p-3"><div class="d-flex justify-content-between"><span class="small fw-medium">{{ $step->performer?->name ?? 'Petugas' }}</span><small class="text-muted">{{ $step->created_at?->format('d/m H:i') }}</small></div><div class="small text-muted">{{ $step->notes ?? $step->description }}</div></div>
+                    @empty
+                        <div class="p-3"><x-empty-state title="Belum ada progres" message="Mulai pekerjaan untuk mencatat progres." /></div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
-{{-- Pause Modal --}}
-<div class="modal fade" id="pauseModal">
-    <div class="modal-dialog">
-        <form method="POST" action="{{ route('sarpras.teknisi.pause', $order->id) }}" class="modal-content">
-            @csrf
-            <div class="modal-header"><h5 class="modal-title">Pause Pengerjaan</h5></div>
-            <div class="modal-body">
-                <label class="form-label">Alasan</label>
-                <select name="reason_code" class="form-select mb-2" required>
-                    <option value="material_tunggu">Material Belum Datang</option>
-                    <option value="suku_cadang">Suku Cadang Tidak Tersedia</option>
-                    <option value="kompleksitas">Kompleksitas Tinggi</option>
-                    <option value="lainnya">Lainnya</option>
-                </select>
-                <textarea name="reason_text" class="form-control" placeholder="Catatan tambahan..."></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-warning">Pause</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- Note Modal --}}
-<div class="modal fade" id="noteModal">
-    <div class="modal-dialog">
-        <form method="POST" action="{{ route('sarpras.teknisi.note', $order->id) }}" class="modal-content">
-            @csrf
-            <div class="modal-header"><h5 class="modal-title">Tambah Catatan</h5></div>
-            <div class="modal-body">
-                <textarea name="note" class="form-control" rows="4" placeholder="Tulis catatan..." required></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- Complete Modal --}}
-<div class="modal fade" id="completeModal">
-    <div class="modal-dialog">
-        <form method="POST" action="{{ route('sarpras.teknisi.complete', $order->id) }}" class="modal-content">
-            @csrf
-            <div class="modal-header"><h5 class="modal-title">Selesaikan Work Order</h5></div>
-            <div class="modal-body">
-                <label class="form-label">Catatan Penyelesaian</label>
-                <textarea name="completion_notes" class="form-control mb-2" rows="3" placeholder="Apa yang sudah dikerjakan..." required></textarea>
-                <label class="form-label">Kondisi Aset Setelah</label>
-                <select name="post_condition" class="form-select" required>
-                    <option value="baik">Baik</option>
-                    <option value="rusak_ringan">Rusak Ringan</option>
-                    <option value="rusak_sedang">Rusak Sedang</option>
-                    <option value="rusak_berat">Rusak Berat</option>
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-success">Selesaikan</button>
-            </div>
-        </form>
-    </div>
-</div>
+    <div class="modal fade" id="pauseModal" tabindex="-1"><div class="modal-dialog"><form method="POST" action="{{ route('sarpras.teknisi.pause', $order->id) }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Jeda Pekerjaan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">Alasan</label><input name="reason_code" class="form-control mb-2" required placeholder="Contoh: menunggu sparepart"><textarea name="reason_text" class="form-control" rows="2" placeholder="Keterangan…"></textarea></div><div class="modal-footer"><button class="btn btn-warning">Jeda</button></div></form></div></div>
+    <div class="modal fade" id="completeModal" tabindex="-1"><div class="modal-dialog"><form method="POST" action="{{ route('sarpras.teknisi.complete', $order->id) }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Selesaikan Pekerjaan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">Hasil Pekerjaan</label><textarea name="notes" class="form-control mb-2" rows="2" required></textarea><label class="form-label">Biaya Aktual (Rp)</label><input type="number" name="total_cost" class="form-control mb-2" min="0"><label class="form-label">Kondisi Setelah</label><select name="condition_after" class="form-select">@foreach(\App\Models\AssetMaintenanceLog::CONDITION_OPTIONS as $c)<option value="{{ $c }}">{{ ucfirst(str_replace('_',' ',$c)) }}</option>@endforeach</select></div><div class="modal-footer"><button class="btn btn-success">Selesai</button></div></form></div></div>
+    <div class="modal fade" id="noteModal" tabindex="-1"><div class="modal-dialog"><form method="POST" action="{{ route('sarpras.teknisi.note', $order->id) }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Catatan Pekerjaan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><textarea name="note" class="form-control" rows="3" required></textarea></div><div class="modal-footer"><button class="btn btn-primary">Simpan</button></div></form></div></div>
 @endsection

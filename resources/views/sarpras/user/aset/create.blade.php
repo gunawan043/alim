@@ -31,7 +31,23 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Kode Aset</label>
-                            <input type="text" name="asset_code" class="form-control" placeholder="Contoh: AST-001">
+                            <input type="text" name="asset_code" class="form-control" placeholder="Otomatis jika kosong">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Kuantitas</label>
+                            <input type="number" name="quantity" class="form-control" value="{{ old('quantity', 1) }}" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Satuan</label>
+                            <input type="text" name="unit" class="form-control" value="{{ old('unit', 'unit') }}" placeholder="unit / buah / set">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Masa Pakai (tahun)</label>
+                            <input type="number" name="useful_life_years" class="form-control" value="{{ old('useful_life_years') }}" min="0" max="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Harga Penyusutan / Tahun (Rp)</label>
+                            <input type="number" name="depreciation_per_year" class="form-control" value="{{ old('depreciation_per_year') }}" min="0" placeholder="Otomatis bila kosong">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Merk / Brand</label>
@@ -71,6 +87,7 @@
                             <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>
                         </div>
                     </div>
+                    <div class="alert alert-info mt-3"><i class="ri-information-line me-1"></i>Aset yang dibuat satuan kerja akan berstatus <strong>menunggu verifikasi Unit Rumah Tangga</strong>.</div>
                     <div class="mt-4 d-flex gap-2">
                         <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan</button>
                         <a href="{{ route('sarpras.user.aset.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>

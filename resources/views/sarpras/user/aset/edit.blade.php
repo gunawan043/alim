@@ -33,6 +33,22 @@
                             <label class="form-label">Kode Aset</label>
                             <input type="text" name="asset_code" class="form-control" value="{{ $aset->asset_code }}">
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Kuantitas</label>
+                            <input type="number" name="quantity" class="form-control" value="{{ $aset->quantity ?? 1 }}" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Satuan</label>
+                            <input type="text" name="unit" class="form-control" value="{{ $aset->unit ?? 'unit' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Masa Pakai (tahun)</label>
+                            <input type="number" name="useful_life_years" class="form-control" value="{{ $aset->useful_life_years }}" min="0" max="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Harga Penyusutan / Tahun (Rp)</label>
+                            <input type="number" name="depreciation_per_year" class="form-control" value="{{ $aset->depreciation_per_year }}" min="0">
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Merk / Brand</label>
                             <input type="text" name="brand" class="form-control" value="{{ $aset->brand }}">

@@ -16,7 +16,29 @@
                     <div class="col-md-4">
                         <div class="card border">
                             <div class="card-body text-center">
-                                <i class="ri-file-list-3-line fs-1 text-primary mb-2"></i>
+                                <i class="ri-book-2-line fs-1 text-primary mb-2"></i>
+                                <h5>Buku Induk Inventaris</h5>
+                                <p class="text-muted small">Buku induk aset per satuan kerja lengkap dengan kuantitas, penyusutan, dan penanggung jawab</p>
+                                <a href="{{ route('sarpras.laporan.buku-induk') }}" class="btn btn-primary btn-sm"><i class="ri-eye-line me-1"></i> Lihat</a>
+                                <a href="{{ route('sarpras.laporan.buku-induk.pdf') }}" class="btn btn-outline-primary btn-sm"><i class="ri-download-line me-1"></i> PDF</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="ri-file-list-3-line fs-1 text-info mb-2"></i>
+                                <h5>Kartu Inventaris Ruangan</h5>
+                                <p class="text-muted small">KIR per ruang: jenis barang, merek, jumlah, kondisi B/KB/RB, dan keterangan</p>
+                                <a href="{{ route('sarpras.laporan.kir') }}" class="btn btn-info btn-sm"><i class="ri-eye-line me-1"></i> Lihat</a>
+                                <a href="{{ route('sarpras.laporan.kir.pdf') }}" class="btn btn-outline-info btn-sm"><i class="ri-download-line me-1"></i> PDF</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="ri-file-list-3-line fs-1 text-secondary mb-2"></i>
                                 <h5>Inventaris Per Ruang</h5>
                                 <p class="text-muted small">Daftar aset yang ditempatkan di setiap ruangan</p>
                                 <a href="{{ route('sarpras.laporan.inventaris-per-ruang') }}" class="btn btn-primary btn-sm"><i class="ri-eye-line me-1"></i> Lihat</a>

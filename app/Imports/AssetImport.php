@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetRoom;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,10 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
 
     protected ?string $forcedRoomId;
 
+    protected bool $central;
+
+    protected ?array $allowedRoomIds;
+
     protected ?AssetRoom $forcedRoom = null;
 
     protected array $errors = [];
@@ -30,15 +35,26 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
 
     protected array $roomMap = [];
 
-    public function __construct(string $userId, ?string $schoolContextId = null, ?string $forcedRoomId = null)
-    {
+    public function __construct(
+        string $userId,
+        ?string $schoolContextId = null,
+        ?string $forcedRoomId = null,
+        bool $central = false,
+        ?array $allowedRoomIds = null
+    ) {
         $this->userId = $userId;
         $this->schoolContextId = $schoolContextId;
         $this->forcedRoomId = $forcedRoomId;
+        $this->central = $central;
+        $this->allowedRoomIds = $allowedRoomIds;
 
         // Pre-load forced room
         if ($forcedRoomId) {
-            $this->forcedRoom = AssetRoom::find($forcedRoomId);
+            $roomQuery = AssetRoom::query();
+            if ($this->allowedRoomIds !== null) {
+                $roomQuery->whereIn('id', $this->allowedRoomIds);
+            }
+            $this->forcedRoom = $roomQuery->find($forcedRoomId);
         }
 
         // Pre-load category map (name => id)
@@ -51,6 +67,9 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         $roomQuery = AssetRoom::where('is_active', true);
         if ($schoolContextId) {
             $roomQuery->where('school_id', $schoolContextId);
+        }
+        if ($this->allowedRoomIds !== null) {
+            $roomQuery->whereIn('id', $this->allowedRoomIds);
         }
         foreach ($roomQuery->get() as $room) {
             $this->roomMap[strtolower($room->room_name)] = $room;
@@ -118,6 +137,11 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             'sumber_dana' => 'nullable|string|max:100',
             'spesifikasi' => 'nullable|string',
             'catatan' => 'nullable|string',
+            'tanggal_perolehan' => 'nullable',
+            'jumlah' => 'nullable|integer|min:1',
+            'satuan' => 'nullable|string|max:30',
+            'masa_pakai' => 'nullable|integer|min:0|max:100',
+            'harga_penyusutan' => 'nullable|numeric|min:0',
         ];
     }
 
@@ -186,6 +210,13 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
         $acqSource = $this->normalizeAcqSource($row['sumber_perolehan'] ?? '');
         $acqYear = ! empty($row['tahun_perolehan']) ? (int) $row['tahun_perolehan'] : null;
         $acqPrice = ! empty($row['harga_perolehan']) ? (float) $row['harga_perolehan'] : null;
+        $acqDate = $this->normalizeDate($row['tanggal_perolehan'] ?? null);
+        $quantity = max(1, (int) ($row['jumlah'] ?? 1));
+        $unit = trim((string) ($row['satuan'] ?? '')) ?: 'unit';
+        $usefulLife = isset($row['masa_pakai']) && $row['masa_pakai'] !== '' ? (int) $row['masa_pakai'] : null;
+        $depreciation = isset($row['harga_penyusutan']) && $row['harga_penyusutan'] !== ''
+            ? (float) $row['harga_penyusutan']
+            : ($usefulLife && $acqPrice ? round($acqPrice / max(1, $usefulLife), 2) : null);
 
         Asset::create([
             'school_id' => $room->school_id,
@@ -194,13 +225,19 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             'asset_category_id' => $category->id,
             'asset_code' => $assetCode ?: null,
             'asset_name' => $assetName,
+            'quantity' => $quantity,
+            'unit' => $unit,
+            'useful_life_years' => $usefulLife,
+            'depreciation_per_year' => $depreciation,
             'brand' => trim($row['merk'] ?? '') ?: null,
             'model' => trim($row['model'] ?? '') ?: null,
             'serial_number' => trim($row['nomor_seri'] ?? '') ?: null,
             'color' => trim($row['warna'] ?? '') ?: null,
             'specification' => trim($row['spesifikasi'] ?? '') ?: null,
-            'acquisition_year' => $acqYear,
+            'acquisition_date' => $acqDate,
+            'acquisition_year' => $acqYear ?: $acqDate?->year,
             'acquisition_price' => $acqPrice,
+            'current_value' => $acqPrice,
             'acquisition_source' => $acqSource ?: null,
             'funding_source' => trim($row['sumber_dana'] ?? '') ?: null,
             'condition' => $condition,
@@ -208,6 +245,9 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
             'is_bookable' => true,
             'is_active' => true,
             'notes' => trim($row['catatan'] ?? '') ?: null,
+            'verification_status' => $this->central ? 'verified' : 'pending',
+            'verified_by' => $this->central ? $this->userId : null,
+            'verified_at' => $this->central ? now() : null,
             'created_by' => $this->userId,
         ]);
 
@@ -258,6 +298,23 @@ class AssetImport implements ToCollection, WithHeadingRow, WithValidation
     }
 
     // ─── Normalize Helpers ────────────────────────────────────────────────
+
+    private function normalizeDate(mixed $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            if (is_numeric($value)) {
+                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value));
+            }
+
+            return Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     private function normalizeCondition(?string $val): string
     {

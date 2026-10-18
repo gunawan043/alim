@@ -65,11 +65,7 @@ class RepairRequestWorkflow
                 'title' => $title,
                 'description' => $description,
                 'priority' => $priority,
-                'status' => 'draft',
-            ]);
-
-            $this->moveRepairRequest($request, 'submitted', $reporter->id, [
-                'note' => 'Initial submission',
+                'status' => RepairRequest::STATUS_VERIFICATION_PENDING,
             ]);
 
             $this->eventLogger->logRepairSubmitted(
@@ -79,7 +75,7 @@ class RepairRequestWorkflow
                 $reporter->id
             );
 
-            RepairRequestSubmitted::dispatch($request, $reporter);
+            RepairRequestSubmitted::dispatch($request, $asset, $reporter);
 
             return $request->fresh();
         });
@@ -384,7 +380,7 @@ class RepairRequestWorkflow
     public function moveRepairRequest(
         RepairRequest $request,
         string $targetStatus,
-        ?int $actorId,
+        ?string $actorId,
         array $eventDetail = [],
         array $modelUpdates = []
     ): RepairRequest {
@@ -407,7 +403,7 @@ class RepairRequestWorkflow
     public function moveAssetStatus(
         Asset $asset,
         string $targetStatus,
-        ?int $actorId,
+        ?string $actorId,
         string $reason
     ): Asset {
         $from = $asset->status ?: 'active';

@@ -1875,6 +1875,96 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Laporan tetap tersimpan walau pembuatan repair request gagal; error dicatat di log.
 - URT dapat menjadwalkan perbaikan dari antrean repair request yang sudah terstruktur.
 
+## 176. Sarpras — Buku Induk Inventaris & Kartu Inventaris Ruangan
+
+- Aset kini memiliki `quantity`, `unit`, `useful_life_years`, dan `work_unit_sequence` (No Urut Satker).
+- **Kode aset otomatis** per satuan kerja (`{KODE SATKER}-{URUT}`) dan menjadi isi QR per unit aset.
+- Status aset diubah dari enum sempit menjadi string agar lifecycle `hilang/rusak/dalam_perbaikan` konsisten.
+- Kategori inventaris diberi `inventory_group` dan diisi golongan **A–I** sesuai daftar Bapak
+  (Elektronik & IT, Audio, Furniture, Kebersihan, Pendingin, Dapur, Teknik, Medis/Kendaraan, Laboratorium).
+- Laporan baru:
+  - **Buku Induk Inventaris** (`/sarpras/laporan/buku-induk`) + PDF landscape.
+  - **Kartu Inventaris Ruangan/KIR** (`/sarpras/laporan/kartu-inventaris-ruangan`) + PDF landscape,
+    dengan kolom B / KB / RB dan PIC ruang.
+- Form aset pusat dan unit ditambah kuantitas, satuan, masa pakai, harga penyusutan, tanggal perolehan.
+- Import Excel diperluas untuk tanggal perolehan, jumlah, satuan, masa pakai, harga penyusutan;
+  kode aset kosong dibuat otomatis. Import oleh URT langsung `verified`, import unit tetap `pending`.
+
+## 177. Sarpras — Jurnal Perawatan, Approval Unit & Timeline
+
+- **Bug fondasi diperbaiki**: `asset_maintenance_logs` sebelumnya memakai kolom berbeda dari model/controller
+  (`maintenance_type`, `performed_by`, `actual_cost`, `work_description`, `parts_replaced` tidak ada).
+  Migrasi menyelaraskan kolom dan menyalin data lama.
+- Riwayat perawatan mencatat **suku cadang yang diganti**, tindakan berikutnya, biaya, kondisi sebelum/sesudah,
+  dan diproyeksikan ke `maintenance_histories` agar muncul di **passport aset saat QR dipindai**.
+- Jadwal pemeliharaan memiliki **approval satuan kerja**:
+  `pending → approved / reschedule_requested / rejected`, beserta petugas, tanggal usulan, dan catatan.
+- Satuan kerja hanya melihat jadwal unitnya; URT pusat menyusun/mengubah jadwal.
+- Halaman **Timeline Pemeliharaan Tahunan** (`/sarpras/pemeliharaan/timeline`) menampilkan 12 bulan.
+- Workspace teknisi diperbaiki agar memakai `assignee_id`, `progressSteps`, dan status work order yang nyata;
+  penyelesaian work order otomatis menulis riwayat perawatan aset.
+
+## 178. Sarpras — Petugas Sarpras Unit & Kewenangan Ruang
+
+- Tabel `work_unit_sarpras_officers`: satu/lebih GTK petugas Sarpras per satuan kerja, dengan petugas utama.
+- Halaman **Petugas Sarpras** (`/sarpras/petugas`) untuk penugasan oleh URT.
+- Middleware `sarpras.access` kini mengizinkan:
+  - petugas Sarpras unit yang ditunjuk,
+  - wali kelas, wali kamar, dan kepala asrama.
+- Scope data:
+  - URT pusat: semua satuan kerja.
+  - Petugas Sarpras unit: seluruh aset unitnya.
+  - Wali kelas/wali kamar: hanya ruang yang menjadi tanggung jawabnya.
+- **Nama gedung hanya dapat dibuat/diubah/dihapus oleh Kepala/TU URT.**
+  Satuan kerja hanya memilih gedung → ruang → aset; halaman gedung menampilkan status baca-saja.
+
+## 179. Sarpras — Stock Opname End-to-End
+
+- Tabel stock opname lama memakai `BIGINT` untuk `school_id`/user padahal aplikasi memakai UUID;
+  tabel dibangun ulang dengan skema benar (aman: hanya bila kosong).
+- Sesi opname mendukung cakupan satuan kerja, ruang, dan kategori; petugas URT + unit.
+- UI web baru:
+  - daftar sesi + progres,
+  - buat sesi (aset otomatis dimuat),
+  - scan/temukan aset via kode QR,
+  - catat temuan `found / missing / damaged / moved`,
+  - tutup sesi + rekap selisih.
+- API stock opname diselaraskan dengan skema baru (create, start, record, scan, close, variance).
+- Temuan hilang/rusak/pindah ruang langsung memperbarui kondisi/status/lokasi aset.
+
+## 180. Sarpras — Antrean Perbaikan & Work Order
+
+- Halaman **Antrean Perbaikan** (`/sarpras/perbaikan`) membaca `repair_requests` yang otomatis dibuat dari laporan kerusakan.
+- URT dapat membuat **work order** dari permintaan: petugas, tanggal, jenis internal/vendor, lingkup pekerjaan, estimasi biaya.
+- Status repair request berpindah ke `execution_pending`; work order berstatus `dispatched`.
+- Penyelesaian work order menulis hasil, biaya, kondisi aset, dan riwayat perawatan untuk passport QR.
+
+## 181. Perbaikan Kritis Infrastruktur Sarpras
+
+- Alias middleware **`sarpras.access`** ternyata belum terdaftar di `app/Http/Kernel.php`,
+  sehingga seluruh route `/sarpras/*` berpotensi 500. Alias sudah didaftarkan.
+- Workspace auditor lama yang tabelnya tidak ada diarahkan ke **Stock Opname** agar tidak menjadi tautan mati.
+- Typo `number_format($totalAset')` pada laporan inventaris per ruang diperbaiki.
+- Template import aset diperluas menjadi 22 kolom.
+
+## 182. Sarpras — Perbaikan Passport QR & ID Numerik
+
+- **Asset Passport** (`/sarpras/assets/{id}/passport`) diperbaiki:
+  - relasi `photos`, `loans`, `maintenanceLogs`, `locationHistories` ditambahkan ke model `Asset`;
+  - riwayat perawatan tampil dari `maintenance_histories` dan jadwal terakhir;
+  - query pinjaman, sparepart, opname, dan audit diselaraskan dengan kolom nyata;
+  - sintaks Blade `match` yang membuat halaman 500 diperbaiki.
+- Tabel `qr_scan_histories` dibangun ulang dengan UUID (sebelumnya `BIGINT` untuk user UUID),
+  logger scan QR diselaraskan.
+- **Global route pattern `{id}` mewajibkan UUID**, sehingga route bernilai numerik (stock opname,
+  repair request, work order teknisi) tidak pernah cocok dan selalu 404. Parameter route diganti
+  menjadi `{sessionId}`, `{repairId}`, dan `{orderId}`.
+- Model `RepairRequest`, `WorkOrder`, `RepairCostHistory`, `MaintenanceHistory`, dan `QrScanHistory`
+  diselaraskan dengan primary key/kolom tabelnya.
+- Jurnal perawatan mengisi kolom legacy `description`, `handled_by`, dan `cost` agar kompatibel
+  dengan data lama; enum status jadwal tidak lagi ditimpa nilai approval.
+- Export PDF Buku Induk/KIR/laporan Sarpras memakai Dompdf langsung (wrapper `PDF` tidak tersedia).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

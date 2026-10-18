@@ -3,6 +3,8 @@
 namespace App\Services\Sarpras;
 
 use App\Models\ChecklistInstance;
+use App\Models\MaintenanceHistory;
+use App\Models\RepairRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderPauseEvent;
@@ -28,7 +30,7 @@ class WorkOrderExecutionService
     public function start(WorkOrder $order, User $technician, array $payload = []): WorkOrder
     {
         return DB::transaction(function () use ($order, $technician, $payload) {
-            if (! in_array($order->status, ['assigned', 'in_progress', 'paused'], true)) {
+            if (! in_array($order->status, ['dispatched', 'draft', 'in_progress', 'waiting_parts', 'paused'], true)) {
                 throw new \DomainException("Cannot start — order is '{$order->status}'.");
             }
 
@@ -116,9 +118,34 @@ class WorkOrderExecutionService
                 ]);
             }
 
+            $conditionBefore = $order->asset->condition;
+
             if (! empty($payload['condition_after'])) {
-                $order->asset->update(['condition' => $payload['condition_after']]);
+                $order->asset->update([
+                    'condition' => $payload['condition_after'],
+                    'status' => 'tersedia',
+                ]);
             }
+
+            if ($order->repairRequest) {
+                $order->repairRequest->update([
+                    'status' => RepairRequest::STATUS_COMPLETED,
+                    'completed_at' => now(),
+                    'result_description' => $payload['notes'] ?? null,
+                    'labor_cost' => (float) ($payload['total_cost'] ?? 0),
+                ]);
+            }
+
+            MaintenanceHistory::create([
+                'asset_id' => $order->asset_id,
+                'maintenance_type' => 'korektif',
+                'performed_date' => today(),
+                'performed_by_name' => $technician->name,
+                'condition_before' => $conditionBefore,
+                'condition_after' => $payload['condition_after'] ?? $order->asset->condition,
+                'work_description' => $payload['notes'] ?? $order->scope_of_work,
+                'cost' => (float) ($payload['total_cost'] ?? 0),
+            ]);
 
             $this->logNote($order, $technician, "Completed by {$technician->name}", 'resolution');
 

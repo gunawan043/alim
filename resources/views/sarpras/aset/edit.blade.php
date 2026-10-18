@@ -59,6 +59,23 @@
                             <div class="col-md-6">
                                 <label class="form-label">Kode Aset</label>
                                 <input type="text" name="asset_code" class="form-control" value="{{ old('asset_code', $aset->asset_code) }}" maxlength="50">
+                                <small class="text-muted">No urut satker: {{ $aset->work_unit_sequence ?? '-' }} · QR memakai kode ini.</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Kuantitas</label>
+                                <input type="number" name="quantity" class="form-control" value="{{ old('quantity', $aset->quantity ?? 1) }}" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Satuan</label>
+                                <input type="text" name="unit" class="form-control" value="{{ old('unit', $aset->unit ?? 'unit') }}" maxlength="30">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Masa Pakai (tahun)</label>
+                                <input type="number" name="useful_life_years" class="form-control" value="{{ old('useful_life_years', $aset->useful_life_years) }}" min="0" max="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Harga Penyusutan / Tahun (Rp)</label>
+                                <input type="number" name="depreciation_per_year" class="form-control" value="{{ old('depreciation_per_year', $aset->depreciation_per_year) }}" min="0">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Merk</label>

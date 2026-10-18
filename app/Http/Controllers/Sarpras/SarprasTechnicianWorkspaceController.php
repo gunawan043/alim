@@ -24,15 +24,15 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     public function dashboard(Request $request)
     {
         $user = Auth::user();
-        $orders = WorkOrder::where('assigned_to', $user->id)
-            ->with(['asset.room', 'progressNotes'])
-            ->orderByRaw("FIELD(status, 'in_progress', 'paused', 'assigned')")
+        $orders = WorkOrder::where('assignee_id', $user->id)
+            ->with(['asset.room', 'progressSteps'])
+            ->orderByRaw("FIELD(status, 'in_progress', 'waiting_parts', 'dispatched', 'draft', 'completed', 'closed')")
             ->latest()
             ->paginate(15);
 
-        $available = WorkOrder::whereNull('assigned_to')
+        $available = WorkOrder::whereNull('assignee_id')
             ->with(['asset.room'])
-            ->where('status', 'created')
+            ->whereIn('status', ['draft', 'dispatched'])
             ->latest()
             ->limit(10)
             ->get();
@@ -43,21 +43,25 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     public function show(Request $request, string $orderId)
     {
         $order = WorkOrder::with([
-            'asset.room', 'asset.photos', 'progressNotes.user', 'pauseEvents.user',
+            'asset.room', 'asset.photos', 'repairRequest', 'progressSteps.performer',
         ])->findOrFail($orderId);
 
         return view('sarpras.technician.show', compact('order'));
     }
 
-    public function start(Request $request, string $orderId): JsonResponse
+    public function start(Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->start($order, Auth::user(), $request->all());
 
-        return response()->json(['success' => true, 'order' => $updated]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'order' => $updated]);
+        }
+
+        return back()->with('success', 'Work order dimulai.');
     }
 
-    public function pause(Request $request, string $orderId): JsonResponse
+    public function pause(Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'reason_code' => 'required|string|max:50',
@@ -67,26 +71,38 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         $order = WorkOrder::findOrFail($orderId);
         $event = $this->execution->pause($order, Auth::user(), $data['reason_code'], $data['reason_text'] ?? null);
 
-        return response()->json(['success' => true, 'event' => $event]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'event' => $event]);
+        }
+
+        return back()->with('success', 'Work order dijeda.');
     }
 
-    public function resume(Request $request, string $orderId): JsonResponse
+    public function resume(Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->resume($order, Auth::user(), $request->input('notes'));
 
-        return response()->json(['success' => true, 'order' => $updated]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'order' => $updated]);
+        }
+
+        return back()->with('success', 'Work order dilanjutkan.');
     }
 
-    public function complete(Request $request, string $orderId): JsonResponse
+    public function complete(Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $order = WorkOrder::findOrFail($orderId);
         $updated = $this->execution->complete($order, Auth::user(), $request->all());
 
-        return response()->json(['success' => true, 'order' => $updated]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'order' => $updated]);
+        }
+
+        return back()->with('success', 'Work order diselesaikan.');
     }
 
-    public function logNote(Request $request, string $orderId): JsonResponse
+    public function logNote(Request $request, string $orderId): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'note' => 'required|string',
@@ -96,7 +112,11 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         $order = WorkOrder::findOrFail($orderId);
         $note = $this->execution->logNote($order, Auth::user(), $data['note'], $data['note_type'] ?? 'comment');
 
-        return response()->json(['success' => true, 'note' => $note]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'note' => $note]);
+        }
+
+        return back()->with('success', 'Catatan pekerjaan disimpan.');
     }
 
     public function snapshot(Request $request, string $orderId): JsonResponse
@@ -114,15 +134,15 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
         $order = WorkOrder::findOrFail($orderId);
 
         // Only unassigned or unclaimed work orders can be claimed
-        if ($order->assigned_to && $order->assigned_to !== Auth::id()) {
+        if ($order->assignee_id && $order->assignee_id !== Auth::id()) {
             return redirect()
                 ->route('sarpras.teknisi.show', $order->id)
                 ->withErrors(['claim' => 'Work Order sudah di-claim teknisi lain.']);
         }
 
         $order->update([
-            'assigned_to' => Auth::id(),
-            'status' => 'assigned',
+            'assignee_id' => Auth::id(),
+            'status' => $order->status === 'draft' ? 'dispatched' : $order->status,
         ]);
 
         try {
@@ -133,6 +153,6 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
 
         return redirect()
             ->route('sarpras.teknisi.show', $order->id)
-            ->with('success', "Work Order {$order->wo_number} berhasil di-claim.");
+            ->with('success', "Work Order {$order->order_number} berhasil di-claim.");
     }
 }

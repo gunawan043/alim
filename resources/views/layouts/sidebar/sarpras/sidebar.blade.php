@@ -66,6 +66,7 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             @if($isAdmin)
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.gedung') ? ' active' : '' }}" href="{{ route('sarpras.gedung.index', ['userId' => $userId]) }}">Daftar Gedung</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.ruang') ? ' active' : '' }}" href="{{ route('sarpras.ruang.index', ['userId' => $userId]) }}">Daftar Ruangan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.petugas') ? ' active' : '' }}" href="{{ route('sarpras.petugas.index', ['userId' => $userId]) }}">Petugas Sarpras</a></li>
             @endif
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.ruang') ? ' active' : '' }}" href="{{ route('sarpras.user.ruang.index', ['userId' => $userId]) }}">Ruangan Saya</a></li>
         </ul>
@@ -119,10 +120,13 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
         <ul class="nav nav-sm flex-column">
             @if($isAdmin)
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.schedule') ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.schedule.index', ['userId' => $userId]) }}">Jadwal Pemeliharaan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.schedule.timeline') ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.schedule.timeline', ['userId' => $userId]) }}">Timeline Tahunan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.repair') ? ' active' : '' }}" href="{{ route('sarpras.repair.index', ['userId' => $userId]) }}">Antrean Perbaikan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.log') ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.log.index', ['userId' => $userId]) }}">Riwayat Perawatan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.teknisi') ? ' active' : '' }}" href="{{ route('sarpras.teknisi.dashboard', ['userId' => $userId]) }}">Workspace Teknisi</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.auditor') ? ' active' : '' }}" href="{{ route('sarpras.auditor.dashboard', ['userId' => $userId]) }}">Workspace Auditor</a></li>
             @endif
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.stock-opname') ? ' active' : '' }}" href="{{ route('sarpras.stock-opname.index', ['userId' => $userId]) }}">Stock Opname</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.kerusakan') ? ' active' : '' }}" href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">Laporan Kerusakan</a></li>
         </ul>
     </div>

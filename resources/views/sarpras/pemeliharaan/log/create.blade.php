@@ -104,6 +104,14 @@
                             <textarea name="work_description" class="form-control" rows="3">{{ old('work_description') }}</textarea>
                         </div>
                         <div class="col-12">
+                            <label class="form-label">Suku Cadang / Perangkat yang Diganti</label>
+                            <textarea name="parts_replaced" class="form-control" rows="2" placeholder="Contoh: kapasitor AC, filter, bearing…">{{ old('parts_replaced') }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tindakan Berikutnya</label>
+                            <textarea name="next_action_needed" class="form-control" rows="2" placeholder="Rekomendasi perawatan berikutnya…">{{ old('next_action_needed') }}</textarea>
+                        </div>
+                        <div class="col-12">
                             <label class="form-label">Catatan</label>
                             <textarea name="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
                         </div>

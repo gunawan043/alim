@@ -14,21 +14,17 @@ class WorkOrder extends Model
 
     protected $table = 'work_orders';
 
-    protected $keyType = 'string';
-
-    public $incrementing = false;
-
     protected static function boot()
     {
         parent::boot();
         static::creating(function ($m) {
-            $m->id = $m->id ?? (string) Str::uuid();
-            $m->order_number = $m->generateOrderNumber();
+            $m->uuid = $m->uuid ?: (string) Str::uuid();
+            $m->order_number = $m->order_number ?: $m->generateOrderNumber();
         });
     }
 
     protected $fillable = [
-        'id', 'sync_token',
+        'uuid', 'sync_token',
         'repair_request_id',
         'asset_id',
         'assignee_id',
@@ -60,6 +56,11 @@ class WorkOrder extends Model
     }
 
     public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assignee_id');
     }

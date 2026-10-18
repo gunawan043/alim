@@ -39,12 +39,14 @@ class SarprasGedungController extends SarprasBaseController
 
         $gedungs = $query->orderBy('building_name')->paginate(15)->withQueryString();
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
+        $canManage = $this->isCentralSarpras();
 
-        return view('sarpras.gedung.index', compact('gedungs', 'schools'));
+        return view('sarpras.gedung.index', compact('gedungs', 'schools', 'canManage'));
     }
 
     public function create(Request $request)
     {
+        $this->authorizeCentralSarpras();
         $schoolId = $request->attributes->get('schoolContextId');
         $schools = $schoolId ? School::where('id', $schoolId)->get() : School::orderBy('name')->get();
 
@@ -53,6 +55,7 @@ class SarprasGedungController extends SarprasBaseController
 
     public function store(GedungStoreRequest $request)
     {
+        $this->authorizeCentralSarpras();
         $validated = $request->validated();
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -73,11 +76,12 @@ class SarprasGedungController extends SarprasBaseController
         $gedung = AssetBuilding::with(['school', 'rooms', 'creator'])->findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
 
-        return view('sarpras.gedung.show', compact('gedung'));
+        return view('sarpras.gedung.show', ['gedung' => $gedung, 'canManage' => $this->isCentralSarpras()]);
     }
 
     public function edit(Request $request, string $id)
     {
+        $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
 
@@ -89,6 +93,7 @@ class SarprasGedungController extends SarprasBaseController
 
     public function update(GedungUpdateRequest $request, string $id)
     {
+        $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
 
@@ -105,6 +110,7 @@ class SarprasGedungController extends SarprasBaseController
 
     public function destroy(Request $request, string $id)
     {
+        $this->authorizeCentralSarpras();
         $gedung = AssetBuilding::with('rooms')->findOrFail($id);
         $this->authorizeBuildingAccess($gedung, $request);
 

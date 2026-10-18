@@ -24,11 +24,58 @@ class Asset extends Model
     protected static function boot()
     {
         parent::boot();
-        static::created(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
+
+        static::creating(function (Asset $asset) {
+            $asset->id = $asset->id ?: (string) Str::uuid();
+
+            if (blank($asset->work_unit_sequence)) {
+                $asset->work_unit_sequence = (int) static::withTrashed()
+                    ->where('work_unit_id', $asset->work_unit_id)
+                    ->max('work_unit_sequence') + 1;
+            }
+
+            if (blank($asset->asset_code)) {
+                $asset->asset_code = static::generateAssetCode($asset);
+            }
+
+            if ($asset->acquisition_price !== null && $asset->current_value === null) {
+                $asset->current_value = $asset->acquisition_price;
+            }
+
+            if ($asset->acquisition_price !== null
+                && $asset->useful_life_years
+                && $asset->depreciation_per_year === null) {
+                $asset->depreciation_per_year = round(
+                    (float) $asset->acquisition_price / max(1, (int) $asset->useful_life_years),
+                    2
+                );
+            }
+        });
+
         static::updated(function ($model) {
             Cache::forget('sarpras_dashboard_version');
             $model->versionBump();
         });
+    }
+
+    /**
+     * Kode aset otomatis: {KODE SATKER}-{URUT 4 DIGIT}.
+     * Menjadi isi QR label per unit aset.
+     */
+    public static function generateAssetCode(Asset $asset): string
+    {
+        $workUnitCode = WorkUnit::query()->whereKey($asset->work_unit_id)->value('code') ?: 'AST';
+        $prefix = strtoupper(preg_replace('/[^A-Z0-9]+/', '-', $workUnitCode));
+        $prefix = trim($prefix, '-') ?: 'AST';
+        $sequence = max(1, (int) ($asset->work_unit_sequence ?: 1));
+
+        do {
+            $code = substr($prefix.'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT), 0, 50);
+            $exists = static::withTrashed()->where('asset_code', $code)->exists();
+            $sequence++;
+        } while ($exists);
+
+        return $code;
     }
 
     protected function versionBump(): void
@@ -43,7 +90,10 @@ class Asset extends Model
         'asset_category_id',
         'room_id',
         'asset_code',
+        'work_unit_sequence',
         'asset_name',
+        'quantity',
+        'unit',
         'brand',
         'model',
         'serial_number',
@@ -62,6 +112,7 @@ class Asset extends Model
         'is_bookable',
         'current_value',
         'depreciation_per_year',
+        'useful_life_years',
         'last_valuation_date',
         'last_audit_date',
         'last_audit_by',
@@ -88,6 +139,9 @@ class Asset extends Model
         'acquisition_price' => 'decimal:2',
         'current_value' => 'decimal:2',
         'depreciation_per_year' => 'decimal:2',
+        'quantity' => 'integer',
+        'work_unit_sequence' => 'integer',
+        'useful_life_years' => 'integer',
         'last_valuation_date' => 'date',
         'last_audit_date' => 'date',
         'last_condition_update' => 'date',
@@ -160,6 +214,26 @@ class Asset extends Model
         return $this->hasMany(MaintenanceHistory::class, 'asset_id');
     }
 
+    public function maintenanceLogs()
+    {
+        return $this->hasMany(AssetMaintenanceLog::class, 'asset_id');
+    }
+
+    public function photos()
+    {
+        return $this->hasMany(AssetPhoto::class, 'asset_id');
+    }
+
+    public function loans()
+    {
+        return $this->hasMany(AssetLoan::class, 'asset_id');
+    }
+
+    public function locationHistories()
+    {
+        return $this->hasMany(AssetLocationHistory::class, 'asset_id');
+    }
+
     public function repairCostHistories()
     {
         return $this->hasMany(RepairCostHistory::class, 'asset_id');
@@ -185,6 +259,33 @@ class Asset extends Model
         return $this->hasOne(AssetMovement::class, 'asset_id')
             ->whereIn('status', ['requested', 'approved', 'in_transit', 'received'])
             ->latestOfMany();
+    }
+
+    // ACCESSORS
+    public function getKirConditionAttribute(): string
+    {
+        return match ($this->condition) {
+            'rusak_berat' => 'RB',
+            'rusak_ringan', 'rusak_sedang' => 'KB',
+            'hilang', 'dihapus' => 'RB',
+            default => 'B',
+        };
+    }
+
+    public function getMasaPakaiAttribute(): int
+    {
+        return (int) ($this->useful_life_years ?: $this->category?->depreciation_years ?: 0);
+    }
+
+    public function getHargaPenyusutanAttribute(): float
+    {
+        if ($this->depreciation_per_year !== null) {
+            return (float) $this->depreciation_per_year;
+        }
+
+        $years = $this->masa_pakai;
+
+        return $years > 0 ? round((float) ($this->acquisition_price ?? 0) / $years, 2) : 0;
     }
 
     // SCOPES

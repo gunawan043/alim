@@ -18,9 +18,11 @@
                             <h5 class="mb-0">Detail Gedung</h5>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('sarpras.gedung.edit', ['id' => $gedung->id]) }}" class="btn btn-sm btn-warning">
-                                <i class="ri-pencil-line me-1"></i> Edit
-                            </a>
+                            @if($canManage ?? false)
+                                <a href="{{ route('sarpras.gedung.edit', ['id' => $gedung->id]) }}" class="btn btn-sm btn-warning">
+                                    <i class="ri-pencil-line me-1"></i> Edit
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>

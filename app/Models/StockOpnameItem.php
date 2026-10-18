@@ -16,11 +16,14 @@ class StockOpnameItem extends Model
         'session_id',
         'asset_id',
         'expected_status',
+        'expected_condition',
         'observed_status',
+        'observed_condition',
         'expected_room_id',
         'observed_room_id',
-        'condition_observed',
+        'actual_location',
         'notes',
+        'photo_path',
         'recorded_by',
         'scanned_at',
     ];
@@ -28,6 +31,11 @@ class StockOpnameItem extends Model
     protected $casts = [
         'scanned_at' => 'datetime',
     ];
+
+    public function getConditionLabelAttribute(): string
+    {
+        return ucfirst(str_replace('_', ' ', $this->observed_condition ?? $this->expected_condition ?? '-'));
+    }
 
     protected static function booted()
     {

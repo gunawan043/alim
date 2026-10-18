@@ -25,7 +25,7 @@ class AssetCategory extends Model
     }
 
     protected $fillable = [
-        'parent_id', 'code', 'name', 'asset_type',
+        'parent_id', 'code', 'name', 'inventory_group', 'asset_type',
         'depreciation_years', 'description', 'is_active',
     ];
 

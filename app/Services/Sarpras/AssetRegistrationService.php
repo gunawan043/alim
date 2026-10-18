@@ -14,7 +14,7 @@ class AssetRegistrationService
      * Register a new asset with full lifecycle setup.
      * Returns the created asset model.
      */
-    public function register(array $data, ?int $actorId = null): Asset
+    public function register(array $data, ?string $actorId = null): Asset
     {
         return DB::transaction(function () use ($data, $actorId) {
             if (empty($data['asset_code'])) {
@@ -36,7 +36,7 @@ class AssetRegistrationService
     /**
      * Move asset to another room and emit lifecycle event.
      */
-    public function moveToRoom(Asset $asset, string $toRoomId, ?int $actorId = null, ?string $notes = null): Asset
+    public function moveToRoom(Asset $asset, string $toRoomId, ?string $actorId = null, ?string $notes = null): Asset
     {
         return DB::transaction(function () use ($asset, $toRoomId, $actorId) {
             $fromRoom = $asset->room;
@@ -73,7 +73,7 @@ class AssetRegistrationService
         });
     }
 
-    public function recordAudit(Asset $asset, array $auditData, ?int $actorId = null): Asset
+    public function recordAudit(Asset $asset, array $auditData, ?string $actorId = null): Asset
     {
         return DB::transaction(function () use ($asset, $auditData, $actorId) {
             $asset->update([

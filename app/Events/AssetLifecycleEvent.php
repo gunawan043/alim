@@ -14,10 +14,10 @@ class AssetLifecycleEvent
         public Asset $asset,
         public string $eventType,
         public array $detail = [],
-        public ?int $actorId = null
+        public ?string $actorId = null
     ) {}
 
-    public static function dispatched(Asset $asset, array $detail = [], ?int $actorId = null): void
+    public static function dispatched(Asset $asset, array $detail = [], ?string $actorId = null): void
     {
         event(new self($asset, 'dispatched', $detail, $actorId));
     }

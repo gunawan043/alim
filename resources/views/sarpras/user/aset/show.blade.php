@@ -42,6 +42,22 @@
                                 <td>{{ $aset->category?->name ?? '-' }}</td>
                             </tr>
                             <tr>
+                                <td class="text-muted fw-medium">No Urut Satker</td>
+                                <td>{{ $aset->work_unit_sequence ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-medium">Kuantitas</td>
+                                <td>{{ number_format($aset->quantity ?? 1) }} {{ $aset->unit ?? 'unit' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-medium">Status Verifikasi</td>
+                                <td>
+                                    @php $vc = ['pending'=>'warning','verified'=>'success','rejected'=>'danger'][$aset->verification_status ?? 'verified'] ?? 'secondary'; @endphp
+                                    <span class="badge bg-{{ $vc }}-subtle text-{{ $vc }}">{{ ucfirst($aset->verification_status ?? 'verified') }}</span>
+                                    @if($aset->verification_note)<div class="small text-muted mt-1">{{ $aset->verification_note }}</div>@endif
+                                </td>
+                            </tr>
+                            <tr>
                                 <td class="text-muted fw-medium">Ruang</td>
                                 <td>
                                     @if($aset->room)

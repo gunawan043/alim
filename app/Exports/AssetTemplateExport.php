@@ -66,17 +66,18 @@ class AssetTemplateExport
         $MGRAY = 'E2E8F0';
         $DGRAY = '475569';
 
-        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
 
         $labels = [
             'No', 'Nama Aset *', 'Kode Aset', 'Ruang *', 'Kategori *',
             'Merk', 'Model / Tipe', 'No Seri', 'Warna',
             'Kondisi', 'Status', 'Tahun Perolehan', 'Harga Perolehan (Rp)',
             'Sumber Perolehan', 'Sumber Dana', 'Spesifikasi', 'Catatan',
+            'Tanggal Perolehan', 'Jumlah', 'Satuan', 'Masa Pakai (Tahun)', 'Harga Penyusutan / Tahun (Rp)',
         ];
 
         // Title
-        $ws->mergeCells('A1:Q1');
+        $ws->mergeCells('A1:V1');
         $ws->setCellValue('A1', 'TEMPLATE IMPORT ASET — SARANA PRASARANA');
         $ws->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 14, 'color' => ['argb' => 'FFFFFFFF']],
@@ -85,7 +86,7 @@ class AssetTemplateExport
         ]);
         $ws->getRowDimension(1)->setRowHeight(32);
 
-        $ws->mergeCells('A2:Q2');
+        $ws->mergeCells('A2:V2');
         $ws->setCellValue('A2', 'Isi kolom sesuai kebutuhan. Kolom bertanda * wajib diisi. Baris contoh di bawah bisa dihapus atau diedit.');
         $ws->getStyle('A2')->applyFromArray([
             'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF'.$DGRAY]],
@@ -142,7 +143,7 @@ class AssetTemplateExport
 
         // Legend
         $legendRow = 56;
-        $ws->mergeCells("A{$legendRow}:Q{$legendRow}");
+        $ws->mergeCells("A{$legendRow}:V{$legendRow}");
         $ws->setCellValue("A{$legendRow}", 'LEGENDA');
         $ws->getStyle("A{$legendRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 9, 'color' => ['argb' => 'FFFFFFFF']],
@@ -150,7 +151,7 @@ class AssetTemplateExport
         ]);
         $ws->getRowDimension($legendRow)->setRowHeight(16);
 
-        $ws->mergeCells('A57:Q57');
+        $ws->mergeCells('A57:V57');
         $ws->setCellValue('A57', 'Kondisi: Baik | Rusak Ringan | Rusak Sedang | Rusak Berat    |    Status: Tersedia | Dipinjam | Dalam Perbaikan    |    Sumber: Pembelian | Hibah | BOS | Pemerintah');
         $ws->getStyle('A57')->applyFromArray([
             'font' => ['italic' => true, 'size' => 8, 'color' => ['argb' => 'FF'.$DGRAY]],
@@ -159,7 +160,7 @@ class AssetTemplateExport
         $ws->getRowDimension(57)->setRowHeight(14);
 
         // Column widths
-        $widths = [5, 24, 14, 22, 28, 14, 14, 14, 10, 16, 16, 14, 18, 18, 14, 28, 18];
+        $widths = [5, 24, 14, 22, 28, 14, 14, 14, 10, 16, 16, 14, 18, 18, 14, 28, 18, 16, 10, 10, 14, 20];
         foreach ($cols as $i => $col) {
             $ws->getColumnDimension($col)->setWidth($widths[$i]);
         }

@@ -27,8 +27,11 @@
                     <table class="table table-borderless mb-0">
                         <tbody>
                             <tr><td class="text-muted fw-medium" style="width:200px">Nama Aset</td><td>{{ $aset->asset_name }}</td></tr>
-                            <tr><td class="text-muted fw-medium">Kode Aset</td><td><code>{{ $aset->asset_code ?? '-' }}</code></td></tr>
+                            <tr><td class="text-muted fw-medium">Kode Aset</td><td><code>{{ $aset->asset_code ?? '-' }}</code> <small class="text-muted">(QR unit)</small></td></tr>
+                            <tr><td class="text-muted fw-medium">No Urut Satker</td><td>{{ $aset->work_unit_sequence ?? '-' }}</td></tr>
                             <tr><td class="text-muted fw-medium">Kategori</td><td>{{ $aset->category?->name ?? '-' }}</td></tr>
+                            <tr><td class="text-muted fw-medium">Kuantitas</td><td>{{ number_format($aset->quantity ?? 1) }} {{ $aset->unit ?? 'unit' }}</td></tr>
+                            <tr><td class="text-muted fw-medium">Satuan Kerja</td><td>{{ $aset->workUnit?->name ?? ($aset->room?->workUnit?->name ?? '-') }}</td></tr>
                             <tr>
                                 <td class="text-muted fw-medium">Ruang</td>
                                 <td>
@@ -60,7 +63,11 @@
                                     </span>
                                 </td>
                             </tr>
+                            <tr><td class="text-muted fw-medium">Tanggal Perolehan</td><td>{{ $aset->acquisition_date?->format('d/m/Y') ?? $aset->acquisition_year ?? '-' }}</td></tr>
                             <tr><td class="text-muted fw-medium">Harga Perolehan</td><td>{{ $aset->acquisition_price ? 'Rp '.number_format($aset->acquisition_price,0,',','.') : '-' }}</td></tr>
+                            <tr><td class="text-muted fw-medium">Masa Pakai</td><td>{{ $aset->masa_pakai ? $aset->masa_pakai.' tahun' : '-' }}</td></tr>
+                            <tr><td class="text-muted fw-medium">Harga Penyusutan / Tahun</td><td>{{ $aset->harga_penyusutan ? 'Rp '.number_format($aset->harga_penyusutan,0,',','.') : '-' }}</td></tr>
+                            <tr><td class="text-muted fw-medium">Kondisi KIR</td><td><span class="badge bg-light text-dark border">{{ $aset->kir_condition }}</span></td></tr>
                             <tr><td class="text-muted fw-medium">Sumber Dana</td><td>{{ $aset->funding_source ?? '-' }}</td></tr>
                             <tr><td class="text-muted fw-medium">Nilai Saat Ini</td><td>{{ $aset->current_value ? 'Rp '.number_format($aset->current_value,0,',','.') : '-' }}</td></tr>
                             @if($aset->notes)<tr><td class="text-muted fw-medium">Catatan</td><td>{{ $aset->notes }}</td></tr>@endif

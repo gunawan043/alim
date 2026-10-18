@@ -22,15 +22,8 @@ class SarprasAuditorWorkspaceController extends SarprasBaseController
 
     public function dashboard()
     {
-        $sessions = AuditSession::with(['room', 'auditor'])
-            ->latest()
-            ->limit(20)
-            ->get();
-
-        $discrepancies = AuditDiscrepancy::where('resolved', false)->count();
-        $rooms = Room::orderBy('room_name')->limit(50)->get();
-
-        return view('sarpras.auditor.dashboard', compact('sessions', 'discrepancies', 'rooms'));
+        return redirect()->route('sarpras.stock-opname.index')
+            ->with('info', 'Workspace auditor lama telah digabung ke menu Stock Opname.');
     }
 
     public function startSession(Request $request)

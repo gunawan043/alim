@@ -60,6 +60,7 @@ class SarprasUserController extends SarprasBaseController
 
         // Ruangan milik satuan kerja ini
         $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('id', $this->responsibleRoomIds()))
             ->where('is_active', true)->with('building')->orderBy('room_name')->get();
 
         // Aset milik satuan kerja ini
@@ -116,6 +117,9 @@ class SarprasUserController extends SarprasBaseController
         if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
         }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($room->id, $request);
+        }
 
         $validated = $request->validated();
 
@@ -132,6 +136,9 @@ class SarprasUserController extends SarprasBaseController
 
         if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
+        }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($room->id, $request);
         }
         if ($room->assets()->count() > 0) {
             return back()->with('error', 'Ruang tidak bisa dihapus karena masih memiliki aset.');
@@ -184,9 +191,13 @@ class SarprasUserController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
-        $damagedAssets = Asset::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $damagedQuery = Asset::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])
-            ->with('room.building')->orderBy('asset_name')->get();
+            ->with('room.building');
+        if (! $this->isCentralSarpras()) {
+            $damagedQuery = $this->scopeToResponsibility($damagedQuery, $request);
+        }
+        $damagedAssets = $damagedQuery->orderBy('asset_name')->get();
 
         return view('sarpras.user.kerusakan.create', compact('damagedAssets', 'userId'));
     }
@@ -223,6 +234,9 @@ class SarprasUserController extends SarprasBaseController
         if (! $this->canAccess($request, $room, 'school_id')) {
             return back()->with('error', 'Anda tidak memiliki akses ke resource ini.');
         }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($room->id, $request);
+        }
 
         return view('sarpras.ruang.show', ['ruang' => $room, 'userId' => $userId]);
     }
@@ -233,12 +247,20 @@ class SarprasUserController extends SarprasBaseController
     public function indexAsset(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $allAssets = Asset::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $query = Asset::query()
             ->where('is_active', true)
-            ->with('room.building', 'category')
-            ->orderBy('asset_name')->get();
+            ->with('room.building', 'category', 'workUnit');
+
+        if (! $this->isCentralSarpras()) {
+            $query = $this->scopeToResponsibility($query, $request);
+        } elseif ($schoolId) {
+            $query->where('school_id', $schoolId);
+        }
+
+        $allAssets = $query->orderBy('asset_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
-        $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('building_name')->get();
+        $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)->orderBy('building_name')->get();
 
         return view('sarpras.user.aset.index', compact('allAssets', 'categories', 'buildings'));
     }
@@ -247,8 +269,13 @@ class SarprasUserController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
-        $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('room_name')->get();
-        $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('building_name')->get();
+        $rooms = AssetRoom::with('building')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->isCentralSarpras() && $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('work_unit_id', $this->accessibleWorkUnitIds()))
+            ->when(! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('id', $this->responsibleRoomIds()))
+            ->where('is_active', true)->orderBy('room_name')->get();
+        $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)->orderBy('building_name')->get();
 
         return view('sarpras.user.aset.create', compact('categories', 'rooms', 'buildings'));
     }
@@ -257,9 +284,12 @@ class SarprasUserController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
-        $aset = Asset::with('room.building', 'category', 'school')->findOrFail($id);
-        if ($schoolId && $aset->school_id !== $schoolId) {
+        $aset = Asset::with('room.building', 'category', 'school', 'workUnit')->findOrFail($id);
+        if (! $this->canAccess($request, $aset)) {
             abort(403);
+        }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($aset->room_id, $request);
         }
 
         return view('sarpras.user.aset.show', compact('aset', 'userId'));
@@ -274,21 +304,35 @@ class SarprasUserController extends SarprasBaseController
 
         $validated['is_active'] = true;
         $validated['status'] = $validated['status'] ?? 'tersedia';
+        $validated['quantity'] = $validated['quantity'] ?? 1;
+        $validated['unit'] = $validated['unit'] ?? 'unit';
+        $validated['verification_status'] = 'pending';
+        $validated['verified_by'] = null;
+        $validated['verified_at'] = null;
         $validated['current_value'] = $validated['acquisition_price'] ?? null;
         $validated['created_by'] = auth()->id();
         $validated['school_id'] = $schoolId;
         $validated['work_unit_id'] = $school?->work_unit_id;
 
+        if (! empty($validated['useful_life_years']) && ! empty($validated['acquisition_price'])) {
+            $validated['depreciation_per_year'] = $validated['depreciation_per_year']
+                ?? round(((float) $validated['acquisition_price']) / max(1, (int) $validated['useful_life_years']), 2);
+        }
+
         if (! empty($validated['room_id'])) {
-            $room = AssetRoom::find($validated['room_id']);
+            $room = AssetRoom::findOrFail($validated['room_id']);
+            $this->authorizeWorkUnitAccess($room->work_unit_id, $request);
+            $this->authorizeResponsibleRoom($room->id, $request);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
+        } elseif (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            return back()->withInput()->with('error', 'Wali kelas/wali kamar wajib memilih ruang yang menjadi tanggung jawabnya.');
         }
 
         Asset::create($validated);
 
         return redirect()->route('sarpras.user.aset.index', ['userId' => $request->route('userId')])
-            ->with('success', 'Aset berhasil ditambahkan.');
+            ->with('success', 'Aset berhasil ditambahkan dan menunggu verifikasi Unit Rumah Tangga.');
     }
 
     public function updateAsset(UserAssetUpdateRequest $request, string $id)
@@ -296,16 +340,24 @@ class SarprasUserController extends SarprasBaseController
         $asset = Asset::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if ($schoolId && $asset->school_id !== $schoolId) {
+        if (! $this->canAccess($request, $asset)) {
             abort(403);
+        }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($asset->room_id, $request);
         }
 
         $validated = $request->validated();
 
-        $validated['current_value'] = $validated['acquisition_price'] ?? null;
+        if (! empty($validated['useful_life_years']) && ! empty($validated['acquisition_price'])) {
+            $validated['depreciation_per_year'] = $validated['depreciation_per_year']
+                ?? round(((float) $validated['acquisition_price']) / max(1, (int) $validated['useful_life_years']), 2);
+        }
 
         if (! empty($validated['room_id'])) {
             $room = AssetRoom::find($validated['room_id']);
+            $this->authorizeWorkUnitAccess($room->work_unit_id, $request);
+            $this->authorizeResponsibleRoom($room->id, $request);
             $validated['work_unit_id'] = $room->work_unit_id;
             $validated['school_id'] = $room->school_id;
         }
@@ -320,14 +372,20 @@ class SarprasUserController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
-        $asetData = Asset::with('room.building', 'category', 'school')->findOrFail($id);
+        $asetData = Asset::with('room.building', 'category', 'school', 'workUnit')->findOrFail($id);
 
-        if ($schoolId && $asetData->school_id !== $schoolId) {
+        if (! $this->canAccess($request, $asetData)) {
             abort(403);
+        }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($asetData->room_id, $request);
         }
 
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
-        $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('room_name')->get();
+        $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->isCentralSarpras() && $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('work_unit_id', $this->accessibleWorkUnitIds()))
+            ->when(! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('id', $this->responsibleRoomIds()))
+            ->where('is_active', true)->orderBy('room_name')->get();
         $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('building_name')->get();
 
         return view('sarpras.user.aset.edit', compact('asetData', 'categories', 'rooms', 'buildings', 'userId'));
@@ -338,8 +396,11 @@ class SarprasUserController extends SarprasBaseController
         $asset = Asset::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if ($schoolId && $asset->school_id !== $schoolId) {
+        if (! $this->canAccess($request, $asset)) {
             abort(403);
+        }
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($asset->room_id, $request);
         }
 
         $asset->delete();
@@ -357,10 +418,15 @@ class SarprasUserController extends SarprasBaseController
         $userId = $request->route('userId');
 
         $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when(! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('id', $this->responsibleRoomIds()))
             ->where('is_active', true)->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
 
-        $forcedRoom = $roomId ? AssetRoom::with('school')->find($roomId) : null;
+        $forcedRoom = $roomId
+            ? AssetRoom::with('school')
+                ->when(! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer(), fn ($q) => $q->whereIn('id', $this->responsibleRoomIds()))
+                ->find($roomId)
+            : null;
 
         return view('sarpras.user.import', compact('rooms', 'categories', 'schoolId', 'forcedRoom', 'userId'));
     }
@@ -372,7 +438,10 @@ class SarprasUserController extends SarprasBaseController
         $userId = $request->route('userId');
 
         try {
-            $import = new AssetImport($userId, $schoolId, $roomId);
+            $allowedRoomIds = (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer())
+                ? $this->responsibleRoomIds()
+                : null;
+            $import = new AssetImport($userId, $schoolId, $roomId, $this->isCentralSarpras(), $allowedRoomIds);
             Excel::import($import, $request->file('file'));
 
             $errors = $import->getErrors();
@@ -430,6 +499,11 @@ class SarprasUserController extends SarprasBaseController
     public function storeDamageReport(UserDamageReportStoreRequest $request)
     {
         $validated = $request->validated();
+        $reportedAsset = Asset::findOrFail($validated['asset_id']);
+
+        if (! $this->isCentralSarpras() && ! $this->isUnitSarprasOfficer()) {
+            $this->authorizeResponsibleRoom($reportedAsset->room_id, $request);
+        }
 
         $schoolId = $request->attributes->get('schoolContextId');
         $school = $schoolId ? School::find($schoolId) : null;
@@ -448,7 +522,7 @@ class SarprasUserController extends SarprasBaseController
 
         // Laporan terstruktur langsung masuk antrean repair request URT.
         try {
-            $asset = Asset::findOrFail($validated['asset_id']);
+            $asset = $reportedAsset;
             $priority = match ($validated['damage_level']) {
                 'berat' => 'high', 'sedang' => 'normal', default => 'low',
             };

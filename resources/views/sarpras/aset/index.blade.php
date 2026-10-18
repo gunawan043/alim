@@ -53,7 +53,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>No</th><th>Nama Aset</th><th>Kode</th><th>Kategori</th><th>Ruang</th><th>Merk/Model</th><th>Kondisi</th><th>Status</th><th>Verifikasi</th><th class="text-end">Aksi</th></tr>
+                        <tr><th>No</th><th>Nama Aset</th><th>Kode</th><th>Qty</th><th>Kategori</th><th>Ruang</th><th>Merk/Model</th><th>Kondisi</th><th>Status</th><th>Verifikasi</th><th class="text-end">Aksi</th></tr>
                     </thead>
                     <tbody>
                     @forelse($asets as $i => $a)
@@ -66,6 +66,7 @@
                             <td>{{ $asets->firstItem() + $i }}</td>
                             <td><a href="{{ route('sarpras.aset.show', ['id' => $a->id]) }}" class="fw-medium link-primary">{{ $a->asset_name }}</a></td>
                             <td><code>{{ $a->asset_code ?? '-' }}</code></td>
+                            <td class="text-nowrap">{{ number_format($a->quantity ?? 1) }} <span class="text-muted small">{{ $a->unit ?? 'unit' }}</span></td>
                             <td>{{ $a->category?->name ?? '-' }}</td>
                             <td>{{ $a->room?->room_name ?? '-' }}</td>
                             <td>{{ $a->brand ? trim($a->brand.' '.$a->model) : '-' }}</td>
@@ -84,7 +85,7 @@
                             </td>
                         </tr>
                     @empty
-                        <x-empty-state colspan="10" title="Belum ada data aset" message="Tambahkan aset pertama atau import data inventaris.">
+                        <x-empty-state colspan="11" title="Belum ada data aset" message="Tambahkan aset pertama atau import data inventaris.">
                             <a href="{{ route('sarpras.aset.create') }}" class="btn btn-success mt-3"><i class="ri-add-line me-1"></i>Tambah Aset</a>
                         </x-empty-state>
                     @endforelse

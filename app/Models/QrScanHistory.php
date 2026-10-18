@@ -20,10 +20,14 @@ class QrScanHistory extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->id = $m->id ?: (string) Str::uuid();
+            $m->uuid = $m->uuid ?: (string) Str::uuid();
+        });
     }
 
     protected $fillable = [
+        'uuid',
         'asset_id',
         'scanned_by',
         'scan_type',
@@ -52,8 +56,6 @@ class QrScanHistory extends Model
     protected $casts = [
         'scanned_at' => 'datetime',
     ];
-
-    public $timestamps = false;
 
     public function getScannedAtAttribute(): ?Carbon
     {

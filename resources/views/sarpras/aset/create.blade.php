@@ -64,7 +64,24 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Kode Aset</label>
-                                <input type="text" name="asset_code" class="form-control" value="{{ old('asset_code') }}" placeholder="AST-001" maxlength="50">
+                                <input type="text" name="asset_code" class="form-control" value="{{ old('asset_code') }}" placeholder="Otomatis jika kosong" maxlength="50">
+                                <small class="text-muted">Kode ini menjadi isi QR label per unit aset.</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Kuantitas</label>
+                                <input type="number" name="quantity" class="form-control" value="{{ old('quantity', 1) }}" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Satuan</label>
+                                <input type="text" name="unit" class="form-control" value="{{ old('unit', 'unit') }}" placeholder="unit / buah / set" maxlength="30">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Masa Pakai (tahun)</label>
+                                <input type="number" name="useful_life_years" class="form-control" value="{{ old('useful_life_years') }}" min="0" max="100" placeholder="Mengikuti kategori jika kosong">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Harga Penyusutan / Tahun (Rp)</label>
+                                <input type="number" name="depreciation_per_year" class="form-control" value="{{ old('depreciation_per_year') }}" min="0" placeholder="Dihitung otomatis bila kosong">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Merk</label>

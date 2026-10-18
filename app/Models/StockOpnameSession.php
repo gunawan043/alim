@@ -15,6 +15,8 @@ class StockOpnameSession extends Model
     protected $fillable = [
         'work_unit_id',
         'school_id',
+        'room_id',
+        'category_id',
         'title',
         'description',
         'scheduled_date',
@@ -100,6 +102,29 @@ class StockOpnameSession extends Model
     public function school()
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(AssetRoom::class, 'room_id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(AssetCategory::class, 'category_id');
+    }
+
+    public function getProgressAttribute(): array
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+        $total = $items->count();
+        $observed = $items->whereNotIn('observed_status', [null, 'pending'])->count();
+
+        return [
+            'total' => $total,
+            'observed' => $observed,
+            'percent' => $total > 0 ? round($observed / $total * 100, 1) : 0,
+        ];
     }
 
     public function report(): array

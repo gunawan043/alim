@@ -103,6 +103,18 @@ class WorkUnit extends Model
         return $this->hasMany(GtkWorkUnit::class);
     }
 
+    public function sarprasOfficers()
+    {
+        return $this->hasMany(WorkUnitSarprasOfficer::class, 'work_unit_id');
+    }
+
+    public function primarySarprasOfficer()
+    {
+        return $this->hasOne(WorkUnitSarprasOfficer::class, 'work_unit_id')
+            ->where('is_active', true)
+            ->where('is_primary', true);
+    }
+
     public function transferRequestsFrom()
     {
         return $this->hasMany(GtkTransferRequest::class, 'from_work_unit_id');

@@ -32,15 +32,20 @@ class AssetMaintenanceLog extends Model
         'building_id',
         'room_id',
         'maintenance_type',
+        'log_type',
         'maintenance_date',
         'performed_by',
+        'handled_by',
         'vendor_name',
+        'description',
+        'cost',
         'actual_cost',
         'condition_before',
         'condition_after',
         'work_description',
         'parts_replaced',
         'next_action_needed',
+        'next_due_date',
         'photo_path',
         'document_path',
         'notes',
@@ -49,6 +54,7 @@ class AssetMaintenanceLog extends Model
 
     protected $casts = [
         'maintenance_date' => 'date',
+        'next_due_date' => 'date',
         'actual_cost' => 'decimal:2',
     ];
 

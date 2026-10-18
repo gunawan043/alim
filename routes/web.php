@@ -159,6 +159,9 @@ use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
 use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
+use App\Http\Controllers\Sarpras\SarprasOfficerController;
+use App\Http\Controllers\Sarpras\SarprasRepairController;
+use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
 use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
 use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
@@ -2614,6 +2617,12 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::put('/ruang/{id}', [SarprasRuangController::class, 'update'])->name('ruang.update');
     Route::delete('/ruang/{id}', [SarprasRuangController::class, 'destroy'])->name('ruang.destroy');
 
+    // Petugas Sarpras Satuan Kerja
+    Route::get('/petugas', [SarprasOfficerController::class, 'index'])->name('petugas.index');
+    Route::post('/petugas', [SarprasOfficerController::class, 'store'])->name('petugas.store');
+    Route::post('/petugas/{id}/toggle', [SarprasOfficerController::class, 'toggle'])->name('petugas.toggle');
+    Route::post('/petugas/{id}/primary', [SarprasOfficerController::class, 'setPrimary'])->name('petugas.primary');
+
     // Aset / Inventaris
     Route::get('/aset', [SarprasAsetController::class, 'index'])->name('aset.index');
     Route::get('/aset/create', [SarprasAsetController::class, 'create'])->name('aset.create');
@@ -2645,12 +2654,21 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
 
     // Pemeliharaan - Jadwal
     Route::get('/pemeliharaan/jadwal', [SarprasMaintenanceController::class, 'scheduleIndex'])->name('pemeliharaan.schedule.index');
+    Route::get('/pemeliharaan/timeline', [SarprasMaintenanceController::class, 'scheduleTimeline'])->name('pemeliharaan.schedule.timeline');
     Route::get('/pemeliharaan/jadwal/create', [SarprasMaintenanceController::class, 'scheduleCreate'])->name('pemeliharaan.schedule.create');
     Route::post('/pemeliharaan/jadwal', [SarprasMaintenanceController::class, 'scheduleStore'])->name('pemeliharaan.schedule.store');
     Route::get('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleShow'])->name('pemeliharaan.schedule.show');
     Route::get('/pemeliharaan/jadwal/{id}/edit', [SarprasMaintenanceController::class, 'scheduleEdit'])->name('pemeliharaan.schedule.edit');
     Route::put('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleUpdate'])->name('pemeliharaan.schedule.update');
     Route::delete('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleDestroy'])->name('pemeliharaan.schedule.destroy');
+    Route::post('/pemeliharaan/jadwal/{id}/approve', [SarprasMaintenanceController::class, 'approveSchedule'])->name('pemeliharaan.schedule.approve');
+    Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
+    Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');
+
+    // Antrean perbaikan (laporan kerusakan -> repair request -> work order)
+    Route::get('/perbaikan', [SarprasRepairController::class, 'index'])->name('repair.index');
+    Route::get('/perbaikan/{repairId}', [SarprasRepairController::class, 'show'])->name('repair.show');
+    Route::post('/perbaikan/{repairId}/work-order', [SarprasRepairController::class, 'storeWorkOrder'])->name('repair.work-order');
 
     // Pemeliharaan - Riwayat Perawatan
     Route::get('/pemeliharaan/riwayat', [SarprasMaintenanceController::class, 'logIndex'])->name('pemeliharaan.log.index');
@@ -2704,6 +2722,17 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/qr/bulk-audit', [SarprasQRController::class, 'bulkAudit'])->name('qr.bulk-audit');
     Route::post('/qr/bulk-audit', [SarprasQRController::class, 'bulkAuditSubmit'])->name('qr.bulk-audit.submit');
 
+    // Stock Opname — URT + satuan kerja
+    Route::get('/stock-opname', [SarprasStockOpnameController::class, 'index'])->name('stock-opname.index');
+    Route::get('/stock-opname/create', [SarprasStockOpnameController::class, 'create'])->name('stock-opname.create');
+    Route::post('/stock-opname', [SarprasStockOpnameController::class, 'store'])->name('stock-opname.store');
+    Route::get('/stock-opname/{sessionId}', [SarprasStockOpnameController::class, 'show'])->name('stock-opname.show');
+    Route::post('/stock-opname/{sessionId}/start', [SarprasStockOpnameController::class, 'start'])->name('stock-opname.start');
+    Route::post('/stock-opname/{sessionId}/scan', [SarprasStockOpnameController::class, 'scan'])->name('stock-opname.scan');
+    Route::post('/stock-opname/{sessionId}/items/{itemId}', [SarprasStockOpnameController::class, 'record'])->name('stock-opname.record');
+    Route::post('/stock-opname/{sessionId}/close', [SarprasStockOpnameController::class, 'close'])->name('stock-opname.close');
+    Route::post('/stock-opname/{sessionId}/cancel', [SarprasStockOpnameController::class, 'cancel'])->name('stock-opname.cancel');
+
     // Asset Passport — full lifecycle view
     Route::get('/assets/{uuid}/passport', [AssetPassportController::class, 'show'])->name('assets.passport');
     Route::get('/assets/{uuid}/passport.json', [AssetPassportController::class, 'json'])->name('assets.passport.json');
@@ -2720,6 +2749,10 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/laporan', [SarprasReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/inventaris-per-ruang', [SarprasReportController::class, 'inventarisPerRuang'])->name('laporan.inventaris-per-ruang');
     Route::get('/laporan/inventaris-per-ruang/pdf', [SarprasReportController::class, 'inventarisPerRuangPdf'])->name('laporan.inventaris-per-ruang.pdf');
+    Route::get('/laporan/buku-induk', [SarprasReportController::class, 'bukuInduk'])->name('laporan.buku-induk');
+    Route::get('/laporan/buku-induk/pdf', [SarprasReportController::class, 'bukuIndukPdf'])->name('laporan.buku-induk.pdf');
+    Route::get('/laporan/kartu-inventaris-ruangan', [SarprasReportController::class, 'kartuInventarisRuang'])->name('laporan.kir');
+    Route::get('/laporan/kartu-inventaris-ruangan/pdf', [SarprasReportController::class, 'kartuInventarisRuangPdf'])->name('laporan.kir.pdf');
     Route::get('/laporan/kondisi-aset', [SarprasReportController::class, 'kondisiAset'])->name('laporan.kondisi-aset');
     Route::get('/laporan/kondisi-aset/pdf', [SarprasReportController::class, 'kondisiAsetPdf'])->name('laporan.kondisi-aset.pdf');
     Route::get('/laporan/peminjaman', [SarprasReportController::class, 'peminjaman'])->name('laporan.peminjaman');
@@ -2772,14 +2805,14 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
 
     // ── TECHNICIAN WORKSPACE ──���──────────────────────────────
     Route::get('/teknisi', [SarprasTechnicianWorkspaceController::class, 'dashboard'])->name('teknisi.dashboard');
-    Route::get('/teknisi/{id}', [SarprasTechnicianWorkspaceController::class, 'show'])->name('teknisi.show');
-    Route::post('/teknisi/{id}/start', [SarprasTechnicianWorkspaceController::class, 'start'])->name('teknisi.start');
-    Route::post('/teknisi/{id}/pause', [SarprasTechnicianWorkspaceController::class, 'pause'])->name('teknisi.pause');
-    Route::post('/teknisi/{id}/resume', [SarprasTechnicianWorkspaceController::class, 'resume'])->name('teknisi.resume');
-    Route::post('/teknisi/{id}/complete', [SarprasTechnicianWorkspaceController::class, 'complete'])->name('teknisi.complete');
-    Route::post('/teknisi/{id}/note', [SarprasTechnicianWorkspaceController::class, 'logNote'])->name('teknisi.note');
-    Route::get('/teknisi/{id}/snapshot', [SarprasTechnicianWorkspaceController::class, 'snapshot'])->name('teknisi.snapshot');
-    Route::post('/teknisi/{id}/claim', [SarprasTechnicianWorkspaceController::class, 'claim'])->name('teknisi.claim');
+    Route::get('/teknisi/{orderId}', [SarprasTechnicianWorkspaceController::class, 'show'])->name('teknisi.show');
+    Route::post('/teknisi/{orderId}/start', [SarprasTechnicianWorkspaceController::class, 'start'])->name('teknisi.start');
+    Route::post('/teknisi/{orderId}/pause', [SarprasTechnicianWorkspaceController::class, 'pause'])->name('teknisi.pause');
+    Route::post('/teknisi/{orderId}/resume', [SarprasTechnicianWorkspaceController::class, 'resume'])->name('teknisi.resume');
+    Route::post('/teknisi/{orderId}/complete', [SarprasTechnicianWorkspaceController::class, 'complete'])->name('teknisi.complete');
+    Route::post('/teknisi/{orderId}/note', [SarprasTechnicianWorkspaceController::class, 'logNote'])->name('teknisi.note');
+    Route::get('/teknisi/{orderId}/snapshot', [SarprasTechnicianWorkspaceController::class, 'snapshot'])->name('teknisi.snapshot');
+    Route::post('/teknisi/{orderId}/claim', [SarprasTechnicianWorkspaceController::class, 'claim'])->name('teknisi.claim');
 
     // ── AUDITOR WORKSPACE ────────────────────────────────────
     Route::get('/auditor', [SarprasAuditorWorkspaceController::class, 'dashboard'])->name('auditor.dashboard');

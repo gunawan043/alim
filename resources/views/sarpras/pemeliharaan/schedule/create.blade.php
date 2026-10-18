@@ -13,6 +13,8 @@
         <div class="card">
             <div class="card-header"><h5 class="card-title mb-0">Jadwal Pemeliharaan Baru</h5></div>
             <div class="card-body">
+                    <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-information-line fs-5"></i><span>Jadwal yang disimpan akan dikirim ke satuan kerja pemilik aset untuk <strong>disetujui / dijadwalkan ulang / ditolak</strong>.</span></div>
+
                 <form method="POST" action="{{ route('sarpras.pemeliharaan.schedule.store') }}">
                     @csrf
                     <div class="row g-3">

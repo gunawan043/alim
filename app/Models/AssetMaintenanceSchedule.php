@@ -40,6 +40,11 @@ class AssetMaintenanceSchedule extends Model
         'reminder_days_before',
         'is_active',
         'status',
+        'unit_approval_status',
+        'unit_approved_by',
+        'unit_approved_at',
+        'unit_approval_note',
+        'unit_proposed_date',
         'notes',
         'created_by',
     ];
@@ -47,8 +52,25 @@ class AssetMaintenanceSchedule extends Model
     protected $casts = [
         'last_maintenance_date' => 'date',
         'next_maintenance_date' => 'date',
+        'unit_proposed_date' => 'date',
+        'unit_approved_at' => 'datetime',
         'estimated_cost' => 'decimal:2',
         'is_active' => 'boolean',
+    ];
+
+    const APPROVAL_PENDING = 'pending';
+
+    const APPROVAL_APPROVED = 'approved';
+
+    const APPROVAL_RESCHEDULE = 'reschedule_requested';
+
+    const APPROVAL_REJECTED = 'rejected';
+
+    const APPROVAL_OPTIONS = [
+        self::APPROVAL_PENDING,
+        self::APPROVAL_APPROVED,
+        self::APPROVAL_RESCHEDULE,
+        self::APPROVAL_REJECTED,
     ];
 
     const FREQUENCY_OPTIONS = [
@@ -90,6 +112,21 @@ class AssetMaintenanceSchedule extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function unitApprover()
+    {
+        return $this->belongsTo(User::class, 'unit_approved_by');
+    }
+
+    public function getApprovalLabelAttribute(): string
+    {
+        return match ($this->unit_approval_status) {
+            self::APPROVAL_APPROVED => 'Disetujui Unit',
+            self::APPROVAL_RESCHEDULE => 'Minta Jadwal Ulang',
+            self::APPROVAL_REJECTED => 'Ditolak Unit',
+            default => 'Menunggu Unit',
+        };
     }
 
     public function logs()

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class AssetEventLogger
 {
-    public function log(Asset $asset, string $eventType, array $detail = [], ?int $actorId = null): void
+    public function log(Asset $asset, string $eventType, array $detail = [], ?string $actorId = null): void
     {
         try {
             DB::transaction(function () use ($asset, $eventType, $detail, $actorId) {
@@ -23,7 +23,7 @@ class AssetEventLogger
         }
     }
 
-    public function logCreated(Asset $asset, ?int $actorId = null): void
+    public function logCreated(Asset $asset, ?string $actorId = null): void
     {
         $this->log($asset, 'asset_created', [
             'asset_name' => $asset->asset_name,
@@ -33,7 +33,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMoved(Asset $asset, ?string $fromRoomName, ?string $toRoomName, ?int $actorId = null): void
+    public function logMoved(Asset $asset, ?string $fromRoomName, ?string $toRoomName, ?string $actorId = null): void
     {
         $this->log($asset, 'asset_moved', [
             'from_room' => $fromRoomName,
@@ -41,7 +41,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logAudit(Asset $asset, ?int $actorId = null): void
+    public function logAudit(Asset $asset, ?string $actorId = null): void
     {
         $this->log($asset, 'asset_audit', [
             'condition' => $asset->condition,
@@ -76,38 +76,32 @@ class AssetEventLogger
             'source' => $payload['source'] ?? 'web_scanner',
             'ip_address' => $payload['ip_address'] ?? null,
             'user_agent' => $payload['user_agent'] ?? null,
-            'latitude' => $payload['latitude'] ?? null,
-            'longitude' => $payload['longitude'] ?? null,
-            'condition' => $payload['condition'] ?? null,
             'purpose' => $payload['purpose'] ?? null,
-            'notes' => $payload['notes'] ?? null,
-            'session_id' => $payload['session_id'] ?? null,
-            'scanned_at' => now(),
         ]);
     }
 
-    public function logQrGenerated(Asset $asset, ?int $actorId = null): void
+    public function logQrGenerated(Asset $asset, ?string $actorId = null): void
     {
         $this->log($asset, 'qr_generated', [
             'generated_at' => now()->toDateTimeString(),
         ], $actorId);
     }
 
-    public function logDamageReport(Asset $asset, string $description, ?int $actorId = null): void
+    public function logDamageReport(Asset $asset, string $description, ?string $actorId = null): void
     {
         $this->log($asset, 'damage_reported', [
             'description' => $description,
         ], $actorId);
     }
 
-    public function logLoanCreated(Asset $asset, string $borrowerName, ?int $actorId = null): void
+    public function logLoanCreated(Asset $asset, string $borrowerName, ?string $actorId = null): void
     {
         $this->log($asset, 'loan_created', [
             'borrower' => $borrowerName,
         ], $actorId);
     }
 
-    public function logLoanReturned(Asset $asset, string $borrowerName, ?int $actorId = null): void
+    public function logLoanReturned(Asset $asset, string $borrowerName, ?string $actorId = null): void
     {
         $this->log($asset, 'loan_returned', [
             'borrower' => $borrowerName,
@@ -116,7 +110,7 @@ class AssetEventLogger
 
     /* ---------- Workflow lifecycle events ---------- */
 
-    public function logRepairSubmitted(Asset $asset, string $requestNumber, string $title, ?int $actorId = null): void
+    public function logRepairSubmitted(Asset $asset, string $requestNumber, string $title, ?string $actorId = null): void
     {
         $this->log($asset, 'repair_request_submitted', [
             'request_number' => $requestNumber,
@@ -124,14 +118,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logRepairVerified(Asset $asset, string $requestNumber, ?int $actorId = null): void
+    public function logRepairVerified(Asset $asset, string $requestNumber, ?string $actorId = null): void
     {
         $this->log($asset, 'repair_request_verified', [
             'request_number' => $requestNumber,
         ], $actorId);
     }
 
-    public function logRepairRejected(Asset $asset, string $requestNumber, string $reason, ?int $actorId = null): void
+    public function logRepairRejected(Asset $asset, string $requestNumber, string $reason, ?string $actorId = null): void
     {
         $this->log($asset, 'repair_request_rejected', [
             'request_number' => $requestNumber,
@@ -139,14 +133,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logWorkOrderCreated(Asset $asset, string $orderNumber, ?int $actorId = null): void
+    public function logWorkOrderCreated(Asset $asset, string $orderNumber, ?string $actorId = null): void
     {
         $this->log($asset, 'work_order_created', [
             'order_number' => $orderNumber,
         ], $actorId);
     }
 
-    public function logWorkOrderAssigned(Asset $asset, string $orderNumber, int $assigneeId, ?int $actorId = null): void
+    public function logWorkOrderAssigned(Asset $asset, string $orderNumber, string $assigneeId, ?string $actorId = null): void
     {
         $this->log($asset, 'work_order_assigned', [
             'order_number' => $orderNumber,
@@ -154,7 +148,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logRepairCompleted(Asset $asset, string $orderNumber, string $conditionAfter, float $totalCost, ?int $actorId = null): void
+    public function logRepairCompleted(Asset $asset, string $orderNumber, string $conditionAfter, float $totalCost, ?string $actorId = null): void
     {
         $this->log($asset, 'repair_completed', [
             'order_number' => $orderNumber,
@@ -164,21 +158,21 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logRepairClosed(Asset $asset, string $orderNumber, ?int $actorId = null): void
+    public function logRepairClosed(Asset $asset, string $orderNumber, ?string $actorId = null): void
     {
         $this->log($asset, 'repair_closed', [
             'order_number' => $orderNumber,
         ], $actorId);
     }
 
-    public function logMaintenanceScheduled(Asset $asset, ?int $scheduleId, ?int $actorId = null): void
+    public function logMaintenanceScheduled(Asset $asset, ?string $scheduleId, ?string $actorId = null): void
     {
         $this->log($asset, 'maintenance_scheduled', [
             'schedule_id' => $scheduleId,
         ], $actorId);
     }
 
-    public function logMaintenanceCompleted(Asset $asset, int $scheduleId, string $conditionAfter, float $cost, ?int $actorId = null): void
+    public function logMaintenanceCompleted(Asset $asset, string $scheduleId, string $conditionAfter, float $cost, ?string $actorId = null): void
     {
         $this->log($asset, 'maintenance_completed', [
             'schedule_id' => $scheduleId,
@@ -188,14 +182,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logStockOpnameOpened(Asset $asset, string $sessionCode, ?int $actorId = null): void
+    public function logStockOpnameOpened(Asset $asset, string $sessionCode, ?string $actorId = null): void
     {
         $this->log($asset, 'stock_opname_opened', [
             'session_code' => $sessionCode,
         ], $actorId);
     }
 
-    public function logAssetStatusChanged(Asset $asset, string $fromStatus, string $toStatus, string $reason, ?int $actorId = null): void
+    public function logAssetStatusChanged(Asset $asset, string $fromStatus, string $toStatus, string $reason, ?string $actorId = null): void
     {
         $this->log($asset, 'asset_status_changed', [
             'from' => $fromStatus,
@@ -206,7 +200,7 @@ class AssetEventLogger
 
     /* ---------- Movement lifecycle events ---------- */
 
-    public function logMovementRequested(AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementRequested(AssetMovement $movement, ?string $actorId = null): void
     {
         $this->log($movement->asset, 'movement_requested', [
             'movement_number' => $movement->movement_number,
@@ -216,14 +210,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementApproved(AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementApproved(AssetMovement $movement, ?string $actorId = null): void
     {
         $this->log($movement->asset, 'movement_approved', [
             'movement_number' => $movement->movement_number,
         ], $actorId);
     }
 
-    public function logMovementRejected(AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
+    public function logMovementRejected(AssetMovement $movement, ?string $actorId = null, string $reason = ''): void
     {
         $this->log($movement->asset, 'movement_rejected', [
             'movement_number' => $movement->movement_number,
@@ -231,7 +225,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementInTransit(AssetMovement $movement, ?int $actorId = null, array $photos = []): void
+    public function logMovementInTransit(AssetMovement $movement, ?string $actorId = null, array $photos = []): void
     {
         $this->log($movement->asset, 'movement_in_transit', [
             'movement_number' => $movement->movement_number,
@@ -240,7 +234,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementReceived(AssetMovement $movement, ?int $actorId = null, array $payload = []): void
+    public function logMovementReceived(AssetMovement $movement, ?string $actorId = null, array $payload = []): void
     {
         $this->log($movement->asset, 'movement_received', [
             'movement_number' => $movement->movement_number,
@@ -249,7 +243,7 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementVerified(AssetMovement $movement, ?int $actorId = null, array $payload = []): void
+    public function logMovementVerified(AssetMovement $movement, ?string $actorId = null, array $payload = []): void
     {
         $this->log($movement->asset, 'movement_verified', [
             'movement_number' => $movement->movement_number,
@@ -257,14 +251,14 @@ class AssetEventLogger
         ], $actorId);
     }
 
-    public function logMovementCompleted(AssetMovement $movement, ?int $actorId = null): void
+    public function logMovementCompleted(AssetMovement $movement, ?string $actorId = null): void
     {
         $this->log($movement->asset, 'movement_completed', [
             'movement_number' => $movement->movement_number,
         ], $actorId);
     }
 
-    public function logMovementCancelled(AssetMovement $movement, ?int $actorId = null, string $reason = ''): void
+    public function logMovementCancelled(AssetMovement $movement, ?string $actorId = null, string $reason = ''): void
     {
         $this->log($movement->asset, 'movement_cancelled', [
             'movement_number' => $movement->movement_number,

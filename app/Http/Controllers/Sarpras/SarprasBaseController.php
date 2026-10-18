@@ -10,11 +10,15 @@ use App\Models\AssetMaintenanceSchedule;
 use App\Models\AssetRoom;
 use App\Models\ProcurementRequest;
 use App\Models\RoomBooking;
+use App\Models\RoomSupervisor;
 use App\Models\School;
+use App\Models\StudyGroup;
+use App\Models\WorkUnitSarprasOfficer;
 use App\Services\SarprasCacheInvalidator;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -46,17 +50,230 @@ abstract class SarprasBaseController extends Controller
     }
 
     /**
+     * Unit Rumah Tangga / Admin Sarpras = pengelola pusat.
+     * Unit kerja hanya mengelola data miliknya sendiri.
+     */
+    protected function isCentralSarpras(?object $user = null): bool
+    {
+        $user ??= auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+            'Admin Sarpras', 'Admin Tata Usaha', 'Unit Rumah Tangga',
+        ])) {
+            return true;
+        }
+
+        if (function_exists('canUserPermission') && canUserPermission($user, 'sarpras_all_access')) {
+            return true;
+        }
+
+        $jabatan = method_exists($user, 'jabatan')
+            ? trim((string) ($user->jabatan->nama ?? $user->jabatan ?? ''))
+            : '';
+
+        return in_array($jabatan, [
+            'Kepala Unit Rumah Tangga',
+            'Koordinator Sarana Prasarana',
+            'Koordinator Sarpras',
+        ], true);
+    }
+
+    protected function authorizeCentralSarpras(): void
+    {
+        if (! $this->isCentralSarpras()) {
+            abort(403, 'Hanya Kepala/TU Unit Rumah Tangga yang dapat mengelola data pusat Sarpras.');
+        }
+    }
+
+    /**
+     * Work unit yang boleh diakses user: unit GTK + penugasan petugas sarpras + unit sekolah.
+     *
+     * @return array<int, string>
+     */
+    protected function accessibleWorkUnitIds(?object $user = null): array
+    {
+        $user ??= auth()->user();
+        if (! $user) {
+            return [];
+        }
+
+        $ids = DB::table('gtk_work_unit')
+            ->where('user_id', $user->id)
+            ->pluck('work_unit_id')
+            ->all();
+
+        $ids = array_merge($ids, WorkUnitSarprasOfficer::query()
+            ->active()
+            ->where('user_id', $user->id)
+            ->pluck('work_unit_id')
+            ->all());
+
+        $schoolId = request()->attributes->get('schoolContextId');
+        if ($schoolId) {
+            $workUnitId = School::query()->whereKey($schoolId)->value('work_unit_id');
+            if ($workUnitId) {
+                $ids[] = $workUnitId;
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Scope query ke work unit user. Pengelola pusat melihat semua.
+     */
+    protected function scopeToAccessibleWorkUnits($query, Request $request, string $column = 'work_unit_id')
+    {
+        if ($this->isCentralSarpras() || $this->canViewAll($request)) {
+            return $query;
+        }
+
+        $workUnitIds = $this->accessibleWorkUnitIds();
+        if ($workUnitIds !== []) {
+            return $query->whereIn($column, $workUnitIds);
+        }
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId) {
+            return $query->where('school_id', $schoolId);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    protected function isUnitSarprasOfficer(?object $user = null): bool
+    {
+        $user ??= auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return WorkUnitSarprasOfficer::query()
+            ->active()
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
+    /**
+     * Ruang yang menjadi tanggung jawab wali kelas / wali kamar.
+     *
+     * @return array<int, string>
+     */
+    protected function responsibleRoomIds(?object $user = null): array
+    {
+        $user ??= auth()->user();
+        if (! $user) {
+            return [];
+        }
+
+        $studyGroupIds = StudyGroup::query()
+            ->where('homeroom_teacher_id', $user->id)
+            ->pluck('id')
+            ->all();
+
+        $dormRoomIds = RoomSupervisor::query()
+            ->active()
+            ->where('user_id', $user->id)
+            ->pluck('room_id')
+            ->all();
+
+        return AssetRoom::query()
+            ->where(function ($query) use ($user, $studyGroupIds, $dormRoomIds) {
+                $query->where('responsible_user_id', $user->id);
+
+                if ($studyGroupIds !== []) {
+                    $query->orWhereIn('study_group_id', $studyGroupIds);
+                }
+                if ($dormRoomIds !== []) {
+                    $query->orWhereIn('dormitory_room_id', $dormRoomIds);
+                }
+            })
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * Scope aset/ruang sesuai tanggung jawab:
+     * - URT pusat: semua
+     * - Petugas Sarpras unit: seluruh unit
+     * - Wali kelas/kamar: hanya ruang tanggung jawabnya
+     */
+    protected function scopeToResponsibility($query, Request $request, string $roomColumn = 'room_id')
+    {
+        if ($this->isCentralSarpras() || $this->canViewAll($request)) {
+            return $query;
+        }
+
+        if ($this->isUnitSarprasOfficer()) {
+            return $this->scopeToAccessibleWorkUnits($query, $request);
+        }
+
+        $roomIds = $this->responsibleRoomIds();
+        if ($roomIds !== []) {
+            return $query->whereIn($roomColumn, $roomIds);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    protected function authorizeResponsibleRoom(?string $roomId, Request $request): void
+    {
+        if ($this->isCentralSarpras() || $this->isUnitSarprasOfficer()) {
+            return;
+        }
+
+        abort_unless($roomId && in_array($roomId, $this->responsibleRoomIds(), true), 403, 'Ruang ini bukan tanggung jawab Anda.');
+    }
+
+    protected function authorizeWorkUnitAccess(?string $workUnitId, Request $request): void
+    {
+        if ($this->isCentralSarpras() || $this->canViewAll($request)) {
+            return;
+        }
+
+        if ($workUnitId && in_array($workUnitId, $this->accessibleWorkUnitIds(), true)) {
+            return;
+        }
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if ($schoolId && $workUnitId) {
+            $schoolWorkUnitId = School::query()->whereKey($schoolId)->value('work_unit_id');
+            if ($schoolWorkUnitId === $workUnitId) {
+                return;
+            }
+        }
+
+        abort(403, 'Anda tidak memiliki akses ke satuan kerja ini.');
+    }
+
+    /**
      * Check if resource is accessible by current user via school-scope.
      * Returns true if user can view all, or resource's schoolId matches request scope.
      */
     protected function canAccess(Request $request, object $resource, string $schoolField = 'school_id'): bool
     {
-        if ($this->canViewAll($request)) {
+        if ($this->canViewAll($request) || $this->isCentralSarpras()) {
             return true;
         }
-        $schoolId = $request->attributes->get('schoolContextId');
 
-        return ! $schoolId || ($resource->{$schoolField} ?? null) === $schoolId;
+        if (! empty($resource->work_unit_id)
+            && in_array($resource->work_unit_id, $this->accessibleWorkUnitIds(), true)) {
+            return true;
+        }
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if (! $schoolId) {
+            return false;
+        }
+
+        return ($resource->{$schoolField} ?? null) === $schoolId;
     }
 
     /**

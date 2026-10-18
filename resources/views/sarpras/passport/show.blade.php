@@ -83,14 +83,14 @@
                             </div>
                             <div class="col-md-6">
                                 <p class="mb-1 text-muted">Condition</p>
-                                <span class="badge bg-{{ match($asset->condition) {
-                                    'baik' => 'success',
-                                    'rusak_ringan' => 'warning',
-                                    'rusak_sedang' => 'danger',
-                                    'rusak_berat' => 'dark',
-                                    'hilang' => 'secondary',
-                                    default => 'info'
-                                }}">{{ $asset->condition }}</span>
+                                @php
+                                    $conditionTone = [
+                                        'baik' => 'success', 'rusak_ringan' => 'warning',
+                                        'rusak_sedang' => 'danger', 'rusak_berat' => 'dark',
+                                        'hilang' => 'secondary',
+                                    ][$asset->condition] ?? 'info';
+                                @endphp
+                                <span class="badge bg-{{ $conditionTone }}">{{ $asset->condition }}</span>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -255,21 +255,18 @@
                     }
                 @endphp
                 @forelse($events as $evt)
-                    <div class="timeline-item">
-                        <div class="timeline-badge bg-{{ match($evt['type'] ?? '') {
-                            'asset_created' => 'success',
-                            'asset_moved' => 'info',
-                            'asset_borrowed' => 'warning',
-                            'asset_returned' => 'success',
-                            'repair_started' => 'danger',
-                            'repair_completed' => 'primary',
-                            'audit_conducted' => 'secondary',
-                            'stock_opname' => 'dark',
-                            'photo_uploaded' => 'info',
-                            'asset_disposed' => 'danger',
+                    @php
+                        $eventTone = [
+                            'asset_created' => 'success', 'asset_moved' => 'info',
+                            'asset_borrowed' => 'warning', 'asset_returned' => 'success',
+                            'repair_started' => 'danger', 'repair_completed' => 'primary',
+                            'audit_conducted' => 'secondary', 'stock_opname' => 'dark',
+                            'photo_uploaded' => 'info', 'asset_disposed' => 'danger',
                             'status_change' => 'warning',
-                            default => 'light'
-                        }}"></div>
+                        ][$evt['type'] ?? ''] ?? 'light';
+                    @endphp
+                    <div class="timeline-item">
+                        <div class="timeline-badge bg-{{ $eventTone }}"></div>
                         <div class="timeline-panel">
                             <div class="timeline-heading">
                                 <h6 class="timeline-title">{{ Str::title(str_replace('_', ' ', $evt['type'] ?? '')) }}</h6>
@@ -308,35 +305,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse(($passport['repairs'] ?? []) as $r)
+                            @php
+                                $repairs = $asset->repairRequests()->with(['assignedTo', 'workOrders'])->orderByDesc('created_at')->limit(20)->get();
+                            @endphp
+                            @forelse($repairs as $rr)
                                 <tr>
-                                    <td>{{ \Carbon\Carbon::parse($r['date'])->format('d M Y') }}</td>
-                                    <td>{{ $r['problem'] ?? '-' }}</td>
-                                    <td>{{ $r['technician'] ?? '-' }}</td>
-                                    <td>Rp {{ number_format($r['cost'] ?? 0, 0, ',', '.') }}</td>
-                                    <td>{{ $r['duration'] ?? '-' }}</td>
-                                    <td>{{ $r['result'] ?? '-' }}</td>
-                                    <td><span class="badge bg-{{ $r['status'] === 'resolved' ? 'success' : 'primary' }}">{{ $r['status'] ?? 'pending' }}</span></td>
+                                    <td>{{ $rr->created_at?->format('d M Y') }}</td>
+                                    <td>{{ $rr->title ?? $rr->description }}</td>
+                                    <td>{{ $rr->assignedTo?->name ?? '-' }}</td>
+                                    <td>Rp {{ number_format($rr->labor_cost ?? 0, 0, ',', '.') }}</td>
+                                    <td>{{ $rr->workOrders->first()?->actual_start?->diff($rr->workOrders->first()?->actual_end)?->format('%d days %h hours') ?? '-' }}</td>
+                                    <td>{{ $rr->result_description ?? '-' }}</td>
+                                    <td>
+                                        @php $repairTone = ['approved'=>'success','in_progress'=>'warning','completed'=>'info','closed'=>'success'][$rr->status] ?? 'secondary'; @endphp
+                                        <span class="badge bg-{{ $repairTone }}">{{ $rr->status }}</span>
+                                    </td>
                                 </tr>
-                            @else
-                                @php
-                                    $repairs = $asset->repairRequests()->with(['assignedTo', 'workOrders'])->orderByDesc('created_at')->limit(20)->get();
-                                @endphp
-                                @forelse($repairs as $rr)
-                                    <tr>
-                                        <td>{{ $rr->created_at?->format('d M Y') }}</td>
-                                        <td>{{ $rr->title ?? $rr->description }}</td>
-                                        <td>{{ $rr->assignedTo?->name ?? '-' }}</td>
-                                        <td>Rp {{ number_format($rr->labor_cost ?? 0, 0, ',', '.') }}</td>
-                                        <td>{{ $rr->workOrders->first()?->actual_start?->diff($rr->workOrders->first()?->actual_end)?->format('%d days %h hours') ?? '-' }}</td>
-                                        <td>{{ $rr->result_description ?? '-' }}</td>
-                                        <td><span class="badge bg-{{ match($rr->status){
-                                            'approved'=>'success','in_progress'=>'warning','completed'=>'info', default:'secondary'
-                                        }}">{{ $rr->status }}</span></td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="7" class="text-center text-muted">No repair records found.</td></tr>
-                                @endforelse
+                            @empty
+                                <tr><td colspan="7" class="text-center text-muted">No repair records found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -475,9 +461,9 @@
                         </thead>
                         <tbody>
                             @php
-                                $opnameItems = \App\Models\StockOpnameItem::with(['session.officers' => function($q){ $q->withPivot('scanned_at','observed_at'); }])
+                                $opnameItems = \App\Models\StockOpnameItem::with(['session.officers'])
                                     ->where('asset_id', $asset->id)
-                                    ->orderByDesc('observed_at')
+                                    ->orderByDesc('scanned_at')
                                     ->limit(20)
                                     ->get();
                             @endphp
@@ -487,7 +473,7 @@
                                     <td>{{ $item->session?->auditor_name ?? '-' }}</td>
                                     <td><span class="badge bg-{{ $item->is_match ? 'success' : 'danger' }}">{{ $item->is_match ? 'Match' : 'Mismatch' }}</span></td>
                                     <td>{{ $item->variance_reason ?? '-' }}</td>
-                                    <td>{{ $item->observed_at?->format('d M Y') ?? '-' }}</td>
+                                    <td>{{ $item->scanned_at?->format('d M Y') ?? '-' }}</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="5" class="text-center text-muted">No stock opname records.</td></tr>

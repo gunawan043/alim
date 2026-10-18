@@ -12,17 +12,16 @@ class RepairCostHistory extends Model
 
     protected $table = 'repair_cost_histories';
 
-    protected $keyType = 'string';
-
-    public $incrementing = false;
-
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
+        static::creating(function ($m) {
+            $m->uuid = $m->uuid ?: (string) Str::uuid();
+        });
     }
 
     protected $fillable = [
+        'uuid',
         'asset_id',
         'work_order_id',
         'repair_request_id',

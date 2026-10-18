@@ -2,6 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Dormitory;
+use App\Models\RoomSupervisor;
+use App\Models\StudyGroup;
+use App\Models\WorkUnitSarprasOfficer;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -59,6 +63,20 @@ class EnsureSarprasAccess
             : '';
 
         if (in_array($jabatan, $allowedJabatans, true)) {
+            return $next($request);
+        }
+
+        // Petugas Sarpras Satuan Kerja yang ditunjuk URT.
+        if (WorkUnitSarprasOfficer::query()->active()->where('user_id', $user->id)->exists()) {
+            return $next($request);
+        }
+
+        // Wali kelas / wali kamar mendata aset pada ruang yang menjadi tanggung jawabnya.
+        $isHomeroom = StudyGroup::query()->where('homeroom_teacher_id', $user->id)->exists();
+        $isRoomSupervisor = RoomSupervisor::query()->active()->where('user_id', $user->id)->exists();
+        $isDormitoryHead = Dormitory::query()->where('head_id', $user->id)->exists();
+
+        if ($isHomeroom || $isRoomSupervisor || $isDormitoryHead) {
             return $next($request);
         }
 

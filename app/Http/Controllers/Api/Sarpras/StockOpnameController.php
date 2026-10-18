@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Api\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
+use App\Models\AssetRoom;
+use App\Models\School;
 use App\Models\StockOpnameItem;
+use App\Models\StockOpnameOfficer;
 use App\Models\StockOpnameSession;
-use App\Services\Sarpras\AssetEventLogger;
-use App\Services\Sarpras\AssetStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,21 +16,13 @@ use Illuminate\Support\Str;
 
 class StockOpnameController extends Controller
 {
-    public function __construct(
-        protected readonly AssetStatusTransitionService $transition,
-        protected readonly AssetEventLogger $logger,
-    ) {}
-
-    /**
-     * List stock opname sessions.
-     */
     public function sessions(Request $request): JsonResponse
     {
         if (! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
-        $query = StockOpnameSession::with(['creator:id,name', 'workUnit:id,name'])
+        $query = StockOpnameSession::with(['creator:id,name', 'workUnit:id,name', 'room:id,room_name'])
             ->orderByDesc('created_at');
 
         if ($request->filled('status')) {
@@ -39,53 +32,65 @@ class StockOpnameController extends Controller
             $query->where('work_unit_id', $request->work_unit_id);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $query->paginate($request->per_page ?? 20),
-        ]);
+        return response()->json(['success' => true, 'data' => $query->paginate($request->integer('per_page', 20))]);
     }
 
-    /**
-     * Create a new opname session.
-     */
     public function createSession(Request $request): JsonResponse
     {
-        if (! canPermission('sarpras_peminjaman_approve')) {
+        if (! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'work_unit_id' => 'nullable|uuid|exists:work_units,id',
+            'title' => 'required|string|max:191',
+            'work_unit_id' => 'required|uuid|exists:work_units,id',
+            'room_id' => 'nullable|uuid|exists:asset_rooms,id',
             'category_id' => 'nullable|uuid|exists:asset_categories,id',
-            'scheduled_at' => 'required|date',
+            'scheduled_date' => 'required|date',
             'officers' => 'required|array|min:1',
             'officers.*' => 'uuid|exists:users,id',
-            'notes' => 'nullable|string|max:5000',
+            'description' => 'nullable|string|max:2000',
         ]);
 
-        $session = DB::transaction(function () use ($validated, $request) {
+        $assetQuery = Asset::query()
+            ->where('work_unit_id', $validated['work_unit_id'])
+            ->where('is_active', true)
+            ->whereNotIn('status', ['disposed', 'dihapus']);
+
+        if (! empty($validated['room_id'])) {
+            $assetQuery->where('room_id', $validated['room_id']);
+        }
+        if (! empty($validated['category_id'])) {
+            $assetQuery->where('asset_category_id', $validated['category_id']);
+        }
+
+        $assets = $assetQuery->get();
+
+        $session = DB::transaction(function () use ($validated, $assets, $request) {
+            $schoolId = ! empty($validated['room_id'])
+                ? AssetRoom::query()->whereKey($validated['room_id'])->value('school_id')
+                : School::query()->where('work_unit_id', $validated['work_unit_id'])->value('id');
+
             $session = StockOpnameSession::create([
-                'title' => $validated['title'],
-                'work_unit_id' => $validated['work_unit_id'] ?? null,
+                'session_code' => 'SO-'.now()->format('Ymd').'-'.Str::upper(Str::random(4)),
+                'work_unit_id' => $validated['work_unit_id'],
+                'school_id' => $schoolId,
+                'room_id' => $validated['room_id'] ?? null,
                 'category_id' => $validated['category_id'] ?? null,
-                'scheduled_at' => $validated['scheduled_at'],
-                'status' => 'planned',
-                'officers' => $validated['officers'],
-                'notes' => $validated['notes'] ?? null,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'scheduled_date' => $validated['scheduled_date'],
+                'status' => StockOpnameSession::STATUS_PLANNED,
                 'created_by' => $request->user()->id,
-                'session_code' => 'OPN-'.now()->format('Ymd').'-'.Str::upper(Str::random(4)),
             ]);
 
-            // Pre-populate with target assets
-            $assetQuery = Asset::query();
-            if ($session->work_unit_id) {
-                $assetQuery->where('work_unit_id', $session->work_unit_id);
+            foreach (array_unique($validated['officers']) as $userId) {
+                StockOpnameOfficer::create([
+                    'session_id' => $session->id,
+                    'user_id' => $userId,
+                    'role' => $userId === $request->user()->id ? 'lead' : 'officer',
+                ]);
             }
-            if ($session->category_id) {
-                $assetQuery->where('category_id', $session->category_id);
-            }
-            $assets = $assetQuery->where('status', '!=', 'disposed')->get();
 
             foreach ($assets as $asset) {
                 StockOpnameItem::create([
@@ -93,244 +98,180 @@ class StockOpnameController extends Controller
                     'asset_id' => $asset->id,
                     'expected_status' => $asset->status,
                     'expected_condition' => $asset->condition,
+                    'expected_room_id' => $asset->room_id,
                     'observed_status' => 'pending',
-                    'observed_condition' => null,
                 ]);
             }
 
             return $session;
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $session->load('items'),
-        ], 201);
+        return response()->json(['success' => true, 'data' => $session->load('items', 'officers')], 201);
     }
 
-    /**
-     * Show a session with all items.
-     */
     public function showSession(Request $request, string $id): JsonResponse
     {
         if (! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
-        $session = StockOpnameSession::with([
-            'items.asset', 'items.asset.category', 'items.officer:id,name',
-            'creator:id,name',
-        ])->findOrFail($id);
+        $session = StockOpnameSession::with(['items.asset.category', 'items.asset.room', 'officers.user:id,name', 'creator:id,name'])
+            ->findOrFail($id);
 
+        $items = $session->items;
         $progress = [
-            'total_items' => $session->items->count(),
-            'found' => $session->items->where('observed_status', 'found')->count(),
-            'missing' => $session->items->where('observed_status', 'missing')->count(),
-            'damaged' => $session->items->where('observed_status', 'damaged')->count(),
-            'mismatch' => $session->items->where('observed_status', 'location_mismatch')->count(),
-            'pending' => $session->items->where('observed_status', 'pending')->count(),
-            'completion_percent' => $session->items->count() > 0
-                ? round(($session->items->where('observed_status', '!=', 'pending')->count() / $session->items->count()) * 100, 2)
-                : 0,
+            'total_items' => $items->count(),
+            'found' => $items->where('observed_status', 'found')->count(),
+            'missing' => $items->where('observed_status', 'missing')->count(),
+            'damaged' => $items->where('observed_status', 'damaged')->count(),
+            'mismatch' => $items->where('observed_status', 'moved')->count(),
+            'pending' => $items->where('observed_status', 'pending')->count(),
         ];
+        $progress['completion_percent'] = $progress['total_items'] > 0
+            ? round(($progress['total_items'] - $progress['pending']) / $progress['total_items'] * 100, 2)
+            : 0;
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'session' => $session,
-                'progress' => $progress,
-            ],
-        ]);
+        return response()->json(['success' => true, 'data' => ['session' => $session, 'progress' => $progress]]);
     }
 
-    /**
-     * Record observation for a single asset in a session.
-     */
+    public function startSession(Request $request, string $id): JsonResponse
+    {
+        if (! canPermission('sarpras_all_access')) {
+            return response()->json(['success' => false, 'error' => 'forbidden'], 403);
+        }
+
+        $session = StockOpnameSession::findOrFail($id);
+        abort_unless($session->status === StockOpnameSession::STATUS_PLANNED, 422, 'Sesi tidak dapat dimulai.');
+
+        $session->update(['status' => StockOpnameSession::STATUS_IN_PROGRESS, 'started_date' => today()]);
+
+        return response()->json(['success' => true, 'data' => $session->fresh()]);
+    }
+
     public function recordObservation(Request $request, string $sessionId, string $itemId): JsonResponse
     {
-        if (! canPermission('sarpras_qr_audit')) {
+        if (! canPermission('sarpras_qr_audit') && ! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
         $validated = $request->validate([
-            'observed_status' => 'required|in:found,missing,damaged,location_mismatch',
-            'observed_condition' => 'nullable|in:baik,rusak_ringan,rusak_berat,total',
+            'observed_status' => 'required|in:found,missing,damaged,moved',
+            'observed_condition' => 'nullable|in:baik,rusak_ringan,rusak_sedang,rusak_berat',
+            'observed_room_id' => 'nullable|uuid|exists:asset_rooms,id',
             'actual_location' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'photo' => 'nullable|image|max:5120',
         ]);
 
-        $item = StockOpnameItem::where('session_id', $sessionId)
-            ->where('id', $itemId)
-            ->firstOrFail();
+        $session = StockOpnameSession::findOrFail($sessionId);
+        abort_unless($session->status === StockOpnameSession::STATUS_IN_PROGRESS, 422, 'Sesi belum berjalan.');
 
-        // Prevent double-scan: item already observed in this session
-        if ($item->observed_status !== null && $item->observed_status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Item ini sudah pernah dicatat pengamatannya pada sesi ini.',
-            ], 422);
-        }
-
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('opname-evidence', 'public');
-        }
+        $item = StockOpnameItem::with('asset')->where('session_id', $session->id)->findOrFail($itemId);
+        $photoPath = $request->hasFile('photo') ? $request->file('photo')->store('opname-evidence', 'public') : null;
 
         DB::transaction(function () use ($item, $validated, $photoPath, $request) {
+            $condition = $validated['observed_condition'] ?? $item->expected_condition ?? 'baik';
+            $roomId = $validated['observed_room_id'] ?? $item->asset->room_id;
+
             $item->update([
                 'observed_status' => $validated['observed_status'],
-                'observed_condition' => $validated['observed_condition'] ?? null,
+                'observed_condition' => $condition,
+                'observed_room_id' => $roomId,
                 'actual_location' => $validated['actual_location'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'photo_path' => $photoPath,
-                'observed_at' => now(),
-                'officer_id' => $request->user()->id,
+                'recorded_by' => $request->user()->id,
+                'scanned_at' => now(),
             ]);
 
-            // If marked missing/damaged, update asset condition/status via state machine
-            $asset = $item->asset;
-            if ($validated['observed_condition']) {
-                $asset->condition = $validated['observed_condition'];
-            }
+            $assetUpdate = ['condition' => $condition];
             if ($validated['observed_status'] === 'missing') {
-                $this->transition->transition($asset, 'lost', $request->user()->id, 'Stock opname: asset reported missing');
+                $assetUpdate = ['condition' => 'hilang', 'status' => 'hilang'];
+            } elseif ($validated['observed_status'] === 'moved' && $roomId) {
+                $assetUpdate['room_id'] = $roomId;
             } elseif ($validated['observed_status'] === 'damaged') {
-                $this->transition->transition($asset, 'damaged', $request->user()->id, 'Stock opname: asset confirmed damaged');
+                $assetUpdate['condition'] = $validated['observed_condition'] ?? 'rusak_sedang';
             }
+
+            $item->asset->update($assetUpdate);
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $item->fresh(['asset', 'officer:id,name']),
-        ]);
+        return response()->json(['success' => true, 'data' => $item->fresh(['asset', 'recorder:id,name'])]);
     }
 
-    /**
-     * Close a session.
-     */
     public function closeSession(Request $request, string $id): JsonResponse
     {
-        if (! canPermission('sarpras_qr_audit')) {
+        if (! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
         $session = StockOpnameSession::findOrFail($id);
-
-        if ($session->status !== 'in_progress') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Hanya sesi dengan status in_progress yang dapat ditutup.',
-            ], 422);
-        }
+        abort_unless($session->status === StockOpnameSession::STATUS_IN_PROGRESS, 422, 'Hanya sesi berjalan yang dapat ditutup.');
 
         $session->update([
-            'status' => 'closed',
-            'closed_at' => now(),
+            'status' => StockOpnameSession::STATUS_CLOSED,
+            'closed_date' => today(),
             'closed_by' => $request->user()->id,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => $session->fresh(),
-        ]);
+        return response()->json(['success' => true, 'data' => $session->fresh()]);
     }
 
-    /**
-     * Quick scan during opname — auto-creates observation row.
-     */
     public function qrScan(Request $request, string $sessionId): JsonResponse
     {
-        if (! canPermission('sarpras_qr_audit')) {
+        if (! canPermission('sarpras_qr_audit') && ! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
         $validated = $request->validate([
             'qr_token' => 'required|string',
-            'condition' => 'nullable|in:baik,rusak_ringan,rusak_berat,total',
+            'condition' => 'nullable|in:baik,rusak_ringan,rusak_sedang,rusak_berat',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $asset = Asset::where('id', $validated['qr_token'])
-            ->orWhere('asset_code', $validated['qr_token'])
-            ->firstOrFail();
+        $session = StockOpnameSession::findOrFail($sessionId);
+        abort_unless($session->status === StockOpnameSession::STATUS_IN_PROGRESS, 422, 'Sesi belum berjalan.');
 
-        $item = StockOpnameItem::where('session_id', $sessionId)
-            ->where('asset_id', $asset->id)
-            ->firstOrFail();
-
-        // Prevent duplicate QR scan in the same session
-        if ($item->observed_status !== null && $item->observed_status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Aset ini sudah pernah di-scan pada sesi ini.',
-            ], 422);
-        }
+        $asset = Asset::where('asset_code', $validated['qr_token'])->orWhere('id', $validated['qr_token'])->firstOrFail();
+        $item = StockOpnameItem::where('session_id', $session->id)->where('asset_id', $asset->id)->firstOrFail();
 
         $item->update([
             'observed_status' => 'found',
-            'observed_condition' => $validated['condition'] ?? $item->expected_condition,
-            'observed_at' => now(),
-            'officer_id' => $request->user()->id,
+            'observed_condition' => $validated['condition'] ?? $asset->condition,
+            'observed_room_id' => $asset->room_id,
+            'recorded_by' => $request->user()->id,
+            'scanned_at' => now(),
             'notes' => $validated['notes'] ?? $item->notes,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'asset' => $asset,
-                'item' => $item,
-            ],
-        ]);
+        return response()->json(['success' => true, 'data' => ['asset' => $asset, 'item' => $item]]);
     }
 
-    /**
-     * Variance report — what was missing/damaged/misplaced.
-     */
     public function varianceReport(Request $request, string $id): JsonResponse
     {
-        if (! canPermission('sarpras_laporan_view')) {
+        if (! canPermission('sarpras_laporan_view') && ! canPermission('sarpras_all_access')) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
-        $session = StockOpnameSession::with(['items.asset', 'items.asset.category'])
-            ->findOrFail($id);
-
-        $variance = [
-            'missing' => $session->items->where('observed_status', 'missing')->values(),
-            'damaged' => $session->items->where('observed_status', 'damaged')->values(),
-            'mismatched_location' => $session->items->where('observed_status', 'location_mismatch')->values(),
-            'expected_vs_actual' => $session->items->map(function ($i) {
-                return [
-                    'asset_code' => $i->asset?->asset_code,
-                    'asset_name' => $i->asset?->asset_name,
-                    'expected_status' => $i->expected_status,
-                    'observed_status' => $i->observed_status,
-                    'expected_condition' => $i->expected_condition,
-                    'observed_condition' => $i->observed_condition,
-                    'notes' => $i->notes,
-                    'has_variance' => $i->expected_status !== $i->observed_status
-                        || ($i->observed_condition && $i->expected_condition !== $i->observed_condition),
-                ];
-            })->values(),
-        ];
-
-        $stats = [
-            'total_items' => $session->items->count(),
-            'variance_count' => $variance['expected_vs_actual']->where('has_variance', true)->count(),
-            'variance_percent' => $session->items->count() > 0
-                ? round($variance['expected_vs_actual']->where('has_variance', true)->count() / $session->items->count() * 100, 2)
-                : 0,
-            'missing_count' => $variance['missing']->count(),
-            'damaged_count' => $variance['damaged']->count(),
-            'mismatched_count' => $variance['mismatched_location']->count(),
-        ];
+        $session = StockOpnameSession::with(['items.asset.category'])->findOrFail($id);
+        $items = $session->items;
 
         return response()->json([
             'success' => true,
             'data' => [
                 'session' => $session,
-                'stats' => $stats,
-                'variance' => $variance,
+                'stats' => [
+                    'total_items' => $items->count(),
+                    'missing_count' => $items->where('observed_status', 'missing')->count(),
+                    'damaged_count' => $items->where('observed_status', 'damaged')->count(),
+                    'mismatched_count' => $items->where('observed_status', 'moved')->count(),
+                    'pending_count' => $items->where('observed_status', 'pending')->count(),
+                ],
+                'variance' => [
+                    'missing' => $items->where('observed_status', 'missing')->values(),
+                    'damaged' => $items->where('observed_status', 'damaged')->values(),
+                    'mismatched_location' => $items->where('observed_status', 'moved')->values(),
+                ],
             ],
         ]);
     }

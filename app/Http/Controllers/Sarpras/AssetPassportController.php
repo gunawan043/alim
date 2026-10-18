@@ -85,11 +85,11 @@ class AssetPassportController extends SarprasBaseController
             $scanHistory = QrScanHistory::create([
                 'asset_id' => null,
                 'scanned_by' => $user?->id,
-                'scanned_at' => now(),
+                'scan_type' => 'qr',
+                'lookup_value' => (string) $code,
                 'source' => $request->header('X-QR-Source', 'web-scanner'),
                 'ip_address' => $request->ip(),
                 'user_agent' => substr((string) $request->userAgent(), 0, 255),
-                'raw_code' => (string) $code,
             ]);
         } catch (\Throwable $e) {
             Log::warning('QR scan history recording failed', ['code' => $code, 'error' => $e->getMessage()]);

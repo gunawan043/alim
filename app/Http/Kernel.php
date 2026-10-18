@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureBookPeriodWritable;
 use App\Http\Middleware\EnsureEmployeeAccess;
 use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureRoleAccess;
+use App\Http\Middleware\EnsureSarprasAccess;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
 use App\Http\Middleware\MinRoleLevel;
@@ -125,6 +126,7 @@ class Kernel extends HttpKernel
         'permission-all' => RequirePermission::class,
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
+        'sarpras.access' => EnsureSarprasAccess::class,
         'pos.api-key' => VerifyPosApiKey::class,
         'period.book' => EnsureBookPeriodWritable::class,
     ];

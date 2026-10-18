@@ -12,20 +12,17 @@ class RepairRequest extends Model
 
     protected $table = 'repair_requests';
 
-    protected $keyType = 'string';
-
-    public $incrementing = false;
-
     protected static function boot()
     {
         parent::boot();
         static::creating(function ($m) {
-            $m->id = $m->id ?? (string) Str::uuid();
-            $m->request_number = $m->generateRequestNumber();
+            $m->uuid = $m->uuid ?: (string) Str::uuid();
+            $m->request_number = $m->request_number ?: $m->generateRequestNumber();
         });
     }
 
     protected $fillable = [
+        'uuid',
         'asset_id',
         'reported_by',
         'assigned_to',
