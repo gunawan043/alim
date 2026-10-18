@@ -15,13 +15,17 @@ use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
 use App\Models\TahfidzTasmianParticipant;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzProgressService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TahfidzAuditController extends Controller
 {
-    public function __construct(private readonly TahfidzAccess $access) {}
+    public function __construct(
+        private readonly TahfidzAccess $access,
+        private readonly TahfidzProgressService $progress,
+    ) {}
 
     public function index(Request $request, string $userId)
     {
@@ -139,6 +143,35 @@ class TahfidzAuditController extends Controller
             'recapMissing', 'targetMissing', 'membersWithoutMutabaah', 'tasmiWithoutCertificate',
             'certificateIssues', 'stats'
         ));
+    }
+
+    public function autoVerifyPending(Request $request, string $userId)
+    {
+        $this->authorizeView($request);
+
+        $academicYear = AcademicYear::where('is_active', true)->first()
+            ?? AcademicYear::orderByDesc('start_date')->first();
+        $groups = $this->accessibleGroups($request, $academicYear?->id, $this->schoolId($request));
+        $pending = TahfidzSetoran::whereIn('tahfidz_group_id', $groups->pluck('id'))
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->where('verification_status', 'pending')
+            ->get();
+
+        foreach ($pending as $setoran) {
+            $setoran->forceFill([
+                'verification_status' => 'verified',
+                'verified_by' => $setoran->teacher_id,
+                'verified_at' => now(),
+                'verification_notes' => 'auto-verified',
+            ])->save();
+            $this->progress->recalculateStudent(
+                $setoran->student_id,
+                $setoran->academic_year_id,
+                $setoran->tahfidz_group_id,
+            );
+        }
+
+        return back()->with('success', $pending->count().' setoran pending berhasil diverifikasi otomatis dan progres dihitung ulang.');
     }
 
     private function exportRows($pending, $verifiedWithoutProgress, $recapMissing, $targetMissing, $mutabaahMissing, $tasmi, $certificates)

@@ -470,6 +470,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
                 Route::get('input-hafalan', [TahfidzInputController::class, 'index'])->name('input.index');
                 Route::get('audit', [TahfidzAuditController::class, 'index'])->name('audit.index');
+                Route::post('audit/auto-verify', [TahfidzAuditController::class, 'autoVerifyPending'])->name('audit.auto-verify');
                 Route::get('santri/{studentId}', [TahfidzSantriController::class, 'show'])->name('santri.show');
                 Route::post('santri/{studentId}/interventions', [TahfidzInterventionController::class, 'store'])->name('santri.interventions.store');
                 Route::get('interventions', [TahfidzInterventionController::class, 'index'])->name('interventions.index');

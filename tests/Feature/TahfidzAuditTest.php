@@ -58,5 +58,12 @@ class TahfidzAuditTest extends TestCase
             ->get("/{$admin->id}/tahfidz/audit?export=1");
         $export->assertOk();
         $this->assertStringContainsString('.xlsx', (string) $export->headers->get('content-disposition'));
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->post("/{$admin->id}/tahfidz/audit/auto-verify")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertDatabaseHas('tahfidz_setorans', ['student_id' => $student->id, 'verification_status' => 'verified']);
+        $this->assertDatabaseHas('tahfidz_juz_progress', ['student_id' => $student->id, 'juz_number' => 1]);
     }
 }

@@ -5,7 +5,10 @@
     @include('tahfidz._styles')
     @component('components.breadcrumb') @slot('li_1') Tahfidz @endslot @slot('li_2') Audit @endslot @slot('title') Audit Akhir Tahfidz @endslot @endcomponent
 
-    <div class="d-flex justify-content-end mb-2">
+    <div class="d-flex justify-content-end gap-2 mb-2">
+        @if($stats['pending'] > 0)
+            <button type="button" class="btn btn-warning auto-verify-pending"><i class="ri-check-double-line me-1"></i>Verifikasi Otomatis ({{ $stats['pending'] }})</button>
+        @endif
         <a href="{{ route('user.tahfidz.audit.index', array_merge(request()->query(), ['userId'=>$userId,'export'=>1])) }}" class="btn btn-soft-success"><i class="ri-download-2-line me-1"></i>Export Excel</a>
     </div>
 
@@ -102,4 +105,21 @@
             </div>
         </div>
     </div>
+
+    @if($stats['pending'] > 0)
+        <form id="autoVerifyPendingForm" method="POST" action="{{ route('user.tahfidz.audit.auto-verify', ['userId'=>$userId]) }}" class="d-none">@csrf</form>
+        <x-modal-confirm id="autoVerifyPendingModal" title="Verifikasi Otomatis?" message="Semua setoran pending pada akses Anda akan diverifikasi otomatis dan progres juz dihitung ulang." submit-label="Ya, Verifikasi" submit-icon="ri-check-double-line" submit-class="btn-warning" form-id="autoVerifyPendingForm" />
+    @endif
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.auto-verify-pending').forEach(function (button) {
+            button.addEventListener('click', function () {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('autoVerifyPendingModal')).show();
+            });
+        });
+    });
+</script>
+@endpush
