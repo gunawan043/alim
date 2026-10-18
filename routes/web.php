@@ -164,6 +164,7 @@ use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
+use App\Http\Controllers\Sarpras\SarprasWasteController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
@@ -211,6 +212,8 @@ use App\Http\Controllers\StudentViolationController;
 use App\Http\Controllers\StudyGroupApiController;
 use App\Http\Controllers\StudyGroupController;
 use App\Http\Controllers\StudyGroupSubjectController;
+use App\Http\Controllers\Tahfidz\HalaqahController;
+use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
@@ -455,6 +458,28 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::prefix('halaqah')->name('halaqah.')->group(function () {
+                    Route::get('/', [HalaqahController::class, 'index'])->name('index');
+                    Route::get('/create', [HalaqahController::class, 'create'])->name('create');
+                    Route::post('/', [HalaqahController::class, 'store'])->name('store');
+                    Route::get('/{id}', [HalaqahController::class, 'show'])->name('show');
+                    Route::get('/{id}/edit', [HalaqahController::class, 'edit'])->name('edit');
+                    Route::put('/{id}', [HalaqahController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [HalaqahController::class, 'destroy'])->name('destroy');
+                    Route::post('/{id}/members', [HalaqahController::class, 'addMembers'])->name('members.store');
+                    Route::post('/{id}/members/{memberId}/remove', [HalaqahController::class, 'removeMember'])->name('members.remove');
+                });
+
+                Route::prefix('setoran')->name('setoran.')->group(function () {
+                    Route::get('/', [SetoranController::class, 'index'])->name('index');
+                    Route::get('/create', [SetoranController::class, 'create'])->name('create');
+                    Route::post('/', [SetoranController::class, 'store'])->name('store');
+                    Route::get('/{id}/edit', [SetoranController::class, 'edit'])->name('edit');
+                    Route::put('/{id}', [SetoranController::class, 'update'])->name('update');
+                    Route::post('/{id}/verify', [SetoranController::class, 'verify'])->name('verify');
+                    Route::delete('/{id}', [SetoranController::class, 'destroy'])->name('destroy');
+                });
+
             });
 
             // ── SCHOOLS ───────────────────────────────────────────────
@@ -2426,6 +2451,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('system-settings')->name('system-settings.')->group(function () {
                     Route::get('/', [SystemSettingController::class, 'index'])->name('index');
                     Route::post('/', [SystemSettingController::class, 'update'])->name('update');
+                    Route::post('/test-google-drive', [SystemSettingController::class, 'testGoogleDrive'])->name('test-google-drive');
                     Route::get('/clear-cache', [SystemSettingController::class, 'clearCache'])->name('clear-cache');
                 });
 
@@ -2709,6 +2735,15 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/listrik/padam/{outageId}', [SarprasElectricityController::class, 'showOutage'])->name('electricity.outage.show');
     Route::post('/listrik/padam/{outageId}/action', [SarprasElectricityController::class, 'storeAction'])->name('electricity.outage.action');
     Route::post('/listrik/padam/{outageId}/resolve', [SarprasElectricityController::class, 'resolveOutage'])->name('electricity.outage.resolve');
+
+    // Pengelolaan sampah DLH
+    Route::get('/sampah', [SarprasWasteController::class, 'index'])->name('waste.index');
+    Route::post('/sampah/sumber', [SarprasWasteController::class, 'storeSource'])->name('waste.source.store');
+    Route::post('/sampah/catatan', [SarprasWasteController::class, 'storeLog'])->name('waste.log.store');
+    Route::post('/sampah/catatan/{logId}/verify', [SarprasWasteController::class, 'verifyLog'])->name('waste.log.verify');
+    Route::post('/sampah/penyerahan', [SarprasWasteController::class, 'storeHandover'])->name('waste.handover.store');
+    Route::get('/sampah/laporan', [SarprasWasteController::class, 'report'])->name('waste.report');
+    Route::get('/sampah/laporan/pdf', [SarprasWasteController::class, 'reportPdf'])->name('waste.report.pdf');
 
     // Kebersihan / CS
     Route::get('/kebersihan', [SarprasCleaningController::class, 'index'])->name('kebersihan.index');

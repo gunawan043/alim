@@ -2092,6 +2092,32 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Analisis pengelolaan sampah DLH ditulis di `docs/ANALISIS-PENGELOLAAN-SAMPAH-DLH.md`
   sebagai dasar tahap berikutnya.
 
+## 189. Kebersihan/CS — Kamera Watermark, Sampah DLH & Google Drive
+
+- **Kamera langsung di aplikasi** untuk foto bukti sebelum/sesudah:
+  - watermark titik koordinat GPS;
+  - tanggal dan waktu **WITA** (Asia/Makassar);
+  - logo ALIM;
+  - hasil foto langsung masuk ke input upload dan dapat disimpan lokal/Drive.
+  Tersedia pada laporan kebersihan, listrik padam, dan catatan sampah.
+- **Modul sampah DLH**:
+  - sumber sampah (dapur, asrama, kelas, kantor, UKS, masjid, kantin, taman);
+  - berat kg, jumlah karung, volume, jenis organik/anorganik/B3/residu;
+  - status pemilahan, tujuan (kompos/bank sampah/TPS/DLH), foto wajib;
+  - verifikasi koordinator;
+  - penyerahan ke DLH/pihak ketiga dengan berat, karung, nomor tanda terima, foto;
+  - rekap + PDF laporan DLH.
+  Seeder: 13 sumber sampah.
+- **Google Drive**:
+  - tab pengaturan baru di Pengaturan Sistem;
+  - service account JSON disimpan terenkripsi;
+  - folder ID, folder URL, shared drive ID, status aktif;
+  - tombol Test Koneksi;
+  - `GoogleDriveService` upload langsung via Google Drive API tanpa dependency tambahan;
+  - jika Drive gagal/nonaktif, foto fallback ke disk lokal.
+- Analisis sampah DLH diperbarui: rancangan tabel sudah diimplementasikan pada `waste_sources`,
+  `waste_logs`, dan `waste_handovers`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

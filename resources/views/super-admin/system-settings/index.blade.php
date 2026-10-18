@@ -44,6 +44,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'google-drive' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'google-drive']) }}">
+                                <i class="ri-google-line me-1"></i> Google Drive
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'cache' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'cache']) }}">
                                 <i class="ri-database-2-line me-1"></i> Cache & Utils
@@ -558,6 +564,54 @@
                                                     </tbody>
                                                 </table>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- TAB: Google Drive --}}
+                        @if($tab === 'google-drive')
+                            <div class="row g-4">
+                                <div class="col-lg-8">
+                                    <div class="alert alert-info small"><i class="ri-information-line me-1"></i>Buat Service Account di Google Cloud Console, aktifkan Google Drive API, lalu bagikan folder Drive kepada email service account sebagai <strong>Editor</strong>. Tempel ID folder dan JSON service account di bawah.</div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Status</label>
+                                            <select name="google_drive_enabled" class="form-select">
+                                                <option value="1" {{ ($settings['google_drive_enabled'] ?? '0') === '1' ? 'selected' : '' }}>Aktif</option>
+                                                <option value="0" {{ ($settings['google_drive_enabled'] ?? '0') !== '1' ? 'selected' : '' }}>Nonaktif</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label">ID Folder Google Drive</label>
+                                            <input type="text" name="google_drive_folder_id" class="form-control" value="{{ $settings['google_drive_folder_id'] ?? '' }}" placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz">
+                                            <small class="text-muted">Ambil dari URL folder: drive.google.com/drive/folders/<strong>ID_FOLDER</strong></small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">URL Folder (opsional)</label>
+                                            <input type="url" name="google_drive_folder_url" class="form-control" value="{{ $settings['google_drive_folder_url'] ?? '' }}" placeholder="https://drive.google.com/drive/folders/...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Shared Drive ID (opsional)</label>
+                                            <input type="text" name="google_drive_shared_drive_id" class="form-control" value="{{ $settings['google_drive_shared_drive_id'] ?? '' }}" placeholder="Khusus Google Shared Drive">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Service Account JSON</label>
+                                            <textarea name="google_drive_service_account_json" class="form-control font-monospace" rows="9" placeholder='{"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}'>{{ old('google_drive_service_account_json') }}</textarea>
+                                            <small class="text-muted">Kosongkan jika tidak ingin mengganti kredensial yang sudah tersimpan.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card border h-100">
+                                        <div class="card-header"><h6 class="mb-0">Status Konfigurasi</h6></div>
+                                        <div class="card-body small">
+                                            <div class="mb-2"><span class="text-muted">Service Account:</span><br><strong>{{ $settings['google_drive_service_account_email'] ?? 'Belum diset' }}</strong></div>
+                                            <div class="mb-2"><span class="text-muted">Project ID:</span><br><strong>{{ $settings['google_drive_project_id'] ?? '-' }}</strong></div>
+                                            <div class="mb-3"><span class="text-muted">Folder:</span><br><strong>{{ $settings['google_drive_folder_id'] ?? 'Belum diset' }}</strong></div>
+                                            <button type="submit" class="btn btn-outline-primary w-100" formaction="{{ route('user.sa.system-settings.test-google-drive', ['userId' => $userId]) }}"><i class="ri-plug-line me-1"></i>Test Koneksi Drive</button>
+                                            <div class="text-muted mt-2" style="font-size:.72rem">Jika aktif, foto bukti diunggah ke Drive. Jika gagal, sistem fallback ke penyimpanan lokal.</div>
                                         </div>
                                     </div>
                                 </div>

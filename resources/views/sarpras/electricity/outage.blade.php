@@ -52,4 +52,6 @@
             @endif
         </div>
     </div>
+
+    @include('sarpras.partials.camera-modal')
 @endsection

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoProofService
 {
+    public function __construct(protected GoogleDriveService $drive) {}
+
     /**
      * Simpan foto bukti. Prioritas: tautan Google Drive/URL yang diberikan,
      * lalu upload file ke disk yang dikonfigurasi.
@@ -23,6 +25,13 @@ class PhotoProofService
 
         if (! $file) {
             return ['path' => null, 'url' => null, 'provider' => 'none'];
+        }
+
+        if ($this->drive->isConfigured()) {
+            $uploaded = $this->drive->upload($file, $folder);
+            if ($uploaded) {
+                return $uploaded;
+            }
         }
 
         $disk = config('sarpras.photo_disk', 'public');

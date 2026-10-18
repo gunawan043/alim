@@ -38,4 +38,4 @@ Dapur, asrama putra/putri, kelas, kantor, UKS, masjid, taman, kantin, dan area u
 - `waste_violations`/temuan (foto, jenis, tindak lanjut)
 
 ## Catatan
-Fitur ini belum dibuat pada tahap ini; dokumen ini menjadi dasar implementasi berikutnya.
+Fitur inti sudah dibuat (sumber sampah, catatan berat/karung/foto, penyerahan DLH, rekap PDF). Tahap lanjutan: fasilitas TPS/komposter, bank sampah, temuan sampah tercampur, dan dashboard kepatuhan.

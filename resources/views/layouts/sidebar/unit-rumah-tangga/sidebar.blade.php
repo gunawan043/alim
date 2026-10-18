@@ -482,6 +482,13 @@
             <i class="ri-file-list-2-line"></i><span>Laporan Kebersihan</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.waste.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.waste.index') }}">
+            <i class="ri-delete-bin-6-line"></i><span>Pengelolaan Sampah DLH</span>
+        </a>
+    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════

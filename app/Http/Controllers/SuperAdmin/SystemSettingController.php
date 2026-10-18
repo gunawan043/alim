@@ -5,6 +5,8 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
 use App\Services\Notifications\WhatsAppGatewayService;
+use App\Services\Sarpras\GoogleDriveService;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +86,11 @@ class SystemSettingController extends Controller
             'wa_event_visit' => 'boolean',
             'pos_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'pos_api_allowed_ips' => 'nullable|string|max:2000',
+            'google_drive_enabled' => 'boolean',
+            'google_drive_folder_id' => 'nullable|string|max:191',
+            'google_drive_folder_url' => 'nullable|url|max:500',
+            'google_drive_shared_drive_id' => 'nullable|string|max:191',
+            'google_drive_service_account_json' => 'nullable|string',
         ]);
 
         // Normalisasi: perbaiki typo umum domain Fonnte + trim token/URL.
@@ -133,6 +140,26 @@ class SystemSettingController extends Controller
         // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
         // pembuatan token) — keluarkan dari penyimpanan generik.
         unset($validated['pos_api_header'], $validated['pos_api_allowed_ips']);
+
+        // Google Drive: service account disimpan terenkripsi, bukan plain text.
+        $driveJson = $validated['google_drive_service_account_json'] ?? null;
+        unset($validated['google_drive_service_account_json']);
+
+        $validated['google_drive_enabled'] = $request->boolean('google_drive_enabled') ? '1' : '0';
+
+        if (is_string($driveJson) && trim($driveJson) !== '') {
+            $decoded = json_decode($driveJson, true);
+            if (! is_array($decoded) || empty($decoded['client_email']) || empty($decoded['private_key'])) {
+                return redirect()->back()->withInput()->with('error', 'JSON service account Google Drive tidak valid. Wajib berisi client_email dan private_key.');
+            }
+
+            SystemSetting::updateOrCreate(
+                ['key' => 'google_drive_service_account_json'],
+                ['value' => Crypt::encryptString(json_encode($decoded)), 'group' => 'google_drive']
+            );
+            SystemSetting::set('google_drive_service_account_email', $decoded['client_email'], 'google_drive');
+            SystemSetting::set('google_drive_project_id', $decoded['project_id'] ?? null, 'google_drive');
+        }
 
         foreach ($validated as $key => $value) {
             SystemSetting::updateOrCreate(
@@ -219,6 +246,13 @@ class SystemSettingController extends Controller
 
         return redirect()->back()
             ->with('success', $posFlash ?? 'Pengaturan berhasil disimpan.');
+    }
+
+    public function testGoogleDrive()
+    {
+        $result = app(GoogleDriveService::class)->testConnection();
+
+        return redirect()->back()->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
     /**

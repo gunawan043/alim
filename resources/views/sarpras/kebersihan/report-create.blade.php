@@ -47,8 +47,18 @@
                             <td><select name="items[{{ $task->id }}][result]" class="form-select form-select-sm" required>@foreach(App\Models\CleaningReportItem::RESULT_OPTIONS as $result)<option value="{{ $result }}" {{ old('items.'.$task->id.'.result', 'sudah') === $result ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $result)) }}</option>@endforeach</select></td>
                             <td><select name="items[{{ $task->id }}][condition]" class="form-select form-select-sm">@foreach(App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></td>
                             <td><input name="items[{{ $task->id }}][notes]" class="form-control form-control-sm" value="{{ old('items.'.$task->id.'.notes') }}" placeholder="Keterangan"></td>
-                            <td><input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive"><input type="file" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*"></td>
-                            <td><input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive"><input type="file" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*"></td>
+                            <td>
+                                <input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive">
+                                <input type="file" id="before_file_{{ $task->id }}" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                <div id="before_preview_{{ $task->id }}"></div>
+                            </td>
+                            <td>
+                                <input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive">
+                                <input type="file" id="after_file_{{ $task->id }}" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                <div id="after_preview_{{ $task->id }}"></div>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="text-center py-4 text-muted">Area ini belum memiliki uraian pekerjaan.</td></tr>
@@ -60,4 +70,6 @@
     @else
         <div class="card"><div class="card-body"><x-empty-state title="Pilih area kerja" message="Pilih area terlebih dahulu untuk menampilkan checklist kebersihan." /></div></div>
     @endif
+
+    @include('sarpras.partials.camera-modal')
 @endsection
