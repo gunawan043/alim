@@ -67,6 +67,24 @@
                 </div>
             @endif
 
+            <div class="card mt-3 border-info">
+                <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="card-title mb-0 text-info"><i class="ri-clipboard-check-line me-1"></i>Checklist Pemeliharaan</h5>
+                    <a href="{{ route('sarpras.checklist.start', $schedule->id) }}" class="btn btn-info btn-sm text-white"><i class="ri-play-line me-1"></i>Mulai Checklist</a>
+                </div>
+                <div class="card-body p-0">
+                    @forelse($checklistInstances as $checklist)
+                        @php $tone = ['in_progress'=>'warning','completed'=>'success','failed'=>'danger','cancelled'=>'secondary'][$checklist->status] ?? 'secondary'; @endphp
+                        <a href="{{ route('sarpras.checklist.instance', $checklist->id) }}" class="d-flex justify-content-between align-items-center border-bottom px-3 py-2 text-decoration-none text-dark">
+                            <div><div class="small fw-medium">{{ $checklist->template?->name ?? '-' }}</div><div class="text-muted" style="font-size:.7rem">{{ $checklist->created_at?->format('d/m/Y H:i') }} · {{ $checklist->executor?->name ?? '-' }}</div></div>
+                            <div class="text-end"><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ ucfirst(str_replace('_',' ', $checklist->status)) }}</span><div class="text-muted" style="font-size:.7rem">{{ $checklist->failed_items_count }} temuan</div></div>
+                        </a>
+                    @empty
+                        <div class="p-3 text-center text-muted small"><i class="ri-clipboard-line fs-3 d-block mb-1"></i>Belum ada checklist untuk jadwal ini.</div>
+                    @endforelse
+                </div>
+            </div>
+
             @if($canManage)
                 <div class="card mt-3 border-primary">
                     <div class="card-header bg-primary-subtle"><h5 class="card-title mb-0 text-primary"><i class="ri-tools-line me-1"></i>Catat Perawatan</h5></div>

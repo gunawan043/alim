@@ -25,7 +25,7 @@ class ChecklistTemplateItem extends Model
     }
 
     protected $fillable = [
-        'id', 'template_id', 'sequence', 'label', 'description',
+        'id', 'template_id', 'sequence', 'group_label', 'label', 'standard', 'method', 'frequency', 'description',
         'response_type', 'options', 'is_required', 'triggers_failure',
         'failure_severity',
     ];

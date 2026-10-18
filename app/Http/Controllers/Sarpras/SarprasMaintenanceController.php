@@ -10,6 +10,7 @@ use App\Models\AssetBuilding;
 use App\Models\AssetMaintenanceLog;
 use App\Models\AssetMaintenanceSchedule;
 use App\Models\AssetRoom;
+use App\Models\ChecklistInstance;
 use App\Models\MaintenanceHistory;
 use App\Models\School;
 use App\Models\User;
@@ -192,7 +193,13 @@ class SarprasMaintenanceController extends SarprasBaseController
         $canManage = $this->isCentralSarpras();
         $canApprove = $this->canApproveSchedule($schedule, $request);
 
-        return view('sarpras.pemeliharaan.schedule.show', compact('schedule', 'canManage', 'canApprove'));
+        $checklistInstances = ChecklistInstance::with(['template', 'executor'])
+            ->where('context_type', AssetMaintenanceSchedule::class)
+            ->where('context_id', $schedule->id)
+            ->latest()
+            ->get();
+
+        return view('sarpras.pemeliharaan.schedule.show', compact('schedule', 'canManage', 'canApprove', 'checklistInstances'));
     }
 
     public function scheduleEdit(Request $request, string $id)

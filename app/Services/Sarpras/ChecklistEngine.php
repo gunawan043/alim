@@ -25,7 +25,7 @@ class ChecklistEngine
         return $query->orderByDesc('version')->first();
     }
 
-    public function start(Model $context, ChecklistTemplate $template, ?int $executorId = null): ChecklistInstance
+    public function start(Model $context, ChecklistTemplate $template, ?string $executorId = null): ChecklistInstance
     {
         return DB::transaction(function () use ($context, $template, $executorId) {
             return ChecklistInstance::create([

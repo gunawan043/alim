@@ -160,6 +160,7 @@ use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasOccupancyController;
+use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
@@ -2668,6 +2669,15 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::post('/pemeliharaan/jadwal/{id}/approve', [SarprasMaintenanceController::class, 'approveSchedule'])->name('pemeliharaan.schedule.approve');
     Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
     Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');
+
+    // Checklist pemeliharaan
+    Route::get('/checklist', [SarprasChecklistController::class, 'index'])->name('checklist.index');
+    Route::get('/checklist/template/{templateId}', [SarprasChecklistController::class, 'showTemplate'])->name('checklist.template');
+    Route::get('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'start'])->name('checklist.start');
+    Route::post('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'store'])->name('checklist.store');
+    Route::get('/checklist/instances/{instanceId}', [SarprasChecklistController::class, 'showInstance'])->name('checklist.instance');
+    Route::post('/checklist/instances/{instanceId}/save', [SarprasChecklistController::class, 'save'])->name('checklist.save');
+    Route::post('/checklist/instances/{instanceId}/complete', [SarprasChecklistController::class, 'complete'])->name('checklist.complete');
 
     // Antrean perbaikan (laporan kerusakan -> repair request -> work order)
     Route::get('/perbaikan', [SarprasRepairController::class, 'index'])->name('repair.index');

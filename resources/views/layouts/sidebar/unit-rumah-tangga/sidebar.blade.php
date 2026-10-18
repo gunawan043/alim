@@ -252,6 +252,13 @@
             <i class="ri-calendar-todo-line"></i><span>Jadwal Pemeliharaan</span>
         </a>
     </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.checklist']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.checklist.index') }}">
+            <i class="ri-clipboard-check-line"></i><span>Checklist Pemeliharaan</span>
+        </a>
+    </li>
     @endif
 
     <li class="nav-item">

@@ -1984,6 +1984,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   untuk TU/Kepala URT.
 - Middleware `sarpras.access` tidak lagi 500 bila permission `sarpras_access` belum di-seed.
 
+## 184. Sarpras — Checklist Pemeliharaan Rinci
+
+- Template checklist digital untuk:
+  **Gedung/Bangunan, AC, Genset, Pompa & Panel, Jaringan Listrik, Air Minum, Septic Tank, Kamar Mandi**
+  (8 template, 108 item pemeriksaan).
+- Setiap item memiliki **standar, metode, frekuensi, dan hasil V/X** sesuai formulir manual Bapak.
+- Checklist dimulai dari detail **Jadwal Pemeliharaan**:
+  - template disarankan otomatis dari jenis pemeliharaan;
+  - progres tersimpan;
+  - item X dihitung sebagai temuan;
+  - checklist wajib lengkap sebelum ditutup.
+- Jika checklist selesai dengan temuan X pada aset:
+  - sistem otomatis membuat **repair request** dengan judul `Temuan checklist: ...`;
+  - repair request masuk ke menu **Antrean Perbaikan** untuk dijadwalkan URT;
+  - duplikasi repair request untuk temuan checklist yang masih terbuka dicegah.
+- Halaman baru: `/sarpras/checklist` dan detail instance checklist.
+- Seeder: `SarprasChecklistTemplateSeeder` (dijalankan otomatis dari `DatabaseSeeder` pada deploy berikutnya).
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
