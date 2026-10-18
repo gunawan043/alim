@@ -28,6 +28,7 @@ class TahfidzSetoran extends Model
         'hasil_hafalan', 'khofi', 'jali', 'nilai_setoran',
         'capaian_target', 'keterangan_capaian',
         'status', 'catatan_guru',
+        'verification_status', 'verified_by', 'verified_at', 'verification_notes',
     ];
 
     protected $casts = [
@@ -44,6 +45,7 @@ class TahfidzSetoran extends Model
         'khofi' => 'integer',
         'jali' => 'integer',
         'nilai_setoran' => 'decimal:2',
+        'verified_at' => 'datetime',
     ];
 
     public function student(): BelongsTo
@@ -59,6 +61,16 @@ class TahfidzSetoran extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(TahfidzGroup::class, 'tahfidz_group_id');
+    }
+
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function getSetoranTypeLabelAttribute(): string

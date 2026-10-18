@@ -24,7 +24,7 @@ class Student extends Model
     }
 
     protected $fillable = [
-        'user_id', 'school_id',
+        'user_id', 'school_id', 'origin_school_id', 'origin_level', 'origin_graduation_year',
         // Identitas
         'nisn', 'nis', 'nik', 'no_kk', 'name', 'name_ar', 'name_ar_status', 'name_ar_reviewed_at', 'name_ar_reviewed_by', 'gender',
         'birth_place', 'birth_date', 'religion', 'special_needs',
@@ -65,6 +65,7 @@ class Student extends Model
         'birth_date' => 'date',
         'name_ar_reviewed_at' => 'datetime',
         'entry_date' => 'date',
+        'origin_graduation_year' => 'integer',
         'graduation_date' => 'date',
         'father_birth_year' => 'integer',
         'mother_birth_year' => 'integer',
@@ -92,6 +93,11 @@ class Student extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function originSchool(): BelongsTo
+    {
+        return $this->belongsTo(School::class, 'origin_school_id');
     }
 
     /**

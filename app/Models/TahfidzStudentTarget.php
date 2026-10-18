@@ -47,4 +47,9 @@ class TahfidzStudentTarget extends Model
     {
         return $this->belongsTo(AcademicYear::class);
     }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(TahfidzGroup::class, 'tahfidz_group_id');
+    }
 }

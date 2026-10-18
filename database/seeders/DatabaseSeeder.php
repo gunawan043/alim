@@ -45,6 +45,9 @@ class DatabaseSeeder extends Seeder
 
             // Katalog AI — semua model nonaktif, tanpa API key.
             AiProviderSeeder::class,
+
+            // Fondasi Tahfidz (work unit DEP-TAH, paket, rubrik).
+            TahfidzFoundationSeeder::class,
         ]);
     }
 }
