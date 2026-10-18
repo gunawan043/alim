@@ -166,6 +166,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        $schedule->command('tahfidz:send-intervention-reminders')
+            ->dailyAt('07:20')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // PENGINGAT JAM PELAJARAN (GURU)
         // Setiap menit: kirim notifikasi ±5 menit sebelum jam mengajar dimulai.
         $schedule->command('alim:notify-lesson-reminders --minutes=5')
