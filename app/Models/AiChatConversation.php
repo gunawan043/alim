@@ -22,11 +22,12 @@ class AiChatConversation extends Model
     }
 
     protected $fillable = [
-        'user_id', 'school_id', 'title', 'provider', 'model', 'last_message_at',
+        'user_id', 'school_id', 'title', 'provider', 'model', 'mode', 'status', 'last_message_at', 'closed_at',
     ];
 
     protected $casts = [
         'last_message_at' => 'datetime',
+        'closed_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

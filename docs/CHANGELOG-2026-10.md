@@ -1754,6 +1754,56 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - QR tetap memakai token bertanda tangan yang sama dengan mode scan; tidak mengubah data atau format A4.
 - Tombol cetak memakai `window.print()` sehingga cocok untuk printer thermal kasir.
 
+## 165. Antrean Offline Gatepass (PWA)
+
+- Scan gatepass saat offline disimpan di `localStorage` (token, tujuan, gerbang).
+- Indikator jumlah antrean + tombol **Sinkronkan**.
+- Sinkronisasi otomatis saat perangkat kembali online; item yang berhasil dihapus dari antrean.
+- Batasan: halaman scan harus sudah terbuka/ter-cache; antrean penuh IndexedDB untuk presensi massal belum.
+- Aksi validasi tetap dilakukan server saat sinkron (QR, asrama, penghuni aktif).
+
+## 166. Kaldik — Agenda Satuan Kerja & Pribadi untuk Semua GTK
+
+- **Akar masalah**: form tambah Kaldik hanya dibuka untuk Admin TU/Pimpinan (`kaldik-admin-tu` / policy),
+  sehingga GTK satuan kerja dan agenda pribadi tidak bisa dibuat.
+- **Perbaikan**:
+  - Semua GTK dapat membuka form tambah dan menyimpan **Agenda**.
+  - Agenda **satuan** otomatis memakai satuan kerja pengguna (tidak bisa memilih unit lain).
+  - Agenda **pribadi** disimpan dengan `owner_user_id`; hanya pemilik yang dapat melihat/mengubah.
+  - Kategori **Kaldik pondok** tetap hanya untuk Super Admin/Pimpinan.
+  - Edit/hapus/toggle dibatasi ke pembuat, Admin TU satu unit, atau pemilik agenda pribadi.
+  - Halaman detail agenda pribadi tidak lagi dapat diakses pemilik UUID lain.
+  - Fallback satuan kerja dari school context → primary work unit → employment → gtk_work_units.
+- **Test**: `KaldikAgendaAccessTest` (GTK biasa membuat agenda satuan & pribadi) + regresi Kaldik/Privasi/Pekan Efektif
+  = 13 test / 82 assertion — hijau.
+
+## 167. Kaldik — Tombol Tambah untuk KSP/Waka/TU/Kepala & Modal Detail Agenda
+
+- **Tombol Tambah Kegiatan** sekarang tampil untuk semua GTK (termasuk KSP, Waka, TU, Kepala/Wakil
+  Satuan Kerja, Kepala/Wakil Asrama), bukan hanya policy lama.
+- Agenda satuan kerja otomatis memakai unit pengguna; agenda pribadi hanya pemilik.
+- **Klik agenda** membuka **modal detail** (bukan langsung edit). Tombol **Edit** hanya muncul jika
+  `canEdit` (pembuat agenda satuan, pemilik agenda pribadi, Admin TU unit, atau pengelola Kaldik);
+  tombol Simpan/Hapus disembunyikan pada mode detail.
+- **Klik tanggal** menampilkan daftar agenda hari itu (detail), tidak lagi membuka form edit.
+  Jika tidak ada agenda, muncul info dengan opsi **Tambah Agenda** (jika berhak).
+- `canEdit` dihitung per agenda dan dikirim ke FullCalendar.
+- Test `KaldikAgendaAccessTest` diperluas (tombol tambah + canEdit); regresi Kaldik = 13 test / 84 assertion — hijau.
+
+## 168. Kaldik — Kategori Berbasis Hak Akses, Modal Detail, & Proteksi Edit
+
+- **Opsi kategori baru**:
+  - **Kaldik Pondok** — hanya Super Admin/Pimpinan/Personalia.
+  - **Agenda Satuan Kerja** — hanya jabatan yang berwenang (KSP/Waka/TU/Kepala Asrama/Wakil/Kurikulum).
+  - **Agenda Kegiatan (Pribadi)** — semua GTK; jika tidak punya akses lain, hanya opsi ini yang muncul.
+- Backend memetakan kategori ke `category`, `visibility`, `work_unit_id`, dan `owner_user_id`; UI tidak lagi
+  menampilkan pilihan privasi terpisah.
+- **Modal detail diperbaiki**: header gradient, kartu detail, badge kategori, form input lebih rapi.
+- **Klik agenda** = detail; tombol Edit hanya tampil jika `canEdit` (dan disembunyikan dengan `display:none`,
+  bukan atribut `hidden` yang bisa ditimpa CSS Bootstrap).
+- **Klik tanggal** = daftar agenda hari itu; tidak lagi membuka form edit.
+- Test Kaldik/Privasi/Pekan Efektif = 14 test / 85 assertion — hijau.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

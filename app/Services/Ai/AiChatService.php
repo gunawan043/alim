@@ -19,6 +19,59 @@ class AiChatService
     ) {}
 
     /**
+     * Mode bantuan manusia: simpan pesan user tanpa memanggil AI.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array{ok: bool, support?: bool, reply?: null, conversation_id?: string, title?: string, mode?: string, status?: string, message?: string}
+     */
+    public function sendSupport(
+        User $user,
+        array $context,
+        ?AiChatConversation $conversation,
+        string $message,
+    ): array {
+        if ($conversation && $conversation->mode !== 'support') {
+            return ['ok' => false, 'message' => 'Percakapan ini bukan percakapan bantuan. Mulai percakapan bantuan baru.'];
+        }
+
+        $conversation ??= AiChatConversation::create([
+            'user_id' => $user->id,
+            'school_id' => $context['school_id'] ?? null,
+            'title' => 'Bantuan: '.Str::limit($message, 130, ''),
+            'mode' => 'support',
+            'status' => 'open',
+        ]);
+
+        if ($conversation->status === 'closed') {
+            return ['ok' => false, 'message' => 'Percakapan bantuan ini sudah ditutup. Silakan mulai percakapan baru.'];
+        }
+
+        DB::transaction(function () use ($conversation, $message) {
+            $conversation->messages()->create([
+                'role' => 'user',
+                'content' => $message,
+            ]);
+
+            $conversation->forceFill([
+                'title' => $conversation->title ?: 'Bantuan: '.Str::limit($message, 130, ''),
+                'last_message_at' => now(),
+                'status' => 'open',
+            ])->save();
+        });
+
+        return [
+            'ok' => true,
+            'support' => true,
+            'reply' => null,
+            'conversation_id' => $conversation->id,
+            'title' => $conversation->title,
+            'mode' => 'support',
+            'status' => $conversation->status,
+            'message' => 'Pesan diteruskan ke Super Admin. Balasan akan muncul di percakapan ini.',
+        ];
+    }
+
+    /**
      * @param  array{school_id?: ?string, global?: bool}  $context
      * @return array{ok: bool, reply?: string, conversation_id?: string, title?: string, model?: string, message?: string}
      */
@@ -29,6 +82,10 @@ class AiChatService
         string $message,
         ?string $page = null,
     ): array {
+        if ($conversation && $conversation->mode === 'support') {
+            return ['ok' => false, 'message' => 'Percakapan ini dalam mode bantuan Super Admin.'];
+        }
+
         $provider = $this->providers->defaultProvider();
 
         if (! $provider) {
@@ -39,6 +96,8 @@ class AiChatService
             'user_id' => $user->id,
             'school_id' => $context['school_id'] ?? null,
             'title' => Str::limit($message, 140, ''),
+            'mode' => 'ai',
+            'status' => 'open',
         ]);
 
         $history = $conversation->messages()
@@ -53,7 +112,8 @@ class AiChatService
             ."\n\n".rtrim((string) config('ai_chat.app_guide'))
             ."\n\nRINGKASAN DATA SAAT INI (agregat, bukan data pribadi):\n"
             .json_encode($snapshot, JSON_UNESCAPED_UNICODE)
-            ."\n\nHALAMAN AKTIF: ".($page ?: '-');
+            ."\n\nHALAMAN AKTIF: ".($page ?: '-')
+            ."\n\nFOKUS PERCAKAPAN: Jawab pertanyaan terbaru. Riwayat di atas hanya dari percakapan ini; jangan mengaitkan dengan percakapan lain.";
 
         $messages = [['role' => 'system', 'content' => $system]];
 

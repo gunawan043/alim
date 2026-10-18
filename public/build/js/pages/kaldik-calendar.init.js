@@ -65,7 +65,7 @@ File: Kaldik Calendar init js
     }
 
     function getCategoryLabel(category) {
-        return category === 'kaldik' ? 'Kaldik' : 'Agenda Kegiatan';
+        return category === 'kaldik' ? 'Kaldik Pondok' : 'Agenda';
     }
 
     // ── Upcoming Events list ─────────────────────────────────────
@@ -177,7 +177,7 @@ File: Kaldik Calendar init js
         document.getElementById('btn-save-event').innerHTML = '<i class="ri-save-line"></i> Simpan';
         document.getElementById('edit-event-btn').setAttribute('data-id', 'new-event');
         document.getElementById('edit-event-btn').click();
-        document.getElementById('edit-event-btn').setAttribute('hidden', true);
+        document.getElementById('edit-event-btn').style.display = 'none';
 
         // Pre-fill date from clicked date
         if (info && info.dateStr) {
@@ -235,6 +235,14 @@ File: Kaldik Calendar init js
 
     // ── View Mode ────────────────────────────────────────────────
     function eventClicked() {
+        var canEdit = !!(selectedEvent && selectedEvent.extendedProps && selectedEvent.extendedProps.canEdit);
+        var editBtn = document.getElementById('edit-event-btn');
+        var deleteBtn = document.getElementById('btn-delete-event');
+        var saveBtn = document.getElementById('btn-save-event');
+        if (editBtn) { editBtn.style.display = canEdit ? '' : 'none'; editBtn.innerHTML = 'Edit'; editBtn.setAttribute('data-id', 'edit-event'); }
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+
         var els = [
             ['event-title', 'd-none'],
             ['event-category', 'd-none'],
@@ -298,6 +306,11 @@ File: Kaldik Calendar init js
             data.innerHTML = 'Batal';
             data.setAttribute('data-id', 'cancel-event');
             eventTyped();
+            var saveBtn = document.getElementById('btn-save-event');
+            var deleteBtn = document.getElementById('btn-delete-event');
+            var canEdit = !!(selectedEvent && selectedEvent.extendedProps && selectedEvent.extendedProps.canEdit);
+            if (saveBtn) saveBtn.style.display = '';
+            if (deleteBtn) deleteBtn.style.display = canEdit ? '' : 'none';
         } else {
             data.innerHTML = 'Edit';
             data.setAttribute('data-id', 'edit-event');
@@ -317,7 +330,10 @@ File: Kaldik Calendar init js
 
         // Category
         var catSelect = document.getElementById('event-category');
-        catSelect.value = catClass;
+        var categoryChoice = props.categoryChoice || (props.category === 'kaldik'
+            ? 'kaldik'
+            : (props.visibility === 'pribadi' ? 'agenda_pribadi' : 'agenda_satuan'));
+        catSelect.value = categoryChoice;
 
         // Type
         var typeSelect = document.getElementById('event-type');
@@ -486,21 +502,14 @@ File: Kaldik Calendar init js
             right: 'dayGridMonth,timeGridWeek,listWeek',
         },
         eventClick: function (info) {
-            document.getElementById('edit-event-btn').removeAttribute('hidden');
-            document.getElementById('edit-event-btn').setAttribute('data-id', 'edit-event');
-            document.getElementById('edit-event-btn').innerHTML = 'Edit';
-            document.getElementById('btn-delete-event').removeAttribute('hidden');
-            document.getElementById('btn-save-event').innerHTML = '<i class="ri-save-line"></i> Perbarui';
-
+            selectedEvent = info.event;
+            formEvent.reset();
             eventClicked();
+            populateModal(info.event);
             flatPickrInit();
             flatpicekrValueClear();
             addEvent.show();
-            formEvent.reset();
-            selectedEvent = info.event;
-
             modalTitle.innerText = info.event.title;
-            populateModal(info.event);
         },
         dateClick: function (info) {
             var dateStr = info.dateStr;
@@ -511,12 +520,21 @@ File: Kaldik Calendar init js
                 return click >= start && click <= end;
             });
 
-            if (window.KALDIK_CAN_CREATE) {
-                addNewEvent(info);
-            } else if (eventsOnDay.length > 0) {
+            if (eventsOnDay.length > 0) {
                 showDayEvents(dateStr, eventsOnDay);
             } else {
-                Swal.fire({ icon: 'info', title: 'Tidak ada kegiatan', text: 'Tidak ada agenda di tanggal ini.' });
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Tidak ada agenda',
+                    text: 'Tidak ada kegiatan pada tanggal ini.',
+                    showCancelButton: !!window.KALDIK_CAN_CREATE,
+                    confirmButtonText: 'Tambah Agenda',
+                    cancelButtonText: 'Tutup',
+                }).then(function (result) {
+                    if (result.isConfirmed && window.KALDIK_CAN_CREATE) {
+                        addNewEvent(info);
+                    }
+                });
             }
         },
         events: function (info, successCallback, failureCallback) {
@@ -552,7 +570,7 @@ File: Kaldik Calendar init js
         var eventId = document.getElementById('event-database-id').value;
         var title = document.getElementById('event-title').value;
         var categorySelectVal = document.getElementById('event-category').value;
-        var category = categorySelectVal === 'bg-primary-subtle' ? 'kaldik' : 'agenda';
+        var category = categorySelectVal || 'agenda_pribadi';
         var type = document.getElementById('event-type').value;
         var academicYearId = document.getElementById('event-academic-year').value;
         var semesterEl = document.getElementById('event-semester');
@@ -565,14 +583,11 @@ File: Kaldik Calendar init js
         var selectedColorEl = document.querySelector('input[name="event-color"]:checked');
         var eventColor = selectedColorEl ? selectedColorEl.value : null;
 
-        // Admin TU: force work_unit_id to their own unit, no category selection
-        var workUnitId = null;
-        if (window.KALDIK_IS_ADMIN_TU) {
-            workUnitId = window.KALDIK_USER_WORK_UNIT_ID || null;
-            category = 'agenda'; // force agenda
-        } else {
+        // Kaldik pondok boleh memilih unit (global); agenda selalu unit pengguna.
+        var workUnitId = window.KALDIK_USER_WORK_UNIT_ID || null;
+        if (category === 'kaldik') {
             var wuEl = document.getElementById('event-work-unit');
-            workUnitId = wuEl ? (wuEl.value || null) : (window.KALDIK_USER_WORK_UNIT_ID || null);
+            workUnitId = wuEl ? (wuEl.value || null) : null;
         }
 
         // Parse dates
@@ -700,7 +715,7 @@ File: Kaldik Calendar init js
         addNewEvent();
         document.getElementById('edit-event-btn').setAttribute('data-id', 'new-event');
         document.getElementById('edit-event-btn').click();
-        document.getElementById('edit-event-btn').setAttribute('hidden', true);
+        document.getElementById('edit-event-btn').style.display = 'none';
     });
 
     // ── Filter listeners ──────────────────────────────────────────

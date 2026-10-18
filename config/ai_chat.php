@@ -2,7 +2,7 @@
 
 return [
     'max_message_chars' => 2000,
-    'max_history_messages' => 10,
+    'max_history_messages' => 6,
     'max_output_tokens' => 900,
     'temperature' => 0.3,
     'rate_limit' => '20,1',

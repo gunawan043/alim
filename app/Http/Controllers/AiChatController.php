@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\AiChatConversation;
+use App\Models\TeachingAssignment;
 use App\Services\Ai\AiChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,7 @@ class AiChatController extends Controller
             'message' => 'required|string|max:'.(int) config('ai_chat.max_message_chars', 2000),
             'conversation_id' => 'nullable|uuid',
             'page' => 'nullable|string|max:150',
+            'mode' => 'nullable|in:ai,support',
         ]);
 
         $conversation = null;
@@ -35,10 +38,34 @@ class AiChatController extends Controller
 
         $user = $request->user();
         $isSuper = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $schoolId = $request->attributes->get('schoolContextId');
+        $activeYear = AcademicYear::query()->where('is_active', true)->first();
+
+        $assignments = TeachingAssignment::query()
+            ->with(['studyGroup:id,name,grade_level_id', 'studyGroup.gradeLevel:id,name', 'subject:id,name'])
+            ->where('teacher_id', $user->id)
+            ->where('status', 'active')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))
+            ->get();
+
+        $classes = $assignments->pluck('studyGroup')->filter()->unique('id')->map(fn ($group) => [
+            'id' => $group->id,
+            'name' => $group->name,
+            'grade_level' => $group->gradeLevel?->name,
+        ])->values()->all();
+
+        $subjects = $assignments->pluck('subject')->filter()->unique('id')->pluck('name')->values()->all();
 
         $context = [
-            'school_id' => $request->attributes->get('schoolContextId'),
+            'school_id' => $schoolId,
             'global' => (bool) $request->attributes->get('isGlobalView', false),
+            'my_study_group_ids' => $assignments->pluck('study_group_id')->filter()->unique()->values()->all(),
+            'my_teaching' => [
+                'academic_year' => $activeYear?->name,
+                'classes' => $classes,
+                'subjects' => $subjects,
+            ],
             'can_view_students' => $isSuper
                 || canPermission('student_view')
                 || canPermission('student-all-access'),
@@ -52,6 +79,28 @@ class AiChatController extends Controller
                 || canPermission('gtk-view-all'),
         ];
 
+        $requestedMode = $validated['mode'] ?? 'ai';
+        $mode = $conversation?->mode ?? $requestedMode;
+
+        if ($mode === 'support') {
+            if ($conversation && $conversation->mode !== 'support') {
+                return response()->json(['ok' => false, 'message' => 'Mulai percakapan bantuan baru.'], 422);
+            }
+
+            $result = $chat->sendSupport(
+                $request->user(),
+                $context,
+                $conversation,
+                trim($validated['message']),
+            );
+
+            return response()->json($result, $result['ok'] ? 200 : 503);
+        }
+
+        if ($conversation && $conversation->mode === 'support') {
+            return response()->json(['ok' => false, 'message' => 'Percakapan ini dalam mode bantuan.'], 422);
+        }
+
         $result = $chat->send(
             $request->user(),
             $context,
@@ -61,6 +110,27 @@ class AiChatController extends Controller
         );
 
         return response()->json($result, $result['ok'] ? 200 : 503);
+    }
+
+    public function conversations(Request $request, string $userId)
+    {
+        $items = AiChatConversation::query()
+            ->where('user_id', $request->user()->id)
+            ->withCount('messages')
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('created_at')
+            ->limit(30)
+            ->get()
+            ->map(fn (AiChatConversation $conversation) => [
+                'id' => $conversation->id,
+                'title' => $conversation->title,
+                'mode' => $conversation->mode ?: 'ai',
+                'status' => $conversation->status ?: 'open',
+                'messages_count' => $conversation->messages_count,
+                'last_message_at' => $conversation->last_message_at?->toIso8601String(),
+            ])->all();
+
+        return response()->json(['ok' => true, 'items' => $items]);
     }
 
     public function latest(Request $request, string $userId)
@@ -118,6 +188,8 @@ class AiChatController extends Controller
             'id' => $conversation->id,
             'title' => $conversation->title,
             'model' => $conversation->model,
+            'mode' => $conversation->mode ?: 'ai',
+            'status' => $conversation->status ?: 'open',
             'last_message_at' => $conversation->last_message_at?->toIso8601String(),
         ];
     }

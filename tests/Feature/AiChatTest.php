@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
 use App\Models\AcademicYear;
 use App\Models\AiChatConversation;
@@ -110,6 +111,118 @@ class AiChatTest extends TestCase
             'status' => 'inactive',
             'nisn' => '199',
         ]);
+    }
+
+    public function test_mode_bantuan_menyimpan_pesan_tanpa_memanggil_ai(): void
+    {
+        Http::fake();
+
+        $this->actingAs($this->admin)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/ai-chat/send", [
+                'message' => 'Mohon bantuan untuk kendala rapor.',
+                'mode' => 'support',
+            ])
+            ->assertOk()
+            ->assertJsonPath('support', true);
+
+        Http::assertNothingSent();
+
+        $conversation = AiChatConversation::where('mode', 'support')->firstOrFail();
+        $this->assertSame('open', $conversation->status);
+        $this->assertSame(1, $conversation->messages()->count());
+
+        $this->actingAs($this->admin)
+            ->get("/{$this->admin->id}/ai-chat/conversations")
+            ->assertOk()
+            ->assertJsonPath('items.0.mode', 'support');
+
+        $this->actingAs($this->admin)
+            ->get("/{$this->admin->id}/ai-chat/{$conversation->id}")
+            ->assertOk()
+            ->assertJsonPath('conversation.mode', 'support');
+    }
+
+    public function test_super_admin_membalas_bantuan_dan_user_melihat_balasan(): void
+    {
+        $user = User::create([
+            'name' => 'Guru Bantuan', 'email' => 'guru.bantuan@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
+        $conversation = AiChatConversation::create([
+            'user_id' => $user->id,
+            'school_id' => $this->school->id,
+            'title' => 'Bantuan: kendala rapor',
+            'mode' => 'support',
+            'status' => 'open',
+            'last_message_at' => now(),
+        ]);
+        AiChatMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'content' => 'Rapor saya tidak muncul.',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-chat/{$conversation->id}/reply", [
+                'message' => 'Silakan cek menu rapor dan pilih semester yang benar.',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('ai_chat_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'admin',
+            'content' => 'Silakan cek menu rapor dan pilih semester yang benar.',
+        ]);
+        $this->assertSame('replied', $conversation->fresh()->status);
+
+        $request = Request::create('/ai-chat/'.$conversation->id, 'GET');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $user);
+
+        $response = app(AiChatController::class)->show($request, $user->id, $conversation->id);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringContainsString('Silakan cek menu rapor dan pilih semester yang benar.', (string) $response->getContent());
+
+        $this->actingAs($this->admin)
+            ->get("/{$this->admin->id}/sa/ai-chat?conversation={$conversation->id}")
+            ->assertOk()
+            ->assertSee('Silakan cek menu rapor dan pilih semester yang benar.');
+    }
+
+    public function test_percakapan_baru_tidak_membawa_konteks_percakapan_lama(): void
+    {
+        $old = AiChatConversation::create([
+            'user_id' => $this->admin->id,
+            'school_id' => $this->school->id,
+            'title' => 'Percakapan Lama',
+            'mode' => 'ai',
+            'status' => 'open',
+        ]);
+        AiChatMessage::create([
+            'conversation_id' => $old->id,
+            'role' => 'user',
+            'content' => 'TOPIK_LAMA_JANGAN_DIBawa',
+        ]);
+
+        Http::fake([
+            'ai.chat.test/*' => Http::response([
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'Jawaban baru.'], 'finish_reason' => 'stop']],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/ai-chat/send", ['message' => 'Pertanyaan baru.'])
+            ->assertOk()
+            ->assertJsonPath('reply', 'Jawaban baru.');
+
+        Http::assertSent(function ($request) {
+            return ! collect($request['messages'] ?? [])->contains(
+                fn ($message) => str_contains((string) ($message['content'] ?? ''), 'TOPIK_LAMA_JANGAN_DIBawa')
+            );
+        });
     }
 
     public function test_widget_chat_tampil_di_layout(): void

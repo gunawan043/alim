@@ -139,6 +139,25 @@
     </style>
 @endsection
 
+@push('css')
+<style>
+    #event-modal .modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.18); }
+    #event-modal .modal-header { background: linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%); border-bottom: 0; padding: 1rem 1.25rem; }
+    #event-modal .modal-title { font-weight: 700; color: #1e293b; font-size: 1.05rem; }
+    #event-modal .modal-body { padding: 1.25rem; }
+    #event-modal .event-details { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.1rem; }
+    #event-modal .event-details .d-flex { padding: .35rem 0; border-bottom: 1px dashed #e2e8f0; }
+    #event-modal .event-details .d-flex:last-child { border-bottom: 0; }
+    #event-modal .event-details i { color: #4f46e5; }
+    #event-modal .event-details h6 { font-size: .85rem; color: #334155; }
+    #event-modal #event-category-tag { font-size: .68rem; padding: .35rem .6rem; }
+    #event-modal #edit-event-btn { border-radius: 8px; font-weight: 600; }
+    #event-modal .modal-header .btn-close { opacity: .55; }
+    #event-modal .event-form .form-label { font-size: .8rem; font-weight: 600; color: #475569; }
+    #event-modal .event-form .form-control, #event-modal .event-form .form-select { border-radius: 8px; }
+</style>
+@endpush
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
@@ -392,23 +411,22 @@
                                             </div>
                                         </div>
 
-                                        @if($isGlobal || ! $isAdminTU)
-                                        {{-- Super Admin / Administrator / Pimpinan: boleh pilih kategori --}}
                                         <div class="col-12">
                                             <div class="mb-2">
                                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
-                                                <select class="form-select" name="event-category" id="event-category" required>
-                                                    <option value="">-- Pilih Kategori --</option>
-                                                    <option value="bg-primary-subtle">Kaldik</option>
-                                                    <option value="bg-warning-subtle">Agenda Kegiatan</option>
-                                                </select>
+                                                @if(count($kaldikCategoryOptions ?? []) > 1)
+                                                    <select class="form-select" name="event-category" id="event-category" required>
+                                                        @foreach($kaldikCategoryOptions as $value => $label)
+                                                            <option value="{{ $value }}">{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <input type="hidden" name="event-category" id="event-category" value="{{ array_key_first($kaldikCategoryOptions ?? ['agenda_pribadi' => 'Agenda Kegiatan (Pribadi)']) }}">
+                                                    <div class="form-control bg-light">{{ array_values($kaldikCategoryOptions ?? ['agenda_pribadi' => 'Agenda Kegiatan (Pribadi)'])[0] ?? 'Agenda Kegiatan (Pribadi)' }}</div>
+                                                @endif
                                                 <div class="invalid-feedback">Pilih kategori.</div>
                                             </div>
                                         </div>
-                                        @else
-                                        {{-- Admin TU: hidden, auto-agenda --}}
-                                        <input type="hidden" name="event-category" id="event-category" value="bg-warning-subtle">
-                                        @endif
                                         <div class="col-12">
                                             <div class="mb-2">
                                                 <label class="form-label">Tipe</label>
@@ -550,6 +568,8 @@
         window.KALDIK_EVENTS = @json($kaldikEvents);
         window.KALDIK_CAN_CREATE = @json($canCreate);
         window.KALDIK_CAN_UPDATE = @json($canUpdate);
+        window.KALDIK_CAN_CREATE_KALDIK = @json($canCreateKaldik ?? false);
+        window.KALDIK_CAN_CREATE_UNIT = @json($canCreateUnit ?? false);
         window.KALDIK_IS_ADMIN_TU = @json($isAdminTU ?? false);
         window.KALDIK_IS_GLOBAL = @json($isGlobal ?? false);
         window.KALDIK_USER_WORK_UNIT_ID = @json($userWorkUnitId);

@@ -2,103 +2,251 @@
 @section('title', 'Monitoring Chat AI')
 
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+        $selected = $selected ?? null;
+        $messages = $messages ?? collect();
+    @endphp
 
-    @component('components.breadcrumb')
-        @slot('li_1') Super Admin @endslot
-        @slot('li_2') Chat AI @endslot
-        @slot('title') Monitoring Chat AI @endslot
-    @endcomponent
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="ri-check-line me-1"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    <div class="card">
-        <div class="card-header border-bottom-dashed">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div>
-                    <h5 class="card-title mb-0"><i class="ri-chat-history-line text-primary me-1"></i>Riwayat Chat Pengguna</h5>
-                    <p class="text-muted mb-0 small">Pantau percakapan AI per pengguna. Data ini hanya untuk Super Admin.</p>
+    <div class="chat-wrapper d-lg-flex gap-1 mx-n4 mt-n4 p-1">
+        {{-- ══════════ LEFT: daftar percakapan ══════════ --}}
+        <div class="chat-leftsidebar">
+            <div class="px-4 pt-4 mb-3">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1">Chat AI</h5>
+                        <p class="text-muted mb-0 small">Monitoring percakapan pengguna</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary">{{ $conversations->total() }}</span>
                 </div>
-                <span class="badge bg-primary-subtle text-primary">{{ $conversations->total() }} percakapan</span>
+
+                <form method="GET" action="{{ route('user.sa.ai-chat.index', ['userId' => $userId]) }}" class="mt-3">
+                    <div class="search-box mb-2">
+                        <input type="search" name="search" value="{{ $search }}" class="form-control bg-light border-light" placeholder="Cari pengguna / judul...">
+                        <i class="ri-search-2-line search-icon"></i>
+                    </div>
+                    <div class="row g-1">
+                        <div class="col-7">
+                            <select name="school_id" class="form-select form-select-sm">
+                                <option value="">Semua sekolah</option>
+                                @foreach($schools as $school)
+                                    <option value="{{ $school->id }}" @selected($schoolId === $school->id)>{{ $school->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-5 d-grid">
+                            <button class="btn btn-sm btn-primary" title="Filter"><i class="ri-filter-3-line me-1"></i>Filter</button>
+                        </div>
+                        <div class="col-6">
+                            <input type="date" name="date_from" value="{{ $dateFrom }}" class="form-control form-control-sm" title="Dari tanggal">
+                        </div>
+                        <div class="col-6">
+                            <input type="date" name="date_to" value="{{ $dateTo }}" class="form-control form-control-sm" title="Sampai tanggal">
+                        </div>
+                    </div>
+                </form>
             </div>
-        </div>
 
-        <div class="card-body border-bottom">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label small">Cari pengguna / judul</label>
-                    <input type="search" name="search" value="{{ $search }}" class="form-control" placeholder="Nama, email, atau judul chat">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small">Sekolah</label>
-                    <select name="school_id" class="form-select">
-                        <option value="">Semua sekolah</option>
-                        @foreach($schools as $school)
-                            <option value="{{ $school->id }}" @selected($schoolId === $school->id)>{{ $school->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Dari tanggal</label>
-                    <input type="date" name="date_from" value="{{ $dateFrom }}" class="form-control">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Sampai tanggal</label>
-                    <input type="date" name="date_to" value="{{ $dateTo }}" class="form-control">
-                </div>
-                <div class="col-md-1 d-grid">
-                    <button class="btn btn-primary" title="Filter"><i class="ri-filter-3-line"></i></button>
-                </div>
-            </form>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Pengguna</th>
-                        <th>Judul Percakapan</th>
-                        <th>Sekolah</th>
-                        <th class="text-center">Pesan</th>
-                        <th>Aktivitas Terakhir</th>
-                        <th class="text-end">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="chat-room-list pt-1" style="max-height:calc(100vh - 310px);overflow-y:auto;">
+                <ul class="list-unstyled chat-list chat-user-list mb-0">
                     @forelse($conversations as $conversation)
-                        <tr>
-                            <td>
-                                <div class="fw-medium">{{ $conversation->user?->name ?? 'Pengguna dihapus' }}</div>
-                                <div class="text-muted small">{{ $conversation->user?->email }}</div>
-                            </td>
-                            <td>
-                                <div>{{ $conversation->title ?: 'Tanpa judul' }}</div>
-                                <div class="text-muted" style="font-size:11px;">Model: {{ $conversation->model ?: '—' }}</div>
-                            </td>
-                            <td class="small">{{ $conversation->school?->name ?? 'Global' }}</td>
-                            <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">{{ $conversation->messages_count }}</span></td>
-                            <td class="small text-muted">{{ $conversation->last_message_at?->format('d M Y H:i') ?? $conversation->created_at?->format('d M Y H:i') }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('user.sa.ai-chat.show', ['userId' => $userId, 'conversation' => $conversation->id]) }}"
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="ri-eye-line me-1"></i>Lihat
-                                </a>
-                            </td>
-                        </tr>
+                        @php
+                            $isSelected = $selected && $selected->id === $conversation->id;
+                            $initial = strtoupper(substr($conversation->user?->name ?: '?', 0, 1));
+                        @endphp
+                        <li class="{{ $isSelected ? 'active' : '' }}">
+                            <a href="{{ route('user.sa.ai-chat.index', ['userId' => $userId, 'conversation' => $conversation->id]) }}"
+                               class="d-flex align-items-start gap-2 text-reset">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar-xs rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-semibold">
+                                        {{ $initial }}
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                        <h6 class="text-truncate mb-0 fs-13">{{ $conversation->user?->name ?? 'Pengguna dihapus' }}</h6>
+                                        <small class="text-muted flex-shrink-0" style="font-size:9px;">
+                                            {{ $conversation->last_message_at?->diffForHumans() ?? $conversation->created_at?->format('d/m') }}
+                                        </small>
+                                    </div>
+                                    <p class="text-truncate text-muted mb-1" style="font-size:11px;">{{ $conversation->title ?: 'Tanpa judul' }}</p>
+                                    <div class="d-flex align-items-center gap-1">
+                                        @if($conversation->mode === 'support')
+                                            <span class="badge bg-warning-subtle text-warning" style="font-size:9px;">Bantuan</span>
+                                            @if($conversation->status === 'replied')
+                                                <span class="badge bg-success-subtle text-success" style="font-size:9px;">Dibalas</span>
+                                            @elseif($conversation->status === 'closed')
+                                                <span class="badge bg-secondary-subtle text-secondary" style="font-size:9px;">Tutup</span>
+                                            @else
+                                                <span class="badge bg-danger-subtle text-danger" style="font-size:9px;">Perlu respon</span>
+                                            @endif
+                                        @else
+                                            <span class="badge bg-info-subtle text-info" style="font-size:9px;">AI</span>
+                                        @endif
+                                        <span class="text-muted" style="font-size:9px;">{{ $conversation->messages_count }} pesan</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">Belum ada percakapan.</td></tr>
+                        <li class="px-4 py-5 text-center text-muted small">Belum ada percakapan.</li>
                     @endforelse
-                </tbody>
-            </table>
+                </ul>
+            </div>
+
+            @if($conversations->hasPages())
+                <div class="px-3 py-2 border-top">{{ $conversations->links() }}</div>
+            @endif
         </div>
 
-        @if($conversations->hasPages())
-            <div class="card-body border-top">{{ $conversations->links() }}</div>
-        @endif
+        {{-- ══════════ RIGHT: isi percakapan ══════════ --}}
+        <div class="user-chat w-100 overflow-hidden">
+            @if($selected)
+                <div class="chat-content d-lg-flex">
+                    <div class="w-100 overflow-hidden position-relative">
+                        <div class="p-3 user-chat-topbar">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-sm rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold">
+                                        {{ strtoupper(substr($selected->user?->name ?: '?', 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 fs-15">{{ $selected->user?->name ?? 'Pengguna dihapus' }}</h5>
+                                        <div class="text-muted small">
+                                            {{ $selected->user?->email }}
+                                            @if($selected->school) · {{ $selected->school->name }} @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-1">
+                                    @if($selected->mode === 'support')
+                                        <span class="badge bg-warning-subtle text-warning">Bantuan Super Admin</span>
+                                        @if($selected->status === 'closed')
+                                            <span class="badge bg-secondary-subtle text-secondary">Ditutup</span>
+                                        @elseif($selected->status === 'replied')
+                                            <span class="badge bg-success-subtle text-success">Sudah dibalas</span>
+                                        @else
+                                            <span class="badge bg-danger-subtle text-danger">Perlu respon</span>
+                                        @endif
+                                    @else
+                                        <span class="badge bg-info-subtle text-info">Percakapan AI</span>
+                                    @endif
+
+                                    @if($selected->mode === 'support')
+                                        @if($selected->status === 'closed')
+                                            <form method="POST" action="{{ route('user.sa.ai-chat.reopen', ['userId' => $userId, 'conversation' => $selected->id]) }}">
+                                                @csrf
+                                                <button class="btn btn-sm btn-outline-success"><i class="ri-lock-unlock-line me-1"></i>Buka</button>
+                                            </form>
+                                        @else
+                                            <form method="POST" action="{{ route('user.sa.ai-chat.close', ['userId' => $userId, 'conversation' => $selected->id]) }}">
+                                                @csrf
+                                                <button class="btn btn-sm btn-outline-secondary"><i class="ri-lock-line me-1"></i>Tutup</button>
+                                            </form>
+                                        @endif
+                                    @endif
+
+                                    <button type="button" class="btn btn-sm btn-soft-danger" data-bs-toggle="modal" data-bs-target="#deleteChatModal">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chat-conversation p-3 p-lg-4" data-simplebar
+                             style="max-height:calc(100vh - 300px);overflow-y:auto;background:#f8f9fc;">
+                            <ul class="list-unstyled chat-conversation-list mb-0">
+                                @forelse($messages as $message)
+                                    @php
+                                        $isAdmin = $message->role === 'admin';
+                                        $isUser = $message->role === 'user';
+                                        $label = $isAdmin ? 'Super Admin' : ($isUser ? 'Pengguna' : 'ALIM AI');
+                                        $initial = $isAdmin ? 'SA' : strtoupper(substr($selected->user?->name ?: '?', 0, 1));
+                                    @endphp
+                                    <li class="chat-list {{ $isAdmin ? 'right' : 'left' }}">
+                                        <div class="conversation-list">
+                                            <div class="chat-avatar">
+                                                <div class="avatar-xs rounded-circle {{ $isAdmin ? 'bg-success' : ($isUser ? 'bg-primary' : 'bg-info') }} text-white d-flex align-items-center justify-content-center fw-semibold">
+                                                    {{ $isAdmin ? 'SA' : ($isUser ? $initial : 'AI') }}
+                                                </div>
+                                            </div>
+                                            <div class="user-chat-content">
+                                                <div class="ctext-wrap">
+                                                    <div class="ctext-wrap-content">
+                                                        <p class="mb-0" style="white-space:pre-wrap;">{{ $message->content }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="chat-time">
+                                                    {{ $message->created_at?->format('d M Y H:i') }} · {{ $label }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                @empty
+                                    <li class="text-center text-muted py-5">Belum ada pesan.</li>
+                                @endforelse
+                            </ul>
+                        </div>
+
+                        @if($selected->mode === 'support')
+                            @if($selected->status === 'closed')
+                                <div class="chat-input-section p-3 p-lg-4 text-center text-muted small">
+                                    Percakapan bantuan sudah ditutup. Buka kembali untuk membalas.
+                                </div>
+                            @else
+                                <div class="chat-input-section p-3 p-lg-4">
+                                    <form method="POST" action="{{ route('user.sa.ai-chat.reply', ['userId' => $userId, 'conversation' => $selected->id]) }}">
+                                        @csrf
+                                        <div class="row g-0 align-items-center">
+                                            <div class="col-auto">
+                                                <div class="avatar-xs rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2 fw-semibold">SA</div>
+                                            </div>
+                                            <div class="col">
+                                                <input type="text" name="message" class="form-control chat-input bg-light border-light"
+                                                       placeholder="Balas sebagai Super Admin..." autocomplete="off" required maxlength="2000">
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="submit" class="btn btn-success chat-send ms-2">
+                                                    <i class="ri-send-plane-2-fill"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            @endif
+                        @else
+                            <div class="chat-input-section p-3 p-lg-4 text-center text-muted small">
+                                <i class="ri-robot-2-line me-1"></i>Percakapan AI bersifat baca-saja. Balasan manual hanya tersedia pada mode Bantuan Super Admin.
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <div class="d-flex align-items-center justify-content-center h-100 p-5 text-center text-muted">
+                    <div>
+                        <i class="ri-chat-3-line fs-1 d-block mb-3"></i>
+                        <h5>Pilih percakapan</h5>
+                        <p class="mb-0">Pilih percakapan di kiri untuk melihat transkrip dan membalas mode bantuan.</p>
+                    </div>
+                </div>
+            @endif
+        </div>
     </div>
+
+    @if($selected)
+        <form id="deleteChatForm" method="POST" action="{{ route('user.sa.ai-chat.destroy', ['userId' => $userId, 'conversation' => $selected->id]) }}">
+            @csrf
+            @method('DELETE')
+        </form>
+
+        <x-modal-confirm id="deleteChatModal"
+            icon="https://cdn.lordicon.com/gsqxdxog.json"
+            primary-color="#f7b84b" secondary-color="#f06548"
+            title="Hapus Riwayat Chat?"
+            message="Seluruh pesan pada percakapan ini akan dihapus permanen."
+            submit-label="Ya, Hapus"
+            submit-icon="ri-delete-bin-line"
+            submit-class="btn-danger"
+            form-id="deleteChatForm" />
+    @endif
 @endsection

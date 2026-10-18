@@ -165,7 +165,7 @@ class KaldikPekanEfektifTest extends TestCase
             'semester' => 'ganjil',
             'start_date' => '2026-12-21',
             'end_date' => '2026-12-31',
-        ])->assertStatus(403);
+        ])->assertStatus(302)->assertSessionHasErrors('category');
 
         $this->assertDatabaseMissing('kaldik', ['name' => 'Libur Tidak Sah']);
     }
@@ -269,13 +269,14 @@ class KaldikPekanEfektifTest extends TestCase
             ->assertOk()
             ->assertSee('name="semester"', false);
 
-        // Satuan Pendidikan: boleh melihat, tidak boleh membuka form tambah.
+        // Satuan Pendidikan: boleh melihat dan menambah agenda satuan/pribadi.
         $this->actingAs($this->satuan);
         $this->get("/{$this->satuan->id}/kaldik")
             ->assertOk()
             ->assertSee('kaldik-calendar', false);
         $this->get("/{$this->satuan->id}/kaldik/create")
-            ->assertStatus(403);
+            ->assertOk()
+            ->assertSee('Agenda Kegiatan', false);
     }
 
     public function test_super_admin_boleh_mengelola_kaldik(): void

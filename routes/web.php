@@ -416,6 +416,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── CHAT AI (widget pojok kanan) ─────────────────────
             Route::prefix('ai-chat')->name('ai-chat.')->group(function () {
                 Route::get('/latest', [AiChatController::class, 'latest'])->name('latest');
+                Route::get('/conversations', [AiChatController::class, 'conversations'])->name('conversations');
                 Route::post('/send', [AiChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
                 Route::get('/{conversation}', [AiChatController::class, 'show'])->name('show');
                 Route::delete('/{conversation}', [AiChatController::class, 'destroy'])->name('destroy');
@@ -2407,6 +2408,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('ai-chat')->name('ai-chat.')->group(function () {
                     Route::get('/', [AiChatMonitorController::class, 'index'])->name('index');
                     Route::get('/{conversation}', [AiChatMonitorController::class, 'show'])->name('show');
+                    Route::post('/{conversation}/reply', [AiChatMonitorController::class, 'reply'])->name('reply');
+                    Route::post('/{conversation}/close', [AiChatMonitorController::class, 'close'])->name('close');
+                    Route::post('/{conversation}/reopen', [AiChatMonitorController::class, 'reopen'])->name('reopen');
                     Route::delete('/{conversation}', [AiChatMonitorController::class, 'destroy'])->name('destroy');
                 });
 

@@ -192,6 +192,27 @@ class AiDataToolServiceTest extends TestCase
         $this->assertArrayHasKey('error', $withoutDetail);
     }
 
+    public function test_kelas_yang_diampu_dapat_dihitung(): void
+    {
+        $tool = app(AiDataToolService::class);
+        $context = [
+            'school_id' => $this->school->id,
+            'my_study_group_ids' => [$this->group->id],
+            'my_teaching' => [
+                'academic_year' => $this->year->name,
+                'classes' => [['id' => $this->group->id, 'name' => '7A', 'grade_level' => 'Kelas 7']],
+                'subjects' => ['Fiqih'],
+            ],
+        ];
+
+        $count = $tool->execute('count_my_students', [], $context);
+        $this->assertSame(1, $count['total_active_students']);
+        $this->assertSame('7A', $count['classes'][0]['rombel']);
+
+        $classes = $tool->execute('list_my_classes', [], $context);
+        $this->assertSame('7A', $classes['classes'][0]['name']);
+    }
+
     public function test_definisi_tool_mengikuti_izin(): void
     {
         $tool = app(AiDataToolService::class);

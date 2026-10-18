@@ -310,6 +310,21 @@
             background: linear-gradient(135deg, #405189, #356f91);
             box-shadow: 0 4px 12px rgba(64, 81, 137, .18);
         }
+        .ai-chat-row.is-admin .ai-chat-bubble {
+            background: linear-gradient(135deg, #0d8f7a, #08a88a);
+            box-shadow: 0 4px 12px rgba(8, 168, 138, .18);
+        }
+        .ai-chat-system {
+            align-self: center;
+            max-width: 92%;
+            padding: 5px 10px;
+            border-radius: 999px;
+            color: #6b7487;
+            background: rgba(255, 255, 255, .72);
+            border: 1px solid var(--ai-line);
+            font-size: 10.5px;
+            text-align: center;
+        }
         .ai-chat-bubble.is-error {
             color: #842029;
             border-color: #f1c7cc;
@@ -418,6 +433,56 @@
             font-size: 11px;
         }
         .ai-chat-error.is-visible { display: block; }
+        .ai-chat-history {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 12px 14px;
+            background: var(--ai-canvas);
+        }
+        .ai-chat-history-item {
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 10px;
+            margin-bottom: 7px;
+            border: 1px solid var(--ai-line);
+            border-radius: 12px;
+            background: #fff;
+            text-align: left;
+            transition-property: border-color, box-shadow, transform;
+            transition-duration: 140ms;
+            transition-timing-function: ease-out;
+        }
+        .ai-chat-history-item:hover {
+            border-color: #c8d2e6;
+            box-shadow: 0 4px 12px rgba(31, 42, 68, .07);
+            transform: translateY(-1px);
+        }
+        .ai-chat-history-item .ai-chat-history-icon {
+            width: 32px;
+            height: 32px;
+            flex: 0 0 auto;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ai-brand);
+            background: #eef1fb;
+        }
+        .ai-chat-history-item .ai-chat-history-title {
+            color: var(--ai-ink);
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.35;
+            text-wrap: pretty;
+        }
+        .ai-chat-history-item .ai-chat-history-meta {
+            color: var(--ai-muted);
+            font-size: 10px;
+            margin-top: 2px;
+        }
 
         @media (max-width: 575.98px) {
             .ai-chat-fab {
@@ -462,11 +527,14 @@
                     <h6 id="aiChatTitle">ALIM Assistant</h6>
                     <div class="ai-chat-sub">
                         <span class="ai-chat-status-dot"></span>
-                        <span>Pendidikan &amp; aplikasi ALIM</span>
+                        <span id="aiChatSubtitle">Pendidikan &amp; aplikasi ALIM</span>
                     </div>
                 </div>
             </div>
             <div class="ai-chat-head-actions">
+                <button type="button" class="ai-chat-icon-btn" id="aiChatHistoryBtn" title="Riwayat percakapan" aria-label="Riwayat percakapan">
+                    <i class="ri-history-line"></i>
+                </button>
                 <button type="button" class="ai-chat-icon-btn" id="aiChatNew" title="Percakapan baru" aria-label="Percakapan baru">
                     <i class="ri-add-line"></i>
                 </button>
@@ -492,7 +560,15 @@
             </div>
         </div>
 
+        <div id="aiChatHistory" class="ai-chat-history d-none" aria-label="Riwayat percakapan"></div>
+
         <div class="ai-chat-composer">
+            <div class="d-flex align-items-center justify-content-between px-3 pt-2" style="font-size:11px;">
+                <button type="button" id="aiChatSupportToggle" class="btn btn-link btn-sm p-0 text-decoration-none">
+                    <i class="ri-customer-service-2-line me-1"></i>Hubungi Super Admin
+                </button>
+                <span id="aiChatModeBadge" class="badge bg-info-subtle text-info">AI</span>
+            </div>
             <div id="aiChatError" class="ai-chat-error" role="alert"></div>
             <div class="ai-chat-composer-box">
                 <textarea id="aiChatInput" class="ai-chat-input" rows="1" maxlength="2000"
@@ -515,26 +591,46 @@
             if (! fab || ! panel) return;
 
             const body = document.getElementById('aiChatBody');
+            const historyEl = document.getElementById('aiChatHistory');
             const input = document.getElementById('aiChatInput');
             const sendBtn = document.getElementById('aiChatSend');
             const closeBtn = document.getElementById('aiChatClose');
             const newBtn = document.getElementById('aiChatNew');
+            const historyBtn = document.getElementById('aiChatHistoryBtn');
+            const supportToggle = document.getElementById('aiChatSupportToggle');
+            const modeBadge = document.getElementById('aiChatModeBadge');
+            const subtitle = document.getElementById('aiChatSubtitle');
             const errorBox = document.getElementById('aiChatError');
             const count = document.getElementById('aiChatCount');
+            const composer = panel.querySelector('.ai-chat-composer');
             const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
             const urls = {
-                latest: @json(route('user.ai-chat.latest', ['userId' => $chatUserId])),
+                conversations: @json(route('user.ai-chat.conversations', ['userId' => $chatUserId])),
                 send: @json(route('user.ai-chat.send', ['userId' => $chatUserId])),
+                show: @json(route('user.ai-chat.show', ['userId' => $chatUserId, 'conversation' => '__ID__'])),
             };
 
+            const initialEmpty = body.querySelector('.ai-chat-empty')?.cloneNode(true);
             let conversationId = null;
+            let supportMode = false;
+            let supportClosed = false;
             let loading = false;
-            let loaded = false;
             let typingEl = null;
+            let pollTimer = null;
+            let historyOpen = false;
+            let renderedIds = new Set();
 
             const timeNow = function () {
                 return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            };
+
+            const formatTime = function (value) {
+                if (! value) return timeNow();
+                const date = new Date(value);
+                return isNaN(date.getTime())
+                    ? timeNow()
+                    : date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             };
 
             const setError = function (message) {
@@ -546,16 +642,57 @@
                 body.scrollTop = body.scrollHeight;
             };
 
-            const clearBody = function () {
-                body.querySelectorAll('.ai-chat-row, .ai-chat-empty').forEach(function (el) { el.remove(); });
+            const stopPolling = function () {
+                if (pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
             };
 
-            const addMessage = function (role, text, time, isError) {
-                body.querySelectorAll('.ai-chat-empty').forEach(function (el) { el.remove(); });
-                const row = document.createElement('div');
-                row.className = 'ai-chat-row ' + (role === 'user' ? 'is-user' : 'is-assistant');
+            const updateModeUi = function () {
+                if (supportMode) {
+                    subtitle.textContent = 'Bantuan Super Admin';
+                    subtitle.previousElementSibling?.classList.add('bg-warning');
+                    modeBadge.textContent = supportClosed ? 'Bantuan ditutup' : 'Bantuan';
+                    modeBadge.className = 'badge ' + (supportClosed ? 'bg-secondary-subtle text-secondary' : 'bg-warning-subtle text-warning');
+                    supportToggle.innerHTML = '<i class="ri-arrow-left-line me-1"></i>Kembali ke AI';
+                    input.placeholder = supportClosed ? 'Percakapan bantuan sudah ditutup' : 'Tulis pesan untuk Super Admin…';
+                } else {
+                    subtitle.textContent = 'Pendidikan & aplikasi ALIM';
+                    subtitle.previousElementSibling?.classList.remove('bg-warning');
+                    modeBadge.textContent = 'AI';
+                    modeBadge.className = 'badge bg-info-subtle text-info';
+                    supportToggle.innerHTML = '<i class="ri-customer-service-2-line me-1"></i>Hubungi Super Admin';
+                    input.placeholder = 'Tulis pertanyaan…';
+                }
+            };
 
-                if (role !== 'user') {
+            const clearBody = function () {
+                body.querySelectorAll('.ai-chat-row, .ai-chat-empty, .ai-chat-system').forEach(function (el) { el.remove(); });
+                renderedIds = new Set();
+            };
+
+            const addSystem = function (text) {
+                body.querySelectorAll('.ai-chat-empty').forEach(function (el) { el.remove(); });
+                const note = document.createElement('div');
+                note.className = 'ai-chat-system';
+                note.textContent = text;
+                body.appendChild(note);
+                scrollToBottom();
+            };
+
+            const addMessage = function (role, text, time, isError, id) {
+                if (id && renderedIds.has(String(id))) return;
+                if (id) renderedIds.add(String(id));
+
+                body.querySelectorAll('.ai-chat-empty').forEach(function (el) { el.remove(); });
+
+                const isUser = role === 'user';
+                const isAdmin = role === 'admin';
+                const row = document.createElement('div');
+                row.className = 'ai-chat-row ' + (isUser || isAdmin ? 'is-user' : 'is-assistant') + (isAdmin ? ' is-admin' : '');
+
+                if (! isUser && ! isAdmin) {
                     const avatar = document.createElement('span');
                     avatar.className = 'ai-chat-avatar-sm';
                     avatar.innerHTML = '<i class="ri-sparkling-2-fill"></i>';
@@ -567,7 +704,7 @@
 
                 const meta = document.createElement('div');
                 meta.className = 'ai-chat-meta';
-                meta.textContent = (role === 'user' ? 'Anda' : 'ALIM Assistant') + ' · ' + (time || timeNow());
+                meta.textContent = (isAdmin ? 'Super Admin' : (isUser ? 'Anda' : 'ALIM Assistant')) + ' · ' + formatTime(time);
                 wrap.appendChild(meta);
 
                 const bubble = document.createElement('div');
@@ -578,13 +715,12 @@
 
                 body.appendChild(row);
                 scrollToBottom();
-                return row;
             };
 
             const showTyping = function () {
                 if (typingEl) return;
                 typingEl = document.createElement('div');
-                typingEl.className = 'ai-chat-row is-assistant ai-chat-typing-row';
+                typingEl.className = 'ai-chat-row is-assistant';
 
                 const avatar = document.createElement('span');
                 avatar.className = 'ai-chat-avatar-sm';
@@ -604,12 +740,197 @@
                 if (typingEl) { typingEl.remove(); typingEl = null; }
             };
 
+            const resetChat = function () {
+                stopPolling();
+                conversationId = null;
+                supportMode = false;
+                supportClosed = false;
+                historyOpen = false;
+                hideTyping();
+                clearBody();
+                setError('');
+                historyEl.classList.add('d-none');
+                body.classList.remove('d-none');
+                composer?.classList.remove('d-none');
+
+                if (initialEmpty) {
+                    body.appendChild(initialEmpty.cloneNode(true));
+                } else {
+                    const hint = document.createElement('div');
+                    hint.className = 'ai-chat-empty';
+                    hint.innerHTML = '<span class="ai-chat-empty-icon"><i class="ri-chat-smile-2-line"></i></span>'
+                        + '<h6>Ada yang bisa dibantu?</h6>'
+                        + '<p>Tanyakan seputar kurikulum, penilaian, tahfidz, atau cara memakai aplikasi ALIM.</p>';
+                    body.appendChild(hint);
+                }
+
+                updateModeUi();
+                input.value = '';
+                input.style.height = 'auto';
+                count.textContent = '0/2000';
+                input.focus();
+            };
+
+            const showHistory = async function () {
+                stopPolling();
+                historyOpen = true;
+                body.classList.add('d-none');
+                historyEl.classList.remove('d-none');
+                composer?.classList.add('d-none');
+                historyEl.innerHTML = '<div class="text-center text-muted small py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat riwayat…</div>';
+
+                try {
+                    const response = await fetch(urls.conversations, { headers: { 'Accept': 'application/json' } });
+                    const data = await response.json();
+                    const items = data.items || [];
+
+                    historyEl.innerHTML = '';
+                    const header = document.createElement('div');
+                    header.className = 'd-flex align-items-center justify-content-between mb-2';
+                    const title = document.createElement('h6');
+                    title.className = 'mb-0 fs-13';
+                    title.textContent = 'Riwayat Percakapan';
+                    const back = document.createElement('button');
+                    back.type = 'button';
+                    back.className = 'btn btn-sm btn-light';
+                    back.innerHTML = '<i class="ri-arrow-left-line me-1"></i>Kembali';
+                    back.addEventListener('click', hideHistory);
+                    header.appendChild(title);
+                    header.appendChild(back);
+                    historyEl.appendChild(header);
+
+                    if (! items.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'text-center text-muted small py-5';
+                        empty.textContent = 'Belum ada riwayat percakapan.';
+                        historyEl.appendChild(empty);
+                        return;
+                    }
+
+                    items.forEach(function (item) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'ai-chat-history-item';
+                        button.addEventListener('click', function () { loadConversation(item.id); });
+
+                        const icon = document.createElement('span');
+                        icon.className = 'ai-chat-history-icon';
+                        icon.innerHTML = item.mode === 'support'
+                            ? '<i class="ri-customer-service-2-line"></i>'
+                            : '<i class="ri-sparkling-2-line"></i>';
+
+                        const copy = document.createElement('span');
+                        copy.className = 'flex-grow-1 min-w-0';
+                        const itemTitle = document.createElement('div');
+                        itemTitle.className = 'ai-chat-history-title';
+                        itemTitle.textContent = item.title || 'Tanpa judul';
+                        const meta = document.createElement('div');
+                        meta.className = 'ai-chat-history-meta';
+                        const when = item.last_message_at ? new Date(item.last_message_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+                        meta.textContent = (item.messages_count || 0) + ' pesan' + (when ? ' · ' + when : '');
+                        copy.appendChild(itemTitle);
+                        copy.appendChild(meta);
+
+                        const badge = document.createElement('span');
+                        badge.className = 'badge ' + (item.mode === 'support' ? 'bg-warning-subtle text-warning' : 'bg-info-subtle text-info');
+                        badge.textContent = item.mode === 'support' ? (item.status === 'closed' ? 'Tutup' : 'Bantuan') : 'AI';
+
+                        button.appendChild(icon);
+                        button.appendChild(copy);
+                        button.appendChild(badge);
+                        historyEl.appendChild(button);
+                    });
+                } catch (e) {
+                    historyEl.innerHTML = '<div class="text-center text-muted small py-4">Gagal memuat riwayat.</div>';
+                }
+            };
+
+            const hideHistory = function () {
+                historyOpen = false;
+                historyEl.classList.add('d-none');
+                body.classList.remove('d-none');
+                composer?.classList.remove('d-none');
+                if (supportMode && conversationId) startPolling();
+                input.focus();
+            };
+
+            const loadConversation = async function (id) {
+                try {
+                    const response = await fetch(urls.show.replace('__ID__', encodeURIComponent(id)), {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (! response.ok) return;
+                    const data = await response.json();
+                    renderConversation(data);
+                } catch (e) {
+                    setError('Gagal memuat percakapan.');
+                }
+            };
+
+            const renderConversation = function (data) {
+                const conversation = data.conversation || {};
+                conversationId = conversation.id || null;
+                supportMode = conversation.mode === 'support';
+                supportClosed = conversation.status === 'closed';
+
+                hideTyping();
+                clearBody();
+                setError('');
+                historyOpen = false;
+                historyEl.classList.add('d-none');
+                body.classList.remove('d-none');
+                composer?.classList.remove('d-none');
+                updateModeUi();
+
+                (data.messages || []).forEach(function (message) {
+                    addMessage(message.role, message.content, message.created_at, false, message.id);
+                });
+
+                if (! (data.messages || []).length) {
+                    addSystem('Belum ada pesan pada percakapan ini.');
+                }
+
+                if (supportMode && conversationId && ! supportClosed) {
+                    startPolling();
+                } else {
+                    stopPolling();
+                }
+
+                scrollToBottom();
+                input.focus();
+            };
+
+            const refreshConversation = async function () {
+                if (! conversationId || ! supportMode) return;
+                try {
+                    const response = await fetch(urls.show.replace('__ID__', encodeURIComponent(conversationId)), {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (! response.ok) return;
+                    const data = await response.json();
+                    supportClosed = data.conversation?.status === 'closed';
+                    (data.messages || []).forEach(function (message) {
+                        addMessage(message.role, message.content, message.created_at, false, message.id);
+                    });
+                    updateModeUi();
+                    if (supportClosed) stopPolling();
+                } catch (e) {
+                    // Diam; polling akan mencoba lagi.
+                }
+            };
+
+            const startPolling = function () {
+                stopPolling();
+                if (! supportMode || ! conversationId || supportClosed) return;
+                pollTimer = setInterval(refreshConversation, 10000);
+            };
+
             const openPanel = function () {
                 panel.classList.add('is-open');
                 panel.setAttribute('aria-hidden', 'false');
                 fab.classList.add('is-hidden');
                 fab.setAttribute('aria-expanded', 'true');
-                loadLatest();
+                if (supportMode && conversationId) startPolling();
                 setTimeout(function () { input.focus(); }, 180);
             };
 
@@ -618,53 +939,22 @@
                 panel.setAttribute('aria-hidden', 'true');
                 fab.classList.remove('is-hidden');
                 fab.setAttribute('aria-expanded', 'false');
+                stopPolling();
                 fab.focus();
             };
 
-            const resetChat = function () {
-                conversationId = null;
-                loaded = true;
-                hideTyping();
-                clearBody();
-                setError('');
-
-                const emptyState = document.createElement('div');
-                emptyState.className = 'ai-chat-empty';
-                emptyState.innerHTML = '<span class="ai-chat-empty-icon"><i class="ri-chat-smile-2-line"></i></span>'
-                    + '<h6>Percakapan baru</h6>'
-                    + '<p>Silakan mulai dengan pertanyaan seputar pendidikan atau aplikasi ALIM.</p>';
-                body.appendChild(emptyState);
-
-                input.value = '';
-                input.style.height = 'auto';
-                count.textContent = '0/2000';
+            const startSupport = function () {
+                resetChat();
+                supportMode = true;
+                supportClosed = false;
+                updateModeUi();
+                addSystem('Mode Bantuan Super Admin aktif. Tulis pertanyaan atau kendala Anda; balasan akan muncul di sini.');
                 input.focus();
-            };
-
-            const loadLatest = async function () {
-                if (loaded) return;
-                loaded = true;
-
-                try {
-                    const response = await fetch(urls.latest, { headers: { 'Accept': 'application/json' } });
-                    if (! response.ok) return;
-                    const data = await response.json();
-                    if (data.conversation) conversationId = data.conversation.id;
-
-                    (data.messages || []).forEach(function (message) {
-                        const time = message.created_at
-                            ? new Date(message.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                            : null;
-                        addMessage(message.role === 'user' ? 'user' : 'assistant', message.content, time);
-                    });
-                } catch (e) {
-                    // Biarkan kosong; pengguna tetap bisa memulai chat baru.
-                }
             };
 
             const sendMessage = async function () {
                 const message = (input.value || '').trim();
-                if (! message || loading) return;
+                if (! message || loading || supportClosed) return;
 
                 loading = true;
                 sendBtn.disabled = true;
@@ -673,7 +963,9 @@
                 input.value = '';
                 input.style.height = 'auto';
                 count.textContent = '0/2000';
-                showTyping();
+
+                if (! supportMode) showTyping();
+                else addSystem('Pesan dikirim ke Super Admin. Menunggu balasan…');
 
                 try {
                     const response = await fetch(urls.send, {
@@ -687,6 +979,7 @@
                             message: message,
                             conversation_id: conversationId,
                             page: (document.title || '').slice(0, 150),
+                            mode: supportMode ? 'support' : 'ai',
                         }),
                     });
 
@@ -697,11 +990,21 @@
                         addMessage('assistant', data.message || 'AI sedang tidak dapat menjawab.', null, true);
                     } else {
                         conversationId = data.conversation_id || conversationId;
-                        addMessage('assistant', data.reply || '');
+                        if (data.support) {
+                            supportMode = true;
+                            supportClosed = data.status === 'closed';
+                            updateModeUi();
+                            if (conversationId) {
+                                await loadConversation(conversationId);
+                            }
+                            startPolling();
+                        } else {
+                            addMessage('assistant', data.reply || '');
+                        }
                     }
                 } catch (e) {
                     hideTyping();
-                    addMessage('assistant', 'Koneksi ke AI gagal. Coba lagi.', null, true);
+                    addMessage('assistant', 'Koneksi gagal. Coba lagi.', null, true);
                 } finally {
                     loading = false;
                     sendBtn.disabled = false;
@@ -712,6 +1015,12 @@
             fab.addEventListener('click', openPanel);
             closeBtn.addEventListener('click', closePanel);
             newBtn.addEventListener('click', resetChat);
+            historyBtn.addEventListener('click', function () {
+                if (historyOpen) hideHistory(); else showHistory();
+            });
+            supportToggle.addEventListener('click', function () {
+                if (supportMode) resetChat(); else startSupport();
+            });
             sendBtn.addEventListener('click', sendMessage);
 
             input.addEventListener('keydown', function (event) {
@@ -729,17 +1038,20 @@
 
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape' && panel.classList.contains('is-open')) {
-                    closePanel();
+                    if (historyOpen) { hideHistory(); } else { closePanel(); }
                 }
             });
 
-            document.querySelectorAll('.ai-chat-suggestion-btn').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    input.value = button.textContent.trim();
-                    input.dispatchEvent(new Event('input'));
-                    input.focus();
-                });
+            // Delegasi agar tombol saran tetap bekerja setelah empty state di-clone.
+            body.addEventListener('click', function (event) {
+                const button = event.target.closest('.ai-chat-suggestion-btn');
+                if (! button) return;
+                input.value = button.textContent.trim();
+                input.dispatchEvent(new Event('input'));
+                input.focus();
             });
+
+            updateModeUi();
         });
     </script>
 @endauth

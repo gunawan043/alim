@@ -10,6 +10,7 @@ use App\Models\RaportRegistration;
 use App\Models\Soal;
 use App\Models\Student;
 use App\Models\StudentAttendance;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\User;
@@ -39,6 +40,12 @@ class AiDataToolService
     private bool $canViewGtk = false;
 
     private bool $canViewGtkDetail = false;
+
+    /** @var array<int, string> */
+    private array $myStudyGroupIds = [];
+
+    /** @var array<string, mixed> */
+    private array $myTeaching = [];
 
     /**
      * Definisi tool gaya OpenAI Chat Completions.
@@ -118,6 +125,11 @@ class AiDataToolService
             ]);
         }
 
+        if ($this->myStudyGroupIds !== []) {
+            $tools[] = $this->tool('count_my_students', 'Hitung jumlah santri aktif di kelas/rombel yang diampu pengguna saat ini, beserta rincian per rombel.', []);
+            $tools[] = $this->tool('list_my_classes', 'Daftar kelas/rombel dan mata pelajaran yang diampu pengguna saat ini.', []);
+        }
+
         return $tools;
     }
 
@@ -142,6 +154,8 @@ class AiDataToolService
                 'student_detail' => $this->studentDetail($args),
                 'search_gtk' => $this->searchGtk($args),
                 'gtk_detail' => $this->gtkDetail($args),
+                'count_my_students' => $this->countMyStudents(),
+                'list_my_classes' => $this->listMyClasses(),
                 default => ['error' => 'Tool tidak dikenal.'],
             };
         } catch (\Throwable $e) {
@@ -178,6 +192,7 @@ class AiDataToolService
             'attendance_7_days' => $this->attendanceSummary(['days' => 7]),
             'raport' => $this->raportSummary(),
             'tahfidz' => $this->tahfidzCounts(),
+            'my_teaching' => $this->myTeaching,
             'note' => 'Snapshot ini hanya agregat. Data pribadi tersedia lewat tool jika pengguna berwenang.',
         ];
     }
@@ -192,6 +207,8 @@ class AiDataToolService
         $this->canViewStudents = (bool) ($context['can_view_students'] ?? false);
         $this->canViewGtk = (bool) ($context['can_view_gtk'] ?? false);
         $this->canViewGtkDetail = (bool) ($context['can_view_gtk_detail'] ?? false);
+        $this->myStudyGroupIds = array_values(array_filter(array_map('strval', (array) ($context['my_study_group_ids'] ?? []))));
+        $this->myTeaching = is_array($context['my_teaching'] ?? null) ? $context['my_teaching'] : [];
     }
 
     /**
@@ -688,6 +705,55 @@ class AiDataToolService
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function countMyStudents(): array
+    {
+        if ($this->myStudyGroupIds === []) {
+            return ['error' => 'Tidak ada kelas yang ditugaskan kepada pengguna ini.'];
+        }
+
+        $histories = StudentClassHistory::query()
+            ->whereIn('study_group_id', $this->myStudyGroupIds)
+            ->where('is_active', true)
+            ->whereHas('student', fn (Builder $q) => $q->where('status', 'active'))
+            ->with(['student:id,name,status', 'studyGroup:id,name'])
+            ->get();
+
+        $uniqueStudents = $histories->pluck('student_id')->unique()->count();
+
+        $classes = $histories->groupBy('study_group_id')->map(function ($rows) {
+            return [
+                'rombel' => $rows->first()->studyGroup?->name,
+                'count' => $rows->pluck('student_id')->unique()->count(),
+            ];
+        })->values()->all();
+
+        return [
+            'total_active_students' => $uniqueStudents,
+            'classes' => $classes,
+            'note' => 'Dihitung dari penugasan mengajar dan riwayat kelas aktif.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function listMyClasses(): array
+    {
+        if ($this->myStudyGroupIds === []) {
+            return ['error' => 'Tidak ada kelas yang ditugaskan kepada pengguna ini.'];
+        }
+
+        return [
+            'academic_year' => $this->myTeaching['academic_year'] ?? null,
+            'classes' => $this->myTeaching['classes'] ?? [],
+            'subjects' => $this->myTeaching['subjects'] ?? [],
+            'note' => 'Kelas dan mapel yang diampu pengguna saat ini.',
+        ];
     }
 
     private function raportSummary(): array
