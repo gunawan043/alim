@@ -125,6 +125,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Pengingat operasional Sarpras: kebersihan, program, perawatan, perbaikan.
+        $schedule->command('sarpras:send-reminders')
+            ->dailyAt('07:15')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // ASSET INTELLIGENCE
         $schedule->command('sarpras:repair-vs-replace --all')
             ->dailyAt('02:30')

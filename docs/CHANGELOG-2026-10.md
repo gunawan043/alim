@@ -2234,6 +2234,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - panel memakai simulasi **kaca blur** (bukan blok gelap solid);
   - ukuran panel/teks diperbesar dan tata letak header–tanggal–judul–lokasi–footer dirapikan.
 
+## 196. Pengingat Otomatis Sarpras
+
+- Command baru `sarpras:send-reminders` (jadwal harian 07:15):
+  - laporan kebersihan berstatus `submitted` lebih dari 24 jam;
+  - program kebersihan bulan berjalan yang belum dicentang (mulai tanggal 15);
+  - jadwal perawatan dalam 7 hari atau sudah terlewat;
+  - permintaan perbaikan menunggu verifikasi lebih dari 24 jam.
+- Penerima: koordinator area, petugas Sarpras unit, dan pengelola pusat URT/Admin.
+- Notifikasi memakai `NotificationUniversalService` (lonceng aplikasi) dengan deduplikasi
+  per pengguna/referensi agar tidak berulang setiap hari.
+- Tersedia mode `--dry-run` untuk menghitung tanpa mengirim.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
