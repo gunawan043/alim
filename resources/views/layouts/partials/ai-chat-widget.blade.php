@@ -533,6 +533,15 @@
             background: #232c3e;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
         }
+        :is([data-bs-theme="dark"] .ai-chat-panel, .ai-chat-panel.is-dark) .ai-chat-row.is-admin .ai-chat-bubble {
+            border-color: transparent;
+            color: #fff;
+            background: linear-gradient(135deg, #0b6b5c, #0d8f7a) !important;
+            box-shadow: 0 4px 12px rgba(8, 168, 138, .18);
+        }
+        :is([data-bs-theme="dark"] .ai-chat-panel, .ai-chat-panel.is-dark) .ai-chat-row.is-admin .ai-chat-meta {
+            color: #5eead4;
+        }
         :is([data-bs-theme="dark"] .ai-chat-panel, .ai-chat-panel.is-dark) .ai-chat-suggestion {
             border-color: var(--ai-line);
             color: var(--ai-ink);
