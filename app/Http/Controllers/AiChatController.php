@@ -80,13 +80,9 @@ class AiChatController extends Controller
         ];
 
         $requestedMode = $validated['mode'] ?? 'ai';
-        $mode = $conversation?->mode ?? $requestedMode;
+        $mode = $requestedMode === 'support' ? 'support' : ($conversation?->mode ?? 'ai');
 
         if ($mode === 'support') {
-            if ($conversation && $conversation->mode !== 'support') {
-                return response()->json(['ok' => false, 'message' => 'Mulai percakapan bantuan baru.'], 422);
-            }
-
             $result = $chat->sendSupport(
                 $request->user(),
                 $context,
@@ -95,10 +91,6 @@ class AiChatController extends Controller
             );
 
             return response()->json($result, $result['ok'] ? 200 : 503);
-        }
-
-        if ($conversation && $conversation->mode === 'support') {
-            return response()->json(['ok' => false, 'message' => 'Percakapan ini dalam mode bantuan.'], 422);
         }
 
         $result = $chat->send(

@@ -9,7 +9,7 @@
             --ai-surface: #ffffff;
             --ai-canvas: #f5f7fb;
             --ai-brand: #405189;
-            --ai-brand-2: #08a88a;
+            --ai-brand-2: #5EA3CB;
         }
 
         .ai-chat-fab {
@@ -112,7 +112,7 @@
             color: #fff;
             background:
                 radial-gradient(120% 160% at 10% 0%, rgba(255, 255, 255, .16) 0%, transparent 55%),
-                linear-gradient(135deg, #35457a 0%, #405189 52%, #0d8f7a 100%);
+                linear-gradient(135deg, #35457a 0%, #405189 52%, #5EA3CB 100%);
         }
         .ai-chat-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
         .ai-chat-brand > div { min-width: 0; }
@@ -277,6 +277,12 @@
             box-shadow: 0 3px 8px rgba(64, 81, 137, .2);
             font-size: 13px;
         }
+        .ai-chat-avatar-admin {
+            background: linear-gradient(140deg, #5EA3CB, #5EA3CB) !important;
+            font-size: 9px !important;
+            font-weight: 700;
+            letter-spacing: .02em;
+        }
         .ai-chat-bubble-wrap { max-width: 82%; }
         .ai-chat-meta {
             display: flex;
@@ -311,7 +317,7 @@
             box-shadow: 0 4px 12px rgba(64, 81, 137, .18);
         }
         .ai-chat-row.is-admin .ai-chat-bubble {
-            background: linear-gradient(135deg, #0d8f7a, #08a88a);
+            background: linear-gradient(135deg, #5EA3CB, #5EA3CB);
             box-shadow: 0 4px 12px rgba(8, 168, 138, .18);
         }
         .ai-chat-system {
@@ -565,7 +571,7 @@
         <div id="aiChatHistory" class="ai-chat-history d-none" aria-label="Riwayat percakapan"></div>
 
         <div class="ai-chat-composer">
-            <div class="d-flex align-items-center justify-content-between px-3 pt-2" style="font-size:11px;">
+            <div class="d-flex align-items-center justify-content-between px-3 pt-2 mb-2" style="font-size:11px;">
                 <button type="button" id="aiChatSupportToggle" class="btn btn-link btn-sm p-0 text-decoration-none ai-chat-support-link">
                     <i class="ri-customer-service-2-line me-1"></i>Hubungi Super Admin
                 </button>
@@ -692,12 +698,16 @@
                 const isUser = role === 'user';
                 const isAdmin = role === 'admin';
                 const row = document.createElement('div');
-                row.className = 'ai-chat-row ' + (isUser || isAdmin ? 'is-user' : 'is-assistant') + (isAdmin ? ' is-admin' : '');
+                row.className = 'ai-chat-row ' + (isUser ? 'is-user' : 'is-assistant') + (isAdmin ? ' is-admin' : '');
 
-                if (! isUser && ! isAdmin) {
+                if (! isUser) {
                     const avatar = document.createElement('span');
-                    avatar.className = 'ai-chat-avatar-sm';
-                    avatar.innerHTML = '<i class="ri-sparkling-2-fill"></i>';
+                    avatar.className = 'ai-chat-avatar-sm' + (isAdmin ? ' ai-chat-avatar-admin' : '');
+                    if (isAdmin) {
+                        avatar.textContent = 'SA';
+                    } else {
+                        avatar.innerHTML = '<i class="ri-sparkling-2-fill"></i>';
+                    }
                     row.appendChild(avatar);
                 }
 
@@ -946,11 +956,10 @@
             };
 
             const startSupport = function () {
-                resetChat();
                 supportMode = true;
                 supportClosed = false;
                 updateModeUi();
-                addSystem('Mode Bantuan Super Admin aktif. Tulis pertanyaan atau kendala Anda; balasan akan muncul di sini.');
+                addSystem('Mode Bantuan Super Admin aktif pada percakapan ini. Super Admin akan membalas di thread yang sama.');
                 input.focus();
             };
 

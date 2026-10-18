@@ -88,10 +88,12 @@ class AiChatMonitorController extends Controller
             return back()->with('error', 'Percakapan sudah ditutup. Buka kembali untuk membalas.');
         }
 
-        DB::transaction(function () use ($conversation, $validated, $request) {
+        $message = trim($validated['message']);
+
+        DB::transaction(function () use ($conversation, $message, $request) {
             $conversation->messages()->create([
                 'role' => 'admin',
-                'content' => trim($validated['message']),
+                'content' => $message,
                 'metadata' => [
                     'admin_id' => $request->user()?->id,
                     'admin_name' => $request->user()?->name,
@@ -103,6 +105,15 @@ class AiChatMonitorController extends Controller
                 'last_message_at' => now(),
             ])->save();
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $message,
+                'status' => 'replied',
+                'created_at' => now()->toIso8601String(),
+            ]);
+        }
 
         return redirect()
             ->route('user.sa.ai-chat.index', ['userId' => $userId, 'conversation' => $conversation->id])

@@ -285,6 +285,66 @@ class AiChatTest extends TestCase
         });
     }
 
+    public function test_handoff_ke_super_admin_mempertahankan_percakapan_yang_sama(): void
+    {
+        $conversation = AiChatConversation::create([
+            'user_id' => $this->admin->id,
+            'school_id' => $this->school->id,
+            'title' => 'Percakapan AI',
+            'mode' => 'ai',
+            'status' => 'open',
+            'last_message_at' => now(),
+        ]);
+        AiChatMessage::create(['conversation_id' => $conversation->id, 'role' => 'user', 'content' => 'Pertanyaan AI.']);
+        AiChatMessage::create(['conversation_id' => $conversation->id, 'role' => 'assistant', 'content' => 'Jawaban AI.']);
+
+        Http::fake();
+
+        $this->actingAs($this->admin)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/ai-chat/send", [
+                'conversation_id' => $conversation->id,
+                'message' => 'Saya ingin dibantu Super Admin.',
+                'mode' => 'support',
+            ])
+            ->assertOk()
+            ->assertJsonPath('support', true)
+            ->assertJsonPath('conversation_id', $conversation->id);
+
+        Http::assertNothingSent();
+
+        $conversation->refresh();
+        $this->assertSame('support', $conversation->mode);
+        $this->assertSame(3, $conversation->messages()->count());
+        $this->assertSame(1, AiChatConversation::count());
+    }
+
+    public function test_super_admin_membalas_via_ajax_tanpa_modal(): void
+    {
+        $conversation = AiChatConversation::create([
+            'user_id' => $this->admin->id,
+            'school_id' => $this->school->id,
+            'title' => 'Bantuan AJAX',
+            'mode' => 'support',
+            'status' => 'open',
+            'last_message_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->postJson("/{$this->admin->id}/sa/ai-chat/{$conversation->id}/reply", [
+                'message' => 'Balasan langsung tanpa modal.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('status', 'replied');
+
+        $this->assertDatabaseHas('ai_chat_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'admin',
+            'content' => 'Balasan langsung tanpa modal.',
+        ]);
+    }
+
     public function test_widget_chat_tampil_di_layout(): void
     {
         $this->actingAs($this->admin)

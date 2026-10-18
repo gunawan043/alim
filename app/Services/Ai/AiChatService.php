@@ -30,10 +30,6 @@ class AiChatService
         ?AiChatConversation $conversation,
         string $message,
     ): array {
-        if ($conversation && $conversation->mode !== 'support') {
-            return ['ok' => false, 'message' => 'Percakapan ini bukan percakapan bantuan. Mulai percakapan bantuan baru.'];
-        }
-
         $conversation ??= AiChatConversation::create([
             'user_id' => $user->id,
             'school_id' => $context['school_id'] ?? null,
@@ -44,6 +40,16 @@ class AiChatService
 
         if ($conversation->status === 'closed') {
             return ['ok' => false, 'message' => 'Percakapan bantuan ini sudah ditutup. Silakan mulai percakapan baru.'];
+        }
+
+        // Handoff: percakapan AI yang sama diubah menjadi mode bantuan, bukan
+        // membuat percakapan baru. Riwayat AI tetap terlihat oleh Super Admin.
+        if ($conversation->mode !== 'support') {
+            $conversation->forceFill([
+                'mode' => 'support',
+                'status' => 'open',
+                'closed_at' => null,
+            ])->save();
         }
 
         DB::transaction(function () use ($conversation, $message) {

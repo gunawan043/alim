@@ -124,9 +124,9 @@
                                         @if($selected->status === 'closed')
                                             <span class="badge bg-secondary-subtle text-secondary">Ditutup</span>
                                         @elseif($selected->status === 'replied')
-                                            <span class="badge bg-success-subtle text-success">Sudah dibalas</span>
+                                            <span id="adminConversationStatus" class="badge bg-success-subtle text-success">Sudah dibalas</span>
                                         @else
-                                            <span class="badge bg-danger-subtle text-danger">Perlu respon</span>
+                                            <span id="adminConversationStatus" class="badge bg-danger-subtle text-danger">Perlu respon</span>
                                         @endif
                                     @else
                                         <span class="badge bg-info-subtle text-info">Percakapan AI</span>
@@ -153,9 +153,9 @@
                             </div>
                         </div>
 
-                        <div class="chat-conversation p-3 p-lg-4" data-simplebar
+                        <div class="chat-conversation p-3 p-lg-4" id="adminChatConversation" data-simplebar
                              style="max-height:calc(100vh - 300px);overflow-y:auto;background:#f8f9fc;">
-                            <ul class="list-unstyled chat-conversation-list mb-0">
+                            <ul class="list-unstyled chat-conversation-list mb-0" id="adminConversationList">
                                 @forelse($messages as $message)
                                     @php
                                         $isAdmin = $message->role === 'admin';
@@ -163,7 +163,7 @@
                                         $label = $isAdmin ? 'Super Admin' : ($isUser ? 'Pengguna' : 'ALIM AI');
                                         $initial = $isAdmin ? 'SA' : strtoupper(substr($selected->user?->name ?: '?', 0, 1));
                                     @endphp
-                                    <li class="chat-list {{ $isAdmin ? 'right' : 'left' }}">
+                                    <li class="chat-list {{ $isUser ? 'right' : 'left' }}">
                                         <div class="conversation-list">
                                             <div class="chat-avatar">
                                                 <div class="avatar-xs rounded-circle {{ $isAdmin ? 'bg-success' : ($isUser ? 'bg-primary' : 'bg-info') }} text-white d-flex align-items-center justify-content-center fw-semibold">
@@ -195,18 +195,21 @@
                                 </div>
                             @else
                                 <div class="chat-input-section p-3 p-lg-4">
-                                    <form method="POST" action="{{ route('user.sa.ai-chat.reply', ['userId' => $userId, 'conversation' => $selected->id]) }}">
+                                    <form method="POST" id="adminReplyForm"
+                                          action="{{ route('user.sa.ai-chat.reply', ['userId' => $userId, 'conversation' => $selected->id]) }}">
                                         @csrf
                                         <div class="row g-0 align-items-center">
                                             <div class="col-auto">
                                                 <div class="avatar-xs rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2 fw-semibold">SA</div>
                                             </div>
                                             <div class="col">
-                                                <input type="text" name="message" class="form-control chat-input bg-light border-light"
+                                                <input type="text" name="message" id="adminReplyInput"
+                                                       class="form-control chat-input bg-light border-light"
                                                        placeholder="Balas sebagai Super Admin..." autocomplete="off" required maxlength="2000">
+                                                <div id="adminReplyError" class="text-danger small mt-1 d-none"></div>
                                             </div>
                                             <div class="col-auto">
-                                                <button type="submit" class="btn btn-success chat-send ms-2">
+                                                <button type="submit" id="adminReplySubmit" class="btn btn-success chat-send ms-2">
                                                     <i class="ri-send-plane-2-fill"></i>
                                                 </button>
                                             </div>
@@ -249,4 +252,100 @@
             submit-class="btn-danger"
             form-id="deleteChatForm" />
     @endif
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('adminReplyForm');
+        const input = document.getElementById('adminReplyInput');
+        const submit = document.getElementById('adminReplySubmit');
+        const errorBox = document.getElementById('adminReplyError');
+        const list = document.getElementById('adminConversationList');
+        const conversation = document.getElementById('adminChatConversation');
+        const status = document.getElementById('adminConversationStatus');
+        if (! form || ! input || ! list) return;
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const message = (input.value || '').trim();
+            if (! message) return;
+
+            submit.disabled = true;
+            if (errorBox) { errorBox.textContent = ''; errorBox.classList.add('d-none'); }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body: JSON.stringify({ message: message }),
+                });
+                const data = await response.json().catch(function () { return {}; });
+
+                if (! response.ok || ! data.ok) {
+                    throw new Error(data.message || 'Balasan gagal dikirim.');
+                }
+
+                const item = document.createElement('li');
+                item.className = 'chat-list left';
+
+                const conversationList = document.createElement('div');
+                conversationList.className = 'conversation-list';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'chat-avatar';
+                const avatarInner = document.createElement('div');
+                avatarInner.className = 'avatar-xs rounded-circle bg-success text-white d-flex align-items-center justify-content-center fw-semibold';
+                avatarInner.textContent = 'SA';
+                avatar.appendChild(avatarInner);
+
+                const content = document.createElement('div');
+                content.className = 'user-chat-content';
+
+                const textWrap = document.createElement('div');
+                textWrap.className = 'ctext-wrap';
+                const textContent = document.createElement('div');
+                textContent.className = 'ctext-wrap-content';
+                const paragraph = document.createElement('p');
+                paragraph.className = 'mb-0';
+                paragraph.style.whiteSpace = 'pre-wrap';
+                paragraph.textContent = data.message;
+                textContent.appendChild(paragraph);
+                textWrap.appendChild(textContent);
+
+                const time = document.createElement('div');
+                time.className = 'chat-time';
+                const moment = data.created_at ? new Date(data.created_at) : new Date();
+                time.textContent = moment.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' · Super Admin';
+
+                content.appendChild(textWrap);
+                content.appendChild(time);
+                conversationList.appendChild(avatar);
+                conversationList.appendChild(content);
+                item.appendChild(conversationList);
+                list.appendChild(item);
+
+                input.value = '';
+                input.focus();
+                if (status) {
+                    status.textContent = 'Sudah dibalas';
+                    status.className = 'badge bg-success-subtle text-success';
+                }
+                if (conversation) conversation.scrollTop = conversation.scrollHeight;
+            } catch (e) {
+                if (errorBox) {
+                    errorBox.textContent = e.message || 'Balasan gagal dikirim.';
+                    errorBox.classList.remove('d-none');
+                }
+            } finally {
+                submit.disabled = false;
+            }
+        });
+    });
+</script>
+@endpush
+
 @endsection
