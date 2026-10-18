@@ -28,6 +28,7 @@ class CleaningTask extends Model
     public const FREQUENCY_OPTIONS = ['harian', 'mingguan', 'bulanan', 'triwulan', 'semester', 'tahunan'];
 
     public function area(): BelongsTo { return $this->belongsTo(CleaningArea::class, 'area_id'); }
+    public function reportItems(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(CleaningReportItem::class, 'task_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function scopeActive($q) { return $q->where('is_active', true); }
 }

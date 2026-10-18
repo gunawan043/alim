@@ -2306,6 +2306,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Penataan dan Penanaman Musiman.
 - Kolom `cleaning_tasks.group_label` ditambahkan dan form tambah uraian mendukung kelompok pekerjaan.
 
+## 201. Kelola Area/Uraian & Hierarki Petugas Pertamanan
+
+- Area kerja dapat ditambah, diedit, dinonaktifkan, dan dihapus.
+  - Jika area sudah memiliki riwayat laporan, penghapusan otomatis menjadi nonaktif agar histori aman.
+- Uraian pekerjaan dapat ditambah, diedit, dinonaktifkan, dan dihapus.
+  - Jika uraian sudah dipakai pada laporan, penghapusan otomatis menjadi nonaktif.
+- Penugasan petugas memiliki kolom `supervisor_id`:
+  - default mengikuti **Koordinator Area**;
+  - saat koordinator area diganti, supervisor seluruh penugasan area ikut diperbarui;
+  - tabel penugasan menampilkan kolom **Koordinator**, sehingga Petugas Pertamanan berada di bawah Koordinator Kebersihan/area.
+- Modal penugasan menampilkan supervisor otomatis sebelum petugas ditugaskan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

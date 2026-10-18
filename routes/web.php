@@ -2820,9 +2820,11 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/kebersihan/area', [SarprasCleaningController::class, 'storeArea'])->name('kebersihan.area.store');
     Route::get('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'showArea'])->name('kebersihan.area.show');
     Route::put('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'updateArea'])->name('kebersihan.area.update');
+    Route::delete('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'destroyArea'])->name('kebersihan.area.destroy');
     Route::post('/kebersihan/area/{areaId}/toggle', [SarprasCleaningController::class, 'toggleArea'])->name('kebersihan.area.toggle');
     Route::post('/kebersihan/area/{areaId}/task', [SarprasCleaningController::class, 'storeTask'])->name('kebersihan.task.store');
     Route::put('/kebersihan/task/{taskId}', [SarprasCleaningController::class, 'updateTask'])->name('kebersihan.task.update');
+    Route::delete('/kebersihan/task/{taskId}', [SarprasCleaningController::class, 'destroyTask'])->name('kebersihan.task.destroy');
     Route::post('/kebersihan/task/{taskId}/toggle', [SarprasCleaningController::class, 'toggleTask'])->name('kebersihan.task.toggle');
     Route::post('/kebersihan/area/{areaId}/assignment', [SarprasCleaningController::class, 'storeAssignment'])->name('kebersihan.assignment.store');
     Route::post('/kebersihan/assignment/{assignmentId}/toggle', [SarprasCleaningController::class, 'toggleAssignment'])->name('kebersihan.assignment.toggle');

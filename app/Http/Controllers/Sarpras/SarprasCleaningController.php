@@ -293,6 +293,10 @@ class SarprasCleaningController extends SarprasBaseController
             'is_active' => $request->boolean('is_active', true),
         ]);
 
+        // Petugas area berada di bawah koordinator area yang berlaku.
+        CleaningAssignment::where('area_id', $area->id)
+            ->update(['supervisor_id' => $validated['coordinator_id'] ?? null]);
+
         return back()->with('success', 'Area kerja diperbarui.');
     }
 
@@ -303,6 +307,43 @@ class SarprasCleaningController extends SarprasBaseController
         $area->update(['is_active' => ! $area->is_active]);
 
         return back()->with('success', 'Status area kerja diperbarui.');
+    }
+
+    public function destroyArea(string $userId, Request $request, string $areaId)
+    {
+        abort_unless($this->cleaningCanManage(), 403);
+        $area = CleaningArea::findOrFail($areaId);
+
+        if ($area->reports()->exists()) {
+            $area->update(['is_active' => false]);
+
+            return back()->with('success', 'Area memiliki riwayat laporan, jadi dinonaktifkan agar histori tetap aman.');
+        }
+
+        DB::transaction(function () use ($area) {
+            CleaningAssignment::where('area_id', $area->id)->delete();
+            CleaningTask::where('area_id', $area->id)->delete();
+            $area->delete();
+        });
+
+        return redirect()->route('sarpras.kebersihan.areas')
+            ->with('success', 'Area kerja dihapus.');
+    }
+
+    public function destroyTask(string $userId, Request $request, string $taskId)
+    {
+        abort_unless($this->cleaningCanManage(), 403);
+        $task = CleaningTask::findOrFail($taskId);
+
+        if ($task->reportItems()->exists()) {
+            $task->update(['is_active' => false]);
+
+            return back()->with('success', 'Uraian sudah dipakai pada laporan, jadi dinonaktifkan agar histori tetap aman.');
+        }
+
+        $task->delete();
+
+        return back()->with('success', 'Uraian pekerjaan dihapus.');
     }
 
     public function storeTask(string $userId, Request $request, string $areaId)
@@ -366,6 +407,7 @@ class SarprasCleaningController extends SarprasBaseController
             'user_id' => 'required|uuid|exists:users,id',
             'role' => 'required|in:petugas,koordinator',
             'backup_user_id' => 'nullable|uuid|exists:users,id|different:user_id',
+            'supervisor_id' => 'nullable|uuid|exists:users,id',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'notes' => 'nullable|string|max:1000',
@@ -379,6 +421,7 @@ class SarprasCleaningController extends SarprasBaseController
             ],
             [
                 ...$validated,
+                'supervisor_id' => $validated['supervisor_id'] ?? $area->coordinator_id,
                 'is_active' => true,
                 'created_by' => auth()->id(),
             ]
