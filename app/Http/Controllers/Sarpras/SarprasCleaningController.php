@@ -46,7 +46,61 @@ class SarprasCleaningController extends SarprasBaseController
             ->orderByDesc('report_date')->limit(5)->get();
         $programCount = CleaningProgram::where('is_active', true)->count();
 
-        return view('sarpras.kebersihan.index', compact('stats', 'recentReports', 'programCount', 'canManage', 'canReport'));
+        // Dashboard kepatuhan: laporan bulan berjalan, verifikasi, dan program.
+        $areaIds = $areas->pluck('id')->all();
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
+        $monthReports = CleaningReport::query()
+            ->whereIn('area_id', $areaIds)
+            ->whereBetween('report_date', [$monthStart, $monthEnd])
+            ->get(['area_id', 'status', 'report_date']);
+
+        $areasReportingToday = $monthReports->where('report_date', '>=', today())->pluck('area_id')->unique()->count();
+        $verifiedMonth = $monthReports->where('status', 'verified')->count();
+        $totalMonth = $monthReports->count();
+
+        $programsDue = CleaningProgram::with(['checks' => fn ($q) => $q->where('year', now()->year)->where('month', now()->month)])
+            ->where('is_active', true)
+            ->when($areaIds !== [], fn ($q) => $q->where(fn ($sub) => $sub->whereIn('area_id', $areaIds)->orWhereNull('area_id')))
+            ->get()
+            ->filter(fn ($program) => in_array((string) now()->month, array_map('strval', $program->months ?? []), true));
+
+        $programDone = $programsDue->filter(fn ($program) => $program->checks->contains(fn ($check) => (bool) $check->is_done))->count();
+
+        $lowAreas = $areas->map(function ($area) use ($monthReports) {
+            $last7 = $monthReports->where('area_id', $area->id)
+                ->where('report_date', '>=', today()->subDays(6));
+            $count = $last7->count();
+            return [
+                'area' => $area,
+                'reports_7d' => $count,
+                'percent' => (int) round(min(100, ($count / 7) * 100)),
+            ];
+        })->sortBy('percent')->take(5)->values();
+
+        $trend = collect(range(6, 0))->map(function ($daysAgo) use ($monthReports) {
+            $date = today()->subDays($daysAgo);
+            return [
+                'date' => $date,
+                'reports' => $monthReports->filter(fn ($report) => $report->report_date?->isSameDay($date))->count(),
+                'verified' => $monthReports->filter(fn ($report) => $report->report_date?->isSameDay($date) && $report->status === 'verified')->count(),
+            ];
+        });
+
+        $compliance = [
+            'today_percent' => $areas->count() ? (int) round(($areasReportingToday / $areas->count()) * 100) : 0,
+            'areas_reporting_today' => $areasReportingToday,
+            'verified_percent' => $totalMonth ? (int) round(($verifiedMonth / $totalMonth) * 100) : 0,
+            'verified_month' => $verifiedMonth,
+            'total_month' => $totalMonth,
+            'program_percent' => $programsDue->count() ? (int) round(($programDone / $programsDue->count()) * 100) : 0,
+            'program_done' => $programDone,
+            'program_due' => $programsDue->count(),
+            'low_areas' => $lowAreas,
+            'trend' => $trend,
+        ];
+
+        return view('sarpras.kebersihan.index', compact('stats', 'recentReports', 'programCount', 'canManage', 'canReport', 'compliance'));
     }
 
     public function areas(Request $request)

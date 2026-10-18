@@ -21,6 +21,52 @@
     </div>
 
     <div class="row g-3 mb-3">
+        @php
+            $complianceCards = [
+                ['Kepatuhan Hari Ini', $compliance['today_percent'], $compliance['areas_reporting_today'].' dari '.$stats['areas'].' area melapor', 'success', 'ri-check-double-line'],
+                ['Verifikasi Bulan Ini', $compliance['verified_percent'], $compliance['verified_month'].' dari '.$compliance['total_month'].' laporan terverifikasi', 'info', 'ri-shield-check-line'],
+                ['Program Bulan Ini', $compliance['program_percent'], $compliance['program_done'].' dari '.$compliance['program_due'].' program terlaksana', 'warning', 'ri-calendar-check-line'],
+            ];
+        @endphp
+        @foreach($complianceCards as [$label, $percent, $detail, $tone, $icon])
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-muted small">{{ $label }}</span><span class="avatar-xs"><span class="avatar-title rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }}"><i class="{{ $icon }}"></i></span></span></div>
+                        <div class="d-flex align-items-end gap-2 mb-2"><span class="fs-3 fw-bold">{{ $percent }}%</span><span class="text-muted small mb-1">{{ $detail }}</span></div>
+                        <div class="progress" style="height:7px"><div class="progress-bar bg-{{ $tone }}" style="width:{{ $percent }}%"></div></div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-focus-3-line me-1"></i>Area Perlu Perhatian</h5><p class="text-muted small mb-0">Berdasarkan laporan 7 hari terakhir.</p></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Area</th><th class="text-center">Laporan 7 Hari</th><th class="text-center">Kepatuhan</th><th class="text-end">Aksi</th></tr></thead><tbody>
+                    @forelse($compliance['low_areas'] as $row)
+                        <tr><td class="small">{{ $row['area']->name }}</td><td class="text-center">{{ $row['reports_7d'] }}</td><td class="text-center"><span class="badge bg-{{ $row['percent'] >= 70 ? 'success' : ($row['percent'] >= 40 ? 'warning' : 'danger') }}-subtle text-{{ $row['percent'] >= 70 ? 'success' : ($row['percent'] >= 40 ? 'warning' : 'danger') }}">{{ $row['percent'] }}%</span></td><td class="text-end"><a href="{{ route('sarpras.kebersihan.reports', ['area_id' => $row['area']->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td></tr>
+                    @empty
+                        <x-empty-state colspan="4" title="Belum ada data area" message="Tambahkan area kerja untuk melihat kepatuhan." />
+                    @endforelse
+                </tbody></table></div></div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-line-chart-line me-1"></i>Tren 7 Hari</h5><p class="text-muted small mb-0">Laporan masuk dan terverifikasi.</p></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Tanggal</th><th class="text-center">Laporan</th><th class="text-center">Verifikasi</th></tr></thead><tbody>
+                    @foreach($compliance['trend'] as $day)
+                        <tr><td class="small">{{ $day['date']->translatedFormat('d M') }}</td><td class="text-center">{{ $day['reports'] }}</td><td class="text-center">{{ $day['verified'] }}</td></tr>
+                    @endforeach
+                </tbody></table></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
         @foreach([
             ['Area Kerja', 'Kelola area, gedung/ruang Sarpras, uraian pekerjaan, dan petugas.', route('sarpras.kebersihan.areas'), 'ri-map-pin-line', 'primary'],
             ['Laporan Kebersihan', 'Lihat, filter, dan verifikasi laporan harian petugas.', route('sarpras.kebersihan.reports'), 'ri-file-list-3-line', 'success'],

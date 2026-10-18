@@ -2246,6 +2246,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   per pengguna/referensi agar tidak berulang setiap hari.
 - Tersedia mode `--dry-run` untuk menghitung tanpa mengirim.
 
+## 197. Dashboard Kepatuhan Kebersihan
+
+- Dashboard `/sarpras/kebersihan` menampilkan:
+  - persentase area yang melapor hari ini;
+  - persentase laporan bulan berjalan yang sudah diverifikasi;
+  - persentase program bulan berjalan yang sudah terlaksana.
+- Dilengkapi:
+  - daftar **Area Perlu Perhatian** berdasarkan laporan 7 hari terakhir;
+  - tren 7 hari laporan masuk vs terverifikasi;
+  - tautan langsung ke laporan per area.
+- Metrik mengikuti cakupan pengguna: koordinator melihat semua area, petugas melihat area yang ditugaskan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
