@@ -173,7 +173,6 @@ class SarprasPertamananController extends SarprasBaseController
             'KOORDINATOR KEBERSIHAN',
             'KOORDINATOR SARANA PRASARANA',
             'KOORDINATOR SARPRAS',
-            'KEPALA TATA USAHA',
             'TATA USAHA URT',
             'TU URT',
         ] as $allowed) {

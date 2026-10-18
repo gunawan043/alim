@@ -55,7 +55,7 @@
     $isKebersihan    = $hasJabatan('Petugas Kebersihan');
     $isPertamanan    = $hasJabatan('Petugas Pertamanan') || $hasJabatan('Petugas Taman');
     $isDriver        = $hasJabatan('Driver') || $hasJabatan('Pengemudi');
-    $isTuUrt         = $hasJabatan('Tata Usaha') || $hasJabatan('Kepala Tata Usaha');
+    $isTuUrt         = $hasJabatan('Tata Usaha') || $hasJabatan('Tata Usaha URT') || $hasJabatan('TU URT');
 
     $isStruktural    = $isKepalaURT || $isKoorSarpras || $isTuUrt;
     $isOperasional   = $isTeknisi || $isKebersihan || $isPertamanan || $isDriver;

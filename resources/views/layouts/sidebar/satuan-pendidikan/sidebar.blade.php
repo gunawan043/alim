@@ -1087,17 +1087,19 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 8 — LABORATORIUM & SARPRAS
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isKepala || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')) || $isAdminTU)
+@if($showAll || $isKepala || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')) || $isKepalaTU)
     <li class="menu-title"><span>Laboratorium &amp; Sarpras</span></li>
 
+    @if($showAll || $isKepala || $isKoorLab || $isKoorSarpras)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.dashboard']) ? ' active' : '' }}"
            href="{{ $sarprasDashboardRoute }}">
             <i class="ri-dashboard-2-line"></i><span>Dashboard Sarpras</span>
         </a>
     </li>
+    @endif
 
-    @if($showAll || $isKepala || $isKoorSarpras || $isAdminTU)
+    @if($showAll || $isKepala || $isKoorSarpras)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.agenda']) ? ' active' : '' }}"
            href="{{ route('sarpras.agenda.index') }}">
@@ -1106,11 +1108,10 @@
     </li>
     @endif
 
-    @if($showAll || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"
            href="{{ route('sarpras.user.ruang.index') }}">
-            <i class="ri-door-open-line"></i><span>Ruang &amp; Laboratorium</span>
+            <i class="ri-door-open-line"></i><span>Data Ruang</span>
         </a>
     </li>
 
@@ -1126,17 +1127,17 @@
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) ? ' active' : '' }}"
            href="{{ route('sarpras.user.aset.index') }}">
-            <i class="ri-archive-2-line"></i><span>Inventaris Aset</span>
+            <i class="ri-archive-2-line"></i><span>Data Aset</span>
         </a>
     </li>
 
+    @if($showAll || $isKepala || $isKoorLab || $isKoorSarpras)
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
            href="{{ route('sarpras.user.kerusakan.index') }}">
             <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
         </a>
     </li>
-
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.pengadaan.']) ? ' active' : '' }}"
            href="{{ route('sarpras.user.pengadaan.index') }}">

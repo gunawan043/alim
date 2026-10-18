@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Dormitory;
+use App\Models\GtkWorkUnit;
 use App\Models\RoomSupervisor;
 use App\Models\StudyGroup;
 use App\Models\WorkUnitSarprasOfficer;
@@ -32,9 +33,35 @@ class EnsureSarprasAccess
             return $next($request);
         }
 
+        $routeName = (string) $request->route()?->getName();
+
+        // Kepala Tata Usaha sekolah: HANYA data aset dan ruang.
+        $jabatanAktif = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
+        if ($jabatanAktif === '') {
+            $jabatanAktif = strtoupper(GtkWorkUnit::query()->where('user_id', $user->id)->pluck('jabatan')->implode(' '));
+        }
+
+        if (str_contains($jabatanAktif, 'KEPALA TATA USAHA')) {
+            foreach ([
+                'sarpras.user.aset.',
+                'sarpras.user.ruang.',
+                'sarpras.aset.',
+                'sarpras.ruang.',
+                'sarpras.assets.passport',
+                'sarpras.assets.scan',
+                'sarpras.qr.scanner',
+                'sarpras.qr.lookup',
+            ] as $allowedPrefix) {
+                if (str_starts_with($routeName, $allowedPrefix)) {
+                    return $next($request);
+                }
+            }
+
+            abort(403, 'Kepala Tata Usaha sekolah hanya dapat mengakses data aset dan ruang.');
+        }
+
         // Halaman personal/read-only boleh diakses semua GTK yang login.
         // Hak tulis tetap diperiksa oleh controller masing-masing.
-        $routeName = (string) $request->route()?->getName();
         foreach ([
             'sarpras.user.',
             'sarpras.camera.',

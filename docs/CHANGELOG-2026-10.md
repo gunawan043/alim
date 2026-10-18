@@ -2343,6 +2343,20 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Controller tetap menolak (403) jika petugas mencoba menambah/menghapus item secara langsung.
 - Sistem admin tetap memiliki akses penuh.
 
+## 204. Batas Akses Kepala Tata Usaha Sekolah
+
+- **Kepala Tata Usaha sekolah** hanya dapat mengakses:
+  - Data Aset;
+  - Data Ruang;
+  - passport/scan QR aset (read-only).
+- Ditolak (403) untuk:
+  - Dashboard Sarpras dan Agenda Kerja Sarpras;
+  - Kebersihan dan Pertamanan;
+  - Perbaikan, perawatan, work order, stock opname;
+  - Sampah, listrik, pengadaan, vendor, dan laporan operasional.
+- Sidebar Laboratorium & Sarpras untuk Kepala TU hanya menampilkan **Data Aset** dan **Data Ruang**.
+- Jabatan Kepala Tata Usaha dihapus dari kewenangan kelola agenda pertamanan dan dari struktur operasional URT.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
