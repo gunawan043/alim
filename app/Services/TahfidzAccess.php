@@ -141,6 +141,26 @@ class TahfidzAccess
      * Input setoran hanya untuk guru halaqah, koordinator sekolah, atau
      * departemen yang memang diberi penugasan mengajar.
      */
+    public function isTahfidzTeacher(User $user): bool
+    {
+        $jabatan = $this->jabatan($user);
+        if (str_contains($jabatan, 'guru tahfidz') || str_contains($jabatan, 'koordinator guru tahfidz')) {
+            return true;
+        }
+
+        if (! Schema::hasTable('tahfidz_groups')) {
+            return false;
+        }
+
+        return TahfidzGroup::query()
+            ->where(fn ($q) => $q->where('teacher_id', $user->id)->orWhere('coordinator_id', $user->id))
+            ->exists()
+            || TahfidzGroupTeacher::query()
+                ->where('user_id', $user->id)
+                ->where('is_active', true)
+                ->exists();
+    }
+
     public function canInputSetoran(User $user, TahfidzGroup $group): bool
     {
         if ($this->isSuperAdmin($user)) {

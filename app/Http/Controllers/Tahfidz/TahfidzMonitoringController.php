@@ -271,7 +271,8 @@ class TahfidzMonitoringController extends Controller
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId));
 
         if (! $this->access->canViewAllSchools($user)) {
-            if ($this->access->isSchoolCoordinator($user, $schoolId)) {
+            if ($this->access->isSchoolCoordinator($user, $schoolId)
+                || $this->access->isSchoolLeader($user)) {
                 $query->where('school_id', $schoolId);
             } else {
                 $query->where(function ($q) use ($user) {
@@ -300,7 +301,9 @@ class TahfidzMonitoringController extends Controller
         abort_unless(
             $this->access->canViewAllSchools($user)
             || $this->access->isSchoolCoordinator($user, $this->schoolId($request))
+            || $this->access->isSchoolLeader($user)
             || $hasAssignment
+            || $this->access->isTahfidzTeacher($user)
             || (function_exists('canPermission') && canPermission('tahfidz_view')),
             403,
             'Anda tidak berwenang melihat monitoring tahfidz.'

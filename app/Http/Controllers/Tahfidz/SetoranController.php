@@ -66,7 +66,11 @@ class SetoranController extends Controller
     public function create(Request $request, string $userId)
     {
         $groups = $this->accessibleGroups($request);
-        abort_if($groups->isEmpty(), 403, 'Belum ada halaqah yang dapat Anda input.');
+        if ($groups->isEmpty()) {
+            return redirect()
+                ->route('user.tahfidz.setoran.index', ['userId' => $userId])
+                ->with('error', 'Belum ada halaqah yang dapat Anda input. Hubungi koordinator Tahfidz sekolah.');
+        }
 
         $groupId = $request->input('group_id', $groups->first()->id);
         $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
@@ -86,6 +90,12 @@ class SetoranController extends Controller
         $data['verification_status'] = 'pending';
 
         $setoran = TahfidzSetoran::create($data);
+
+        if ($request->input('return_to') === 'input') {
+            return redirect()
+                ->route('user.tahfidz.input.index', ['userId' => $userId, 'student_id' => $validated['student_id']])
+                ->with('success', 'Setoran hafalan berhasil dicatat.');
+        }
 
         return redirect()->route('user.tahfidz.setoran.index', ['userId' => $userId, 'group_id' => $group->id])
             ->with('success', 'Setoran berhasil dicatat.');
@@ -161,7 +171,8 @@ class SetoranController extends Controller
             ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id));
 
         if (! $this->access->canViewAllSchools($user)) {
-            if ($this->access->isSchoolCoordinator($user, $schoolId)) {
+            if ($this->access->isSchoolCoordinator($user, $schoolId)
+                || $this->access->isSchoolLeader($user)) {
                 $query->where('school_id', $schoolId);
             } else {
                 $query->where(function ($q) use ($user) {

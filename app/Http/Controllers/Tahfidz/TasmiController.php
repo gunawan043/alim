@@ -41,7 +41,8 @@ class TasmiController extends Controller
             ->orderByDesc('session_date');
 
         if (! $this->access->canViewAllSchools($request->user())) {
-            if ($this->access->isSchoolCoordinator($request->user(), $schoolId)) {
+            if ($this->access->isSchoolCoordinator($request->user(), $schoolId)
+                || $this->access->isSchoolLeader($request->user())) {
                 $query->where('school_id', $schoolId);
             } else {
                 $query->where(function ($q) use ($request) {
@@ -454,7 +455,9 @@ class TasmiController extends Controller
         abort_unless(
             $this->access->canViewAllSchools($user)
             || $this->access->isSchoolCoordinator($user, $this->schoolId($request))
+            || $this->access->isSchoolLeader($user)
             || $hasAssignment
+            || $this->access->isTahfidzTeacher($user)
             || (function_exists('canPermission') && canPermission('tahfidz_view')),
             403,
             'Anda tidak berwenang melihat tasmi’ tahfidz.'
@@ -494,6 +497,11 @@ class TasmiController extends Controller
             return;
         }
 
+        if ($this->access->isSchoolLeader($request->user())
+            && (string) $session->school_id === (string) $this->schoolId($request)) {
+            return;
+        }
+
         if ((string) $session->created_by === (string) $request->user()->id) {
             return;
         }
@@ -524,6 +532,7 @@ class TasmiController extends Controller
 
         abort_unless(
             $this->access->isSchoolCoordinator($request->user(), $certificate->school_id, $certificate->academic_year_id)
+            || ($this->access->isSchoolLeader($request->user()) && (string) $certificate->school_id === (string) $this->schoolId($request))
             || (string) $certificate->issued_by === (string) $request->user()->id
             || $certificate->participant?->session?->participants()
                 ->where('mustami_id', $request->user()->id)->exists(),

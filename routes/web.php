@@ -216,6 +216,7 @@ use App\Http\Controllers\StudyGroupSubjectController;
 use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
+use App\Http\Controllers\Tahfidz\TahfidzInputController;
 use App\Http\Controllers\Tahfidz\TahfidzMonitoringController;
 use App\Http\Controllers\Tahfidz\TasmiController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
@@ -462,15 +463,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::get('input-hafalan', [TahfidzInputController::class, 'index'])->name('input.index');
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
-                Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
                 Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
 
                 Route::prefix('tasmi')->name('tasmi.')->group(function () {
                     Route::get('/', [TasmiController::class, 'index'])->name('index');
                     Route::post('/', [TasmiController::class, 'store'])->name('store');
                     Route::get('/certificates', [TasmiController::class, 'certificates'])->name('certificates');
-                    Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/{certificateId}/print', [TasmiController::class, 'certificatePrint'])->name('certificate.print');
                     Route::post('/participants/{participantId}/score', [TasmiController::class, 'score'])->name('participant.score');

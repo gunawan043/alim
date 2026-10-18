@@ -443,6 +443,8 @@ class TahfidzMasterController extends Controller
         abort_unless(
             $this->access->canViewAllSchools($request->user())
             || $this->access->isSchoolCoordinator($request->user(), $this->schoolId($request))
+            || $this->access->isSchoolLeader($request->user())
+            || $this->access->isTahfidzTeacher($request->user())
             || (function_exists('canPermission') && canPermission('tahfidz_view')),
             403,
             'Anda tidak berwenang melihat master muqorror tahfizh.'
@@ -472,6 +474,8 @@ class TahfidzMasterController extends Controller
         abort_unless(
             $this->access->canViewAllSchools($request->user())
             || $this->access->isSchoolCoordinator($request->user(), $this->schoolId($request))
+            || $this->access->isSchoolLeader($request->user())
+            || $this->access->isTahfidzTeacher($request->user())
             || (function_exists('canPermission') && canPermission('tahfidz_view')),
             403,
             'Anda tidak berwenang melihat RPP tahfizh.'

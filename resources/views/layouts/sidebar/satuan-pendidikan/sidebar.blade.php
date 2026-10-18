@@ -201,11 +201,20 @@
 </li>
 @endif
 
-@if($showAll || $isGuru)
+@if($showAll || ($isGuru && ! $isGuruTahfidz))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.guru']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.guru', ['userId' => $userId]) }}">
         <i class="ri-user-star-line"></i><span>Dashboard</span>
+    </a>
+</li>
+@endif
+
+@if($showAll || $isGuruTahfidz || $isKoorGuruTahfidz)
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.tahfidz']) ? ' active' : '' }}"
+       href="{{ route('user.dashboard.tahfidz', ['userId' => $userId]) }}">
+        <i class="ri-book-read-line"></i><span>Dashboard Tahfidz</span>
     </a>
 </li>
 @endif
@@ -303,7 +312,67 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 3 — KBM SAYA (Guru)
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuru)
+@if($isGuruTahfidz && ! $isKoorGuruTahfidz)
+    <li class="menu-title"><span>Tahfidz Saya</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.input.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.input.index', ['userId' => $userId]) }}">
+            <i class="ri-add-box-line"></i><span>Input Hafalan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
+            <i class="ri-team-line"></i><span>Halaqah Saya</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}">
+            <i class="ri-file-add-line"></i><span>Setoran Hafalan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.mutabaah.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.monitoring.index', ['userId' => $userId]) }}">
+            <i class="ri-line-chart-line"></i><span>Monitoring Hafalan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">
+            <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
+            <i class="ri-file-list-3-line"></i><span>RPP Tahfizh</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') === 'iqro' ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId, 'type' => 'iqro']) }}">
+            <i class="ri-book-read-line"></i><span>RPP Iqro’</span>
+        </a>
+    </li>
+@endif
+
+@if($showAll || ($isGuru && ! $isGuruTahfidz))
     <li class="menu-title"><span>KBM Saya</span></li>
 
     <li class="nav-item">
@@ -782,7 +851,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 5b — BANK SOAL & ASESMEN (Guru, Koor Mapel, Kurikulum, TU)
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuru || $isKoorMapel || $isTimKurikulumG || $isAdminTU)
+@if($showAll || ($isGuru && ! $isGuruTahfidz) || $isKoorMapel || $isTimKurikulumG || $isAdminTU)
     <li class="menu-title"><span>Bank Soal &amp; Asesmen</span></li>
 
     <li class="nav-item">
@@ -1283,7 +1352,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 15 — TAHFIDZ
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuruTahfidz || $isKoorGuruTahfidz || $isKepala || $isWakil || $isKoorKurik || $isTimKurikulum)
+@if($showAll || $isKoorGuruTahfidz || $isKepala || $isWakil || $isKoorKurik || $isTimKurikulum)
     <li class="menu-title"><span>Tahfidz</span></li>
 
     <li class="nav-item">
@@ -1297,6 +1366,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
             <i class="ri-team-line"></i><span>Halaqah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.input.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.input.index', ['userId' => $userId]) }}">
+            <i class="ri-add-box-line"></i><span>Input Hafalan</span>
         </a>
     </li>
 
