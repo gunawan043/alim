@@ -348,7 +348,7 @@
                                         </th>
                                         @if($isSasLeger)
                                             <th colspan="3" class="align-middle" style="background:var(--bs-warning-bg-subtle);color:var(--bs-warning-text-emphasis);letter-spacing:0.4px;">PEMBIASAAN PAGI</th>
-                                            <th colspan="2" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
+                                            <th colspan="3" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
                                         @endif
                                         @if(($agamaCount ?? 0) > 0)
                                             <th colspan="{{ $agamaCount }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
@@ -368,6 +368,7 @@
                                             <th rowspan="3" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
                                             <th rowspan="3" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
                                             <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
+                                            <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
                                             <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
                                         @endif
                                         @foreach($subjectMap as $subject)
@@ -423,8 +424,12 @@
                                                 if (!$book) continue;
                                                 $n = $nilaiMap[$sid][$book->id] ?? null;
                                                 $col = ($legerMode ?? 'sts') === 'sas' ? 'sas' : 'sts';
-                                                if ($n && $n->{$col} !== null) {
-                                                    $jumlahSts += $n->{$col};
+                                                $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
+                                                if ($val === null && $n && $n->{$col} !== null) {
+                                                    $val = $n->{$col};
+                                                }
+                                                if ($val !== null) {
+                                                    $jumlahSts += $val;
                                                     $countMapel++;
                                                 }
                                             }
@@ -465,6 +470,7 @@
                                                 <td class="text-center" style="background:var(--bs-warning-bg-subtle);" data-col="hiwar">{{ $pembRow && $pembRow->skor_hiwar !== null ? number_format($pembRow->skor_hiwar, 1) : '—' }}</td>
                                                 <td class="text-center" style="background:var(--bs-warning-bg-subtle);" data-col="conv">{{ $pembRow && $pembRow->skor_conversation !== null ? number_format($pembRow->skor_conversation, 1) : '—' }}</td>
                                                 <td class="text-center" style="background:var(--bs-primary-bg-subtle);" data-col="juz">{{ $tjuzRow?->juz_number ?? '—' }}</td>
+                                                <td class="text-center fw-semibold" style="background:var(--bs-primary-bg-subtle);" data-col="jumlah_juz">{{ $jumlahJuzMap[$sid] ?? 0 }}</td>
                                                 <td class="text-center" style="background:var(--bs-primary-bg-subtle);" data-col="halaqoh">{{ $hqRow?->name ?? '—' }}</td>
                                             @endif
                                             @foreach($subjectMap as $subject)
@@ -472,7 +478,10 @@
                                                     $book = $bookMap[$subject->id] ?? null;
                                                     $n = $book ? ($nilaiMap[$student->id][$book->id] ?? null) : null;
                                                     $kkm = $book?->kktp?->kkm_score ?? 75;
-                                                    $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
+                                                    $stsVal = $nilaiTahfidzMap[$student->id][$book?->id] ?? null;
+                                                    if ($stsVal === null) {
+                                                        $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
+                                                    }
                                                     $belowKkm = $stsVal !== null && $stsVal < $kkm;
                                                 @endphp
                                                 <td style="text-align:center;" data-col="subject-{{ $subject->id }}">
@@ -895,6 +904,7 @@
     #tab-leger th[data-sort="hiwar"], #tab-leger td[data-col="hiwar"] { width: 50px; min-width: 50px; max-width: 50px; }
     #tab-leger th[data-sort="conv"], #tab-leger td[data-col="conv"] { width: 84px; min-width: 84px; max-width: 84px; }
     #tab-leger th[data-sort="juz"], #tab-leger td[data-col="juz"] { width: 46px; min-width: 46px; max-width: 46px; }
+    #tab-leger th[data-sort="jumlah_juz"], #tab-leger td[data-col="jumlah_juz"] { width: 58px; min-width: 58px; max-width: 58px; }
     #tab-leger th[data-sort="halaqoh"], #tab-leger td[data-col="halaqoh"] { width: 84px; min-width: 84px; max-width: 84px; }
     #tab-leger th[data-sort="total"], #tab-leger td[data-col="total"] { width: 76px; min-width: 76px; max-width: 76px; }
     #tab-leger th[data-sort="avg"], #tab-leger td[data-col="avg"] { width: 82px; min-width: 82px; max-width: 82px; }

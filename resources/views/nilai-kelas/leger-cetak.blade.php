@@ -64,6 +64,7 @@
                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                 </th>
             @endforeach
+            <th class="aggregate" style="width:45px;">Jml Juz</th>
             <th class="aggregate" style="width:45px;">Jml</th>
             <th class="aggregate" style="width:45px;">Rata</th>
             <th style="width:35px;">Rank</th>
@@ -78,7 +79,7 @@
                 @php $book = $bookMap[$subject->id] ?? null; @endphp
                 <th style="background:#f0f0f0;font-weight:700;">{{ \App\Support\AcademicNilai::kkmLabel($book) }}</th>
             @endforeach
-            <th class="aggregate" colspan="7"></th>
+            <th class="aggregate" colspan="8"></th>
         </tr>
     </thead>
     <tbody>
@@ -118,6 +119,7 @@
                         <td class="empty">—</td>
                     @endif
                 @endforeach
+                <td class="aggregate">{{ $jumlahJuzMap[$sid] ?? 0 }}</td>
                 <td class="aggregate">{{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}</td>
                 <td class="aggregate">{{ $avgVal !== null ? number_format($avgVal, 1) : '—' }}</td>
                 <td class="aggregate">{{ $rankVal ?? '—' }}</td>
@@ -127,7 +129,7 @@
                 <td style="background:#ffebee;">{{ $pres['a'] ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="{{ $subjectMap->count() + 10 }}" style="text-align:center;color:#888;">Tidak ada data.</td></tr>
+            <tr><td colspan="{{ $subjectMap->count() + 11 }}" style="text-align:center;color:#888;">Tidak ada data.</td></tr>
         @endforelse
     </tbody>
 </table>

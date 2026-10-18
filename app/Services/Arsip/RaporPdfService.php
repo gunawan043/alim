@@ -6,12 +6,13 @@ use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
 use App\Models\RaporDistributionSetting;
-use App\Services\ArabicName\ArabicNameResolver;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
+use App\Services\ArabicName\ArabicNameResolver;
+use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -168,7 +169,9 @@ class RaporPdfService
         foreach ($subjectMap as $idx => $subject) {
             $book = $bookMap[$subject->id] ?? null;
             $n = $book ? ($nilaiMap[$book->id] ?? null) : null;
-            $nilai = AcademicNilai::resolveTampil($jenis, $n);
+            $nilai = $book
+                ? app(TahfidzRaporService::class)->scoreFor($studentId, $book, $selectedAyId, $selectedSem, $jenis, $n)
+                : AcademicNilai::resolveTampil($jenis, $n);
 
             if ($nilai !== null) {
                 $jumlahNilai += $nilai;

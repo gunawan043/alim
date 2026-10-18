@@ -23,6 +23,7 @@ use App\Services\Arsip\LegerPdfService;
 use App\Services\Arsip\RaporPdfService;
 use App\Services\KurikulumAccess;
 use App\Services\SumatifHarianService;
+use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
@@ -177,6 +178,7 @@ class NilaiKelasController extends Controller
 
         // Nilai STS per siswa per mapel (dari semua admin books di kelas ini)
         $nilaiMap = [];
+        $studentIds = [];
         if ($students->isNotEmpty() && $selectedAyId) {
             $studentIds = $students->pluck('student_id')->toArray();
             $subjectIds = $subjectMap->pluck('id')->toArray();
@@ -264,6 +266,18 @@ class NilaiKelasController extends Controller
             }
         }
 
+        $jumlahJuzMap = [];
+        if ($selectedAyId && ! empty($studentIds)) {
+            $jumlahJuzMap = TahfidzJuzProgress::query()
+                ->whereIn('student_id', $studentIds)
+                ->where('academic_year_id', $selectedAyId)
+                ->whereIn('status', ['selesai_ziyadah', 'sudah_tasmi'])
+                ->get()
+                ->groupBy('student_id')
+                ->map->count()
+                ->all();
+        }
+
         // Pemilih kelas untuk TU/struktural: daftar rombel sekolah pada TA terpilih
         $schoolGroups = collect();
         if ($isPrivileged) {
@@ -296,6 +310,20 @@ class NilaiKelasController extends Controller
         // Peringkat & Predikat (per siswa): aggregate STS per mapel → rata-rata kelas
         $legerCol = $legerMode === 'sas' ? 'sas' : 'sts';
 
+        $nilaiTahfidzMap = [];
+        foreach ($students as $history) {
+            $sid = $history->student_id;
+            foreach ($subjectMap as $subject) {
+                $book = $bookMap[$subject->id] ?? null;
+                if (! $book || ! app(TahfidzRaporService::class)->isTahfidzSubject($book->subject)) {
+                    continue;
+                }
+                $nilaiTahfidzMap[$sid][$book->id] = app(TahfidzRaporService::class)->scoreFor(
+                    $sid, $book, $selectedAyId, $selectedSemester, $legerMode, $nilaiMap[$sid][$book->id] ?? null
+                );
+            }
+        }
+
         $legerAggMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
@@ -307,8 +335,12 @@ class NilaiKelasController extends Controller
                     continue;
                 }
                 $n = $nilaiMap[$sid][$book->id] ?? null;
-                if ($n && $n->{$legerCol} !== null) {
-                    $total += $n->{$legerCol};
+                $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
+                if ($val === null && $n && $n->{$legerCol} !== null) {
+                    $val = $n->{$legerCol};
+                }
+                if ($val !== null) {
+                    $total += $val;
                     $count++;
                 }
             }
@@ -340,7 +372,7 @@ class NilaiKelasController extends Controller
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
-            'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
+            'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
             'isArchiveAy', 'activeAyId'
         ));
     }
@@ -752,9 +784,20 @@ class NilaiKelasController extends Controller
                 if (! $book) {
                     continue;
                 }
-                $nilaiResolved[$sid][$book->id] = $this->resolveNilaiTampil($jenis, $nilaiMap[$sid][$book->id] ?? null);
+                $nilaiResolved[$sid][$book->id] = app(TahfidzRaporService::class)->scoreFor(
+                    $sid, $book, $selectedAyId, $selectedSem, $jenis, $nilaiMap[$sid][$book->id] ?? null
+                );
             }
         }
+
+        $jumlahJuzMap = TahfidzJuzProgress::query()
+            ->whereIn('student_id', $students->pluck('student_id'))
+            ->where('academic_year_id', $selectedAyId)
+            ->whereIn('status', ['selesai_ziyadah', 'sudah_tasmi'])
+            ->get()
+            ->groupBy('student_id')
+            ->map->count()
+            ->all();
 
         $legerAggMap = [];
         foreach ($students as $history) {
@@ -789,7 +832,7 @@ class NilaiKelasController extends Controller
 
         return Excel::download(new LegerExport(compact(
             'studyGroup', 'selectedAy', 'selectedSem', 'subjectMap', 'bookMap',
-            'students', 'nilaiMap', 'legerAggMap', 'rankMap', 'presensiMap', 'jenis', 'nilaiResolved'
+            'students', 'nilaiMap', 'legerAggMap', 'rankMap', 'presensiMap', 'jenis', 'nilaiResolved', 'jumlahJuzMap'
         )), $filename);
     }
 

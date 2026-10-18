@@ -7,7 +7,9 @@ use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
+use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -105,7 +107,8 @@ class LegerPdfService
                 if (! $book) {
                     continue;
                 }
-                $nilaiResolved[$sid][$book->id] = AcademicNilai::resolveTampil($jenis, $nilaiMap[$sid][$book->id] ?? null);
+                $nilaiResolved[$sid][$book->id] = app(TahfidzRaporService::class)
+                    ->scoreFor($sid, $book, $selectedAyId, $selectedSem, $jenis, $nilaiMap[$sid][$book->id] ?? null);
             }
         }
 
@@ -135,6 +138,18 @@ class LegerPdfService
             $rankMap[$sid] = $rank++;
         }
 
+        $jumlahJuzMap = [];
+        if ($students->isNotEmpty() && $selectedAyId) {
+            $jumlahJuzMap = TahfidzJuzProgress::query()
+                ->whereIn('student_id', $students->pluck('student_id'))
+                ->where('academic_year_id', $selectedAyId)
+                ->whereIn('status', ['selesai_ziyadah', 'sudah_tasmi'])
+                ->get()
+                ->groupBy('student_id')
+                ->map->count()
+                ->all();
+        }
+
         return [
             'studyGroup' => $studyGroup,
             'subjectMap' => $subjectMap,
@@ -149,6 +164,7 @@ class LegerPdfService
             'rankMap' => $rankMap,
             'jenis' => $jenis,
             'nilaiResolved' => $nilaiResolved,
+            'jumlahJuzMap' => $jumlahJuzMap,
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Support\AcademicNilai;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -32,7 +33,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
             $book = $this->data['bookMap'][$subject->id] ?? null;
             $kkmRow->push($book?->kktp?->kkm_score ?? '—');
         }
-        $kkmRow->push('')->push('')->push('')->push('')->push('')->push('')->push('');
+        $kkmRow->push('')->push('')->push('')->push('')->push('')->push('')->push('')->push('');
         $rows->push(['type' => 'kkm', 'data' => $kkmRow]);
 
         // Student rows
@@ -69,6 +70,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
                 }
             }
 
+            $row->push($this->data['jumlahJuzMap'][$sid] ?? 0);
             $row->push($count > 0 ? round($jumlah, 1) : '—');
             $row->push($avgVal !== null ? round($avgVal, 1) : '—');
             $row->push($rankVal ?? '—');
@@ -89,7 +91,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
         foreach ($this->data['subjectMap'] as $subject) {
             $headers[] = $subject->code ?? Str::limit($subject->name, 10);
         }
-        $headers = array_merge($headers, ['Jumlah', 'Rata-rata', 'Rank', 'Predikat', 'S', 'I', 'A']);
+        $headers = array_merge($headers, ['Jml Juz', 'Jumlah', 'Rata-rata', 'Rank', 'Predikat', 'S', 'I', 'A']);
 
         return $headers;
     }
@@ -101,7 +103,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
 
     public function styles(Worksheet $sheet)
     {
-        $totalCols = 3 + $this->data['subjectMap']->count() + 7; // No + NIS + Nama + mapel + agg + pres
+        $totalCols = 3 + $this->data['subjectMap']->count() + 8; // No + NIS + Nama + mapel + juz + agg + pres
         $colLetter = $sheet->getHighestColumn();
         $lastRow = $sheet->getHighestRow();
 
@@ -156,6 +158,6 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
 
     private function predikatText(?float $avg): string
     {
-        return \App\Support\AcademicNilai::predikat($avg);
+        return AcademicNilai::predikat($avg);
     }
 }
