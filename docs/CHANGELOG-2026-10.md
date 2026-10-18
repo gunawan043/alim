@@ -1848,6 +1848,15 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Endpoint **verifikasi aset URT** (`POST /sarpras/aset/{id}/verifikasi`) dengan keputusan verified/rejected + catatan.
 - Unit kerja membuat/mendata aset; URT memverifikasi; kepemilikan tetap `assets.work_unit_id`.
 
+## 173. Sarpras — UI Verifikasi Aset (Pola gtk/index + Modal)
+
+- Halaman Aset/Inventaris memakai stat cards, filter standar, tabel, `x-empty-state`, dan `shared._pagination`.
+- Kolom **Verifikasi** (pending/verified/rejected) + filter status verifikasi.
+- URT dapat memverifikasi/menolak aset via modal lord-icon:
+  - `POST /sarpras/aset/{id}/verifikasi` + catatan penolakan.
+- Statistik: total aset, menunggu verifikasi, kondisi rusak, dipinjam.
+- Data aset baru dari unit tetap `pending` sampai diverifikasi URT; kepemilikan `work_unit_id` tidak berubah.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

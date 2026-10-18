@@ -52,12 +52,27 @@ class SarprasAsetController extends SarprasBaseController
         if ($request->filled('room_id')) {
             $query->where('room_id', $request->room_id);
         }
+        if ($request->filled('verification_status')) {
+            $query->where('verification_status', $request->verification_status);
+        }
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('verification_status', 'pending')->count(),
+            'broken' => (clone $query)->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])->count(),
+            'borrowed' => (clone $query)->where('status', 'dipinjam')->count(),
+        ];
 
         $asets = $query->orderBy('asset_name')->paginate(15)->withQueryString();
         $rooms = AssetRoom::where('is_active', true)->orderBy('room_name')->get();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
+        $canVerify = auth()->user() && (
+            (method_exists(auth()->user(), 'isSystemAdmin') && auth()->user()->isSystemAdmin())
+            || canPermission('sarpras.asset.manage')
+            || canPermission('sarpras.asset.verify')
+        );
 
-        return view('sarpras.aset.index', compact('asets', 'rooms', 'categories'));
+        return view('sarpras.aset.index', compact('asets', 'rooms', 'categories', 'stats', 'canVerify'));
     }
 
     public function create(Request $request)
