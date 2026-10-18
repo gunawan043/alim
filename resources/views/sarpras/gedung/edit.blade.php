@@ -30,9 +30,9 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Satuan Pendidikan <span class="text-danger">*</span></label>
-                                <select name="school_id" id="school_id" class="form-control" required>
-                                    <option value="">— Pilih Sekolah —</option>
+                                <label class="form-label">Satuan Pendidikan <span class="text-muted">(opsional)</span></label>
+                                <select name="school_id" id="school_id" class="form-control">
+                                    <option value="">— Unit Rumah Tangga / belum ditentukan —</option>
                                     @foreach($schools as $s)
                                         <option value="{{ $s->id }}" {{ old('school_id', $gedung->school_id) == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
                                     @endforeach

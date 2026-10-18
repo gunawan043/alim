@@ -2,6 +2,7 @@
 
 namespace App\Services\Sarpras;
 
+use App\Models\AssetMaintenanceLog;
 use App\Models\ChecklistInstance;
 use App\Models\MaintenanceHistory;
 use App\Models\RepairRequest;
@@ -49,7 +50,10 @@ class WorkOrderExecutionService
             }
 
             $this->cacheInvalidator->invalidateWorkOrder($order);
-            $this->eventLogger->logWorkOrderAssigned($order->asset, $order->order_number, $technician->id, $technician->id);
+
+            if ($order->asset) {
+                $this->eventLogger->logWorkOrderAssigned($order->asset, $order->order_number, $technician->id, $technician->id);
+            }
 
             return $order->fresh();
         });
@@ -104,6 +108,11 @@ class WorkOrderExecutionService
     public function complete(WorkOrder $order, User $technician, array $payload = []): WorkOrder
     {
         return DB::transaction(function () use ($order, $technician, $payload) {
+            $asset = $order->asset;
+            $schedule = $order->maintenanceSchedule;
+            $conditionBefore = $asset?->condition;
+            $conditionAfter = $payload['condition_after'] ?? $conditionBefore;
+
             $order->update([
                 'status' => 'completed',
                 'actual_end' => now(),
@@ -118,12 +127,46 @@ class WorkOrderExecutionService
                 ]);
             }
 
-            $conditionBefore = $order->asset->condition;
-
-            if (! empty($payload['condition_after'])) {
-                $order->asset->update([
+            if ($asset && ! empty($payload['condition_after'])) {
+                $asset->update([
                     'condition' => $payload['condition_after'],
                     'status' => 'tersedia',
+                    'last_condition_update' => today(),
+                ]);
+            }
+
+            $nextDueDate = null;
+
+            if ($schedule) {
+                $nextDueDate = $this->calculateNextMaintenanceDate(today(), $schedule->frequency);
+
+                $schedule->update([
+                    'last_maintenance_date' => today(),
+                    'next_maintenance_date' => $nextDueDate,
+                    'status' => 'completed',
+                    'unit_approval_status' => 'approved',
+                ]);
+
+                AssetMaintenanceLog::create([
+                    'schedule_id' => $schedule->id,
+                    'work_unit_id' => $schedule->work_unit_id,
+                    'school_id' => $schedule->school_id,
+                    'asset_id' => $order->asset_id,
+                    'building_id' => $order->building_id,
+                    'room_id' => $order->room_id,
+                    'maintenance_type' => $schedule->maintenance_type,
+                    'maintenance_date' => today(),
+                    'performed_by' => $technician->id,
+                    'handled_by' => $technician->id,
+                    'actual_cost' => (float) ($payload['total_cost'] ?? 0),
+                    'cost' => (float) ($payload['total_cost'] ?? 0),
+                    'condition_before' => $conditionBefore,
+                    'condition_after' => $conditionAfter,
+                    'work_description' => $payload['notes'] ?? $order->scope_of_work,
+                    'description' => $payload['notes'] ?? $order->scope_of_work,
+                    'parts_replaced' => $payload['parts_replaced'] ?? null,
+                    'next_due_date' => $nextDueDate,
+                    'created_by' => $technician->id,
                 ]);
             }
 
@@ -136,30 +179,63 @@ class WorkOrderExecutionService
                 ]);
             }
 
-            MaintenanceHistory::create([
-                'asset_id' => $order->asset_id,
-                'maintenance_type' => 'korektif',
-                'performed_date' => today(),
-                'performed_by_name' => $technician->name,
-                'condition_before' => $conditionBefore,
-                'condition_after' => $payload['condition_after'] ?? $order->asset->condition,
-                'work_description' => $payload['notes'] ?? $order->scope_of_work,
-                'cost' => (float) ($payload['total_cost'] ?? 0),
-            ]);
+            if ($asset) {
+                MaintenanceHistory::create([
+                    'asset_id' => $asset->id,
+                    'maintenance_type' => $schedule?->maintenance_type ?? 'korektif',
+                    'performed_date' => today(),
+                    'performed_by_name' => $technician->name,
+                    'condition_before' => $conditionBefore,
+                    'condition_after' => $conditionAfter,
+                    'work_description' => trim(($payload['notes'] ?? $order->scope_of_work).(! empty($payload['parts_replaced']) ? ' | Ganti: '.$payload['parts_replaced'] : '')),
+                    'cost' => (float) ($payload['total_cost'] ?? 0),
+                    'next_due_date' => $nextDueDate,
+                ]);
+            }
 
             $this->logNote($order, $technician, "Completed by {$technician->name}", 'resolution');
 
             $this->cacheInvalidator->invalidateWorkOrder($order);
-            $this->eventLogger->logRepairCompleted(
-                $order->asset,
-                $order->order_number,
-                $payload['condition_after'] ?? 'baik',
-                (float) ($payload['total_cost'] ?? 0),
-                $technician->id
-            );
+
+            if ($asset) {
+                if ($schedule) {
+                    $this->eventLogger->log($asset, 'maintenance_completed', [
+                        'order_number' => $order->order_number,
+                        'schedule_id' => $schedule->id,
+                        'condition_after' => $conditionAfter,
+                        'cost' => (float) ($payload['total_cost'] ?? 0),
+                        'performed_date' => today()->toDateString(),
+                    ], $technician->id);
+                } else {
+                    $this->eventLogger->logRepairCompleted(
+                        $asset,
+                        $order->order_number,
+                        $conditionAfter ?? 'baik',
+                        (float) ($payload['total_cost'] ?? 0),
+                        $technician->id
+                    );
+                }
+            }
 
             return $order->fresh();
         });
+    }
+
+    private function calculateNextMaintenanceDate($date, string $frequency): string
+    {
+        $carbon = \Carbon\Carbon::parse($date);
+
+        $next = match ($frequency) {
+            'harian' => $carbon->addDay(),
+            'mingguan' => $carbon->addWeek(),
+            'bulanan' => $carbon->addMonth(),
+            'triwulan' => $carbon->addMonths(3),
+            'semester' => $carbon->addMonths(6),
+            'tahunan' => $carbon->addYear(),
+            default => $carbon->addMonth(),
+        };
+
+        return $next->toDateString();
     }
 
     public function logNote(WorkOrder $order, User $user, string $note, string $type = 'comment'): WorkOrderProgressNote

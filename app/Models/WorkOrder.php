@@ -26,8 +26,12 @@ class WorkOrder extends Model
     protected $fillable = [
         'uuid', 'sync_token',
         'repair_request_id',
+        'maintenance_schedule_id',
         'asset_id',
+        'room_id',
+        'building_id',
         'assignee_id',
+        'created_by',
         'type',
         'scope_of_work',
         'scheduled_date',
@@ -53,6 +57,41 @@ class WorkOrder extends Model
     public function asset()
     {
         return $this->belongsTo(Asset::class, 'asset_id');
+    }
+
+    public function maintenanceSchedule()
+    {
+        return $this->belongsTo(AssetMaintenanceSchedule::class, 'maintenance_schedule_id');
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(AssetRoom::class, 'room_id');
+    }
+
+    public function building()
+    {
+        return $this->belongsTo(AssetBuilding::class, 'building_id');
+    }
+
+    public function getTargetNameAttribute(): string
+    {
+        return $this->asset?->asset_name
+            ?? $this->room?->room_name
+            ?? $this->building?->building_name
+            ?? '—';
+    }
+
+    public function getTargetLocationAttribute(): string
+    {
+        if ($this->asset) {
+            return trim(($this->asset->room?->building?->building_name ? $this->asset->room->building->building_name.' — ' : '').($this->asset->room?->room_name ?? '')) ?: '—';
+        }
+
+        return $this->room?->building?->building_name
+            ?? $this->room?->room_name
+            ?? $this->building?->building_name
+            ?? '—';
     }
 
     public function assignee()

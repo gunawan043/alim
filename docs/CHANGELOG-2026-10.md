@@ -2002,6 +2002,32 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Halaman baru: `/sarpras/checklist` dan detail instance checklist.
 - Seeder: `SarprasChecklistTemplateSeeder` (dijalankan otomatis dari `DatabaseSeeder` pada deploy berikutnya).
 
+## 185. Sarpras — Eksekusi Perawatan Preventif & Seeder Lokasi
+
+- Work order kini mendukung **perawatan preventif** dari jadwal, bukan hanya perbaikan dari laporan kerusakan:
+  - `work_orders.repair_request_id` boleh kosong;
+  - kolom baru `maintenance_schedule_id`, `room_id`, `building_id`, `created_by`;
+  - target bisa aset, ruang, atau gedung.
+- Alur eksekusi:
+  1. Kepala unit menyetujui jadwal.
+  2. URT membuat work order dari jadwal dan menugaskan teknisi.
+  3. Teknisi membuka workspace, mengisi checklist, mulai/jeda/selesai.
+  4. Penyelesaian work order memperbarui:
+     - status jadwal → `completed`;
+     - tanggal perawatan terakhir dan jadwal berikutnya;
+     - `asset_maintenance_logs` + `maintenance_histories`;
+     - kondisi aset (bila target aset);
+     - passport QR.
+- Form **Buat Work Order** tersedia di detail jadwal; daftar work order dan statusnya tampil di halaman yang sama.
+- Penyelesaian work order mendukung pencatatan **suku cadang yang diganti** dan biaya aktual.
+- Master gedung dari formulir pemeliharaan Bapak di-seed untuk **36 gedung** yang nama/areanya jelas
+  (Pondok Putra, Pondok Putri, Lawata) di bawah Unit Rumah Tangga.
+  - Kamar mandi **tidak di-seed** karena satuan pendidikan/unit pemilik kamar belum jelas.
+  - AC, genset, pompa/panel, jaringan listrik, air minum, dan septic tank **tidak di-seed**
+    karena lokasi ruang, unit pemilik, jumlah, merek, dan data perolehan belum jelas; akan diisi sebagai data asli.
+- Request class `GedungStoreRequest`/`GedungUpdateRequest` yang sebelumnya hilang sudah dibuat,
+  sehingga form gedung tidak lagi error. Gedung dapat dibuat tanpa sekolah dan otomatis menjadi master URT.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

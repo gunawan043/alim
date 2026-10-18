@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             AssetCategorySeeder::class,        // kategori aset dasar
             SarprasInventoryCategorySeeder::class, // golongan Buku Induk A-I
             SarprasChecklistTemplateSeeder::class, // checklist pemeliharaan gedung/AC/genset/dll.
+            SarprasBuildingLocationSeeder::class, // master gedung dari formulir pemeliharaan (lokasi jelas)
             // UksWorkUnitSeeder::class,      // UKS Putra & UKS Putri satker units
             PermitTypeSeeder::class,       // master jenis izin (pulang, sakit, dll.)
             StafPerizinanSeeder::class,    // granular permissions for Staf Perizinan

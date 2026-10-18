@@ -12,6 +12,7 @@ use App\Models\AssetMaintenanceSchedule;
 use App\Models\AssetRoom;
 use App\Models\ChecklistInstance;
 use App\Models\MaintenanceHistory;
+use App\Models\WorkOrder;
 use App\Models\School;
 use App\Models\User;
 use App\Services\Sarpras\AssetEventLogger;
@@ -199,7 +200,14 @@ class SarprasMaintenanceController extends SarprasBaseController
             ->latest()
             ->get();
 
-        return view('sarpras.pemeliharaan.schedule.show', compact('schedule', 'canManage', 'canApprove', 'checklistInstances'));
+        $workOrders = WorkOrder::with(['assignee'])
+            ->where('maintenance_schedule_id', $schedule->id)
+            ->latest()
+            ->get();
+
+        $technicians = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('sarpras.pemeliharaan.schedule.show', compact('schedule', 'canManage', 'canApprove', 'checklistInstances', 'workOrders', 'technicians'));
     }
 
     public function scheduleEdit(Request $request, string $id)
@@ -272,6 +280,58 @@ class SarprasMaintenanceController extends SarprasBaseController
 
         return redirect()->route('sarpras.pemeliharaan.schedule.index')
             ->with('success', 'Jadwal pemeliharaan berhasil dihapus.');
+    }
+
+    public function storeScheduleWorkOrder(Request $request, string $id)
+    {
+        $this->authorizeCentralSarpras();
+
+        $schedule = AssetMaintenanceSchedule::with(['asset', 'room', 'building'])->findOrFail($id);
+        abort_unless(
+            $schedule->unit_approval_status === AssetMaintenanceSchedule::APPROVAL_APPROVED,
+            422,
+            'Jadwal harus disetujui satuan kerja sebelum work order dibuat.'
+        );
+        abort_unless(
+            $schedule->asset_id || $schedule->room_id || $schedule->building_id,
+            422,
+            'Jadwal belum memiliki target aset, ruang, atau gedung.'
+        );
+
+        $validated = $request->validate([
+            'assignee_id' => 'required|uuid|exists:users,id',
+            'scheduled_date' => 'required|date|after_or_equal:today',
+            'type' => 'required|in:internal,vendor',
+            'scope_of_work' => 'required|string|max:2000',
+            'estimated_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $workOrder = DB::transaction(function () use ($schedule, $validated) {
+            $workOrder = WorkOrder::create([
+                'repair_request_id' => null,
+                'maintenance_schedule_id' => $schedule->id,
+                'asset_id' => $schedule->asset_id,
+                'room_id' => $schedule->room_id,
+                'building_id' => $schedule->building_id,
+                'assignee_id' => $validated['assignee_id'],
+                'created_by' => auth()->id(),
+                'type' => $validated['type'],
+                'scope_of_work' => $validated['scope_of_work'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'status' => 'dispatched',
+                'total_cost' => $validated['estimated_cost'] ?? 0,
+            ]);
+
+            $schedule->update(['status' => 'assigned']);
+
+            if ($schedule->asset) {
+                $this->eventLogger->logWorkOrderCreated($schedule->asset, $workOrder->order_number, auth()->id());
+            }
+
+            return $workOrder;
+        });
+
+        return back()->with('success', 'Work order '.$workOrder->order_number.' dibuat dan ditugaskan ke teknisi.');
     }
 
     public function approveSchedule(Request $request, string $id)

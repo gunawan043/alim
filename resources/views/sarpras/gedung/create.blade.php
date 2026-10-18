@@ -29,13 +29,13 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Satuan Pendidikan <span class="text-danger">*</span></label>
+                                <label class="form-label">Satuan Pendidikan <span class="text-muted">(opsional)</span></label>
                                 @if($schoolId)
                                     <input type="text" class="form-control" value="{{ $schools->first()?->name }}" readonly>
                                     <input type="hidden" name="school_id" value="{{ $schoolId }}">
                                 @else
-                                    <select name="school_id" id="school_id" class="form-control" required>
-                                        <option value="">— Pilih Sekolah —</option>
+                                    <select name="school_id" id="school_id" class="form-control">
+                                        <option value="">— Unit Rumah Tangga / belum ditentukan —</option>
                                         @foreach($schools as $s)
                                             <option value="{{ $s->id }}" {{ old('school_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
                                         @endforeach

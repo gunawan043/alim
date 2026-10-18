@@ -2666,6 +2666,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/pemeliharaan/jadwal/{id}/edit', [SarprasMaintenanceController::class, 'scheduleEdit'])->name('pemeliharaan.schedule.edit');
     Route::put('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleUpdate'])->name('pemeliharaan.schedule.update');
     Route::delete('/pemeliharaan/jadwal/{id}', [SarprasMaintenanceController::class, 'scheduleDestroy'])->name('pemeliharaan.schedule.destroy');
+    Route::post('/pemeliharaan/jadwal/{id}/work-order', [SarprasMaintenanceController::class, 'storeScheduleWorkOrder'])->name('pemeliharaan.schedule.work-order');
     Route::post('/pemeliharaan/jadwal/{id}/approve', [SarprasMaintenanceController::class, 'approveSchedule'])->name('pemeliharaan.schedule.approve');
     Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
     Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');

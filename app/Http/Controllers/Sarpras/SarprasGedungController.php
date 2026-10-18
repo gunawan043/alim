@@ -6,6 +6,8 @@ use App\Http\Requests\Sarpras\GedungStoreRequest;
 use App\Http\Requests\Sarpras\GedungUpdateRequest;
 use App\Models\AssetBuilding;
 use App\Models\School;
+use App\Models\WorkUnit;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class SarprasGedungController extends SarprasBaseController
@@ -60,9 +62,13 @@ class SarprasGedungController extends SarprasBaseController
 
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['created_by'] = auth()->id();
+        $validated['work_unit_id'] = $this->resolveBuildingWorkUnit($validated['school_id'] ?? null);
 
-        $school = School::find($validated['school_id']);
-        $validated['work_unit_id'] = $school->work_unit_id;
+        abort_if(! $validated['work_unit_id'], 422, 'Satuan kerja pemilik gedung belum dapat ditentukan.');
+
+        if (blank($validated['building_code'] ?? null)) {
+            $validated['building_code'] = $this->generateBuildingCode();
+        }
 
         AssetBuilding::create($validated);
         $this->bumpDashboardCache();
@@ -100,6 +106,11 @@ class SarprasGedungController extends SarprasBaseController
         $validated = $request->validated();
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['work_unit_id'] = $this->resolveBuildingWorkUnit($validated['school_id'] ?? null) ?? $gedung->work_unit_id;
+
+        if (blank($validated['building_code'] ?? null)) {
+            $validated['building_code'] = $gedung->building_code;
+        }
 
         $gedung->update($validated);
         $this->bumpDashboardCache();
@@ -123,5 +134,26 @@ class SarprasGedungController extends SarprasBaseController
 
         return redirect()->route('sarpras.gedung.index')
             ->with('success', 'Gedung berhasil dihapus.');
+    }
+
+    private function resolveBuildingWorkUnit(?string $schoolId): ?string
+    {
+        if ($schoolId) {
+            return School::query()->whereKey($schoolId)->value('work_unit_id');
+        }
+
+        return WorkUnit::query()
+            ->where('code', 'DEP-URT')
+            ->orWhere('name', 'like', '%Rumah Tangga%')
+            ->value('id');
+    }
+
+    private function generateBuildingCode(): string
+    {
+        do {
+            $code = 'GDG-'.strtoupper(Str::random(6));
+        } while (AssetBuilding::query()->where('building_code', $code)->exists());
+
+        return $code;
     }
 }

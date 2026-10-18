@@ -85,6 +85,30 @@
                 </div>
             </div>
 
+            <div class="card mt-3 border-primary">
+                <div class="card-header bg-primary-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="card-title mb-0 text-primary"><i class="ri-file-list-3-line me-1"></i>Work Order Perawatan</h5>
+                    @if($canManage && $schedule->unit_approval_status === 'approved')
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#maintenanceWorkOrderModal"><i class="ri-add-line me-1"></i>Buat Work Order</button>
+                    @endif
+                </div>
+                <div class="card-body p-0">
+                    @if($canManage && $schedule->unit_approval_status !== 'approved')
+                        <div class="alert alert-warning m-3 mb-0 small"><i class="ri-lock-line me-1"></i>Work order dapat dibuat setelah jadwal disetujui satuan kerja.</div>
+                    @endif
+                    @forelse($workOrders as $workOrder)
+                        @php $woTone = ['dispatched'=>'info','in_progress'=>'warning','waiting_parts'=>'warning','completed'=>'success','closed'=>'success','cancelled'=>'secondary'][$workOrder->status] ?? 'secondary'; @endphp
+                        <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom px-3 py-2">
+                            <div><div class="small fw-medium"><code>{{ $workOrder->order_number }}</code></div><div class="text-muted" style="font-size:.72rem">{{ $workOrder->scope_of_work }}</div></div>
+                            <div class="text-end"><span class="badge bg-{{ $woTone }}-subtle text-{{ $woTone }}">{{ ucfirst(str_replace('_',' ', $workOrder->status)) }}</span><div class="text-muted" style="font-size:.72rem">{{ $workOrder->assignee?->name ?? '-' }} · {{ $workOrder->scheduled_date?->format('d/m/Y') ?? '-' }}</div></div>
+                            <a href="{{ route('sarpras.teknisi.show', $workOrder->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a>
+                        </div>
+                    @empty
+                        <div class="p-3 text-center text-muted small"><i class="ri-file-list-line fs-3 d-block mb-1"></i>Belum ada work order perawatan.</div>
+                    @endforelse
+                </div>
+            </div>
+
             @if($canManage)
                 <div class="card mt-3 border-primary">
                     <div class="card-header bg-primary-subtle"><h5 class="card-title mb-0 text-primary"><i class="ri-tools-line me-1"></i>Catat Perawatan</h5></div>
@@ -141,5 +165,24 @@
             <textarea name="unit_approval_note" form="rejectScheduleForm" class="form-control" rows="2" required placeholder="Alasan penolakan…"></textarea>
         </x-modal-confirm>
         <form id="rejectScheduleForm" method="POST" action="{{ route('sarpras.pemeliharaan.schedule.reject', $schedule->id) }}" class="d-none">@csrf</form>
+    @endif
+
+    @if($canManage && $schedule->unit_approval_status === 'approved')
+        <div class="modal fade" id="maintenanceWorkOrderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="POST" action="{{ route('sarpras.pemeliharaan.schedule.work-order', $schedule->id) }}" class="modal-content">
+                    @csrf
+                    <div class="modal-header"><h5 class="modal-title"><i class="ri-file-list-3-line me-1"></i>Buat Work Order Perawatan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="mb-3"><label class="form-label">Petugas / Teknisi <span class="text-danger">*</span></label><select name="assignee_id" class="form-select" required><option value="">— Pilih —</option>@foreach($technicians as $technician)<option value="{{ $technician->id }}">{{ $technician->name }}</option>@endforeach</select></div>
+                        <div class="mb-3"><label class="form-label">Tanggal Pelaksanaan <span class="text-danger">*</span></label><input type="date" name="scheduled_date" class="form-control" value="{{ $schedule->next_maintenance_date?->format('Y-m-d') }}" required min="{{ date('Y-m-d') }}"></div>
+                        <div class="mb-3"><label class="form-label">Jenis Pekerjaan <span class="text-danger">*</span></label><select name="type" class="form-select" required><option value="internal">Internal URT</option><option value="vendor">Vendor / Pihak Ketiga</option></select></div>
+                        <div class="mb-3"><label class="form-label">Lingkup Pekerjaan <span class="text-danger">*</span></label><textarea name="scope_of_work" class="form-control" rows="3" required>{{ $schedule->maintenance_type }} — {{ $schedule->asset?->asset_name ?? $schedule->room?->room_name ?? $schedule->building?->building_name }}</textarea></div>
+                        <div><label class="form-label">Estimasi Biaya (Rp)</label><input type="number" name="estimated_cost" class="form-control" min="0" value="{{ $schedule->estimated_cost }}"></div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="ri-send-plane-line me-1"></i>Buat & Tugaskan</button></div>
+                </form>
+            </div>
+        </div>
     @endif
 @endsection

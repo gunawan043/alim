@@ -25,13 +25,13 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     {
         $user = Auth::user();
         $orders = WorkOrder::where('assignee_id', $user->id)
-            ->with(['asset.room', 'progressSteps'])
+            ->with(['asset.room.building', 'room.building', 'building', 'maintenanceSchedule', 'progressSteps'])
             ->orderByRaw("FIELD(status, 'in_progress', 'waiting_parts', 'dispatched', 'draft', 'completed', 'closed')")
             ->latest()
             ->paginate(15);
 
         $available = WorkOrder::whereNull('assignee_id')
-            ->with(['asset.room'])
+            ->with(['asset.room.building', 'room.building', 'building', 'maintenanceSchedule'])
             ->whereIn('status', ['draft', 'dispatched'])
             ->latest()
             ->limit(10)
@@ -43,7 +43,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     public function show(Request $request, string $orderId)
     {
         $order = WorkOrder::with([
-            'asset.room', 'asset.photos', 'repairRequest', 'progressSteps.performer',
+            'asset.room.building', 'room.building', 'building', 'maintenanceSchedule', 'asset.photos', 'repairRequest', 'progressSteps.performer',
         ])->findOrFail($orderId);
 
         return view('sarpras.technician.show', compact('order'));
