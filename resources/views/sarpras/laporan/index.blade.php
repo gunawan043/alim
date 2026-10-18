@@ -70,6 +70,17 @@
                     <div class="col-md-4">
                         <div class="card border">
                             <div class="card-body text-center">
+                                <i class="ri-book-open-line fs-1 text-primary mb-2"></i>
+                                <h5>Buku Peminjaman Barang</h5>
+                                <p class="text-muted small">Buku peminjaman lengkap dengan kondisi, tanggal, dan paraf petugas</p>
+                                <a href="{{ route('sarpras.laporan.buku-peminjaman') }}" class="btn btn-primary btn-sm"><i class="ri-eye-line me-1"></i> Lihat</a>
+                                <a href="{{ route('sarpras.laporan.buku-peminjaman.pdf') }}" class="btn btn-outline-primary btn-sm"><i class="ri-download-line me-1"></i> PDF</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body text-center">
                                 <i class="ri-tools-line fs-1 text-success mb-2"></i>
                                 <h5>Pemeliharaan</h5>
                                 <p class="text-muted small">Riwayat dan biaya pemeliharaan aset</p>

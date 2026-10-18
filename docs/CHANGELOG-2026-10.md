@@ -2077,6 +2077,21 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Laporan dapat diverifikasi/dikembalikan koordinator dengan catatan.
 - Waste management/DLH masih berupa rencana analisis lanjutan.
 
+## 188. Listrik/Token, Buku Peminjaman & Catatan Analisis Sampah
+
+- **Meter listrik**: 11 meter dari data Bapak di-seed (prabayar/pascabayar, nomor meter,
+  lokasi GENSET/MINIMART/GARDU AC, nominal default, jatuh tempo).
+- **Pengisian token/tagihan**: catatan per periode bulan, nominal, tanggal, bukti link Google Drive
+  atau upload lokal.
+- **Penanganan listrik padam**: kejadian, lokasi, jenis terencana/tidak terencana, penyebab,
+  tindakan petugas, waktu menyala kembali, foto sebelum/sesudah, status.
+- **Buku Peminjaman Barang**: laporan web + PDF sesuai kolom form URT
+  (peminjam, divisi, barang, kode, kondisi, tanggal, batas, paraf petugas).
+- **Foto bukti**: `PhotoProofService` mendukung link Google Drive untuk hemat memori
+  atau upload lokal.
+- Analisis pengelolaan sampah DLH ditulis di `docs/ANALISIS-PENGELOLAAN-SAMPAH-DLH.md`
+  sebagai dasar tahap berikutnya.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

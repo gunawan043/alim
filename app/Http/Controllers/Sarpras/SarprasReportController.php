@@ -86,6 +86,63 @@ class SarprasReportController extends SarprasBaseController
     }
 
     /**
+     * Buku Peminjaman Barang (form manual URT).
+     */
+    public function bukuPeminjaman(Request $request)
+    {
+        $query = $this->loanReportQuery($request);
+        $loans = $query->paginate(25)->withQueryString();
+        $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
+        $summary = [
+            'total' => (clone $query)->count(),
+            'dipinjam' => (clone $query)->whereIn('status', ['approved', 'dipinjam'])->count(),
+            'kembali' => (clone $query)->where('status', 'dikembalikan')->count(),
+            'terlambat' => (clone $query)->where('status', 'terlambat')->count(),
+        ];
+
+        return view('sarpras.laporan.buku-peminjaman', compact('loans', 'schools', 'summary'));
+    }
+
+    public function bukuPeminjamanPdf(Request $request)
+    {
+        $loans = $this->loanReportQuery($request)->get();
+
+        return $this->renderPdf(
+            'sarpras.laporan.pdf.buku-peminjaman',
+            compact('loans'),
+            'landscape',
+            'buku-peminjaman-barang-'.date('Ymd').'.pdf'
+        );
+    }
+
+    private function loanReportQuery(Request $request)
+    {
+        $query = AssetLoan::with([
+            'asset.category', 'asset.room.building',
+            'borrower.gtkWorkUnits.workUnit', 'approver', 'returnedToUser',
+        ]);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        if (! $this->canViewAll($request) && $schoolId) {
+            $query->where('school_id', $schoolId);
+        } elseif ($request->filled('school_id') && $this->canViewAll($request)) {
+            $query->where('school_id', $request->school_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('loan_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('loan_date', '<=', $request->date_to);
+        }
+
+        return $query->orderByDesc('loan_date')->orderByDesc('created_at');
+    }
+
+    /**
      * Laporan Kondisi Aset
      */
     public function kondisiAset(Request $request)

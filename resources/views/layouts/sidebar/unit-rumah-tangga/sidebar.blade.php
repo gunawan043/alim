@@ -177,6 +177,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.electricity']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.electricity.index') }}">
+            <i class="ri-flashlight-line"></i><span>Listrik &amp; Token</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.monitoring.rombel-kamar']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.monitoring.rombel-kamar') }}">
             <i class="ri-group-line"></i><span>Monitoring Rombel &amp; Kamar</span>

@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             SarprasChecklistTemplateSeeder::class, // checklist pemeliharaan gedung/AC/genset/dll.
             SarprasBuildingLocationSeeder::class, // master gedung dari formulir pemeliharaan (lokasi jelas)
             SarprasCleaningSeeder::class, // area, uraian, dan program kebersihan awal
+            SarprasElectricitySeeder::class, // meter listrik & token awal
             // UksWorkUnitSeeder::class,      // UKS Putra & UKS Putri satker units
             PermitTypeSeeder::class,       // master jenis izin (pulang, sakit, dll.)
             StafPerizinanSeeder::class,    // granular permissions for Staf Perizinan

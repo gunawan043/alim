@@ -163,6 +163,7 @@ use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
 use App\Http\Controllers\Sarpras\SarprasCleaningController;
+use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
@@ -2699,6 +2700,16 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
     Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');
 
+    // Listrik, token, dan penanganan padam
+    Route::get('/listrik', [SarprasElectricityController::class, 'index'])->name('electricity.index');
+    Route::post('/listrik/meter', [SarprasElectricityController::class, 'storeMeter'])->name('electricity.meter.store');
+    Route::post('/listrik/meter/{meterId}/toggle', [SarprasElectricityController::class, 'toggleMeter'])->name('electricity.meter.toggle');
+    Route::post('/listrik/meter/{meterId}/purchase', [SarprasElectricityController::class, 'storePurchase'])->name('electricity.purchase.store');
+    Route::post('/listrik/padam', [SarprasElectricityController::class, 'storeOutage'])->name('electricity.outage.store');
+    Route::get('/listrik/padam/{outageId}', [SarprasElectricityController::class, 'showOutage'])->name('electricity.outage.show');
+    Route::post('/listrik/padam/{outageId}/action', [SarprasElectricityController::class, 'storeAction'])->name('electricity.outage.action');
+    Route::post('/listrik/padam/{outageId}/resolve', [SarprasElectricityController::class, 'resolveOutage'])->name('electricity.outage.resolve');
+
     // Kebersihan / CS
     Route::get('/kebersihan', [SarprasCleaningController::class, 'index'])->name('kebersihan.index');
     Route::post('/kebersihan/area', [SarprasCleaningController::class, 'storeArea'])->name('kebersihan.area.store');
@@ -2820,6 +2831,8 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::get('/laporan/kondisi-aset', [SarprasReportController::class, 'kondisiAset'])->name('laporan.kondisi-aset');
     Route::get('/laporan/kondisi-aset/pdf', [SarprasReportController::class, 'kondisiAsetPdf'])->name('laporan.kondisi-aset.pdf');
     Route::get('/laporan/peminjaman', [SarprasReportController::class, 'peminjaman'])->name('laporan.peminjaman');
+    Route::get('/laporan/buku-peminjaman', [SarprasReportController::class, 'bukuPeminjaman'])->name('laporan.buku-peminjaman');
+    Route::get('/laporan/buku-peminjaman/pdf', [SarprasReportController::class, 'bukuPeminjamanPdf'])->name('laporan.buku-peminjaman.pdf');
     Route::get('/laporan/pemeliharaan', [SarprasReportController::class, 'pemeliharaan'])->name('laporan.pemeliharaan');
     Route::get('/laporan/nilai-aset', [SarprasReportController::class, 'nilaiAset'])->name('laporan.nilai-aset');
     Route::get('/laporan/export', [SarprasReportController::class, 'exportExcel'])->name('laporan.export');
