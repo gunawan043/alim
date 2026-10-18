@@ -53,5 +53,10 @@ class TahfidzAuditTest extends TestCase
             ->assertSee('Setoran Pending')
             ->assertSee('Target Belum Diatur')
             ->assertSee('Mutaba’ah Tertinggal');
+
+        $export = $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/audit?export=1");
+        $export->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $export->headers->get('content-disposition'));
     }
 }

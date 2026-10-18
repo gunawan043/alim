@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tahfidz;
 
+use App\Exports\TahfidzAuditExport;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\TahfidzCertificate;
@@ -16,6 +17,7 @@ use App\Models\TahfidzTasmianParticipant;
 use App\Services\TahfidzAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TahfidzAuditController extends Controller
 {
@@ -122,11 +124,50 @@ class TahfidzAuditController extends Controller
         ];
         $stats['total_issues'] = array_sum($stats);
 
+        if ($request->boolean('export')) {
+            return Excel::download(
+                new TahfidzAuditExport($this->exportRows(
+                    $pendingOld, $verifiedWithoutProgress, $recapMissing, $targetMissing,
+                    $membersWithoutMutabaah, $tasmiWithoutCertificate, $certificateIssues
+                )),
+                'Audit-Tahfidz-'.now()->format('Ymd-His').'.xlsx'
+            );
+        }
+
         return view('tahfidz.audit.index', compact(
             'userId', 'academicYear', 'groups', 'members', 'pendingOld', 'verifiedWithoutProgress',
             'recapMissing', 'targetMissing', 'membersWithoutMutabaah', 'tasmiWithoutCertificate',
             'certificateIssues', 'stats'
         ));
+    }
+
+    private function exportRows($pending, $verifiedWithoutProgress, $recapMissing, $targetMissing, $mutabaahMissing, $tasmi, $certificates)
+    {
+        $rows = collect();
+
+        foreach ($pending as $row) {
+            $rows->push(['category' => 'Setoran pending > 7 hari', 'student' => $row->student?->name, 'context' => $row->group?->name, 'detail' => $row->setoran_date?->format('d/m/Y').' — nilai '.($row->nilai_setoran ?? '—')]);
+        }
+        foreach ($verifiedWithoutProgress as $row) {
+            $rows->push(['category' => 'Setoran terverifikasi tanpa progres', 'student' => $row->student?->name, 'context' => $row->group?->name, 'detail' => 'Juz '.($row->juz ?? '—')]);
+        }
+        foreach ($recapMissing as $member) {
+            $rows->push(['category' => 'Progres tanpa rekap', 'student' => $member->student?->name, 'context' => $member->group?->name, 'detail' => 'Rekap capaian belum terbentuk']);
+        }
+        foreach ($targetMissing as $member) {
+            $rows->push(['category' => 'Target belum diatur', 'student' => $member->student?->name, 'context' => $member->group?->name, 'detail' => 'Target hafalan kosong']);
+        }
+        foreach ($mutabaahMissing as $member) {
+            $rows->push(['category' => 'Mutaba’ah tertinggal', 'student' => $member->student?->name, 'context' => $member->group?->name, 'detail' => 'Tidak ada mutaba’ah 7 hari terakhir']);
+        }
+        foreach ($tasmi as $participant) {
+            $rows->push(['category' => 'Tasmi tanpa syahadah', 'student' => $participant->student?->name, 'context' => $participant->session?->session_name, 'detail' => 'Nilai '.($participant->score?->nilai_akhir ?? '—')]);
+        }
+        foreach ($certificates as $certificate) {
+            $rows->push(['category' => 'Syahadah belum lengkap', 'student' => $certificate->student?->name, 'context' => $certificate->certificate_number ?: 'Tanpa nomor', 'detail' => 'Nilai '.($certificate->nilai_akhir ?? '—').' / '.($certificate->predikat ?: 'tanpa predikat')]);
+        }
+
+        return $rows;
     }
 
     private function accessibleGroups(Request $request, ?string $academicYearId, ?string $schoolId)

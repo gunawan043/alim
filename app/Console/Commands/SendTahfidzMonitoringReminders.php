@@ -18,6 +18,9 @@ class SendTahfidzMonitoringReminders extends Command
 {
     protected $signature = 'tahfidz:send-monitoring-reminders
                             {--days=7 : Setoran pending yang lebih lama dari jumlah hari ini}
+                            {--email : Kirim juga melalui email jika preferensi pengguna aktif}
+                            {--whatsapp : Kirim juga melalui WhatsApp jika nomor tersedia}
+                            {--push : Kirim juga melalui push notification}
                             {--dry-run : Tampilkan jumlah tanpa mengirim notifikasi}';
 
     protected $description = 'Kirim pengingat monitoring Tahfidz ke koordinator dan guru halaqah';
@@ -117,6 +120,9 @@ class SendTahfidzMonitoringReminders extends Command
                     ]),
                     'action_text' => 'Buka Monitoring',
                     'priority' => 'high',
+                    'send_email' => (bool) $this->option('email'),
+                    'send_whatsapp' => (bool) $this->option('whatsapp'),
+                    'send_push' => (bool) $this->option('push'),
                     'work_unit_id' => $school->work_unit_id,
                     'data' => [
                         'school_id' => $school->id,

@@ -5,6 +5,10 @@
     @include('tahfidz._styles')
     @component('components.breadcrumb') @slot('li_1') Tahfidz @endslot @slot('li_2') Audit @endslot @slot('title') Audit Akhir Tahfidz @endslot @endcomponent
 
+    <div class="d-flex justify-content-end mb-2">
+        <a href="{{ route('user.tahfidz.audit.index', array_merge(request()->query(), ['userId'=>$userId,'export'=>1])) }}" class="btn btn-soft-success"><i class="ri-download-2-line me-1"></i>Export Excel</a>
+    </div>
+
     <div class="alert {{ $stats['total_issues'] > 0 ? 'alert-warning' : 'alert-success' }} d-flex align-items-center gap-2">
         <i class="ri-shield-check-line fs-4"></i>
         <div><strong>{{ $stats['total_issues'] }} temuan audit.</strong> {{ $academicYear?->name }} — periksa daftar di bawah dan tindak lanjuti.</div>
