@@ -153,6 +153,13 @@ class Kernel extends ConsoleKernel
             ->dailyAt('00:05')
             ->withoutOverlapping();
 
+        // PENGINGAT MONITORING TAHFIDZ
+        // Setoran pending dan santri tanpa setoran terverifikasi.
+        $schedule->command('tahfidz:send-monitoring-reminders --days=7')
+            ->dailyAt('07:15')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // PENGINGAT JAM PELAJARAN (GURU)
         // Setiap menit: kirim notifikasi ±5 menit sebelum jam mengajar dimulai.
         $schedule->command('alim:notify-lesson-reminders --minutes=5')
