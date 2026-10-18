@@ -532,9 +532,16 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.waste.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.waste.index', 'sarpras.waste.report']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.waste.index') }}">
             <i class="ri-delete-bin-6-line"></i><span>Pengelolaan Sampah DLH</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.waste.facilit']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.waste.facilities') }}">
+            <i class="ri-recycle-line"></i><span>Fasilitas Sampah</span>
         </a>
     </li>
 @endif

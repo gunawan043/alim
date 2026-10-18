@@ -2258,6 +2258,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - tautan langsung ke laporan per area.
 - Metrik mengikuti cakupan pengguna: koordinator melihat semua area, petugas melihat area yang ditugaskan.
 
+## 198. Fasilitas Pengelolaan Sampah DLH
+
+- Master fasilitas sampah baru (`waste_facilities`):
+  - TPS, komposter, bank sampah, biodigester, incinerator, dan lainnya;
+  - gedung/lokasi, kapasitas kg/m³, kondisi, PIC, status aktif, catatan.
+- Halaman `/sarpras/sampah/fasilitas`:
+  - statistik fasilitas, filter periode;
+  - jumlah catatan dan berat sampah bulan berjalan per fasilitas;
+  - tambah, edit, dan aktif/nonaktifkan fasilitas.
+- Catatan sampah dapat ditautkan ke fasilitas (`waste_logs.facility_id`).
+- Menu Fasilitas Sampah ditambahkan ke sidebar URT.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

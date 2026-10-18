@@ -19,7 +19,7 @@ class WasteLog extends Model
     }
 
     protected $fillable = [
-        'source_id', 'log_date', 'waste_type', 'weight_kg', 'sacks_count',
+        'source_id', 'facility_id', 'log_date', 'waste_type', 'weight_kg', 'sacks_count',
         'volume_m3', 'sorting_status', 'destination', 'photo_path', 'photo_url',
         'notes', 'recorded_by', 'status', 'verified_by', 'verified_at', 'coordinator_note',
     ];
@@ -35,6 +35,7 @@ class WasteLog extends Model
     public const STATUS_OPTIONS = ['submitted', 'verified', 'rejected'];
 
     public function source(): BelongsTo { return $this->belongsTo(WasteSource::class, 'source_id'); }
+    public function facility(): BelongsTo { return $this->belongsTo(WasteFacility::class, 'facility_id'); }
     public function recorder(): BelongsTo { return $this->belongsTo(User::class, 'recorded_by'); }
     public function verifier(): BelongsTo { return $this->belongsTo(User::class, 'verified_by'); }
 }

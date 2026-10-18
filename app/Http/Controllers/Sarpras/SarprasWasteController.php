@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sarpras;
 use App\Models\AssetBuilding;
 use App\Models\GtkWorkUnit;
 use App\Models\User;
+use App\Models\WasteFacility;
 use App\Models\WasteHandover;
 use App\Models\WasteLog;
 use App\Models\WasteSource;
@@ -50,7 +51,9 @@ class SarprasWasteController extends SarprasBaseController
             ->whereBetween('log_date', [$start, $end])
             ->groupBy('waste_type')->get();
 
-        return view('sarpras.waste.index', compact('sources', 'logs', 'handovers', 'stats', 'month', 'users', 'buildings', 'typeSummary'));
+        $facilities = WasteFacility::where('is_active', true)->orderBy('name')->get(['id', 'name', 'facility_type']);
+
+        return view('sarpras.waste.index', compact('sources', 'logs', 'handovers', 'stats', 'month', 'users', 'buildings', 'typeSummary', 'facilities'));
     }
 
     public function storeSource(Request $request)
@@ -75,6 +78,7 @@ class SarprasWasteController extends SarprasBaseController
         $this->authorizeWaste();
         $validated = $request->validate([
             'source_id' => 'required|uuid|exists:waste_sources,id',
+            'facility_id' => 'nullable|uuid|exists:waste_facilities,id',
             'log_date' => 'required|date',
             'waste_type' => 'required|in:'.implode(',', WasteLog::TYPE_OPTIONS),
             'weight_kg' => 'required|numeric|min:0',
@@ -106,6 +110,75 @@ class SarprasWasteController extends SarprasBaseController
         ]);
 
         return back()->with('success', 'Catatan sampah berhasil disimpan.');
+    }
+
+    public function facilities(Request $request)
+    {
+        $this->authorizeWaste();
+
+        $month = $request->input('month', now()->format('Y-m'));
+        $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $end = (clone $start)->endOfMonth();
+
+        $facilities = WasteFacility::with(['building', 'pic'])
+            ->withCount(['logs as month_logs' => fn ($q) => $q->whereBetween('log_date', [$start, $end])])
+            ->withSum(['logs as month_weight' => fn ($q) => $q->whereBetween('log_date', [$start, $end])], 'weight_kg')
+            ->orderBy('name')
+            ->get();
+
+        $stats = [
+            'total' => $facilities->count(),
+            'active' => $facilities->where('is_active', true)->count(),
+            'tps' => $facilities->where('facility_type', 'tps')->count(),
+            'attention' => $facilities->whereIn('condition', ['rusak_sedang', 'rusak_berat'])->count(),
+        ];
+
+        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $buildings = AssetBuilding::orderBy('building_name')->get(['id', 'building_name']);
+
+        return view('sarpras.waste.facilities', compact('facilities', 'stats', 'month', 'users', 'buildings'));
+    }
+
+    public function storeFacility(Request $request)
+    {
+        $this->authorizeWaste();
+        $validated = $this->validateFacility($request);
+        WasteFacility::create([...$validated, 'is_active' => true, 'created_by' => auth()->id()]);
+
+        return back()->with('success', 'Fasilitas sampah ditambahkan.');
+    }
+
+    public function updateFacility(string $userId, Request $request, string $facilityId)
+    {
+        $this->authorizeWaste();
+        $facility = WasteFacility::findOrFail($facilityId);
+        $facility->update($this->validateFacility($request));
+
+        return back()->with('success', 'Fasilitas sampah diperbarui.');
+    }
+
+    public function toggleFacility(string $userId, string $facilityId)
+    {
+        $this->authorizeWaste();
+        $facility = WasteFacility::findOrFail($facilityId);
+        $facility->update(['is_active' => ! $facility->is_active]);
+
+        return back()->with('success', 'Status fasilitas diperbarui.');
+    }
+
+    private function validateFacility(Request $request): array
+    {
+        return $request->validate([
+            'name' => 'required|string|max:191',
+            'facility_type' => 'required|in:'.implode(',', array_keys(WasteFacility::TYPE_OPTIONS)),
+            'building_id' => 'nullable|uuid|exists:asset_buildings,id',
+            'location' => 'nullable|string|max:191',
+            'capacity_m3' => 'nullable|numeric|min:0',
+            'capacity_kg' => 'nullable|numeric|min:0',
+            'condition' => 'required|in:'.implode(',', WasteFacility::CONDITION_OPTIONS),
+            'pic_user_id' => 'nullable|uuid|exists:users,id',
+            'notes' => 'nullable|string|max:2000',
+        ]);
     }
 
     public function verifyLog(string $userId, Request $request, string $logId)

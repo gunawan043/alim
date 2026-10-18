@@ -2799,6 +2799,10 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/sampah/catatan', [SarprasWasteController::class, 'storeLog'])->name('waste.log.store');
     Route::post('/sampah/catatan/{logId}/verify', [SarprasWasteController::class, 'verifyLog'])->name('waste.log.verify');
     Route::post('/sampah/penyerahan', [SarprasWasteController::class, 'storeHandover'])->name('waste.handover.store');
+    Route::get('/sampah/fasilitas', [SarprasWasteController::class, 'facilities'])->name('waste.facilities');
+    Route::post('/sampah/fasilitas', [SarprasWasteController::class, 'storeFacility'])->name('waste.facility.store');
+    Route::put('/sampah/fasilitas/{facilityId}', [SarprasWasteController::class, 'updateFacility'])->name('waste.facility.update');
+    Route::post('/sampah/fasilitas/{facilityId}/toggle', [SarprasWasteController::class, 'toggleFacility'])->name('waste.facility.toggle');
     Route::get('/sampah/laporan', [SarprasWasteController::class, 'report'])->name('waste.report');
     Route::get('/sampah/laporan/pdf', [SarprasWasteController::class, 'reportPdf'])->name('waste.report.pdf');
 
