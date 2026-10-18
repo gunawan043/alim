@@ -69,6 +69,8 @@ class TahfidzOperationsTest extends TestCase
 
     public function test_halaqah_anggota_setoran_dan_verifikasi(): void
     {
+        config(['tahfidz.auto_verify_setoran' => false]);
+
         $package = TahfidzPackage::firstOrFail();
         $response = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->post("/{$this->admin->id}/tahfidz/halaqah", [

@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\TahfidzCertificate;
 use App\Models\TahfidzGroupMember;
+use App\Models\TahfidzIntervention;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzMutabaah;
 use App\Models\TahfidzProgressRecap;
@@ -14,11 +15,15 @@ use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
 use App\Models\TahfidzTasmianParticipant;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzStudentAnalysisService;
 use Illuminate\Http\Request;
 
 class TahfidzSantriController extends Controller
 {
-    public function __construct(private readonly TahfidzAccess $access) {}
+    public function __construct(
+        private readonly TahfidzAccess $access,
+        private readonly TahfidzStudentAnalysisService $analysis,
+    ) {}
 
     public function show(Request $request, string $userId, string $studentId)
     {
@@ -71,6 +76,13 @@ class TahfidzSantriController extends Controller
             ->orderByDesc('issued_date')
             ->get();
 
+        $analysis = $this->analysis->analyze($student->id, $academicYear?->id);
+        $interventions = TahfidzIntervention::with(['assignedTo:id,name', 'creator:id,name'])
+            ->where('student_id', $student->id)
+            ->when($academicYear, fn ($query) => $query->where('academic_year_id', $academicYear->id))
+            ->orderByDesc('created_at')
+            ->get();
+
         $stats = [
             'setoran' => $history->count(),
             'verified' => $history->where('verification_status', 'verified')->count(),
@@ -83,7 +95,7 @@ class TahfidzSantriController extends Controller
 
         return view('tahfidz.santri.show', compact(
             'userId', 'student', 'member', 'academicYear', 'history', 'progress',
-            'recap', 'targets', 'mutabaah', 'tasmi', 'certificates', 'stats'
+            'recap', 'targets', 'mutabaah', 'tasmi', 'certificates', 'stats', 'analysis', 'interventions'
         ));
     }
 

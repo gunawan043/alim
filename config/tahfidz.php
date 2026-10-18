@@ -15,6 +15,12 @@ return [
     /*
      * Ambang monitoring santri tertinggal pada halaman rekap Tahfidz.
      */
+    /*
+     * Setoran yang diinput guru langsung dianggap terverifikasi agar tidak
+     * menambah beban approval. Matikan bila sekolah tetap ingin audit manual.
+     */
+    'auto_verify_setoran' => (bool) env('TAHFIDZ_AUTO_VERIFY_SETORAN', true),
+
     'monitoring' => [
         'inactive_setoran_days' => (int) env('TAHFIDZ_MONITORING_SETORAN_DAYS', 14),
         'inactive_mutabaah_days' => (int) env('TAHFIDZ_MONITORING_MUTABAAH_DAYS', 7),

@@ -11,8 +11,8 @@
     <div class="row tahfidz-stat">
         @foreach([
             ['Total Setoran', $stats['total'], 'ri-file-list-3-line', 'primary', 'Sesuai filter aktif'],
-            ['Menunggu Verifikasi', $stats['pending'], 'ri-time-line', 'warning', 'Perlu dicek koordinator'],
-            ['Terverifikasi', $stats['verified'], 'ri-check-double-line', 'success', 'Sudah dikunci'],
+            ['Pending / Audit Manual', $stats['pending'], 'ri-time-line', 'warning', 'Data lama atau manual'],
+            ['Terverifikasi', $stats['verified'], 'ri-check-double-line', 'success', 'Termasuk otomatis'],
             ['Hari Ini', $stats['today'], 'ri-calendar-check-line', 'info', 'Setoran tanggal ini'],
         ] as [$label, $value, $icon, $color, $note])
             <div class="col-xl-3 col-md-6">
@@ -29,7 +29,7 @@
 
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div><h5 class="card-title mb-0"><i class="ri-file-add-line text-primary me-1"></i>Setoran Tahfizh</h5><p class="text-muted mb-0 small">Input harian guru halaqah, verifikasi koordinator/departemen.</p></div>
+            <div><h5 class="card-title mb-0"><i class="ri-file-add-line text-primary me-1"></i>Setoran Tahfizh</h5><p class="text-muted mb-0 small">Input harian guru halaqah; setoran baru otomatis masuk progres. Verifikasi manual tersedia untuk audit.</p></div>
             <div class="d-flex gap-2">
                 <a href="{{ route('user.tahfidz.halaqah.index', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-team-line me-1"></i>Halaqah</a>
                 @if($groups->isNotEmpty())
@@ -59,10 +59,10 @@
                             <td>{{ $setoran->nilai_setoran ?? '—' }}</td>
                             <td><span class="badge {{ $setoran->verification_status==='verified' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">{{ $setoran->verification_status }}</span>@if($setoran->verifier)<div class="text-muted" style="font-size:10px;">{{ $setoran->verifier->name }}</div>@endif</td>
                             <td class="text-end">
-                                @if($setoran->verification_status !== 'verified')
+                                @if($setoran->verification_status !== 'verified' || $setoran->verification_notes === 'auto-verified')
                                     <a href="{{ route('user.tahfidz.setoran.edit', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="ri-edit-line"></i></a>
-                                    @if($canVerify)
-                                        <form method="POST" action="{{ route('user.tahfidz.setoran.verify', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success" title="Verifikasi"><i class="ri-check-double-line"></i></button></form>
+                                    @if($canVerify && $setoran->verification_status === 'pending')
+                                        <form method="POST" action="{{ route('user.tahfidz.setoran.verify', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success" title="Verifikasi manual"><i class="ri-check-double-line"></i></button></form>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-outline-danger delete-setoran" title="Hapus"
                                             data-action="{{ route('user.tahfidz.setoran.destroy', ['userId'=>$userId,'id'=>$setoran->id]) }}"

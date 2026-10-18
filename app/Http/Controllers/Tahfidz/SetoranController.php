@@ -89,18 +89,33 @@ class SetoranController extends Controller
         $this->assertMember($group, $validated['student_id']);
 
         $data = $this->payload($validated, $group, $request);
-        $data['verification_status'] = 'pending';
+        $autoVerify = (bool) config('tahfidz.auto_verify_setoran', true);
+        $data['verification_status'] = $autoVerify ? 'verified' : 'pending';
+
+        if ($autoVerify) {
+            $data['verified_by'] = $request->user()?->id;
+            $data['verified_at'] = now();
+            $data['verification_notes'] = 'auto-verified';
+        }
 
         $setoran = TahfidzSetoran::create($data);
+
+        if ($autoVerify) {
+            $this->progress->recalculateForSetoran($setoran);
+        }
+
+        $message = $autoVerify
+            ? 'Setoran tersimpan, terverifikasi otomatis, dan progres juz diperbarui.'
+            : 'Setoran berhasil dicatat dan menunggu verifikasi manual.';
 
         if ($request->input('return_to') === 'input') {
             return redirect()
                 ->route('user.tahfidz.input.index', ['userId' => $userId, 'student_id' => $validated['student_id']])
-                ->with('success', 'Setoran hafalan berhasil dicatat.');
+                ->with('success', $message);
         }
 
         return redirect()->route('user.tahfidz.setoran.index', ['userId' => $userId, 'group_id' => $group->id])
-            ->with('success', 'Setoran berhasil dicatat.');
+            ->with('success', $message);
     }
 
     public function edit(Request $request, string $userId, string $id)
@@ -121,7 +136,7 @@ class SetoranController extends Controller
     {
         $setoran = TahfidzSetoran::findOrFail($id);
         $this->authorizeInput($request, $setoran->group);
-        abort_if($setoran->verification_status === 'verified', 403, 'Setoran yang sudah diverifikasi tidak dapat diedit.');
+        abort_if($this->isLocked($setoran), 403, 'Setoran yang sudah diverifikasi manual tidak dapat diedit.');
 
         $validated = $this->validateSetoran($request);
         $group = TahfidzGroup::findOrFail($validated['tahfidz_group_id']);
@@ -129,6 +144,10 @@ class SetoranController extends Controller
         $this->assertMember($group, $validated['student_id']);
 
         $setoran->update($this->payload($validated, $group, $request));
+
+        if ($setoran->verification_status === 'verified') {
+            $this->progress->recalculateForSetoran($setoran);
+        }
 
         if ($request->input('return_to') === 'input') {
             return redirect()
@@ -168,8 +187,12 @@ class SetoranController extends Controller
     {
         $setoran = TahfidzSetoran::findOrFail($id);
         $this->authorizeInput($request, $setoran->group);
-        abort_if($setoran->verification_status === 'verified', 403, 'Setoran yang sudah diverifikasi tidak dapat dihapus.');
+        abort_if($this->isLocked($setoran), 403, 'Setoran yang sudah diverifikasi manual tidak dapat dihapus.');
+        $studentId = $setoran->student_id;
+        $academicYearId = $setoran->academic_year_id;
+        $groupId = $setoran->tahfidz_group_id;
         $setoran->delete();
+        $this->progress->recalculateStudent($studentId, $academicYearId, $groupId);
 
         return back()->with('success', 'Setoran dihapus.');
     }
@@ -261,6 +284,12 @@ class SetoranController extends Controller
             'jumlah_halaman' => $jumlahHalaman,
             'nilai_setoran' => $nilai,
         ]);
+    }
+
+    private function isLocked(TahfidzSetoran $setoran): bool
+    {
+        return $setoran->verification_status === 'verified'
+            && $setoran->verification_notes !== 'auto-verified';
     }
 
     private function assertMember(TahfidzGroup $group, string $studentId): void

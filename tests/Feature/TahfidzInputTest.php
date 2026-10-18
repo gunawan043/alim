@@ -26,6 +26,8 @@ class TahfidzInputTest extends TestCase
 
     public function test_halaman_input_hafalan_mencari_santri_menampilkan_riwayat_dan_menambah_setoran(): void
     {
+        config(['tahfidz.auto_verify_setoran' => false]);
+
         $unit = WorkUnit::create(['name' => 'Sekolah Input', 'code' => 'SCH-INP', 'type' => 'Unit Akademik', 'is_active' => true]);
         $school = School::create(['work_unit_id' => $unit->id, 'npsn' => '50505050', 'name' => 'Sekolah Input']);
         $year = AcademicYear::create([

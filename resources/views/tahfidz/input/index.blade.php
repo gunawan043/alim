@@ -92,7 +92,7 @@
                                 <td><span class="badge {{ $setoran->verification_status==='verified' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $setoran->verification_status }}</span></td>
                                 <td class="small">{{ $setoran->teacher?->name }}</td>
                                 <td class="text-end">
-                                    @if($setoran->verification_status !== 'verified')
+                                    @if($setoran->verification_status !== 'verified' || $setoran->verification_notes === 'auto-verified')
                                         <a href="{{ route('user.tahfidz.setoran.edit', ['userId'=>$userId,'id'=>$setoran->id,'return_to'=>'input']) }}" class="btn btn-sm btn-outline-warning" title="Edit setoran"><i class="ri-edit-line"></i></a>
                                     @else
                                         <span class="text-muted small">Terkunci</span>
