@@ -15,6 +15,13 @@
     </div>
 @endif
 
+<x-sarpras-stats :items="[
+    ['label'=>'Total Menunggu','value'=>$stats['total'],'tone'=>'warning','icon'=>'ri-shield-check-line'],
+    ['label'=>'Verifikasi','value'=>$stats['verification'],'tone'=>'info','icon'=>'ri-search-eye-line'],
+    ['label'=>'Approval','value'=>$stats['approval'],'tone'=>'primary','icon'=>'ri-checkbox-circle-line'],
+    ['label'=>'Prioritas Tinggi','value'=>$stats['urgent'],'tone'=>'danger','icon'=>'ri-alarm-warning-line'],
+]" />
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -70,10 +77,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="text-center text-muted py-5">
-                                    <i class="ri-check-double-line fs-1"></i><br>
-                                    Tidak ada laporan yang perlu diverifikasi
-                                </td></tr>
+                                <x-empty-state colspan="7" title="Tidak ada laporan menunggu verifikasi" message="Laporan baru akan tampil di sini." />
                             @endforelse
                         </tbody>
                     </table>

@@ -197,9 +197,16 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.electricity']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.electricity.index']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.electricity.index') }}">
             <i class="ri-flashlight-line"></i><span>Listrik &amp; Token</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.electricity.outages']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.electricity.outages.index') }}">
+            <i class="ri-alarm-warning-line"></i><span>Penanganan Listrik Padam</span>
         </a>
     </li>
 
@@ -314,6 +321,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.pemeliharaan.log']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.pemeliharaan.log.index') }}">
             <i class="ri-history-line"></i><span>Riwayat Perawatan</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.pemeliharaan.log']) && request('log_type') === 'korektif' ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.pemeliharaan.log.index', ['log_type' => 'korektif']) }}">
+            <i class="ri-tools-line"></i><span>Riwayat Perbaikan</span>
         </a>
     </li>
 

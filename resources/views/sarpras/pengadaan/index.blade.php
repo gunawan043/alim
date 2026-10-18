@@ -10,6 +10,13 @@
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
+<x-sarpras-stats :items="[
+    ['label'=>'Total Pengadaan','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-shopping-cart-2-line'],
+    ['label'=>'Menunggu','value'=>$stats['pending'],'tone'=>'warning','icon'=>'ri-time-line'],
+    ['label'=>'Diproses','value'=>$stats['approved'],'tone'=>'info','icon'=>'ri-truck-line'],
+    ['label'=>'Estimasi Nilai','value'=>'Rp '.number_format($stats['value'],0,',','.'),'tone'=>'success','icon'=>'ri-money-dollar-circle-line'],
+]" />
+
 <div class="row">
     <div class="col-lg-12">
         <div class="card">

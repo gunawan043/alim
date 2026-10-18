@@ -24,12 +24,19 @@ class SarprasKepalaApprovalController extends Controller
 
     public function index()
     {
-        $pending = WorkOrder::with(['asset', 'technician', 'repairRequest'])
-            ->where('status', 'completed')
-            ->latest()
-            ->paginate(20);
+        $query = WorkOrder::with(['asset', 'technician', 'repairRequest'])
+            ->where('status', 'completed');
 
-        return view('sarpras.kepala.index', compact('pending'));
+        $stats = [
+            'total' => (clone $query)->count(),
+            'today' => (clone $query)->whereDate('actual_end', today())->count(),
+            'week' => (clone $query)->where('actual_end', '>=', now()->subDays(7))->count(),
+            'oldest' => (clone $query)->where('actual_end', '<', now()->subDays(3))->count(),
+        ];
+
+        $pending = $query->latest()->paginate(20);
+
+        return view('sarpras.kepala.index', compact('pending', 'stats'));
     }
 
     public function show(string $userId, string $id)

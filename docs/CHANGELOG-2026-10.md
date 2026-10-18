@@ -2211,6 +2211,29 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - footer akun pengambil foto dan copyright Ponpes Abu Hurairah;
   - pilihan orientasi **Otomatis** atau **Vertikal 3:4** dengan crop tengah.
 
+## 195. Scan Role-Aware, Checklist Harian/Pekanan/Bulanan & Konsistensi Halaman
+
+- Tindakan hasil scan kini mengikuti peran:
+  - **Petugas URT** langsung mengisi tindakan perbaikan/perawatan atau audit pengecekan.
+  - **Non-petugas** mengirim permintaan perbaikan/perawatan/pengecekan ke URT.
+- Form **Permintaan Tindakan Aset** ditambahkan untuk laporan non-petugas.
+- Form **Catat Perawatan** mendukung prefill aset, mode perbaikan/perawatan, dan jenis catatan
+  preventif/korektif/inspeksi.
+- Halaman **Riwayat Perbaikan** ditambahkan sebagai filter riwayat korektif.
+- Checklist pemeliharaan:
+  - dikelompokkan menjadi **Harian, Pekanan, Bulanan**;
+  - filter frekuensi pada daftar template;
+  - tombol **Isi Checklist** membuat instance tanpa harus menunggu jadwal.
+- Listrik dipisah: **Listrik & Token** dan **Penanganan Listrik Padam**.
+- Penyeragaman tampilan memakai pola `gtk/index`: kartu statistik, filter card, tabel hover,
+  empty state lord-icon, pagination, dan modal/global confirm pada Aset Saya, Gedung, Ruang,
+  Sparepart, Prediksi, RVR, Work Order, Peminjaman, Perpindahan, Pengadaan, Vendor, Approval,
+  serta laporan utama.
+- Watermark:
+  - orientasi vertikal diubah menjadi **9:16**;
+  - panel memakai simulasi **kaca blur** (bukan blok gelap solid);
+  - ukuran panel/teks diperbesar dan tata letak header–tanggal–judul–lokasi–footer dirapikan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

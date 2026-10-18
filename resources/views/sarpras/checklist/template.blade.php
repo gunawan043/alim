@@ -10,7 +10,10 @@
     <div class="card">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0">{{ $template->name }}</h5><div class="text-muted small"><code>{{ $template->code }}</code> · {{ $template->items->count() }} item pemeriksaan</div></div>
-            <a href="{{ route('sarpras.checklist.index') }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('sarpras.checklist.index') }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
+                <form method="POST" action="{{ route('sarpras.checklist.template.start', ['templateId' => $template->id]) }}">@csrf<button class="btn btn-success btn-sm"><i class="ri-play-line me-1"></i>Isi Checklist</button></form>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

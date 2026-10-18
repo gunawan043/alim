@@ -18,6 +18,13 @@ class SarprasVendorController extends Controller
     {
         $query = Vendor::query()->with(['category', 'contacts', 'addresses']);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('status', 'active')->count(),
+            'blacklist' => (clone $query)->where('status', 'blacklist')->count(),
+            'rating' => round((float) (clone $query)->avg('rating_avg'), 1),
+        ];
+
         if ($request->filled('q')) {
             $q = $request->input('q');
             $query->where(function ($w) use ($q) {
@@ -46,6 +53,7 @@ class SarprasVendorController extends Controller
         return view('sarpras.vendor.index', [
             'vendors' => $vendors,
             'categories' => VendorCategory::orderBy('name')->get(),
+            'stats' => $stats,
         ]);
     }
 

@@ -20,6 +20,13 @@ class SarprasMovementController extends SarprasBaseController
     {
         $query = AssetLocationHistory::with(['asset', 'fromRoom', 'toRoom', 'mover']);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'month' => (clone $query)->whereMonth('moved_date', now()->month)->whereYear('moved_date', now()->year)->count(),
+            'assets' => (clone $query)->distinct('asset_id')->count('asset_id'),
+            'today' => (clone $query)->whereDate('moved_date', today())->count(),
+        ];
+
         if (! $this->canViewAll($request)) {
             $query->whereHas('asset', fn ($q) => $this->scopeToSchool($request, $q));
         }
@@ -35,7 +42,7 @@ class SarprasMovementController extends SarprasBaseController
         $histories = $query->orderBy('moved_date', 'desc')->paginate(15)->withQueryString();
         $assets = Asset::where('is_active', true)->orderBy('asset_name')->get();
 
-        return view('sarpras.perpindahan.index', compact('histories', 'assets'));
+        return view('sarpras.perpindahan.index', compact('histories', 'assets', 'stats'));
     }
 
     public function create(Request $request)

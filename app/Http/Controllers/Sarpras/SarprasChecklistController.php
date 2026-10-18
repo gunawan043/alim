@@ -32,7 +32,21 @@ class SarprasChecklistController extends SarprasBaseController
             $query->where('category_slug', $request->category_slug);
         }
 
-        $templates = $query->orderBy('name')->get();
+        $frequencyGroups = [
+            'Harian' => ['Harian'],
+            'Pekanan' => ['Mingguan', '2 minggu'],
+            'Bulanan' => ['Bulanan', 'Per 3 bulan', 'Per 6 bulan', 'Tahunan'],
+        ];
+        if ($request->filled('frequency_group') && isset($frequencyGroups[$request->frequency_group])) {
+            $frequencies = $frequencyGroups[$request->frequency_group];
+            $query->whereHas('items', fn ($q) => $q->whereIn('frequency', $frequencies));
+        }
+
+        $templates = $query->withCount([
+            'items as harian_count' => fn ($q) => $q->whereIn('frequency', $frequencyGroups['Harian']),
+            'items as pekanan_count' => fn ($q) => $q->whereIn('frequency', $frequencyGroups['Pekanan']),
+            'items as bulanan_count' => fn ($q) => $q->whereIn('frequency', $frequencyGroups['Bulanan']),
+        ])->orderBy('name')->get();
         $categories = ChecklistTemplate::where('workflow_type', 'maintenance')
             ->whereNotNull('category_slug')
             ->distinct()
@@ -45,7 +59,7 @@ class SarprasChecklistController extends SarprasBaseController
             ->limit(10)
             ->get();
 
-        return view('sarpras.checklist.index', compact('templates', 'categories', 'myInstances'));
+        return view('sarpras.checklist.index', compact('templates', 'categories', 'myInstances', 'frequencyGroups'));
     }
 
     public function showTemplate(string $userId, Request $request, string $templateId)
@@ -72,6 +86,19 @@ class SarprasChecklistController extends SarprasBaseController
         $suggested = $this->suggestTemplate($schedule, $templates);
 
         return view('sarpras.checklist.start', compact('schedule', 'templates', 'suggested'));
+    }
+
+    public function startTemplate(string $userId, Request $request, string $templateId)
+    {
+        $template = ChecklistTemplate::with('items')
+            ->where('workflow_type', 'maintenance')
+            ->where('is_active', true)
+            ->findOrFail($templateId);
+
+        $instance = $this->engine->start($template, $template, auth()->id());
+
+        return redirect()->route('sarpras.checklist.instance', ['instanceId' => $instance->id])
+            ->with('success', 'Checklist '.$template->name.' dimulai. Isi item harian, pekanan, dan bulanan sesuai kondisi.');
     }
 
     public function store(string $userId, Request $request, string $scheduleId)

@@ -46,9 +46,9 @@
                         <a id="passportLink" class="btn btn-primary" href="#"><i class="ri-eye-line me-1"></i>Buka Asset Passport</a>
                         <div class="small text-muted mt-1">Pilih tindakan untuk aset ini:</div>
                         <div class="row g-2">
-                            <div class="col-4"><a id="repairLink" class="btn btn-outline-danger w-100 py-3 h-100" href="#"><i class="ri-tools-line d-block fs-4 mb-1"></i><span class="fw-semibold">Perbaikan</span><small class="d-block">Ajukan perbaikan</small></a></div>
-                            <div class="col-4"><a id="scheduleLink" class="btn btn-outline-info w-100 py-3 h-100" href="#"><i class="ri-calendar-todo-line d-block fs-4 mb-1"></i><span class="fw-semibold">Perawatan</span><small class="d-block">Jadwal &amp; riwayat</small></a></div>
-                            <div class="col-4"><a id="auditLink" class="btn btn-outline-success w-100 py-3 h-100" href="#"><i class="ri-checkbox-circle-line d-block fs-4 mb-1"></i><span class="fw-semibold">Pengecekan</span><small class="d-block">Catat kondisi</small></a></div>
+                            <div class="col-4"><a id="repairLink" class="btn btn-outline-danger w-100 py-3 h-100" href="#"><i class="ri-tools-line d-block fs-4 mb-1"></i><span class="fw-semibold">Perbaikan</span><small class="d-block">{{ $canManage ? 'Input tindakan' : 'Ajukan perbaikan' }}</small></a></div>
+                            <div class="col-4"><a id="scheduleLink" class="btn btn-outline-info w-100 py-3 h-100" href="#"><i class="ri-calendar-todo-line d-block fs-4 mb-1"></i><span class="fw-semibold">Perawatan</span><small class="d-block">{{ $canManage ? 'Input perawatan' : 'Ajukan perawatan' }}</small></a></div>
+                            <div class="col-4"><a id="auditLink" class="btn btn-outline-success w-100 py-3 h-100" href="#"><i class="ri-checkbox-circle-line d-block fs-4 mb-1"></i><span class="fw-semibold">Pengecekan</span><small class="d-block">{{ $canManage ? 'Catat kondisi' : 'Minta pengecekan' }}</small></a></div>
                         </div>
                         <button type="button" class="btn btn-light" id="scanAgain"><i class="ri-refresh-line me-1"></i>Scan Lagi</button>
                     </div>
@@ -68,9 +68,9 @@
         lookup: @json(route('sarpras.qr.lookup.get')),
         passport: @json(route('sarpras.assets.passport', ['uuid' => '__ID__'])),
         detail: @json(route('sarpras.aset.show', ['id' => '__ID__'])),
-        repair: @json($canManage ? route('sarpras.repair.index') : route('sarpras.user.kerusakan.create')),
-        schedule: @json(route('sarpras.pemeliharaan.schedule.index')),
-        audit: @json(route('sarpras.qr.audit', ['id' => '__ID__'])),
+        repair: @json($canManage ? route('sarpras.pemeliharaan.log.create') : route('sarpras.user.action.create')),
+        schedule: @json($canManage ? route('sarpras.pemeliharaan.log.create') : route('sarpras.user.action.create')),
+        audit: @json($canManage ? route('sarpras.qr.audit', ['id' => '__ID__']) : route('sarpras.user.action.create')),
     };
     const readerEl = document.getElementById('qr-reader');
     const startBtn = document.getElementById('startScan');
@@ -135,10 +135,14 @@
         document.getElementById('resultStatus').textContent = (asset.status || '-').replace(/_/g, ' ');
         document.getElementById('passportLink').href = urls.passport.replace('__ID__', encodeURIComponent(id));
         document.getElementById('repairLink').href = canManage
-            ? urls.repair + '?search=' + encodeURIComponent(asset.asset_code || '')
-            : urls.repair + '?asset_id=' + encodeURIComponent(id);
-        document.getElementById('scheduleLink').href = urls.schedule + '?asset_id=' + encodeURIComponent(id);
-        document.getElementById('auditLink').href = urls.audit.replace('__ID__', encodeURIComponent(id));
+            ? urls.repair + '?asset_id=' + encodeURIComponent(id) + '&mode=repair'
+            : urls.repair + '?asset_id=' + encodeURIComponent(id) + '&action=perbaikan';
+        document.getElementById('scheduleLink').href = canManage
+            ? urls.schedule + '?asset_id=' + encodeURIComponent(id) + '&mode=maintenance'
+            : urls.schedule + '?asset_id=' + encodeURIComponent(id) + '&action=perawatan';
+        document.getElementById('auditLink').href = canManage
+            ? urls.audit.replace('__ID__', encodeURIComponent(id))
+            : urls.audit + '?asset_id=' + encodeURIComponent(id) + '&action=pengecekan';
         if (asset.photo) { document.getElementById('resultPhoto').src = asset.photo; document.getElementById('resultPhotoWrap').classList.remove('d-none'); } else { document.getElementById('resultPhotoWrap').classList.add('d-none'); }
         emptyCard.style.display = 'none'; resultCard.classList.add('show');
     }

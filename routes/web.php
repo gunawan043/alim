@@ -2690,6 +2690,8 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::get('/user/kerusakan', [SarprasUserController::class, 'indexKerusakan'])->name('user.kerusakan.index');
     Route::get('/user/kerusakan/create', [SarprasUserController::class, 'createKerusakan'])->name('user.kerusakan.create');
     Route::post('/user/kerusakan', [SarprasUserController::class, 'storeDamageReport'])->name('user.kerusakan.store');
+    Route::get('/user/tindakan', [SarprasUserController::class, 'createActionRequest'])->name('user.action.create');
+    Route::post('/user/tindakan', [SarprasUserController::class, 'storeActionRequest'])->name('user.action.store');
 
     // ── PENGADAAN ──────────────────────────────────────
     Route::get('/user/pengadaan', [SarprasUserController::class, 'indexPengadaan'])->name('user.pengadaan.index');
@@ -2777,6 +2779,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Listrik, token, dan penanganan padam
     Route::get('/listrik', [SarprasElectricityController::class, 'index'])->name('electricity.index');
+    Route::get('/listrik/padam', [SarprasElectricityController::class, 'outages'])->name('electricity.outages.index');
     Route::post('/listrik/meter', [SarprasElectricityController::class, 'storeMeter'])->name('electricity.meter.store');
     Route::post('/listrik/meter/{meterId}/toggle', [SarprasElectricityController::class, 'toggleMeter'])->name('electricity.meter.toggle');
     Route::post('/listrik/meter/{meterId}/purchase', [SarprasElectricityController::class, 'storePurchase'])->name('electricity.purchase.store');
@@ -2829,6 +2832,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     // Checklist pemeliharaan
     Route::get('/checklist', [SarprasChecklistController::class, 'index'])->name('checklist.index');
     Route::get('/checklist/template/{templateId}', [SarprasChecklistController::class, 'showTemplate'])->name('checklist.template');
+    Route::post('/checklist/template/{templateId}/start', [SarprasChecklistController::class, 'startTemplate'])->name('checklist.template.start');
     Route::get('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'start'])->name('checklist.start');
     Route::post('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'store'])->name('checklist.store');
     Route::get('/checklist/instances/{instanceId}', [SarprasChecklistController::class, 'showInstance'])->name('checklist.instance');

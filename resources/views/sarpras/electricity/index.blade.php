@@ -12,7 +12,7 @@
             ['Meter Listrik', $stats['meters'], 'primary', 'ri-flashlight-line'],
             ['Sudah Diisi Bulan Ini', $stats['purchased'], 'success', 'ri-check-double-line'],
             ['Nominal Bulan Ini', 'Rp '.number_format($stats['amount'], 0, ',', '.'), 'info', 'ri-money-dollar-circle-line'],
-            ['Padam Belum Selesai', $stats['open_outages'], 'danger', 'ri-alarm-warning-line'],
+            ['Padam Belum Selesai', $stats['open_outages'], 'danger', 'ri-alarm-warning-line', route('sarpras.electricity.outages.index')],
         ] as [$label, $value, $tone, $icon])
             <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body py-3 d-flex align-items-center gap-3"><span class="avatar-sm"><span class="avatar-title rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }} fs-4"><i class="{{ $icon }}"></i></span></span><div><div class="text-muted small">{{ $label }}</div><div class="fs-5 fw-bold">{{ is_numeric($value) ? number_format($value) : $value }}</div></div></div></div></div>
         @endforeach
@@ -25,6 +25,7 @@
             <div><h5 class="card-title mb-0"><i class="ri-flashlight-line me-2 text-primary"></i>Meter & Pengisian Token</h5><p class="text-muted small mb-0">Periode: {{ \Carbon\Carbon::createFromFormat('Y-m', $period)->translatedFormat('F Y') }}</p></div>
             <div class="d-flex gap-2">
                 <form method="GET" action="{{ route('sarpras.electricity.index') }}" class="d-flex gap-2"><input type="month" name="period" class="form-control form-control-sm" value="{{ $period }}"><button class="btn btn-sm btn-primary">Tampilkan</button></form>
+                <a href="{{ route('sarpras.electricity.outages.index') }}" class="btn btn-danger btn-sm"><i class="ri-alarm-warning-line me-1"></i>Penanganan Padam</a>
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addMeterModal"><i class="ri-add-line me-1"></i>Tambah Meter</button>
             </div>
         </div>
@@ -46,18 +47,6 @@
         </tbody></table></div></div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-alarm-warning-line me-2 text-danger"></i>Penanganan Listrik Padam</h5><p class="text-muted small mb-0">Catat kejadian, tindakan petugas, waktu menyala kembali, dan foto sebelum/sesudah.</p></div><button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#addOutageModal"><i class="ri-add-line me-1"></i>Catat Kejadian</button></div>
-        <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Waktu</th><th>Lokasi</th><th>Jenis</th><th>Penyebab</th><th>Petugas</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
-            @forelse($outages as $outage)
-                @php $tone = $outage->status === 'resolved' ? 'success' : 'danger'; @endphp
-                <tr><td class="small">{{ $outage->occurred_at?->format('d/m/Y H:i') }}</td><td class="small">{{ $outage->location }}</td><td><span class="badge bg-light text-dark border">{{ ucfirst(str_replace('_',' ',$outage->outage_type)) }}</span></td><td class="small">{{ \Illuminate\Support\Str::limit($outage->cause, 50) ?: '-' }}</td><td class="small">{{ $outage->actions->first()?->officer?->name ?? '-' }}</td><td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $outage->status === 'resolved' ? 'Menyala' : 'Padam' }}</span></td><td class="text-end"><a href="{{ route('sarpras.electricity.outage.show', ['outageId' => $outage->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td></tr>
-            @empty
-                <x-empty-state colspan="7" title="Belum ada kejadian listrik padam" message="Catat kejadian untuk memulai laporan penanganan." />
-            @endforelse
-        </tbody></table></div></div>
-    </div>
-
     <div class="card">
         <div class="card-header"><h5 class="card-title mb-0"><i class="ri-file-list-3-line me-2"></i>Riwayat Pengisian Bulan Ini</h5></div>
         <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0"><thead class="table-light"><tr><th>Tanggal</th><th>Meter</th><th>Lokasi</th><th class="text-end">Nominal</th><th>Bukti</th><th>Dicatat</th></tr></thead><tbody>
@@ -75,7 +64,6 @@
 
     @include('sarpras.partials.camera-modal')
 
-    <div class="modal fade" id="addOutageModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.electricity.outage.store') }}" enctype="multipart/form-data" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Catat Listrik Padam</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Waktu Kejadian</label><input type="datetime-local" name="occurred_at" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}" required></div><div class="mb-3"><label class="form-label">Lokasi</label><input name="location" class="form-control" required></div><div class="row g-3"><div class="col-md-6"><label class="form-label">Jenis Padam</label><select name="outage_type" class="form-select"><option value="tidak_terencana">Tidak Terencana</option><option value="terencana">Terencana</option></select></div><div class="col-md-6"><label class="form-label">Pelapor</label><input name="reporter_name" class="form-control" value="{{ auth()->user()->name }}"></div></div><div class="mt-3"><label class="form-label">Penyebab Singkat</label><textarea name="cause" class="form-control" rows="2"></textarea></div><div class="mt-3"><label class="form-label">Foto Sebelum / Link Drive</label><input type="url" name="before_url" class="form-control mb-1" placeholder="Link Google Drive"><input type="file" id="outage_before_file" name="before_photo" class="form-control" accept="image/*"><button type="button" class="btn btn-outline-danger btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="outage_before_file" data-preview="outage_before_preview"><i class="ri-camera-line me-1"></i>Kamera + watermark</button><div id="outage_before_preview"></div></div><div class="mt-3"><label class="form-label">Catatan</label><textarea name="notes" class="form-control" rows="2"></textarea></div></div><div class="modal-footer"><button class="btn btn-danger">Simpan Kejadian</button></div></form></div></div>
 @endsection
 
 @push('script')

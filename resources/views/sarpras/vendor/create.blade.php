@@ -1,4 +1,4 @@
-@extends('layouts.sarpras')
+@extends('layouts.master')
 
 @section('title', 'Tambah Vendor Baru')
 

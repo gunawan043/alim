@@ -8,75 +8,12 @@
     @slot('title') Peminjaman @endslot
 @endcomponent
 
-<div class="row">
-    {{-- SUMMARY CARDS --}}
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-warning-subtle text-warning rounded fs-4">⏳</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Menunggu</p>
-                    <h4 class="mb-0">{{ $summary['pending'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-info-subtle text-info rounded fs-4">✓</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Disetujui</p>
-                    <h4 class="mb-0">{{ $summary['approved'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-primary-subtle text-primary rounded fs-4">📦</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Sedang Dipinjam</p>
-                    <h4 class="mb-0">{{ $summary['dipinjam'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-success-subtle text-success rounded fs-4">↩</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Dikembalikan</p>
-                    <h4 class="mb-0">{{ $summary['dikembalikan'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-danger-subtle text-danger rounded fs-4">⚠</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Terlambat</p>
-                    <h4 class="mb-0">{{ $summary['terlambat'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-md-4">
-        <div class="card card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3"><div class="avatar-sm"><div class="avatar-title bg-secondary-subtle text-secondary rounded fs-4">Σ</div></div></div>
-                <div>
-                    <p class="text-muted small mb-1">Total Keseluruhan</p>
-                    <h4 class="mb-0">{{ $summary['total'] }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<x-sarpras-stats :items="[
+    ['label'=>'Menunggu','value'=>$summary['pending'],'tone'=>'warning','icon'=>'ri-time-line'],
+    ['label'=>'Disetujui','value'=>$summary['approved'],'tone'=>'info','icon'=>'ri-checkbox-circle-line'],
+    ['label'=>'Sedang Dipinjam','value'=>$summary['dipinjam'],'tone'=>'primary','icon'=>'ri-box-3-line'],
+    ['label'=>'Terlambat','value'=>$summary['terlambat'],'tone'=>'danger','icon'=>'ri-alarm-warning-line'],
+]" />
 
 <div class="row">
     <div class="col-lg-12">

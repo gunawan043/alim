@@ -19,6 +19,13 @@
         </div>
     @endif
 
+    <x-sarpras-stats :items="[
+        ['label'=>'Total Ruang','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-door-open-line'],
+        ['label'=>'Ruang Aktif','value'=>$stats['active'],'tone'=>'success','icon'=>'ri-checkbox-circle-line'],
+        ['label'=>'Bisa Dibooking','value'=>$stats['bookable'],'tone'=>'info','icon'=>'ri-calendar-check-line'],
+        ['label'=>'Total Kapasitas','value'=>$stats['capacity'],'tone'=>'warning','icon'=>'ri-group-line'],
+    ]" />
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">

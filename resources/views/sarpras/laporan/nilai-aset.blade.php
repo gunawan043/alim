@@ -8,33 +8,12 @@
     @slot('title') Nilai Aset @endslot
 @endcomponent
 
-{{-- SUMMARY CARDS --}}
-<div class="row">
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Aset</p>
-            <h3 class="mb-0">{{ $assets->count() }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Nilai Perolehan</p>
-            <h4 class="mb-0 text-primary">Rp {{ number_format($totalPerolehan, 0, ',', '.') }}</h4>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Nilai Buku</p>
-            <h4 class="mb-0 text-success">Rp {{ number_format($totalNilaiBuku, 0, ',', '.') }}</h4>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Penyusutan</p>
-            <h4 class="mb-0 text-danger">Rp {{ number_format($totalPenyusutan, 0, ',', '.') }}</h4>
-        </div>
-    </div>
-</div>
+<x-sarpras-stats :items="[
+    ['label'=>'Total Aset','value'=>$assets->count(),'tone'=>'primary','icon'=>'ri-archive-2-line'],
+    ['label'=>'Nilai Perolehan','value'=>'Rp '.number_format($totalPerolehan,0,',','.'),'tone'=>'info','icon'=>'ri-money-dollar-circle-line'],
+    ['label'=>'Nilai Buku','value'=>'Rp '.number_format($totalNilaiBuku,0,',','.'),'tone'=>'success','icon'=>'ri-book-open-line'],
+    ['label'=>'Penyusutan','value'=>'Rp '.number_format($totalPenyusutan,0,',','.'),'tone'=>'danger','icon'=>'ri-arrow-down-line'],
+]" />
 
 <div class="row">
     <div class="col-lg-12">

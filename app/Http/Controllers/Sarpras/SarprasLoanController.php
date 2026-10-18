@@ -24,6 +24,13 @@ class SarprasLoanController extends SarprasBaseController
     {
         $query = AssetLoan::with(['asset', 'borrower', 'approver']);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'borrowed' => (clone $query)->whereIn('status', ['dipinjam', 'approved', 'handover'])->count(),
+            'returned' => (clone $query)->whereIn('status', ['dikembalikan', 'completed'])->count(),
+        ];
+
         if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
@@ -39,7 +46,7 @@ class SarprasLoanController extends SarprasBaseController
         $loans = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
 
-        return view('sarpras.peminjaman.index', compact('loans', 'schools'));
+        return view('sarpras.peminjaman.index', compact('loans', 'schools', 'stats'));
     }
 
     public function create(Request $request)

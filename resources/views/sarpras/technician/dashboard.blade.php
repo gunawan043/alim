@@ -7,6 +7,18 @@
         @slot('title') Workspace Teknisi
     @endcomponent
 
+    <x-sarpras-stats :items="[
+        ['label'=>'Work Order Aktif','value'=>$stats['active'],'tone'=>'primary','icon'=>'ri-tools-line'],
+        ['label'=>'Ditugaskan','value'=>$stats['assigned'],'tone'=>'info','icon'=>'ri-user-received-line'],
+        ['label'=>'Selesai','value'=>$stats['completed'],'tone'=>'success','icon'=>'ri-check-double-line'],
+        ['label'=>'Belum Diambil','value'=>$stats['available'],'tone'=>'warning','icon'=>'ri-inbox-unarchive-line'],
+    ]" />
+
+    <x-sarpras-filter-card :action="route('sarpras.teknisi.dashboard')" :reset="route('sarpras.teknisi.dashboard')">
+        <div class="col-md-4"><label class="form-label small fw-semibold">Cari</label><input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Order / aset / lokasi…"></div>
+        <div class="col-md-3"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><option value="">Semua</option>@foreach(['draft'=>'Draft','dispatched'=>'Dispatched','in_progress'=>'Dikerjakan','paused'=>'Jeda','waiting_parts'=>'Menunggu Sparepart','completed'=>'Selesai','closed'=>'Ditutup'] as $k=>$v)<option value="{{ $k }}" {{ request('status')===$k?'selected':'' }}>{{ $v }}</option>@endforeach</select></div>
+    </x-sarpras-filter-card>
+
     @if($available->isNotEmpty())
         <div class="card mb-3 border-info">
             <div class="card-header"><h5 class="card-title mb-0"><i class="ri-inbox-unarchive-line me-1 text-info"></i>Work Order Belum Diambil <span class="badge bg-info ms-2">{{ $available->count() }}</span></h5></div>

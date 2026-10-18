@@ -7,6 +7,13 @@
     @slot('title') Riwayat Perpindahan @endslot
 @endcomponent
 
+<x-sarpras-stats :items="[
+    ['label'=>'Total Perpindahan','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-arrow-left-right-line'],
+    ['label'=>'Bulan Ini','value'=>$stats['month'],'tone'=>'info','icon'=>'ri-calendar-line'],
+    ['label'=>'Aset Berpindah','value'=>$stats['assets'],'tone'=>'warning','icon'=>'ri-archive-2-line'],
+    ['label'=>'Hari Ini','value'=>$stats['today'],'tone'=>'success','icon'=>'ri-today-line'],
+]" />
+
 <div class="row">
     <div class="col-lg-12">
         <div class="card">

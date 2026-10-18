@@ -1,10 +1,6 @@
 @extends('layouts.master')
 @section('title') Sarana Prasarana — Gedung @endsection
 
-@section('css')
-    <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
-@endsection
-
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
@@ -22,6 +18,13 @@
             {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+
+    <x-sarpras-stats :items="[
+        ['label'=>'Total Gedung','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-building-3-line'],
+        ['label'=>'Gedung Aktif','value'=>$stats['active'],'tone'=>'success','icon'=>'ri-checkbox-circle-line'],
+        ['label'=>'Struktur Baik','value'=>$stats['good'],'tone'=>'info','icon'=>'ri-shield-check-line'],
+        ['label'=>'Total Ruang','value'=>$stats['rooms'],'tone'=>'warning','icon'=>'ri-door-open-line'],
+    ]" />
 
     <div class="row">
         <div class="col-lg-12">

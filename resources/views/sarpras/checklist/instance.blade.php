@@ -43,36 +43,63 @@
                     <table class="table table-bordered align-middle mb-0">
                         <thead class="table-light"><tr><th style="width:45px">No</th><th>Item Pemeriksaan</th><th>Standar</th><th>Metode</th><th>Frekuensi</th><th class="text-center" style="width:130px">Hasil</th><th style="width:22%">Catatan</th></tr></thead>
                         <tbody>
-                        @php $lastGroup = null; @endphp
-                        @foreach($instance->template?->items ?? [] as $index => $item)
-                            @php
-                                $response = $responses[$item->id] ?? null;
-                                $passed = $response?->passed;
-                                $checkedV = $response !== null && $passed === true;
-                                $checkedX = $response !== null && $passed === false;
-                            @endphp
-                            @if($item->group_label && $item->group_label !== $lastGroup)
-                                <tr class="table-secondary"><td colspan="7" class="fw-semibold">{{ $item->group_label }}</td></tr>
-                                @php $lastGroup = $item->group_label; @endphp
-                            @endif
-                            <tr class="{{ $response && !$passed ? 'table-danger' : '' }}">
-                                <td class="text-center">{{ $index + 1 }}</td>
-                                <td><div class="fw-medium">{{ $item->label }}</div>@if($item->description)<small class="text-muted">{{ $item->description }}</small>@endif</td>
-                                <td class="small">{{ $item->standard ?? '-' }}</td>
-                                <td class="small">{{ $item->method ?? '-' }}</td>
-                                <td class="small">{{ $item->frequency ?? '-' }}</td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="v{{ $item->id }}" value="1" {{ $checkedV ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
-                                        <label class="btn btn-outline-success" for="v{{ $item->id }}">V</label>
-                                        <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="x{{ $item->id }}" value="0" {{ $checkedX ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
-                                        <label class="btn btn-outline-danger" for="x{{ $item->id }}">X</label>
-                                    </div>
-                                </td>
-                                <td><input type="text" name="notes[{{ $item->id }}]" class="form-control form-control-sm" value="{{ $response?->notes }}" placeholder="Keterangan…" {{ $canEdit ? '' : 'disabled' }}></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
+                        @php
+                            $frequencyGroups = [
+                                'Harian' => ['Harian'],
+                                'Pekanan' => ['Mingguan', '2 minggu'],
+                                'Bulanan' => ['Bulanan', 'Per 3 bulan', 'Per 6 bulan', 'Tahunan'],
+                            ];
+                            $allItems = $instance->template?->items ?? collect();
+                            $groupedItems = [];
+                            foreach ($frequencyGroups as $groupLabel => $frequencies) {
+                                $subset = $allItems->filter(fn ($item) => in_array($item->frequency, $frequencies, true));
+                                if ($subset->isNotEmpty()) {
+                                    $groupedItems[$groupLabel] = $subset;
+                                }
+                            }
+                            $knownFrequencies = collect($frequencyGroups)->flatten()->all();
+                            $otherItems = $allItems->filter(fn ($item) => ! in_array($item->frequency, $knownFrequencies, true));
+                            if ($otherItems->isNotEmpty()) {
+                                $groupedItems['Lainnya'] = $otherItems;
+                            }
+                            $counter = 0;
+                        @endphp
+                        @forelse($groupedItems as $frequencyLabel => $frequencyItems)
+                            <tr class="table-primary"><td colspan="7" class="fw-bold"><i class="ri-calendar-check-line me-1"></i>Pemeriksaan {{ $frequencyLabel }}</td></tr>
+                            @php $lastGroup = null; @endphp
+                            @foreach($frequencyItems as $item)
+                                @php
+                                    $response = $responses[$item->id] ?? null;
+                                    $passed = $response?->passed;
+                                    $checkedV = $response !== null && $passed === true;
+                                    $checkedX = $response !== null && $passed === false;
+                                    $counter++;
+                                @endphp
+                                @if($item->group_label && $item->group_label !== $lastGroup)
+                                    <tr class="table-secondary"><td colspan="7" class="fw-semibold">{{ $item->group_label }}</td></tr>
+                                    @php $lastGroup = $item->group_label; @endphp
+                                @endif
+                                <tr class="{{ $response && !$passed ? 'table-danger' : '' }}">
+                                    <td class="text-center">{{ $counter }}</td>
+                                    <td><div class="fw-medium">{{ $item->label }}</div>@if($item->description)<small class="text-muted">{{ $item->description }}</small>@endif</td>
+                                    <td class="small">{{ $item->standard ?? '-' }}</td>
+                                    <td class="small">{{ $item->method ?? '-' }}</td>
+                                    <td class="small"><span class="badge bg-light text-dark border">{{ $item->frequency ?? '-' }}</span></td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="v{{ $item->id }}" value="1" {{ $checkedV ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
+                                            <label class="btn btn-outline-success" for="v{{ $item->id }}">V</label>
+                                            <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="x{{ $item->id }}" value="0" {{ $checkedX ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
+                                            <label class="btn btn-outline-danger" for="x{{ $item->id }}">X</label>
+                                        </div>
+                                    </td>
+                                    <td><input type="text" name="notes[{{ $item->id }}]" class="form-control form-control-sm" value="{{ $response?->notes }}" placeholder="Keterangan…" {{ $canEdit ? '' : 'disabled' }}></td>
+                                </tr>
+                            @endforeach
+                        @empty
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Belum ada item checklist.</td></tr>
+                        @endforelse
+                    </tbody>
                     </table>
                 </div>
             </div>

@@ -25,15 +25,22 @@ class SarprasPicApprovalController extends Controller
 
     public function index()
     {
-        $pending = RepairRequest::with(['asset', 'reportedBy'])
+        $query = RepairRequest::with(['asset', 'reportedBy'])
             ->whereIn('status', [
                 RepairRequest::STATUS_VERIFICATION_PENDING,
                 RepairRequest::STATUS_APPROVAL_PENDING,
-            ])
-            ->latest()
-            ->paginate(20);
+            ]);
 
-        return view('sarpras.pic.index', compact('pending'));
+        $stats = [
+            'total' => (clone $query)->count(),
+            'verification' => (clone $query)->where('status', RepairRequest::STATUS_VERIFICATION_PENDING)->count(),
+            'approval' => (clone $query)->where('status', RepairRequest::STATUS_APPROVAL_PENDING)->count(),
+            'urgent' => (clone $query)->whereIn('priority', ['high', 'urgent'])->count(),
+        ];
+
+        $pending = $query->latest()->paginate(20);
+
+        return view('sarpras.pic.index', compact('pending', 'stats'));
     }
 
     public function show(string $userId, string $id)

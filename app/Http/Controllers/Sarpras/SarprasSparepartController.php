@@ -24,6 +24,13 @@ class SarprasSparepartController extends Controller
         $query = Sparepart::query()
             ->with(['category', 'unit', 'primaryVendor', 'warehouse']);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'low' => (clone $query)->whereColumn('stock', '<=', 'reorder_point')->count(),
+            'dead' => (clone $query)->whereDoesntHave('stockMovements', fn ($q) => $q->where('occurred_at', '>=', now()->subMonths(6)))->count(),
+            'value' => (clone $query)->selectRaw('COALESCE(SUM(stock * unit_price),0) as total')->value('total'),
+        ];
+
         if ($request->filled('q')) {
             $q = $request->input('q');
             $query->where(function ($w) use ($q) {
@@ -58,6 +65,7 @@ class SarprasSparepartController extends Controller
             'spareparts' => $spareparts,
             'categories' => SparepartCategory::orderBy('name')->get(),
             'warehouses' => Warehouse::orderBy('name')->get(),
+            'stats' => $stats,
         ]);
     }
 

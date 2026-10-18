@@ -8,6 +8,17 @@
     @slot('title') Tambah @endslot
 @endcomponent
 
+@php
+    $mode = $mode ?? request('mode');
+    $selectedAssetId = $selectedAssetId ?? request('asset_id');
+    $defaultType = $mode === 'repair' ? 'Perbaikan' : ($mode === 'maintenance' ? 'Perawatan' : '');
+    $defaultLogType = $mode === 'repair' ? 'korektif' : ($mode === 'maintenance' ? 'preventif' : 'korektif');
+@endphp
+
+@if($mode === 'repair' || $mode === 'maintenance')
+    <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-information-line fs-5"></i><span>Tindakan langsung petugas URT. Catatan akan masuk ke riwayat {{ $mode === 'repair' ? 'perbaikan' : 'perawatan' }} aset.</span></div>
+@endif
+
 <div class="row">
     <div class="col-lg-8">
         <div class="card">
@@ -31,16 +42,16 @@
                                 <div class="col-md-4">
                                     <select name="target_type" class="form-select" required>
                                         <option value="">Tipe</option>
-                                        <option value="asset">Aset</option>
-                                        <option value="room">Ruang</option>
-                                        <option value="building">Gedung</option>
+                                        <option value="asset" {{ old('target_type', $selectedAssetId ? 'asset' : '') === 'asset' ? 'selected' : '' }}>Aset</option>
+                                        <option value="room" {{ old('target_type') === 'room' ? 'selected' : '' }}>Ruang</option>
+                                        <option value="building" {{ old('target_type') === 'building' ? 'selected' : '' }}>Gedung</option>
                                     </select>
                                 </div>
                                 <div class="col-md-8">
                                     <select name="asset_id" class="form-select" id="assetSelect">
                                         <option value="">Pilih Aset</option>
                                         @foreach($assets as $a)
-                                            <option value="{{ $a->id }}">{{ $a->asset_name }}</option>
+                                            <option value="{{ $a->id }}" {{ (string) old('asset_id', $selectedAssetId) === (string) $a->id ? 'selected' : '' }}>{{ $a->asset_name }}</option>
                                         @endforeach
                                     </select>
                                     <select name="room_id" class="form-select" id="roomSelect" style="display:none">
@@ -60,7 +71,15 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Jenis Perawatan <span class="text-danger">*</span></label>
-                            <input type="text" name="maintenance_type" class="form-control" value="{{ old('maintenance_type') }}" required>
+                            <input type="text" name="maintenance_type" class="form-control" value="{{ old('maintenance_type', $defaultType) }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jenis Catatan</label>
+                            <select name="log_type" class="form-select">
+                                @foreach(['preventif'=>'Preventif / Perawatan','korektif'=>'Korektif / Perbaikan','inspeksi'=>'Inspeksi','penghapusan'=>'Penghapusan'] as $value=>$label)
+                                    <option value="{{ $value }}" {{ old('log_type', $defaultLogType) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tanggal Perawatan <span class="text-danger">*</span></label>

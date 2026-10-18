@@ -19,6 +19,7 @@ class MaintenanceLogStoreRequest extends FormRequest
             'building_id' => 'required_if:target_type,building|nullable|exists:asset_buildings,id',
             'room_id' => 'required_if:target_type,room|nullable|exists:asset_rooms,id',
             'maintenance_type' => 'required|string|max:100',
+            'log_type' => 'nullable|in:preventif,korektif,inspeksi,penghapusan',
             'maintenance_date' => 'required|date',
             'performed_by' => 'nullable|exists:users,id',
             'vendor_name' => 'nullable|string|max:191',

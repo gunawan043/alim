@@ -145,6 +145,7 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.schedule.timeline') ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.schedule.timeline', ['userId' => $userId]) }}">Timeline Tahunan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.repair') ? ' active' : '' }}" href="{{ route('sarpras.repair.index', ['userId' => $userId]) }}">Antrean Perbaikan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.log') ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.log.index', ['userId' => $userId]) }}">Riwayat Perawatan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.pemeliharaan.log') && request('log_type') === 'korektif' ? ' active' : '' }}" href="{{ route('sarpras.pemeliharaan.log.index', ['userId' => $userId, 'log_type' => 'korektif']) }}">Riwayat Perbaikan</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.teknisi') ? ' active' : '' }}" href="{{ route('sarpras.teknisi.dashboard', ['userId' => $userId]) }}">Workspace Teknisi</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.auditor') ? ' active' : '' }}" href="{{ route('sarpras.auditor.dashboard', ['userId' => $userId]) }}">Workspace Auditor</a></li>
             @endif

@@ -25,6 +25,13 @@ class SarprasGedungController extends SarprasBaseController
             $query = $this->scopeToSchool($request, $query);
         }
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('is_active', true)->count(),
+            'good' => (clone $query)->where('structure_condition', 'baik')->count(),
+            'rooms' => \App\Models\AssetRoom::query()->when(! $this->canViewAll($request), fn ($q) => $this->scopeToSchool($request, $q))->count(),
+        ];
+
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(fn ($q) => $q->where('building_name', 'like', "%{$s}%")->orWhere('building_code', 'like', "%{$s}%"));
@@ -43,7 +50,7 @@ class SarprasGedungController extends SarprasBaseController
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
         $canManage = $this->isCentralSarpras();
 
-        return view('sarpras.gedung.index', compact('gedungs', 'schools', 'canManage'));
+        return view('sarpras.gedung.index', compact('gedungs', 'schools', 'canManage', 'stats'));
     }
 
     public function create(Request $request)

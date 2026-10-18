@@ -232,6 +232,50 @@ class SarprasUserController extends SarprasBaseController
         return view('sarpras.user.kerusakan.create', compact('damagedAssets', 'userId'));
     }
 
+    public function createActionRequest(Request $request)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $assets = Asset::with('room.building')
+            ->where('is_active', true)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->orderBy('asset_name')
+            ->get();
+
+        $selectedAssetId = $request->query('asset_id');
+        $action = $request->query('action', 'perbaikan');
+        if (! in_array($action, ['perbaikan', 'perawatan', 'pengecekan'], true)) {
+            $action = 'perbaikan';
+        }
+
+        return view('sarpras.user.action-request.create', compact('assets', 'selectedAssetId', 'action'));
+    }
+
+    public function storeActionRequest(Request $request)
+    {
+        $validated = $request->validate([
+            'asset_id' => 'required|exists:assets,id',
+            'action_type' => 'required|in:perbaikan,perawatan,pengecekan',
+            'description' => 'required|string|max:2000',
+            'priority' => 'required|in:low,normal,high,urgent',
+        ], [
+            'asset_id.required' => 'Aset wajib dipilih.',
+            'description.required' => 'Uraian permintaan wajib diisi.',
+        ]);
+
+        $asset = Asset::findOrFail($validated['asset_id']);
+        $label = ucfirst($validated['action_type']);
+        $repair = app(\App\Services\Sarpras\RepairRequestWorkflow::class)->submitDamageReport(
+            $asset,
+            auth()->user(),
+            'Permintaan '.$label.': '.$asset->asset_name,
+            $validated['description'],
+            $validated['priority']
+        );
+
+        return redirect()->route('sarpras.user.kerusakan.index')
+            ->with('success', 'Permintaan '.strtolower($label).' dikirim dengan nomor '.$repair->request_number.'. URT akan menindaklanjuti.');
+    }
+
     // ── PENGADAAN ─────────────────────────────────────────
     public function indexPengadaan(Request $request)
     {
@@ -287,12 +331,32 @@ class SarprasUserController extends SarprasBaseController
             $query->where('school_id', $schoolId);
         }
 
-        $allAssets = $query->orderBy('asset_name')->get();
+        $stats = [
+            'total' => (clone $query)->count(),
+            'good' => (clone $query)->where('condition', 'baik')->count(),
+            'damaged' => (clone $query)->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])->count(),
+            'value' => (clone $query)->sum('acquisition_price'),
+        ];
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('asset_name', 'like', "%{$search}%")
+                ->orWhere('asset_code', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%"));
+        }
+        if ($request->filled('category_id')) {
+            $query->where('asset_category_id', $request->category_id);
+        }
+        if ($request->filled('condition')) {
+            $query->where('condition', $request->condition);
+        }
+
+        $allAssets = $query->orderBy('asset_name')->paginate(20)->withQueryString();
         $categories = AssetCategory::where('is_active', true)->orderBy('name')->get();
         $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)->orderBy('building_name')->get();
 
-        return view('sarpras.user.aset.index', compact('allAssets', 'categories', 'buildings'));
+        return view('sarpras.user.aset.index', compact('allAssets', 'categories', 'buildings', 'stats'));
     }
 
     public function createAsset(Request $request)

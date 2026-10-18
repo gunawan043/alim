@@ -24,6 +24,13 @@ class SarprasRuangController extends SarprasBaseController
             $query = $this->scopeToSchool($request, $query);
         }
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('is_active', true)->count(),
+            'bookable' => (clone $query)->where('is_bookable', true)->count(),
+            'capacity' => (clone $query)->sum('capacity'),
+        ];
+
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(fn ($q) => $q->where('room_name', 'like', "%{$s}%")->orWhere('room_code', 'like', "%{$s}%"));
@@ -41,7 +48,7 @@ class SarprasRuangController extends SarprasBaseController
         $ruangs = $query->orderBy('room_name')->paginate(15)->withQueryString();
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
 
-        return view('sarpras.ruang.index', compact('ruangs', 'schools'));
+        return view('sarpras.ruang.index', compact('ruangs', 'schools', 'stats'));
     }
 
     public function create(Request $request)

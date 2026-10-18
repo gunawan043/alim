@@ -7,6 +7,13 @@
     @slot('title') Riwayat Perawatan @endslot
 @endcomponent
 
+<x-sarpras-stats :items="[
+    ['label'=>'Total Catatan','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-history-line'],
+    ['label'=>'Preventif','value'=>$stats['preventif'],'tone'=>'success','icon'=>'ri-shield-check-line'],
+    ['label'=>'Korektif / Perbaikan','value'=>$stats['korektif'],'tone'=>'warning','icon'=>'ri-tools-line'],
+    ['label'=>'Total Biaya','value'=>'Rp '.number_format($stats['cost'],0,',','.'),'tone'=>'danger','icon'=>'ri-money-dollar-circle-line'],
+]" />
+
 <div class="row">
     <div class="col-lg-12">
         <div class="card">
@@ -23,13 +30,20 @@
                     <div class="col-md-4">
                         <input type="text" name="search" class="form-control" placeholder="Cari jenis perawatan..." value="{{ request('search') }}">
                     </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">Cari</button>
+                    <div class="col-md-3">
+                        <select name="log_type" class="form-select">
+                            <option value="">Semua Jenis Catatan</option>
+                            @foreach(['preventif'=>'Preventif / Perawatan','korektif'=>'Korektif / Perbaikan','inspeksi'=>'Inspeksi'] as $value=>$label)
+                                <option value="{{ $value }}" {{ request('log_type')===$value?'selected':'' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
                     </div>
+                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100"><i class="ri-filter-3-line me-1"></i>Filter</button></div>
+                    <div class="col-md-1"><a href="{{ route('sarpras.pemeliharaan.log.index') }}" class="btn btn-light w-100"><i class="ri-refresh-line"></i></a></div>
                 </form>
 
                 <div class="table-responsive">
-                    <table class="table table-nowrap">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>#</th><th>Jenis Perawatan</th><th>Target</th><th>Tanggal</th><th>Petugas</th><th>Vendor</th><th>Biaya</th><th>Kondisi Sebelum</th><th>Kondisi Sesudah</th><th>Aksi</th>
@@ -55,7 +69,7 @@
                                 <td><a href="{{ route('sarpras.pemeliharaan.log.show', ['id' => $l->id]) }}" class="btn btn-sm btn-soft-primary"><i class="ri-eye-line"></i></a></td>
                             </tr>
                             @empty
-                            <tr><td colspan="10" class="text-center py-4"><p class="text-muted mb-0">Belum ada riwayat perawatan.</p></td></tr>
+                            <x-empty-state colspan="10" title="Belum ada riwayat" message="Catatan perawatan dan perbaikan akan tampil di sini." />
                             @endforelse
                         </tbody>
                     </table>

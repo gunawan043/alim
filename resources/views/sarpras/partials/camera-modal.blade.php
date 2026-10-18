@@ -1,5 +1,6 @@
 <style>
-    .alim-camera-preview { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 430px; overflow: hidden; border-radius: .5rem; background: #000; }
+    .alim-camera-preview { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 430px; overflow: hidden; border-radius: .5rem; background: #000; transition: width .2s ease; }
+    .alim-camera-preview[data-orientation="portrait"] { width: auto; height: 430px; max-height: 52vh; margin: 0 auto; aspect-ratio: 9 / 16; }
     .alim-camera-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>
 <div class="modal fade" id="alimCameraModal" tabindex="-1" aria-hidden="true">
@@ -16,10 +17,10 @@
                             <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
                             <label class="btn btn-outline-secondary" for="alimOrientationAuto">Otomatis</label>
                             <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
-                            <label class="btn btn-outline-secondary" for="alimOrientationPortrait"><i class="ri-portrait-line me-1"></i>Vertikal 3:4</label>
+                            <label class="btn btn-outline-secondary" for="alimOrientationPortrait"><i class="ri-portrait-line me-1"></i>Vertikal 9:16</label>
                         </div>
                     </div>
-                    <small class="text-muted">Vertikal cocok untuk foto berdiri / dokumentasi bangunan.</small>
+                    <small class="text-muted">Vertikal 9:16 cocok untuk foto berdiri / dokumentasi bangunan.</small>
                 </div>
                 <div id="alimCameraError" class="alert alert-danger small mt-2 d-none"></div>
                 <div class="d-flex flex-wrap justify-content-between gap-2 small text-muted mt-2">
@@ -148,8 +149,10 @@
 
     function updatePreviewRatio() {
         if (!previewEl) return;
-        if (selectedOrientation() === 'portrait') {
-            previewEl.style.aspectRatio = '3 / 4';
+        const orientation = selectedOrientation();
+        previewEl.dataset.orientation = orientation;
+        if (orientation === 'portrait') {
+            previewEl.style.aspectRatio = '9 / 16';
         } else if (video.videoWidth && video.videoHeight) {
             previewEl.style.aspectRatio = video.videoWidth + ' / ' + video.videoHeight;
         } else {
@@ -170,7 +173,7 @@
         const ctx = canvas.getContext('2d');
         const w = canvas.width, h = canvas.height;
         const portrait = h > w;
-        const unit = Math.max(0.62, Math.min(w / 1280, h / 900));
+        const unit = Math.max(0.78, Math.min(w / 1200, h / 900));
         const now = new Date();
         const timeZone = 'Asia/Makassar';
         const day = new Intl.DateTimeFormat('id-ID', { timeZone, day: '2-digit' }).format(now);
@@ -179,21 +182,30 @@
         const time = new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
         const pageTitle = (document.title || 'Dokumentasi Sarpras').split('|')[0].trim();
         const x = Math.round(w * 0.042);
-        const panelW = Math.min(w * (portrait ? 0.84 : 0.66), 760 * unit);
-        const panelH = 272 * unit;
+        const panelW = Math.min(w * (portrait ? 0.86 : 0.68), 800 * unit);
+        const panelH = 300 * unit;
         const panelY = h - panelH - Math.max(18 * unit, h * 0.025);
         const px = x - 14 * unit;
         const right = px + panelW - 16 * unit;
 
-        // Gradasi agar area bawah tetap terbaca tanpa menutupi foto.
-        const grad = ctx.createLinearGradient(0, h * 0.5, 0, h);
+        // Sedikit gradasi bawah untuk keterbacaan, tanpa menutupi foto.
+        const grad = ctx.createLinearGradient(0, h * 0.58, 0, h);
         grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(0.55, 'rgba(0,0,0,0.20)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.86)');
+        grad.addColorStop(1, 'rgba(0,0,0,0.62)');
         ctx.fillStyle = grad;
-        ctx.fillRect(0, h * 0.5, w, h * 0.5);
+        ctx.fillRect(0, h * 0.58, w, h * 0.42);
 
-        // Panel utama.
+        // Efek kaca: salin area belakang panel, blur, lalu beri tint transparan.
+        const glass = document.createElement('canvas');
+        glass.width = Math.ceil(panelW);
+        glass.height = Math.ceil(panelH);
+        const gctx = glass.getContext('2d');
+        if ('filter' in gctx) {
+            gctx.filter = `blur(${Math.max(8, 13 * unit)}px)`;
+        }
+        gctx.drawImage(canvas, px, panelY, panelW, panelH, 0, 0, glass.width, glass.height);
+        gctx.filter = 'none';
+
         const radius = 16 * unit;
         ctx.beginPath();
         ctx.moveTo(px + radius, panelY);
@@ -206,116 +218,129 @@
         ctx.lineTo(px, panelY + radius);
         ctx.quadraticCurveTo(px, panelY, px + radius, panelY);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(5, 20, 27, 0.66)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+
+        ctx.save();
+        ctx.clip();
+        ctx.globalAlpha = 0.82;
+        ctx.drawImage(glass, px, panelY, panelW, panelH);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(5, 20, 27, 0.30)';
+        ctx.fillRect(px, panelY, panelW, panelH);
+        // Kilau kaca tipis.
+        const sheen = ctx.createLinearGradient(px, panelY, px + panelW, panelY + panelH);
+        sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
+        sheen.addColorStop(0.5, 'rgba(255,255,255,0.025)');
+        sheen.addColorStop(1, 'rgba(255,255,255,0.06)');
+        ctx.fillStyle = sheen;
+        ctx.fillRect(px, panelY, panelW, panelH);
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
         ctx.lineWidth = Math.max(1, unit);
         ctx.stroke();
 
-        // Aksen kuning tipis.
+        // Aksen kuning.
         ctx.fillStyle = '#FFD400';
-        ctx.fillRect(px + 18 * unit, panelY, 62 * unit, 3 * unit);
+        ctx.fillRect(px + 18 * unit, panelY, 68 * unit, 3 * unit);
 
         // Header: logo, brand, waktu.
         if (logo.complete && logo.naturalWidth > 0) {
-            const logoSize = 28 * unit;
-            ctx.drawImage(logo, x, panelY + 14 * unit, logoSize, logoSize);
+            const logoSize = 31 * unit;
+            ctx.drawImage(logo, x, panelY + 15 * unit, logoSize, logoSize);
         }
         ctx.textBaseline = 'alphabetic';
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur = 6 * unit;
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = 7 * unit;
         ctx.textAlign = 'left';
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.round(13 * unit)}px Arial, sans-serif`;
-        ctx.fillText('ALIM', x + 36 * unit, panelY + 29 * unit);
+        ctx.font = `800 ${Math.round(14 * unit)}px Arial, sans-serif`;
+        ctx.fillText('ALIM', x + 39 * unit, panelY + 31 * unit);
         ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(8 * unit)}px Arial, sans-serif`;
-        ctx.fillText('SARPRAS', x + 36 * unit, panelY + 41 * unit);
+        ctx.font = `700 ${Math.round(8.5 * unit)}px Arial, sans-serif`;
+        ctx.fillText('SARPRAS', x + 39 * unit, panelY + 44 * unit);
 
         ctx.textAlign = 'right';
         ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(11 * unit)}px Arial, sans-serif`;
-        ctx.fillText('WITA ' + time, right, panelY + 30 * unit);
+        ctx.font = `700 ${Math.round(12 * unit)}px Arial, sans-serif`;
+        ctx.fillText('WITA ' + time, right, panelY + 32 * unit);
         ctx.textAlign = 'left';
 
-        // Garis header.
-        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
         ctx.lineWidth = Math.max(1, unit * 0.8);
         ctx.beginPath();
-        ctx.moveTo(x, panelY + 50 * unit);
-        ctx.lineTo(right, panelY + 50 * unit);
+        ctx.moveTo(x, panelY + 54 * unit);
+        ctx.lineTo(right, panelY + 54 * unit);
         ctx.stroke();
 
         // Tanggal.
-        const dateY = panelY + 88 * unit;
+        const dateY = panelY + 96 * unit;
         ctx.fillStyle = '#FFD400';
-        ctx.font = `900 ${Math.round(42 * unit)}px Arial, sans-serif`;
+        ctx.font = `900 ${Math.round(46 * unit)}px Arial, sans-serif`;
         ctx.fillText(day, x, dateY);
         const dayWidth = ctx.measureText(day).width;
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `700 ${Math.round(16 * unit)}px Arial, sans-serif`;
-        ctx.fillText(month + ' ' + year, x + dayWidth + 10 * unit, dateY - 2 * unit);
+        ctx.font = `700 ${Math.round(17 * unit)}px Arial, sans-serif`;
+        ctx.fillText(month + ' ' + year, x + dayWidth + 11 * unit, dateY - 2 * unit);
 
         // Judul dan konteks halaman.
-        const titleY = panelY + 132 * unit;
+        const titleY = panelY + 143 * unit;
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.round(29 * unit)}px Arial, sans-serif`;
+        ctx.font = `800 ${Math.round(32 * unit)}px Arial, sans-serif`;
         ctx.fillText('Dokumentasi', x, titleY);
         const titleWidth = ctx.measureText('Dokumentasi').width;
         ctx.fillStyle = '#FFD400';
         ctx.fillText('.', x + titleWidth + 2 * unit, titleY);
 
-        ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.font = `500 ${Math.round(12 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, pageTitle, panelW - 34 * unit), x, panelY + 153 * unit);
+        ctx.fillStyle = 'rgba(255,255,255,0.84)';
+        ctx.font = `500 ${Math.round(13 * unit)}px Arial, sans-serif`;
+        ctx.fillText(fitText(ctx, pageTitle, panelW - 36 * unit), x, panelY + 166 * unit);
 
-        // Garis konten.
-        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
         ctx.beginPath();
-        ctx.moveTo(x, panelY + 168 * unit);
-        ctx.lineTo(right, panelY + 168 * unit);
+        ctx.moveTo(x, panelY + 181 * unit);
+        ctx.lineTo(right, panelY + 181 * unit);
         ctx.stroke();
 
         // Lokasi.
         const pinX = x + 5 * unit;
-        const pinY = panelY + 187 * unit;
+        const pinY = panelY + 202 * unit;
         ctx.fillStyle = '#FFD400';
         ctx.beginPath();
-        ctx.arc(pinX, pinY, 6 * unit, 0, Math.PI * 2);
+        ctx.arc(pinX, pinY, 6.5 * unit, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(pinX - 4 * unit, pinY + 4 * unit);
-        ctx.lineTo(pinX + 4 * unit, pinY + 4 * unit);
-        ctx.lineTo(pinX, pinY + 13 * unit);
+        ctx.moveTo(pinX - 4.5 * unit, pinY + 4.5 * unit);
+        ctx.lineTo(pinX + 4.5 * unit, pinY + 4.5 * unit);
+        ctx.lineTo(pinX, pinY + 14 * unit);
         ctx.closePath();
         ctx.fill();
 
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `700 ${Math.round(13 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, placeName || 'Nama lokasi tidak tersedia', panelW - 42 * unit), x + 18 * unit, panelY + 193 * unit);
+        ctx.font = `700 ${Math.round(14 * unit)}px Arial, sans-serif`;
+        ctx.fillText(fitText(ctx, placeName || 'Nama lokasi tidak tersedia', panelW - 44 * unit), x + 19 * unit, panelY + 208 * unit);
 
-        ctx.fillStyle = 'rgba(255,255,255,0.68)';
-        ctx.font = `500 ${Math.round(10 * unit)}px Arial, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.74)';
+        ctx.font = `500 ${Math.round(10.5 * unit)}px Arial, sans-serif`;
         const coordinateText = coords
             ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m`
             : 'Koordinat tidak tersedia';
-        ctx.fillText(fitText(ctx, coordinateText, panelW - 42 * unit), x + 18 * unit, panelY + 212 * unit);
+        ctx.fillText(fitText(ctx, coordinateText, panelW - 44 * unit), x + 19 * unit, panelY + 228 * unit);
 
-        // Footer: akun + copyright.
-        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+        // Footer.
+        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
         ctx.beginPath();
-        ctx.moveTo(x, panelY + 228 * unit);
-        ctx.lineTo(right, panelY + 228 * unit);
+        ctx.moveTo(x, panelY + 247 * unit);
+        ctx.lineTo(right, panelY + 247 * unit);
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(255,255,255,0.90)';
-        ctx.font = `600 ${Math.round(10 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, 'Oleh: ' + accountName, panelW * 0.48), x, panelY + 250 * unit);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.font = `600 ${Math.round(10.5 * unit)}px Arial, sans-serif`;
+        ctx.fillText(fitText(ctx, 'Oleh: ' + accountName, panelW * 0.48), x, panelY + 270 * unit);
 
         ctx.textAlign = 'right';
         ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(9.5 * unit)}px Arial, sans-serif`;
-        ctx.fillText('© Ponpes Abu Hurairah', right, panelY + 250 * unit);
+        ctx.font = `700 ${Math.round(10 * unit)}px Arial, sans-serif`;
+        ctx.fillText('© Ponpes Abu Hurairah', right, panelY + 270 * unit);
         ctx.textAlign = 'left';
         ctx.shadowBlur = 0;
     }
@@ -342,8 +367,8 @@
         let sx = 0, sy = 0, sw = video.videoWidth, sh = video.videoHeight;
 
         if (orientation === 'portrait') {
-            // Crop tengah 3:4 agar hasil vertikal konsisten di kamera depan/belakang.
-            const targetRatio = 3 / 4;
+            // Crop tengah 9:16 agar hasil vertikal konsisten di kamera depan/belakang.
+            const targetRatio = 9 / 16;
             if (sw / sh > targetRatio) {
                 sw = sh * targetRatio;
                 sx = (video.videoWidth - sw) / 2;
@@ -351,7 +376,7 @@
                 sh = sw / targetRatio;
                 sy = (video.videoHeight - sh) / 2;
             }
-            canvas.width = 960;
+            canvas.width = 720;
             canvas.height = 1280;
         } else {
             const maxWidth = 1280;

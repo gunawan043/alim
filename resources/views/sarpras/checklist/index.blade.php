@@ -23,8 +23,9 @@
             <form method="GET" action="{{ route('sarpras.checklist.index') }}" class="row g-2 align-items-end">
                 <div class="col-md-4"><label class="form-label small fw-semibold">Cari Template</label><input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Nama / kode / kategori…"></div>
                 <div class="col-md-3"><label class="form-label small fw-semibold">Kategori</label><select name="category_slug" class="form-select"><option value="">Semua</option>@foreach($categories as $category)<option value="{{ $category }}" {{ request('category_slug') === $category ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $category)) }}</option>@endforeach</select></div>
+                <div class="col-md-2"><label class="form-label small fw-semibold">Frekuensi</label><select name="frequency_group" class="form-select"><option value="">Semua</option>@foreach(array_keys($frequencyGroups) as $group)<option value="{{ $group }}" {{ request('frequency_group') === $group ? 'selected' : '' }}>{{ $group }}</option>@endforeach</select></div>
                 <div class="col-md-2"><button class="btn btn-primary w-100"><i class="ri-filter-3-line me-1"></i>Filter</button></div>
-                <div class="col-md-2"><a href="{{ route('sarpras.checklist.index') }}" class="btn btn-light w-100"><i class="ri-refresh-line me-1"></i>Reset</a></div>
+                <div class="col-md-1"><a href="{{ route('sarpras.checklist.index') }}" class="btn btn-light w-100"><i class="ri-refresh-line"></i></a></div>
             </form>
         </div>
     </div>
@@ -40,7 +41,15 @@
                         </div>
                         <h5 class="mt-3 mb-1">{{ $template->name }}</h5>
                         <div class="text-muted small"><code>{{ $template->code }}</code> · {{ ucfirst(str_replace('-', ' ', $template->category_slug ?? '-')) }}</div>
-                        <div class="mt-3 d-flex gap-2"><a href="{{ route('sarpras.checklist.template', ['templateId' => $template->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat Item</a></div>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <span class="badge bg-success-subtle text-success">Harian {{ $template->harian_count }}</span>
+                            <span class="badge bg-warning-subtle text-warning">Pekanan {{ $template->pekanan_count }}</span>
+                            <span class="badge bg-info-subtle text-info">Bulanan {{ $template->bulanan_count }}</span>
+                        </div>
+                        <div class="mt-3 d-flex gap-2">
+                            <a href="{{ route('sarpras.checklist.template', ['templateId' => $template->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat Item</a>
+                            <form method="POST" action="{{ route('sarpras.checklist.template.start', ['templateId' => $template->id]) }}" class="ms-auto">@csrf<button class="btn btn-sm btn-success"><i class="ri-play-line me-1"></i>Isi Checklist</button></form>
+                        </div>
                     </div>
                 </div>
             </div>

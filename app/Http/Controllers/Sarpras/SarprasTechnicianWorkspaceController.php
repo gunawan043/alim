@@ -24,11 +24,27 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
     public function dashboard(Request $request)
     {
         $user = Auth::user();
-        $orders = WorkOrder::where('assignee_id', $user->id)
+        $query = WorkOrder::where('assignee_id', $user->id)
             ->with(['asset.room.building', 'room.building', 'building', 'maintenanceSchedule', 'progressSteps'])
-            ->orderByRaw("FIELD(status, 'in_progress', 'waiting_parts', 'dispatched', 'draft', 'completed', 'closed')")
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->search;
+                $q->where(fn ($sub) => $sub->where('order_number', 'like', "%{$s}%")
+                    ->orWhere('target_name', 'like', "%{$s}%")
+                    ->orWhere('target_location', 'like', "%{$s}%"));
+            })
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status));
+
+        $stats = [
+            'active' => (clone $query)->whereIn('status', ['in_progress', 'paused', 'waiting_parts'])->count(),
+            'assigned' => (clone $query)->whereIn('status', ['draft', 'dispatched'])->count(),
+            'completed' => (clone $query)->whereIn('status', ['completed', 'closed'])->count(),
+            'available' => WorkOrder::whereNull('assignee_id')->whereIn('status', ['draft', 'dispatched'])->count(),
+        ];
+
+        $orders = $query->orderByRaw("FIELD(status, 'in_progress', 'waiting_parts', 'dispatched', 'draft', 'completed', 'closed')")
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $available = WorkOrder::whereNull('assignee_id')
             ->with(['asset.room.building', 'room.building', 'building', 'maintenanceSchedule'])
@@ -37,7 +53,7 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
             ->limit(10)
             ->get();
 
-        return view('sarpras.technician.dashboard', compact('orders', 'available'));
+        return view('sarpras.technician.dashboard', compact('orders', 'available', 'stats'));
     }
 
     public function show(string $userId, Request $request, string $orderId)

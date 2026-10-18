@@ -459,11 +459,21 @@ class SarprasMaintenanceController extends SarprasBaseController
             $s = $request->search;
             $query->where('maintenance_type', 'like', "%{$s}%");
         }
+        if ($request->filled('log_type')) {
+            $query->where('log_type', $request->log_type);
+        }
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'preventif' => (clone $query)->where('log_type', 'preventif')->count(),
+            'korektif' => (clone $query)->where('log_type', 'korektif')->count(),
+            'cost' => (clone $query)->sum('actual_cost'),
+        ];
 
         $logs = $query->orderBy('maintenance_date', 'desc')->paginate(15)->withQueryString();
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
 
-        return view('sarpras.pemeliharaan.log.index', compact('logs', 'schools'));
+        return view('sarpras.pemeliharaan.log.index', compact('logs', 'schools', 'stats'));
     }
 
     public function logCreate(Request $request)
@@ -496,7 +506,10 @@ class SarprasMaintenanceController extends SarprasBaseController
 
         $users = User::query()->whereHas('roles')->orderBy('name')->get();
 
-        return view('sarpras.pemeliharaan.log.create', compact('schedules', 'assets', 'buildings', 'rooms', 'users'));
+        $selectedAssetId = $request->query('asset_id');
+        $mode = $request->query('mode');
+
+        return view('sarpras.pemeliharaan.log.create', compact('schedules', 'assets', 'buildings', 'rooms', 'users', 'selectedAssetId', 'mode'));
     }
 
     public function logStore(MaintenanceLogStoreRequest $request)
@@ -526,6 +539,7 @@ class SarprasMaintenanceController extends SarprasBaseController
         }
 
         $validated['created_by'] = auth()->id();
+        $validated['log_type'] = $validated['log_type'] ?? 'korektif';
         $validated['handled_by'] = $validated['performed_by'] ?? auth()->id();
         $validated['description'] = $validated['work_description'] ?? $validated['maintenance_type'];
         $validated['cost'] = $validated['actual_cost'] ?? 0;

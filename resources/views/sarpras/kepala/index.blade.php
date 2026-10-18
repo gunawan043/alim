@@ -14,6 +14,13 @@
     </div>
 @endif
 
+<x-sarpras-stats :items="[
+    ['label'=>'Menunggu Approval','value'=>$stats['total'],'tone'=>'warning','icon'=>'ri-time-line'],
+    ['label'=>'Selesai Hari Ini','value'=>$stats['today'],'tone'=>'success','icon'=>'ri-check-double-line'],
+    ['label'=>'7 Hari Terakhir','value'=>$stats['week'],'tone'=>'info','icon'=>'ri-calendar-line'],
+    ['label'=>'Lebih dari 3 Hari','value'=>$stats['oldest'],'tone'=>'danger','icon'=>'ri-alarm-warning-line'],
+]" />
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -43,7 +50,7 @@
                                     <td>{{ $wo->asset?->asset_name ?? '-' }}</td>
                                     <td>{{ $wo->technician?->name ?? '-' }}</td>
                                     <td><span class="badge bg-secondary">{{ $wo->type }}</span></td>
-                                    <td class="small text-muted">{{ $wo->completed_at?->diffForHumans() ?? '-' }}</td>
+                                    <td class="small text-muted">{{ $wo->actual_end?->diffForHumans() ?? '-' }}</td>
                                     <td class="text-end">
                                         <a href="{{ route('sarpras.kepala.show', ['id' => $wo->id]) }}" class="btn btn-sm btn-success">
                                             <i class="ri-eye-line"></i> Review
@@ -51,10 +58,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted py-5">
-                                    <i class="ri-checkbox-circle-line fs-1"></i><br>
-                                    Tidak ada WO yang menunggu approval
-                                </td></tr>
+                                <x-empty-state colspan="6" title="Tidak ada WO menunggu approval" message="Semua work order selesai sudah disetujui." />
                             @endforelse
                         </tbody>
                     </table>

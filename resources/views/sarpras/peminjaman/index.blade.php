@@ -18,6 +18,13 @@
 <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
 
+<x-sarpras-stats :items="[
+    ['label'=>'Total Peminjaman','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-hand-heart-line'],
+    ['label'=>'Menunggu','value'=>$stats['pending'],'tone'=>'warning','icon'=>'ri-time-line'],
+    ['label'=>'Sedang Dipinjam','value'=>$stats['borrowed'],'tone'=>'info','icon'=>'ri-box-3-line'],
+    ['label'=>'Dikembalikan','value'=>$stats['returned'],'tone'=>'success','icon'=>'ri-arrow-go-back-line'],
+]" />
+
 <div class="row">
     <div class="col-lg-12">
         <div class="card">

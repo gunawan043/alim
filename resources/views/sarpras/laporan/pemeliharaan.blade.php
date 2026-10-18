@@ -8,33 +8,12 @@
     @slot('title') Pemeliharaan @endslot
 @endcomponent
 
-{{-- SUMMARY --}}
-<div class="row">
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Perawatan</p>
-            <h3 class="mb-0">{{ $logs->count() }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Total Biaya</p>
-            <h3 class="mb-0 text-danger">Rp {{ number_format($totalBiaya, 0, ',', '.') }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Rata-rata Biaya</p>
-            <h3 class="mb-0">Rp {{ number_format($logs->count() ? $totalBiaya / $logs->count() : 0, 0, ',', '.') }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-body text-center">
-            <p class="text-muted small mb-1">Perawatan Terakhir</p>
-            <h3 class="mb-0">{{ $logs->first()?->maintenance_date?->format('d/m/Y') ?? '-' }}</h3>
-        </div>
-    </div>
-</div>
+<x-sarpras-stats :items="[
+    ['label'=>'Total Perawatan','value'=>$logs->count(),'tone'=>'primary','icon'=>'ri-tools-line'],
+    ['label'=>'Total Biaya','value'=>'Rp '.number_format($totalBiaya,0,',','.'),'tone'=>'danger','icon'=>'ri-money-dollar-circle-line'],
+    ['label'=>'Rata-rata Biaya','value'=>'Rp '.number_format($logs->count() ? $totalBiaya/$logs->count() : 0,0,',','.'),'tone'=>'warning','icon'=>'ri-bar-chart-line'],
+    ['label'=>'Perawatan Terakhir','value'=>$logs->first()?->maintenance_date?->format('d/m/Y') ?? '-','tone'=>'success','icon'=>'ri-calendar-check-line'],
+]" />
 
 <div class="row">
     <div class="col-lg-12">

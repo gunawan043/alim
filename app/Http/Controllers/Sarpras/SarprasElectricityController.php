@@ -52,6 +52,32 @@ class SarprasElectricityController extends SarprasBaseController
         return view('sarpras.electricity.index', compact('meters', 'purchases', 'outages', 'stats', 'period', 'users'));
     }
 
+    public function outages(Request $request)
+    {
+        $this->authorizeElectricity();
+
+        $query = ElectricityOutage::with(['reporter', 'workUnit', 'actions.officer'])
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->search;
+                $q->where(fn ($sub) => $sub->where('location', 'like', "%{$s}%")
+                    ->orWhere('cause', 'like', "%{$s}%")
+                    ->orWhere('outage_type', 'like', "%{$s}%"));
+            });
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'open' => (clone $query)->where('status', 'open')->count(),
+            'resolved' => (clone $query)->where('status', 'resolved')->count(),
+            'today' => (clone $query)->whereDate('occurred_at', today())->count(),
+        ];
+
+        $outages = $query->orderByDesc('occurred_at')->paginate(15)->withQueryString();
+        $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('sarpras.electricity.outages', compact('outages', 'stats', 'users'));
+    }
+
     public function storeMeter(Request $request)
     {
         $this->authorizeElectricity();

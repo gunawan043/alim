@@ -27,6 +27,13 @@ class SarprasProcurementController extends SarprasBaseController
     {
         $query = ProcurementRequest::with(['requester', 'approver', 'items']);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->whereIn('status', ['approved', 'partial', 'delivered'])->count(),
+            'value' => (clone $query)->sum('total_estimated_price'),
+        ];
+
         if (! $this->canViewAll($request)) {
             $query = $this->scopeToSchool($request, $query);
         }
@@ -41,7 +48,7 @@ class SarprasProcurementController extends SarprasBaseController
         $procurements = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
 
-        return view('sarpras.pengadaan.index', compact('procurements', 'schools'));
+        return view('sarpras.pengadaan.index', compact('procurements', 'schools', 'stats'));
     }
 
     public function create(Request $request)
@@ -67,7 +74,7 @@ class SarprasProcurementController extends SarprasBaseController
             'purpose' => $validated['purpose'],
             'urgency' => $validated['urgency'],
             'budget_source' => $validated['budget_source'] ?? null,
-            'total_estimated_budget' => $validated['total_estimated_budget'] ?? 0,
+            'total_estimated_price' => $validated['total_estimated_price'] ?? 0,
             'requested_by' => auth()->id(),
             'status' => 'pending',
             'work_unit_id' => $school?->work_unit_id,
