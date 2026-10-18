@@ -1,0 +1,71 @@
+@extends('layouts.master')
+@section('title') Area Kebersihan — {{ $area->name }} @endsection
+
+@section('content')
+    @component('components.breadcrumb')
+        @slot('li_1') <a href="{{ route('sarpras.kebersihan.index') }}">Kebersihan</a> @endslot
+        @slot('title') {{ $area->name }}
+    @endcomponent
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h4 class="mb-1">{{ $area->name }}</h4>
+                    <div class="text-muted small">{{ ucfirst(str_replace('_',' ', $area->area_type)) }} · {{ $area->building?->building_name ?? '-' }}{{ $area->room?->room_name ? ' — '.$area->room->room_name : '' }} · Koordinator: {{ $area->coordinator?->name ?? '-' }}</div>
+                    @if($area->location_notes)<p class="text-muted small mt-2 mb-0">{{ $area->location_notes }}</p>@endif
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    @if($canManage)<button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal"><i class="ri-add-line me-1"></i>Tambah Uraian</button>@endif
+                    @if($canManage)<button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAssignmentModal"><i class="ri-user-add-line me-1"></i>Tugaskan Petugas</button>@endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-list-check-2 me-1"></i>Uraian Pekerjaan</h5></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>No</th><th>Uraian</th><th>Standar</th><th>Frekuensi</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
+                    @forelse($area->tasks as $i => $task)
+                        <tr><td>{{ $i + 1 }}</td><td><div class="fw-medium">{{ $task->title }}</div><small class="text-muted">{{ $task->method }}</small></td><td class="small">{{ $task->standard ?? '-' }}</td><td class="small">{{ ucfirst($task->frequency) }}</td><td><span class="badge bg-{{ $task->is_active ? 'success' : 'secondary' }}-subtle text-{{ $task->is_active ? 'success' : 'secondary' }}">{{ $task->is_active ? 'Aktif' : 'Nonaktif' }}</span></td><td class="text-end">@if($canManage)<form method="POST" action="{{ route('sarpras.kebersihan.task.toggle', $task->id) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-{{ $task->is_active ? 'danger' : 'success' }}"><i class="ri-power-line"></i></button></form>@endif</td></tr>
+                    @empty
+                        <x-empty-state colspan="6" title="Belum ada uraian pekerjaan" message="Tambahkan item pekerjaan kebersihan untuk area ini." />
+                    @endforelse
+                </tbody></table></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-history-line me-1"></i>Laporan Terakhir</h5></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Tanggal</th><th>Petugas</th><th>Menggantikan</th><th>Kondisi</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
+                    @forelse($reports as $report)
+                        @php $tone = ['submitted'=>'warning','verified'=>'success','rejected'=>'danger'][$report->status] ?? 'secondary'; @endphp
+                        <tr><td class="small">{{ $report->report_date?->format('d/m/Y') }}</td><td class="small">{{ $report->officer?->name ?? '-' }}</td><td class="small">{{ $report->substituteFor?->name ?? '-' }}</td><td class="small">{{ ucfirst(str_replace('_',' ',$report->overall_condition)) }}</td><td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ ucfirst($report->status) }}</span></td><td class="text-end"><a href="{{ route('sarpras.kebersihan.report.show', $report->id) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td></tr>
+                    @empty
+                        <x-empty-state colspan="6" title="Belum ada laporan" message="Belum ada laporan untuk area ini." />
+                    @endforelse
+                </tbody></table></div></div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-user-star-line me-1"></i>Petugas & Backup</h5></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Petugas</th><th>Peran</th><th>Backup</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
+                    @forelse($area->assignments as $assignment)
+                        <tr><td class="small fw-medium">{{ $assignment->user?->name ?? '-' }}</td><td class="small">{{ ucfirst($assignment->role) }}</td><td class="small">{{ $assignment->backupUser?->name ?? '-' }}</td><td><span class="badge bg-{{ $assignment->is_active ? 'success' : 'secondary' }}-subtle text-{{ $assignment->is_active ? 'success' : 'secondary' }}">{{ $assignment->is_active ? 'Aktif' : 'Nonaktif' }}</span></td><td class="text-end">@if($canManage)<form method="POST" action="{{ route('sarpras.kebersihan.assignment.toggle', $assignment->id) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-{{ $assignment->is_active ? 'danger' : 'success' }}"><i class="ri-power-line"></i></button></form>@endif</td></tr>
+                    @empty
+                        <x-empty-state colspan="5" title="Belum ada petugas" message="Tugaskan petugas dan backup untuk area ini." />
+                    @endforelse
+                </tbody></table></div></div>
+            </div>
+        </div>
+    </div>
+
+    @if($canManage)
+        <div class="modal fade" id="addTaskModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.kebersihan.task.store', $area->id) }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Tambah Uraian Pekerjaan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Uraian <span class="text-danger">*</span></label><input name="title" class="form-control" required></div><div class="mb-3"><label class="form-label">Standar</label><input name="standard" class="form-control" placeholder="Contoh: Bersih dan tidak licin"></div><div class="row g-3"><div class="col-md-6"><label class="form-label">Metode</label><input name="method" class="form-control" placeholder="Visual"></div><div class="col-md-6"><label class="form-label">Frekuensi <span class="text-danger">*</span></label><select name="frequency" class="form-select" required>@foreach(App\Models\CleaningTask::FREQUENCY_OPTIONS as $frequency)<option value="{{ $frequency }}">{{ ucfirst($frequency) }}</option>@endforeach</select></div></div><div class="mt-3"><label class="form-label">Urutan</label><input type="number" name="sort_order" class="form-control" min="0"></div></div><div class="modal-footer"><button class="btn btn-success">Simpan</button></div></form></div></div>
+
+        <div class="modal fade" id="addAssignmentModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.kebersihan.assignment.store', $area->id) }}" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title">Tugaskan Petugas</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label">Petugas <span class="text-danger">*</span></label><select name="user_id" class="form-select" required><option value="">— Pilih —</option>@foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select></div><div class="mb-3"><label class="form-label">Peran <span class="text-danger">*</span></label><select name="role" class="form-select" required><option value="petugas">Petugas</option><option value="koordinator">Koordinator</option></select></div><div class="mb-3"><label class="form-label">Backup Jika Tidak Masuk</label><select name="backup_user_id" class="form-select"><option value="">— Tidak ada —</option>@foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select></div><div class="row g-3"><div class="col-6"><label class="form-label">Mulai</label><input type="date" name="start_date" class="form-control" value="{{ date('Y-m-d') }}"></div><div class="col-6"><label class="form-label">Selesai</label><input type="date" name="end_date" class="form-control"></div></div><div class="mt-3"><label class="form-label">Catatan</label><textarea name="notes" class="form-control" rows="2"></textarea></div></div><div class="modal-footer"><button class="btn btn-primary">Simpan Penugasan</button></div></form></div></div>
+    @endif
+@endsection

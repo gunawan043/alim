@@ -2056,6 +2056,27 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - **Work order preventif** sudah bisa dibuat dari jadwal yang disetujui unit; penyelesaiannya
   memperbarui jadwal berikutnya, log perawatan, riwayat aset, dan passport QR.
 
+## 187. Kebersihan/CS — Area, Uraian Kerja, Laporan Harian & Backup Petugas
+
+- Modul kebersihan inti:
+  - **Area kerja** dengan lokasi gedung/ruang dan koordinator;
+  - **uraian pekerjaan** dengan standar, metode, frekuensi, dan urutan;
+  - **penugasan petugas + backup** per area;
+  - **laporan harian** per area: hasil pekerjaan, kondisi, catatan, foto sebelum/sesudah;
+  - **program kebersihan berkala** (kipas, gorong-gorong, batu sikat, kanopi, plang nama, taman, kolam, pemangkasan).
+- Hak akses:
+  - koordinator/TU/Kepala URT mengelola area, uraian, penugasan, dan memverifikasi laporan;
+  - petugas kebersihan hanya melihat/melaporkan area yang ditugaskan;
+  - backup petugas tercatat pada penugasan dan laporan (`officer_id` = pengganti,
+    `substitute_for_user_id` = yang diganti).
+- **Foto bukti** mendukung link Google Drive (disarankan hemat memori) atau upload lokal.
+- Seeder kebersihan:
+  - 34 area kerja;
+  - 333 uraian pekerjaan;
+  - 24 program kebersihan berkala.
+- Laporan dapat diverifikasi/dikembalikan koordinator dengan catatan.
+- Waste management/DLH masih berupa rencana analisis lanjutan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

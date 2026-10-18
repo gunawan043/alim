@@ -162,6 +162,7 @@ use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasChecklistController;
+use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
@@ -2697,6 +2698,24 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('sarpras')->name('sarpras.
     Route::post('/pemeliharaan/jadwal/{id}/approve', [SarprasMaintenanceController::class, 'approveSchedule'])->name('pemeliharaan.schedule.approve');
     Route::post('/pemeliharaan/jadwal/{id}/reschedule', [SarprasMaintenanceController::class, 'requestReschedule'])->name('pemeliharaan.schedule.reschedule');
     Route::post('/pemeliharaan/jadwal/{id}/reject', [SarprasMaintenanceController::class, 'rejectSchedule'])->name('pemeliharaan.schedule.reject');
+
+    // Kebersihan / CS
+    Route::get('/kebersihan', [SarprasCleaningController::class, 'index'])->name('kebersihan.index');
+    Route::post('/kebersihan/area', [SarprasCleaningController::class, 'storeArea'])->name('kebersihan.area.store');
+    Route::get('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'showArea'])->name('kebersihan.area.show');
+    Route::put('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'updateArea'])->name('kebersihan.area.update');
+    Route::post('/kebersihan/area/{areaId}/toggle', [SarprasCleaningController::class, 'toggleArea'])->name('kebersihan.area.toggle');
+    Route::post('/kebersihan/area/{areaId}/task', [SarprasCleaningController::class, 'storeTask'])->name('kebersihan.task.store');
+    Route::put('/kebersihan/task/{taskId}', [SarprasCleaningController::class, 'updateTask'])->name('kebersihan.task.update');
+    Route::post('/kebersihan/task/{taskId}/toggle', [SarprasCleaningController::class, 'toggleTask'])->name('kebersihan.task.toggle');
+    Route::post('/kebersihan/area/{areaId}/assignment', [SarprasCleaningController::class, 'storeAssignment'])->name('kebersihan.assignment.store');
+    Route::post('/kebersihan/assignment/{assignmentId}/toggle', [SarprasCleaningController::class, 'toggleAssignment'])->name('kebersihan.assignment.toggle');
+    Route::post('/kebersihan/program', [SarprasCleaningController::class, 'storeProgram'])->name('kebersihan.program.store');
+    Route::post('/kebersihan/program/{programId}/toggle', [SarprasCleaningController::class, 'toggleProgram'])->name('kebersihan.program.toggle');
+    Route::get('/kebersihan/laporan/create', [SarprasCleaningController::class, 'createReport'])->name('kebersihan.report.create');
+    Route::post('/kebersihan/laporan', [SarprasCleaningController::class, 'storeReport'])->name('kebersihan.report.store');
+    Route::get('/kebersihan/laporan/{reportId}', [SarprasCleaningController::class, 'showReport'])->name('kebersihan.report.show');
+    Route::post('/kebersihan/laporan/{reportId}/verify', [SarprasCleaningController::class, 'verifyReport'])->name('kebersihan.report.verify');
 
     // Agenda kerja petugas Sarpras
     Route::get('/agenda', [SarprasAgendaController::class, 'index'])->name('agenda.index');

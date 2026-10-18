@@ -444,7 +444,7 @@
      SECTION 10 — KEBERSIHAN & LINGKUNGAN  [SEBAGIAN SOON]
      Akses: Koordinator + Petugas Kebersihan
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isKoorSarpras || $isKebersihan) && menu_allowed('rumah-tangga'))
+@if(($showAll || $isKepalaURT || $isTuUrt || $isKoorSarpras || $isKebersihan) && menu_allowed('rumah-tangga'))
     <li class="menu-title"><span>Kebersihan & Lingkungan</span></li>
 
     {{-- ✅ AKTIF: Laporan Kerusakan (petugas bisa lapor kerusakan lingkungan) --}}
@@ -455,30 +455,24 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Jadwal Kebersihan --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-calendar-todo-line"></i>
-            <span>Jadwal Kebersihan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.index') }}">
+            <i class="ri-map-pin-line"></i><span>Area &amp; Laporan Kebersihan</span>
         </a>
     </li>
 
-    {{-- ⏳ SOON: Checklist Harian --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-checkbox-multiple-line"></i>
-            <span>Checklist Harian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.report.create']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.report.create') }}">
+            <i class="ri-checkbox-multiple-line"></i><span>Checklist Harian</span>
         </a>
     </li>
 
-    {{-- ⏳ SOON: Laporan Kebersihan --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-list-2-line"></i>
-            <span>Laporan Kebersihan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.kebersihan.report.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.kebersihan.index') }}">
+            <i class="ri-file-list-2-line"></i><span>Laporan Kebersihan</span>
         </a>
     </li>
 @endif
