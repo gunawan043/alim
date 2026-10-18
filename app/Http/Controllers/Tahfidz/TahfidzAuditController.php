@@ -1,0 +1,175 @@
+<?php
+
+namespace App\Http\Controllers\Tahfidz;
+
+use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
+use App\Models\TahfidzCertificate;
+use App\Models\TahfidzGroup;
+use App\Models\TahfidzGroupMember;
+use App\Models\TahfidzJuzProgress;
+use App\Models\TahfidzMutabaah;
+use App\Models\TahfidzProgressRecap;
+use App\Models\TahfidzSetoran;
+use App\Models\TahfidzStudentTarget;
+use App\Models\TahfidzTasmianParticipant;
+use App\Services\TahfidzAccess;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+
+class TahfidzAuditController extends Controller
+{
+    public function __construct(private readonly TahfidzAccess $access) {}
+
+    public function index(Request $request, string $userId)
+    {
+        $this->authorizeView($request);
+
+        $academicYear = AcademicYear::where('is_active', true)->first()
+            ?? AcademicYear::orderByDesc('start_date')->first();
+        $schoolId = $this->schoolId($request);
+        $groups = $this->accessibleGroups($request, $academicYear?->id, $schoolId);
+        $groupIds = $groups->pluck('id');
+
+        $members = TahfidzGroupMember::with(['student:id,name,nis,school_id', 'group:id,name,school_id'])
+            ->whereIn('tahfidz_group_id', $groupIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->where('status', 'aktif')
+            ->get();
+        $studentIds = $members->pluck('student_id')->unique()->values();
+
+        $pending = TahfidzSetoran::with(['student:id,name,nis', 'group:id,name'])
+            ->whereIn('tahfidz_group_id', $groupIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->where('verification_status', 'pending')
+            ->orderBy('setoran_date')
+            ->get();
+        $pendingOld = $pending->filter(fn ($row) => $row->setoran_date?->lte(now()->subDays(7)));
+
+        $progressStudentIds = TahfidzJuzProgress::whereIn('student_id', $studentIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->pluck('student_id')
+            ->unique();
+        $recapStudentIds = TahfidzProgressRecap::whereIn('student_id', $studentIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->pluck('student_id')
+            ->unique();
+        $targetStudentIds = TahfidzStudentTarget::whereIn('student_id', $studentIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->pluck('student_id')
+            ->unique();
+
+        $verifiedWithoutProgress = TahfidzSetoran::with(['student:id,name,nis', 'group:id,name'])
+            ->whereIn('tahfidz_group_id', $groupIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->where('verification_status', 'verified')
+            ->where('setoran_type', 'ziyadah')
+            ->whereNotNull('juz')
+            ->whereNotIn('student_id', $progressStudentIds)
+            ->orderByDesc('setoran_date')
+            ->limit(20)
+            ->get();
+
+        $lastMutabaah = TahfidzMutabaah::whereIn('student_id', $studentIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->selectRaw('student_id, MAX(record_date) as last_date')
+            ->groupBy('student_id')
+            ->pluck('last_date', 'student_id');
+        $membersWithoutMutabaah = $members->filter(function ($member) use ($lastMutabaah) {
+            $last = $lastMutabaah[$member->student_id] ?? null;
+
+            return ! $last || Carbon::parse($last)->lt(now()->subDays(7));
+        });
+
+        $tasmiWithoutCertificate = TahfidzTasmianParticipant::with([
+            'student:id,name,nis', 'session:id,session_name,school_id,session_date', 'score',
+        ])
+            ->whereHas('score')
+            ->whereDoesntHave('certificate')
+            ->when(! $this->access->canViewAllSchools($request->user()), fn ($q) => $q->whereHas('session', fn ($session) => $session->where('school_id', $schoolId)))
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        $certificateIssues = TahfidzCertificate::with(['student:id,name,nis,name_ar', 'participant.score'])
+            ->when(! $this->access->canViewAllSchools($request->user()), fn ($q) => $q->where('school_id', $schoolId))
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->get()
+            ->filter(function ($certificate) {
+                return blank($certificate->student?->name_ar)
+                    || $certificate->nilai_akhir === null
+                    || blank($certificate->predikat)
+                    || blank($certificate->certificate_number)
+                    || ! $certificate->participant?->score;
+            })
+            ->take(20);
+
+        $targetMissing = $members->reject(fn ($member) => $targetStudentIds->contains($member->student_id))->take(20);
+        $recapMissing = $members
+            ->filter(fn ($member) => $progressStudentIds->contains($member->student_id) && ! $recapStudentIds->contains($member->student_id))
+            ->take(20);
+
+        $stats = [
+            'pending' => $pending->count(),
+            'pending_old' => $pendingOld->count(),
+            'verified_without_progress' => $verifiedWithoutProgress->count(),
+            'recap_missing' => $recapMissing->count(),
+            'target_missing' => $members->reject(fn ($member) => $targetStudentIds->contains($member->student_id))->count(),
+            'mutabaah_missing' => $membersWithoutMutabaah->count(),
+            'tasmi_without_certificate' => $tasmiWithoutCertificate->count(),
+            'certificate_issues' => $certificateIssues->count(),
+        ];
+        $stats['total_issues'] = array_sum($stats);
+
+        return view('tahfidz.audit.index', compact(
+            'userId', 'academicYear', 'groups', 'members', 'pendingOld', 'verifiedWithoutProgress',
+            'recapMissing', 'targetMissing', 'membersWithoutMutabaah', 'tasmiWithoutCertificate',
+            'certificateIssues', 'stats'
+        ));
+    }
+
+    private function accessibleGroups(Request $request, ?string $academicYearId, ?string $schoolId)
+    {
+        $user = $request->user();
+
+        $query = TahfidzGroup::query()
+            ->with('school:id,name')
+            ->where('is_active', true)
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId));
+
+        if (! $this->access->canViewAllSchools($user)) {
+            if ($this->access->isSchoolCoordinator($user, $schoolId) || $this->access->isSchoolLeader($user)) {
+                $query->where('school_id', $schoolId);
+            } else {
+                $query->where(function ($q) use ($user) {
+                    $q->where('teacher_id', $user->id)
+                        ->orWhere('coordinator_id', $user->id)
+                        ->orWhereHas('teachers', fn ($teacher) => $teacher->where('user_id', $user->id)->where('is_active', true));
+                });
+            }
+        }
+
+        return $query->orderBy('name')->get();
+    }
+
+    private function authorizeView(Request $request): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $this->access->canViewAllSchools($user)
+            || $this->access->isSchoolCoordinator($user, $this->schoolId($request))
+            || $this->access->isSchoolLeader($user)
+            || $this->access->isTahfidzTeacher($user)
+            || (function_exists('canPermission') && canPermission('tahfidz_view')),
+            403,
+            'Anda tidak berwenang melihat audit Tahfidz.'
+        );
+    }
+
+    private function schoolId(Request $request): ?string
+    {
+        return $request->attributes->get('schoolContextId') ?: $request->user()?->employment?->school_id;
+    }
+}

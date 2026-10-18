@@ -219,6 +219,7 @@ use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
+use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzInputController;
 use App\Http\Controllers\Tahfidz\TahfidzMonitoringController;
 use App\Http\Controllers\Tahfidz\TasmiController;
@@ -467,6 +468,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
                 Route::get('input-hafalan', [TahfidzInputController::class, 'index'])->name('input.index');
+                Route::get('audit', [TahfidzAuditController::class, 'index'])->name('audit.index');
                 Route::get('santri/{studentId}', [TahfidzSantriController::class, 'show'])->name('santri.show');
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
                 Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
