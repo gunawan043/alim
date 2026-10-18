@@ -37,6 +37,7 @@
 
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if(session('error'))<div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
+    @if(!$canManageAgenda)<div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-information-line fs-5"></i><span>Anda dapat mengisi status, petugas, dan keterangan. Penambahan/penghapusan item agenda dilakukan oleh koordinator.</span></div>@endif
 
     <form method="POST" action="{{ route('sarpras.pertamanan.agenda.save') }}">
         @csrf
@@ -44,7 +45,7 @@
         <div class="card">
             <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="d-flex align-items-center gap-2"><span class="small text-muted">Petugas Agenda</span><select name="officer_id" class="form-select form-select-sm" style="min-width:240px"><option value="">— Pilih —</option>@foreach($users as $user)<option value="{{ $user->id }}" {{ (string) $agenda->officer_id === (string) $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select></div>
-                <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="pemeliharaan"><i class="ri-add-line me-1"></i>Tambah Item</button><button class="btn btn-sm btn-success"><i class="ri-save-line me-1"></i>Simpan Agenda</button></div>
+                <div class="d-flex gap-2">@if($canManageAgenda)<button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="pemeliharaan"><i class="ri-add-line me-1"></i>Tambah Item</button>@endif<button class="btn btn-sm btn-success"><i class="ri-save-line me-1"></i>Simpan Agenda</button></div>
             </div>
             <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0">
                 <thead class="table-light"><tr><th style="width:55px">No</th><th>Uraian Pekerjaan</th><th style="width:150px">Status</th><th style="width:200px">Petugas</th><th style="width:24%">Keterangan</th></tr></thead>
@@ -59,14 +60,14 @@
                     @forelse($blocks as $blockKey => $blockItems)
                         @php $first = $blockItems->first(); @endphp
                         @if($first->group_title)
-                            <tr class="table-light"><td class="fw-semibold">{{ $number++ }}</td><td class="fw-semibold">{{ $first->group_title }}@if($canAdd ?? true)<button type="button" class="btn btn-sm btn-link p-0 ms-2 add-group-item" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="{{ $sectionKey }}" data-group="{{ $first->group_title }}" title="Tambah sub-item"><i class="ri-add-circle-line"></i></button>@endif</td><td colspan="3"></td></tr>
+                            <tr class="table-light"><td class="fw-semibold">{{ $number++ }}</td><td class="fw-semibold">{{ $first->group_title }}@if($canManageAgenda)<button type="button" class="btn btn-sm btn-link p-0 ms-2 add-group-item" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="{{ $sectionKey }}" data-group="{{ $first->group_title }}" title="Tambah sub-item"><i class="ri-add-circle-line"></i></button>@endif</td><td colspan="3"></td></tr>
                             @foreach($blockItems as $item)
                                 <tr>
                                     <td></td>
                                     <td class="ps-4">{{ $item->title }}</td>
                                     <td><select name="items[{{ $item->id }}][status]" class="form-select form-select-sm">@foreach(\App\Models\PertamananAgendaItem::STATUS_OPTIONS as $value=>$label)<option value="{{ $value }}" {{ $item->status === $value ? 'selected' : '' }}>{{ $label }}</option>@endforeach</select></td>
                                     <td><select name="items[{{ $item->id }}][officer_id]" class="form-select form-select-sm"><option value="">—</option>@foreach($users as $user)<option value="{{ $user->id }}" {{ (string) ($item->officer_id ?: $agenda->officer_id) === (string) $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select></td>
-                                    <td><div class="d-flex gap-1"><input name="items[{{ $item->id }}][notes]" class="form-control form-control-sm" value="{{ $item->notes }}" placeholder="Keterangan"><button type="button" class="btn btn-sm btn-outline-danger delete-agenda-item" data-bs-toggle="modal" data-bs-target="#deleteAgendaItemModal" data-action="{{ route('sarpras.pertamanan.agenda.items.destroy', ['itemId' => $item->id]) }}" title="Hapus item"><i class="ri-delete-bin-line"></i></button></div></td>
+                                    <td><div class="d-flex gap-1"><input name="items[{{ $item->id }}][notes]" class="form-control form-control-sm" value="{{ $item->notes }}" placeholder="Keterangan">@if($canManageAgenda)<button type="button" class="btn btn-sm btn-outline-danger delete-agenda-item" data-bs-toggle="modal" data-bs-target="#deleteAgendaItemModal" data-action="{{ route('sarpras.pertamanan.agenda.items.destroy', ['itemId' => $item->id]) }}" title="Hapus item"><i class="ri-delete-bin-line"></i></button>@endif</div></td>
                                 </tr>
                             @endforeach
                         @else
@@ -75,11 +76,11 @@
                                 <td>{{ $first->title }}</td>
                                 <td><select name="items[{{ $first->id }}][status]" class="form-select form-select-sm">@foreach(\App\Models\PertamananAgendaItem::STATUS_OPTIONS as $value=>$label)<option value="{{ $value }}" {{ $first->status === $value ? 'selected' : '' }}>{{ $label }}</option>@endforeach</select></td>
                                 <td><select name="items[{{ $first->id }}][officer_id]" class="form-select form-select-sm"><option value="">—</option>@foreach($users as $user)<option value="{{ $user->id }}" {{ (string) ($first->officer_id ?: $agenda->officer_id) === (string) $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select></td>
-                                <td><div class="d-flex gap-1"><input name="items[{{ $first->id }}][notes]" class="form-control form-control-sm" value="{{ $first->notes }}" placeholder="Keterangan"><button type="button" class="btn btn-sm btn-outline-danger delete-agenda-item" data-bs-toggle="modal" data-bs-target="#deleteAgendaItemModal" data-action="{{ route('sarpras.pertamanan.agenda.items.destroy', ['itemId' => $first->id]) }}" title="Hapus item"><i class="ri-delete-bin-line"></i></button></div></td>
+                                <td><div class="d-flex gap-1"><input name="items[{{ $first->id }}][notes]" class="form-control form-control-sm" value="{{ $first->notes }}" placeholder="Keterangan">@if($canManageAgenda)<button type="button" class="btn btn-sm btn-outline-danger delete-agenda-item" data-bs-toggle="modal" data-bs-target="#deleteAgendaItemModal" data-action="{{ route('sarpras.pertamanan.agenda.items.destroy', ['itemId' => $first->id]) }}" title="Hapus item"><i class="ri-delete-bin-line"></i></button>@endif</div></td>
                             </tr>
                         @endif
                     @empty
-                        <tr><td colspan="5" class="text-center py-3 text-muted">Belum ada agenda. <button type="button" class="btn btn-sm btn-link add-group-item" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="{{ $sectionKey }}">Tambah item</button></td></tr>
+                        <tr><td colspan="5" class="text-center py-3 text-muted">Belum ada agenda. @if($canManageAgenda)<button type="button" class="btn btn-sm btn-link add-group-item" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="{{ $sectionKey }}">Tambah item</button>@endif</td></tr>
                     @endforelse
                 @endforeach
                 </tbody>

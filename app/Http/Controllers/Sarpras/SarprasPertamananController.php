@@ -36,7 +36,9 @@ class SarprasPertamananController extends SarprasBaseController
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('sarpras.pertamanan.agenda', compact('agenda', 'items', 'users', 'date'));
+        $canManageAgenda = $this->canManageAgenda();
+
+        return view('sarpras.pertamanan.agenda', compact('agenda', 'items', 'users', 'date', 'canManageAgenda'));
     }
 
     public function saveAgenda(Request $request)
@@ -77,6 +79,7 @@ class SarprasPertamananController extends SarprasBaseController
     public function storeItem(Request $request)
     {
         $this->authorizePertamanan();
+        abort_unless($this->canManageAgenda(), 403, 'Hanya koordinator yang dapat menambah item agenda.');
 
         $validated = $request->validate([
             'agenda_date' => 'required|date',
@@ -112,6 +115,8 @@ class SarprasPertamananController extends SarprasBaseController
     public function destroyItem(string $userId, Request $request, string $itemId)
     {
         $this->authorizePertamanan();
+        abort_unless($this->canManageAgenda(), 403, 'Hanya koordinator yang dapat menghapus item agenda.');
+
         $item = PertamananAgendaItem::findOrFail($itemId);
         $date = $item->agenda?->agenda_date;
         $item->delete();
@@ -145,6 +150,39 @@ class SarprasPertamananController extends SarprasBaseController
                 'created_by' => auth()->id(),
             ]);
         }
+    }
+
+    private function canManageAgenda(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return true;
+        }
+
+        $jabatan = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
+        if ($jabatan === '') {
+            $jabatan = strtoupper(GtkWorkUnit::where('user_id', $user->id)->pluck('jabatan')->implode(' '));
+        }
+
+        foreach ([
+            'KEPALA UNIT RUMAH TANGGA',
+            'KOORDINATOR KEBERSIHAN',
+            'KOORDINATOR SARANA PRASARANA',
+            'KOORDINATOR SARPRAS',
+            'KEPALA TATA USAHA',
+            'TATA USAHA URT',
+            'TU URT',
+        ] as $allowed) {
+            if (str_contains($jabatan, $allowed)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function authorizePertamanan(): void

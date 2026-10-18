@@ -2334,6 +2334,15 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - membantu membersihkan jalan utama.
 - Menu **Agenda Harian Pertamanan** ditambahkan di sidebar Pertamanan.
 
+## 203. Kewenangan Kelola Agenda Pertamanan
+
+- Agenda harian pertamanan dibagi kewenangannya:
+  - **Koordinator/Kepala URT/TU URT** dapat menambah dan menghapus item agenda.
+  - **Petugas Pertamanan/Kebersihan** tetap dapat mengisi status, petugas, dan keterangan.
+- Tombol tambah/hapus disembunyikan untuk petugas.
+- Controller tetap menolak (403) jika petugas mencoba menambah/menghapus item secara langsung.
+- Sistem admin tetap memiliki akses penuh.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
