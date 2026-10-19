@@ -1,3 +1,9 @@
+@php
+    $cameraUser = auth()->user();
+    $cameraUnitName = $cameraUser?->primaryWorkUnit?->workUnit?->name
+        ?? $cameraUser?->gtkWorkUnits?->first()?->workUnit?->name
+        ?? 'Ponpes Abu Hurairah';
+@endphp
 <style>
     #alimCameraModal .modal-content { height: 100vh; background: #000; border: 0; }
     .alim-camera-stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: #000; }
@@ -5,7 +11,10 @@
     #alimCameraPreview[data-orientation="portrait"] { width: min(100vw, calc(100vh * 9 / 16)); height: 100vh; aspect-ratio: 9 / 16; }
     #alimCameraPreview video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .alim-live-overlay { position: absolute; left: 16px; right: 16px; bottom: 110px; z-index: 3; padding: 16px; border: 1px solid rgba(255,255,255,.28); border-radius: 16px; background: rgba(5,20,27,.34); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.25); }
-    .alim-live-overlay .live-brand { display:flex; justify-content:space-between; align-items:center; font-size:11px; letter-spacing:.04em; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.18); }
+    .alim-live-overlay .live-brand { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:11px; letter-spacing:.02em; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.18); }
+    .alim-live-overlay .live-unit-name { font-size:10px; font-weight:700; max-width:58%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .alim-location-override input { min-width:190px; max-width:280px; background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#fff; font-size:11px; }
+    .alim-location-override input::placeholder { color:rgba(255,255,255,.65); }
     .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
     .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
     .alim-live-overlay .live-month { font-size:12px; font-weight:700; }
@@ -37,7 +46,7 @@
                 <div id="alimCameraPreview" class="alim-camera-preview" data-orientation="auto">
                     <video id="alimCameraVideo" autoplay playsinline muted></video>
                     <div class="alim-live-overlay">
-                        <div class="live-brand"><span><i class="ri-plant-line me-1"></i><strong>ALIM</strong> · SARPRAS</span><span id="alimLiveTime">WITA --.--</span></div>
+                        <div class="live-brand"><span class="d-flex align-items-center gap-2 min-w-0"><img src="{{ asset('build/images/alim-light.png') }}" alt="ALIM" style="height:24px;width:auto"><span class="live-unit-name" title="{{ $cameraUnitName }}">{{ $cameraUnitName }}</span></span><span id="alimLiveTime">WITA --.--</span></div>
                         <div class="live-date"><span class="live-day" id="alimLiveDay">--</span><span class="live-month" id="alimLiveMonthYear">--- ----</span></div>
                         <div class="live-title">Dokumentasi<span>.</span></div>
                         <div class="live-subtitle" id="alimLivePageTitle">Kamera Dokumentasi</div>
@@ -47,11 +56,14 @@
                 </div>
                 <div class="alim-camera-topbar">
                     <button type="button" class="btn alim-camera-close" data-bs-dismiss="modal" aria-label="Tutup"><i class="ri-close-line fs-5"></i></button>
-                    <div class="btn-group btn-group-sm alim-camera-orientation" role="group" aria-label="Orientasi foto">
-                        <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
-                        <label class="btn btn-sm" for="alimOrientationAuto">Otomatis</label>
-                        <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
-                        <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
+                    <div class="d-flex flex-column align-items-end gap-2">
+                        <div class="btn-group btn-group-sm alim-camera-orientation" role="group" aria-label="Orientasi foto">
+                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
+                            <label class="btn btn-sm" for="alimOrientationAuto">Otomatis</label>
+                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
+                            <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
+                        </div>
+                        <div class="alim-location-override"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"></div>
                     </div>
                 </div>
                 <div id="alimCameraError" class="alert alert-danger small d-none"></div>
@@ -78,11 +90,20 @@
     const livePageTitleEl = document.getElementById('alimLivePageTitle');
     const captureBtn = document.getElementById('alimCameraCapture');
     const errorEl = document.getElementById('alimCameraError');
-    let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, placePromise = null, clockTimer = null;
+    let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, manualPlace = '', placePromise = null, clockTimer = null;
     const accountName = @json(auth()->user()->name ?? 'Pengguna ALIM');
+    const unitName = @json($cameraUnitName);
+    const locationOverrideEl = document.getElementById('alimLocationOverride');
     const geocodeEndpoint = @json(route('sarpras.camera.geocode'));
     const logo = new Image();
     logo.src = '{{ asset('build/images/alim-light.png') }}';
+
+    if (locationOverrideEl) {
+        locationOverrideEl.addEventListener('input', function () {
+            manualPlace = this.value.trim();
+            renderLocation();
+        });
+    }
 
     function updateClock() {
         const now = new Date();
@@ -93,9 +114,9 @@
     }
 
     function renderLocation() {
-        livePlaceEl.textContent = placeName || (coords ? 'Nama lokasi tidak tersedia' : 'Lokasi tidak tersedia');
+        livePlaceEl.textContent = manualPlace || placeName || (coords ? 'Nama lokasi tidak tersedia' : 'Lokasi tidak tersedia');
         liveCoordsEl.textContent = coords
-            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m`
+            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m${coords.accuracy > 100 ? ' (akurasi rendah)' : ''}`
             : 'Koordinat belum tersedia';
     }
 
@@ -136,6 +157,8 @@
     function requestLocation() {
         coords = null;
         placeName = null;
+        manualPlace = '';
+        if (locationOverrideEl) locationOverrideEl.value = '';
         placePromise = null;
         livePlaceEl.textContent = 'Mencari lokasi…';
         liveCoordsEl.textContent = 'Meminta titik koordinat…';
@@ -211,6 +234,7 @@
         const year = new Intl.DateTimeFormat('id-ID', { timeZone, year: 'numeric' }).format(now);
         const time = new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
         const pageTitle = (document.title || 'Dokumentasi Sarpras').split('|')[0].trim();
+        const displayPlaceName = manualPlace || placeName;
         const x = Math.round(w * 0.042);
         const panelW = Math.min(w * (portrait ? 0.86 : 0.68), 800 * unit);
         const panelH = 300 * unit;
@@ -273,7 +297,7 @@
         ctx.fillStyle = '#FFD400';
         ctx.fillRect(px + 18 * unit, panelY, 68 * unit, 3 * unit);
 
-        // Header: logo, brand, waktu.
+        // Header: logo + nama satuan kerja, waktu.
         if (logo.complete && logo.naturalWidth > 0) {
             const logoSize = 31 * unit;
             ctx.drawImage(logo, x, panelY + 15 * unit, logoSize, logoSize);
@@ -283,11 +307,8 @@
         ctx.shadowBlur = 7 * unit;
         ctx.textAlign = 'left';
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.round(14 * unit)}px Arial, sans-serif`;
-        ctx.fillText('ALIM', x + 39 * unit, panelY + 31 * unit);
-        ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(8.5 * unit)}px Arial, sans-serif`;
-        ctx.fillText('SARPRAS', x + 39 * unit, panelY + 44 * unit);
+        ctx.font = `800 ${Math.round(12 * unit)}px Arial, sans-serif`;
+        ctx.fillText(fitText(ctx, unitName, panelW * 0.48), x + 36 * unit, panelY + 33 * unit);
 
         ctx.textAlign = 'right';
         ctx.fillStyle = '#FFD400';
@@ -347,7 +368,7 @@
 
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `700 ${Math.round(14 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, placeName || 'Nama lokasi tidak tersedia', panelW - 44 * unit), x + 19 * unit, panelY + 208 * unit);
+        ctx.fillText(fitText(ctx, displayPlaceName || 'Nama lokasi tidak tersedia', panelW - 44 * unit), x + 19 * unit, panelY + 208 * unit);
 
         ctx.fillStyle = 'rgba(255,255,255,0.74)';
         ctx.font = `500 ${Math.round(10.5 * unit)}px Arial, sans-serif`;

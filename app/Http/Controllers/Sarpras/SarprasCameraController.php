@@ -52,7 +52,11 @@ class SarprasCameraController extends SarprasBaseController
                 $data = $response->json();
                 $address = $data['address'] ?? [];
                 $road = trim(($address['road'] ?? $data['name'] ?? '').' '.($address['house_number'] ?? ''));
+                $poi = $address['amenity'] ?? $address['building'] ?? $address['school']
+                    ?? $address['university'] ?? $address['office'] ?? $address['leisure']
+                    ?? $address['tourism'] ?? null;
                 $parts = array_values(array_unique(array_filter([
+                    $poi,
                     $road ?: null,
                     $address['neighbourhood'] ?? $address['hamlet'] ?? null,
                     $address['village'] ?? $address['suburb'] ?? null,

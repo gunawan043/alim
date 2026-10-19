@@ -2500,6 +2500,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Tidak ada status terpilih otomatis; background hijau/merah hanya muncul setelah ✓/✕ dipilih.
 - Isi keterangan/foto dibuka melalui modal, bukan dropdown/collapse.
 
+## 216. Kamera: Logo Satuan Kerja & Koreksi Lokasi
+
+- Watermark tidak lagi menulis teks “ALIM/SARPRAS”.
+- Header watermark memakai **logo ALIM + nama satuan kerja** pengguna.
+- Nama satuan kerja diambil dari GTK Work Unit utama, dengan fallback unit pertama.
+- Akurasi lokasi:
+  - reverse geocoding memprioritaskan nama tempat/gedung/amenity;
+  - akurasi GPS ditampilkan;
+  - peringatan “akurasi rendah” muncul bila radius >100 m;
+  - tersedia input **Koreksi nama lokasi** di layar kamera;
+  - koreksi manual langsung dipakai pada live watermark dan hasil foto.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
