@@ -60,6 +60,10 @@ class TahfidzTasmiService
             throw new InvalidArgumentException('Peserta belum memiliki nilai tasmi’.');
         }
 
+        if ($participant->verification_status !== 'verified') {
+            throw new InvalidArgumentException('Nilai peserta harus diverifikasi koordinator sebelum syahadah diterbitkan.');
+        }
+
         $existing = TahfidzCertificate::where('tasmian_participant_id', $participant->id)->first();
         if ($existing) {
             return $existing;

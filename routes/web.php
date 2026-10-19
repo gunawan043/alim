@@ -497,6 +497,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/certificates/audit', [TasmiController::class, 'certificateAudit'])->name('certificate.audit');
                     Route::get('/certificates/{certificateId}/print', [TasmiController::class, 'certificatePrint'])->name('certificate.print');
                     Route::post('/participants/{participantId}/score', [TasmiController::class, 'score'])->name('participant.score');
+                    Route::post('/participants/{participantId}/verify', [TasmiController::class, 'verifyParticipant'])->name('participant.verify');
                     Route::get('/participants/{participantId}/instrument', [TasmiController::class, 'instrument'])->name('participant.instrument');
                     Route::post('/participants/{participantId}/certificate', [TasmiController::class, 'issueCertificate'])->name('participant.certificate');
                     Route::get('/{id}', [TasmiController::class, 'show'])->name('show');

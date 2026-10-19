@@ -99,6 +99,12 @@ class TahfidzTasmiTest extends TestCase
         $score = TahfidzTasmianScore::firstOrFail();
         $this->assertSame('80.00', (string) $score->nilai_akhir);
         $this->assertSame('jayyid_jiddan', $score->predikat);
+        $this->assertSame('pending', $participant->fresh()->verification_status);
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/tahfidz/tasmi/participants/{$participant->id}/verify")
+            ->assertRedirect();
+        $this->assertSame('verified', $participant->fresh()->verification_status);
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/tasmi")

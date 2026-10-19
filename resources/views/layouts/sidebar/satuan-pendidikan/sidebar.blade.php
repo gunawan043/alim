@@ -358,6 +358,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.tasmi.index', ['userId' => $userId]) }}">
+            <i class="ri-award-line"></i><span>Tasmi’ & Syahadah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.progress.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.progress.index', ['userId' => $userId]) }}">
             <i class="ri-line-chart-line"></i><span>Progres & Rekap</span>

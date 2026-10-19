@@ -24,12 +24,15 @@ class TahfidzTasmianParticipant extends Model
     protected $fillable = [
         'tasmian_session_id', 'student_id', 'academic_year_id', 'nomor_urut', 'juz_tasmi',
         'juz_detail', 'materi_detail', 'mustami_id', 'waktu_mulai', 'waktu_selesai', 'tempat', 'status',
+        'requested_by', 'requested_at', 'verification_status', 'verified_by', 'verified_at', 'verification_notes',
     ];
 
     protected $casts = [
         'nomor_urut' => 'integer',
         'juz_tasmi' => 'integer',
         'juz_detail' => 'array',
+        'requested_at' => 'datetime',
+        'verified_at' => 'datetime',
     ];
 
     public function session(): BelongsTo
@@ -47,6 +50,16 @@ class TahfidzTasmianParticipant extends Model
         return $this->belongsTo(User::class, 'mustami_id');
     }
 
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
@@ -60,6 +73,15 @@ class TahfidzTasmianParticipant extends Model
     public function certificate(): HasOne
     {
         return $this->hasOne(TahfidzCertificate::class, 'tasmian_participant_id');
+    }
+
+    public function getVerificationLabelAttribute(): string
+    {
+        return match ($this->verification_status) {
+            'verified' => 'Terverifikasi',
+            'rejected' => 'Ditolak',
+            default => 'Menunggu Verifikasi',
+        };
     }
 
     public function getJuzListAttribute(): array

@@ -5,6 +5,7 @@
         $userId = $userId ?? auth()->id();
         $scored = $session->participants->filter(fn ($participant) => $participant->score !== null)->count();
         $certified = $session->participants->filter(fn ($participant) => $participant->certificate !== null)->count();
+        $verified = $session->participants->filter(fn ($participant) => $participant->verification_status === 'verified')->count();
     @endphp
     @include('tahfidz._styles')
     @component('components.breadcrumb') @slot('li_1') <a href="{{ route('user.tahfidz.tasmi.index', ['userId'=>$userId]) }}">Tasmi’</a> @endslot @slot('li_2') Detail @endslot @slot('title') {{ $session->session_name }} @endslot @endcomponent
@@ -33,6 +34,19 @@
                 <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted small">Syahadah Terbit</div><div class="fs-4 fw-bold text-primary">{{ $certified }}</div></div></div>
             </div>
         </div>
+        <div class="card-body border-bottom">
+            <div class="row g-2 text-center">
+                @foreach([
+                    ['1', 'Kesiapan & Jadwal', $session->participants->isNotEmpty(), 'Peserta terdaftar'],
+                    ['2', 'Penilaian Guru', $scored > 0, 'Nilai mustami’'],
+                    ['3', 'Verifikasi Koor.', $verified > 0, 'Validasi nilai'],
+                    ['4', 'Syahadah', $certified > 0, 'Sertifikat terbit'],
+                ] as [$no, $label, $done, $note])
+                    <div class="col-md-3"><div class="border rounded p-2 h-100"><span class="badge {{ $done ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} mb-1">Langkah {{ $no }}</span><div class="fw-semibold small">{{ $label }}</div><div class="text-muted" style="font-size:10px;">{{ $note }}</div></div></div>
+                @endforeach
+            </div>
+            <div class="small text-muted mt-2"><i class="ri-information-line me-1"></i>Guru/mustami menilai, koordinator memverifikasi, lalu syahadah diterbitkan dan dicetak.</div>
+        </div>
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h6 class="card-title mb-0">Daftar Peserta</h6>
             <div class="d-flex gap-2">
@@ -41,11 +55,12 @@
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 tahfidz-table">
-                <thead class="table-light"><tr><th>No</th><th>Santri</th><th>Kelas</th><th>Juz</th><th>Mustami’</th><th>Waktu</th><th>Status</th><th>Nilai</th><th>Syahadah</th><th class="text-end">Aksi</th></tr></thead>
+                <thead class="table-light"><tr><th>No</th><th>Santri</th><th>Kelas</th><th>Juz</th><th>Mustami’</th><th>Waktu</th><th>Status</th><th>Verifikasi</th><th>Nilai</th><th>Syahadah</th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
                     @forelse($session->participants as $participant)
                         @php
-                            $canScoreThis = $canManage || (string) $participant->mustami_id === (string) $userId;
+                            $canScoreThis = ($canManage || (string) $participant->mustami_id === (string) $userId)
+                                && $participant->verification_status !== 'verified';
                             $scorePayload = ['id'=>$participant->id,'student'=>$participant->student?->name,'tahfizh'=>$participant->score?->tahfizh_score_raw,'tajwid'=>$participant->score?->tajwid_score_raw,'fashohah'=>$participant->score?->fashohah_score_raw,'notes'=>$participant->score?->catatan_penilai];
                         @endphp
                         <tr>
@@ -56,19 +71,23 @@
                             <td>{{ $participant->mustami?->name ?? '—' }}</td>
                             <td class="small">{{ $participant->waktu_mulai ? substr($participant->waktu_mulai,0,5) : '—' }}{{ $participant->waktu_selesai ? '–'.substr($participant->waktu_selesai,0,5) : '' }}<div class="text-muted">{{ $participant->tempat }}</div></td>
                             <td><span class="badge {{ $participant->status==='selesai' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ ucfirst(str_replace('_',' ', $participant->status)) }}</span></td>
+                            <td><span class="badge {{ $participant->verification_status==='verified' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">{{ $participant->verification_label }}</span>@if($participant->verified_at)<div class="text-muted" style="font-size:10px;">{{ $participant->verified_at->format('d/m/Y') }}</div>@endif</td>
                             <td>@if($participant->score)<div class="fw-bold">{{ number_format((float) $participant->score->nilai_akhir, 2) }}</div><div class="small text-muted">{{ $participant->score->predikat_label }} · {{ $participant->score->predikat_arabic }}</div>@else<span class="text-muted">—</span>@endif</td>
                             <td>@if($participant->certificate)<a href="{{ route('user.tahfidz.tasmi.certificate.print', ['userId'=>$userId,'certificateId'=>$participant->certificate->id]) }}" target="_blank" class="badge bg-success-subtle text-success text-decoration-none">{{ $participant->certificate->certificate_number }}</a>@else<span class="text-muted small">Belum</span>@endif</td>
                             <td class="text-end text-nowrap">
                                 @if($canScoreThis)<button type="button" class="btn btn-sm btn-outline-success" title="Nilai" data-score="{{ json_encode($scorePayload, JSON_HEX_APOS | JSON_HEX_QUOT) }}" onclick="openScoreModal(JSON.parse(this.dataset.score))"><i class="ri-edit-2-line"></i></button>@endif
                                 <a href="{{ route('user.tahfidz.tasmi.participant.instrument', ['userId'=>$userId,'participantId'=>$participant->id]) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Instrumen"><i class="ri-printer-line"></i></a>
-                                @if($canManage && $participant->score && ! $participant->certificate)
+                                @if($canManage && $participant->score && $participant->verification_status !== 'verified')
+                                    <form method="POST" action="{{ route('user.tahfidz.tasmi.participant.verify', ['userId'=>$userId,'participantId'=>$participant->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success" title="Verifikasi nilai"><i class="ri-check-double-line"></i></button></form>
+                                @endif
+                                @if($canManage && $participant->score && $participant->verification_status === 'verified' && ! $participant->certificate)
                                     <form method="POST" action="{{ route('user.tahfidz.tasmi.participant.certificate', ['userId'=>$userId,'participantId'=>$participant->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-primary" title="Terbitkan Syahadah"><i class="ri-certificate-line"></i></button></form>
                                 @endif
                                 @if($canManage)<button type="button" class="btn btn-sm btn-outline-danger remove-participant" title="Keluarkan" data-action="{{ route('user.tahfidz.tasmi.participants.destroy', ['userId'=>$userId,'id'=>$session->id,'participantId'=>$participant->id]) }}" data-name="{{ $participant->student?->name }}"><i class="ri-user-unfollow-line"></i></button>@endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="text-center text-muted py-5"><i class="ri-user-star-line fs-3 d-block mb-2"></i>Belum ada peserta.</td></tr>
+                        <tr><td colspan="11" class="text-center text-muted py-5"><i class="ri-user-star-line fs-3 d-block mb-2"></i>Belum ada peserta.</td></tr>
                     @endforelse
                 </tbody>
             </table>

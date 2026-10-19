@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\User;
+use App\Services\TahfidzAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +25,23 @@ class TahfidzDashboardController extends DashboardController
     protected function getRoleSlug(): string
     {
         return 'tahfidz';
+    }
+
+    protected function canAccessDashboard(User $user): bool
+    {
+        if (parent::canAccessDashboard($user)) {
+            return true;
+        }
+
+        $access = app(TahfidzAccess::class);
+        $schoolId = $user->employment?->school_id;
+
+        return $access->isSuperAdmin($user)
+            || $access->isDepartment($user)
+            || $access->isSchoolCoordinator($user, $schoolId)
+            || $access->isSchoolLeader($user)
+            || $access->isTahfidzTeacher($user)
+            || (function_exists('canPermission') && canPermission('tahfidz_view'));
     }
 
     protected function getRoleLabel(): string
@@ -64,7 +82,7 @@ class TahfidzDashboardController extends DashboardController
                 ->values()
                 ->all();
         } catch (\Throwable $e) {
-            Log::warning('getTahfidzGroupIds failed: ' . $e->getMessage());
+            Log::warning('getTahfidzGroupIds failed: '.$e->getMessage());
 
             return [];
         }

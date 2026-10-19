@@ -42,7 +42,8 @@ class TasmiController extends Controller
 
         if (! $this->access->canViewAllSchools($request->user())) {
             if ($this->access->isSchoolCoordinator($request->user(), $schoolId)
-                || $this->access->isSchoolLeader($request->user())) {
+                || $this->access->isSchoolLeader($request->user())
+                || $this->access->isTahfidzTeacher($request->user())) {
                 $query->where('school_id', $schoolId);
             } else {
                 $query->where(function ($q) use ($request) {
@@ -239,6 +240,9 @@ class TasmiController extends Controller
                 'waktu_selesai' => $validated['waktu_selesai'] ?? null,
                 'tempat' => $validated['tempat'] ?? $session->location,
                 'status' => 'terdaftar',
+                'requested_by' => $request->user()?->id,
+                'requested_at' => now(),
+                'verification_status' => 'pending',
             ]
         );
 
@@ -260,6 +264,7 @@ class TasmiController extends Controller
     {
         $participant = TahfidzTasmianParticipant::with('session')->findOrFail($participantId);
         $this->authorizeScore($request, $participant);
+        abort_if($participant->verification_status === 'verified', 403, 'Nilai yang sudah diverifikasi koordinator tidak dapat diubah.');
 
         $validated = $request->validate([
             'tahfizh_score_raw' => 'required|numeric|min:0|max:100',
@@ -292,13 +297,38 @@ class TasmiController extends Controller
             ]
         );
 
-        $participant->update(['status' => 'selesai']);
+        $participant->update([
+            'status' => 'selesai',
+            'verification_status' => 'pending',
+            'verified_by' => null,
+            'verified_at' => null,
+        ]);
         $remaining = $participant->session->participants()
             ->whereNotIn('status', ['selesai', 'tidak_hadir'])
             ->exists();
         $participant->session->update(['status' => $remaining ? 'berlangsung' : 'selesai']);
 
         return back()->with('success', 'Nilai tasmi’ disimpan: '.number_format($calculated['nilai_akhir'], 2).' ('.$this->tasmi->predicateArabic($calculated['predikat']).').');
+    }
+
+    public function verifyParticipant(Request $request, string $userId, string $participantId)
+    {
+        $participant = TahfidzTasmianParticipant::with(['session', 'score'])->findOrFail($participantId);
+        $this->authorizeManageSession($request, $participant->session);
+        abort_unless($participant->score, 422, 'Nilai peserta belum diisi.');
+
+        if ($participant->verification_status === 'verified') {
+            return back()->with('success', 'Nilai peserta sudah terverifikasi.');
+        }
+
+        $participant->update([
+            'verification_status' => 'verified',
+            'verified_by' => $request->user()?->id,
+            'verified_at' => now(),
+            'verification_notes' => $request->input('verification_notes'),
+        ]);
+
+        return back()->with('success', 'Nilai tasmi’ peserta berhasil diverifikasi koordinator.');
     }
 
     public function instrument(Request $request, string $userId, string $participantId)
@@ -420,6 +450,10 @@ class TasmiController extends Controller
         $participant = TahfidzTasmianParticipant::with(['session.school', 'session.academicYear', 'student', 'score'])->findOrFail($participantId);
         $this->authorizeManageSession($request, $participant->session);
 
+        if ($participant->verification_status !== 'verified') {
+            return back()->with('error', 'Nilai peserta harus diverifikasi koordinator sebelum syahadah diterbitkan.');
+        }
+
         try {
             $certificate = $this->tasmi->issueCertificate($participant, $request->user());
         } catch (InvalidArgumentException $exception) {
@@ -497,7 +531,7 @@ class TasmiController extends Controller
             return;
         }
 
-        if ($this->access->isSchoolLeader($request->user())
+        if (($this->access->isSchoolLeader($request->user()) || $this->access->isTahfidzTeacher($request->user()))
             && (string) $session->school_id === (string) $this->schoolId($request)) {
             return;
         }
@@ -532,7 +566,7 @@ class TasmiController extends Controller
 
         abort_unless(
             $this->access->isSchoolCoordinator($request->user(), $certificate->school_id, $certificate->academic_year_id)
-            || ($this->access->isSchoolLeader($request->user()) && (string) $certificate->school_id === (string) $this->schoolId($request))
+            || (($this->access->isSchoolLeader($request->user()) || $this->access->isTahfidzTeacher($request->user())) && (string) $certificate->school_id === (string) $this->schoolId($request))
             || (string) $certificate->issued_by === (string) $request->user()->id
             || $certificate->participant?->session?->participants()
                 ->where('mustami_id', $request->user()->id)->exists(),

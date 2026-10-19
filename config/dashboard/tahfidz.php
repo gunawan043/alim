@@ -219,8 +219,12 @@ return [
             'stat-santri-tahfidz',
             'stat-halaqah-aktif',
             'stat-setoran-bulan',
+            'stat-tasmi-terjadwal',
+            'stat-syahadah-bulan',
             'table-setoran-terbaru',
             'table-halaqah-aktif',
+            'table-tasmi-terjadwal',
+            'table-tasmi-hasil',
         ],
     ],
 

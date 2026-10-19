@@ -52,8 +52,8 @@ abstract class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Cek role via spatie
-        if (! $user instanceof User || ! $user->hasRole($this->getRoleLabel())) {
+        // 1. Cek akses dashboard (dapat dioverride controller turunan).
+        if (! $user instanceof User || ! $this->canAccessDashboard($user)) {
             abort(403, 'Anda tidak memiliki akses ke dashboard ini.');
         }
 
@@ -61,7 +61,7 @@ abstract class DashboardController extends Controller
         $config = $this->loadConfig();
 
         // 3. Deteksi jabatan struktural + tugas tambahan
-        $jabatanCode   = $this->detectJabatanCode($user);
+        $jabatanCode = $this->detectJabatanCode($user);
         $tugasTambahan = $this->detectTugasTambahan($user);
 
         // 4. Resolve widget = jabatan + tugas tambahan (deduplicated)
@@ -73,8 +73,8 @@ abstract class DashboardController extends Controller
 
         // 5. Konteks yang dibutuhkan partial
         $this->activeJabatanLabel = $jabatanLabel;
-        $this->activeScopeKey = substr(md5($jabatanCode . '|' . implode('|', $tugasTambahan)), 0, 10);
-        $this->resolvedSchoolId   = $this->globalScope ? null : $this->resolveSchoolId($request, $user);
+        $this->activeScopeKey = substr(md5($jabatanCode.'|'.implode('|', $tugasTambahan)), 0, 10);
+        $this->resolvedSchoolId = $this->globalScope ? null : $this->resolveSchoolId($request, $user);
 
         // 6. Load data tiap widget via partial (cache + error handling per widget)
         $data = $this->loadWidgetsData($widgets, $user);
@@ -83,17 +83,26 @@ abstract class DashboardController extends Controller
         $sections = $this->groupWidgets($widgets, $data, $config);
 
         return view("dashboard.{$this->getRoleSlug()}.index", [
-            'user'          => $user,
-            'roleSlug'      => $this->getRoleSlug(),
-            'jabatanCode'   => $jabatanCode,
-            'jabatanLabel'  => $jabatanLabel,
+            'user' => $user,
+            'roleSlug' => $this->getRoleSlug(),
+            'jabatanCode' => $jabatanCode,
+            'jabatanLabel' => $jabatanLabel,
             'tugasTambahan' => $tugasTambahan,
-            'widgets'       => $widgets,
-            'sections'      => $sections,
-            'data'          => $data,
-            'config'        => $config,
-            'viewPath'      => "dashboard.{$this->getRoleSlug()}",
+            'widgets' => $widgets,
+            'sections' => $sections,
+            'data' => $data,
+            'config' => $config,
+            'viewPath' => "dashboard.{$this->getRoleSlug()}",
         ]);
+    }
+
+    /**
+     * Default: harus memiliki role Spatie yang sesuai.
+     * Controller turunan dapat menambah akses berbasis jabatan/tugas.
+     */
+    protected function canAccessDashboard(User $user): bool
+    {
+        return $user->hasRole($this->getRoleLabel());
     }
 
     // =====================================================================
@@ -125,7 +134,7 @@ abstract class DashboardController extends Controller
                 ->where('gtk_employments.user_id', $user->id)
                 ->value('structural_positions.code');
         } catch (\Throwable $e) {
-            Log::warning('detectJabatanCode failed: ' . $e->getMessage());
+            Log::warning('detectJabatanCode failed: '.$e->getMessage());
             $code = null;
         }
 
@@ -153,7 +162,7 @@ abstract class DashboardController extends Controller
                 ->values()
                 ->all();
         } catch (\Throwable $e) {
-            Log::warning('detectTugasTambahan failed: ' . $e->getMessage());
+            Log::warning('detectTugasTambahan failed: '.$e->getMessage());
 
             return [];
         }
@@ -191,13 +200,13 @@ abstract class DashboardController extends Controller
     protected function groupWidgets(array $widgets, array $data, array $config): array
     {
         $definitions = $config['sections'] ?? [];
-        $map         = $config['section_map'] ?? [];
+        $map = $config['section_map'] ?? [];
 
         if (empty($definitions)) {
             return [[
-                'key'     => 'semua',
-                'title'   => '',
-                'icon'    => '',
+                'key' => 'semua',
+                'title' => '',
+                'icon' => '',
                 'widgets' => $widgets,
             ]];
         }
@@ -205,9 +214,9 @@ abstract class DashboardController extends Controller
         $groups = [];
         foreach ($definitions as $key => $meta) {
             $groups[$key] = [
-                'key'     => $key,
-                'title'   => $meta['title'] ?? ucfirst($key),
-                'icon'    => $meta['icon'] ?? 'ri-apps-2-line',
+                'key' => $key,
+                'title' => $meta['title'] ?? ucfirst($key),
+                'icon' => $meta['icon'] ?? 'ri-apps-2-line',
                 'widgets' => [],
             ];
         }
@@ -258,7 +267,7 @@ abstract class DashboardController extends Controller
                 return (string) $schoolId;
             }
         } catch (\Throwable $e) {
-            Log::warning('resolveSchoolId failed: ' . $e->getMessage());
+            Log::warning('resolveSchoolId failed: '.$e->getMessage());
         }
 
         if ($sessionSchool = session('school_id')) {
@@ -268,7 +277,7 @@ abstract class DashboardController extends Controller
         try {
             return optional(SchoolGroupService::getUserSchool($user))->id;
         } catch (\Throwable $e) {
-            Log::warning('resolveSchoolId (work unit) failed: ' . $e->getMessage());
+            Log::warning('resolveSchoolId (work unit) failed: '.$e->getMessage());
 
             return null;
         }
@@ -293,6 +302,7 @@ abstract class DashboardController extends Controller
             if ($partialFile === null) {
                 Log::debug("Widget partial not found: {$widgetKey} (role {$this->getRoleSlug()})");
                 $data[$widgetKey] = ['error' => true, 'message' => 'Partial not found'];
+
                 continue;
             }
 
@@ -305,7 +315,7 @@ abstract class DashboardController extends Controller
                     ? Cache::remember($cacheKey, $this->cacheTtl, fn () => $this->runPartial($partialFile, $user))
                     : $this->runPartial($partialFile, $user);
             } catch (\Throwable $e) {
-                Log::error("Widget [{$widgetKey}] failed: " . $e->getMessage());
+                Log::error("Widget [{$widgetKey}] failed: ".$e->getMessage());
                 $data[$widgetKey] = ['error' => true, 'message' => $e->getMessage()];
             }
         }
@@ -402,7 +412,7 @@ abstract class DashboardController extends Controller
                 ->orderByDesc('is_active')
                 ->first();
         } catch (\Throwable $e) {
-            Log::warning('getHomeroomStudyGroup failed: ' . $e->getMessage());
+            Log::warning('getHomeroomStudyGroup failed: '.$e->getMessage());
 
             return null;
         }
