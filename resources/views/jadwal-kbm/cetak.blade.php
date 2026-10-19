@@ -76,6 +76,20 @@
         <p style="text-align:center;color:#64748b;">Belum ada jadwal untuk rombel ini.</p>
     @endif
 
+    @if(($tahfidzSchedules ?? collect())->isNotEmpty())
+        <h3 style="font-size:14px;margin:18px 0 6px;">Jadwal Halaqah Tahfidz</h3>
+        <table>
+            <thead><tr><th>Hari</th><th>Waktu</th><th>Halaqah</th><th>Guru</th><th>Jenis</th><th>Ruang</th></tr></thead>
+            <tbody>
+                @foreach($tahfidzSchedules as $schedules)
+                    @foreach($schedules as $schedule)
+                        <tr><td class="center">{{ $schedule->day_name }}</td><td class="center">{{ substr((string)$schedule->time_start,0,5) }}–{{ substr((string)$schedule->time_end,0,5) }}</td><td>{{ $schedule->group?->name }}</td><td>{{ $schedule->group?->teacher?->name ?? '—' }}</td><td class="center">{{ $schedule->type_label }}</td><td class="center">{{ $schedule->room ?? '—' }}</td></tr>
+                    @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
     <div class="footer">
         <div class="signature">
             <div>Mengetahui,</div>

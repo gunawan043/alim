@@ -67,4 +67,19 @@
         @endif
     </div>
 </div>
+
+<div class="card mt-3">
+    <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-book-read-line text-primary me-1"></i>Jadwal Halaqah Tahfidz</h5></div>
+    @if(($tahfidzSchedules ?? collect())->isEmpty())
+        <div class="card-body text-muted small">Tidak ada jadwal halaqah untuk guru ini.</div>
+    @else
+        <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Hari</th><th>Waktu</th><th>Halaqah</th><th>Kelas</th><th>Jenis</th><th>Ruang</th></tr></thead><tbody>
+            @foreach($tahfidzSchedules as $schedules)
+                @foreach($schedules as $schedule)
+                    <tr><td class="fw-semibold">{{ $schedule->day_name }}</td><td>{{ substr((string)$schedule->time_start,0,5) }}–{{ substr((string)$schedule->time_end,0,5) }}</td><td>{{ $schedule->group?->name }}</td><td>{{ $schedule->group?->studyGroup?->name ?? '—' }}</td><td><span class="badge bg-primary-subtle text-primary">{{ $schedule->type_label }}</span></td><td>{{ $schedule->room ?? '—' }}</td></tr>
+                @endforeach
+            @endforeach
+        </tbody></table></div>
+    @endif
+</div>
 @endsection

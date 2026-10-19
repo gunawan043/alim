@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\JadwalKbm;
 use App\Models\OtherTeacherTask;
 use App\Models\StudyGroup;
+use App\Models\TahfidzSchedule;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
@@ -266,9 +267,16 @@ class JadwalKbmController extends Controller
                 ->groupBy('day_of_week');
         }
 
+        $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id,teacher_id,coordinator_id', 'group.teacher:id,name', 'group.coordinator:id,name'])
+            ->where('is_active', true)
+            ->where('academic_year_id', $activeAy?->id)
+            ->whereHas('group', fn ($q) => $q->where('study_group_id', $studyGroupId)->where('is_active', true))
+            ->orderBy('day_of_week')->orderBy('time_start')
+            ->get()->groupBy('day_of_week');
+
         $days = $this->days();
 
-        return view('jadwal-kbm.show', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'masterSlots'));
+        return view('jadwal-kbm.show', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'masterSlots', 'tahfidzSchedules'));
     }
 
     public function edit(Request $request, string $userId, string $studyGroupId)
@@ -411,9 +419,15 @@ class JadwalKbmController extends Controller
             ->get()
             ->groupBy('day_of_week');
 
+        $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id', 'group.teacher:id,name', 'group.coordinator:id,name'])
+            ->where('is_active', true)
+            ->where('academic_year_id', $activeAy?->id)
+            ->whereHas('group', fn ($q) => $q->where('study_group_id', $studyGroupId)->where('is_active', true))
+            ->orderBy('day_of_week')->orderBy('time_start')->get()->groupBy('day_of_week');
+
         $days = $this->days();
 
-        return view('jadwal-kbm.cetak', compact('studyGroup', 'jadwals', 'days', 'activeAy'));
+        return view('jadwal-kbm.cetak', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules'));
     }
 
     public function forTeacher(Request $request, string $userId, string $teacherId)
@@ -439,9 +453,18 @@ class JadwalKbmController extends Controller
             ->get()
             ->groupBy('day_of_week');
 
+        $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id,teacher_id,coordinator_id', 'group.studyGroup:id,name'])
+            ->where('is_active', true)
+            ->where('academic_year_id', $activeAy?->id)
+            ->whereHas('group', function ($q) use ($teacherId) {
+                $q->where('teacher_id', $teacherId)->orWhere('coordinator_id', $teacherId)
+                    ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $teacherId)->where('is_active', true));
+            })
+            ->orderBy('day_of_week')->orderBy('time_start')->get()->groupBy('day_of_week');
+
         $days = $this->days();
 
-        return view('jadwal-kbm.teacher', compact('teacher', 'jadwals', 'days', 'activeAy'));
+        return view('jadwal-kbm.teacher', compact('teacher', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules'));
     }
 
     /**

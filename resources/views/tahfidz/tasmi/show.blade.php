@@ -100,8 +100,10 @@
                 <div class="modal-content">
                     <form method="POST" action="{{ route('user.tahfidz.tasmi.participants.store', ['userId'=>$userId,'id'=>$session->id]) }}">
                         @csrf
-                        <div class="modal-header bg-primary-subtle"><h5 class="modal-title"><i class="ri-user-add-line me-1"></i>Tambah Peserta Tasmi’</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                        <div class="modal-body"><div class="row g-3">
+                        <div class="modal-header bg-primary-subtle"><h5 class="modal-title"><i class="ri-user-add-line me-1"></i>Daftarkan Peserta Tasmi’</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            @unless($canManage)<div class="alert alert-info small"><i class="ri-information-line me-1"></i>Anda mendaftarkan santri dari halaqah yang Anda ampu. Koordinator akan menjadwalkan dan memverifikasi.</div>@endunless
+                            <div class="row g-3">
                             <div class="col-md-7"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" class="form-select" required><option value="">—</option>@foreach($availableStudents as $student)<option value="{{ $student->id }}">{{ $student->name }} ({{ $student->nis }})</option>@endforeach</select></div>
                             <div class="col-md-2"><label class="form-label">Juz Utama</label><input type="number" name="juz_tasmi" min="1" max="30" class="form-control"></div>
                             <div class="col-md-3"><label class="form-label">Daftar Juz</label><input name="juz_detail" class="form-control" placeholder="28,29,30"></div>
@@ -111,7 +113,7 @@
                             <div class="col-md-3"><label class="form-label">Selesai</label><input type="time" name="waktu_selesai" class="form-control"></div>
                             <div class="col-md-6"><label class="form-label">Tempat</label><input name="tempat" class="form-control" maxlength="100" value="{{ $session->location }}"></div>
                         </div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success"><i class="ri-save-line me-1"></i>Tambah Peserta</button></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="ri-save-line me-1"></i>Daftarkan Peserta</button></div>
                     </form>
                 </div>
             </div>

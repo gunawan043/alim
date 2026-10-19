@@ -193,6 +193,28 @@ class TahfidzOperationsTest extends TestCase
             ->assertSee('Santri Tahfidz');
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/tahfidz/halaqah/{$group->id}/schedules", [
+                'day_of_week' => 1,
+                'time_start' => '07:30',
+                'time_end' => '08:30',
+                'schedule_type' => 'setoran',
+                'room' => 'Ruang Tahfidz',
+                'is_active' => 1,
+            ])->assertRedirect();
+
+        $this->assertDatabaseHas('tahfidz_schedules', [
+            'tahfidz_group_id' => $group->id,
+            'day_of_week' => 1,
+            'schedule_type' => 'setoran',
+        ]);
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/jadwal-kbm/{$this->studyGroup->id}")
+            ->assertOk()
+            ->assertSee('Halaqah 7A Putra')
+            ->assertSee('Jadwal Tahfidz Halaqah');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->post("/{$this->admin->id}/tahfidz/targets", [
                 'tahfidz_group_id' => $group->id,
                 'student_id' => $this->student->id,

@@ -82,6 +82,11 @@ class TahfidzGroup extends Model
         return $this->hasMany(TahfidzGroupTeacher::class, 'tahfidz_group_id');
     }
 
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(TahfidzSchedule::class, 'tahfidz_group_id');
+    }
+
     public function setorans(): HasMany
     {
         return $this->hasMany(TahfidzSetoran::class, 'tahfidz_group_id');

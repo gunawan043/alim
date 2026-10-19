@@ -13,6 +13,7 @@ use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzGroupTeacher;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzPackage;
+use App\Models\TahfidzSchedule;
 use App\Models\TahfidzProgressRecap;
 use App\Models\TahfidzStudentTarget;
 use App\Models\User;
@@ -114,7 +115,7 @@ class HalaqahController extends Controller
 
     public function show(Request $request, string $userId, string $id)
     {
-        $group = TahfidzGroup::with(['school', 'studyGroup', 'package', 'curriculum', 'teacher', 'coordinator', 'members.student', 'teachers.user', 'setorans' => fn ($q) => $q->with(['student:id,name', 'teacher:id,name', 'verifier:id,name'])->orderByDesc('setoran_date')->limit(30)])->findOrFail($id);
+        $group = TahfidzGroup::with(['school', 'studyGroup', 'package', 'curriculum', 'teacher', 'coordinator', 'members.student', 'teachers.user', 'schedules' => fn ($q) => $q->orderBy('day_of_week')->orderBy('time_start'), 'setorans' => fn ($q) => $q->with(['student:id,name', 'teacher:id,name', 'verifier:id,name'])->orderByDesc('setoran_date')->limit(30)])->findOrFail($id);
         $this->authorizeGroup($request, $group);
         $group->loadCount([
             'members as active_members_count' => fn ($query) => $query->where('status', 'aktif'),
@@ -137,6 +138,7 @@ class HalaqahController extends Controller
         $canManage = $this->access->canManageGroup($request->user(), $group);
         $canTarget = $this->access->canInputSetoran($request->user(), $group)
             || $canManage;
+        $canSchedule = $canTarget;
         $activeMembers = $group->members->where('status', 'aktif')->values();
         $memberIds = $activeMembers->pluck('student_id');
 
@@ -161,7 +163,7 @@ class HalaqahController extends Controller
 
         return view('tahfidz.halaqah.show', compact(
             'userId', 'group', 'availableStudents', 'canManage', 'canTarget',
-            'activeMembers', 'targets', 'juzProgress', 'recaps'
+            'activeMembers', 'targets', 'juzProgress', 'recaps', 'canSchedule'
         ));
     }
 
@@ -342,6 +344,81 @@ class HalaqahController extends Controller
         $group->delete();
 
         return redirect()->route('user.tahfidz.halaqah.index', ['userId' => $userId])->with('success', 'Halaqah dihapus.');
+    }
+
+    public function storeSchedule(Request $request, string $userId, string $id)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeSchedule($request, $group);
+        $validated = $this->validateSchedule($request);
+
+        TahfidzSchedule::create([
+            'tahfidz_group_id' => $group->id,
+            'academic_year_id' => $group->academic_year_id,
+            'day_of_week' => $validated['day_of_week'],
+            'time_start' => $validated['time_start'],
+            'time_end' => $validated['time_end'],
+            'room' => $validated['room'] ?? null,
+            'schedule_type' => $validated['schedule_type'],
+            'is_active' => $request->boolean('is_active', true),
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Jadwal halaqah ditambahkan.');
+    }
+
+    public function updateSchedule(Request $request, string $userId, string $id, string $scheduleId)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeSchedule($request, $group);
+        $schedule = TahfidzSchedule::where('tahfidz_group_id', $group->id)->findOrFail($scheduleId);
+        $validated = $this->validateSchedule($request);
+
+        $schedule->update([
+            'day_of_week' => $validated['day_of_week'],
+            'time_start' => $validated['time_start'],
+            'time_end' => $validated['time_end'],
+            'room' => $validated['room'] ?? null,
+            'schedule_type' => $validated['schedule_type'],
+            'is_active' => $request->boolean('is_active', true),
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Jadwal halaqah diperbarui.');
+    }
+
+    public function destroySchedule(Request $request, string $userId, string $id, string $scheduleId)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeSchedule($request, $group);
+        TahfidzSchedule::where('tahfidz_group_id', $group->id)->findOrFail($scheduleId)->delete();
+
+        return back()->with('success', 'Jadwal halaqah dihapus.');
+    }
+
+    private function validateSchedule(Request $request): array
+    {
+        $validated = $request->validate([
+            'day_of_week' => 'required|integer|min:1|max:7',
+            'time_start' => 'required|date_format:H:i',
+            'time_end' => 'required|date_format:H:i',
+            'room' => 'nullable|string|max:100',
+            'schedule_type' => 'required|in:setoran,murajaah,tasmi,evaluasi,tikror',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        abort_if($validated['time_end'] <= $validated['time_start'], 422, 'Jam selesai harus lebih besar dari jam mulai.');
+
+        return $validated;
+    }
+
+    private function authorizeSchedule(Request $request, TahfidzGroup $group): void
+    {
+        abort_unless(
+            $this->access->canManageGroup($request->user(), $group)
+            || $this->access->canInputSetoran($request->user(), $group),
+            403,
+            'Anda tidak berwenang mengatur jadwal halaqah ini.'
+        );
     }
 
     private function validateTarget(Request $request, TahfidzGroup $group): array

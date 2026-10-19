@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\TahfidzCertificate;
+use App\Models\TahfidzGroup;
 use App\Models\TahfidzTasmianParticipant;
 use App\Models\TahfidzTasmianScore;
 use App\Models\TahfidzTasmianSession;
@@ -176,9 +177,33 @@ class TasmiController extends Controller
         $this->authorizeSession($request, $session);
 
         $participantStudentIds = $session->participants->pluck('student_id');
+        $canManage = $this->canManageSession($request, $session);
+        $canRegister = $canManage || $this->access->isTahfidzTeacher($request->user());
+
+        $allowedStudentIds = null;
+        if (! $canManage) {
+            if (! $this->access->isTahfidzTeacher($request->user())) {
+                $allowedStudentIds = collect();
+            } else {
+                $allowedGroups = TahfidzGroup::query()
+                    ->where('academic_year_id', $session->academic_year_id)
+                    ->where(function ($query) use ($request) {
+                        $query->where('teacher_id', $request->user()->id)
+                            ->orWhere('coordinator_id', $request->user()->id)
+                            ->orWhereHas('teachers', fn ($teacher) => $teacher->where('user_id', $request->user()->id)->where('is_active', true));
+                    })
+                    ->pluck('id');
+                $allowedStudentIds = \App\Models\TahfidzGroupMember::whereIn('tahfidz_group_id', $allowedGroups)
+                    ->where('academic_year_id', $session->academic_year_id)
+                    ->where('status', 'aktif')
+                    ->pluck('student_id');
+            }
+        }
+
         $availableStudents = Student::query()
             ->where('status', 'active')
             ->when($session->school_id, fn ($q) => $q->where('school_id', $session->school_id))
+            ->when($allowedStudentIds !== null, fn ($q) => $q->whereIn('id', $allowedStudentIds))
             ->whereNotIn('id', $participantStudentIds)
             ->orderBy('name')
             ->limit(500)
@@ -190,18 +215,18 @@ class TasmiController extends Controller
             ->limit(500)
             ->get(['id', 'name']);
 
-        $canManage = $this->canManageSession($request, $session);
         $canScore = $canManage || $session->participants->contains(fn ($participant) => (string) $participant->mustami_id === (string) $request->user()->id);
 
         return view('tahfidz.tasmi.show', compact(
-            'userId', 'session', 'availableStudents', 'mustamis', 'canManage', 'canScore'
+            'userId', 'session', 'availableStudents', 'mustamis', 'canManage', 'canScore', 'canRegister'
         ));
     }
 
     public function addParticipant(Request $request, string $userId, string $id)
     {
         $session = TahfidzTasmianSession::findOrFail($id);
-        $this->authorizeManageSession($request, $session);
+        $canManage = $this->canManageSession($request, $session);
+        abort_unless($canManage || $this->access->isTahfidzTeacher($request->user()), 403, 'Anda tidak berwenang mendaftarkan peserta tasmi’.');
 
         $validated = $request->validate([
             'student_id' => 'required|exists:students,id',
@@ -217,6 +242,20 @@ class TasmiController extends Controller
         $student = Student::where('status', 'active')
             ->when($session->school_id, fn ($q) => $q->where('school_id', $session->school_id))
             ->findOrFail($validated['student_id']);
+
+        if (! $canManage) {
+            $isOwnStudent = \App\Models\TahfidzGroupMember::query()
+                ->where('student_id', $student->id)
+                ->where('academic_year_id', $session->academic_year_id)
+                ->where('status', 'aktif')
+                ->whereHas('group', function ($query) use ($request) {
+                    $query->where('teacher_id', $request->user()->id)
+                        ->orWhere('coordinator_id', $request->user()->id)
+                        ->orWhereHas('teachers', fn ($teacher) => $teacher->where('user_id', $request->user()->id)->where('is_active', true));
+                })
+                ->exists();
+            abort_unless($isOwnStudent, 403, 'Santri bukan anggota halaqah yang Anda ampu.');
+        }
 
         $juzDetail = collect(explode(',', (string) ($validated['juz_detail'] ?? '')))
             ->map(fn ($value) => (int) trim($value))

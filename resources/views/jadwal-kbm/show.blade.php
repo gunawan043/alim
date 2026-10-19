@@ -159,6 +159,24 @@
         </div>
     </div>
 @endif
+
+<div class="card mt-3">
+    <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div><h5 class="card-title mb-0"><i class="ri-book-read-line text-primary me-1"></i>Jadwal Tahfidz Halaqah</h5><p class="text-muted mb-0 small">Beberapa halaqah di kelas ini dapat berjalan bersamaan dengan guru masing-masing.</p></div>
+        <a href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}" class="btn btn-sm btn-soft-info">Kelola Halaqah</a>
+    </div>
+    @if($tahfidzSchedules->isEmpty())
+        <div class="card-body text-muted small">Belum ada jadwal halaqah untuk kelas ini. Tambahkan dari detail halaqah.</div>
+    @else
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>Hari</th><th>Waktu</th><th>Halaqah</th><th>Guru / Koordinator</th><th>Jenis</th><th>Ruang</th></tr></thead><tbody>
+            @foreach($tahfidzSchedules as $dayNumber => $schedules)
+                @foreach($schedules as $schedule)
+                    <tr><td class="fw-semibold">{{ $schedule->day_name }}</td><td class="text-nowrap">{{ substr((string)$schedule->time_start,0,5) }}–{{ substr((string)$schedule->time_end,0,5) }}</td><td class="fw-medium">{{ $schedule->group?->name }}</td><td>{{ $schedule->group?->teacher?->name ?? '—' }}@if($schedule->group?->coordinator)<div class="text-muted small">Koor: {{ $schedule->group->coordinator->name }}</div>@endif</td><td><span class="badge bg-primary-subtle text-primary">{{ $schedule->type_label }}</span></td><td>{{ $schedule->room ?? '—' }}</td></tr>
+                @endforeach
+            @endforeach
+        </tbody></table></div>
+    @endif
+</div>
 @endsection
 
 @push('scripts')
