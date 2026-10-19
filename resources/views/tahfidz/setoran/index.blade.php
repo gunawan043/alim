@@ -85,31 +85,34 @@
                 <div class="modal-content">
                     <form method="POST" action="{{ route('user.tahfidz.setoran.store', ['userId'=>$userId]) }}">
                         @csrf
-                        <div class="modal-header bg-success-subtle"><h5 class="modal-title"><i class="ri-file-add-line me-1"></i>Input Setoran</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                        <div class="modal-body"><div class="row g-3">
-                            <div class="col-md-5"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="setoranGroup" class="form-select" required onchange="fillSetoranStudents(this.value)">@foreach($groups as $g)<option value="{{ $g->id }}" @selected((string)old('tahfidz_group_id')===(string)$g->id)>{{ $g->name }} — {{ $g->school?->name }}</option>@endforeach</select></div>
-                            <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="setoranStudent" class="form-select" required><option value="">—</option></select></div>
-                            <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                            <div class="col-md-2"><label class="form-label">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
-                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
-                            <div class="col-md-3"><label class="form-label">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                            <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" min="1" max="30" class="form-control" value="{{ old('juz') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
-                            <div class="col-md-4"><label class="form-label">Surah Awal</label><input name="surah_start_name" class="form-control" value="{{ old('surah_start_name') }}" placeholder="Mis. Al-Fatihah"></div>
-                            <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_start" class="form-control" value="{{ old('ayat_start') }}"></div>
-                            <div class="col-md-4"><label class="form-label">Surah Akhir</label><input name="surah_end_name" class="form-control" value="{{ old('surah_end_name') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Ayat</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" class="form-control" value="{{ old('halaman_start') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Hasil Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" class="form-control" value="{{ old('hasil_hafalan') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" class="form-control" value="{{ old('khofi') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" class="form-control" value="{{ old('jali') }}"></div>
-                            <div class="col-md-2"><label class="form-label">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis"></div>
-                            <div class="col-12"><label class="form-label">Catatan Guru</label><textarea name="catatan_guru" class="form-control" rows="2">{{ old('catatan_guru') }}</textarea></div>
-                        </div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
+                        <div class="modal-header bg-primary-subtle"><h5 class="modal-title"><i class="ri-file-add-line me-1"></i>Input Setoran</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <div class="alert alert-light border small mb-3 d-flex flex-wrap justify-content-between gap-2"><span><i class="ri-lightbulb-line text-warning me-1"></i>Pilih santri; juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Detail dapat diubah.</span><span class="badge bg-success-subtle text-success" id="setoranScorePreview">Nilai akhir otomatis</span></div>
+                            <div class="row g-3">
+                                <div class="col-md-5"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="setoranGroup" class="form-select" required onchange="fillSetoranStudents(this.value)">@foreach($groups as $g)<option value="{{ $g->id }}" @selected((string)old('tahfidz_group_id')===(string)$g->id)>{{ $g->name }} — {{ $g->school?->name }}</option>@endforeach</select></div>
+                                <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="setoranStudent" class="form-select" required onchange="applySetoranLastPosition(this.value)"><option value="">—</option></select></div>
+                                <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
+                                <div class="col-md-2"><label class="form-label">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
+                                <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
+                                <div class="col-md-3"><label class="form-label">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
+                                <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" id="setoranJuz" min="1" max="30" class="form-control" value="{{ old('juz') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
+                                <div class="col-md-3"><label class="form-label">Surah Awal</label><select name="surah_start_name" id="setoranSurahStart" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
+                                <div class="col-md-2"><label class="form-label">Ayat Awal</label><input type="number" name="ayat_start" id="setoranAyatStart" class="form-control" value="{{ old('ayat_start') }}"></div>
+                                <div class="col-md-3"><label class="form-label">Surah Akhir</label><select name="surah_end_name" id="setoranSurahEnd" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
+                                <div class="col-md-2"><label class="form-label">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="setoranHalamanStart" class="form-control" value="{{ old('halaman_start') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="setoranHalamanEnd" class="form-control" value="{{ old('halaman_end') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="setoranHalamanCount" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
+                                <div class="col-md-2"><label class="form-label">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Hasil Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="setoranHasil" class="form-control" value="{{ old('hasil_hafalan') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" id="setoranKhofi" class="form-control" value="{{ old('khofi') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" id="setoranJali" class="form-control" value="{{ old('jali') }}"></div>
+                                <div class="col-md-2"><label class="form-label">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis"></div>
+                                <div class="col-12"><label class="form-label">Catatan Guru</label><textarea name="catatan_guru" class="form-control" rows="2">{{ old('catatan_guru') }}</textarea></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
                     </form>
                 </div>
             </div>
@@ -127,15 +130,57 @@
     function fillSetoranStudents(groupId, selected) {
         const select = document.getElementById('setoranStudent');
         if (! select) return;
-        const members = setoranMembers[groupId] || [];
+        const $select = window.jQuery ? jQuery(select) : null;
+        if ($select && $select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
         select.innerHTML = '<option value="">—</option>';
-        members.forEach(function (member) {
+        (setoranMembers[groupId] || []).forEach(function (member) {
             const option = document.createElement('option');
             option.value = member.id;
             option.textContent = member.name + (member.nis ? ' (' + member.nis + ')' : '');
             if (selected && String(selected) === String(member.id)) option.selected = true;
             select.appendChild(option);
         });
+        if ($select && jQuery.fn.select2) {
+            $select.select2({ width: '100%', placeholder: 'Cari nama santri...', allowClear: true });
+        }
+    }
+    function applySetoranLastPosition(studentId) {
+        if (! studentId) return;
+        let member = null;
+        Object.values(setoranMembers).forEach(function (members) {
+            const found = members.find(function (row) { return String(row.id) === String(studentId); });
+            if (found) member = found;
+        });
+        const last = member?.last;
+        if (! last) return;
+        const juz = document.getElementById('setoranJuz');
+        const surah = document.getElementById('setoranSurahStart');
+        const ayat = document.getElementById('setoranAyatStart');
+        const page = document.getElementById('setoranHalamanStart');
+        if (juz && last.juz) juz.value = last.juz;
+        if (surah && last.surah_start_name) {
+            surah.value = last.surah_start_name;
+            if (window.jQuery) jQuery(surah).trigger('change');
+        }
+        if (ayat && last.ayat_start) ayat.value = last.ayat_start;
+        if (page && last.halaman_start) page.value = last.halaman_start;
+    }
+    function calculateSetoranPages() {
+        const start = parseFloat(document.getElementById('setoranHalamanStart')?.value);
+        const end = parseFloat(document.getElementById('setoranHalamanEnd')?.value);
+        if (! Number.isNaN(start) && ! Number.isNaN(end) && end >= start) {
+            document.getElementById('setoranHalamanCount').value = Math.max(0, end - start + 1).toFixed(1).replace('.0', '');
+        }
+    }
+    function calculateSetoranScore() {
+        const values = ['setoranHasil', 'setoranKhofi', 'setoranJali']
+            .map(id => parseFloat(document.getElementById(id)?.value))
+            .filter(value => ! Number.isNaN(value));
+        if (values.length) {
+            const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+            const badge = document.getElementById('setoranScorePreview');
+            if (badge) badge.textContent = 'Nilai akhir otomatis: ' + average.toFixed(2);
+        }
     }
     function openSetoranModal() {
         const group = document.getElementById('setoranGroup');
@@ -144,8 +189,17 @@
         bootstrap.Modal.getOrCreateInstance(document.getElementById('setoranModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('.select2-surah').select2({ width: '100%', placeholder: 'Cari nama surah...', allowClear: true });
+        }
         const group = document.getElementById('setoranGroup');
         if (group) fillSetoranStudents(group.value, @json(old('student_id')));
+        document.getElementById('setoranStudent')?.addEventListener('change', function () { applySetoranLastPosition(this.value); });
+        document.getElementById('setoranHalamanStart')?.addEventListener('input', calculateSetoranPages);
+        document.getElementById('setoranHalamanEnd')?.addEventListener('input', calculateSetoranPages);
+        ['setoranHasil', 'setoranKhofi', 'setoranJali'].forEach(id => document.getElementById(id)?.addEventListener('input', calculateSetoranScore));
+        calculateSetoranPages();
+        calculateSetoranScore();
         @if($errors->any() && $groups->isNotEmpty())
             openSetoranModal();
         @endif

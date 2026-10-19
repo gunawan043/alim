@@ -215,6 +215,20 @@
         </a>
     </li>
 
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.progress.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.progress.index') }}">
+            <i class="ri-line-chart-line"></i><span>Progres & Rekap</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.targets.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.targets.index') }}">
+            <i class="ri-focus-3-line"></i><span>Target Hafalan</span>
+        </a>
+    </li>
+
     {{-- ⏳ SOON: Santri Tertinggal --}}
     <li class="nav-item">
         <a class="nav-link menu-link text-muted" href="#" onclick="return false"

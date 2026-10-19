@@ -46,22 +46,38 @@ class SetoranController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $membersByGroup = TahfidzGroupMember::with('student:id,name,nis')
+        $memberRows = TahfidzGroupMember::with('student:id,name,nis')
             ->whereIn('tahfidz_group_id', $groupIds)
             ->where('status', 'aktif')
+            ->get();
+        $memberStudentIds = $memberRows->pluck('student_id')->unique();
+        $lastPositions = TahfidzSetoran::whereIn('student_id', $memberStudentIds)
+            ->orderByDesc('setoran_date')
+            ->orderByDesc('created_at')
             ->get()
+            ->unique('student_id')
+            ->mapWithKeys(fn ($last) => [$last->student_id => [
+                'juz' => $last->juz,
+                'surah_start_name' => $last->surah_end_name ?: $last->surah_start_name,
+                'ayat_start' => $last->ayat_end ? ((int) $last->ayat_end + 1) : $last->ayat_start,
+                'halaman_start' => $last->halaman_end ? ((float) $last->halaman_end + 1) : $last->halaman_start,
+            ]]);
+
+        $membersByGroup = $memberRows
             ->groupBy('tahfidz_group_id')
             ->map(fn ($members) => $members->map(fn ($member) => [
                 'id' => $member->student?->id,
                 'name' => $member->student?->name,
                 'nis' => $member->student?->nis,
+                'last' => $lastPositions[$member->student_id] ?? null,
             ])->filter(fn ($student) => $student['id'])->values());
 
+        $surahs = TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']);
         $canVerify = $this->access->isSuperAdmin($request->user())
             || $this->access->isDepartment($request->user())
             || $this->access->isSchoolCoordinator($request->user(), $this->schoolId($request));
 
-        return view('tahfidz.setoran.index', compact('userId', 'setorans', 'groups', 'academicYears', 'canVerify', 'stats', 'membersByGroup'));
+        return view('tahfidz.setoran.index', compact('userId', 'setorans', 'groups', 'academicYears', 'canVerify', 'stats', 'membersByGroup', 'surahs'));
     }
 
     public function create(Request $request, string $userId)

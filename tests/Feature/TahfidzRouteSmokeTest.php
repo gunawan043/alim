@@ -30,6 +30,8 @@ class TahfidzRouteSmokeTest extends TestCase
             'tahfidz/consistency',
             'tahfidz/executive',
             'tahfidz/interventions',
+            'tahfidz/progress',
+            'tahfidz/targets',
         ];
 
         foreach ($paths as $path) {

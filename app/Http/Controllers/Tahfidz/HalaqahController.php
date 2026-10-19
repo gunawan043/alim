@@ -116,6 +116,10 @@ class HalaqahController extends Controller
     {
         $group = TahfidzGroup::with(['school', 'studyGroup', 'package', 'curriculum', 'teacher', 'coordinator', 'members.student', 'teachers.user', 'setorans' => fn ($q) => $q->with(['student:id,name', 'teacher:id,name', 'verifier:id,name'])->orderByDesc('setoran_date')->limit(30)])->findOrFail($id);
         $this->authorizeGroup($request, $group);
+        $group->loadCount([
+            'members as active_members_count' => fn ($query) => $query->where('status', 'aktif'),
+            'setorans',
+        ]);
 
         $activeStudentIds = TahfidzGroupMember::query()
             ->where('academic_year_id', $group->academic_year_id)

@@ -177,8 +177,39 @@ class TahfidzOperationsTest extends TestCase
             ->get("/{$this->admin->id}/tahfidz/halaqah/{$group->id}")
             ->assertOk()
             ->assertSee('Santri Tahfidz')
+            ->assertSee('Progres')
+            ->assertSee('Target');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/progress?group_id={$group->id}")
+            ->assertOk()
+            ->assertSee('Progres Juz & Rekap Capaian')
+            ->assertSee('Santri Tahfidz');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/targets?group_id={$group->id}")
+            ->assertOk()
             ->assertSee('Target Hafalan Santri')
-            ->assertSee('Progres Juz');
+            ->assertSee('Santri Tahfidz');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->post("/{$this->admin->id}/tahfidz/targets", [
+                'tahfidz_group_id' => $group->id,
+                'student_id' => $this->student->id,
+                'semester' => 'ganjil',
+                'target_bulan' => 2,
+                'juz_start' => 2,
+                'juz_end' => 2,
+                'target_halaman' => 20,
+                'target_hadits' => 3,
+            ])->assertRedirect();
+
+        $this->assertDatabaseHas('tahfidz_student_targets', [
+            'tahfidz_group_id' => $group->id,
+            'student_id' => $this->student->id,
+            'target_bulan' => 2,
+            'target_halaman' => 20,
+        ]);
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/setoran")

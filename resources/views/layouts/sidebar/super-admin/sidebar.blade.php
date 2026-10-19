@@ -670,6 +670,20 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.progress.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.progress.index', ['userId' => $userId]) }}">
+        <i class="ri-line-chart-line"></i><span>Progres & Rekap</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.targets.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.targets.index', ['userId' => $userId]) }}">
+        <i class="ri-focus-3-line"></i><span>Target Hafalan</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.monitoring']) ? ' active' : '' }}"
        href="{{ route('system.monitoring') }}">
         <i class="ri-pulse-line"></i><span>Monitoring</span>
