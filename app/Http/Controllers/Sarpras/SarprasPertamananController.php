@@ -82,7 +82,7 @@ class SarprasPertamananController extends SarprasBaseController
             }
             $item->update([
                 'status' => $data['status'] ?? 'belum',
-                'officer_id' => $data['officer_id'] ?? null,
+                'officer_id' => $validated['officer_id'] ?? $agenda->officer_id,
                 'notes' => $data['notes'] ?? null,
             ]);
         }
@@ -119,6 +119,7 @@ class SarprasPertamananController extends SarprasBaseController
         PertamananAgendaItem::create([
             ...$validated,
             'agenda_id' => $agenda->id,
+            'officer_id' => $agenda->officer_id ?: auth()->id(),
             'sort_order' => $nextSort,
             'created_by' => auth()->id(),
         ]);

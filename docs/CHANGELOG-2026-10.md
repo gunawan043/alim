@@ -2422,6 +2422,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - status, petugas, keterangan, dan hapus per item;
   - petugas dipilih dari data GTK/URT, bukan semua user.
 
+## 209. Agenda Pertamanan Sederhana
+
+- Agenda harian kini memakai **satu petugas untuk seluruh agenda**, bukan pilihan petugas berulang per item.
+- Status item cukup **checkbox centang Selesai**; tidak ada dropdown status dan petugas di setiap baris.
+- Keterangan tetap tersedia satu baris per item.
+- Tombol tambah dibuat lebih terlihat:
+  - tombol **Tambah Agenda** besar di header;
+  - tombol tambah pada setiap bagian A/B/C;
+  - tombol sub-item pada kelompok;
+  - FAB `+` melayang di kanan bawah untuk mobile.
+- Navigasi tanggal, progres per bagian, dan progres total dipertahankan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
