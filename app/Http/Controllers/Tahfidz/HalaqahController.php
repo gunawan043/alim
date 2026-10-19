@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class HalaqahController extends Controller
 {
@@ -351,6 +352,7 @@ class HalaqahController extends Controller
         $group = TahfidzGroup::findOrFail($id);
         $this->authorizeSchedule($request, $group);
         $validated = $this->validateSchedule($request);
+        $this->assertScheduleHasNoConflict($group, $validated);
 
         TahfidzSchedule::create([
             'tahfidz_group_id' => $group->id,
@@ -361,6 +363,8 @@ class HalaqahController extends Controller
             'room' => $validated['room'] ?? null,
             'schedule_type' => $validated['schedule_type'],
             'is_active' => $request->boolean('is_active', true),
+            'effective_from' => $validated['effective_from'] ?? null,
+            'effective_until' => $validated['effective_until'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ]);
 
@@ -373,6 +377,7 @@ class HalaqahController extends Controller
         $this->authorizeSchedule($request, $group);
         $schedule = TahfidzSchedule::where('tahfidz_group_id', $group->id)->findOrFail($scheduleId);
         $validated = $this->validateSchedule($request);
+        $this->assertScheduleHasNoConflict($group, $validated, $schedule->id);
 
         $schedule->update([
             'day_of_week' => $validated['day_of_week'],
@@ -381,6 +386,8 @@ class HalaqahController extends Controller
             'room' => $validated['room'] ?? null,
             'schedule_type' => $validated['schedule_type'],
             'is_active' => $request->boolean('is_active', true),
+            'effective_from' => $validated['effective_from'] ?? null,
+            'effective_until' => $validated['effective_until'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ]);
 
@@ -404,11 +411,23 @@ class HalaqahController extends Controller
             'time_end' => 'required|date_format:H:i',
             'room' => 'nullable|string|max:100',
             'schedule_type' => 'required|in:setoran,murajaah,tasmi,evaluasi,tikror',
+            'effective_from' => 'nullable|date',
+            'effective_until' => 'nullable|date|after_or_equal:effective_from',
             'notes' => 'nullable|string|max:1000',
         ]);
         abort_if($validated['time_end'] <= $validated['time_start'], 422, 'Jam selesai harus lebih besar dari jam mulai.');
 
         return $validated;
+    }
+
+    private function assertScheduleHasNoConflict(TahfidzGroup $group, array $data, ?string $ignoreId = null): void
+    {
+        $conflicts = app(\App\Services\TahfidzScheduleConflictService::class)
+            ->conflicts($group->id, $data, $ignoreId, $group->academic_year_id);
+
+        if (! empty($conflicts)) {
+            throw ValidationException::withMessages(['schedule' => $conflicts]);
+        }
     }
 
     private function authorizeSchedule(Request $request, TahfidzGroup $group): void

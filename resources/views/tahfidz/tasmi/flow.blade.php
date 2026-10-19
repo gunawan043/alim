@@ -14,7 +14,7 @@
             <div class="row g-3">
                 @foreach([
                     ['1', 'Santri Menyatakan Siap', 'Santri menyampaikan kesiapan kepada guru pengampu. Guru mencatat kesiapan dan berkoordinasi dengan koordinator.', 'Guru Pengampu', 'primary', 'ri-user-smile-line'],
-                    ['2', 'Tambah Peserta', 'Koordinator/Departemen menambahkan santri ke sesi: juz, materi, mustami, waktu, dan tempat.', 'Koordinator / Departemen', 'info', 'ri-user-add-line'],
+                    ['2', 'Daftarkan Peserta', 'Guru halaqah atau koordinator mendaftarkan santri ke sesi: juz, materi, mustami, waktu, dan tempat.', 'Guru / Koordinator / Departemen', 'info', 'ri-user-add-line'],
                     ['3', 'Jadwalkan Sesi', 'Koordinator menentukan tanggal, waktu, tempat, dan status sesi menjadi terjadwal.', 'Koordinator / Departemen', 'warning', 'ri-calendar-todo-line'],
                     ['4', 'Guru Menilai', 'Mustami/guru pengampu menyimak hafalan tanpa mushaf, lalu mengisi nilai Tahfizh, Tajwid, dan Fashohah.', 'Mustami / Guru', 'success', 'ri-edit-2-line'],
                     ['5', 'Verifikasi Koordinator', 'Koordinator memeriksa nilai. Setelah diverifikasi, nilai terkunci dan tidak dapat diubah.', 'Koordinator', 'danger', 'ri-check-double-line'],
@@ -42,7 +42,7 @@
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed"><h6 class="card-title mb-0"><i class="ri-shield-user-line text-primary me-1"></i>Hak Akses per Peran</h6></div>
                 <div class="table-responsive"><table class="table table-sm align-middle mb-0 tahfidz-table"><thead class="table-light"><tr><th>Peran</th><th>Tambah Peserta</th><th>Jadwal</th><th>Nilai</th><th>Verifikasi</th><th>Syahadah</th></tr></thead><tbody>
-                    <tr><td>Guru Tahfidz / Mustami</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center text-success">✓</td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                    <tr><td>Guru Tahfidz / Mustami</td><td class="text-center text-success">✓</td><td class="text-center">—</td><td class="text-center text-success">✓</td><td class="text-center">—</td><td class="text-center">—</td></tr>
                     <tr><td>Koordinator Tahfidz Sekolah</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td></tr>
                     <tr><td>Departemen Tahfidz</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td><td class="text-center">—</td><td class="text-center text-success">✓</td><td class="text-center text-success">✓</td></tr>
                     <tr><td>TU Departemen Tahfidz</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center text-success">Cetak</td></tr>

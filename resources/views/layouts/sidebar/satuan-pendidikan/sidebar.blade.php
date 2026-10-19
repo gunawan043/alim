@@ -323,6 +323,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.attendance.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.attendance.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-check-line"></i><span>Absensi Halaqah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
             <i class="ri-team-line"></i><span>Halaqah Saya</span>

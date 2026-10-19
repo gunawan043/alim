@@ -270,6 +270,8 @@ class JadwalKbmController extends Controller
         $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id,teacher_id,coordinator_id', 'group.teacher:id,name', 'group.coordinator:id,name'])
             ->where('is_active', true)
             ->where('academic_year_id', $activeAy?->id)
+            ->where(fn ($q) => $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', today()))
+            ->where(fn ($q) => $q->whereNull('effective_until')->orWhereDate('effective_until', '>=', today()))
             ->whereHas('group', fn ($q) => $q->where('study_group_id', $studyGroupId)->where('is_active', true))
             ->orderBy('day_of_week')->orderBy('time_start')
             ->get()->groupBy('day_of_week');
@@ -422,6 +424,8 @@ class JadwalKbmController extends Controller
         $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id', 'group.teacher:id,name', 'group.coordinator:id,name'])
             ->where('is_active', true)
             ->where('academic_year_id', $activeAy?->id)
+            ->where(fn ($q) => $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', today()))
+            ->where(fn ($q) => $q->whereNull('effective_until')->orWhereDate('effective_until', '>=', today()))
             ->whereHas('group', fn ($q) => $q->where('study_group_id', $studyGroupId)->where('is_active', true))
             ->orderBy('day_of_week')->orderBy('time_start')->get()->groupBy('day_of_week');
 
@@ -456,6 +460,8 @@ class JadwalKbmController extends Controller
         $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id,teacher_id,coordinator_id', 'group.studyGroup:id,name'])
             ->where('is_active', true)
             ->where('academic_year_id', $activeAy?->id)
+            ->where(fn ($q) => $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', today()))
+            ->where(fn ($q) => $q->whereNull('effective_until')->orWhereDate('effective_until', '>=', today()))
             ->whereHas('group', function ($q) use ($teacherId) {
                 $q->where('teacher_id', $teacherId)->orWhere('coordinator_id', $teacherId)
                     ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $teacherId)->where('is_active', true));

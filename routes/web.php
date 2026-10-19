@@ -222,6 +222,7 @@ use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
 use App\Http\Controllers\Tahfidz\TahfidzExecutiveController;
 use App\Http\Controllers\Tahfidz\TahfidzConsistencyController;
+use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzTargetController;
 use App\Http\Controllers\Tahfidz\TahfidzProgressController;

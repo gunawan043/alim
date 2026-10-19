@@ -22,12 +22,14 @@ class TahfidzSchedule extends Model
 
     protected $fillable = [
         'tahfidz_group_id', 'academic_year_id', 'day_of_week', 'time_start', 'time_end',
-        'room', 'schedule_type', 'is_active', 'notes',
+        'room', 'schedule_type', 'is_active', 'effective_from', 'effective_until', 'notes',
     ];
 
     protected $casts = [
         'day_of_week' => 'integer',
         'is_active' => 'boolean',
+        'effective_from' => 'date',
+        'effective_until' => 'date',
     ];
 
     public function group(): BelongsTo

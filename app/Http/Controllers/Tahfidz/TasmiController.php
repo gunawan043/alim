@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Tahfidz;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\GtkAdditionalTask;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\TahfidzCertificate;
+use App\Models\TahfidzCoordinator;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzTasmianParticipant;
 use App\Models\TahfidzTasmianScore;
 use App\Models\TahfidzTasmianSession;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\NotificationUniversalService;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzTasmiService;
 use Illuminate\Http\Request;
@@ -270,7 +273,7 @@ class TasmiController extends Controller
 
         $nomor = ((int) $session->participants()->max('nomor_urut')) + 1;
 
-        TahfidzTasmianParticipant::firstOrCreate(
+        $participant = TahfidzTasmianParticipant::firstOrCreate(
             [
                 'tasmian_session_id' => $session->id,
                 'student_id' => $student->id,
@@ -292,7 +295,11 @@ class TasmiController extends Controller
             ]
         );
 
-        return back()->with('success', 'Peserta tasmi’ ditambahkan.');
+        if (! $canManage && $participant->wasRecentlyCreated) {
+            $this->notifyParticipantRegistration($session, $student, $request->user());
+        }
+
+        return back()->with('success', 'Peserta tasmi’ didaftarkan. Koordinator akan memproses jadwal dan verifikasi.');
     }
 
     public function removeParticipant(Request $request, string $userId, string $id, string $participantId)
@@ -355,6 +362,42 @@ class TasmiController extends Controller
         $participant->session->update(['status' => $remaining ? 'berlangsung' : 'selesai']);
 
         return back()->with('success', 'Nilai tasmi’ disimpan: '.number_format($calculated['nilai_akhir'], 2).' ('.$this->tasmi->predicateArabic($calculated['predikat']).').');
+    }
+
+    private function notifyParticipantRegistration(TahfidzTasmianSession $session, Student $student, ?\App\Models\User $requester): void
+    {
+        $recipients = TahfidzCoordinator::query()
+            ->where('school_id', $session->school_id)
+            ->where('academic_year_id', $session->academic_year_id)
+            ->where('is_active', true)
+            ->pluck('user_id');
+
+        if ($session->school?->work_unit_id) {
+            $recipients = $recipients->merge(GtkAdditionalTask::query()
+                ->where('work_unit_id', $session->school->work_unit_id)
+                ->where('nama_tugas', 'like', '%Koordinator Guru Tahfidz%')
+                ->pluck('user_id'));
+        }
+
+        $recipients = $recipients->filter()->unique()
+            ->reject(fn ($id) => $requester && (string) $id === (string) $requester->id);
+
+        foreach ($recipients as $recipientId) {
+            app(NotificationUniversalService::class)->send($recipientId, [
+                'module' => 'education',
+                'reference_type' => 'tahfidz_tasmi_registration',
+                'reference_id' => $session->id,
+                'type' => 'info',
+                'action' => 'tahfidz_tasmi_registration',
+                'title' => 'Pendaftaran Peserta Tasmi’ Baru',
+                'message' => ($student->name ?? 'Santri').' didaftarkan oleh '.($requester?->name ?? 'guru').' untuk sesi '.$session->session_name.'. Mohon proses jadwal dan verifikasi.',
+                'action_url' => route('user.tahfidz.tasmi.show', ['userId' => $recipientId, 'id' => $session->id]),
+                'action_text' => 'Buka Sesi Tasmi’',
+                'priority' => 'high',
+                'work_unit_id' => $session->school?->work_unit_id,
+                'data' => ['session_id' => $session->id, 'student_id' => $student->id],
+            ]);
+        }
     }
 
     public function verifyParticipant(Request $request, string $userId, string $participantId)

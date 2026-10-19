@@ -134,6 +134,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.attendance.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.attendance.index') }}">
+            <i class="ri-calendar-check-line"></i><span>Absensi Halaqah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
            href="{{ $tahfidzUrl('user.tahfidz.mutabaah.index') }}">
             <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
