@@ -690,6 +690,10 @@ class SarprasCleaningController extends SarprasBaseController
             'success' => true,
             'report_id' => $report->id,
             'item_id' => $item->id,
+            'before_url' => $item->before_photo_url,
+            'after_url' => $item->after_photo_url,
+            'before_path' => $item->before_photo_path,
+            'after_path' => $item->after_photo_path,
             'saved_at' => now()->format('H:i:s'),
         ]);
     }

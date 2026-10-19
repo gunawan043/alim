@@ -2577,6 +2577,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - foto diambil dan pratinjau muncul;
   - setelah Gunakan Foto, modal bukti masih terbuka dan file tetap ada.
 
+## 220. Foto Bukti Kebersihan Tetap Tampil Setelah Disimpan
+
+- Autosave laporan kebersihan sekarang mengembalikan:
+  - `before_url` / `after_url`;
+  - `before_path` / `after_path`.
+- Setelah upload, URL foto yang tersimpan dimasukkan kembali ke hidden field `task-before-url` / `task-after-url`, sehingga foto tidak hilang saat modal **Isi Keterangan & Bukti** dibuka lagi.
+- Nilai awal halaman memakai fallback `before_photo_path`/`after_photo_path` bila URL belum tersedia.
+- Modal bukti menampilkan:
+  - thumbnail foto tersimpan;
+  - tautan **Buka foto tersimpan**;
+  - fallback tautan bila gambar eksternal tidak bisa dipratinjau.
+- Setelah foto berhasil disimpan, input file dikosongkan agar tidak terunggah ulang saat tombol simpan ditekan lagi.
+- Halaman detail laporan kebersihan menampilkan thumbnail foto sebelum/sesudah, bukan hanya tombol “Lihat”.
+- Diuji:
+  - autosave nyata mengembalikan `before_url` dan `before_path`;
+  - Playwright: foto kamera masuk ke modal bukti, tersimpan, lalu muncul lagi saat modal dibuka ulang;
+  - halaman detail memuat thumbnail dari storage.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

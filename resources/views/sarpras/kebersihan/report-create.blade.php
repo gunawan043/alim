@@ -123,8 +123,8 @@
                                             </div>
                                             <input type="hidden" class="task-condition" value="{{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') }}">
                                             <input type="hidden" class="task-notes" value="{{ old('items.'.$task->id.'.notes', $item?->notes) }}">
-                                            <input type="hidden" class="task-before-url" value="{{ old('items.'.$task->id.'.before_url', $item?->before_photo_url) }}">
-                                            <input type="hidden" class="task-after-url" value="{{ old('items.'.$task->id.'.after_url', $item?->after_photo_url) }}">
+                                            <input type="hidden" class="task-before-url" value="{{ old('items.'.$task->id.'.before_url', $beforeUrl) }}">
+                                            <input type="hidden" class="task-after-url" value="{{ old('items.'.$task->id.'.after_url', $afterUrl) }}">
                                             <div class="task-save-status small text-muted mt-2"></div>
                                         </div>
                                     @endforeach
@@ -276,8 +276,21 @@
                 if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
                 row.querySelector('.task-condition').value = condition;
                 row.querySelector('.task-notes').value = notes;
-                row.querySelector('.task-before-url').value = beforeUrl;
-                row.querySelector('.task-after-url').value = afterUrl;
+                const savedBeforeUrl = Object.prototype.hasOwnProperty.call(data, 'before_url') ? (data.before_url || '') : beforeUrl;
+                const savedAfterUrl = Object.prototype.hasOwnProperty.call(data, 'after_url') ? (data.after_url || '') : afterUrl;
+                row.querySelector('.task-before-url').value = savedBeforeUrl;
+                row.querySelector('.task-after-url').value = savedAfterUrl;
+                if (evidenceRow === row) {
+                    evidenceBeforeUrl.value = savedBeforeUrl;
+                    evidenceAfterUrl.value = savedAfterUrl;
+                    updateExistingEvidenceLinks();
+                    renderEvidencePreview(document.getElementById('evidenceBeforePreview'), savedBeforeUrl);
+                    renderEvidencePreview(document.getElementById('evidenceAfterPreview'), savedAfterUrl);
+                }
+                // File sudah tersimpan di server; kosongkan input agar tidak
+                // terunggah ulang saat tombol simpan ditekan lagi.
+                if (overrides.beforeFile && evidenceBeforeFile) evidenceBeforeFile.value = '';
+                if (overrides.afterFile && evidenceAfterFile) evidenceAfterFile.value = '';
                 rowStatus(row, '✓ Tersimpan ' + (data.saved_at || ''), 'success');
                 if (saveStatus) saveStatus.innerHTML = '<i class="ri-cloud-done-line me-1"></i>Tersimpan otomatis';
                 updateProgress();
@@ -315,6 +328,37 @@
         const evidenceBeforeExisting = document.getElementById('evidenceBeforeExisting');
         const evidenceAfterExisting = document.getElementById('evidenceAfterExisting');
 
+        function renderEvidencePreview(container, url) {
+            if (!container) return;
+            container.innerHTML = '';
+            if (!url) return;
+
+            const image = document.createElement('img');
+            image.src = url;
+            image.alt = 'Foto bukti tersimpan';
+            image.className = 'img-fluid rounded border mt-2';
+            image.style.maxHeight = '110px';
+            image.addEventListener('error', function () { image.classList.add('d-none'); });
+            container.appendChild(image);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.className = 'small text-success d-inline-block mt-1';
+            link.innerHTML = '<i class="ri-external-link-line me-1"></i>Buka foto tersimpan';
+            container.appendChild(link);
+        }
+
+        function updateExistingEvidenceLinks() {
+            const before = evidenceBeforeUrl.value;
+            const after = evidenceAfterUrl.value;
+            evidenceBeforeExisting.classList.toggle('d-none', !before);
+            if (before) evidenceBeforeExisting.href = before;
+            evidenceAfterExisting.classList.toggle('d-none', !after);
+            if (after) evidenceAfterExisting.href = after;
+        }
+
         document.querySelectorAll('.evidence-trigger').forEach(function (button) {
             button.addEventListener('click', function () {
                 evidenceRow = button.closest('.task-row');
@@ -326,15 +370,10 @@
                 evidenceAfterUrl.value = evidenceRow.querySelector('.task-after-url')?.value || '';
                 evidenceBeforeFile.value = '';
                 evidenceAfterFile.value = '';
-                document.getElementById('evidenceBeforePreview').innerHTML = '';
-                document.getElementById('evidenceAfterPreview').innerHTML = '';
                 evidenceSaveStatus.textContent = '';
-                const before = evidenceBeforeUrl.value;
-                const after = evidenceAfterUrl.value;
-                evidenceBeforeExisting.classList.toggle('d-none', !before);
-                if (before) evidenceBeforeExisting.href = before;
-                evidenceAfterExisting.classList.toggle('d-none', !after);
-                if (after) evidenceAfterExisting.href = after;
+                updateExistingEvidenceLinks();
+                renderEvidencePreview(document.getElementById('evidenceBeforePreview'), evidenceBeforeUrl.value);
+                renderEvidencePreview(document.getElementById('evidenceAfterPreview'), evidenceAfterUrl.value);
             });
         });
 

@@ -44,8 +44,8 @@
                     <td><span class="badge bg-{{ $item->result === 'sudah' ? 'success' : ($item->result === 'belum' ? 'danger' : 'secondary') }}-subtle text-{{ $item->result === 'sudah' ? 'success' : ($item->result === 'belum' ? 'danger' : 'secondary') }}">{{ ucfirst(str_replace('_',' ', $item->result)) }}</span></td>
                     <td class="small">{{ ucfirst(str_replace('_',' ', $item->condition ?? '-')) }}</td>
                     <td class="small">{{ $item->notes ?? '-' }}</td>
-                    <td>@if($before)<a href="{{ $before }}" target="_blank" class="btn btn-sm btn-outline-info"><i class="ri-image-line me-1"></i>Lihat</a>@else<span class="text-muted small">-</span>@endif</td>
-                    <td>@if($after)<a href="{{ $after }}" target="_blank" class="btn btn-sm btn-outline-success"><i class="ri-image-line me-1"></i>Lihat</a>@else<span class="text-muted small">-</span>@endif</td>
+                    <td>@if($before)<a href="{{ $before }}" target="_blank" rel="noopener" class="d-inline-block"><img src="{{ $before }}" alt="Foto sebelum" class="rounded border" style="max-height:64px;max-width:110px;object-fit:cover" onerror="this.style.display='none'"></a><div><a href="{{ $before }}" target="_blank" rel="noopener" class="small text-info"><i class="ri-image-line me-1"></i>Lihat</a></div>@else<span class="text-muted small">-</span>@endif</td>
+                    <td>@if($after)<a href="{{ $after }}" target="_blank" rel="noopener" class="d-inline-block"><img src="{{ $after }}" alt="Foto sesudah" class="rounded border" style="max-height:64px;max-width:110px;object-fit:cover" onerror="this.style.display='none'"></a><div><a href="{{ $after }}" target="_blank" rel="noopener" class="small text-success"><i class="ri-image-line me-1"></i>Lihat</a></div>@else<span class="text-muted small">-</span>@endif</td>
                 </tr>
             @empty
                 <tr><td colspan="7" class="text-center py-4 text-muted">Tidak ada rincian pekerjaan.</td></tr>
