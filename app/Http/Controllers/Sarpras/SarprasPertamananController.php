@@ -55,6 +55,30 @@ class SarprasPertamananController extends SarprasBaseController
         return view('sarpras.pertamanan.agenda', compact('agenda', 'items', 'users', 'date', 'canManageAgenda', 'previousDate', 'nextDate'));
     }
 
+    public function updateItem(string $userId, Request $request, string $itemId)
+    {
+        $this->authorizePertamanan();
+
+        $validated = $request->validate([
+            'status' => 'required|in:belum,selesai,tunda',
+            'notes' => 'nullable|string|max:1000',
+            'officer_id' => 'nullable|uuid|exists:users,id',
+        ]);
+
+        $item = PertamananAgendaItem::with('agenda')->findOrFail($itemId);
+        $item->update([
+            'status' => $validated['status'],
+            'notes' => $validated['notes'] ?? null,
+            'officer_id' => $validated['officer_id'] ?? $item->agenda?->officer_id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status' => $item->status,
+            'saved_at' => now()->format('H:i:s'),
+        ]);
+    }
+
     public function saveAgenda(Request $request)
     {
         $this->authorizePertamanan();

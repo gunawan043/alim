@@ -2434,6 +2434,19 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - FAB `+` melayang di kanan bawah untuk mobile.
 - Navigasi tanggal, progres per bagian, dan progres total dipertahankan.
 
+## 210. Agenda Autosave & Checklist Harian Berbasis Tab
+
+- Agenda Harian Pertamanan:
+  - checkbox Selesai otomatis menyimpan ke server tanpa modal;
+  - keterangan ikut tersimpan saat checkbox diubah;
+  - status “Menyimpan…/Tersimpan” tampil;
+  - tombol **Simpan** tetap memakai modal konfirmasi global.
+- Checklist harian kebersihan:
+  - pekerjaan dipisah ke tab **Harian, Pekanan, Bulanan, Lainnya**;
+  - hanya satu tab tampil sehingga layar lebih ringkas;
+  - jumlah item terlihat pada tab;
+  - autosave tetap berjalan per item.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

@@ -61,18 +61,39 @@
             </div>
 
             @php
-                $groupedTasks = $tasks->groupBy(fn ($task) => $task->group_label ?: 'Pekerjaan');
-                $taskNumber = 0;
+                $frequencyGroups = [
+                    'Harian' => ['Harian'],
+                    'Pekanan' => ['Mingguan', '2 minggu'],
+                    'Bulanan' => ['Bulanan', 'Per 3 bulan', 'Per 6 bulan', 'Tahunan'],
+                ];
+                $tasksByFrequency = collect();
+                foreach ($frequencyGroups as $label => $frequencies) {
+                    $subset = $tasks->filter(fn ($task) => in_array($task->frequency, $frequencies, true))->values();
+                    if ($subset->isNotEmpty()) $tasksByFrequency[$label] = $subset;
+                }
+                $knownFrequencies = collect($frequencyGroups)->flatten()->all();
+                $otherTasks = $tasks->filter(fn ($task) => ! in_array($task->frequency, $knownFrequencies, true))->values();
+                if ($otherTasks->isNotEmpty()) $tasksByFrequency['Lainnya'] = $otherTasks;
             @endphp
 
-            @if($groupedTasks->isNotEmpty())
-                <div class="accordion" id="taskGroups">
-                    @foreach($groupedTasks as $groupLabel => $groupTasks)
-                        <div class="accordion-item mb-2 border rounded-3 overflow-hidden">
-                            <h2 class="accordion-header"><button class="accordion-button {{ $loop->first ? '' : 'collapsed' }} py-3" type="button" data-bs-toggle="collapse" data-bs-target="#taskGroup{{ $loop->index }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}"><span class="fw-semibold">{{ $groupLabel }}</span><span class="badge bg-primary-subtle text-primary ms-2">{{ $groupTasks->count() }} item</span></button></h2>
-                            <div id="taskGroup{{ $loop->index }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" data-bs-parent="#taskGroups">
-                                <div class="accordion-body p-0">
-                                    @foreach($groupTasks as $task)
+            @if($tasksByFrequency->isNotEmpty())
+                <ul class="nav nav-pills nav-fill gap-2 mb-3" role="tablist">
+                    @foreach($tasksByFrequency as $frequencyLabel => $frequencyTasks)
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $loop->first ? 'active' : '' }}" type="button" role="tab" data-bs-toggle="tab" data-bs-target="#freqTab{{ $loop->index }}">
+                                {{ $frequencyLabel }} <span class="badge bg-light text-dark ms-1">{{ $frequencyTasks->count() }}</span>
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <div class="tab-content">
+                    @foreach($tasksByFrequency as $frequencyLabel => $frequencyTasks)
+                        @php $taskNumber = 0; @endphp
+                        <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="freqTab{{ $loop->index }}" role="tabpanel">
+                            <div class="card mb-3">
+                                <div class="card-body p-0">
+                                    @foreach($frequencyTasks as $task)
                                         @php
                                             $taskNumber++;
                                             $item = $reportItems->get($task->id);
@@ -82,7 +103,11 @@
                                         @endphp
                                         <div class="p-3 border-bottom task-row" data-task-id="{{ $task->id }}">
                                             <div class="d-flex justify-content-between align-items-start gap-2">
-                                                <div><div class="fw-semibold">{{ $taskNumber }}. {{ $task->title }}</div><div class="small text-muted">{{ $task->standard ?? 'Sesuai standar kebersihan' }}</div></div>
+                                                <div>
+                                                    @if($task->group_label)<div class="text-uppercase small text-primary fw-semibold mb-1">{{ $task->group_label }}</div>@endif
+                                                    <div class="fw-semibold">{{ $taskNumber }}. {{ $task->title }}</div>
+                                                    <div class="small text-muted">{{ $task->standard ?? 'Sesuai standar kebersihan' }}</div>
+                                                </div>
                                                 <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
                                             </div>
                                             <div class="btn-group w-100 mt-2" role="group" aria-label="Status pekerjaan">
@@ -125,7 +150,6 @@
             @else
                 <div class="card"><div class="card-body"><x-empty-state title="Belum ada pekerjaan" message="Area ini belum memiliki uraian pekerjaan. Hubungi koordinator." /></div></div>
             @endif
-
             <div id="cleaningFinalizeError" class="alert alert-danger d-none mt-3"></div>
             @if($tasks->isNotEmpty() && ! $isLocked)
                 <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-cloud-done-line me-1 text-success"></i>Setiap perubahan tersimpan otomatis.</div><div class="d-flex gap-2"><a href="{{ route('sarpras.kebersihan.index') }}" class="btn btn-light">Kembali</a><button type="button" id="finalizeCleaning" class="btn btn-success px-4"><i class="ri-send-plane-line me-1"></i>Kirim Laporan</button></div></div></div>

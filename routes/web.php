@@ -2832,6 +2832,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
         Route::get('/agenda', [SarprasPertamananController::class, 'agenda'])->name('agenda.index');
         Route::post('/agenda', [SarprasPertamananController::class, 'saveAgenda'])->name('agenda.save');
         Route::post('/agenda/items', [SarprasPertamananController::class, 'storeItem'])->name('agenda.items.store');
+        Route::post('/agenda/items/{itemId}/update', [SarprasPertamananController::class, 'updateItem'])->name('agenda.items.update');
         Route::delete('/agenda/items/{itemId}', [SarprasPertamananController::class, 'destroyItem'])->name('agenda.items.destroy');
     });
     Route::get('/kebersihan/area', [SarprasCleaningController::class, 'areas'])->name('kebersihan.areas');

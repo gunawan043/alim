@@ -48,7 +48,7 @@
                     <span class="avatar-sm"><span class="avatar-title rounded-circle bg-primary-subtle text-primary"><i class="ri-user-star-line"></i></span></span>
                     <div><div class="small text-muted">Petugas Hari Ini</div><select name="officer_id" class="form-select form-select-sm mt-1" style="min-width:250px"><option value="">— Pilih petugas —</option>@foreach($users as $user)<option value="{{ $user->id }}" {{ (string) $agenda->officer_id === (string) $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select></div>
                 </div>
-                <div class="d-flex gap-2">@if($canManageAgenda)<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="pemeliharaan"><i class="ri-add-line me-1"></i>Tambah Agenda</button>@endif<button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan</button></div>
+                <div class="d-flex gap-2">@if($canManageAgenda)<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgendaItemModal" data-section="pemeliharaan"><i class="ri-add-line me-1"></i>Tambah Agenda</button>@endif<button class="btn btn-success" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan</button></div>
             </div>
         </div>
 
@@ -89,7 +89,7 @@
             </div>
         @endforeach
 
-        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.</div><button class="btn btn-success px-4"><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
+        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.</div><button class="btn btn-success px-4" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
     </form>
 
     @if($canManageAgenda)
@@ -117,6 +117,37 @@
         sectionSelect.addEventListener('change', function () { sectionInput.value = this.value; });
         document.getElementById('deleteAgendaItemModal').addEventListener('show.bs.modal', function (event) {
             document.getElementById('deleteAgendaItemForm').action = event.relatedTarget.dataset.action;
+        });
+    })();
+</script>
+@endpush
+
+@push('script')
+<script>
+    (function () {
+        const statusEl = document.getElementById('agendaAutoSaveStatus');
+        const officer = () => document.querySelector('select[name="officer_id"]')?.value || '';
+        document.querySelectorAll('.agenda-done').forEach(function (checkbox) {
+            checkbox.addEventListener('change', async function () {
+                const row = checkbox.closest('.agenda-row');
+                const notes = row?.querySelector('input[name$="[notes]"]')?.value || '';
+                const form = new FormData();
+                form.append('_token', '{{ csrf_token() }}');
+                form.append('status', checkbox.checked ? 'selesai' : 'belum');
+                form.append('notes', notes);
+                form.append('officer_id', officer());
+                if (statusEl) statusEl.textContent = 'Menyimpan…';
+                try {
+                    const response = await fetch(checkbox.dataset.updateUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: form });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                    if (statusEl) statusEl.textContent = '✓ Tersimpan ' + (data.saved_at || '');
+                    row.classList.toggle('text-decoration-line-through', checkbox.checked);
+                } catch (error) {
+                    checkbox.checked = !checkbox.checked;
+                    if (statusEl) statusEl.textContent = 'Gagal menyimpan: ' + error.message;
+                }
+            });
         });
     })();
 </script>
