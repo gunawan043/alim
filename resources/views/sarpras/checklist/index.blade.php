@@ -18,6 +18,8 @@
         @endforeach
     </div>
 
+    <div class="d-flex justify-content-end mb-2"><a href="{{ route('sarpras.checklist.recap') }}" class="btn btn-outline-primary btn-sm"><i class="ri-history-line me-1"></i>Rekap Checklist &amp; Aset</a></div>
+
     <div class="card mb-3">
         <div class="card-body">
             <form method="GET" action="{{ route('sarpras.checklist.index') }}" class="row g-2 align-items-end">
@@ -63,7 +65,7 @@
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light"><tr><th>No</th><th>Checklist</th><th>Konteks</th><th>Status</th><th>Temuan</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead class="table-light"><tr><th>No</th><th>Checklist</th><th>Kode Aset</th><th>Konteks</th><th>Status</th><th>Temuan</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                     @forelse($myInstances as $i => $instance)
                         @php
@@ -73,14 +75,16 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td class="fw-medium">{{ $instance->template?->name ?? '-' }}</td>
-                            <td class="small text-muted">{{ class_basename($instance->context_type) }} #{{ \Illuminate\Support\Str::limit($instance->context_id, 8, '') }}</td>
+                            @php $context = $instance->context; $asset = $context instanceof \App\Models\AssetMaintenanceSchedule ? $context->asset : null; @endphp
+                            <td>@if($asset)<code>{{ $asset->asset_code }}</code>@else <span class="text-muted">-</span>@endif</td>
+                            <td class="small text-muted">{{ $asset?->asset_name ?? ($context instanceof \App\Models\ChecklistTemplate ? 'Checklist mandiri' : class_basename($instance->context_type)) }}</td>
                             <td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $label }}</span></td>
                             <td>{{ $instance->failed_items_count }} / {{ $instance->total_items_count }}</td>
                             <td class="small">{{ $instance->created_at?->format('d/m/Y H:i') }}</td>
                             <td class="text-end"><a href="{{ route('sarpras.checklist.instance', ['instanceId' => $instance->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a></td>
                         </tr>
                     @empty
-                        <x-empty-state colspan="7" title="Belum ada checklist" message="Mulai checklist dari halaman detail jadwal pemeliharaan." />
+                        <x-empty-state colspan="8" title="Belum ada checklist" message="Mulai checklist dari halaman detail jadwal pemeliharaan." />
                     @endforelse
                     </tbody>
                 </table>

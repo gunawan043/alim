@@ -296,9 +296,15 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.checklist']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.checklist.index', 'sarpras.checklist.template', 'sarpras.checklist.instance']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.checklist.index') }}">
             <i class="ri-clipboard-check-line"></i><span>Checklist Pemeliharaan</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.checklist.recap']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.checklist.recap') }}">
+            <i class="ri-history-line"></i><span>Rekap Checklist</span>
         </a>
     </li>
     @endif

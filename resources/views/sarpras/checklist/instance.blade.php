@@ -25,11 +25,22 @@
                             {{ class_basename($instance->context_type) }}
                         @endif
                         · Pelaksana: {{ $instance->executor?->name ?? '-' }}
+                        @if($contextAsset)
+                            · <span class="badge bg-primary-subtle text-primary"><i class="ri-qr-code-line me-1"></i>{{ $contextAsset->asset_code }}</span>
+                            <span class="text-muted">{{ $contextAsset->asset_name }}</span>
+                        @endif
                     </div>
                 </div>
                 <div class="text-end"><div class="small text-muted">Progres</div><div class="fs-5 fw-bold">{{ $progress['answered'] }} / {{ $progress['total'] }}</div><div class="small text-{{ $tone }}">{{ $progress['failed'] }} temuan</div></div>
             </div>
             <div class="progress mt-3" style="height:8px"><div class="progress-bar bg-{{ $tone }}" style="width:{{ $progress['percent_complete'] }}%"></div></div>
+            @if($frequencyProgress->isNotEmpty())
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    @foreach($frequencyProgress as $frequency)
+                        <span class="badge bg-light text-dark border">{{ $frequency['label'] }}: {{ $frequency['answered'] }}/{{ $frequency['total'] }}@if($frequency['failed'] > 0) · {{ $frequency['failed'] }} temuan @endif</span>
+                    @endforeach
+                </div>
+            @endif
             @if($instance->status === 'failed')<div class="alert alert-danger mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2"><span><i class="ri-error-warning-line me-1"></i>Checklist menemukan penyimpangan. Tindak lanjuti item bertanda X.</span><a href="{{ route('sarpras.repair.index') }}" class="btn btn-sm btn-outline-danger">Antrean Perbaikan</a></div>@endif
         </div>
     </div>
@@ -88,9 +99,9 @@
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="v{{ $item->id }}" value="1" {{ $checkedV ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
-                                            <label class="btn btn-outline-success" for="v{{ $item->id }}">V</label>
+                                            <label class="btn btn-outline-success" for="v{{ $item->id }}"><i class="ri-check-line me-1"></i>Sesuai</label>
                                             <input type="radio" class="btn-check" name="answers[{{ $item->id }}]" id="x{{ $item->id }}" value="0" {{ $checkedX ? 'checked' : '' }} {{ $canEdit ? '' : 'disabled' }}>
-                                            <label class="btn btn-outline-danger" for="x{{ $item->id }}">X</label>
+                                            <label class="btn btn-outline-danger" for="x{{ $item->id }}"><i class="ri-close-line me-1"></i>Tidak</label>
                                         </div>
                                     </td>
                                     <td><input type="text" name="notes[{{ $item->id }}]" class="form-control form-control-sm" value="{{ $response?->notes }}" placeholder="Keterangan…" {{ $canEdit ? '' : 'disabled' }}></td>

@@ -150,6 +150,7 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.auditor') ? ' active' : '' }}" href="{{ route('sarpras.auditor.dashboard', ['userId' => $userId]) }}">Workspace Auditor</a></li>
             @endif
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.checklist') ? ' active' : '' }}" href="{{ route('sarpras.checklist.index', ['userId' => $userId]) }}">Checklist Pemeliharaan</a></li>
+            <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.checklist.recap') ? ' active' : '' }}" href="{{ route('sarpras.checklist.recap', ['userId' => $userId]) }}">Rekap Checklist</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.stock-opname') ? ' active' : '' }}" href="{{ route('sarpras.stock-opname.index', ['userId' => $userId]) }}">Stock Opname</a></li>
             <li class="nav-item"><a class="nav-link{{ $isAdminFn($currentRoute, 'sarpras.user.kerusakan') ? ' active' : '' }}" href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">Laporan Kerusakan</a></li>
         </ul>

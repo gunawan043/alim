@@ -2830,6 +2830,8 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::get('/kebersihan/laporan', [SarprasCleaningController::class, 'reports'])->name('kebersihan.reports');
     Route::get('/kebersihan/program', [SarprasCleaningController::class, 'programs'])->name('kebersihan.programs');
     Route::post('/kebersihan/program/{programId}/check', [SarprasCleaningController::class, 'toggleProgramCheck'])->name('kebersihan.program.check');
+    Route::put('/kebersihan/program/{programId}', [SarprasCleaningController::class, 'updateProgram'])->name('kebersihan.program.update');
+    Route::delete('/kebersihan/program/{programId}', [SarprasCleaningController::class, 'destroyProgram'])->name('kebersihan.program.destroy');
     Route::post('/kebersihan/area', [SarprasCleaningController::class, 'storeArea'])->name('kebersihan.area.store');
     Route::get('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'showArea'])->name('kebersihan.area.show');
     Route::put('/kebersihan/area/{areaId}', [SarprasCleaningController::class, 'updateArea'])->name('kebersihan.area.update');
@@ -2857,6 +2859,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Checklist pemeliharaan
     Route::get('/checklist', [SarprasChecklistController::class, 'index'])->name('checklist.index');
+    Route::get('/checklist/rekap', [SarprasChecklistController::class, 'recap'])->name('checklist.recap');
     Route::get('/checklist/template/{templateId}', [SarprasChecklistController::class, 'showTemplate'])->name('checklist.template');
     Route::post('/checklist/template/{templateId}/start', [SarprasChecklistController::class, 'startTemplate'])->name('checklist.template.start');
     Route::get('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'start'])->name('checklist.start');

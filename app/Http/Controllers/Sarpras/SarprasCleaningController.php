@@ -467,6 +467,42 @@ class SarprasCleaningController extends SarprasBaseController
         return back()->with('success', 'Program kebersihan berkala berhasil ditambahkan.');
     }
 
+    public function updateProgram(string $userId, Request $request, string $programId)
+    {
+        abort_unless($this->cleaningCanManage(), 403);
+        $program = CleaningProgram::findOrFail($programId);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:191',
+            'area_id' => 'nullable|uuid|exists:cleaning_areas,id',
+            'building_id' => 'nullable|uuid|exists:asset_buildings,id',
+            'category' => 'required|in:'.implode(',', CleaningProgram::CATEGORY_OPTIONS),
+            'frequency' => 'required|in:'.implode(',', CleaningTask::FREQUENCY_OPTIONS),
+            'months' => 'nullable|array',
+            'months.*' => 'integer|min:1|max:12',
+            'standard' => 'nullable|string|max:1000',
+            'method' => 'nullable|string|max:60',
+            'assigned_to' => 'nullable|uuid|exists:users,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $program->update([
+            ...$validated,
+            'months' => array_values(array_unique($validated['months'] ?? [])),
+        ]);
+
+        return back()->with('success', 'Program kebersihan diperbarui.');
+    }
+
+    public function destroyProgram(string $userId, Request $request, string $programId)
+    {
+        abort_unless($this->cleaningCanManage(), 403);
+        $program = CleaningProgram::findOrFail($programId);
+        $program->delete();
+
+        return back()->with('success', 'Program kebersihan dihapus.');
+    }
+
     public function toggleProgram(string $userId, Request $request, string $programId)
     {
         abort_unless($this->cleaningCanManage(), 403);
@@ -504,10 +540,35 @@ class SarprasCleaningController extends SarprasBaseController
         }
 
         $tasks = $selectedArea?->tasks ?? collect();
-        $users = User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $today = $request->input('report_date', today()->toDateString());
 
-        return view('sarpras.kebersihan.report-create', compact('areas', 'selectedArea', 'tasks', 'users', 'canManage', 'today'));
+        $assignedIds = $selectedArea
+            ? CleaningAssignment::where('area_id', $selectedArea->id)->where('is_active', true)->pluck('user_id')
+            : collect();
+        $officers = User::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($assignedIds, $selectedArea) {
+                $query->whereIn('id', $assignedIds)
+                    ->orWhereHas('roles', fn ($role) => $role->whereIn('name', ['Petugas Kebersihan', 'Petugas Pertamanan']))
+                    ->orWhereHas('gtkWorkUnits', function ($gtk) use ($selectedArea) {
+                        $gtk->where(function ($jabatan) use ($selectedArea) {
+                            if ($selectedArea?->area_type === 'taman') {
+                                $jabatan->where('jabatan', 'like', '%PERTAMANAN%');
+                            } else {
+                                $jabatan->where('jabatan', 'like', '%KEBERSIHAN%')
+                                    ->orWhere('jabatan', 'like', '%PERTAMANAN%');
+                            }
+                        });
+                    });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        if ($officers->isEmpty() && auth()->check()) {
+            $officers = collect([auth()->user()]);
+        }
+
+        return view('sarpras.kebersihan.report-create', compact('areas', 'selectedArea', 'tasks', 'officers', 'canManage', 'today'));
     }
 
     public function storeReport(Request $request)
@@ -522,7 +583,6 @@ class SarprasCleaningController extends SarprasBaseController
             'substitute_for_user_id' => 'nullable|uuid|exists:users,id|different:officer_id',
             'absence_reason' => 'nullable|string|max:1000',
             'overall_condition' => 'required|in:'.implode(',', CleaningReport::CONDITION_OPTIONS),
-            'score' => 'nullable|integer|min:0|max:100',
             'notes' => 'nullable|string|max:2000',
             'items' => 'required|array',
             'items.*.result' => 'required|in:'.implode(',', CleaningReportItem::RESULT_OPTIONS),
@@ -558,7 +618,6 @@ class SarprasCleaningController extends SarprasBaseController
                 'substitute_for_user_id' => $validated['substitute_for_user_id'] ?? null,
                 'absence_reason' => $validated['absence_reason'] ?? null,
                 'overall_condition' => $validated['overall_condition'],
-                'score' => $validated['score'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'status' => 'submitted',
                 'created_by' => auth()->id(),

@@ -2357,6 +2357,29 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Sidebar Laboratorium & Sarpras untuk Kepala TU hanya menampilkan **Data Aset** dan **Data Ruang**.
 - Jabatan Kepala Tata Usaha dihapus dari kewenangan kelola agenda pertamanan dan dari struktur operasional URT.
 
+## 205. Checklist, Kamera Fullscreen & Laporan
+
+- Checklist pemeliharaan:
+  - rekap baru `/sarpras/checklist/rekap` dengan kode aset, aset, frekuensi, pelaksana, temuan, dan status;
+  - kolom kode aset pada daftar checklist;
+  - ringkasan progres Harian/Pekanan/Bulanan pada detail checklist;
+  - tombol **Sesuai/Tidak** menggantikan V/X.
+- Checklist pekerjaan kebersihan:
+  - area otomatis jika petugas hanya punya satu area;
+  - petugas diambil dari data GTK/penugasan, bukan semua user;
+  - skor dihapus;
+  - tampilan mobile berupa kartu, tombol besar Selesai/Belum/N/A, detail/foto opsional.
+- Kamera:
+  - modal **fullscreen**;
+  - watermark lokasi, waktu, tanggal, akun, dan copyright tampil langsung di dalam layar kamera dengan efek kaca;
+  - reverse geocoding lebih presisi (zoom 18, nama jalan/lingkungan/kelurahan/kota).
+- Program Kebersihan:
+  - tambah, edit, dan hapus program;
+  - edit bulan rencana, area, gedung, petugas, frekuensi, standar, dan metode.
+- Halaman Laporan:
+  - pusat laporan memakai kartu statistik, pencarian, tabel, empty state, dan modal panduan;
+  - ringkasan laporan utama memakai komponen statistik yang sama.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

@@ -1,36 +1,62 @@
 <style>
-    .alim-camera-preview { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 430px; overflow: hidden; border-radius: .5rem; background: #000; transition: width .2s ease; }
-    .alim-camera-preview[data-orientation="portrait"] { width: auto; height: 430px; max-height: 52vh; margin: 0 auto; aspect-ratio: 9 / 16; }
-    .alim-camera-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #alimCameraModal .modal-content { height: 100vh; background: #000; border: 0; }
+    .alim-camera-stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: #000; }
+    #alimCameraPreview { position: relative; width: 100%; height: 100%; margin: 0 auto; overflow: hidden; background: #000; transition: width .2s ease; }
+    #alimCameraPreview[data-orientation="portrait"] { width: min(100vw, calc(100vh * 9 / 16)); height: 100vh; aspect-ratio: 9 / 16; }
+    #alimCameraPreview video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .alim-live-overlay { position: absolute; left: 16px; right: 16px; bottom: 110px; z-index: 3; padding: 16px; border: 1px solid rgba(255,255,255,.28); border-radius: 16px; background: rgba(5,20,27,.34); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.25); }
+    .alim-live-overlay .live-brand { display:flex; justify-content:space-between; align-items:center; font-size:11px; letter-spacing:.04em; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.18); }
+    .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
+    .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
+    .alim-live-overlay .live-month { font-size:12px; font-weight:700; }
+    .alim-live-overlay .live-title { font-size:22px; font-weight:800; line-height:1.1; margin-top:4px; }
+    .alim-live-overlay .live-title span { color:#FFD400; }
+    .alim-live-overlay .live-subtitle { font-size:10px; opacity:.82; }
+    .alim-live-overlay .live-location { display:flex; gap:7px; align-items:flex-start; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.16); }
+    .alim-live-overlay .live-location i { color:#FFD400; font-size:15px; }
+    .alim-live-overlay .live-place { font-size:12px; font-weight:700; line-height:1.2; }
+    .alim-live-overlay .live-coords { font-size:9px; opacity:.72; margin-top:2px; }
+    .alim-live-overlay .live-footer { display:flex; justify-content:space-between; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid rgba(255,255,255,.16); font-size:9px; }
+    .alim-live-overlay .live-footer .copyright { color:#FFD400; font-weight:700; text-align:right; }
+    .alim-camera-topbar { position:absolute; inset:0 0 auto 0; z-index:4; display:flex; justify-content:space-between; align-items:flex-start; padding:14px; background:linear-gradient(to bottom, rgba(0,0,0,.65), transparent); }
+    .alim-camera-close { width:40px; height:40px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.35); }
+    .alim-camera-orientation { background:rgba(0,0,0,.48); border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:4px; }
+    .alim-camera-orientation .btn { border:0; color:#fff; font-size:11px; }
+    .alim-camera-orientation .btn-check:checked + .btn { background:#FFD400; color:#111; }
+    .alim-camera-bottombar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:center; justify-content:center; padding:14px 18px 24px; background:linear-gradient(to top, rgba(0,0,0,.8), transparent); }
+    .alim-shutter { width:72px; height:72px; border-radius:50%; border:5px solid rgba(255,255,255,.9); background:#fff; box-shadow:0 0 0 5px rgba(0,0,0,.25); transition:transform .15s; }
+    .alim-shutter:active { transform:scale(.94); }
+    .alim-camera-hint { position:absolute; bottom:104px; left:0; right:0; text-align:center; color:#fff; font-size:11px; opacity:.85; z-index:5; }
+    #alimCameraError { position:absolute; left:16px; right:16px; bottom:158px; z-index:6; }
+    @media (max-width: 576px) { .alim-live-overlay { left:10px; right:10px; bottom:100px; padding:12px; } .alim-live-overlay .live-day { font-size:25px; } .alim-live-overlay .live-title { font-size:19px; } .alim-live-overlay .live-footer { font-size:8px; } }
 </style>
 <div class="modal fade" id="alimCameraModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title"><i class="ri-camera-line me-1"></i>Ambil Foto Bukti</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="alert alert-light border small mb-2"><i class="ri-map-pin-line me-1"></i><span id="alimCameraLocation">Meminta titik koordinat…</span> · <span id="alimCameraClock">WITA</span></div>
-                <div id="alimCameraPreview" class="alim-camera-preview"><video id="alimCameraVideo" autoplay playsinline muted></video></div>
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="small text-muted">Orientasi</span>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Orientasi foto">
-                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
-                            <label class="btn btn-outline-secondary" for="alimOrientationAuto">Otomatis</label>
-                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
-                            <label class="btn btn-outline-secondary" for="alimOrientationPortrait"><i class="ri-portrait-line me-1"></i>Vertikal 9:16</label>
-                        </div>
+            <div class="alim-camera-stage">
+                <div id="alimCameraPreview" class="alim-camera-preview" data-orientation="auto">
+                    <video id="alimCameraVideo" autoplay playsinline muted></video>
+                    <div class="alim-live-overlay">
+                        <div class="live-brand"><span><i class="ri-plant-line me-1"></i><strong>ALIM</strong> · SARPRAS</span><span id="alimLiveTime">WITA --.--</span></div>
+                        <div class="live-date"><span class="live-day" id="alimLiveDay">--</span><span class="live-month" id="alimLiveMonthYear">--- ----</span></div>
+                        <div class="live-title">Dokumentasi<span>.</span></div>
+                        <div class="live-subtitle" id="alimLivePageTitle">Kamera Dokumentasi</div>
+                        <div class="live-location"><i class="ri-map-pin-2-fill"></i><div class="min-w-0"><div class="live-place" id="alimLivePlace">Meminta lokasi…</div><div class="live-coords" id="alimLiveCoords">Koordinat belum tersedia</div></div></div>
+                        <div class="live-footer"><span>Oleh: <strong>{{ auth()->user()->name ?? 'Pengguna ALIM' }}</strong></span><span class="copyright">© Ponpes Abu Hurairah</span></div>
                     </div>
-                    <small class="text-muted">Vertikal 9:16 cocok untuk foto berdiri / dokumentasi bangunan.</small>
                 </div>
-                <div id="alimCameraError" class="alert alert-danger small mt-2 d-none"></div>
-                <div class="d-flex flex-wrap justify-content-between gap-2 small text-muted mt-2">
-                    <span><i class="ri-user-line me-1"></i>Diambil oleh: <strong>{{ auth()->user()->name ?? 'Pengguna ALIM' }}</strong></span>
-                    <span><i class="ri-copyright-line me-1"></i>Ponpes Abu Hurairah</span>
+                <div class="alim-camera-topbar">
+                    <button type="button" class="btn alim-camera-close" data-bs-dismiss="modal" aria-label="Tutup"><i class="ri-close-line fs-5"></i></button>
+                    <div class="btn-group btn-group-sm alim-camera-orientation" role="group" aria-label="Orientasi foto">
+                        <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
+                        <label class="btn btn-sm" for="alimOrientationAuto">Otomatis</label>
+                        <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
+                        <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <small class="text-muted">Foto akan diberi watermark koordinat, waktu WITA, dan logo ALIM.</small>
-                    <div class="d-flex gap-2"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-success" id="alimCameraCapture"><i class="ri-camera-line me-1"></i>Ambil Foto</button></div>
-                </div>
+                <div id="alimCameraError" class="alert alert-danger small d-none"></div>
+                <div class="alim-camera-hint">Arahkan kamera ke objek · watermark tampil langsung di layar</div>
+                <div class="alim-camera-bottombar"><button type="button" class="alim-shutter" id="alimCameraCapture" aria-label="Ambil foto"></button></div>
             </div>
         </div>
     </div>
@@ -44,8 +70,12 @@
     if (!modalEl) return;
     const video = document.getElementById('alimCameraVideo');
     const previewEl = document.getElementById('alimCameraPreview');
-    const locationEl = document.getElementById('alimCameraLocation');
-    const clockEl = document.getElementById('alimCameraClock');
+    const livePlaceEl = document.getElementById('alimLivePlace');
+    const liveCoordsEl = document.getElementById('alimLiveCoords');
+    const liveTimeEl = document.getElementById('alimLiveTime');
+    const liveDayEl = document.getElementById('alimLiveDay');
+    const liveMonthYearEl = document.getElementById('alimLiveMonthYear');
+    const livePageTitleEl = document.getElementById('alimLivePageTitle');
     const captureBtn = document.getElementById('alimCameraCapture');
     const errorEl = document.getElementById('alimCameraError');
     let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, placePromise = null, clockTimer = null;
@@ -55,13 +85,18 @@
     logo.src = '{{ asset('build/images/alim-light.png') }}';
 
     function updateClock() {
-        clockEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Makassar', dateStyle: 'medium', timeStyle: 'medium' }).format(new Date()) + ' WITA';
+        const now = new Date();
+        const timeZone = 'Asia/Makassar';
+        liveTimeEl.textContent = 'WITA ' + new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
+        liveDayEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone, day: '2-digit' }).format(now);
+        liveMonthYearEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone, month: 'long', year: 'numeric' }).format(now).toUpperCase();
     }
 
-    function locationLabel() {
-        if (!coords) return 'Koordinat tidak tersedia';
-        var text = coords.lat.toFixed(6) + ', ' + coords.lng.toFixed(6) + ' (±' + Math.round(coords.accuracy) + ' m)';
-        return placeName ? placeName + ' · ' + text : text;
+    function renderLocation() {
+        livePlaceEl.textContent = placeName || (coords ? 'Nama lokasi tidak tersedia' : 'Lokasi tidak tersedia');
+        liveCoordsEl.textContent = coords
+            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m`
+            : 'Koordinat belum tersedia';
     }
 
     async function resolvePlaceName(lat, lng) {
@@ -102,19 +137,21 @@
         coords = null;
         placeName = null;
         placePromise = null;
-        locationEl.textContent = 'Meminta titik koordinat…';
-        if (!navigator.geolocation) { locationEl.textContent = 'GPS tidak tersedia'; return; }
+        livePlaceEl.textContent = 'Mencari lokasi…';
+        liveCoordsEl.textContent = 'Meminta titik koordinat…';
+        if (!navigator.geolocation) { livePlaceEl.textContent = 'GPS tidak tersedia'; return; }
         navigator.geolocation.getCurrentPosition(
             function (position) {
                 coords = { lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy };
-                locationEl.textContent = coords.lat.toFixed(6) + ', ' + coords.lng.toFixed(6) + ' · mencari nama lokasi…';
+                renderLocation();
+                livePlaceEl.textContent = 'Mencari nama lokasi…';
                 placePromise = resolvePlaceName(coords.lat, coords.lng).then(function (name) {
                     placeName = name;
-                    locationEl.textContent = locationLabel();
+                    renderLocation();
                     return name;
                 });
             },
-            function () { locationEl.textContent = 'Koordinat tidak diizinkan/tidak tersedia'; },
+            function () { livePlaceEl.textContent = 'Lokasi tidak diizinkan'; liveCoordsEl.textContent = 'Koordinat tidak tersedia'; },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
@@ -132,6 +169,7 @@
             updatePreviewRatio();
             requestLocation();
             updateClock();
+            livePageTitleEl.textContent = (document.title || 'Kamera Dokumentasi').split('|')[0].trim();
             clockTimer = setInterval(updateClock, 1000);
         } catch (error) {
             if (errorEl) { errorEl.textContent = 'Kamera tidak dapat dibuka: ' + error.message + '. Pastikan izin kamera aktif dan koneksi HTTPS.'; errorEl.classList.remove('d-none'); }
@@ -149,15 +187,7 @@
 
     function updatePreviewRatio() {
         if (!previewEl) return;
-        const orientation = selectedOrientation();
-        previewEl.dataset.orientation = orientation;
-        if (orientation === 'portrait') {
-            previewEl.style.aspectRatio = '9 / 16';
-        } else if (video.videoWidth && video.videoHeight) {
-            previewEl.style.aspectRatio = video.videoWidth + ' / ' + video.videoHeight;
-        } else {
-            previewEl.style.aspectRatio = '16 / 9';
-        }
+        previewEl.dataset.orientation = selectedOrientation();
     }
 
     function fitText(ctx, text, maxWidth) {

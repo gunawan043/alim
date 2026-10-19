@@ -23,7 +23,16 @@ class SarprasReportController extends SarprasBaseController
 
     public function index(Request $request)
     {
-        return view('sarpras.laporan.index');
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $stats = [
+            'assets' => Asset::where('is_active', true)->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->count(),
+            'rooms' => AssetRoom::where('is_active', true)->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->count(),
+            'maintenance' => AssetMaintenanceLog::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->count(),
+            'loans' => AssetLoan::when($schoolId, fn ($q) => $q->whereHas('asset', fn ($a) => $a->where('school_id', $schoolId)))->count(),
+        ];
+
+        return view('sarpras.laporan.index', compact('stats'));
     }
 
     /**

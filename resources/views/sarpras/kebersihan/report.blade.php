@@ -28,7 +28,6 @@
             @if($report->coordinator_note)<div class="alert alert-{{ $report->status === 'rejected' ? 'danger' : 'success' }} mt-3 mb-0"><i class="ri-chat-1-line me-1"></i>{{ $report->coordinator_note }}</div>@endif
             <div class="row g-3 mt-1">
                 <div class="col-md-3"><div class="text-muted small">Kondisi Keseluruhan</div><div class="fw-medium">{{ ucfirst(str_replace('_',' ', $report->overall_condition)) }}</div></div>
-                <div class="col-md-3"><div class="text-muted small">Skor</div><div class="fw-medium">{{ $report->score ?? '-' }}</div></div>
                 <div class="col-md-6"><div class="text-muted small">Catatan Petugas</div><div>{{ $report->notes ?? '-' }}</div></div>
             </div>
         </div>

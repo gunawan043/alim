@@ -53,7 +53,7 @@ class SarprasChecklistController extends SarprasBaseController
             ->orderBy('category_slug')
             ->pluck('category_slug');
 
-        $myInstances = ChecklistInstance::with(['template', 'executor'])
+        $myInstances = ChecklistInstance::with(['template', 'executor', 'context'])
             ->where('executor_id', auth()->id())
             ->latest()
             ->limit(10)
@@ -86,6 +86,42 @@ class SarprasChecklistController extends SarprasBaseController
         $suggested = $this->suggestTemplate($schedule, $templates);
 
         return view('sarpras.checklist.start', compact('schedule', 'templates', 'suggested'));
+    }
+
+    public function recap(Request $request)
+    {
+        $query = ChecklistInstance::with(['template', 'executor', 'context'])
+            ->when(! $this->isCentralSarpras() && ! $this->canViewAll($request), fn ($q) => $q->where('executor_id', auth()->id()));
+
+        $frequencyGroups = [
+            'Harian' => ['Harian'],
+            'Pekanan' => ['Mingguan', '2 minggu'],
+            'Bulanan' => ['Bulanan', 'Per 3 bulan', 'Per 6 bulan', 'Tahunan'],
+        ];
+        if ($request->filled('frequency_group') && isset($frequencyGroups[$request->frequency_group])) {
+            $frequencies = $frequencyGroups[$request->frequency_group];
+            $query->whereHas('template.items', fn ($q) => $q->whereIn('frequency', $frequencies));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'running' => (clone $query)->where('status', 'in_progress')->count(),
+            'completed' => (clone $query)->where('status', 'completed')->count(),
+            'failed' => (clone $query)->where('status', 'failed')->count(),
+        ];
+
+        $instances = $query->latest()->paginate(20)->withQueryString();
+
+        return view('sarpras.checklist.recap', compact('instances', 'stats', 'frequencyGroups'));
     }
 
     public function startTemplate(string $userId, Request $request, string $templateId)
@@ -132,7 +168,24 @@ class SarprasChecklistController extends SarprasBaseController
         $canEdit = $instance->status === 'in_progress';
         $context = $instance->context;
 
-        return view('sarpras.checklist.instance', compact('instance', 'progress', 'responses', 'canEdit', 'context'));
+        $frequencyGroups = [
+            'Harian' => ['Harian'],
+            'Pekanan' => ['Mingguan', '2 minggu'],
+            'Bulanan' => ['Bulanan', 'Per 3 bulan', 'Per 6 bulan', 'Tahunan'],
+        ];
+        $frequencyProgress = collect($frequencyGroups)->map(function ($frequencies, $label) use ($instance, $responses) {
+            $items = $instance->template->items->whereIn('frequency', $frequencies);
+            return [
+                'label' => $label,
+                'total' => $items->count(),
+                'answered' => $items->filter(fn ($item) => $responses->has($item->id))->count(),
+                'failed' => $items->filter(fn ($item) => ($responses[$item->id] ?? null)?->passed === false)->count(),
+            ];
+        })->filter(fn ($row) => $row['total'] > 0);
+
+        $contextAsset = $context instanceof AssetMaintenanceSchedule ? $context->asset : null;
+
+        return view('sarpras.checklist.instance', compact('instance', 'progress', 'responses', 'canEdit', 'context', 'frequencyProgress', 'contextAsset'));
     }
 
     public function save(string $userId, Request $request, string $instanceId)

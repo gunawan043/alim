@@ -40,7 +40,7 @@ class SarprasCameraController extends SarprasBaseController
                     'format' => 'jsonv2',
                     'lat' => $lat,
                     'lon' => $lng,
-                    'zoom' => 16,
+                    'zoom' => 18,
                     'addressdetails' => 1,
                     'accept-language' => 'id',
                 ]);
@@ -51,19 +51,21 @@ class SarprasCameraController extends SarprasBaseController
 
                 $data = $response->json();
                 $address = $data['address'] ?? [];
+                $road = trim(($address['road'] ?? $data['name'] ?? '').' '.($address['house_number'] ?? ''));
                 $parts = array_values(array_unique(array_filter([
-                    $data['name'] ?? null,
-                    $address['village'] ?? $address['suburb'] ?? $address['neighbourhood'] ?? $address['hamlet'] ?? null,
+                    $road ?: null,
+                    $address['neighbourhood'] ?? $address['hamlet'] ?? null,
+                    $address['village'] ?? $address['suburb'] ?? null,
                     $address['city'] ?? $address['town'] ?? $address['county'] ?? null,
                     $address['state'] ?? null,
                 ])));
 
                 if ($parts !== []) {
-                    return implode(', ', array_slice($parts, 0, 3));
+                    return implode(', ', array_slice($parts, 0, 4));
                 }
 
                 if (! empty($data['display_name'])) {
-                    return implode(', ', array_slice(array_map('trim', explode(',', $data['display_name'])), 0, 3));
+                    return implode(', ', array_slice(array_map('trim', explode(',', $data['display_name'])), 0, 4));
                 }
             } catch (\Throwable $e) {
                 Log::warning('Reverse geocode failed', ['lat' => $lat, 'lng' => $lng, 'error' => $e->getMessage()]);
