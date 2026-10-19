@@ -228,6 +228,7 @@
         const finalizeError = document.getElementById('cleaningFinalizeError');
         const saveTimers = new WeakMap();
         let evidenceRow = null;
+        const evidenceDrafts = new Map();
 
         function officerId() { return document.getElementById('cleaningOfficer')?.value || '{{ auth()->id() }}'; }
         function updateProgress() {
@@ -359,33 +360,136 @@
             if (after) evidenceAfterExisting.href = after;
         }
 
-        document.querySelectorAll('.evidence-trigger').forEach(function (button) {
-            button.addEventListener('click', function () {
-                evidenceRow = button.closest('.task-row');
-                if (!evidenceRow) return;
-                document.getElementById('evidenceTaskTitle').textContent = button.dataset.taskTitle || 'Pekerjaan';
-                evidenceCondition.value = evidenceRow.querySelector('.task-condition')?.value || 'bersih';
-                evidenceNotes.value = evidenceRow.querySelector('.task-notes')?.value || '';
-                evidenceBeforeUrl.value = evidenceRow.querySelector('.task-before-url')?.value || '';
-                evidenceAfterUrl.value = evidenceRow.querySelector('.task-after-url')?.value || '';
-                evidenceBeforeFile.value = '';
-                evidenceAfterFile.value = '';
-                evidenceSaveStatus.textContent = '';
+        function setEvidenceFile(input, file) {
+            if (!input) return;
+            try {
+                input.value = '';
+                if (!file) return;
+                if (typeof DataTransfer === 'undefined') return;
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+            } catch (error) {
+                // Preview tetap ditampilkan meski browser menolak set file.
+            }
+        }
+
+        function renderLocalFilePreview(container, file) {
+            if (!container || !file) return;
+            container.innerHTML = '';
+            const image = document.createElement('img');
+            image.src = URL.createObjectURL(file);
+            image.alt = 'Pratinjau foto';
+            image.className = 'img-fluid rounded border mt-2';
+            image.style.maxHeight = '110px';
+            container.appendChild(image);
+            const note = document.createElement('div');
+            note.className = 'small text-muted mt-1';
+            note.innerHTML = '<i class="ri-check-line me-1"></i>Foto siap disimpan';
+            container.appendChild(note);
+        }
+
+        function saveEvidenceDraft() {
+            if (!evidenceRow) return;
+            // Sinkronkan isian modal ke field baris agar draft tidak hilang
+            // saat modal ditutup atau berpindah pekerjaan.
+            const conditionField = evidenceRow.querySelector('.task-condition');
+            const notesField = evidenceRow.querySelector('.task-notes');
+            const beforeUrlField = evidenceRow.querySelector('.task-before-url');
+            const afterUrlField = evidenceRow.querySelector('.task-after-url');
+            if (conditionField) conditionField.value = evidenceCondition.value;
+            if (notesField) notesField.value = evidenceNotes.value;
+            if (beforeUrlField) beforeUrlField.value = evidenceBeforeUrl.value;
+            if (afterUrlField) afterUrlField.value = evidenceAfterUrl.value;
+
+            const beforePreview = document.getElementById('evidenceBeforePreview');
+            const afterPreview = document.getElementById('evidenceAfterPreview');
+            evidenceDrafts.set(evidenceRow.dataset.taskId, {
+                condition: evidenceCondition.value,
+                notes: evidenceNotes.value,
+                beforeUrl: evidenceBeforeUrl.value,
+                afterUrl: evidenceAfterUrl.value,
+                beforeFile: evidenceBeforeFile.files?.[0] || null,
+                afterFile: evidenceAfterFile.files?.[0] || null,
+                beforePreview: beforePreview ? beforePreview.innerHTML : '',
+                afterPreview: afterPreview ? afterPreview.innerHTML : ''
+            });
+        }
+
+        function restoreEvidenceDraft(row) {
+            const draft = evidenceDrafts.get(row.dataset.taskId);
+            if (!draft) {
+                evidenceCondition.value = row.querySelector('.task-condition')?.value || 'bersih';
+                evidenceNotes.value = row.querySelector('.task-notes')?.value || '';
+                evidenceBeforeUrl.value = row.querySelector('.task-before-url')?.value || '';
+                evidenceAfterUrl.value = row.querySelector('.task-after-url')?.value || '';
+                setEvidenceFile(evidenceBeforeFile, null);
+                setEvidenceFile(evidenceAfterFile, null);
                 updateExistingEvidenceLinks();
                 renderEvidencePreview(document.getElementById('evidenceBeforePreview'), evidenceBeforeUrl.value);
                 renderEvidencePreview(document.getElementById('evidenceAfterPreview'), evidenceAfterUrl.value);
+                return;
+            }
+
+            evidenceCondition.value = draft.condition;
+            evidenceNotes.value = draft.notes;
+            evidenceBeforeUrl.value = draft.beforeUrl;
+            evidenceAfterUrl.value = draft.afterUrl;
+            setEvidenceFile(evidenceBeforeFile, draft.beforeFile);
+            setEvidenceFile(evidenceAfterFile, draft.afterFile);
+            updateExistingEvidenceLinks();
+
+            const beforePreview = document.getElementById('evidenceBeforePreview');
+            const afterPreview = document.getElementById('evidenceAfterPreview');
+            if (beforePreview) beforePreview.innerHTML = draft.beforePreview || '';
+            if (afterPreview) afterPreview.innerHTML = draft.afterPreview || '';
+            if (!draft.beforePreview && draft.beforeFile) renderLocalFilePreview(beforePreview, draft.beforeFile);
+            if (!draft.afterPreview && draft.afterFile) renderLocalFilePreview(afterPreview, draft.afterFile);
+            if (!draft.beforePreview && !draft.beforeFile) renderEvidencePreview(beforePreview, draft.beforeUrl);
+            if (!draft.afterPreview && !draft.afterFile) renderEvidencePreview(afterPreview, draft.afterUrl);
+        }
+
+        evidenceBeforeFile.addEventListener('change', function () {
+            if (this.files && this.files[0]) {
+                renderLocalFilePreview(document.getElementById('evidenceBeforePreview'), this.files[0]);
+            }
+        });
+        evidenceAfterFile.addEventListener('change', function () {
+            if (this.files && this.files[0]) {
+                renderLocalFilePreview(document.getElementById('evidenceAfterPreview'), this.files[0]);
+            }
+        });
+
+        document.querySelectorAll('.evidence-trigger').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const nextRow = button.closest('.task-row');
+                if (!nextRow) return;
+                if (evidenceRow && evidenceRow !== nextRow) {
+                    saveEvidenceDraft();
+                }
+                evidenceRow = nextRow;
+                document.getElementById('evidenceTaskTitle').textContent = button.dataset.taskTitle || 'Pekerjaan';
+                evidenceSaveStatus.textContent = '';
+                restoreEvidenceDraft(evidenceRow);
             });
         });
 
-        document.getElementById('evidenceSaveBtn')?.addEventListener('click', async function () {
+        evidenceModalEl.addEventListener('hidden.bs.modal', function () {
             if (!evidenceRow) return;
-            if (!evidenceRow.querySelector('.task-result:checked')) {
+            saveEvidenceDraft();
+            evidenceRow = null;
+        });
+
+        document.getElementById('evidenceSaveBtn')?.addEventListener('click', async function () {
+            const row = evidenceRow;
+            if (!row) return;
+            if (!row.querySelector('.task-result:checked')) {
                 evidenceSaveStatus.textContent = 'Pilih Selesai atau Belum terlebih dahulu.';
                 return;
             }
             this.disabled = true;
             evidenceSaveStatus.textContent = 'Menyimpan…';
-            const ok = await saveRow(evidenceRow, {
+            const ok = await saveRow(row, {
                 condition: evidenceCondition.value,
                 notes: evidenceNotes.value,
                 beforeUrl: evidenceBeforeUrl.value,
@@ -396,6 +500,8 @@
             this.disabled = false;
             if (ok) {
                 evidenceSaveStatus.textContent = '✓ Keterangan tersimpan';
+                evidenceDrafts.delete(row.dataset.taskId);
+                if (evidenceRow === row) evidenceRow = null;
                 bootstrap.Modal.getInstance(evidenceModalEl)?.hide();
             } else {
                 evidenceSaveStatus.textContent = 'Gagal menyimpan keterangan.';

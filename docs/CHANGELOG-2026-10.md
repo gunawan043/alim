@@ -2595,6 +2595,25 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Playwright: foto kamera masuk ke modal bukti, tersimpan, lalu muncul lagi saat modal dibuka ulang;
   - halaman detail memuat thumbnail dari storage.
 
+## 221. Draft Modal “Isi Keterangan & Bukti” Tetap Tersimpan
+
+- Menambahkan draft per baris pekerjaan di modal **Isi Keterangan & Bukti**.
+- Saat modal ditutup, berpindah pekerjaan, atau dibuka kembali:
+  - pilihan **Kondisi** tetap sama;
+  - **Catatan** tetap tampil;
+  - URL foto tetap tampil;
+  - file foto yang sudah dipilih tetap terpasang pada input (bila browser mendukung);
+  - thumbnail/pratinjau foto tetap tampil.
+- Isian modal disinkronkan ke field tersembunyi baris, sehingga draft tidak hilang saat modal ditutup.
+- Draft dihapus setelah tombol **Simpan Keterangan** berhasil; setelah itu data dibaca dari hasil simpan server.
+- Foto native maupun hasil kamera sama-sama menampilkan pratinjau sebelum disimpan.
+- Diuji dengan Playwright:
+  - isi kondisi, catatan, dan foto kamera;
+  - tutup modal tanpa menyimpan;
+  - buka kembali: semua isian dan foto masih ada;
+  - pindah ke pekerjaan lain lalu kembali: draft tetap ada;
+  - simpan: modal menutup, data dan URL foto tersimpan, lalu tampil lagi saat dibuka.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
