@@ -105,45 +105,26 @@
                                             $beforeUrl = $item?->before_photo_url ?: ($item?->before_photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->before_photo_path) : null);
                                             $afterUrl = $item?->after_photo_url ?: ($item?->after_photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->after_photo_path) : null);
                                         @endphp
-                                        <div class="p-3 border-bottom task-row" data-task-id="{{ $task->id }}">
-                                            <div class="d-flex justify-content-between align-items-start gap-2">
-                                                <div>
+                                        <div class="p-3 p-md-4 border-bottom task-row" data-task-id="{{ $task->id }}">
+                                            <div class="task-main">
+                                                <div class="task-content">
                                                     @if($task->group_label)<div class="text-uppercase small text-primary fw-semibold mb-1">{{ $task->group_label }}</div>@endif
                                                     <div class="fw-semibold">{{ $taskNumber }}. {{ $task->title }}</div>
                                                     <div class="small text-muted">{{ $task->standard ?? 'Sesuai standar kebersihan' }}</div>
+                                                    <span class="badge bg-light text-dark border mt-2 d-md-none">{{ ucfirst($task->frequency) }}</span>
                                                 </div>
-                                                <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
-                                            </div>
-                                            <div class="task-actions mt-3" role="group" aria-label="Tindakan pekerjaan">
-                                                <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-success task-action-btn" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line"></i><span class="d-none d-md-inline ms-1">Selesai</span></label>
-                                                <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-danger task-action-btn" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line"></i><span class="d-none d-md-inline ms-1">Belum</span></label>
-                                                <button class="btn btn-outline-primary task-action-btn task-evidence-btn" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}" title="Upload bukti: catatan, foto sebelum dan sesudah" aria-label="Upload bukti"><i class="ri-upload-cloud-2-line"></i><span class="ms-1">Upload Bukti</span></button>
-                                            </div>
-                                            <div class="collapse" id="taskDetail{{ $task->id }}">
-                                                <div class="border-top mt-2 pt-3"><div class="fw-semibold mb-2"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Upload Bukti</div><div class="row g-3">
-                                                    <div class="col-12 col-md-4"><label class="form-label">Kondisi</label><select class="form-select task-condition" {{ $isLocked ? 'disabled' : '' }}>@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
-                                                    <div class="col-12 col-md-8"><label class="form-label">Catatan</label><input class="form-control task-notes" value="{{ old('items.'.$task->id.'.notes', $item?->notes) }}" placeholder="Keterangan bila perlu" {{ $isLocked ? 'disabled' : '' }}></div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label">Foto Sebelum</label>
-                                                        <input type="url" class="form-control mb-1 task-url task-before-url" value="{{ old('items.'.$task->id.'.before_url', $item?->before_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
-                                                        @if($beforeUrl)<a href="{{ $beforeUrl }}" target="_blank" class="small text-success d-block mb-1"><i class="ri-image-line me-1"></i>Foto sebelum tersimpan</a>@endif
-                                                        <input type="file" id="before_file_{{ $task->id }}" class="form-control task-file task-before-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
-                                                        <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}" {{ $isLocked ? 'disabled' : '' }}><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                                        <div id="before_preview_{{ $task->id }}"></div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label">Foto Sesudah</label>
-                                                        <input type="url" class="form-control mb-1 task-url task-after-url" value="{{ old('items.'.$task->id.'.after_url', $item?->after_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
-                                                        @if($afterUrl)<a href="{{ $afterUrl }}" target="_blank" class="small text-success d-block mb-1"><i class="ri-image-line me-1"></i>Foto sesudah tersimpan</a>@endif
-                                                        <input type="file" id="after_file_{{ $task->id }}" class="form-control task-file task-after-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
-                                                        <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}" {{ $isLocked ? 'disabled' : '' }}><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                                        <div id="after_preview_{{ $task->id }}"></div>
-                                                    </div>
-                                                </div>
+                                                <div class="task-buttons" role="group" aria-label="Tindakan pekerjaan">
+                                                    <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
+                                                    <label class="btn task-icon-btn btn-outline-success" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line"></i><span class="visually-hidden">Selesai</span></label>
+                                                    <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
+                                                    <label class="btn task-icon-btn btn-outline-danger" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line"></i><span class="visually-hidden">Belum</span></label>
+                                                    <button class="btn task-icon-btn btn-outline-primary evidence-trigger" type="button" data-bs-toggle="modal" data-bs-target="#taskEvidenceModal" data-task-id="{{ $task->id }}" data-task-title="{{ e($task->title) }}" title="Upload bukti" aria-label="Upload bukti" {{ $isLocked ? 'disabled' : '' }}><i class="ri-upload-cloud-2-line"></i><span class="visually-hidden">Upload bukti</span></button>
                                                 </div>
                                             </div>
+                                            <input type="hidden" class="task-condition" value="{{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') }}">
+                                            <input type="hidden" class="task-notes" value="{{ old('items.'.$task->id.'.notes', $item?->notes) }}">
+                                            <input type="hidden" class="task-before-url" value="{{ old('items.'.$task->id.'.before_url', $item?->before_photo_url) }}">
+                                            <input type="hidden" class="task-after-url" value="{{ old('items.'.$task->id.'.after_url', $item?->after_photo_url) }}">
                                             <div class="task-save-status small text-muted mt-2"></div>
                                         </div>
                                     @endforeach
@@ -199,6 +180,38 @@
         </div>
     </div>
 
+    <div class="modal fade" id="taskEvidenceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><div><h5 class="modal-title mb-0"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Upload Bukti</h5><small class="text-muted" id="evidenceTaskTitle">Pekerjaan</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-5"><label class="form-label">Kondisi</label><select id="evidenceCondition" class="form-select">@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}">{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
+                        <div class="col-12 col-md-7"><label class="form-label">Catatan</label><textarea id="evidenceNotes" class="form-control" rows="2" placeholder="Tulis keterangan pekerjaan…"></textarea></div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Foto Sebelum</label>
+                            <a id="evidenceBeforeExisting" href="#" target="_blank" class="small text-success d-none mb-1"><i class="ri-image-line me-1"></i>Foto sebelum tersimpan</a>
+                            <input type="url" id="evidenceBeforeUrl" class="form-control mb-2" placeholder="Link Google Drive">
+                            <input type="file" id="evidenceBeforeFile" class="form-control" accept="image/*">
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="evidenceBeforeFile" data-preview="evidenceBeforePreview"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                            <div id="evidenceBeforePreview"></div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Foto Sesudah</label>
+                            <a id="evidenceAfterExisting" href="#" target="_blank" class="small text-success d-none mb-1"><i class="ri-image-line me-1"></i>Foto sesudah tersimpan</a>
+                            <input type="url" id="evidenceAfterUrl" class="form-control mb-2" placeholder="Link Google Drive">
+                            <input type="file" id="evidenceAfterFile" class="form-control" accept="image/*">
+                            <button type="button" class="btn btn-outline-success btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="evidenceAfterFile" data-preview="evidenceAfterPreview"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                            <div id="evidenceAfterPreview"></div>
+                        </div>
+                    </div>
+                    <div id="evidenceSaveStatus" class="small mt-3"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-primary" id="evidenceSaveBtn"><i class="ri-save-line me-1"></i>Simpan Bukti</button></div>
+            </div>
+        </div>
+    </div>
+
     @include('sarpras.partials.camera-modal')
 @endsection
 
@@ -214,6 +227,7 @@
         const saveStatus = document.getElementById('cleaningSaveStatus');
         const finalizeError = document.getElementById('cleaningFinalizeError');
         const saveTimers = new WeakMap();
+        let evidenceRow = null;
 
         function officerId() { return document.getElementById('cleaningOfficer')?.value || '{{ auth()->id() }}'; }
         function updateProgress() {
@@ -226,10 +240,14 @@
             const el = row.querySelector('.task-save-status');
             if (el) { el.textContent = text; el.className = 'task-save-status small mt-2 text-' + (tone || 'muted'); }
         }
-        async function saveRow(row) {
-            if (locked) return;
+        async function saveRow(row, overrides = {}) {
+            if (locked || !row) return false;
             const taskId = row.dataset.taskId;
             const result = row.querySelector('.task-result:checked')?.value || 'belum';
+            const condition = overrides.condition ?? row.querySelector('.task-condition')?.value ?? 'bersih';
+            const notes = overrides.notes ?? row.querySelector('.task-notes')?.value ?? '';
+            const beforeUrl = overrides.beforeUrl ?? row.querySelector('.task-before-url')?.value ?? '';
+            const afterUrl = overrides.afterUrl ?? row.querySelector('.task-after-url')?.value ?? '';
             const form = new FormData();
             form.append('_token', root.dataset.csrf);
             form.append('area_id', root.dataset.areaId);
@@ -239,14 +257,12 @@
             form.append('absence_reason', document.getElementById('cleaningAbsence')?.value || '');
             form.append('task_id', taskId);
             form.append('result', result);
-            form.append('condition', row.querySelector('.task-condition')?.value || 'bersih');
-            form.append('notes', row.querySelector('.task-notes')?.value || '');
-            form.append('before_url', row.querySelector('.task-before-url')?.value || '');
-            form.append('after_url', row.querySelector('.task-after-url')?.value || '');
-            const beforeFile = row.querySelector('.task-before-file')?.files?.[0];
-            const afterFile = row.querySelector('.task-after-file')?.files?.[0];
-            if (beforeFile) form.append('before_file', beforeFile);
-            if (afterFile) form.append('after_file', afterFile);
+            form.append('condition', condition);
+            form.append('notes', notes);
+            form.append('before_url', beforeUrl);
+            form.append('after_url', afterUrl);
+            if (overrides.beforeFile) form.append('before_file', overrides.beforeFile);
+            if (overrides.afterFile) form.append('after_file', overrides.afterFile);
 
             rowStatus(row, 'Menyimpan…', 'muted');
             if (saveStatus) saveStatus.innerHTML = '<i class="ri-loader-4-line me-1"></i>Menyimpan perubahan…';
@@ -258,12 +274,18 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                row.querySelector('.task-condition').value = condition;
+                row.querySelector('.task-notes').value = notes;
+                row.querySelector('.task-before-url').value = beforeUrl;
+                row.querySelector('.task-after-url').value = afterUrl;
                 rowStatus(row, '✓ Tersimpan ' + (data.saved_at || ''), 'success');
                 if (saveStatus) saveStatus.innerHTML = '<i class="ri-cloud-done-line me-1"></i>Tersimpan otomatis';
                 updateProgress();
+                return true;
             } catch (error) {
                 rowStatus(row, 'Gagal menyimpan: ' + error.message, 'danger');
                 if (saveStatus) saveStatus.innerHTML = '<i class="ri-error-warning-line me-1"></i>Belum tersimpan';
+                return false;
             }
         }
         function scheduleSave(row) {
@@ -281,6 +303,61 @@
         });
         document.querySelectorAll('.task-result').forEach(function (input) { input.addEventListener('change', updateProgress); });
         updateProgress();
+
+        const evidenceModalEl = document.getElementById('taskEvidenceModal');
+        const evidenceCondition = document.getElementById('evidenceCondition');
+        const evidenceNotes = document.getElementById('evidenceNotes');
+        const evidenceBeforeUrl = document.getElementById('evidenceBeforeUrl');
+        const evidenceAfterUrl = document.getElementById('evidenceAfterUrl');
+        const evidenceSaveStatus = document.getElementById('evidenceSaveStatus');
+        const evidenceBeforeFile = document.getElementById('evidenceBeforeFile');
+        const evidenceAfterFile = document.getElementById('evidenceAfterFile');
+        const evidenceBeforeExisting = document.getElementById('evidenceBeforeExisting');
+        const evidenceAfterExisting = document.getElementById('evidenceAfterExisting');
+
+        document.querySelectorAll('.evidence-trigger').forEach(function (button) {
+            button.addEventListener('click', function () {
+                evidenceRow = button.closest('.task-row');
+                if (!evidenceRow) return;
+                document.getElementById('evidenceTaskTitle').textContent = button.dataset.taskTitle || 'Pekerjaan';
+                evidenceCondition.value = evidenceRow.querySelector('.task-condition')?.value || 'bersih';
+                evidenceNotes.value = evidenceRow.querySelector('.task-notes')?.value || '';
+                evidenceBeforeUrl.value = evidenceRow.querySelector('.task-before-url')?.value || '';
+                evidenceAfterUrl.value = evidenceRow.querySelector('.task-after-url')?.value || '';
+                evidenceBeforeFile.value = '';
+                evidenceAfterFile.value = '';
+                document.getElementById('evidenceBeforePreview').innerHTML = '';
+                document.getElementById('evidenceAfterPreview').innerHTML = '';
+                evidenceSaveStatus.textContent = '';
+                const before = evidenceBeforeUrl.value;
+                const after = evidenceAfterUrl.value;
+                evidenceBeforeExisting.classList.toggle('d-none', !before);
+                if (before) evidenceBeforeExisting.href = before;
+                evidenceAfterExisting.classList.toggle('d-none', !after);
+                if (after) evidenceAfterExisting.href = after;
+            });
+        });
+
+        document.getElementById('evidenceSaveBtn')?.addEventListener('click', async function () {
+            if (!evidenceRow) return;
+            this.disabled = true;
+            evidenceSaveStatus.textContent = 'Menyimpan…';
+            const ok = await saveRow(evidenceRow, {
+                condition: evidenceCondition.value,
+                notes: evidenceNotes.value,
+                beforeUrl: evidenceBeforeUrl.value,
+                afterUrl: evidenceAfterUrl.value,
+                beforeFile: evidenceBeforeFile.files?.[0] || null,
+                afterFile: evidenceAfterFile.files?.[0] || null,
+            });
+            this.disabled = false;
+            if (ok) {
+                evidenceSaveStatus.textContent = '✓ Bukti tersimpan';
+                bootstrap.Modal.getInstance(evidenceModalEl)?.hide();
+            } else {
+                evidenceSaveStatus.textContent = 'Gagal menyimpan bukti.';
+            }
+        });
 
         const finalizeButton = document.getElementById('finalizeCleaning');
         if (finalizeButton) {
@@ -312,18 +389,18 @@
 
 @push('css')
 <style>
-    .task-actions { display: grid; grid-template-columns: 2fr 2fr 8fr; gap: .55rem; align-items: stretch; }
-    .task-actions .btn-check { display: none; }
-    .task-action-btn { border-width: 1.5px; min-height: 44px; border-radius: .7rem !important; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: .25rem; }
-    .task-action-btn i { font-size: 1.15rem; pointer-events: none; }
-    .task-evidence-btn { background: #f0f7ff; }
-    .task-actions .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
-    .task-actions .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
-    .task-action-btn:hover { color: #fff; }
-    @media (min-width: 768px) {
-        .task-actions { grid-template-columns: 1fr 1fr 1.5fr; gap: .75rem; }
-        .task-action-btn { min-height: 46px; font-size: .92rem; }
-        .task-row { padding: 1rem 1.15rem !important; }
+    .task-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.25rem; align-items: center; }
+    .task-buttons { display: flex; align-items: center; gap: .55rem; }
+    .task-icon-btn { width: 46px; height: 46px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-width: 1.5px; border-radius: .8rem !important; }
+    .task-icon-btn i { font-size: 1.25rem; pointer-events: none; }
+    .task-icon-btn:hover { color: #fff; }
+    .task-buttons .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
+    .task-buttons .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .evidence-trigger { background: #f2f8ff; }
+    @media (max-width: 767.98px) {
+        .task-main { display: block; }
+        .task-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-top: .85rem; }
+        .task-icon-btn { width: 100%; height: 44px; }
     }
 </style>
 @endpush

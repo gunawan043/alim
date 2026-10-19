@@ -2482,6 +2482,14 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - panel Upload Bukti memiliki judul dan jarak yang lebih jelas.
 - Legenda ikon tetap ditampilkan sekali di atas halaman.
 
+## 214. Tugas Checklist Sejajar & Modal Bukti
+
+- Desktop: satu baris `Tugas/Item | ✓ | ✕ | Upload` dengan tombol ikon sejajar.
+- Mobile: tombol berada di bawah uraian, tiga kolom sama lebar.
+- Tombol memakai ukuran dan gaya seragam.
+- Catatan, kondisi, dan foto tidak lagi memakai collapse; dibuka melalui modal **Upload Bukti**.
+- Modal bukti mendukung upload file, link Drive, dan kamera watermark.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
