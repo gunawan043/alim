@@ -500,6 +500,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/participants/{participantId}/verify', [TasmiController::class, 'verifyParticipant'])->name('participant.verify');
                     Route::get('/participants/{participantId}/instrument', [TasmiController::class, 'instrument'])->name('participant.instrument');
                     Route::post('/participants/{participantId}/certificate', [TasmiController::class, 'issueCertificate'])->name('participant.certificate');
+                    Route::get('/flow', [TasmiController::class, 'flow'])->name('flow');
                     Route::get('/{id}', [TasmiController::class, 'show'])->name('show');
                     Route::put('/{id}', [TasmiController::class, 'update'])->name('update');
                     Route::delete('/{id}', [TasmiController::class, 'destroy'])->name('destroy');

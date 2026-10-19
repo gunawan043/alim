@@ -158,6 +158,13 @@ class TasmiController extends Controller
         return $validated;
     }
 
+    public function flow(Request $request, string $userId)
+    {
+        $this->authorizeView($request);
+
+        return view('tahfidz.tasmi.flow', compact('userId'));
+    }
+
     public function show(Request $request, string $userId, string $id)
     {
         $session = TahfidzTasmianSession::with([

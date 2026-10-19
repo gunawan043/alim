@@ -112,6 +112,12 @@ class TahfidzTasmiTest extends TestCase
             ->assertSee('Tasmi’ Juz 30');
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/tasmi/flow")
+            ->assertOk()
+            ->assertSee('Alur Kegiatan Tasmi’')
+            ->assertSee('Verifikasi Koordinator');
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/tasmi/{$session->id}")
             ->assertOk()
             ->assertSee('Ahmad Tasmi')

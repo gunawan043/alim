@@ -29,6 +29,7 @@
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-award-line text-primary me-1"></i>Sesi Tasmi’</h5><p class="text-muted mb-0 small">Ujian hafalan formal, penilaian mustami’, dan penerbitan syahadah.</p></div>
             <div class="d-flex gap-2">
+                <a href="{{ route('user.tahfidz.tasmi.flow', ['userId'=>$userId]) }}" class="btn btn-soft-primary"><i class="ri-route-line me-1"></i>Alur Tasmi’</a>
                 <a href="{{ route('user.tahfidz.tasmi.certificates', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-certificate-line me-1"></i>Syahadah</a>
                 @if($canManage)<button type="button" class="btn btn-success" onclick="openTasmiModal()"><i class="ri-add-line me-1"></i>Buat Sesi</button>@endif
             </div>
