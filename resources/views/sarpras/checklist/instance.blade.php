@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <form id="checklistInstanceForm" method="POST" action="{{ route('sarpras.checklist.save', ['instanceId' => $instance->id]) }}" @if($canEdit) data-autosave-url="{{ route('sarpras.checklist.autosave', ['instanceId' => $instance->id]) }}" @endif>
+    <form id="checklistInstanceForm" method="POST" action="{{ route('sarpras.checklist.save', ['instanceId' => $instance->id]) }}" data-instance-id="{{ $instance->id }}" @if($canEdit) data-autosave-url="{{ route('sarpras.checklist.autosave', ['instanceId' => $instance->id]) }}" @endif>
         @csrf
         <div class="card">
             <div class="card-header"><h5 class="card-title mb-0"><i class="ri-list-check-2 me-1"></i>Item Pemeriksaan</h5></div>
@@ -118,7 +118,7 @@
                 <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div class="small text-muted"><span id="checklistAutoSaveStatus">Perubahan tersimpan otomatis.</span><div>Wajib diisi semua sebelum menyelesaikan checklist.</div></div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary"><i class="ri-save-line me-1"></i>Simpan Progres</button>
+                        <button class="btn btn-outline-primary" title="Cadangan jika autosave gagal"><i class="ri-save-line me-1"></i>Simpan Manual</button>
                         <button class="btn btn-success" formaction="{{ route('sarpras.checklist.complete', ['instanceId' => $instance->id]) }}"><i class="ri-check-double-line me-1"></i>Selesaikan Checklist</button>
                     </div>
                 </div>
@@ -140,7 +140,45 @@
         const barEl = document.getElementById('checklistProgressBar');
         const noteTimers = new Map();
         const saveQueues = new Map();
+        const offlineSaves = new Map();
+        const draftKey = 'sarpras:checklist-notes:' + (form.dataset.instanceId || '');
+        let noteDrafts = {};
         let saveSequence = 0;
+        let tabChannel = null;
+
+        try {
+            noteDrafts = JSON.parse(localStorage.getItem(draftKey) || '{}') || {};
+        } catch (error) {
+            noteDrafts = {};
+        }
+
+        function persistDrafts() {
+            try {
+                localStorage.setItem(draftKey, JSON.stringify(noteDrafts));
+            } catch (error) {
+                // localStorage bisa diblokir; draft tetap ada di memori.
+            }
+        }
+
+        function warnPendingChanges(event) {
+            if (!offlineSaves.size) return;
+            event.preventDefault();
+            event.returnValue = '';
+        }
+
+        window.addEventListener('beforeunload', warnPendingChanges);
+        window.addEventListener('online', function () {
+            flushOfflineSaves();
+        });
+
+        try {
+            tabChannel = new BroadcastChannel('sarpras-checklist-' + (form.dataset.instanceId || ''));
+            tabChannel.onmessage = function () {
+                setStatus('Data diperbarui di tab lain. Muat ulang bila perlu.', 'warning');
+            };
+        } catch (error) {
+            tabChannel = null;
+        }
 
         function setStatus(text, tone) {
             if (!statusEl) return;
@@ -164,7 +202,22 @@
             if (barEl) barEl.style.width = progress.percent_complete + '%';
         }
 
-        async function performSave(body, sequence) {
+        function queueOffline(itemId, body) {
+            offlineSaves.set(itemId, body);
+            setStatus('Menunggu koneksi…', 'warning');
+        }
+
+        function isNetworkFailure(error) {
+            return !navigator.onLine
+                || error instanceof TypeError
+                || /failed to fetch|networkerror|load failed/i.test(error.message || '');
+        }
+
+        async function performSave(body, sequence, itemId) {
+            if (!navigator.onLine) {
+                queueOffline(itemId, body);
+                return;
+            }
             try {
                 const response = await fetch(form.dataset.autosaveUrl, {
                     method: 'POST',
@@ -173,14 +226,34 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                offlineSaves.delete(itemId);
+                delete noteDrafts[itemId];
+                persistDrafts();
                 if (sequence === saveSequence) {
                     setStatus('✓ Tersimpan ' + (data.saved_at || ''), 'success');
                     updateProgress(data.progress);
                 }
+                try { tabChannel?.postMessage({ itemId: itemId, at: data.saved_at || '' }); } catch (error) {}
             } catch (error) {
+                if (isNetworkFailure(error)) {
+                    queueOffline(itemId, body);
+                    return;
+                }
                 if (sequence === saveSequence) {
                     setStatus('Gagal menyimpan: ' + error.message, 'danger');
                 }
+            }
+        }
+
+        async function flushOfflineSaves() {
+            if (!navigator.onLine || !offlineSaves.size) return;
+            setStatus('Menyambung kembali…', 'muted');
+            const entries = Array.from(offlineSaves.entries());
+            for (const entry of entries) {
+                const itemId = entry[0];
+                const body = entry[1];
+                const sequence = ++saveSequence;
+                await performSave(body, sequence, itemId);
             }
         }
 
@@ -197,7 +270,7 @@
             // catatan terbaru saat pengguna mengetik cepat.
             const previous = saveQueues.get(itemId) || Promise.resolve();
             const task = previous.catch(() => {}).then(function () {
-                return performSave(body, sequence);
+                return performSave(body, sequence, itemId);
             });
             saveQueues.set(itemId, task);
             return task;
@@ -212,17 +285,30 @@
         });
 
         form.querySelectorAll('input[name^="notes["]').forEach(function (input) {
+            const itemId = itemIdFromName(input.name);
+            if (itemId && Object.prototype.hasOwnProperty.call(noteDrafts, itemId)) {
+                input.value = noteDrafts[itemId];
+            }
+
             input.addEventListener('input', function () {
-                const itemId = itemIdFromName(this.name);
-                if (!itemId) return;
-                clearTimeout(noteTimers.get(itemId));
-                noteTimers.set(itemId, setTimeout(function () {
-                    const checked = form.querySelector('input[name="answers[' + itemId + ']"]:checked');
+                const id = itemIdFromName(this.name);
+                if (!id) return;
+
+                if (this.value.trim() === '') {
+                    delete noteDrafts[id];
+                } else {
+                    noteDrafts[id] = this.value;
+                }
+                persistDrafts();
+
+                clearTimeout(noteTimers.get(id));
+                noteTimers.set(id, setTimeout(function () {
+                    const checked = form.querySelector('input[name="answers[' + id + ']"]:checked');
                     if (!checked) {
                         setStatus('Pilih Sesuai atau Tidak agar catatan tersimpan otomatis.', 'muted');
                         return;
                     }
-                    saveItem(itemId, checked.value);
+                    saveItem(id, checked.value);
                 }, 650));
             });
         });

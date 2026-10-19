@@ -89,7 +89,7 @@
             </div>
         @endforeach
 
-        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.<span id="agendaAutoSaveStatus" class="ms-2">Perubahan tersimpan otomatis.</span></div><button class="btn btn-success px-4" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
+        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.<span id="agendaAutoSaveStatus" class="ms-2">Perubahan tersimpan otomatis.</span></div><button class="btn btn-success px-4" title="Menyimpan pilihan petugas; checklist dan catatan sudah autosave" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
     </form>
 
     @if($canManageAgenda)
@@ -129,6 +129,24 @@
         const officer = () => document.querySelector('select[name="officer_id"]')?.value || '';
         const noteTimers = new Map();
         const saveQueues = new Map();
+        const offlineSaves = new Map();
+        let tabChannel = null;
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!offlineSaves.size) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+        window.addEventListener('online', function () { flushOfflineSaves(); });
+
+        try {
+            tabChannel = new BroadcastChannel('sarpras-agenda-{{ $agenda->id }}');
+            tabChannel.onmessage = function () {
+                setStatus('Data diperbarui di tab lain. Muat ulang bila perlu.', 'warning');
+            };
+        } catch (error) {
+            tabChannel = null;
+        }
 
         function setStatus(text, tone) {
             if (!statusEl) return;
@@ -136,7 +154,22 @@
             statusEl.className = 'ms-2 text-' + (tone || 'muted');
         }
 
-        async function performAgendaSave(row, checkbox, form, revertOnError) {
+        function isNetworkFailure(error) {
+            return !navigator.onLine
+                || error instanceof TypeError
+                || /failed to fetch|networkerror|load failed/i.test(error.message || '');
+        }
+
+        function queueOffline(itemId, form, revertOnError) {
+            offlineSaves.set(itemId, { form: form, revertOnError: revertOnError });
+            setStatus('Menunggu koneksi…', 'warning');
+        }
+
+        async function performAgendaSave(row, checkbox, form, revertOnError, itemId) {
+            if (!navigator.onLine) {
+                queueOffline(itemId, form, revertOnError);
+                return;
+            }
             try {
                 const response = await fetch(checkbox.dataset.updateUrl, {
                     method: 'POST',
@@ -145,11 +178,34 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                offlineSaves.delete(itemId);
                 setStatus('✓ Tersimpan ' + (data.saved_at || ''), 'success');
                 if (revertOnError) row.classList.toggle('text-decoration-line-through', checkbox.checked);
+                try { tabChannel?.postMessage({ itemId: itemId, at: data.saved_at || '' }); } catch (error) {}
             } catch (error) {
+                if (isNetworkFailure(error)) {
+                    queueOffline(itemId, form, revertOnError);
+                    return;
+                }
                 if (revertOnError) checkbox.checked = !checkbox.checked;
                 setStatus('Gagal menyimpan: ' + error.message, 'danger');
+            }
+        }
+
+        async function flushOfflineSaves() {
+            if (!navigator.onLine || !offlineSaves.size) return;
+            setStatus('Menyambung kembali…', 'muted');
+            const entries = Array.from(offlineSaves.entries());
+            for (const entry of entries) {
+                const itemId = entry[0];
+                const queued = entry[1];
+                const row = document.querySelector('.agenda-row[data-item-id="' + itemId + '"]');
+                const checkbox = row?.querySelector('.agenda-done');
+                if (!row || !checkbox) {
+                    offlineSaves.delete(itemId);
+                    continue;
+                }
+                await performAgendaSave(row, checkbox, queued.form, queued.revertOnError, itemId);
             }
         }
 
@@ -166,9 +222,10 @@
 
             // Serialkan simpan per baris agar catatan yang lebih baru tidak
             // ditimpa oleh request checkbox yang lebih lama.
+            const itemId = row.dataset.itemId || '';
             const previous = saveQueues.get(row) || Promise.resolve();
             const task = previous.catch(() => {}).then(function () {
-                return performAgendaSave(row, checkbox, form, revertOnError);
+                return performAgendaSave(row, checkbox, form, revertOnError, itemId);
             });
             saveQueues.set(row, task);
         }

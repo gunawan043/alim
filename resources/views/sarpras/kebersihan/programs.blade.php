@@ -34,7 +34,7 @@
                     @endphp
                     <td class="text-center p-1">
                         @if($canManage)
-                            <form method="POST" class="program-check-form" action="{{ route('sarpras.kebersihan.program.check', ['programId' => $program->id]) }}">
+                            <form method="POST" class="program-check-form" data-item-key="{{ $program->id }}:{{ $m }}" action="{{ route('sarpras.kebersihan.program.check', ['programId' => $program->id]) }}">
                                 @csrf
                                 <input type="hidden" name="year" value="{{ $year }}">
                                 <input type="hidden" name="month" value="{{ $m }}">
@@ -112,40 +112,110 @@
 <script>
     (function () {
         const statusEl = document.getElementById('programAutoSaveStatus');
+        const offlineChecks = new Map();
+        let tabChannel = null;
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!offlineChecks.size) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+        window.addEventListener('online', function () { flushOfflineChecks(); });
+
+        try {
+            tabChannel = new BroadcastChannel('sarpras-program-{{ $year }}');
+            tabChannel.onmessage = function () {
+                if (statusEl) statusEl.innerHTML = '<i class="ri-error-warning-line me-1"></i>Data diperbarui di tab lain. Muat ulang bila perlu.';
+            };
+        } catch (error) {
+            tabChannel = null;
+        }
+
+        function setStatus(html) {
+            if (statusEl) statusEl.innerHTML = html;
+        }
+
+        function isNetworkFailure(error) {
+            return !navigator.onLine
+                || error instanceof TypeError
+                || /failed to fetch|networkerror|load failed/i.test(error.message || '');
+        }
+
+        function applyProgramState(form, button, done) {
+            const planned = button.dataset.planned === '1';
+            const doneInput = form.querySelector('input[name="is_done"]');
+            if (doneInput) doneInput.value = done ? '0' : '1';
+            button.textContent = done ? '✓' : (planned ? '○' : '·');
+            button.classList.toggle('btn-success', done);
+            button.classList.toggle('btn-outline-primary', !done && planned);
+            button.classList.toggle('btn-light', !done && !planned);
+            button.classList.toggle('text-muted', !done && !planned);
+            button.title = done ? 'Batalkan checklist' : 'Tandai terlaksana';
+        }
+
+        function queueOffline(key, form, button, done) {
+            offlineChecks.set(key, { form: new FormData(form), done: done });
+            applyProgramState(form, button, done);
+            setStatus('<i class="ri-cloud-off-line me-1"></i>Menunggu koneksi…');
+        }
+
+        async function performCheck(form, button, key, formData) {
+            if (!navigator.onLine) {
+                queueOffline(key, form, button, formData.get('is_done') === '1');
+                return;
+            }
+
+            const token = form.querySelector('input[name="_token"]')?.value || '';
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+
+                offlineChecks.delete(key);
+                applyProgramState(form, button, !!data.is_done);
+                setStatus('<i class="ri-cloud-done-line me-1"></i>Tersimpan ' + (data.saved_at || ''));
+                try { tabChannel?.postMessage({ key: key, at: data.saved_at || '' }); } catch (error) {}
+            } catch (error) {
+                if (isNetworkFailure(error)) {
+                    queueOffline(key, form, button, formData.get('is_done') === '1');
+                    return;
+                }
+                setStatus('<i class="ri-error-warning-line me-1"></i>Gagal menyimpan: ' + error.message);
+            }
+        }
+
+        async function flushOfflineChecks() {
+            if (!navigator.onLine || !offlineChecks.size) return;
+            setStatus('<i class="ri-loader-4-line me-1"></i>Menyambung kembali…');
+            const entries = Array.from(offlineChecks.entries());
+            for (const entry of entries) {
+                const key = entry[0];
+                const queued = entry[1];
+                const form = document.querySelector('.program-check-form[data-item-key="' + key + '"]');
+                const button = form?.querySelector('button[type="submit"]');
+                if (!form || !button) {
+                    offlineChecks.delete(key);
+                    continue;
+                }
+                button.disabled = true;
+                await performCheck(form, button, key, queued.form);
+                button.disabled = false;
+            }
+        }
+
         document.querySelectorAll('.program-check-form').forEach(function (form) {
             form.addEventListener('submit', async function (event) {
                 event.preventDefault();
                 const button = form.querySelector('button[type="submit"]');
                 if (!button || button.disabled) return;
-                const token = form.querySelector('input[name="_token"]')?.value || '';
                 button.disabled = true;
-                if (statusEl) statusEl.innerHTML = '<i class="ri-loader-4-line me-1"></i>Menyimpan…';
-
-                try {
-                    const response = await fetch(form.action, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
-                        body: new FormData(form)
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
-
-                    const done = !!data.is_done;
-                    const planned = button.dataset.planned === '1';
-                    const doneInput = form.querySelector('input[name="is_done"]');
-                    if (doneInput) doneInput.value = done ? '0' : '1';
-                    button.textContent = done ? '✓' : (planned ? '○' : '·');
-                    button.classList.toggle('btn-success', done);
-                    button.classList.toggle('btn-outline-primary', !done && planned);
-                    button.classList.toggle('btn-light', !done && !planned);
-                    button.classList.toggle('text-muted', !done && !planned);
-                    button.title = done ? 'Batalkan checklist' : 'Tandai terlaksana';
-                    if (statusEl) statusEl.innerHTML = '<i class="ri-cloud-done-line me-1"></i>Tersimpan ' + (data.saved_at || '');
-                } catch (error) {
-                    if (statusEl) statusEl.innerHTML = '<i class="ri-error-warning-line me-1"></i>Gagal menyimpan: ' + error.message;
-                } finally {
-                    button.disabled = false;
-                }
+                setStatus('<i class="ri-loader-4-line me-1"></i>Menyimpan…');
+                await performCheck(form, button, form.dataset.itemKey, new FormData(form));
+                button.disabled = false;
             });
         });
     })();

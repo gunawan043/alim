@@ -227,8 +227,52 @@
         const saveStatus = document.getElementById('cleaningSaveStatus');
         const finalizeError = document.getElementById('cleaningFinalizeError');
         const saveTimers = new WeakMap();
+        const offlineRows = new Map();
         let evidenceRow = null;
+        let tabChannel = null;
         const evidenceDrafts = new Map();
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!offlineRows.size) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+        window.addEventListener('online', function () { flushOfflineRows(); });
+
+        try {
+            tabChannel = new BroadcastChannel('sarpras-cleaning-' + root.dataset.areaId + '-' + root.dataset.reportDate);
+            tabChannel.onmessage = function () {
+                if (saveStatus) saveStatus.innerHTML = '<i class="ri-error-warning-line me-1"></i>Data diperbarui di tab lain. Muat ulang bila perlu.';
+            };
+        } catch (error) {
+            tabChannel = null;
+        }
+
+        function isNetworkFailure(error) {
+            return !navigator.onLine
+                || error instanceof TypeError
+                || /failed to fetch|networkerror|load failed/i.test(error.message || '');
+        }
+
+        function queueOfflineRow(row, overrides) {
+            offlineRows.set(row.dataset.taskId, { row: row, overrides: overrides || {} });
+            rowStatus(row, 'Menunggu koneksi…', 'warning');
+            if (saveStatus) saveStatus.innerHTML = '<i class="ri-cloud-off-line me-1"></i>Menunggu koneksi — perubahan akan dikirim otomatis.';
+        }
+
+        async function flushOfflineRows() {
+            if (!navigator.onLine || !offlineRows.size) return;
+            if (saveStatus) saveStatus.innerHTML = '<i class="ri-loader-4-line me-1"></i>Menyambung kembali…';
+            const entries = Array.from(offlineRows.entries());
+            for (const entry of entries) {
+                const queued = entry[1];
+                if (!queued.row || !document.body.contains(queued.row)) {
+                    offlineRows.delete(entry[0]);
+                    continue;
+                }
+                await saveRow(queued.row, queued.overrides);
+            }
+        }
 
         function officerId() { return document.getElementById('cleaningOfficer')?.value || '{{ auth()->id() }}'; }
         function updateProgress() {
@@ -267,6 +311,10 @@
 
             rowStatus(row, 'Menyimpan…', 'muted');
             if (saveStatus) saveStatus.innerHTML = '<i class="ri-loader-4-line me-1"></i>Menyimpan perubahan…';
+            if (!navigator.onLine) {
+                queueOfflineRow(row, overrides);
+                return false;
+            }
             try {
                 const response = await fetch(root.dataset.autosaveUrl, {
                     method: 'POST',
@@ -292,11 +340,17 @@
                 // terunggah ulang saat tombol simpan ditekan lagi.
                 if (overrides.beforeFile && evidenceBeforeFile) evidenceBeforeFile.value = '';
                 if (overrides.afterFile && evidenceAfterFile) evidenceAfterFile.value = '';
+                offlineRows.delete(taskId);
                 rowStatus(row, '✓ Tersimpan ' + (data.saved_at || ''), 'success');
                 if (saveStatus) saveStatus.innerHTML = '<i class="ri-cloud-done-line me-1"></i>Tersimpan otomatis';
                 updateProgress();
+                try { tabChannel?.postMessage({ taskId: taskId, at: data.saved_at || '' }); } catch (error) {}
                 return true;
             } catch (error) {
+                if (isNetworkFailure(error)) {
+                    queueOfflineRow(row, overrides);
+                    return false;
+                }
                 rowStatus(row, 'Gagal menyimpan: ' + error.message, 'danger');
                 if (saveStatus) saveStatus.innerHTML = '<i class="ri-error-warning-line me-1"></i>Belum tersimpan';
                 return false;

@@ -1,4 +1,4 @@
-<div class="d-flex align-items-start gap-2 py-2 border-bottom agenda-row">
+<div class="d-flex align-items-start gap-2 py-2 border-bottom agenda-row" data-item-id="{{ $item->id }}">
     <div class="form-check pt-1">
         <input type="hidden" name="items[{{ $item->id }}][status]" value="belum">
         <input class="form-check-input agenda-done" type="checkbox" data-update-url="{{ route('sarpras.pertamanan.agenda.items.update', ['itemId' => $item->id]) }}" name="items[{{ $item->id }}][status]" value="selesai" id="agenda_done_{{ $item->id }}" {{ $item->status === 'selesai' ? 'checked' : '' }}>

@@ -2638,6 +2638,34 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - endpoint autosave Checklist dan program mengembalikan `200` + JSON;
   - JavaScript ketiga halaman lolos `node --check`.
 
+## 223. Ketahanan Autosave URT
+
+- **Antrean offline + retry**
+  - Checklist Pemeliharaan, Agenda Pertamanan, Program Tahunan, dan Checklist Kebersihan menyimpan request yang gagal karena jaringan.
+  - Status berubah menjadi **“Menunggu koneksi…”**.
+  - Saat koneksi kembali (`online`), antrean dikirim ulang otomatis.
+  - Request yang gagal karena validasi/server tetap ditampilkan sebagai error, bukan diantrekan.
+- **Peringatan sebelum halaman ditutup**
+  - `beforeunload` aktif bila masih ada antrean autosave yang belum terkirim.
+- **Peringatan tab ganda**
+  - `BroadcastChannel` memberi tahu tab lain bahwa data telah diperbarui di tab berbeda.
+  - Pesan: “Data diperbarui di tab lain. Muat ulang bila perlu.”
+- **Draft catatan Checklist Pemeliharaan**
+  - Catatan disimpan ke `localStorage` saat diketik, bahkan sebelum ✓/✕ dipilih.
+  - Draft dipulihkan saat halaman dimuat ulang.
+  - Draft dihapus setelah autosave berhasil.
+- **Konsistensi UI**
+  - Tombol **Simpan Progres** diganti menjadi **Simpan Manual** sebagai cadangan autosave.
+  - Tombol simpan Agenda diberi penjelasan bahwa checklist/catatan sudah autosave.
+- **Storage lokal**
+  - `public/storage` sudah tertaut; upload fallback lokal berfungsi.
+- **Diuji dengan Playwright**
+  - simulasi jaringan putus: keempat menu masuk status “Menunggu koneksi…”;
+  - koneksi kembali: semua antrean terkirim dan status menjadi “Tersimpan”;
+  - catatan draft bertahan setelah reload;
+  - tab kedua menerima peringatan perubahan dari tab pertama;
+  - JavaScript keempat halaman lolos `node --check`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
