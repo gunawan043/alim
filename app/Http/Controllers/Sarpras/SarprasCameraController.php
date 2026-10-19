@@ -24,11 +24,23 @@ class SarprasCameraController extends SarprasBaseController
         $validated = $request->validate([
             'lat' => 'required|numeric|between:-90,90',
             'lng' => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0',
         ]);
 
         $lat = (float) $validated['lat'];
         $lng = (float) $validated['lng'];
-        $cacheKey = 'sarpras:geocode:'.round($lat, 4).':'.round($lng, 4);
+        $accuracy = isset($validated['accuracy']) ? (float) $validated['accuracy'] : null;
+
+        // Jangan pernah memberi nama tempat dari titik yang masih kasar
+        // (mis. lokasi berbasis WiFi/IP yang bisa meleset kilometer).
+        if ($accuracy !== null && $accuracy > 100) {
+            return response()->json([
+                'place' => null,
+                'reason' => 'accuracy_too_low',
+            ]);
+        }
+
+        $cacheKey = 'sarpras:geocode:v2:'.round($lat, 4).':'.round($lng, 4);
 
         $place = Cache::remember($cacheKey, now()->addDays(7), function () use ($lat, $lng) {
             try {
@@ -50,19 +62,50 @@ class SarprasCameraController extends SarprasBaseController
                 }
 
                 $data = $response->json();
+                if (! is_array($data)) {
+                    return null;
+                }
+
+                // Pastikan hasil reverse geocode memang berada di sekitar titik
+                // yang diminta. Nominatim bisa mengembalikan objek terdekat yang
+                // jauh bila titik berada di area tanpa nama.
+                $resultLat = isset($data['lat']) ? (float) $data['lat'] : null;
+                $resultLng = isset($data['lon']) ? (float) $data['lon'] : null;
+                if ($resultLat !== null && $resultLng !== null) {
+                    $distance = $this->distanceMeters($lat, $lng, $resultLat, $resultLng);
+                    if ($distance > 500) {
+                        Log::info('Reverse geocode result ignored (too far)', [
+                            'lat' => $lat,
+                            'lng' => $lng,
+                            'result_lat' => $resultLat,
+                            'result_lng' => $resultLng,
+                            'distance_m' => round($distance),
+                        ]);
+
+                        return null;
+                    }
+                }
+
                 $address = $data['address'] ?? [];
-                $road = trim(($address['road'] ?? $data['name'] ?? '').' '.($address['house_number'] ?? ''));
+                $road = trim(($address['road'] ?? '').' '.($address['house_number'] ?? ''));
                 $poi = $address['amenity'] ?? $address['building'] ?? $address['school']
                     ?? $address['university'] ?? $address['office'] ?? $address['leisure']
-                    ?? $address['tourism'] ?? null;
+                    ?? $address['tourism'] ?? $address['shop'] ?? $address['healthcare']
+                    ?? $address['historic'] ?? null;
                 $parts = array_values(array_unique(array_filter([
-                    $poi,
+                    $poi ?: null,
                     $road ?: null,
                     $address['neighbourhood'] ?? $address['hamlet'] ?? null,
                     $address['village'] ?? $address['suburb'] ?? null,
                     $address['city'] ?? $address['town'] ?? $address['county'] ?? null,
-                    $address['state'] ?? null,
                 ])));
+
+                // Jika tidak ada nama jalan/POI, gunakan nama objek Nominatim
+                // (mis. gang, area, atau bangunan) alih-alih display_name yang
+                // bisa memuat wilayah yang jauh.
+                if ($parts === [] && ! empty($data['name'])) {
+                    $parts[] = trim((string) $data['name']);
+                }
 
                 if ($parts !== []) {
                     return implode(', ', array_slice($parts, 0, 4));
@@ -79,5 +122,22 @@ class SarprasCameraController extends SarprasBaseController
         });
 
         return response()->json(['place' => $place]);
+    }
+
+    /**
+     * Jarak dua koordinat dalam meter (haversine).
+     */
+    private function distanceMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371000.0;
+        $latDelta = deg2rad($lat2 - $lat1);
+        $lngDelta = deg2rad($lng2 - $lng1);
+
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($lngDelta / 2) ** 2;
+
+        $a = min(1.0, max(0.0, $a));
+
+        return 2 * $earthRadius * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

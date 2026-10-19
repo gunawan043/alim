@@ -16,13 +16,24 @@
     .alim-location-override input { min-width:170px; max-width:260px; background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#fff; font-size:11px; }
     .alim-location-override .btn { background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#FFD400; }
     .alim-location-override input::placeholder { color:rgba(255,255,255,.65); }
+    .alim-camera-map { position:absolute; inset:0; z-index:30; display:none; flex-direction:column; background:#0b141a; color:#fff; }
+    .alim-camera-map.is-open { display:flex; }
+    .alim-map-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; background:rgba(0,0,0,.78); border-bottom:1px solid rgba(255,255,255,.12); z-index:2; }
+    .alim-map-hint { font-size:11px; color:rgba(255,255,255,.72); }
+    .alim-map-body { position:relative; flex:1; min-height:0; }
+    #alimMapCanvas { position:absolute; inset:0; }
+    .alim-map-center { position:absolute; left:50%; top:50%; transform:translate(-50%,-100%); z-index:500; pointer-events:none; color:#FFD400; font-size:40px; line-height:1; text-shadow:0 4px 10px rgba(0,0,0,.6); }
+    .alim-map-center::after { content:''; position:absolute; left:50%; bottom:-3px; width:10px; height:4px; border-radius:50%; background:rgba(0,0,0,.45); transform:translateX(-50%); }
+    .alim-map-footer { display:flex; justify-content:space-between; gap:10px; padding:10px 16px; background:rgba(0,0,0,.78); font-size:11px; color:rgba(255,255,255,.75); z-index:2; }
+    @media (max-width: 576px) { .alim-location-override input { min-width:140px; max-width:180px; } .alim-map-toolbar { align-items:flex-start; flex-direction:column; } }
     .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
     .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
     .alim-live-overlay .live-month { font-size:12px; font-weight:700; }
     .alim-live-overlay .live-title { font-size:22px; font-weight:800; line-height:1.1; margin-top:4px; }
     .alim-live-overlay .live-title span { color:#FFD400; }
     .alim-live-overlay .live-subtitle { font-size:10px; opacity:.82; }
-    .alim-live-overlay .live-location { display:flex; gap:7px; align-items:flex-start; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.16); }
+    .alim-live-overlay .live-location { display:flex; gap:7px; align-items:flex-start; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.16); cursor:pointer; }
+    .alim-live-overlay .live-location:active { opacity:.75; }
     .alim-live-overlay .live-location i { color:#FFD400; font-size:15px; }
     .alim-live-overlay .live-place { font-size:12px; font-weight:700; line-height:1.2; }
     .alim-live-overlay .live-coords { font-size:9px; opacity:.72; margin-top:2px; }
@@ -51,7 +62,7 @@
                         <div class="live-date"><span class="live-day" id="alimLiveDay">--</span><span class="live-month" id="alimLiveMonthYear">--- ----</span></div>
                         <div class="live-title">Dokumentasi<span>.</span></div>
                         <div class="live-subtitle" id="alimLivePageTitle">Kamera Dokumentasi</div>
-                        <div class="live-location"><i class="ri-map-pin-2-fill"></i><div class="min-w-0"><div class="live-place" id="alimLivePlace">Meminta lokasi…</div><div class="live-coords" id="alimLiveCoords">Koordinat belum tersedia</div></div></div>
+                        <div class="live-location" id="alimLiveLocation" role="button" tabindex="0" title="Klik untuk memilih titik lokasi di peta"><i class="ri-map-pin-2-fill"></i><div class="min-w-0"><div class="live-place" id="alimLivePlace">Meminta lokasi…</div><div class="live-coords" id="alimLiveCoords">Koordinat belum tersedia</div></div></div>
                         <div class="live-footer"><span>Oleh: <strong>{{ auth()->user()->name ?? 'Pengguna ALIM' }}</strong></span><span class="copyright">© Ponpes Abu Hurairah</span></div>
                     </div>
                 </div>
@@ -64,8 +75,25 @@
                             <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
                             <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
                         </div>
-                        <div class="alim-location-override d-flex gap-1"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"><button type="button" id="alimLocationRefresh" class="btn btn-dark btn-sm flex-shrink-0" title="Perbarui lokasi"><i class="ri-refresh-line"></i></button></div>
+                        <div class="alim-location-override d-flex gap-1"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"><button type="button" id="alimLocationMap" class="btn btn-dark btn-sm flex-shrink-0" title="Pilih titik di peta"><i class="ri-map-pin-line"></i></button><button type="button" id="alimLocationRefresh" class="btn btn-dark btn-sm flex-shrink-0" title="Perbarui lokasi"><i class="ri-refresh-line"></i></button></div>
                     </div>
+                </div>
+                <div id="alimCameraMapPicker" class="alim-camera-map" aria-hidden="true">
+                    <div class="alim-map-toolbar">
+                        <div>
+                            <div class="fw-bold">Pilih titik lokasi</div>
+                            <div class="alim-map-hint">Geser dan zoom peta sampai pin tepat di lokasi Anda.</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="alimMapCancel" class="btn btn-sm btn-light">Batal</button>
+                            <button type="button" id="alimMapConfirm" class="btn btn-sm btn-warning fw-bold">Gunakan titik</button>
+                        </div>
+                    </div>
+                    <div class="alim-map-body">
+                        <div id="alimMapCanvas"></div>
+                        <div class="alim-map-center"><i class="ri-map-pin-5-fill"></i></div>
+                    </div>
+                    <div class="alim-map-footer"><span id="alimMapCoords">-</span><span>© OpenStreetMap</span></div>
                 </div>
                 <div id="alimCameraError" class="alert alert-danger small d-none"></div>
                 <div class="alim-camera-hint">Arahkan kamera ke objek · watermark tampil langsung di layar</div>
@@ -93,11 +121,21 @@
     const errorEl = document.getElementById('alimCameraError');
     let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, manualPlace = '', placePromise = null, clockTimer = null;
     let locationWatchId = null, locationStopTimer = null, geocodeTimer = null, geocodeSeq = 0, lastGeocodeAccuracy = null;
+    let manualCoordinate = false, mapInstance = null, leafletPromise = null;
+    const PRECISE_ACCURACY_METERS = 100;
     const accountName = @json(auth()->user()->name ?? 'Pengguna ALIM');
     const unitName = @json($cameraUnitName);
     const locationOverrideEl = document.getElementById('alimLocationOverride');
     const locationRefreshBtn = document.getElementById('alimLocationRefresh');
+    const locationMapBtn = document.getElementById('alimLocationMap');
+    const mapPickerEl = document.getElementById('alimCameraMapPicker');
+    const mapCanvasEl = document.getElementById('alimMapCanvas');
+    const mapCoordsEl = document.getElementById('alimMapCoords');
+    const mapCancelBtn = document.getElementById('alimMapCancel');
+    const mapConfirmBtn = document.getElementById('alimMapConfirm');
     const geocodeEndpoint = @json(route('sarpras.camera.geocode'));
+    const leafletCssUrl = @json(asset('build/libs/leaflet/leaflet.css'));
+    const leafletJsUrl = @json(asset('build/libs/leaflet/leaflet.js'));
     const logo = new Image();
     logo.src = '{{ asset('build/images/alim-light.png') }}';
 
@@ -112,6 +150,26 @@
         locationRefreshBtn.addEventListener('click', requestLocation);
     }
 
+    if (locationMapBtn) {
+        locationMapBtn.addEventListener('click', openMapPicker);
+    }
+    const liveLocationEl = document.getElementById('alimLiveLocation');
+    if (liveLocationEl) {
+        liveLocationEl.addEventListener('click', openMapPicker);
+        liveLocationEl.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openMapPicker();
+            }
+        });
+    }
+    if (mapCancelBtn) {
+        mapCancelBtn.addEventListener('click', closeMapPicker);
+    }
+    if (mapConfirmBtn) {
+        mapConfirmBtn.addEventListener('click', confirmMapPoint);
+    }
+
     function updateClock() {
         const now = new Date();
         const timeZone = 'Asia/Makassar';
@@ -120,25 +178,55 @@
         liveMonthYearEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone, month: 'long', year: 'numeric' }).format(now).toUpperCase();
     }
 
-    function renderLocation() {
-        livePlaceEl.textContent = manualPlace || placeName || (coords ? 'Nama lokasi tidak tersedia' : 'Lokasi tidak tersedia');
-        liveCoordsEl.textContent = coords
-            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m${coords.accuracy > 100 ? ' (akurasi rendah)' : ''}`
-            : 'Koordinat belum tersedia';
+    function formatDistance(meters) {
+        if (!Number.isFinite(meters)) return '-';
+        return meters >= 1000 ? (meters / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(meters) + ' m';
     }
 
-    async function resolvePlaceName(lat, lng) {
+    function renderLocation() {
+        const isPrecise = coords && (coords.manual || coords.accuracy <= PRECISE_ACCURACY_METERS);
+        if (manualPlace) {
+            livePlaceEl.textContent = manualPlace;
+        } else if (!coords) {
+            livePlaceEl.textContent = 'Lokasi tidak tersedia';
+        } else if (coords.manual) {
+            livePlaceEl.textContent = placeName || 'Titik manual terpilih';
+        } else if (!isPrecise) {
+            // Jangan tampilkan nama tempat dari titik yang masih kasar; nama itu
+            // bisa berasal dari WiFi/IP dan meleset jauh dari lokasi sebenarnya.
+            livePlaceEl.textContent = `Lokasi belum presisi (±${formatDistance(coords.accuracy)}) · pilih titik di peta`;
+        } else {
+            livePlaceEl.textContent = placeName || 'Nama lokasi tidak tersedia';
+        }
+
+        if (!coords) {
+            liveCoordsEl.textContent = 'Koordinat belum tersedia';
+            return;
+        }
+
+        const accuracyText = coords.manual ? 'titik manual' : `±${formatDistance(coords.accuracy)}`;
+        const approximateText = !coords.manual && coords.accuracy > PRECISE_ACCURACY_METERS ? ' · perkiraan jaringan' : '';
+        liveCoordsEl.textContent = `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ${accuracyText}${approximateText}`;
+    }
+
+    async function resolvePlaceName(lat, lng, accuracy) {
+        // Jangan memberi nama dari titik yang masih kasar.
+        if (accuracy != null && accuracy > PRECISE_ACCURACY_METERS) return null;
+
         // Proxy backend: menghindari CORS Nominatim.
         var controller = new AbortController();
         var timer = setTimeout(function () { controller.abort(); }, 5000);
         try {
-            var response = await fetch(geocodeEndpoint + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng), {
+            var response = await fetch(geocodeEndpoint + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng) + '&accuracy=' + encodeURIComponent(accuracy == null ? '' : accuracy), {
                 headers: { 'Accept': 'application/json' },
                 signal: controller.signal
             });
             if (response.ok) {
                 var payload = await response.json();
                 if (payload.place) return payload.place;
+                // Jangan jatuh ke geocoder kota bila backend menolak karena
+                // titik GPS masih kasar.
+                if (payload.reason === 'accuracy_too_low') return null;
             }
         } catch (error) {
             // lanjut ke fallback
@@ -161,6 +249,97 @@
         return null;
     }
 
+    function loadLeaflet() {
+        if (window.L) return Promise.resolve(window.L);
+        if (leafletPromise) return leafletPromise;
+
+        leafletPromise = new Promise(function (resolve, reject) {
+            if (!document.querySelector('link[data-alim-leaflet]')) {
+                var css = document.createElement('link');
+                css.rel = 'stylesheet';
+                css.href = leafletCssUrl;
+                css.setAttribute('data-alim-leaflet', '1');
+                document.head.appendChild(css);
+            }
+
+            var existing = document.querySelector('script[data-alim-leaflet]');
+            if (existing) {
+                existing.addEventListener('load', function () { window.L ? resolve(window.L) : reject(new Error('Leaflet tidak tersedia')); });
+                existing.addEventListener('error', reject);
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = leafletJsUrl;
+            script.async = true;
+            script.setAttribute('data-alim-leaflet', '1');
+            script.onload = function () { window.L ? resolve(window.L) : reject(new Error('Leaflet tidak tersedia')); };
+            script.onerror = function () { reject(new Error('Gagal memuat peta')); };
+            document.head.appendChild(script);
+        });
+
+        return leafletPromise;
+    }
+
+    function updateMapCoords() {
+        if (!mapInstance || !mapCoordsEl) return;
+        var center = mapInstance.getCenter();
+        mapCoordsEl.textContent = center.lat.toFixed(6) + ', ' + center.lng.toFixed(6);
+    }
+
+    function openMapPicker() {
+        if (!mapPickerEl || !mapCanvasEl) return;
+        mapPickerEl.classList.add('is-open');
+        mapPickerEl.setAttribute('aria-hidden', 'false');
+
+        loadLeaflet().then(function () {
+            var start = coords ? [coords.lat, coords.lng] : [-8.5833, 116.1167];
+            if (!mapInstance) {
+                mapInstance = L.map(mapCanvasEl, { zoomControl: true, attributionControl: false }).setView(start, 18);
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(mapInstance);
+                mapInstance.on('move', updateMapCoords);
+            } else {
+                mapInstance.setView(start, Math.max(mapInstance.getZoom() || 17, 17));
+            }
+            setTimeout(function () {
+                mapInstance.invalidateSize();
+                updateMapCoords();
+            }, 80);
+        }).catch(function () {
+            closeMapPicker();
+            if (errorEl) {
+                errorEl.textContent = 'Peta gagal dimuat. Periksa koneksi internet lalu coba lagi.';
+                errorEl.classList.remove('d-none');
+            }
+        });
+    }
+
+    function closeMapPicker() {
+        if (!mapPickerEl) return;
+        mapPickerEl.classList.remove('is-open');
+        mapPickerEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function confirmMapPoint() {
+        if (!mapInstance) return;
+        var center = mapInstance.getCenter();
+        coords = { lat: center.lat, lng: center.lng, accuracy: 10, manual: true };
+        manualCoordinate = true;
+        stopLocationWatch();
+        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
+        placeName = null;
+        manualPlace = '';
+        lastGeocodeAccuracy = null;
+        if (locationOverrideEl) locationOverrideEl.value = '';
+        renderLocation();
+        livePlaceEl.textContent = 'Mencari nama lokasi…';
+        queueGeocode(center.lat, center.lng, 10, true);
+        closeMapPicker();
+    }
+
     function stopLocationWatch() {
         if (locationWatchId !== null && navigator.geolocation) {
             navigator.geolocation.clearWatch(locationWatchId);
@@ -169,24 +348,34 @@
         if (locationStopTimer) { clearTimeout(locationStopTimer); locationStopTimer = null; }
     }
 
-    function queueGeocode(lat, lng) {
+    function queueGeocode(lat, lng, accuracy, force) {
+        if (!force && accuracy != null && accuracy > PRECISE_ACCURACY_METERS) {
+            placeName = null;
+            renderLocation();
+            return;
+        }
         if (geocodeTimer) clearTimeout(geocodeTimer);
         const seq = ++geocodeSeq;
-        geocodeTimer = setTimeout(function () {
-            placePromise = resolvePlaceName(lat, lng).then(function (name) {
-                if (seq === geocodeSeq) {
-                    placeName = name;
-                    renderLocation();
-                }
-                return name;
-            });
-        }, 700);
+        placePromise = new Promise(function (resolve) {
+            geocodeTimer = setTimeout(function () {
+                resolvePlaceName(lat, lng, accuracy).then(function (name) {
+                    if (seq === geocodeSeq) {
+                        placeName = name;
+                        renderLocation();
+                    }
+                    resolve(name);
+                }).catch(function () {
+                    resolve(null);
+                });
+            }, 700);
+        });
     }
 
     function requestLocation() {
         coords = null;
         placeName = null;
         manualPlace = '';
+        manualCoordinate = false;
         lastGeocodeAccuracy = null;
         if (locationOverrideEl) locationOverrideEl.value = '';
         placePromise = null;
@@ -199,6 +388,7 @@
         // Ambil beberapa sampel, pakai accuracy terkecil (paling presisi).
         locationWatchId = navigator.geolocation.watchPosition(
             function (position) {
+                if (manualCoordinate) return;
                 const next = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
@@ -206,11 +396,17 @@
                 };
                 if (!coords || next.accuracy < coords.accuracy) {
                     coords = next;
-                    renderLocation();
-                    livePlaceEl.textContent = 'Mencari nama lokasi…';
-                    if (lastGeocodeAccuracy === null || next.accuracy + 15 < lastGeocodeAccuracy) {
-                        lastGeocodeAccuracy = next.accuracy;
-                        queueGeocode(next.lat, next.lng);
+                    if (next.accuracy <= PRECISE_ACCURACY_METERS) {
+                        if (lastGeocodeAccuracy === null || next.accuracy + 15 < lastGeocodeAccuracy) {
+                            lastGeocodeAccuracy = next.accuracy;
+                            livePlaceEl.textContent = 'Mencari nama lokasi…';
+                            queueGeocode(next.lat, next.lng, next.accuracy);
+                        } else {
+                            renderLocation();
+                        }
+                    } else {
+                        placeName = null;
+                        renderLocation();
                     }
                 }
                 if (next.accuracy <= 20) {
@@ -251,6 +447,7 @@
         if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
         if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
         stopLocationWatch();
+        closeMapPicker();
         if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
     }
 
@@ -284,7 +481,12 @@
         const year = new Intl.DateTimeFormat('id-ID', { timeZone, year: 'numeric' }).format(now);
         const time = new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
         const pageTitle = (document.title || 'Dokumentasi Sarpras').split('|')[0].trim();
-        const displayPlaceName = manualPlace || placeName;
+        const locationIsPrecise = coords && (coords.manual || coords.accuracy <= PRECISE_ACCURACY_METERS);
+        const displayPlaceName = manualPlace
+            || (locationIsPrecise ? placeName : null)
+            || (coords && coords.manual ? 'Titik manual terpilih'
+                : coords && coords.accuracy > PRECISE_ACCURACY_METERS ? 'Lokasi perkiraan (±' + formatDistance(coords.accuracy) + ')'
+                : 'Nama lokasi tidak tersedia');
         const x = Math.round(w * 0.042);
         const panelW = Math.min(w * (portrait ? 0.86 : 0.68), 800 * unit);
         const panelH = 300 * unit;
@@ -423,7 +625,8 @@
         ctx.fillStyle = 'rgba(255,255,255,0.74)';
         ctx.font = `500 ${Math.round(10.5 * unit)}px Arial, sans-serif`;
         const coordinateText = coords
-            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m`
+            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · `
+                + (coords.manual ? 'titik manual' : `±${formatDistance(coords.accuracy)}${coords.accuracy > PRECISE_ACCURACY_METERS ? ' · perkiraan jaringan' : ''}`)
             : 'Koordinat tidak tersedia';
         ctx.fillText(fitText(ctx, coordinateText, panelW - 44 * unit), x + 19 * unit, panelY + 228 * unit);
 

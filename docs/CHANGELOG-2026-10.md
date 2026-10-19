@@ -2516,6 +2516,29 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - tersedia input **Koreksi nama lokasi** di layar kamera;
   - koreksi manual langsung dipakai pada live watermark dan hasil foto.
 
+## 217. Kamera: Anti Nama Lokasi Jauh & Pemilihan Titik Manual
+
+- Nama lokasi tidak lagi dipakai bila titik GPS masih kasar:
+  - akurasi >100 m dianggap perkiraan jaringan/WiFi/IP;
+  - backend menolak reverse geocode bila `accuracy` >100 m;
+  - frontend menampilkan **“Lokasi belum presisi (±X km) · pilih titik di peta”**;
+  - watermark menulis **“Lokasi perkiraan”** dan **“perkiraan jaringan”**, bukan nama tempat yang menyesatkan.
+- Reverse geocoding memverifikasi hasil:
+  - nama tempat/gedung/amenity diprioritaskan;
+  - nama jalan/gang dipakai bila tersedia;
+  - hasil yang titiknya lebih dari 500 m dari koordinat diminta diabaikan;
+  - `display_name` tidak lagi dipakai sebagai sumber utama.
+- Ditambahkan **pemilih titik di peta**:
+  - klik area lokasi pada watermark atau ikon peta;
+  - geser/zoom peta hingga pin tepat di lokasi;
+  - tombol **Gunakan titik** mengganti koordinat dan melakukan reverse geocode di titik tersebut;
+  - koordinat hasil pilihan ditandai **titik manual** pada watermark.
+- Koreksi nama lokasi tetap tersedia dan dipakai pada live watermark serta hasil foto.
+- Diuji dengan Playwright:
+  - lokasi presisi ±10 m menampilkan nama jalan;
+  - lokasi kasar ±5 km tidak menampilkan nama tempat;
+  - peta Leaflet terbuka dan pemilihan titik manual berfungsi.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

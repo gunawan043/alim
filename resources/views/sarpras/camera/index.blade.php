@@ -27,6 +27,7 @@
                     <ol class="ps-3 mb-0">
                         <li class="mb-2">Aktifkan GPS/lokasi perangkat.</li>
                         <li class="mb-2">Izinkan kamera saat browser meminta.</li>
+                        <li class="mb-2">Jika lokasi tidak presisi, ketuk area lokasi di kamera lalu pilih titik di peta.</li>
                         <li class="mb-2">Ambil foto sebelum dan sesudah pekerjaan.</li>
                         <li class="mb-2">Unduh foto atau unggah ke Google Drive.</li>
                         <li>Gunakan foto sebagai bukti laporan.</li>
