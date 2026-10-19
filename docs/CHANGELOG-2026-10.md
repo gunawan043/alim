@@ -2507,6 +2507,10 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Nama satuan kerja diambil dari GTK Work Unit utama, dengan fallback unit pertama.
 - Akurasi lokasi:
   - reverse geocoding memprioritaskan nama tempat/gedung/amenity;
+  - GPS memakai **watchPosition sampling** beberapa detik dan memilih sampel dengan `accuracy` terkecil;
+  - sampling berhenti otomatis saat akurasi ≤20 m atau setelah 8 detik;
+  - reverse geocoding di-debounce dan hanya diulang bila akurasi membaik ≥15 m;
+  - tombol **Perbarui lokasi** tersedia di samping input koreksi;
   - akurasi GPS ditampilkan;
   - peringatan “akurasi rendah” muncul bila radius >100 m;
   - tersedia input **Koreksi nama lokasi** di layar kamera;

@@ -13,7 +13,8 @@
     .alim-live-overlay { position: absolute; left: 16px; right: 16px; bottom: 110px; z-index: 3; padding: 16px; border: 1px solid rgba(255,255,255,.28); border-radius: 16px; background: rgba(5,20,27,.34); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.25); }
     .alim-live-overlay .live-brand { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:11px; letter-spacing:.02em; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.18); }
     .alim-live-overlay .live-unit-name { font-size:10px; font-weight:700; max-width:58%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .alim-location-override input { min-width:190px; max-width:280px; background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#fff; font-size:11px; }
+    .alim-location-override input { min-width:170px; max-width:260px; background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#fff; font-size:11px; }
+    .alim-location-override .btn { background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#FFD400; }
     .alim-location-override input::placeholder { color:rgba(255,255,255,.65); }
     .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
     .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
@@ -63,7 +64,7 @@
                             <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
                             <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
                         </div>
-                        <div class="alim-location-override"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"></div>
+                        <div class="alim-location-override d-flex gap-1"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"><button type="button" id="alimLocationRefresh" class="btn btn-dark btn-sm flex-shrink-0" title="Perbarui lokasi"><i class="ri-refresh-line"></i></button></div>
                     </div>
                 </div>
                 <div id="alimCameraError" class="alert alert-danger small d-none"></div>
@@ -91,9 +92,11 @@
     const captureBtn = document.getElementById('alimCameraCapture');
     const errorEl = document.getElementById('alimCameraError');
     let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, manualPlace = '', placePromise = null, clockTimer = null;
+    let locationWatchId = null, locationStopTimer = null, geocodeTimer = null, geocodeSeq = 0, lastGeocodeAccuracy = null;
     const accountName = @json(auth()->user()->name ?? 'Pengguna ALIM');
     const unitName = @json($cameraUnitName);
     const locationOverrideEl = document.getElementById('alimLocationOverride');
+    const locationRefreshBtn = document.getElementById('alimLocationRefresh');
     const geocodeEndpoint = @json(route('sarpras.camera.geocode'));
     const logo = new Image();
     logo.src = '{{ asset('build/images/alim-light.png') }}';
@@ -103,6 +106,10 @@
             manualPlace = this.value.trim();
             renderLocation();
         });
+    }
+
+    if (locationRefreshBtn) {
+        locationRefreshBtn.addEventListener('click', requestLocation);
     }
 
     function updateClock() {
@@ -154,29 +161,70 @@
         return null;
     }
 
+    function stopLocationWatch() {
+        if (locationWatchId !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(locationWatchId);
+            locationWatchId = null;
+        }
+        if (locationStopTimer) { clearTimeout(locationStopTimer); locationStopTimer = null; }
+    }
+
+    function queueGeocode(lat, lng) {
+        if (geocodeTimer) clearTimeout(geocodeTimer);
+        const seq = ++geocodeSeq;
+        geocodeTimer = setTimeout(function () {
+            placePromise = resolvePlaceName(lat, lng).then(function (name) {
+                if (seq === geocodeSeq) {
+                    placeName = name;
+                    renderLocation();
+                }
+                return name;
+            });
+        }, 700);
+    }
+
     function requestLocation() {
         coords = null;
         placeName = null;
         manualPlace = '';
+        lastGeocodeAccuracy = null;
         if (locationOverrideEl) locationOverrideEl.value = '';
         placePromise = null;
-        livePlaceEl.textContent = 'Mencari lokasi…';
-        liveCoordsEl.textContent = 'Meminta titik koordinat…';
+        stopLocationWatch();
+        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
+        livePlaceEl.textContent = 'Menyempurnakan lokasi…';
+        liveCoordsEl.textContent = 'Mengambil beberapa titik GPS…';
         if (!navigator.geolocation) { livePlaceEl.textContent = 'GPS tidak tersedia'; return; }
-        navigator.geolocation.getCurrentPosition(
+
+        // Ambil beberapa sampel, pakai accuracy terkecil (paling presisi).
+        locationWatchId = navigator.geolocation.watchPosition(
             function (position) {
-                coords = { lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy };
-                renderLocation();
-                livePlaceEl.textContent = 'Mencari nama lokasi…';
-                placePromise = resolvePlaceName(coords.lat, coords.lng).then(function (name) {
-                    placeName = name;
+                const next = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                if (!coords || next.accuracy < coords.accuracy) {
+                    coords = next;
                     renderLocation();
-                    return name;
-                });
+                    livePlaceEl.textContent = 'Mencari nama lokasi…';
+                    if (lastGeocodeAccuracy === null || next.accuracy + 15 < lastGeocodeAccuracy) {
+                        lastGeocodeAccuracy = next.accuracy;
+                        queueGeocode(next.lat, next.lng);
+                    }
+                }
+                if (next.accuracy <= 20) {
+                    stopLocationWatch();
+                }
             },
-            function () { livePlaceEl.textContent = 'Lokasi tidak diizinkan'; liveCoordsEl.textContent = 'Koordinat tidak tersedia'; },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            function () {
+                livePlaceEl.textContent = 'Lokasi tidak diizinkan';
+                liveCoordsEl.textContent = 'Koordinat tidak tersedia';
+                stopLocationWatch();
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
+        locationStopTimer = setTimeout(stopLocationWatch, 8000);
     }
 
     async function startCamera() {
@@ -202,6 +250,8 @@
     function stopCamera() {
         if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
         if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+        stopLocationWatch();
+        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
     }
 
     function selectedOrientation() {
@@ -402,7 +452,7 @@
             return;
         }
         if (!coords) {
-            await new Promise(function (resolve) { setTimeout(resolve, 900); });
+            await new Promise(function (resolve) { setTimeout(resolve, 1200); });
         }
         if (placePromise) {
             captureBtn.disabled = true;
