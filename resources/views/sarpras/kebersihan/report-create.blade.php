@@ -114,33 +114,34 @@
                                                 </div>
                                                 <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
                                             </div>
-                                            <div class="btn-group w-100 mt-2 task-action-group" role="group" aria-label="Tindakan pekerjaan">
+                                            <div class="task-actions mt-3" role="group" aria-label="Tindakan pekerjaan">
                                                 <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-success py-2" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line fs-5"></i><span class="visually-hidden">Selesai</span></label>
+                                                <label class="btn btn-outline-success task-action-btn" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line"></i><span class="d-none d-md-inline ms-1">Selesai</span></label>
                                                 <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-danger py-2" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line fs-5"></i><span class="visually-hidden">Belum</span></label>
-                                                <button class="btn btn-outline-primary py-2" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}" title="Upload bukti: catatan, foto sebelum dan sesudah" aria-label="Upload bukti"><i class="ri-upload-cloud-2-line fs-5"></i></button>
+                                                <label class="btn btn-outline-danger task-action-btn" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line"></i><span class="d-none d-md-inline ms-1">Belum</span></label>
+                                                <button class="btn btn-outline-primary task-action-btn task-evidence-btn" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}" title="Upload bukti: catatan, foto sebelum dan sesudah" aria-label="Upload bukti"><i class="ri-upload-cloud-2-line"></i><span class="ms-1">Upload Bukti</span></button>
                                             </div>
                                             <div class="collapse" id="taskDetail{{ $task->id }}">
-                                                <div class="row g-2 mt-1">
-                                                    <div class="col-md-4"><label class="form-label small">Kondisi</label><select class="form-select form-select-sm task-condition" {{ $isLocked ? 'disabled' : '' }}>@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
-                                                    <div class="col-md-8"><label class="form-label small">Catatan</label><input class="form-control form-control-sm task-notes" value="{{ old('items.'.$task->id.'.notes', $item?->notes) }}" placeholder="Keterangan bila perlu" {{ $isLocked ? 'disabled' : '' }}></div>
+                                                <div class="border-top mt-2 pt-3"><div class="fw-semibold mb-2"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Upload Bukti</div><div class="row g-3">
+                                                    <div class="col-12 col-md-4"><label class="form-label">Kondisi</label><select class="form-select task-condition" {{ $isLocked ? 'disabled' : '' }}>@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
+                                                    <div class="col-12 col-md-8"><label class="form-label">Catatan</label><input class="form-control task-notes" value="{{ old('items.'.$task->id.'.notes', $item?->notes) }}" placeholder="Keterangan bila perlu" {{ $isLocked ? 'disabled' : '' }}></div>
                                                     <div class="col-md-6">
-                                                        <label class="form-label small">Foto Sebelum</label>
-                                                        <input type="url" class="form-control form-control-sm mb-1 task-url task-before-url" value="{{ old('items.'.$task->id.'.before_url', $item?->before_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
+                                                        <label class="form-label">Foto Sebelum</label>
+                                                        <input type="url" class="form-control mb-1 task-url task-before-url" value="{{ old('items.'.$task->id.'.before_url', $item?->before_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
                                                         @if($beforeUrl)<a href="{{ $beforeUrl }}" target="_blank" class="small text-success d-block mb-1"><i class="ri-image-line me-1"></i>Foto sebelum tersimpan</a>@endif
-                                                        <input type="file" id="before_file_{{ $task->id }}" class="form-control form-control-sm task-file task-before-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
+                                                        <input type="file" id="before_file_{{ $task->id }}" class="form-control task-file task-before-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
                                                         <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}" {{ $isLocked ? 'disabled' : '' }}><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
                                                         <div id="before_preview_{{ $task->id }}"></div>
                                                     </div>
                                                     <div class="col-md-6">
-                                                        <label class="form-label small">Foto Sesudah</label>
-                                                        <input type="url" class="form-control form-control-sm mb-1 task-url task-after-url" value="{{ old('items.'.$task->id.'.after_url', $item?->after_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
+                                                        <label class="form-label">Foto Sesudah</label>
+                                                        <input type="url" class="form-control mb-1 task-url task-after-url" value="{{ old('items.'.$task->id.'.after_url', $item?->after_photo_url) }}" placeholder="Link Google Drive" {{ $isLocked ? 'disabled' : '' }}>
                                                         @if($afterUrl)<a href="{{ $afterUrl }}" target="_blank" class="small text-success d-block mb-1"><i class="ri-image-line me-1"></i>Foto sesudah tersimpan</a>@endif
-                                                        <input type="file" id="after_file_{{ $task->id }}" class="form-control form-control-sm task-file task-after-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
+                                                        <input type="file" id="after_file_{{ $task->id }}" class="form-control task-file task-after-file" accept="image/*" {{ $isLocked ? 'disabled' : '' }}>
                                                         <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}" {{ $isLocked ? 'disabled' : '' }}><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
                                                         <div id="after_preview_{{ $task->id }}"></div>
                                                     </div>
+                                                </div>
                                                 </div>
                                             </div>
                                             <div class="task-save-status small text-muted mt-2"></div>
@@ -311,13 +312,18 @@
 
 @push('css')
 <style>
-    .task-action-group { border-radius: .75rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-    .task-action-group .btn { border-width: 1.5px; }
-    .task-action-group .btn i { pointer-events: none; }
-    .task-action-group .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
-    .task-action-group .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
-    .task-action-group .btn-outline-success:hover { background: #198754; color: #fff; }
-    .task-action-group .btn-outline-danger:hover { background: #dc3545; color: #fff; }
-    .task-action-group .btn-outline-primary:hover { background: #0d6efd; color: #fff; }
+    .task-actions { display: grid; grid-template-columns: 2fr 2fr 8fr; gap: .55rem; align-items: stretch; }
+    .task-actions .btn-check { display: none; }
+    .task-action-btn { border-width: 1.5px; min-height: 44px; border-radius: .7rem !important; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: .25rem; }
+    .task-action-btn i { font-size: 1.15rem; pointer-events: none; }
+    .task-evidence-btn { background: #f0f7ff; }
+    .task-actions .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
+    .task-actions .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .task-action-btn:hover { color: #fff; }
+    @media (min-width: 768px) {
+        .task-actions { grid-template-columns: 1fr 1fr 1.5fr; gap: .75rem; }
+        .task-action-btn { min-height: 46px; font-size: .92rem; }
+        .task-row { padding: 1rem 1.15rem !important; }
+    }
 </style>
 @endpush

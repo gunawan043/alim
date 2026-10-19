@@ -2470,6 +2470,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Tombol dibuat sebagai segmented control yang lebih rapi, dengan tooltip/aria-label.
 - Legenda ikon ditampilkan sekali di atas, bukan teks berulang di setiap item.
 
+## 213. Checklist Mobile/Desktop & Tombol Upload Bukti
+
+- Aksi checklist dibedakan per ukuran layar:
+  - mobile: tombol Selesai 2 kolom, Belum 2 kolom, Upload Bukti 8 kolom dengan gap;
+  - desktop: tiga tombol dengan label teks dan ukuran lebih nyaman.
+- Tombol Upload Bukti selalu memiliki teks, bukan hanya ikon.
+- Form bukti diperbesar:
+  - label normal;
+  - select/input/textarea ukuran standar;
+  - panel Upload Bukti memiliki judul dan jarak yang lebih jelas.
+- Legenda ikon tetap ditampilkan sekali di atas halaman.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
