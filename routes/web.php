@@ -2847,6 +2847,8 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/kebersihan/program/{programId}/toggle', [SarprasCleaningController::class, 'toggleProgram'])->name('kebersihan.program.toggle');
     Route::get('/kebersihan/laporan/create', [SarprasCleaningController::class, 'createReport'])->name('kebersihan.report.create');
     Route::post('/kebersihan/laporan', [SarprasCleaningController::class, 'storeReport'])->name('kebersihan.report.store');
+    Route::post('/kebersihan/laporan/autosave', [SarprasCleaningController::class, 'autosaveReport'])->name('kebersihan.report.autosave');
+    Route::post('/kebersihan/laporan/finalize', [SarprasCleaningController::class, 'finalizeReport'])->name('kebersihan.report.finalize');
     Route::get('/kebersihan/laporan/{reportId}', [SarprasCleaningController::class, 'showReport'])->name('kebersihan.report.show');
     Route::post('/kebersihan/laporan/{reportId}/verify', [SarprasCleaningController::class, 'verifyReport'])->name('kebersihan.report.verify');
 

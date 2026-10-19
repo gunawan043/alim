@@ -2394,6 +2394,19 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - detail catatan/foto tersembunyi sampai dibutuhkan;
   - progres pekerjaan ditampilkan di bagian atas.
 
+## 207. Autosave Checklist Kebersihan & Laporan Konsisten
+
+- Checklist pekerjaan kebersihan:
+  - setiap perubahan status Selesai/Belum, kondisi, catatan, URL foto, atau file foto langsung disimpan ke laporan draft;
+  - status “Menyimpan…/Tersimpan” tampil per item dan global;
+  - tombol utama hanya **Kirim Laporan**;
+  - laporan draft dimuat kembali saat halaman dibuka;
+  - validasi kelengkapan foto dilakukan saat pengiriman.
+- Halaman laporan:
+  - Buku Induk, KIR, Inventaris Per Ruang, dan Buku Peminjaman memakai kartu statistik `x-sarpras-stats`;
+  - tabel hover, empty state lord-icon, filter, dan tombol PDF konsisten;
+  - pusat laporan tetap memakai pola pencarian/tabel/modal.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

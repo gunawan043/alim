@@ -7,6 +7,18 @@
         @slot('title') Kartu Inventaris Ruangan (KIR)
     @endcomponent
 
+    @php
+        $totalAssets = $rooms->sum(fn ($room) => $room->assets->count());
+        $roomsWithPic = $rooms->filter(fn ($room) => $room->responsibleUser || $room->workUnit?->primarySarprasOfficer?->user)->count();
+        $totalValue = $rooms->sum(fn ($room) => $room->assets->sum('acquisition_price'));
+    @endphp
+    <x-sarpras-stats :items="[
+        ['label'=>'Ruang Ditampilkan','value'=>$rooms->count(),'tone'=>'primary','icon'=>'ri-door-open-line'],
+        ['label'=>'Total Aset','value'=>$totalAssets,'tone'=>'info','icon'=>'ri-archive-2-line'],
+        ['label'=>'Ruang Punya PIC','value'=>$roomsWithPic,'tone'=>'success','icon'=>'ri-user-star-line'],
+        ['label'=>'Total Nilai','value'=>'Rp '.number_format($totalValue,0,',','.'),'tone'=>'warning','icon'=>'ri-money-dollar-circle-line'],
+    ]" />
+
     <div class="card mb-3">
         <div class="card-body">
             <form method="GET" action="{{ route('sarpras.laporan.kir') }}" class="row g-2 align-items-end">

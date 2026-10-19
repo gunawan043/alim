@@ -568,7 +568,151 @@ class SarprasCleaningController extends SarprasBaseController
             $officers = collect([auth()->user()]);
         }
 
-        return view('sarpras.kebersihan.report-create', compact('areas', 'selectedArea', 'tasks', 'officers', 'canManage', 'today'));
+        $report = $selectedArea
+            ? CleaningReport::with('items')->where('area_id', $selectedArea->id)->whereDate('report_date', $today)->first()
+            : null;
+        $reportItems = $report ? $report->items->keyBy('task_id') : collect();
+        $isLocked = $report && in_array($report->status, ['submitted', 'verified'], true);
+
+        return view('sarpras.kebersihan.report-create', compact('areas', 'selectedArea', 'tasks', 'officers', 'canManage', 'today', 'report', 'reportItems', 'isLocked'));
+    }
+
+    public function autosaveReport(Request $request)
+    {
+        $canManage = $this->cleaningCanManage();
+        abort_unless($canManage || $this->cleaningCanReport(), 403);
+
+        $validated = $request->validate([
+            'area_id' => 'required|uuid|exists:cleaning_areas,id',
+            'report_date' => 'required|date',
+            'officer_id' => 'required|uuid|exists:users,id',
+            'task_id' => 'required|uuid|exists:cleaning_tasks,id',
+            'result' => 'required|in:'.implode(',', CleaningReportItem::RESULT_OPTIONS),
+            'condition' => 'nullable|in:'.implode(',', CleaningReport::CONDITION_OPTIONS),
+            'notes' => 'nullable|string|max:1000',
+            'before_url' => 'nullable|url|max:2000',
+            'after_url' => 'nullable|url|max:2000',
+            'before_file' => 'nullable|image|max:8192',
+            'after_file' => 'nullable|image|max:8192',
+        ]);
+
+        $area = CleaningArea::with('tasks')->findOrFail($validated['area_id']);
+        $this->authorizeCleaningArea($area);
+
+        if (! $canManage) {
+            $validated['officer_id'] = auth()->id();
+        }
+
+        $report = CleaningReport::firstOrCreate(
+            ['area_id' => $area->id, 'report_date' => $validated['report_date']],
+            [
+                'officer_id' => $validated['officer_id'],
+                'overall_condition' => 'bersih',
+                'status' => 'draft',
+                'created_by' => auth()->id(),
+            ]
+        );
+
+        if ($report->status !== 'draft') {
+            return response()->json(['message' => 'Laporan sudah dikirim dan tidak dapat diubah.'], 409);
+        }
+
+        $task = $area->tasks()->where('is_active', true)->findOrFail($validated['task_id']);
+        $item = CleaningReportItem::firstOrNew([
+            'report_id' => $report->id,
+            'task_id' => $task->id,
+        ]);
+
+        if ($request->hasFile('before_file')) {
+            $stored = $this->photos->store($request->file('before_file'), null, 'cleaning/'.$area->id.'/before');
+            $item->before_photo_path = $stored['path'];
+            $item->before_photo_url = $stored['url'];
+        } elseif (! empty($validated['before_url'])) {
+            $item->before_photo_url = $validated['before_url'];
+            $item->before_photo_path = null;
+        }
+
+        if ($request->hasFile('after_file')) {
+            $stored = $this->photos->store($request->file('after_file'), null, 'cleaning/'.$area->id.'/after');
+            $item->after_photo_path = $stored['path'];
+            $item->after_photo_url = $stored['url'];
+        } elseif (! empty($validated['after_url'])) {
+            $item->after_photo_url = $validated['after_url'];
+            $item->after_photo_path = null;
+        }
+
+        $item->fill([
+            'result' => $validated['result'],
+            'condition' => $validated['condition'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+        $item->save();
+
+        $report->update(['officer_id' => $validated['officer_id']]);
+
+        return response()->json([
+            'success' => true,
+            'report_id' => $report->id,
+            'item_id' => $item->id,
+            'saved_at' => now()->format('H:i:s'),
+        ]);
+    }
+
+    public function finalizeReport(Request $request)
+    {
+        $canManage = $this->cleaningCanManage();
+        abort_unless($canManage || $this->cleaningCanReport(), 403);
+
+        $validated = $request->validate([
+            'area_id' => 'required|uuid|exists:cleaning_areas,id',
+            'report_date' => 'required|date',
+            'officer_id' => 'required|uuid|exists:users,id',
+            'substitute_for_user_id' => 'nullable|uuid|exists:users,id|different:officer_id',
+            'absence_reason' => 'nullable|string|max:1000',
+        ]);
+
+        $area = CleaningArea::with('tasks')->findOrFail($validated['area_id']);
+        $this->authorizeCleaningArea($area);
+
+        $report = CleaningReport::where('area_id', $area->id)->whereDate('report_date', $validated['report_date'])->first();
+        if (! $report) {
+            return response()->json(['message' => 'Belum ada item yang disimpan. Isi minimal satu pekerjaan terlebih dahulu.'], 422);
+        }
+
+        if (! $canManage) {
+            $validated['officer_id'] = auth()->id();
+        }
+
+        $items = $report->items()->get()->keyBy('task_id');
+        $missing = [];
+        foreach ($area->tasks()->where('is_active', true)->get() as $task) {
+            $item = $items->get($task->id);
+            $hasBefore = $item && (! empty($item->before_photo_path) || ! empty($item->before_photo_url));
+            $hasAfter = $item && (! empty($item->after_photo_path) || ! empty($item->after_photo_url));
+            if (! $item || ! $hasBefore || ! $hasAfter) {
+                $missing[] = $task->title;
+            }
+        }
+
+        if ($missing !== []) {
+            return response()->json([
+                'message' => 'Masih ada pekerjaan yang belum lengkap: '.implode(', ', array_slice($missing, 0, 5)).(count($missing) > 5 ? '…' : ''),
+                'missing' => $missing,
+            ], 422);
+        }
+
+        $report->update([
+            'officer_id' => $validated['officer_id'],
+            'substitute_for_user_id' => $validated['substitute_for_user_id'] ?? null,
+            'absence_reason' => $validated['absence_reason'] ?? null,
+            'status' => 'submitted',
+            'overall_condition' => 'bersih',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'redirect' => route('sarpras.kebersihan.report.show', ['reportId' => $report->id]),
+        ]);
     }
 
     public function storeReport(Request $request)

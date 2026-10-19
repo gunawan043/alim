@@ -7,16 +7,12 @@
         @slot('title') Buku Induk Inventaris
     @endcomponent
 
-    <div class="row g-3 mb-3">
-        @foreach([
-            ['Baris Inventaris', $summary['items'] ?? 0, 'primary', 'ri-list-check-2'],
-            ['Total Kuantitas', $summary['quantity'] ?? 0, 'info', 'ri-stack-line'],
-            ['Harga Perolehan', 'Rp '.number_format($summary['value'] ?? 0, 0, ',', '.'), 'success', 'ri-money-dollar-circle-line'],
-            ['Penyusutan / Tahun', 'Rp '.number_format($summary['depreciation'] ?? 0, 0, ',', '.'), 'warning', 'ri-line-chart-down-line'],
-        ] as [$label, $value, $tone, $icon])
-            <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body py-3 d-flex align-items-center gap-3"><span class="avatar-sm"><span class="avatar-title rounded-circle bg-{{ $tone }}-subtle text-{{ $tone }} fs-4"><i class="{{ $icon }}"></i></span></span><div><div class="text-muted small">{{ $label }}</div><div class="fs-5 fw-bold">{{ is_numeric($value) ? number_format($value) : $value }}</div></div></div></div></div>
-        @endforeach
-    </div>
+    <x-sarpras-stats :items="[
+        ['label'=>'Baris Inventaris','value'=>$summary['items'] ?? 0,'tone'=>'primary','icon'=>'ri-list-check-2'],
+        ['label'=>'Total Kuantitas','value'=>$summary['quantity'] ?? 0,'tone'=>'info','icon'=>'ri-stack-line'],
+        ['label'=>'Harga Perolehan','value'=>'Rp '.number_format($summary['value'] ?? 0,0,',','.'),'tone'=>'success','icon'=>'ri-money-dollar-circle-line'],
+        ['label'=>'Penyusutan / Tahun','value'=>'Rp '.number_format($summary['depreciation'] ?? 0,0,',','.'),'tone'=>'warning','icon'=>'ri-line-chart-down-line'],
+    ]" />
 
     <div class="card mb-3">
         <div class="card-body">
@@ -38,7 +34,7 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-light"><tr><th>No</th><th>Satuan Kerja</th><th>Ruangan</th><th>Jenis Barang</th><th>Merk</th><th>Tgl Perolehan</th><th>No Urut</th><th>Kode Aset</th><th class="text-end">Qty</th><th>Satuan</th><th>Sumber</th><th>Keadaan</th><th class="text-end">Harga Perolehan</th><th>Masa Pakai</th><th class="text-end">Penyusutan</th><th>Penanggung Jawab</th><th>Keterangan</th></tr></thead>
                     <tbody>
                     @forelse($assets as $i => $asset)

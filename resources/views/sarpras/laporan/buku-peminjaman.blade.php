@@ -7,11 +7,12 @@
         @slot('title') Buku Peminjaman Barang
     @endcomponent
 
-    <div class="row g-3 mb-3">
-        @foreach([['Total', $summary['total'], 'primary'], ['Dipinjam', $summary['dipinjam'], 'info'], ['Kembali', $summary['kembali'], 'success'], ['Terlambat', $summary['terlambat'], 'danger']] as [$label, $value, $tone])
-            <div class="col-6 col-xl-3"><div class="card border-0 shadow-sm"><div class="card-body py-3"><div class="text-muted small">{{ $label }}</div><div class="fs-4 fw-bold text-{{ $tone }}">{{ number_format($value) }}</div></div></div></div>
-        @endforeach
-    </div>
+    <x-sarpras-stats :items="[
+        ['label'=>'Total Peminjaman','value'=>$summary['total'],'tone'=>'primary','icon'=>'ri-book-open-line'],
+        ['label'=>'Dipinjam','value'=>$summary['dipinjam'],'tone'=>'info','icon'=>'ri-box-3-line'],
+        ['label'=>'Kembali','value'=>$summary['kembali'],'tone'=>'success','icon'=>'ri-arrow-go-back-line'],
+        ['label'=>'Terlambat','value'=>$summary['terlambat'],'tone'=>'danger','icon'=>'ri-alarm-warning-line'],
+    ]" />
 
     <div class="card mb-3">
         <div class="card-body"><form method="GET" action="{{ route('sarpras.laporan.buku-peminjaman') }}" class="row g-2 align-items-end">
