@@ -2861,6 +2861,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::get('/checklist', [SarprasChecklistController::class, 'index'])->name('checklist.index');
     Route::get('/checklist/rekap', [SarprasChecklistController::class, 'recap'])->name('checklist.recap');
     Route::get('/checklist/template/{templateId}', [SarprasChecklistController::class, 'showTemplate'])->name('checklist.template');
+    Route::get('/checklist/template/{templateId}/start', [SarprasChecklistController::class, 'startTemplateForm'])->name('checklist.template.start.form');
     Route::post('/checklist/template/{templateId}/start', [SarprasChecklistController::class, 'startTemplate'])->name('checklist.template.start');
     Route::get('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'start'])->name('checklist.start');
     Route::post('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'store'])->name('checklist.store');

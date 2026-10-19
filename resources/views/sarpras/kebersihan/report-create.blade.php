@@ -64,6 +64,7 @@
                         </div>
                         <div class="col-md-4"><label class="form-label">Alasan Menggantikan</label><input type="text" name="absence_reason" class="form-control" value="{{ old('absence_reason') }}" placeholder="Contoh: petugas sakit"></div>
                     </div>
+                    <div class="mt-3"><div class="d-flex justify-content-between small text-muted mb-1"><span>Progres pekerjaan</span><span id="checklistProgressText">0 / {{ $tasks->count() }} selesai</span></div><div class="progress" style="height:7px"><div class="progress-bar bg-success" id="checklistProgressBar" style="width:0%"></div></div></div>
                 </div>
             </div>
 
@@ -72,58 +73,61 @@
                 $taskNumber = 0;
             @endphp
 
-            @forelse($groupedTasks as $groupLabel => $groupTasks)
-                <div class="card mb-3">
-                    <div class="card-header"><h5 class="card-title mb-0"><i class="ri-folder-line me-1 text-primary"></i>{{ $groupLabel }}</h5></div>
-                    <div class="card-body">
-                        @foreach($groupTasks as $task)
-                            @php
-                                $taskNumber++;
-                                $selected = old('items.'.$task->id.'.result', 'sudah');
-                            @endphp
-                            <div class="border rounded-3 p-3 mb-3 {{ $loop->last ? 'mb-0' : '' }}">
-                                <div class="d-flex justify-content-between align-items-start gap-2">
-                                    <div><div class="fw-semibold">{{ $taskNumber }}. {{ $task->title }}</div><div class="small text-muted">{{ $task->standard ?? 'Sesuai standar kebersihan' }}</div></div>
-                                    <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
-                                </div>
-
-                                <div class="btn-group w-100 mt-3" role="group" aria-label="Status pekerjaan">
-                                    <input type="radio" class="btn-check" name="items[{{ $task->id }}][result]" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-success py-3 fw-semibold" for="selesai_{{ $task->id }}"><i class="ri-check-line me-1"></i>Selesai</label>
-                                    <input type="radio" class="btn-check" name="items[{{ $task->id }}][result]" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-danger py-3 fw-semibold" for="belum_{{ $task->id }}"><i class="ri-close-line me-1"></i>Belum</label>
-                                    <input type="radio" class="btn-check" name="items[{{ $task->id }}][result]" id="na_{{ $task->id }}" value="tidak_berlaku" {{ $selected === 'tidak_berlaku' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-secondary py-3" for="na_{{ $task->id }}">N/A</label>
-                                </div>
-
-                                <details class="mt-2">
-                                    <summary class="small text-primary" style="cursor:pointer"><i class="ri-add-circle-line me-1"></i>Detail, catatan &amp; foto bukti</summary>
-                                    <div class="row g-2 mt-2">
-                                        <div class="col-md-4"><label class="form-label small">Kondisi</label><select name="items[{{ $task->id }}][condition]" class="form-select form-select-sm">@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
-                                        <div class="col-md-8"><label class="form-label small">Catatan</label><input name="items[{{ $task->id }}][notes]" class="form-control form-control-sm" value="{{ old('items.'.$task->id.'.notes') }}" placeholder="Keterangan bila perlu"></div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Foto Sebelum</label>
-                                            <input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive">
-                                            <input type="file" id="before_file_{{ $task->id }}" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
-                                            <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                            <div id="before_preview_{{ $task->id }}"></div>
+            @if($groupedTasks->isNotEmpty())
+                <div class="accordion" id="taskGroups">
+                    @foreach($groupedTasks as $groupLabel => $groupTasks)
+                        <div class="accordion-item mb-2 border rounded-3 overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }} py-3" type="button" data-bs-toggle="collapse" data-bs-target="#taskGroup{{ $loop->index }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                                    <span class="fw-semibold">{{ $groupLabel }}</span><span class="badge bg-primary-subtle text-primary ms-2">{{ $groupTasks->count() }} item</span>
+                                </button>
+                            </h2>
+                            <div id="taskGroup{{ $loop->index }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" data-bs-parent="#taskGroups">
+                                <div class="accordion-body p-0">
+                                    @foreach($groupTasks as $task)
+                                        @php $taskNumber++; $selected = old('items.'.$task->id.'.result', 'sudah'); @endphp
+                                        <div class="p-3 border-bottom task-row">
+                                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                                <div><div class="fw-semibold">{{ $taskNumber }}. {{ $task->title }}</div><div class="small text-muted">{{ $task->standard ?? 'Sesuai standar kebersihan' }}</div></div>
+                                                <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
+                                            </div>
+                                            <div class="btn-group w-100 mt-2" role="group" aria-label="Status pekerjaan">
+                                                <input type="radio" class="btn-check task-result" name="items[{{ $task->id }}][result]" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }}>
+                                                <label class="btn btn-outline-success py-2 fw-semibold" for="selesai_{{ $task->id }}"><i class="ri-check-line me-1"></i>Selesai</label>
+                                                <input type="radio" class="btn-check task-result" name="items[{{ $task->id }}][result]" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }}>
+                                                <label class="btn btn-outline-danger py-2 fw-semibold" for="belum_{{ $task->id }}"><i class="ri-close-line me-1"></i>Belum</label>
+                                            </div>
+                                            <button class="btn btn-link btn-sm px-0 mt-2 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}"><i class="ri-edit-2-line me-1"></i>Catatan / foto bukti</button>
+                                            <div class="collapse" id="taskDetail{{ $task->id }}">
+                                                <div class="row g-2 mt-1">
+                                                    <div class="col-md-4"><label class="form-label small">Kondisi</label><select name="items[{{ $task->id }}][condition]" class="form-select form-select-sm">@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
+                                                    <div class="col-md-8"><label class="form-label small">Catatan</label><input name="items[{{ $task->id }}][notes]" class="form-control form-control-sm" value="{{ old('items.'.$task->id.'.notes') }}" placeholder="Keterangan bila perlu"></div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small">Foto Sebelum</label>
+                                                        <input type="url" name="items[{{ $task->id }}][before_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.before_url') }}" placeholder="Link Google Drive">
+                                                        <input type="file" id="before_file_{{ $task->id }}" name="before_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="before_file_{{ $task->id }}" data-preview="before_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                                        <div id="before_preview_{{ $task->id }}"></div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small">Foto Sesudah</label>
+                                                        <input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive">
+                                                        <input type="file" id="after_file_{{ $task->id }}" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
+                                                        <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
+                                                        <div id="after_preview_{{ $task->id }}"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Foto Sesudah</label>
-                                            <input type="url" name="items[{{ $task->id }}][after_url]" class="form-control form-control-sm mb-1" value="{{ old('items.'.$task->id.'.after_url') }}" placeholder="Link Google Drive">
-                                            <input type="file" id="after_file_{{ $task->id }}" name="after_files[{{ $task->id }}]" class="form-control form-control-sm" accept="image/*">
-                                            <button type="button" class="btn btn-outline-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#alimCameraModal" data-target="after_file_{{ $task->id }}" data-preview="after_preview_{{ $task->id }}"><i class="ri-camera-line me-1"></i>Kamera + watermark</button>
-                                            <div id="after_preview_{{ $task->id }}"></div>
-                                        </div>
-                                    </div>
-                                </details>
+                                    @endforeach
+                                </div>
                             </div>
-                        @endforeach
-                    </div>
+                        </div>
+                    @endforeach
                 </div>
-            @empty
+            @else
                 <div class="card"><div class="card-body"><x-empty-state title="Belum ada pekerjaan" message="Area ini belum memiliki uraian pekerjaan. Hubungi koordinator." /></div></div>
-            @endforelse
+            @endif
 
             @if($tasks->isNotEmpty())
                 <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-information-line me-1"></i>Tekan Selesai/Belum pada setiap pekerjaan, lalu simpan.</div><div class="d-flex gap-2"><a href="{{ route('sarpras.kebersihan.index') }}" class="btn btn-light">Batal</a><button class="btn btn-success px-4"><i class="ri-save-line me-1"></i>Simpan Checklist</button></div></div></div>
@@ -135,3 +139,21 @@
 
     @include('sarpras.partials.camera-modal')
 @endsection
+
+@push('script')
+<script>
+    (function () {
+        const total = {{ $tasks->count() }};
+        const text = document.getElementById('checklistProgressText');
+        const bar = document.getElementById('checklistProgressBar');
+        function updateProgress() {
+            const done = document.querySelectorAll('.task-result[value="sudah"]:checked').length;
+            const percent = total ? Math.round((done / total) * 100) : 0;
+            if (text) text.textContent = done + ' / ' + total + ' selesai';
+            if (bar) bar.style.width = percent + '%';
+        }
+        document.querySelectorAll('.task-result').forEach(function (input) { input.addEventListener('change', updateProgress); });
+        updateProgress();
+    })();
+</script>
+@endpush

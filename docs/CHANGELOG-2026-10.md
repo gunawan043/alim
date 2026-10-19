@@ -2380,6 +2380,20 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - pusat laporan memakai kartu statistik, pencarian, tabel, empty state, dan modal panduan;
   - ringkasan laporan utama memakai komponen statistik yang sama.
 
+## 206. Checklist Memilih Aset & UI Pekerjaan Kebersihan
+
+- Sebelum memulai checklist pemeliharaan, pengguna wajib memilih **aset** yang diperiksa.
+- Instance checklist menyimpan konteks aset, sehingga:
+  - kode aset tampil pada detail, daftar, dan rekap;
+  - temuan checklist dapat ditindaklanjuti ke aset yang benar.
+- Form pilih aset menampilkan kode, nama, kategori, dan ruang aset dengan pencarian Select2.
+- UI checklist pekerjaan kebersihan dirapikan:
+  - kelompok pekerjaan memakai accordion;
+  - hanya kelompok pertama terbuka;
+  - tombol besar Selesai/Belum;
+  - detail catatan/foto tersembunyi sampai dibutuhkan;
+  - progres pekerjaan ditampilkan di bagian atas.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

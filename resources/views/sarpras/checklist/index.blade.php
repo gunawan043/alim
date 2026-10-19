@@ -50,7 +50,7 @@
                         </div>
                         <div class="mt-3 d-flex gap-2">
                             <a href="{{ route('sarpras.checklist.template', ['templateId' => $template->id]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat Item</a>
-                            <form method="POST" action="{{ route('sarpras.checklist.template.start', ['templateId' => $template->id]) }}" class="ms-auto">@csrf<button class="btn btn-sm btn-success"><i class="ri-play-line me-1"></i>Isi Checklist</button></form>
+                            <a href="{{ route('sarpras.checklist.template.start.form', ['templateId' => $template->id]) }}" class="btn btn-sm btn-success ms-auto"><i class="ri-play-line me-1"></i>Isi Checklist</a>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td class="fw-medium">{{ $instance->template?->name ?? '-' }}</td>
-                            @php $context = $instance->context; $asset = $context instanceof \App\Models\AssetMaintenanceSchedule ? $context->asset : null; @endphp
+                            @php $context = $instance->context; $asset = $context instanceof \App\Models\AssetMaintenanceSchedule ? $context->asset : ($context instanceof \App\Models\Asset ? $context : null); @endphp
                             <td>@if($asset)<code>{{ $asset->asset_code }}</code>@else <span class="text-muted">-</span>@endif</td>
                             <td class="small text-muted">{{ $asset?->asset_name ?? ($context instanceof \App\Models\ChecklistTemplate ? 'Checklist mandiri' : class_basename($instance->context_type)) }}</td>
                             <td><span class="badge bg-{{ $tone }}-subtle text-{{ $tone }}">{{ $label }}</span></td>

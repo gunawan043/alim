@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sarpras;
 
+use App\Models\Asset;
 use App\Models\AssetMaintenanceSchedule;
 use App\Models\ChecklistInstance;
 use App\Models\ChecklistTemplate;
@@ -124,6 +125,21 @@ class SarprasChecklistController extends SarprasBaseController
         return view('sarpras.checklist.recap', compact('instances', 'stats', 'frequencyGroups'));
     }
 
+    public function startTemplateForm(string $userId, Request $request, string $templateId)
+    {
+        $template = ChecklistTemplate::with(['items' => fn ($q) => $q->orderBy('sequence')])
+            ->where('workflow_type', 'maintenance')
+            ->where('is_active', true)
+            ->findOrFail($templateId);
+
+        $assets = Asset::with(['category', 'room.building'])
+            ->where('is_active', true)
+            ->orderBy('asset_name')
+            ->get();
+
+        return view('sarpras.checklist.start-template', compact('template', 'assets'));
+    }
+
     public function startTemplate(string $userId, Request $request, string $templateId)
     {
         $template = ChecklistTemplate::with('items')
@@ -131,10 +147,19 @@ class SarprasChecklistController extends SarprasBaseController
             ->where('is_active', true)
             ->findOrFail($templateId);
 
-        $instance = $this->engine->start($template, $template, auth()->id());
+        $validated = $request->validate([
+            'asset_id' => 'required|uuid|exists:assets,id',
+        ], [
+            'asset_id.required' => 'Pilih aset yang akan diperiksa.',
+        ]);
+
+        $asset = Asset::findOrFail($validated['asset_id']);
+        $this->authorizeAssetAccess($asset, $request);
+
+        $instance = $this->engine->start($asset, $template, auth()->id());
 
         return redirect()->route('sarpras.checklist.instance', ['instanceId' => $instance->id])
-            ->with('success', 'Checklist '.$template->name.' dimulai. Isi item harian, pekanan, dan bulanan sesuai kondisi.');
+            ->with('success', 'Checklist '.$template->name.' untuk aset '.$asset->asset_name.' dimulai.');
     }
 
     public function store(string $userId, Request $request, string $scheduleId)
@@ -183,7 +208,7 @@ class SarprasChecklistController extends SarprasBaseController
             ];
         })->filter(fn ($row) => $row['total'] > 0);
 
-        $contextAsset = $context instanceof AssetMaintenanceSchedule ? $context->asset : null;
+        $contextAsset = $context instanceof AssetMaintenanceSchedule ? $context->asset : ($context instanceof Asset ? $context : null);
 
         return view('sarpras.checklist.instance', compact('instance', 'progress', 'responses', 'canEdit', 'context', 'frequencyProgress', 'contextAsset'));
     }
@@ -253,13 +278,20 @@ class SarprasChecklistController extends SarprasBaseController
             return;
         }
 
+        if ($instance->context instanceof Asset) {
+            $this->authorizeAssetAccess($instance->context, $request);
+            return;
+        }
+
         abort_unless($this->isCentralSarpras() || $instance->executor_id === auth()->id(), 403);
     }
 
     private function createRepairFromFindings(ChecklistInstance $instance): string
     {
         $context = $instance->context;
-        if (! $context instanceof AssetMaintenanceSchedule || ! $context->asset) {
+        $asset = $context instanceof AssetMaintenanceSchedule ? $context->asset : ($context instanceof Asset ? $context : null);
+
+        if (! $asset) {
             return '';
         }
 
@@ -274,8 +306,6 @@ class SarprasChecklistController extends SarprasBaseController
         if ($failedLabels->isEmpty()) {
             return '';
         }
-
-        $asset = $context->asset;
 
         $existing = RepairRequest::query()
             ->where('asset_id', $asset->id)

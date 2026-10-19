@@ -29,7 +29,7 @@
                     $tone = ['in_progress'=>'warning','completed'=>'success','failed'=>'danger','cancelled'=>'secondary'][$instance->status] ?? 'secondary';
                     $label = ['in_progress'=>'Berjalan','completed'=>'Selesai','failed'=>'Ada Temuan','cancelled'=>'Dibatalkan'][$instance->status] ?? ucfirst($instance->status);
                     $context = $instance->context;
-                    $asset = $context instanceof \App\Models\AssetMaintenanceSchedule ? $context->asset : null;
+                    $asset = $context instanceof \App\Models\AssetMaintenanceSchedule ? $context->asset : ($context instanceof \App\Models\Asset ? $context : null);
                     $frequencies = $instance->template?->items?->pluck('frequency')->filter()->unique()->take(4)->implode(', ') ?: '-';
                 @endphp
                 <tr>
