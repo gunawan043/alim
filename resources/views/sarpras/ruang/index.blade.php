@@ -18,6 +18,9 @@
             {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if(session('import_errors') && count(session('import_errors')))
+        <div class="alert alert-warning alert-dismissible fade show"><div class="fw-semibold mb-1">Baris yang dilewati:</div><ul class="mb-0 small">@foreach(session('import_errors') as $error)<li>{{ $error }}</li>@endforeach</ul><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    @endif
 
     <x-sarpras-stats :items="[
         ['label'=>'Total Ruang','value'=>$stats['total'],'tone'=>'primary','icon'=>'ri-door-open-line'],
@@ -35,10 +38,9 @@
                             <h5 class="card-title mb-0">Daftar Ruang</h5>
                             <p class="text-muted mb-0">Kelola ruang pada satuan pendidikan.</p>
                         </div>
-                        <div class="col-sm-auto">
-                            <a href="{{ route('sarpras.ruang.create') }}" class="btn btn-success">
-                                <i class="ri-add-line align-bottom me-1"></i> Tambah Ruang
-                            </a>
+                        <div class="col-sm-auto d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importRuangModal"><i class="ri-upload-cloud-2-line me-1"></i>Import Ruang</button>
+                            <a href="{{ route('sarpras.ruang.create') }}" class="btn btn-success"><i class="ri-add-line align-bottom me-1"></i> Tambah Ruang</a>
                         </div>
                     </div>
                 </div>
@@ -194,6 +196,8 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="importRuangModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form method="POST" action="{{ route('sarpras.ruang.import') }}" enctype="multipart/form-data" class="modal-content">@csrf<div class="modal-header"><h5 class="modal-title"><i class="ri-upload-cloud-2-line me-1"></i>Import Data Ruang</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="alert alert-light border small"><i class="ri-information-line me-1"></i>Gunakan template agar nama kolom sesuai. Data dengan kode ruang yang sama akan diperbarui.</div><div class="mb-3"><label class="form-label">File Excel / CSV <span class="text-danger">*</span></label><input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv,.txt" required></div><a href="{{ route('sarpras.data-exchange.template', ['dataset' => 'ruang']) }}" class="btn btn-sm btn-outline-secondary"><i class="ri-file-download-line me-1"></i>Unduh Template Ruang</a></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="ri-upload-2-line me-1"></i>Import Sekarang</button></div></form></div></div>
+
     <x-modal-confirm id="deleteRuangModal" icon="https://cdn.lordicon.com/gsqxdxog.json" title="Hapus Ruang?" submitLabel="Ya, Hapus" submitIcon="ri-delete-bin-line" submitClass="btn-danger" formId="deleteRuangForm">
         <p class="text-center text-muted mb-0" id="deleteRuangMessage">Ruang akan dihapus.</p>
     </x-modal-confirm>

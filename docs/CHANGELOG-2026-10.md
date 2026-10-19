@@ -2407,6 +2407,21 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - tabel hover, empty state lord-icon, filter, dan tombol PDF konsisten;
   - pusat laporan tetap memakai pola pencarian/tabel/modal.
 
+## 208. Import Ruang, Export Aset & Agenda Pertamanan
+
+- Halaman **Data Ruang** memiliki tombol **Import Ruang**:
+  - unggah Excel/CSV;
+  - unduh template ruang;
+  - pembaruan berdasarkan kode ruang;
+  - daftar baris yang dilewati ditampilkan.
+- Halaman **Data Aset** memiliki tombol **Export Excel** di samping Import.
+- Agenda Harian Pertamanan dirapikan:
+  - navigasi hari sebelumnya/berikutnya;
+  - kartu per bagian A/B/C dengan progres;
+  - item berbentuk kartu responsif;
+  - status, petugas, keterangan, dan hapus per item;
+  - petugas dipilih dari data GTK/URT, bukan semua user.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

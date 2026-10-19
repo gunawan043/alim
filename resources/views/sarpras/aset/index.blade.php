@@ -46,6 +46,7 @@
             <h5 class="card-title mb-0"><i class="ri-archive-line me-2 text-primary"></i>Daftar Aset / Inventaris</h5>
             <div class="d-flex gap-2">
                 <a href="{{ route('sarpras.aset.import') }}" class="btn btn-outline-primary btn-sm"><i class="ri-upload-cloud-line me-1"></i>Import</a>
+                <a href="{{ route('sarpras.data-exchange.export', ['dataset' => 'aset']) }}" class="btn btn-outline-success btn-sm"><i class="ri-file-excel-2-line me-1"></i>Export</a>
                 <a href="{{ route('sarpras.aset.create') }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i>Tambah</a>
             </div>
         </div>

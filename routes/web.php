@@ -2721,6 +2721,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Ruang
     Route::get('/ruang', [SarprasRuangController::class, 'index'])->name('ruang.index');
+    Route::post('/ruang/import', [SarprasRuangController::class, 'import'])->name('ruang.import');
     Route::get('/ruang/create', [SarprasRuangController::class, 'create'])->name('ruang.create');
     Route::post('/ruang', [SarprasRuangController::class, 'store'])->name('ruang.store');
     Route::get('/ruang/{id}', [SarprasRuangController::class, 'show'])->name('ruang.show');

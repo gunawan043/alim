@@ -33,12 +33,26 @@ class SarprasPertamananController extends SarprasBaseController
         $items = $agenda->items()->with('officer')->orderBy('sort_order')->get();
         $users = User::query()
             ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereHas('roles', fn ($role) => $role->whereIn('name', ['Unit Rumah Tangga', 'Petugas Kebersihan', 'Petugas Pertamanan']))
+                    ->orWhereHas('gtkWorkUnits', fn ($gtk) => $gtk->where(function ($jabatan) {
+                        $jabatan->where('jabatan', 'like', '%PERTAMANAN%')
+                            ->orWhere('jabatan', 'like', '%KEBERSIHAN%')
+                            ->orWhere('jabatan', 'like', '%RUMAH TANGGA%');
+                    }));
+            })
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $canManageAgenda = $this->canManageAgenda();
+        if ($users->isEmpty()) {
+            $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        }
 
-        return view('sarpras.pertamanan.agenda', compact('agenda', 'items', 'users', 'date', 'canManageAgenda'));
+        $canManageAgenda = $this->canManageAgenda();
+        $previousDate = $date->copy()->subDay();
+        $nextDate = $date->copy()->addDay();
+
+        return view('sarpras.pertamanan.agenda', compact('agenda', 'items', 'users', 'date', 'canManageAgenda', 'previousDate', 'nextDate'));
     }
 
     public function saveAgenda(Request $request)

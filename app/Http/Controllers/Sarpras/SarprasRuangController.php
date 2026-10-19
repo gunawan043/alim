@@ -7,6 +7,8 @@ use App\Http\Requests\Sarpras\RuangUpdateRequest;
 use App\Models\AssetBuilding;
 use App\Models\AssetRoom;
 use App\Models\School;
+use App\Imports\SarprasDatasetImport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 
 class SarprasRuangController extends SarprasBaseController
@@ -49,6 +51,31 @@ class SarprasRuangController extends SarprasBaseController
         $schools = $this->canViewAll($request) ? School::orderBy('name')->get() : collect();
 
         return view('sarpras.ruang.index', compact('ruangs', 'schools', 'stats'));
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:10240',
+        ], [
+            'file.required' => 'File import ruang wajib dipilih.',
+            'file.mimes' => 'Format file harus Excel atau CSV.',
+        ]);
+
+        $import = new SarprasDatasetImport('ruang', $request->attributes->get('schoolContextId'));
+
+        try {
+            Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Import ruang gagal: '.$e->getMessage());
+        }
+
+        $message = 'Import ruang selesai: '.$import->getCreatedCount().' baru, '.$import->getUpdatedCount().' diperbarui.';
+        if ($import->getErrors() !== []) {
+            $message .= ' '.count($import->getErrors()).' baris dilewati.';
+        }
+
+        return back()->with('success', $message)->with('import_errors', $import->getErrors());
     }
 
     public function create(Request $request)
