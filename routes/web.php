@@ -223,6 +223,7 @@ use App\Http\Controllers\Tahfidz\TahfidzSantriController;
 use App\Http\Controllers\Tahfidz\TahfidzExecutiveController;
 use App\Http\Controllers\Tahfidz\TahfidzConsistencyController;
 use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
+use App\Http\Controllers\Tahfidz\TahfidzWorkspaceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzTargetController;
 use App\Http\Controllers\Tahfidz\TahfidzProgressController;
@@ -474,6 +475,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [TahfidzMasterController::class, 'rppDestroy'])->name('destroy');
                     Route::get('/{id}/print', [TahfidzMasterController::class, 'rppPrint'])->name('print');
                 });
+                Route::get('buku-kerja', [TahfidzWorkspaceController::class, 'index'])->name('workspace.index');
                 Route::get('input-hafalan', [TahfidzInputController::class, 'index'])->name('input.index');
                 Route::get('progress', [TahfidzProgressController::class, 'index'])->name('progress.index');
                 Route::get('targets', [TahfidzTargetController::class, 'index'])->name('targets.index');

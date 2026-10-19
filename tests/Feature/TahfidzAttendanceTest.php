@@ -40,7 +40,26 @@ class TahfidzAttendanceTest extends TestCase
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
             ->get("/{$admin->id}/tahfidz/attendance?group_id={$group->id}&date=".now()->toDateString())
             ->assertOk()
+            ->assertSee('Buku Kerja Tahfidz')
+            ->assertSee('Riwayat')
+            ->assertSee('Rekap Bulanan')
             ->assertSee('Santri Absensi');
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/attendance?group_id={$group->id}&tab=riwayat")
+            ->assertOk()
+            ->assertSee('Riwayat Absensi');
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/attendance?group_id={$group->id}&tab=rekap")
+            ->assertOk()
+            ->assertSee('Rekap Bulanan per Santri');
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->get("/{$admin->id}/tahfidz/buku-kerja")
+            ->assertOk()
+            ->assertSee('Buku Kerja Tahfidz')
+            ->assertSee('Halaqah Absensi');
 
         $payload = [
             'tahfidz_group_id' => $group->id,
@@ -64,5 +83,10 @@ class TahfidzAttendanceTest extends TestCase
 
         $this->assertSame(1, TahfidzGroupAttendance::count());
         $this->assertSame('izin', $attendance->fresh()->status);
+
+        $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
+            ->postJson("/{$admin->id}/tahfidz/attendance", $payload)
+            ->assertOk()
+            ->assertJson(['saved' => true]);
     }
 }

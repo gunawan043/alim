@@ -30,6 +30,7 @@ class TahfidzRouteSmokeTest extends TestCase
             'tahfidz/consistency',
             'tahfidz/executive',
             'tahfidz/interventions',
+            'tahfidz/buku-kerja',
             'tahfidz/progress',
             'tahfidz/targets',
             'tahfidz/attendance',

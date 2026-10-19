@@ -313,12 +313,19 @@
      SECTION 3 — KBM SAYA (Guru)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
-    <li class="menu-title"><span>Tahfidz Saya</span></li>
+    <li class="menu-title"><span>Buku Kerja Tahfidz</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.input.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.input.index', ['userId' => $userId]) }}">
-            <i class="ri-add-box-line"></i><span>Input Hafalan</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.workspace.']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.workspace.index', ['userId' => $userId]) }}">
+            <i class="ri-book-2-line"></i><span>Buku Kerja</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.create', 'user.tahfidz.setoran.store']) ? ' active' : '' }}"
+           href="{{ route('user.tahfidz.setoran.create', ['userId' => $userId]) }}">
+            <i class="ri-add-box-line"></i><span>Input Setoran</span>
         </a>
     </li>
 
@@ -330,80 +337,72 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">
-            <i class="ri-team-line"></i><span>Halaqah Saya</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}">
-            <i class="ri-file-add-line"></i><span>Setoran Hafalan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.mutabaah.index', ['userId' => $userId]) }}">
-            <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.monitoring.index', ['userId' => $userId]) }}">
-            <i class="ri-line-chart-line"></i><span>Monitoring Hafalan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.interventions.index', ['userId' => $userId]) }}">
-            <i class="ri-task-line"></i><span>Tindak Lanjut</span>
+            <i class="ri-calendar-todo-line"></i><span>Mutaba’ah Harian</span>
         </a>
     </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.tasmi.index', ['userId' => $userId]) }}">
-            <i class="ri-award-line"></i><span>Tasmi’ & Syahadah</span>
+            <i class="ri-award-line"></i><span>Tasmi’ &amp; Syahadah</span>
         </a>
     </li>
 
+    @php
+        $tahfidzEvalActive = isActiveAny($currentRoute, [
+            'user.tahfidz.halaqah.', 'user.tahfidz.progress.', 'user.tahfidz.monitoring.',
+            'user.tahfidz.interventions.', 'user.tahfidz.targets.', 'user.tahfidz.setoran.',
+            'user.tahfidz.muqorror.', 'user.tahfidz.rpp.',
+        ]);
+    @endphp
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.progress.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.progress.index', ['userId' => $userId]) }}">
-            <i class="ri-line-chart-line"></i><span>Progres & Rekap</span>
+        <a class="nav-link menu-link{{ $tahfidzEvalActive ? ' active' : '' }}"
+           href="#tahfidz_evaluasi" data-bs-toggle="collapse" role="button"
+           aria-expanded="{{ $tahfidzEvalActive ? 'true' : 'false' }}" aria-controls="tahfidz_evaluasi">
+            <i class="ri-line-chart-line"></i><span>Evaluasi &amp; Perangkat</span><span class="menu-arrow"></span>
         </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.targets.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.targets.index', ['userId' => $userId]) }}">
-            <i class="ri-focus-3-line"></i><span>Target Hafalan</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">
-            <i class="ri-book-open-line"></i><span>Muqorror Tahfizh</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">
-            <i class="ri-file-list-3-line"></i><span>RPP Tahfizh</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') === 'iqro' ? ' active' : '' }}"
-           href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId, 'type' => 'iqro']) }}">
-            <i class="ri-book-read-line"></i><span>RPP Iqro’</span>
-        </a>
+        <div class="collapse menu-dropdown{{ $tahfidzEvalActive ? ' show' : '' }}" id="tahfidz_evaluasi">
+            <ul class="nav nav-sm flex-column">
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.halaqah.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.halaqah.index', ['userId' => $userId]) }}">Halaqah &amp; Jadwal</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}">Riwayat Setoran</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.progress.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.progress.index', ['userId' => $userId]) }}">Progres &amp; Rekap</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.monitoring.index', ['userId' => $userId]) }}">Monitoring Hafalan</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.interventions.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.interventions.index', ['userId' => $userId]) }}">Tindak Lanjut</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.targets.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.targets.index', ['userId' => $userId]) }}">Target Hafalan</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.muqorror.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.muqorror.index', ['userId' => $userId]) }}">Muqorror Tahfizh</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') !== 'iqro' ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}">RPP Tahfizh</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') === 'iqro' ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId, 'type' => 'iqro']) }}">RPP Iqro’</a>
+                </li>
+            </ul>
+        </div>
     </li>
 @endif
 
