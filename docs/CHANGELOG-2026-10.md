@@ -2447,6 +2447,20 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - jumlah item terlihat pada tab;
   - autosave tetap berjalan per item.
 
+## 211. Pengganti Petugas & Checklist Lebih Sederhana
+
+- “Menggantikan Petugas” dipindahkan ke bagian bawah halaman checklist:
+  - menampilkan daftar petugas lain yang memiliki penugasan aktif;
+  - setiap petugas menampilkan area yang bisa digantikan;
+  - memilih area langsung membuka checklist area tersebut;
+  - area yang tidak dapat diganti tetap tidak muncul.
+- Laporan menyimpan `substitute_for_user_id` dan alasan penggantian.
+- Petugas pelaksana pada laporan pengganti adalah akun yang sedang login.
+- Checklist kebersihan disederhanakan menjadi tab frekuensi:
+  - Harian, Pekanan, Bulanan, Lainnya;
+  - hanya tab aktif yang terlihat;
+  - autosave tetap berjalan per item.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

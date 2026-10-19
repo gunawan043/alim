@@ -31,6 +31,8 @@
         </div>
     </div>
 
+    @php $defaultOfficer = $substitute ? auth()->id() : ($report?->officer_id ?? auth()->id()); @endphp
+
     @if($selectedArea)
         <div id="cleaningChecklist" data-area-id="{{ $selectedArea->id }}" data-report-date="{{ $today }}" data-autosave-url="{{ route('sarpras.kebersihan.report.autosave') }}" data-finalize-url="{{ route('sarpras.kebersihan.report.finalize') }}" data-csrf="{{ csrf_token() }}" data-locked="{{ $isLocked ? '1' : '0' }}">
             <div class="card mb-3">
@@ -40,20 +42,21 @@
                         <div class="d-flex flex-column align-items-end gap-1"><span class="badge bg-info-subtle text-info"><i class="ri-calendar-check-line me-1"></i>{{ \Carbon\Carbon::parse($today)->translatedFormat('d F Y') }}</span>@if($isLocked)<span class="badge bg-success-subtle text-success">Laporan sudah dikirim</span>@endif</div>
                     </div>
                     <div class="row g-3 mt-2">
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <label class="form-label">Petugas Pelaksana <span class="text-danger">*</span></label>
                             @if($canManage)
                                 <select id="cleaningOfficer" class="form-select" {{ $isLocked ? 'disabled' : '' }}>
                                     <option value="">— Pilih Petugas —</option>
-                                    @foreach($officers as $user)<option value="{{ $user->id }}" {{ old('officer_id', $report?->officer_id ?? auth()->id()) === $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach
+                                    @foreach($officers as $user)<option value="{{ $user->id }}" {{ (string) old('officer_id', $defaultOfficer) === (string) $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach
                                 </select>
                             @else
                                 <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly>
                                 <input type="hidden" id="cleaningOfficer" value="{{ auth()->id() }}">
                             @endif
                         </div>
-                        <div class="col-md-4"><label class="form-label">Menggantikan Petugas</label><select id="cleaningSubstitute" class="form-select" {{ $isLocked ? 'disabled' : '' }}><option value="">— Tidak menggantikan —</option>@foreach($officers as $user)<option value="{{ $user->id }}" {{ old('substitute_for_user_id', $report?->substitute_for_user_id) === $user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select></div>
-                        <div class="col-md-4"><label class="form-label">Alasan Menggantikan</label><input id="cleaningAbsence" class="form-control" value="{{ old('absence_reason', $report?->absence_reason) }}" placeholder="Contoh: petugas sakit" {{ $isLocked ? 'disabled' : '' }}></div>
+                        @if($substitute)
+                            <div class="col-md-7"><div class="alert alert-info mb-0 py-2 small"><i class="ri-user-shared-line me-1"></i>Anda mengisi area milik <strong>{{ $substitute->name }}</strong>. Atur alasan penggantian di bagian bawah halaman.</div></div>
+                        @endif
                     </div>
                     <div class="mt-3"><div class="d-flex justify-content-between small text-muted mb-1"><span>Progres pekerjaan</span><span id="checklistProgressText">0 / {{ $tasks->count() }} selesai</span></div><div class="progress" style="height:7px"><div class="progress-bar bg-success" id="checklistProgressBar" style="width:0%"></div></div></div>
                     <div class="d-flex justify-content-between mt-2"><small id="cleaningSaveStatus" class="text-muted"><i class="ri-cloud-line me-1"></i>Tersimpan otomatis</small><small class="text-muted">Perubahan langsung disimpan</small></div>
@@ -159,6 +162,41 @@
         <div class="card"><div class="card-body"><x-empty-state title="Pilih area kerja" message="Pilih area terlebih dahulu untuk menampilkan checklist pekerjaan." /></div></div>
     @endif
 
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-user-shared-line me-2 text-primary"></i>Menggantikan Petugas</h5><p class="text-muted small mb-0">Pilih petugas yang tidak masuk untuk membuka area kerjanya. Area Anda sendiri tetap tersedia di atas.</p></div>@if($substitute)<a href="{{ route('sarpras.kebersihan.report.create', ['report_date' => $today, 'area_type' => request('area_type')]) }}" class="btn btn-sm btn-outline-secondary">Batalkan penggantian</a>@endif</div>
+        <div class="card-body">
+            <input type="hidden" id="cleaningSubstitute" value="{{ $substitute?->id }}">
+            @if($substitute)
+                <div class="alert alert-primary d-flex flex-wrap justify-content-between gap-2 align-items-center"><div><i class="ri-user-star-line me-1"></i>Menggantikan <strong>{{ $substitute->name }}</strong>@if($selectedArea) · Area: {{ $selectedArea->name }}@endif</div><div class="d-flex align-items-center gap-2"><span class="small">Alasan</span><input id="cleaningAbsence" class="form-control form-control-sm" style="min-width:220px" value="{{ old('absence_reason', $report?->absence_reason) }}" placeholder="Contoh: sakit / izin"></div></div>
+            @else
+                <div class="alert alert-light border small"><i class="ri-information-line me-1"></i>Pilih salah satu area di bawah untuk mulai menggantikan petugas. Daftar ini hanya menampilkan petugas yang memiliki penugasan aktif.</div>
+            @endif
+            @if($substituteOfficers->isEmpty())
+                <div class="text-muted small">Belum ada petugas lain dengan penugasan area.</div>
+            @else
+                <div class="row g-2">
+                    @foreach($substituteOfficers as $officer)
+                        @php
+                            $officerAreas = $substituteAssignments->get($officer->id, collect())
+                                ->map(fn ($assignment) => $assignment->area)
+                                ->filter()
+                                ->when(request('area_type'), fn ($collection) => $collection->where('area_type', request('area_type')))
+                                ->unique('id');
+                        @endphp
+                        @if($officerAreas->isNotEmpty())
+                            <div class="col-md-6">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="d-flex align-items-center gap-2 mb-2"><span class="avatar-xs"><span class="avatar-title rounded-circle bg-primary-subtle text-primary"><i class="ri-user-line"></i></span></span><strong>{{ $officer->name }}</strong><span class="badge bg-light text-dark border">{{ $officerAreas->count() }} area</span></div>
+                                    <div class="d-flex flex-wrap gap-1">@foreach($officerAreas as $area)<a href="{{ route('sarpras.kebersihan.report.create', ['area_id' => $area->id, 'substitute_for_user_id' => $officer->id, 'report_date' => $today, 'area_type' => request('area_type')]) }}" class="btn btn-sm btn-outline-primary"><i class="ri-map-pin-line me-1"></i>{{ $area->name }}</a>@endforeach</div>
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+
     @include('sarpras.partials.camera-modal')
 @endsection
 
@@ -195,6 +233,8 @@
             form.append('area_id', root.dataset.areaId);
             form.append('report_date', root.dataset.reportDate);
             form.append('officer_id', officerId());
+            form.append('substitute_for_user_id', document.getElementById('cleaningSubstitute')?.value || '');
+            form.append('absence_reason', document.getElementById('cleaningAbsence')?.value || '');
             form.append('task_id', taskId);
             form.append('result', result);
             form.append('condition', row.querySelector('.task-condition')?.value || 'bersih');

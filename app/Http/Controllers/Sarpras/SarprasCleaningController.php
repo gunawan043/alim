@@ -518,11 +518,22 @@ class SarprasCleaningController extends SarprasBaseController
         abort_unless($canManage || $this->cleaningCanReport(), 403);
 
         $user = auth()->user();
+        $substituteId = $request->query('substitute_for_user_id');
+        $substitute = $substituteId && $substituteId !== $user->id
+            ? User::where('is_active', true)->find($substituteId)
+            : null;
+
         $areaQuery = CleaningArea::with(['tasks' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
             ->where('is_active', true)
             ->when($request->filled('area_type'), fn ($q) => $q->where('area_type', $request->area_type));
 
-        if (! $canManage) {
+        if ($substitute) {
+            $areaIds = CleaningAssignment::query()
+                ->where('is_active', true)
+                ->where('user_id', $substitute->id)
+                ->pluck('area_id');
+            $areaQuery->whereIn('id', $areaIds);
+        } elseif (! $canManage) {
             $areaIds = CleaningAssignment::query()
                 ->where('is_active', true)
                 ->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('backup_user_id', $user->id))
@@ -568,13 +579,33 @@ class SarprasCleaningController extends SarprasBaseController
             $officers = collect([auth()->user()]);
         }
 
+        // Daftar petugas yang bisa digantikan beserta area aktifnya.
+        $substituteUserIds = CleaningAssignment::query()
+            ->where('is_active', true)
+            ->where('user_id', '!=', $user->id)
+            ->distinct()
+            ->pluck('user_id');
+        $substituteOfficers = User::query()
+            ->whereIn('id', $substituteUserIds)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $substituteAssignments = CleaningAssignment::with('area')
+            ->where('is_active', true)
+            ->whereIn('user_id', $substituteUserIds)
+            ->get()
+            ->groupBy('user_id');
+
         $report = $selectedArea
             ? CleaningReport::with('items')->where('area_id', $selectedArea->id)->whereDate('report_date', $today)->first()
             : null;
         $reportItems = $report ? $report->items->keyBy('task_id') : collect();
         $isLocked = $report && in_array($report->status, ['submitted', 'verified'], true);
 
-        return view('sarpras.kebersihan.report-create', compact('areas', 'selectedArea', 'tasks', 'officers', 'canManage', 'today', 'report', 'reportItems', 'isLocked'));
+        return view('sarpras.kebersihan.report-create', compact(
+            'areas', 'selectedArea', 'tasks', 'officers', 'canManage', 'today',
+            'report', 'reportItems', 'isLocked', 'substitute', 'substituteOfficers', 'substituteAssignments'
+        ));
     }
 
     public function autosaveReport(Request $request)
@@ -586,6 +617,7 @@ class SarprasCleaningController extends SarprasBaseController
             'area_id' => 'required|uuid|exists:cleaning_areas,id',
             'report_date' => 'required|date',
             'officer_id' => 'required|uuid|exists:users,id',
+            'substitute_for_user_id' => 'nullable|uuid|exists:users,id|different:officer_id',
             'task_id' => 'required|uuid|exists:cleaning_tasks,id',
             'result' => 'required|in:'.implode(',', CleaningReportItem::RESULT_OPTIONS),
             'condition' => 'nullable|in:'.implode(',', CleaningReport::CONDITION_OPTIONS),
@@ -607,6 +639,7 @@ class SarprasCleaningController extends SarprasBaseController
             ['area_id' => $area->id, 'report_date' => $validated['report_date']],
             [
                 'officer_id' => $validated['officer_id'],
+                'substitute_for_user_id' => $validated['substitute_for_user_id'] ?? null,
                 'overall_condition' => 'bersih',
                 'status' => 'draft',
                 'created_by' => auth()->id(),
@@ -648,7 +681,10 @@ class SarprasCleaningController extends SarprasBaseController
         ]);
         $item->save();
 
-        $report->update(['officer_id' => $validated['officer_id']]);
+        $report->update([
+            'officer_id' => $validated['officer_id'],
+            'substitute_for_user_id' => $validated['substitute_for_user_id'] ?? null,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -902,7 +938,14 @@ class SarprasCleaningController extends SarprasBaseController
             ->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('backup_user_id', $user->id))
             ->exists();
 
-        abort_unless($assigned, 403, 'Area ini bukan tanggung jawab Anda.');
+        $substituteId = request('substitute_for_user_id');
+        $substituteAssigned = $substituteId && CleaningAssignment::query()
+            ->where('area_id', $area->id)
+            ->where('is_active', true)
+            ->where('user_id', $substituteId)
+            ->exists();
+
+        abort_unless($assigned || $substituteAssigned, 403, 'Area ini bukan tanggung jawab Anda atau petugas yang digantikan.');
     }
 
     private function defaultUrtWorkUnitId(): ?string
