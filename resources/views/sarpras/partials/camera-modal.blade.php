@@ -25,6 +25,15 @@
     .alim-map-center { position:absolute; left:50%; top:50%; transform:translate(-50%,-100%); z-index:500; pointer-events:none; color:#FFD400; font-size:40px; line-height:1; text-shadow:0 4px 10px rgba(0,0,0,.6); }
     .alim-map-center::after { content:''; position:absolute; left:50%; bottom:-3px; width:10px; height:4px; border-radius:50%; background:rgba(0,0,0,.45); transform:translateX(-50%); }
     .alim-map-footer { display:flex; justify-content:space-between; gap:10px; padding:10px 16px; background:rgba(0,0,0,.78); font-size:11px; color:rgba(255,255,255,.75); z-index:2; }
+    .alim-capture-review { position:absolute; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(3,12,18,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .alim-capture-review.is-open { display:flex; }
+    .alim-review-card { width:min(100%,430px); max-height:calc(100vh - 32px); overflow:auto; background:#fff; color:#1b2b33; border-radius:18px; padding:16px; box-shadow:0 24px 70px rgba(0,0,0,.45); }
+    .alim-review-card h6 { font-weight:800; margin:0; }
+    #alimCapturePreview { display:block; width:100%; max-height:56vh; object-fit:contain; background:#000; border-radius:12px; margin:12px 0 10px; }
+    .alim-review-status { font-size:12px; line-height:1.35; color:#52646d; }
+    .alim-review-actions { display:flex; gap:8px; margin-top:12px; }
+    .alim-review-actions .btn { flex:1; }
+    @media (max-width:576px) { .alim-capture-review { padding:10px; } .alim-review-card { padding:13px; } }
     @media (max-width: 576px) { .alim-location-override input { min-width:140px; max-width:180px; } .alim-map-toolbar { align-items:flex-start; flex-direction:column; } }
     .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
     .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
@@ -95,6 +104,21 @@
                     </div>
                     <div class="alim-map-footer"><span id="alimMapCoords">-</span><span>© OpenStreetMap</span></div>
                 </div>
+                <div id="alimCaptureReview" class="alim-capture-review" aria-hidden="true">
+                    <div class="alim-review-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6><i class="ri-checkbox-circle-line me-1 text-success"></i>Hasil Foto</h6>
+                            <button type="button" class="btn-close" id="alimReviewClose" aria-label="Tutup pratinjau"></button>
+                        </div>
+                        <img id="alimCapturePreview" alt="Pratinjau foto yang akan digunakan">
+                        <div class="alim-review-status" id="alimCaptureStatus">Foto sedang diproses…</div>
+                        <div class="mt-2"><a id="alimReviewDownload" class="small text-primary" href="#" download><i class="ri-download-2-line me-1"></i>Unduh foto</a></div>
+                        <div class="alim-review-actions">
+                            <button type="button" class="btn btn-light" id="alimReviewRetake"><i class="ri-refresh-line me-1"></i>Ambil Ulang</button>
+                            <button type="button" class="btn btn-warning fw-bold" id="alimReviewUse"><i class="ri-check-line me-1"></i>Gunakan Foto</button>
+                        </div>
+                    </div>
+                </div>
                 <div id="alimCameraError" class="alert alert-danger small d-none"></div>
                 <div class="alim-camera-hint">Arahkan kamera ke objek · watermark tampil langsung di layar</div>
                 <div class="alim-camera-bottombar"><button type="button" class="alim-shutter" id="alimCameraCapture" aria-label="Ambil foto"></button></div>
@@ -122,6 +146,7 @@
     let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, manualPlace = '', placePromise = null, clockTimer = null;
     let locationWatchId = null, locationStopTimer = null, geocodeTimer = null, geocodeSeq = 0, lastGeocodeAccuracy = null;
     let manualCoordinate = false, mapInstance = null, leafletPromise = null;
+    let lastCapturedBlob = null, lastCapturedUrl = null, lastCaptureAttached = false;
     const PRECISE_ACCURACY_METERS = 100;
     const accountName = @json(auth()->user()->name ?? 'Pengguna ALIM');
     const unitName = @json($cameraUnitName);
@@ -133,6 +158,13 @@
     const mapCoordsEl = document.getElementById('alimMapCoords');
     const mapCancelBtn = document.getElementById('alimMapCancel');
     const mapConfirmBtn = document.getElementById('alimMapConfirm');
+    const reviewEl = document.getElementById('alimCaptureReview');
+    const reviewImg = document.getElementById('alimCapturePreview');
+    const reviewStatus = document.getElementById('alimCaptureStatus');
+    const reviewDownload = document.getElementById('alimReviewDownload');
+    const reviewRetakeBtn = document.getElementById('alimReviewRetake');
+    const reviewUseBtn = document.getElementById('alimReviewUse');
+    const reviewCloseBtn = document.getElementById('alimReviewClose');
     const geocodeEndpoint = @json(route('sarpras.camera.geocode'));
     const leafletCssUrl = @json(asset('build/libs/leaflet/leaflet.css'));
     const leafletJsUrl = @json(asset('build/libs/leaflet/leaflet.js'));
@@ -168,6 +200,15 @@
     }
     if (mapConfirmBtn) {
         mapConfirmBtn.addEventListener('click', confirmMapPoint);
+    }
+    if (reviewRetakeBtn) {
+        reviewRetakeBtn.addEventListener('click', retakePhoto);
+    }
+    if (reviewUseBtn) {
+        reviewUseBtn.addEventListener('click', useCapturedPhoto);
+    }
+    if (reviewCloseBtn) {
+        reviewCloseBtn.addEventListener('click', hideCaptureReview);
     }
 
     function updateClock() {
@@ -424,6 +465,8 @@
     }
 
     async function startCamera() {
+        hideCaptureReview();
+        if (captureBtn) captureBtn.disabled = false;
         if (errorEl) { errorEl.classList.add('d-none'); errorEl.textContent = ''; }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             if (errorEl) { errorEl.textContent = 'Browser tidak mendukung kamera. Gunakan HTTPS atau buka di Chrome/Safari terbaru.'; errorEl.classList.remove('d-none'); }
@@ -448,6 +491,7 @@
         if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
         stopLocationWatch();
         closeMapPicker();
+        hideCaptureReview();
         if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
     }
 
@@ -649,21 +693,97 @@
         ctx.shadowBlur = 0;
     }
 
+    function attachCapturedFile(file) {
+        var input = targetInput ? document.getElementById(targetInput) : null;
+        if (!input) throw new Error('Input foto tujuan tidak ditemukan.');
+        if (typeof DataTransfer === 'undefined') throw new Error('Browser tidak mendukung pemasangan foto otomatis.');
+
+        var dt = new DataTransfer();
+        if (input.multiple && input.files) {
+            Array.from(input.files).forEach(function (existing) { dt.items.add(existing); });
+        }
+        dt.items.add(file);
+        input.files = dt.files;
+        if (!input.files || input.files.length === 0) {
+            throw new Error('Browser menolak memasang file ke input.');
+        }
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return input;
+    }
+
+    function showCaptureReview(blob, file, error) {
+        if (!reviewEl || !reviewImg) return;
+        lastCapturedBlob = blob;
+
+        if (lastCapturedUrl) URL.revokeObjectURL(lastCapturedUrl);
+        lastCapturedUrl = URL.createObjectURL(blob);
+        reviewImg.src = lastCapturedUrl;
+        if (reviewDownload) {
+            reviewDownload.href = lastCapturedUrl;
+            reviewDownload.download = file.name;
+        }
+
+        lastCaptureAttached = !error;
+        if (reviewUseBtn) reviewUseBtn.disabled = !lastCaptureAttached;
+
+        if (reviewStatus) {
+            reviewStatus.textContent = error
+                ? 'Foto berhasil dibuat, tetapi gagal ditempel otomatis: ' + error.message + ' Unduh foto lalu unggah manual.'
+                : 'Foto sudah dimasukkan ke formulir. Tekan Gunakan Foto untuk kembali.';
+            reviewStatus.classList.toggle('text-danger', !!error);
+        }
+
+        reviewEl.classList.add('is-open');
+        reviewEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideCaptureReview() {
+        if (!reviewEl) return;
+        reviewEl.classList.remove('is-open');
+        reviewEl.setAttribute('aria-hidden', 'true');
+        if (lastCapturedUrl) {
+            URL.revokeObjectURL(lastCapturedUrl);
+            lastCapturedUrl = null;
+        }
+        if (reviewImg) reviewImg.removeAttribute('src');
+        if (reviewDownload) reviewDownload.removeAttribute('href');
+        lastCapturedBlob = null;
+        lastCaptureAttached = false;
+    }
+
+    function retakePhoto() {
+        hideCaptureReview();
+        if (captureBtn) captureBtn.disabled = false;
+    }
+
+    function useCapturedPhoto() {
+        if (!lastCaptureAttached) {
+            if (reviewStatus) {
+                reviewStatus.textContent = 'Foto belum bisa ditempel otomatis. Gunakan tombol Unduh foto, lalu unggah manual.';
+                reviewStatus.classList.add('text-danger');
+            }
+            return;
+        }
+        hideCaptureReview();
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+
     async function capture() {
+        if (captureBtn.disabled) return;
+        captureBtn.disabled = true;
         if (!video.videoWidth) {
             if (errorEl) { errorEl.textContent = 'Kamera belum siap. Tunggu sebentar lalu coba lagi.'; errorEl.classList.remove('d-none'); }
+            captureBtn.disabled = false;
             return;
         }
         if (!coords) {
             await new Promise(function (resolve) { setTimeout(resolve, 1200); });
         }
         if (placePromise) {
-            captureBtn.disabled = true;
             await Promise.race([
                 placePromise,
                 new Promise(function (resolve) { setTimeout(resolve, 2600); })
             ]);
-            captureBtn.disabled = false;
         }
         const orientation = selectedOrientation();
         const canvas = document.createElement('canvas');
@@ -693,28 +813,42 @@
         drawWatermark(canvas);
 
         canvas.toBlob(function (blob) {
-            if (!blob || !targetInput) return;
-            const file = new File([blob], 'foto-' + Date.now() + '.jpg', { type: 'image/jpeg' });
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            const input = document.getElementById(targetInput);
-            input.files = dt.files;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-
-            if (targetPreview) {
-                const preview = document.getElementById(targetPreview);
-                if (preview) {
-                    preview.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" class="img-fluid rounded border mt-1" style="max-height:110px" alt="Foto bukti"><div class="small text-success mt-1"><i class="ri-check-line"></i> Foto kamera siap diunggah</div>';
+            captureBtn.disabled = false;
+            if (!blob) {
+                if (errorEl) {
+                    errorEl.textContent = 'Foto gagal dibuat. Coba ambil ulang.';
+                    errorEl.classList.remove('d-none');
                 }
+                return;
             }
-            bootstrap.Modal.getInstance(modalEl)?.hide();
+
+            const file = new File([blob], 'foto-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+            let attachError = null;
+
+            try {
+                attachCapturedFile(file);
+                if (targetPreview) {
+                    const preview = document.getElementById(targetPreview);
+                    if (preview) {
+                        preview.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" class="img-fluid rounded border mt-1" style="max-height:110px" alt="Foto bukti"><div class="small text-success mt-1"><i class="ri-check-line"></i> Foto kamera siap diunggah</div>';
+                    }
+                }
+            } catch (error) {
+                attachError = error;
+            }
+
+            // Jangan tutup kamera otomatis. Tampilkan pratinjau agar foto
+            // tidak hilang dan pengguna bisa mengulang atau mengunduhnya.
+            showCaptureReview(blob, file, attachError);
         }, 'image/jpeg', 0.86);
     }
 
     modalEl.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        targetInput = button?.dataset.target;
-        targetPreview = button?.dataset.preview;
+        if (button) {
+            targetInput = button.dataset.target;
+            targetPreview = button.dataset.preview;
+        }
         startCamera();
     });
     modalEl.addEventListener('hidden.bs.modal', stopCamera);

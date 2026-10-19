@@ -2539,6 +2539,28 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - lokasi kasar ±5 km tidak menampilkan nama tempat;
   - peta Leaflet terbuka dan pemilihan titik manual berfungsi.
 
+## 218. Kamera: Pratinjau Foto Sebelum Modal Ditutup
+
+- Setelah menekan shutter, kamera **tidak langsung menutup**.
+- Muncul layar pratinjau hasil foto dengan tombol:
+  - **Ambil Ulang**;
+  - **Gunakan Foto**;
+  - **Unduh foto**.
+- Foto langsung ditempelkan ke input form dan event `change` dipicu agar preview halaman ikut diperbarui.
+- Jika browser menolak pemasangan file otomatis:
+  - modal tetap terbuka;
+  - foto tetap terlihat dan bisa diunduh;
+  - tombol **Gunakan Foto** dinonaktifkan;
+  - muncul instruksi untuk mengunggah manual.
+- Input multiple (mis. foto kerusakan) menambahkan foto baru tanpa menghapus file sebelumnya.
+- Programmatic `AlimCamera.open()` tidak lagi kehilangan target input saat event `show.bs.modal` berjalan.
+- Tombol shutter dikunci selama proses agar tidak terjadi capture ganda.
+- Diuji dengan Playwright:
+  - pratinjau tampil dan modal tetap terbuka;
+  - Ambil Ulang berfungsi;
+  - Gunakan Foto menutup modal dan file tetap ada;
+  - input target tidak ditemukan menampilkan fallback unduhan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
