@@ -188,6 +188,14 @@ class SarprasCleaningController extends SarprasBaseController
             ]
         );
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_done' => $done,
+                'saved_at' => now()->format('H:i:s'),
+            ]);
+        }
+
         return back()->with('success', $done ? 'Program ditandai terlaksana.' : 'Checklist program dibatalkan.');
     }
 

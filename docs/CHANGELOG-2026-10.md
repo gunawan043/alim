@@ -2614,6 +2614,30 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - pindah ke pekerjaan lain lalu kembali: draft tetap ada;
   - simpan: modal menutup, data dan URL foto tersimpan, lalu tampil lagi saat dibuka.
 
+## 222. Autosave Checklist Pemeliharaan, Agenda Pertamanan & Program Tahunan
+
+- **Checklist Pemeliharaan**
+  - Menambahkan endpoint `sarpras.checklist.autosave`.
+  - Pilihan ✓/✕ langsung tersimpan otomatis.
+  - Catatan per item tersimpan otomatis setelah 650 ms; jika belum memilih ✓/✕, muncul petunjuk untuk memilih terlebih dahulu.
+  - Indikator “Menyimpan… / ✓ Tersimpan / Gagal menyimpan” ditampilkan di footer.
+  - Progres jumlah terjawab, temuan, dan progress bar ikut diperbarui tanpa reload.
+  - Request per item diserialkan agar catatan lama tidak menimpa catatan terbaru.
+- **Agenda Pertamanan**
+  - Checkbox sudah autosave; sekarang **catatan** juga autosave dengan debounce 700 ms.
+  - Status penyimpanan ditampilkan di footer lengket.
+  - Request per baris diserialkan agar perubahan checkbox dan catatan tidak saling menimpa.
+- **Program Tahunan**
+  - Klik bulan tidak lagi reload halaman.
+  - Form dikirim via AJAX dan tombol langsung berubah ✓/○/·.
+  - Endpoint `program.check` mengembalikan JSON bila diminta.
+  - Tetap ada fallback submit form biasa bila JavaScript tidak berjalan.
+- Tanpa migrasi baru.
+- Diuji:
+  - Playwright: autosave Checklist Pemeliharaan (radio + catatan), catatan Agenda, dan checklist bulan Program tanpa reload;
+  - endpoint autosave Checklist dan program mengembalikan `200` + JSON;
+  - JavaScript ketiga halaman lolos `node --check`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

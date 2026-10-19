@@ -31,9 +31,9 @@
                         @endif
                     </div>
                 </div>
-                <div class="text-end"><div class="small text-muted">Progres</div><div class="fs-5 fw-bold">{{ $progress['answered'] }} / {{ $progress['total'] }}</div><div class="small text-{{ $tone }}">{{ $progress['failed'] }} temuan</div></div>
+                <div class="text-end"><div class="small text-muted">Progres</div><div class="fs-5 fw-bold" id="checklistProgressCount">{{ $progress['answered'] }} / {{ $progress['total'] }}</div><div class="small text-{{ $tone }}" id="checklistProgressFailed">{{ $progress['failed'] }} temuan</div></div>
             </div>
-            <div class="progress mt-3" style="height:8px"><div class="progress-bar bg-{{ $tone }}" style="width:{{ $progress['percent_complete'] }}%"></div></div>
+            <div class="progress mt-3" style="height:8px"><div class="progress-bar bg-{{ $tone }}" id="checklistProgressBar" style="width:{{ $progress['percent_complete'] }}%"></div></div>
             @if($frequencyProgress->isNotEmpty())
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     @foreach($frequencyProgress as $frequency)
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('sarpras.checklist.save', ['instanceId' => $instance->id]) }}">
+    <form id="checklistInstanceForm" method="POST" action="{{ route('sarpras.checklist.save', ['instanceId' => $instance->id]) }}" @if($canEdit) data-autosave-url="{{ route('sarpras.checklist.autosave', ['instanceId' => $instance->id]) }}" @endif>
         @csrf
         <div class="card">
             <div class="card-header"><h5 class="card-title mb-0"><i class="ri-list-check-2 me-1"></i>Item Pemeriksaan</h5></div>
@@ -116,7 +116,7 @@
             </div>
             @if($canEdit)
                 <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div class="small text-muted">Wajib diisi semua sebelum menyelesaikan checklist.</div>
+                    <div class="small text-muted"><span id="checklistAutoSaveStatus">Perubahan tersimpan otomatis.</span><div>Wajib diisi semua sebelum menyelesaikan checklist.</div></div>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-primary"><i class="ri-save-line me-1"></i>Simpan Progres</button>
                         <button class="btn btn-success" formaction="{{ route('sarpras.checklist.complete', ['instanceId' => $instance->id]) }}"><i class="ri-check-double-line me-1"></i>Selesaikan Checklist</button>
@@ -126,3 +126,106 @@
         </div>
     </form>
 @endsection
+
+@push('script')
+<script>
+    (function () {
+        const form = document.getElementById('checklistInstanceForm');
+        if (!form || !form.dataset.autosaveUrl) return;
+
+        const token = form.querySelector('input[name="_token"]')?.value || '';
+        const statusEl = document.getElementById('checklistAutoSaveStatus');
+        const countEl = document.getElementById('checklistProgressCount');
+        const failedEl = document.getElementById('checklistProgressFailed');
+        const barEl = document.getElementById('checklistProgressBar');
+        const noteTimers = new Map();
+        const saveQueues = new Map();
+        let saveSequence = 0;
+
+        function setStatus(text, tone) {
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            statusEl.className = 'small text-' + (tone || 'muted');
+        }
+
+        function itemIdFromName(name) {
+            const match = String(name || '').match(/\[(.+)\]$/);
+            return match ? match[1] : null;
+        }
+
+        function notesFor(itemId) {
+            return form.querySelector('input[name="notes[' + itemId + ']"]')?.value || '';
+        }
+
+        function updateProgress(progress) {
+            if (!progress) return;
+            if (countEl) countEl.textContent = progress.answered + ' / ' + progress.total;
+            if (failedEl) failedEl.textContent = progress.failed + ' temuan';
+            if (barEl) barEl.style.width = progress.percent_complete + '%';
+        }
+
+        async function performSave(body, sequence) {
+            try {
+                const response = await fetch(form.dataset.autosaveUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: body
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                if (sequence === saveSequence) {
+                    setStatus('✓ Tersimpan ' + (data.saved_at || ''), 'success');
+                    updateProgress(data.progress);
+                }
+            } catch (error) {
+                if (sequence === saveSequence) {
+                    setStatus('Gagal menyimpan: ' + error.message, 'danger');
+                }
+            }
+        }
+
+        function saveItem(itemId, value) {
+            const sequence = ++saveSequence;
+            setStatus('Menyimpan…', 'muted');
+            const body = new FormData();
+            body.append('_token', token);
+            body.append('template_item_id', itemId);
+            body.append('value', value);
+            body.append('notes', notesFor(itemId));
+
+            // Urutkan request per item agar catatan lama tidak menimpa
+            // catatan terbaru saat pengguna mengetik cepat.
+            const previous = saveQueues.get(itemId) || Promise.resolve();
+            const task = previous.catch(() => {}).then(function () {
+                return performSave(body, sequence);
+            });
+            saveQueues.set(itemId, task);
+            return task;
+        }
+
+        form.querySelectorAll('input[type="radio"][name^="answers["]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                if (!this.checked) return;
+                const itemId = itemIdFromName(this.name);
+                if (itemId) saveItem(itemId, this.value);
+            });
+        });
+
+        form.querySelectorAll('input[name^="notes["]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                const itemId = itemIdFromName(this.name);
+                if (!itemId) return;
+                clearTimeout(noteTimers.get(itemId));
+                noteTimers.set(itemId, setTimeout(function () {
+                    const checked = form.querySelector('input[name="answers[' + itemId + ']"]:checked');
+                    if (!checked) {
+                        setStatus('Pilih Sesuai atau Tidak agar catatan tersimpan otomatis.', 'muted');
+                        return;
+                    }
+                    saveItem(itemId, checked.value);
+                }, 650));
+            });
+        });
+    })();
+</script>
+@endpush

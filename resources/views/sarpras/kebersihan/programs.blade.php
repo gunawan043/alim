@@ -15,6 +15,7 @@
     </div></div>
 
     <div class="alert alert-light border small"><strong>Keterangan:</strong> <span class="badge bg-success-subtle text-success">✓</span> sudah terlaksana · <span class="badge bg-primary-subtle text-primary">○</span> direncanakan · <span class="text-muted">·</span> tidak dijadwalkan. Koordinator mencentang bulan pelaksanaan.</div>
+    @if($canManage)<div id="programAutoSaveStatus" class="small text-muted mb-2"><i class="ri-cloud-done-line me-1"></i>Klik bulan untuk menyimpan otomatis.</div>@endif
 
     <div class="card"><div class="card-header"><h5 class="card-title mb-0"><i class="ri-calendar-todo-line me-2 text-primary"></i>Program Kebersihan {{ $year }}</h5></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0" style="min-width:1100px">
         <thead class="table-light"><tr><th style="min-width:260px">Program</th><th>Kategori</th><th>Frekuensi</th><th>Petugas</th>@foreach($months as $m)<th class="text-center" style="width:48px">{{ $m }}</th>@endforeach<th class="text-end" style="width:110px">Aksi</th></tr></thead>
@@ -33,12 +34,12 @@
                     @endphp
                     <td class="text-center p-1">
                         @if($canManage)
-                            <form method="POST" action="{{ route('sarpras.kebersihan.program.check', ['programId' => $program->id]) }}">
+                            <form method="POST" class="program-check-form" action="{{ route('sarpras.kebersihan.program.check', ['programId' => $program->id]) }}">
                                 @csrf
                                 <input type="hidden" name="year" value="{{ $year }}">
                                 <input type="hidden" name="month" value="{{ $m }}">
                                 <input type="hidden" name="is_done" value="{{ $done ? 0 : 1 }}">
-                                <button type="submit" class="btn btn-sm p-1 {{ $done ? 'btn-success' : ($planned ? 'btn-outline-primary' : 'btn-light text-muted') }}" title="{{ $done ? 'Batalkan checklist' : 'Tandai terlaksana' }}" style="min-width:30px">{{ $done ? '✓' : ($planned ? '○' : '·') }}</button>
+                                <button type="submit" class="btn btn-sm p-1 {{ $done ? 'btn-success' : ($planned ? 'btn-outline-primary' : 'btn-light text-muted') }}" data-planned="{{ $planned ? '1' : '0' }}" title="{{ $done ? 'Batalkan checklist' : 'Tandai terlaksana' }}" style="min-width:30px">{{ $done ? '✓' : ($planned ? '○' : '·') }}</button>
                             </form>
                         @else
                             <span class="badge {{ $done ? 'bg-success-subtle text-success' : ($planned ? 'bg-primary-subtle text-primary' : 'bg-light text-muted') }}">{{ $done ? '✓' : ($planned ? '○' : '·') }}</span>
@@ -102,6 +103,49 @@
                 document.querySelectorAll('.edit-month').forEach(function (checkbox) {
                     checkbox.checked = months.includes(checkbox.value);
                 });
+            });
+        });
+    })();
+</script>
+@endpush
+@push('script')
+<script>
+    (function () {
+        const statusEl = document.getElementById('programAutoSaveStatus');
+        document.querySelectorAll('.program-check-form').forEach(function (form) {
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                const button = form.querySelector('button[type="submit"]');
+                if (!button || button.disabled) return;
+                const token = form.querySelector('input[name="_token"]')?.value || '';
+                button.disabled = true;
+                if (statusEl) statusEl.innerHTML = '<i class="ri-loader-4-line me-1"></i>Menyimpan…';
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                        body: new FormData(form)
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+
+                    const done = !!data.is_done;
+                    const planned = button.dataset.planned === '1';
+                    const doneInput = form.querySelector('input[name="is_done"]');
+                    if (doneInput) doneInput.value = done ? '0' : '1';
+                    button.textContent = done ? '✓' : (planned ? '○' : '·');
+                    button.classList.toggle('btn-success', done);
+                    button.classList.toggle('btn-outline-primary', !done && planned);
+                    button.classList.toggle('btn-light', !done && !planned);
+                    button.classList.toggle('text-muted', !done && !planned);
+                    button.title = done ? 'Batalkan checklist' : 'Tandai terlaksana';
+                    if (statusEl) statusEl.innerHTML = '<i class="ri-cloud-done-line me-1"></i>Tersimpan ' + (data.saved_at || '');
+                } catch (error) {
+                    if (statusEl) statusEl.innerHTML = '<i class="ri-error-warning-line me-1"></i>Gagal menyimpan: ' + error.message;
+                } finally {
+                    button.disabled = false;
+                }
             });
         });
     })();

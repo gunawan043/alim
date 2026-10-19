@@ -224,6 +224,34 @@ class SarprasChecklistController extends SarprasBaseController
         return back()->with('success', 'Progres checklist disimpan.');
     }
 
+    public function autosave(string $userId, Request $request, string $instanceId)
+    {
+        $instance = ChecklistInstance::with(['template.items', 'responses'])->findOrFail($instanceId);
+        $this->authorizeInstance($instance, $request);
+        abort_unless($instance->status === 'in_progress', 422, 'Checklist yang sudah selesai tidak dapat diubah.');
+
+        $validated = $request->validate([
+            'template_item_id' => 'required|string|exists:checklist_template_items,id',
+            'value' => 'required|boolean',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $item = $instance->template->items()->where('id', $validated['template_item_id'])->firstOrFail();
+        $response = $this->engine->record(
+            $instance,
+            $item->id,
+            (bool) $validated['value'],
+            ['notes' => $validated['notes'] ?? null]
+        );
+
+        return response()->json([
+            'success' => true,
+            'passed' => $response->passed,
+            'saved_at' => now()->format('H:i:s'),
+            'progress' => $this->engine->progress($instance->fresh()),
+        ]);
+    }
+
     public function complete(string $userId, Request $request, string $instanceId)
     {
         $instance = ChecklistInstance::with(['template.items', 'responses'])->findOrFail($instanceId);

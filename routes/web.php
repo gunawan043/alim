@@ -2880,6 +2880,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/pemeliharaan/jadwal/{scheduleId}/checklist', [SarprasChecklistController::class, 'store'])->name('checklist.store');
     Route::get('/checklist/instances/{instanceId}', [SarprasChecklistController::class, 'showInstance'])->name('checklist.instance');
     Route::post('/checklist/instances/{instanceId}/save', [SarprasChecklistController::class, 'save'])->name('checklist.save');
+    Route::post('/checklist/instances/{instanceId}/autosave', [SarprasChecklistController::class, 'autosave'])->name('checklist.autosave');
     Route::post('/checklist/instances/{instanceId}/complete', [SarprasChecklistController::class, 'complete'])->name('checklist.complete');
 
     // Antrean perbaikan (laporan kerusakan -> repair request -> work order)

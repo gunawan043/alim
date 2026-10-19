@@ -89,7 +89,7 @@
             </div>
         @endforeach
 
-        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.</div><button class="btn btn-success px-4" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
+        <div class="card mb-3" style="position:sticky;bottom:0;z-index:5;box-shadow:0 -8px 24px rgba(0,0,0,.08)"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><div class="small text-muted"><i class="ri-checkbox-circle-line me-1 text-success"></i>Centang pekerjaan yang sudah selesai.<span id="agendaAutoSaveStatus" class="ms-2">Perubahan tersimpan otomatis.</span></div><button class="btn btn-success px-4" data-confirm="Simpan seluruh agenda harian ini? Perubahan checklist sudah tersimpan otomatis."><i class="ri-save-line me-1"></i>Simpan Agenda</button></div></div>
     </form>
 
     @if($canManageAgenda)
@@ -127,26 +127,69 @@
     (function () {
         const statusEl = document.getElementById('agendaAutoSaveStatus');
         const officer = () => document.querySelector('select[name="officer_id"]')?.value || '';
+        const noteTimers = new Map();
+        const saveQueues = new Map();
+
+        function setStatus(text, tone) {
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            statusEl.className = 'ms-2 text-' + (tone || 'muted');
+        }
+
+        async function performAgendaSave(row, checkbox, form, revertOnError) {
+            try {
+                const response = await fetch(checkbox.dataset.updateUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: form
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
+                setStatus('✓ Tersimpan ' + (data.saved_at || ''), 'success');
+                if (revertOnError) row.classList.toggle('text-decoration-line-through', checkbox.checked);
+            } catch (error) {
+                if (revertOnError) checkbox.checked = !checkbox.checked;
+                setStatus('Gagal menyimpan: ' + error.message, 'danger');
+            }
+        }
+
+        function saveAgendaRow(row, revertOnError) {
+            const checkbox = row?.querySelector('.agenda-done');
+            if (!checkbox) return;
+            const notes = row.querySelector('input[name$="[notes]"]')?.value || '';
+            const form = new FormData();
+            form.append('_token', '{{ csrf_token() }}');
+            form.append('status', checkbox.checked ? 'selesai' : 'belum');
+            form.append('notes', notes);
+            form.append('officer_id', officer());
+            setStatus('Menyimpan…', 'muted');
+
+            // Serialkan simpan per baris agar catatan yang lebih baru tidak
+            // ditimpa oleh request checkbox yang lebih lama.
+            const previous = saveQueues.get(row) || Promise.resolve();
+            const task = previous.catch(() => {}).then(function () {
+                return performAgendaSave(row, checkbox, form, revertOnError);
+            });
+            saveQueues.set(row, task);
+        }
+
         document.querySelectorAll('.agenda-done').forEach(function (checkbox) {
-            checkbox.addEventListener('change', async function () {
+            checkbox.addEventListener('change', function () {
                 const row = checkbox.closest('.agenda-row');
-                const notes = row?.querySelector('input[name$="[notes]"]')?.value || '';
-                const form = new FormData();
-                form.append('_token', '{{ csrf_token() }}');
-                form.append('status', checkbox.checked ? 'selesai' : 'belum');
-                form.append('notes', notes);
-                form.append('officer_id', officer());
-                if (statusEl) statusEl.textContent = 'Menyimpan…';
-                try {
-                    const response = await fetch(checkbox.dataset.updateUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: form });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Gagal menyimpan.');
-                    if (statusEl) statusEl.textContent = '✓ Tersimpan ' + (data.saved_at || '');
-                    row.classList.toggle('text-decoration-line-through', checkbox.checked);
-                } catch (error) {
-                    checkbox.checked = !checkbox.checked;
-                    if (statusEl) statusEl.textContent = 'Gagal menyimpan: ' + error.message;
-                }
+                if (!row) return;
+                clearTimeout(noteTimers.get(row));
+                saveAgendaRow(row, true);
+            });
+        });
+
+        document.querySelectorAll('.agenda-row input[name$="[notes]"]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                const row = input.closest('.agenda-row');
+                if (!row) return;
+                clearTimeout(noteTimers.get(row));
+                noteTimers.set(row, setTimeout(function () {
+                    saveAgendaRow(row, false);
+                }, 700));
             });
         });
     })();
