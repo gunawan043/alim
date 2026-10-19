@@ -171,6 +171,22 @@
     const logo = new Image();
     logo.src = '{{ asset('build/images/alim-light.png') }}';
 
+    // Bootstrap data-api menutup modal yang sedang terbuka saat tombol
+    // [data-bs-toggle="modal"] diklik. Itu membuat modal "Isi Keterangan &
+    // Bukti" ikut tertutup ketika kamera dibuka. Tangkap klik lebih dulu dan
+    // buka kamera secara programatik agar modal induk tetap terbuka.
+    document.addEventListener('click', function (event) {
+        var trigger = event.target && event.target.closest
+            ? event.target.closest('[data-bs-toggle="modal"][data-bs-target="#alimCameraModal"]')
+            : null;
+        if (!trigger) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        targetInput = trigger.dataset.target;
+        targetPreview = trigger.dataset.preview;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show(trigger);
+    }, true);
+
     if (locationOverrideEl) {
         locationOverrideEl.addEventListener('input', function () {
             manualPlace = this.value.trim();
@@ -851,7 +867,15 @@
         }
         startCamera();
     });
-    modalEl.addEventListener('hidden.bs.modal', stopCamera);
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        stopCamera();
+        // Jika kamera dibuka dari modal lain, Bootstrap menghapus
+        // body.modal-open saat kamera ditutup. Kembalikan agar modal induk
+        // tetap terkunci dan latar belakang tidak ikut bergulir.
+        if (document.querySelector('.modal.show')) {
+            document.body.classList.add('modal-open');
+        }
+    });
     document.querySelectorAll('input[name="alimCameraOrientation"]').forEach(function (input) {
         input.addEventListener('change', updatePreviewRatio);
     });

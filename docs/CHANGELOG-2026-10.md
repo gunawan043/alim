@@ -2561,6 +2561,22 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Gunakan Foto menutup modal dan file tetap ada;
   - input target tidak ditemukan menampilkan fallback unduhan.
 
+## 219. Kamera dari Modal “Isi Keterangan & Bukti”
+
+- Memperbaiki kamera yang membuka dari modal **Isi Keterangan & Bukti**:
+  - Bootstrap `data-bs-toggle="modal"` otomatis menutup modal yang sedang terbuka;
+  - klik tombol kamera sekarang ditangkap lebih dulu dan kamera dibuka secara programatik;
+  - modal **Isi Keterangan & Bukti** tetap terbuka saat kamera dibuka maupun setelah kamera ditutup.
+- Setelah **Gunakan Foto**, pengguna kembali ke modal Isi Keterangan & Bukti, bukan ke halaman checklist.
+- File foto masuk ke input `evidenceBeforeFile`/`evidenceAfterFile` dan pratinjau tampil di modal tersebut.
+- `body.modal-open` dikembalikan setelah kamera ditutup bila masih ada modal induk, sehingga latar belakang tidak ikut bergulir.
+- Backdrop modal induk tetap tersisa satu setelah kamera ditutup.
+- Diuji dengan Playwright pada halaman checklist kebersihan:
+  - modal bukti terbuka;
+  - kamera dibuka tanpa menutup modal bukti;
+  - foto diambil dan pratinjau muncul;
+  - setelah Gunakan Foto, modal bukti masih terbuka dan file tetap ada.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
