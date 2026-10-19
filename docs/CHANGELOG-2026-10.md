@@ -2490,6 +2490,16 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Catatan, kondisi, dan foto tidak lagi memakai collapse; dibuka melalui modal **Upload Bukti**.
 - Modal bukti mendukung upload file, link Drive, dan kamera watermark.
 
+## 215. Tombol Checklist Sejajar & Isi Keterangan
+
+- Format aksi menjadi `[✓] [✕] [Isi Keterangan]`.
+- Tombol ✓/✕ hanya ikon; tombol ketiga memakai ikon + teks **Isi Keterangan**.
+- Ukuran tombol diperkecil dan diseragamkan (38px, sudut konsisten).
+- Desktop: tombol sejajar di kanan uraian tugas.
+- Mobile: tombol di bawah uraian; ✓ dan ✕ selebar 40px, Isi Keterangan mengambil sisa lebar.
+- Tidak ada status terpilih otomatis; background hijau/merah hanya muncul setelah ✓/✕ dipilih.
+- Isi keterangan/foto dibuka melalui modal, bukan dropdown/collapse.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

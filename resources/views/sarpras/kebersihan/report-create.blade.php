@@ -60,7 +60,7 @@
                     </div>
                     <div class="mt-3"><div class="d-flex justify-content-between small text-muted mb-1"><span>Progres pekerjaan</span><span id="checklistProgressText">0 / {{ $tasks->count() }} selesai</span></div><div class="progress" style="height:7px"><div class="progress-bar bg-success" id="checklistProgressBar" style="width:0%"></div></div></div>
                     <div class="d-flex justify-content-between mt-2"><small id="cleaningSaveStatus" class="text-muted"><i class="ri-cloud-line me-1"></i>Tersimpan otomatis</small><small class="text-muted">Perubahan langsung disimpan</small></div>
-                    <div class="d-flex flex-wrap gap-3 small text-muted mt-2"><span><i class="ri-check-line text-success me-1"></i>Selesai</span><span><i class="ri-close-line text-danger me-1"></i>Belum</span><span><i class="ri-upload-cloud-2-line text-primary me-1"></i>Upload bukti</span></div>
+                    <div class="d-flex flex-wrap gap-3 small text-muted mt-2"><span><i class="ri-check-line text-success me-1"></i>Selesai</span><span><i class="ri-close-line text-danger me-1"></i>Belum</span><span><i class="ri-edit-2-line text-primary me-1"></i>Isi Keterangan</span></div>
                 </div>
             </div>
 
@@ -101,7 +101,7 @@
                                         @php
                                             $taskNumber++;
                                             $item = $reportItems->get($task->id);
-                                            $selected = old('items.'.$task->id.'.result', $item?->result ?? 'belum');
+                                            $selected = old('items.'.$task->id.'.result', $item?->result);
                                             $beforeUrl = $item?->before_photo_url ?: ($item?->before_photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->before_photo_path) : null);
                                             $afterUrl = $item?->after_photo_url ?: ($item?->after_photo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->after_photo_path) : null);
                                         @endphp
@@ -118,7 +118,7 @@
                                                     <label class="btn task-icon-btn btn-outline-success" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line"></i><span class="visually-hidden">Selesai</span></label>
                                                     <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
                                                     <label class="btn task-icon-btn btn-outline-danger" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line"></i><span class="visually-hidden">Belum</span></label>
-                                                    <button class="btn task-icon-btn btn-outline-primary evidence-trigger" type="button" data-bs-toggle="modal" data-bs-target="#taskEvidenceModal" data-task-id="{{ $task->id }}" data-task-title="{{ e($task->title) }}" title="Upload bukti" aria-label="Upload bukti" {{ $isLocked ? 'disabled' : '' }}><i class="ri-upload-cloud-2-line"></i><span class="visually-hidden">Upload bukti</span></button>
+                                                    <button class="btn task-icon-btn task-evidence-btn btn-outline-primary evidence-trigger" type="button" data-bs-toggle="modal" data-bs-target="#taskEvidenceModal" data-task-id="{{ $task->id }}" data-task-title="{{ e($task->title) }}" title="Isi keterangan" aria-label="Isi keterangan" {{ $isLocked ? 'disabled' : '' }}><i class="ri-edit-2-line"></i><span>Isi Keterangan</span></button>
                                                 </div>
                                             </div>
                                             <input type="hidden" class="task-condition" value="{{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') }}">
@@ -183,7 +183,7 @@
     <div class="modal fade" id="taskEvidenceModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header"><div><h5 class="modal-title mb-0"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Upload Bukti</h5><small class="text-muted" id="evidenceTaskTitle">Pekerjaan</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><div><h5 class="modal-title mb-0"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Isi Keterangan &amp; Bukti</h5><small class="text-muted" id="evidenceTaskTitle">Pekerjaan</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-12 col-md-5"><label class="form-label">Kondisi</label><select id="evidenceCondition" class="form-select">@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}">{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
@@ -207,7 +207,7 @@
                     </div>
                     <div id="evidenceSaveStatus" class="small mt-3"></div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-primary" id="evidenceSaveBtn"><i class="ri-save-line me-1"></i>Simpan Bukti</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-primary" id="evidenceSaveBtn"><i class="ri-save-line me-1"></i>Simpan Keterangan</button></div>
             </div>
         </div>
     </div>
@@ -340,6 +340,10 @@
 
         document.getElementById('evidenceSaveBtn')?.addEventListener('click', async function () {
             if (!evidenceRow) return;
+            if (!evidenceRow.querySelector('.task-result:checked')) {
+                evidenceSaveStatus.textContent = 'Pilih Selesai atau Belum terlebih dahulu.';
+                return;
+            }
             this.disabled = true;
             evidenceSaveStatus.textContent = 'Menyimpan…';
             const ok = await saveRow(evidenceRow, {
@@ -352,10 +356,10 @@
             });
             this.disabled = false;
             if (ok) {
-                evidenceSaveStatus.textContent = '✓ Bukti tersimpan';
+                evidenceSaveStatus.textContent = '✓ Keterangan tersimpan';
                 bootstrap.Modal.getInstance(evidenceModalEl)?.hide();
             } else {
-                evidenceSaveStatus.textContent = 'Gagal menyimpan bukti.';
+                evidenceSaveStatus.textContent = 'Gagal menyimpan keterangan.';
             }
         });
 
@@ -389,18 +393,19 @@
 
 @push('css')
 <style>
-    .task-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.25rem; align-items: center; }
-    .task-buttons { display: flex; align-items: center; gap: .55rem; }
-    .task-icon-btn { width: 46px; height: 46px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-width: 1.5px; border-radius: .8rem !important; }
-    .task-icon-btn i { font-size: 1.25rem; pointer-events: none; }
+    .task-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; }
+    .task-buttons { display: flex; align-items: center; gap: .4rem; }
+    .task-icon-btn { width: 38px; height: 38px; min-height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-width: 1.5px; border-radius: .6rem !important; line-height: 1; }
+    .task-icon-btn i { font-size: 1.05rem; pointer-events: none; }
     .task-icon-btn:hover { color: #fff; }
     .task-buttons .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
     .task-buttons .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
-    .evidence-trigger { background: #f2f8ff; }
+    .task-evidence-btn { width: auto; padding: 0 .7rem; gap: .35rem; font-size: .78rem; font-weight: 600; white-space: nowrap; background: #f2f8ff; }
     @media (max-width: 767.98px) {
         .task-main { display: block; }
-        .task-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-top: .85rem; }
-        .task-icon-btn { width: 100%; height: 44px; }
+        .task-buttons { display: grid; grid-template-columns: 40px 40px minmax(0, 1fr); gap: .5rem; margin-top: .7rem; align-items: stretch; }
+        .task-icon-btn { width: 100%; height: 38px; min-height: 38px; }
+        .task-evidence-btn { font-size: .76rem; padding: 0 .5rem; }
     }
 </style>
 @endpush
