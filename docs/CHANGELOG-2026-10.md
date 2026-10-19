@@ -2461,6 +2461,15 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - hanya tab aktif yang terlihat;
   - autosave tetap berjalan per item.
 
+## 212. Tiga Tombol Ikon pada Checklist Kebersihan
+
+- Aksi per pekerjaan sekarang berupa tiga tombol ikon tanpa teks:
+  - centang hijau = Selesai;
+  - silang merah = Belum;
+  - ikon upload biru = **Upload bukti** (catatan + foto sebelum/sesudah).
+- Tombol dibuat sebagai segmented control yang lebih rapi, dengan tooltip/aria-label.
+- Legenda ikon ditampilkan sekali di atas, bukan teks berulang di setiap item.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

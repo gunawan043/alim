@@ -60,6 +60,7 @@
                     </div>
                     <div class="mt-3"><div class="d-flex justify-content-between small text-muted mb-1"><span>Progres pekerjaan</span><span id="checklistProgressText">0 / {{ $tasks->count() }} selesai</span></div><div class="progress" style="height:7px"><div class="progress-bar bg-success" id="checklistProgressBar" style="width:0%"></div></div></div>
                     <div class="d-flex justify-content-between mt-2"><small id="cleaningSaveStatus" class="text-muted"><i class="ri-cloud-line me-1"></i>Tersimpan otomatis</small><small class="text-muted">Perubahan langsung disimpan</small></div>
+                    <div class="d-flex flex-wrap gap-3 small text-muted mt-2"><span><i class="ri-check-line text-success me-1"></i>Selesai</span><span><i class="ri-close-line text-danger me-1"></i>Belum</span><span><i class="ri-upload-cloud-2-line text-primary me-1"></i>Upload bukti</span></div>
                 </div>
             </div>
 
@@ -113,13 +114,13 @@
                                                 </div>
                                                 <span class="badge bg-light text-dark border text-nowrap">{{ ucfirst($task->frequency) }}</span>
                                             </div>
-                                            <div class="btn-group w-100 mt-2" role="group" aria-label="Status pekerjaan">
+                                            <div class="btn-group w-100 mt-2 task-action-group" role="group" aria-label="Tindakan pekerjaan">
                                                 <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="selesai_{{ $task->id }}" value="sudah" {{ $selected === 'sudah' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-success py-2 fw-semibold" for="selesai_{{ $task->id }}"><i class="ri-check-line me-1"></i>Selesai</label>
+                                                <label class="btn btn-outline-success py-2" for="selesai_{{ $task->id }}" title="Selesai" aria-label="Selesai"><i class="ri-check-line fs-5"></i><span class="visually-hidden">Selesai</span></label>
                                                 <input type="radio" class="btn-check task-result" name="result_{{ $task->id }}" id="belum_{{ $task->id }}" value="belum" {{ $selected === 'belum' ? 'checked' : '' }} {{ $isLocked ? 'disabled' : '' }}>
-                                                <label class="btn btn-outline-danger py-2 fw-semibold" for="belum_{{ $task->id }}"><i class="ri-close-line me-1"></i>Belum</label>
+                                                <label class="btn btn-outline-danger py-2" for="belum_{{ $task->id }}" title="Belum" aria-label="Belum"><i class="ri-close-line fs-5"></i><span class="visually-hidden">Belum</span></label>
+                                                <button class="btn btn-outline-primary py-2" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}" title="Upload bukti: catatan, foto sebelum dan sesudah" aria-label="Upload bukti"><i class="ri-upload-cloud-2-line fs-5"></i></button>
                                             </div>
-                                            <button class="btn btn-link btn-sm px-0 mt-2 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#taskDetail{{ $task->id }}"><i class="ri-edit-2-line me-1"></i>Catatan / foto bukti</button>
                                             <div class="collapse" id="taskDetail{{ $task->id }}">
                                                 <div class="row g-2 mt-1">
                                                     <div class="col-md-4"><label class="form-label small">Kondisi</label><select class="form-select form-select-sm task-condition" {{ $isLocked ? 'disabled' : '' }}>@foreach(\App\Models\CleaningReport::CONDITION_OPTIONS as $condition)<option value="{{ $condition }}" {{ old('items.'.$task->id.'.condition', $item?->condition ?? 'bersih') === $condition ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ', $condition)) }}</option>@endforeach</select></div>
@@ -306,4 +307,17 @@
         }
     })();
 </script>
+@endpush
+
+@push('css')
+<style>
+    .task-action-group { border-radius: .75rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .task-action-group .btn { border-width: 1.5px; }
+    .task-action-group .btn i { pointer-events: none; }
+    .task-action-group .btn-check:checked + .btn-outline-success { background: #198754; border-color: #198754; color: #fff; }
+    .task-action-group .btn-check:checked + .btn-outline-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .task-action-group .btn-outline-success:hover { background: #198754; color: #fff; }
+    .task-action-group .btn-outline-danger:hover { background: #dc3545; color: #fff; }
+    .task-action-group .btn-outline-primary:hover { background: #0d6efd; color: #fff; }
+</style>
 @endpush
