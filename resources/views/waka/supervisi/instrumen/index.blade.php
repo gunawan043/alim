@@ -49,9 +49,11 @@
                     <h5 class="card-title mb-0">Pengaturan Instrumen Supervisi</h5>
                     <p class="text-muted mb-0 small">Atur bagian, daftar item yang dinilai, dan poinnya. Instrumen bawaan bersifat baca-saja — duplikat ke satuan untuk menyesuaikan.</p>
                 </div>
-                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createInstrumenModal">
-                    <i class="ri-add-line me-1"></i>Tambah Instrumen
-                </button>
+                @if($canManageInstrumen)
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createInstrumenModal">
+                        <i class="ri-add-line me-1"></i>Tambah Instrumen
+                    </button>
+                @endif
             </div>
         </div>
         <div class="card-body p-0">
@@ -95,16 +97,22 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="{{ route('waka.supervisi-instrumen.edit', $i->id) }}" class="btn btn-sm btn-soft-primary me-1" title="Atur item & poin">
-                                        <i class="ri-settings-3-line"></i> Atur
-                                    </a>
-                                    @if(! $i->school_id)
-                                        <form action="{{ route('waka.supervisi-instrumen.duplikat', $i->id) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <button type="submit" class="btn btn-sm btn-soft-success" title="Duplikat ke satuan">
-                                                <i class="ri-file-copy-line"></i> Duplikat
-                                            </button>
-                                        </form>
+                                    @if($canManageInstrumen)
+                                        <a href="{{ route('waka.supervisi-instrumen.edit', $i->id) }}" class="btn btn-sm btn-soft-primary me-1" title="Atur item & poin">
+                                            <i class="ri-settings-3-line"></i> Atur
+                                        </a>
+                                        @if(! $i->school_id)
+                                            <form action="{{ route('waka.supervisi-instrumen.duplikat', $i->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-soft-success" title="Duplikat ke satuan">
+                                                    <i class="ri-file-copy-line"></i> Duplikat
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        <a href="{{ route('waka.supervisi-instrumen.edit', $i->id) }}" class="btn btn-sm btn-soft-primary" title="Lihat instrumen">
+                                            <i class="ri-eye-line"></i> Lihat
+                                        </a>
                                     @endif
                                 </td>
                             </tr>

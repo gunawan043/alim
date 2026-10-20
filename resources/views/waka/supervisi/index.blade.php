@@ -125,6 +125,9 @@
                                     <span class="badge bg-{{ $badge }}-subtle text-{{ $badge }}">{{ ucfirst($s->status) }}</span>
                                 </td>
                                 <td class="text-center">
+                                    <a href="{{ route('waka.supervisi.penilaian', $s->id) }}" class="btn btn-sm btn-soft-success me-1" title="Nilai Guru">
+                                        <i class="ri-edit-2-line"></i>
+                                    </a>
                                     <a href="{{ route('waka.supervisi.show', $s->id) }}" class="btn btn-sm btn-soft-primary me-1" title="Detail">
                                         <i class="ri-eye-line"></i>
                                     </a>

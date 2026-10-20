@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-    @php $readOnly = $instrumen->school_id === null; @endphp
+    @php $readOnly = $instrumen->school_id === null || ! ($canEditInstrumen ?? false); @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('waka.supervisi-instrumen.index') }}">Instrumen Supervisi</a> @endslot
@@ -46,14 +46,21 @@
         </div>
     </div>
 
-    @if($readOnly)
+    @if($instrumen->school_id === null)
         <div class="alert alert-warning py-2 px-3 small" role="alert">
             <i class="ri-lock-line me-1"></i>
             Instrumen bawaan bersifat <strong>baca-saja</strong>. Duplikat ke satuan untuk mengubah item &amp; poinnya.
-            <form action="{{ route('waka.supervisi-instrumen.duplikat', $instrumen->id) }}" method="POST" class="d-inline ms-1">
-                @csrf
-                <button class="btn btn-sm btn-success"><i class="ri-file-copy-line me-1"></i>Duplikat ke Satuan</button>
-            </form>
+            @if($canEditInstrumen ?? false)
+                <form action="{{ route('waka.supervisi-instrumen.duplikat', $instrumen->id) }}" method="POST" class="d-inline ms-1">
+                    @csrf
+                    <button class="btn btn-sm btn-success"><i class="ri-file-copy-line me-1"></i>Duplikat ke Satuan</button>
+                </form>
+            @endif
+        </div>
+    @elseif(! ($canEditInstrumen ?? false))
+        <div class="alert alert-info py-2 px-3 small" role="alert">
+            <i class="ri-eye-line me-1"></i>
+            Anda dapat melihat instrumen ini. Perubahan instrumen hanya dapat dilakukan oleh TU, KSP, Kurikulum, atau Waka.
         </div>
     @endif
 

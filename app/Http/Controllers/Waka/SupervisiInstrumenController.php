@@ -43,7 +43,9 @@ class SupervisiInstrumenController extends Controller
                 return $i;
             });
 
-        return view('waka.supervisi.instrumen.index', compact('instrumen'));
+        $canManageInstrumen = $this->canManageInstrumen($request);
+
+        return view('waka.supervisi.instrumen.index', compact('instrumen', 'canManageInstrumen'));
     }
 
     public function store(Request $request)
@@ -76,7 +78,9 @@ class SupervisiInstrumenController extends Controller
 
         $instrumen->load(['bagian' => fn ($q) => $q->orderBy('urutan'), 'bagian.items', 'bagian.items.subItems']);
 
-        return view('waka.supervisi.instrumen.edit', compact('instrumen'));
+        $canEditInstrumen = $this->canManageInstrumen($request);
+
+        return view('waka.supervisi.instrumen.edit', compact('instrumen', 'canEditInstrumen'));
     }
 
     public function duplicate(Request $request, string $id)
@@ -296,6 +300,46 @@ class SupervisiInstrumenController extends Controller
     }
 
     // ── GUARD ───────────────────────────────────────────────────
+
+    private function canManageInstrumen(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ((method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        $jabatan = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
+        $hasJabatan = fn (string $needle): bool => str_contains($jabatan, strtoupper($needle));
+
+        $tugas = collect();
+        if (method_exists($user, 'tugasTambahan')) {
+            $tugas = $tugas->merge($user->tugasTambahan()->pluck('nama_tugas'));
+        }
+        if (class_exists(\App\Models\OtherTeacherTask::class)) {
+            $tugas = $tugas->merge(
+                \App\Models\OtherTeacherTask::query()
+                    ->where('teacher_id', $user->id)
+                    ->where('is_active', 1)
+                    ->pluck('task_name')
+            );
+        }
+        $hasTugas = fn (string $needle): bool => $tugas
+            ->filter()
+            ->map(fn ($name) => strtoupper(trim((string) $name)))
+            ->contains(strtoupper($needle));
+
+        return $hasJabatan('KEPALA SATUAN PENDIDIKAN')
+            || $hasJabatan('WAKIL KEPALA SATUAN PENDIDIKAN')
+            || $hasJabatan('KOORDINATOR KURIKULUM')
+            || $hasJabatan('TATA USAHA')
+            || $hasTugas('TIM KURIKULUM');
+    }
 
     private function findScoped(Request $request, string $id, bool $readOnly = false): SupervisiInstrumen
     {

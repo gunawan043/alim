@@ -2828,6 +2828,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Halaman cetak jadwal merespons `200`.
   - Halaman detail, pengaturan, dan form supervisi merespons `200`.
 
+## 231. Kewenangan Instrumen & Aksi Nilai
+
+- Edit/pembuatan instrumen supervisi dibatasi pada:
+  - TU (Kepala TU/Tata Usaha),
+  - KSP (Kepala Satuan Pendidikan),
+  - Kurikulum (Koordinator/Tim Kurikulum),
+  - Waka (Wakil Kepala Satuan Pendidikan).
+- Supervisor yang ditetapkan dapat:
+  - melihat instrumen;
+  - memakai instrumen pada halaman penilaian;
+  - tetapi tidak dapat menambah/mengubah/menduplikasi instrumen.
+- Route tulis instrumen memakai middleware `satuan.feature:supervisi-admin`.
+- Halaman daftar supervisi mendapat aksi langsung **Nilai Guru** menuju form penilaian berbasis instrumen.
+- Diuji:
+  - supervisor/guru biasa dapat membuka daftar dan melihat instrumen;
+  - percobaan menyimpan instrumen oleh supervisor mendapat `403`;
+  - Wakil/TU/Kurikulum tetap dapat mengelola instrumen.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

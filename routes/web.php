@@ -3255,19 +3255,22 @@ Route::prefix('waka')
         });
 
         // ── PENGATURAN INSTRUMEN SUPERVISI (bagian → item + poin) ──
-        Route::prefix('supervisi-instrumen')->middleware('satuan.feature:supervisi')->name('supervisi-instrumen.')->group(function () {
-            Route::get('/', [SupervisiInstrumenController::class, 'index'])->name('index');
-            Route::post('/', [SupervisiInstrumenController::class, 'store'])->name('store');
-            Route::get('/{id}', [SupervisiInstrumenController::class, 'edit'])->name('edit');
-            Route::put('/{id}', [SupervisiInstrumenController::class, 'update'])->name('update');
-            Route::post('/{id}/duplikat', [SupervisiInstrumenController::class, 'duplicate'])->name('duplikat');
-            Route::post('/{id}/bagian', [SupervisiInstrumenController::class, 'storeBagian'])->name('bagian.store');
-            Route::put('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'updateBagian'])->name('bagian.update');
-            Route::delete('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'destroyBagian'])->name('bagian.destroy');
-            Route::post('/bagian/{bagianId}/item', [SupervisiInstrumenController::class, 'storeItem'])->name('item.store');
-            Route::put('/item/{itemId}', [SupervisiInstrumenController::class, 'updateItem'])->name('item.update');
-            Route::delete('/item/{itemId}', [SupervisiInstrumenController::class, 'destroyItem'])->name('item.destroy');
-            Route::post('/item/{itemId}/pindah', [SupervisiInstrumenController::class, 'moveItem'])->name('item.move');
+        Route::prefix('supervisi-instrumen')->name('supervisi-instrumen.')->group(function () {
+            Route::get('/', [SupervisiInstrumenController::class, 'index'])->middleware('satuan.feature:supervisi')->name('index');
+            Route::get('/{id}', [SupervisiInstrumenController::class, 'edit'])->middleware('satuan.feature:supervisi')->name('edit');
+
+            Route::middleware('satuan.feature:supervisi-admin')->group(function () {
+                Route::post('/', [SupervisiInstrumenController::class, 'store'])->name('store');
+                Route::put('/{id}', [SupervisiInstrumenController::class, 'update'])->name('update');
+                Route::post('/{id}/duplikat', [SupervisiInstrumenController::class, 'duplicate'])->name('duplikat');
+                Route::post('/{id}/bagian', [SupervisiInstrumenController::class, 'storeBagian'])->name('bagian.store');
+                Route::put('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'updateBagian'])->name('bagian.update');
+                Route::delete('/bagian/{bagianId}', [SupervisiInstrumenController::class, 'destroyBagian'])->name('bagian.destroy');
+                Route::post('/bagian/{bagianId}/item', [SupervisiInstrumenController::class, 'storeItem'])->name('item.store');
+                Route::put('/item/{itemId}', [SupervisiInstrumenController::class, 'updateItem'])->name('item.update');
+                Route::delete('/item/{itemId}', [SupervisiInstrumenController::class, 'destroyItem'])->name('item.destroy');
+                Route::post('/item/{itemId}/pindah', [SupervisiInstrumenController::class, 'moveItem'])->name('item.move');
+            });
         });
 
         // ── SURAT MENYURAT ──────────────────────────────────────
