@@ -14,7 +14,7 @@ class LibraryUnit extends Model
     protected $table = 'library_units';
 
     protected $fillable = [
-        'work_unit_id', 'school_id', 'code', 'name', 'gender_scope',
+        'work_unit_id', 'school_id', 'asset_room_id', 'code', 'name', 'gender_scope',
         'level_scope', 'location', 'is_active', 'notes',
     ];
 
@@ -22,6 +22,7 @@ class LibraryUnit extends Model
 
     public function school(): BelongsTo { return $this->belongsTo(School::class); }
     public function workUnit(): BelongsTo { return $this->belongsTo(WorkUnit::class); }
+    public function room(): BelongsTo { return $this->belongsTo(AssetRoom::class, 'asset_room_id'); }
     public function staff(): HasMany { return $this->hasMany(LibraryStaff::class); }
     public function settings(): HasMany { return $this->hasMany(LibrarySetting::class); }
     public function items(): HasMany { return $this->hasMany(LibraryItem::class); }

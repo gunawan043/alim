@@ -3,14 +3,17 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\AssetRoom;
 use App\Models\LibraryGenre;
 use App\Models\LibraryItem;
 use App\Models\LibraryMember;
 use App\Models\LibraryMemberCard;
 use App\Models\LibraryTitle;
 use App\Models\LibraryUnit;
+use App\Models\RoomBooking;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\LibraryStockOpname;
 use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,5 +65,45 @@ class LibraryModuleTest extends TestCase
 
         $this->assertDatabaseHas('library_loans', ['library_member_id' => $member->id, 'status' => 'active']);
         $this->assertDatabaseHas('library_items', ['id' => $item->id, 'status' => 'on_loan']);
+    }
+
+    public function test_ruang_dan_stock_opname_perpustakaan(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Perpus Ruang', 'code' => 'PERPUS-ROOM', 'type' => 'Unit Akademik', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '88888888', 'name' => 'Sekolah Ruang']);
+        $year = AcademicYear::create(['name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true, 'start_date' => '2026-07-01', 'end_date' => '2027-06-30']);
+        $admin = User::create(['name' => 'Admin Ruang', 'email' => 'admin.ruang@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $unit = LibraryUnit::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'code' => 'PERPUS-R', 'name' => 'Perpustakaan Ruang', 'gender_scope' => 'mixed', 'level_scope' => 'sd_smp', 'is_active' => true]);
+        $room = AssetRoom::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'room_name' => 'Ruang Baca', 'room_type' => 'perpustakaan', 'is_bookable' => true, 'booking_requires_approval' => false, 'is_active' => true]);
+        $genre = LibraryGenre::create(['school_id' => $school->id, 'name' => 'Umum', 'is_active' => true]);
+        $title = LibraryTitle::create(['school_id' => $school->id, 'genre_id' => $genre->id, 'title' => 'Buku Stock', 'is_active' => true]);
+        LibraryItem::create(['library_title_id' => $title->id, 'library_unit_id' => $unit->id, 'inventory_code' => 'STK-001', 'status' => 'available', 'condition' => 'baik']);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/rooms?unit_id={$unit->id}")->assertOk()->assertSee('Ruang Baca');
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/rooms", [
+            'library_unit_id' => $unit->id,
+            'room_id' => $room->id,
+            'event_name' => 'Bedah Buku',
+            'purpose' => 'Kegiatan literasi',
+            'booking_date' => now()->toDateString(),
+            'start_time' => '09:00',
+            'end_time' => '10:00',
+            'participants_count' => 20,
+            'booking_source' => 'direct',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('room_bookings', ['library_unit_id' => $unit->id, 'event_name' => 'Bedah Buku', 'status' => 'approved']);
+
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/stock-opnames", [
+            'library_unit_id' => $unit->id,
+            'session_date' => now()->toDateString(),
+        ])->assertRedirect();
+        $session = LibraryStockOpname::firstOrFail();
+        $row = $session->items()->firstOrFail();
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/stock-opnames/{$session->id}/items/{$row->id}", [
+            'finding' => 'found',
+            'physical_location' => 'Rak A',
+            'condition' => 'baik',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('library_stock_opname_items', ['id' => $row->id, 'finding' => 'found']);
     }
 }

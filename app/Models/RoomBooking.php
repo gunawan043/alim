@@ -26,6 +26,8 @@ class RoomBooking extends Model
 
     protected $fillable = [
         'room_id',
+        'library_unit_id',
+        'booking_source',
         'work_unit_id',
         'school_id',
         'booked_by',

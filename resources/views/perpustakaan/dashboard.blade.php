@@ -15,6 +15,8 @@
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('user.perpustakaan.loans.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-primary btn-sm"><i class="ri-exchange-line me-1"></i>Peminjaman</a>
                 <a href="{{ route('user.perpustakaan.visits.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-primary btn-sm"><i class="ri-footprint-line me-1"></i>Kunjungan</a>
+                <a href="{{ route('user.perpustakaan.rooms.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-info btn-sm"><i class="ri-calendar-event-line me-1"></i>Ruang</a>
+                <a href="{{ route('user.perpustakaan.stock-opnames.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-file-list-2-line me-1"></i>Stock Opname</a>
             </div>
         </div>
     </div></div>
