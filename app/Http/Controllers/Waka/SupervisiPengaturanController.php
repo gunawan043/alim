@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\GtkEmployment;
 use App\Models\GtkProfile;
+use App\Models\Supervisi;
 use App\Models\SupervisiPengaturan;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -36,12 +37,22 @@ class SupervisiPengaturanController extends Controller
 
         $gtks = $this->gtkOptions($schoolId);
 
+        $latestByPair = Supervisi::query()
+            ->where('school_id', $schoolId)
+            ->when($selectedYearId, fn ($q) => $q->where('academic_year_id', $selectedYearId))
+            ->orderByDesc('tanggal_supervisi')
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique(fn (Supervisi $row) => $row->observer_id.'|'.$row->gtk_id)
+            ->keyBy(fn (Supervisi $row) => $row->observer_id.'|'.$row->gtk_id);
+
         return view('waka.supervisi.pengaturan', compact(
             'pengaturan',
             'academicYears',
             'activeYearId',
             'selectedYearId',
-            'gtks'
+            'gtks',
+            'latestByPair'
         ));
     }
 

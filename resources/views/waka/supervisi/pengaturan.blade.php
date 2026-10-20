@@ -79,7 +79,7 @@
                             <th>Guru yang Disupervisi</th>
                             <th>Catatan</th>
                             <th class="text-center">Status</th>
-                            <th class="text-end" style="width:150px">Aksi</th>
+                            <th class="text-end" style="width:250px">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -93,6 +93,18 @@
                                 <span class="badge {{ $row->is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $row->is_active ? 'Aktif' : 'Nonaktif' }}</span>
                             </td>
                             <td class="text-end">
+                                @php
+                                    $latest = $latestByPair->get($row->supervisor_gtk_id.'|'.$row->supervisee_gtk_id);
+                                @endphp
+                                @if($latest)
+                                    <a href="{{ route('waka.supervisi.penilaian', $latest->id) }}" class="btn btn-sm btn-soft-success" title="Isi penilaian supervisi">
+                                        <i class="ri-edit-2-line"></i> Nilai
+                                    </a>
+                                @else
+                                    <a href="{{ route('waka.supervisi.create', ['observer_id' => $row->supervisor_gtk_id, 'gtk_id' => $row->supervisee_gtk_id, 'redirect_to' => 'penilaian']) }}" class="btn btn-sm btn-soft-primary" title="Buat jadwal lalu isi penilaian">
+                                        <i class="ri-add-line"></i> Buat &amp; Nilai
+                                    </a>
+                                @endif
                                 <form action="{{ route('waka.supervisi-pengaturan.toggle', $row->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button class="btn btn-sm {{ $row->is_active ? 'btn-soft-warning' : 'btn-soft-success' }}" title="{{ $row->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">

@@ -111,6 +111,7 @@ class SupervisiController extends Controller
             'rekomendasi' => 'nullable|string',
             'tindak_lanjut' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
+            'redirect_to' => 'nullable|in:penilaian',
         ]);
 
         $schoolId = $request->attributes->get('schoolContextId');
@@ -131,7 +132,16 @@ class SupervisiController extends Controller
             $validated['observer_name'] = GtkProfile::with('user')->find($validated['observer_id'])?->user?->name;
         }
 
-        Supervisi::create($validated);
+        $redirectTo = $validated['redirect_to'] ?? null;
+        unset($validated['redirect_to']);
+
+        $supervisi = Supervisi::create($validated);
+
+        if ($redirectTo === 'penilaian') {
+            return redirect()
+                ->route('waka.supervisi.penilaian', $supervisi->id)
+                ->with('success', 'Jadwal supervisi dibuat. Pilih instrumen lalu isi penilaian.');
+        }
 
         return redirect()->route('waka.supervisi.index')
             ->with('success', 'Data supervisi berhasil ditambahkan.');

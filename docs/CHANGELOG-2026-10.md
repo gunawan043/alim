@@ -2756,6 +2756,23 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Penyimpanan jadwal valid berhasil; jadwal bentrok ditolak.
   - Migrasi `supervisi_pengaturan` berhasil dijalankan lokal.
 
+## 227. Aksi Penilaian dari Pengaturan Supervisor & Menu Supervisor
+
+- Tabel **Daftar Pengaturan Supervisor** sekarang memiliki aksi:
+  - **Nilai** bila sudah ada jadwal supervisi untuk pasangan tersebut;
+  - **Buat & Nilai** bila belum ada, yang membuka form jadwal dengan supervisor/guru terisi dan langsung diarahkan ke halaman penilaian setelah disimpan.
+- Form create supervisi menerima query `observer_id`, `gtk_id`, dan `redirect_to=penilaian`.
+- Sidebar akun yang ditetapkan sebagai supervisor menampilkan:
+  - **Penilaian Saya**;
+  - **Instrumen Supervisi**.
+- Middleware `satuan.feature:supervisi` mengizinkan supervisor terkonfigurasi mengakses penilaian/instrumen.
+- Route **Pengaturan Supervisor** dibatasi dengan `satuan.feature:supervisi-admin`, sehingga supervisor biasa tidak dapat mengubah pengaturan.
+- Diuji:
+  - aksi **Buat & Nilai** muncul saat belum ada jadwal;
+  - setelah jadwal dibuat, aksi berubah menjadi **Nilai** dan mengarah ke halaman penilaian;
+  - akun guru yang dijadikan supervisor mendapat menu `Penilaian Saya` dan `Instrumen Supervisi`, serta dapat membuka halaman instrumen;
+  - akun supervisor biasa mendapat `403` saat membuka Pengaturan Supervisor.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

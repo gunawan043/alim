@@ -23,6 +23,7 @@
                 <div class="card-body">
                     <form action="{{ route('waka.supervisi.store') }}" method="POST" autocomplete="off">
                         @csrf
+                        <input type="hidden" name="redirect_to" value="{{ request('redirect_to') }}">
                         @php
                             $today = old('_today') ?? date('Y-m-d');
                         @endphp
@@ -42,7 +43,7 @@
                                     <option value="">— Pilih Supervisor —</option>
                                     @foreach($supervisorGtks as $gtk)
                                         <option value="{{ $gtk->id }}"
-                                            {{ (string) old('observer_id', $defaultSupervisorId) === (string) $gtk->id ? 'selected' : '' }}>
+                                            {{ (string) old('observer_id', request('observer_id', $defaultSupervisorId)) === (string) $gtk->id ? 'selected' : '' }}>
                                             {{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}
                                         </option>
                                     @endforeach
@@ -57,7 +58,7 @@
                                     <option value="">— Pilih Guru —</option>
                                     @foreach($superviseeGtks as $gtk)
                                         <option value="{{ $gtk->id }}"
-                                            {{ (string) old('gtk_id') === (string) $gtk->id ? 'selected' : '' }}>
+                                            {{ (string) old('gtk_id', request('gtk_id')) === (string) $gtk->id ? 'selected' : '' }}>
                                             {{ $gtk->name }}{{ $gtk->latestEmployment?->nupy ? ' · NUPY. '.$gtk->latestEmployment->nupy : '' }}
                                         </option>
                                     @endforeach

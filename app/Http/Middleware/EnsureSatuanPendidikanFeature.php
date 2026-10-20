@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\AcademicYear;
+use App\Models\GtkProfile;
 use App\Models\OtherTeacherTask;
+use App\Models\SupervisiPengaturan;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -63,8 +66,22 @@ class EnsureSatuanPendidikanFeature
         $isKoorEkskul = $hasJabatan('KOORDINATOR EKSTRAKURIKULER') || $hasTugas('KOORDINATOR EKSTRAKURIKULER');
         $isPembinaEkskul = $hasTugas('PEMBINA EKSTRAKURIKULER');
 
+        $schoolId = $request->attributes->get('schoolContextId');
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+        $profileId = GtkProfile::where('user_id', $user->id)->value('id');
+        $isConfiguredSupervisor = $profileId && $schoolId
+            && SupervisiPengaturan::query()
+                ->where('school_id', $schoolId)
+                ->where('supervisor_gtk_id', $profileId)
+                ->where('is_active', true)
+                ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
+                ->exists();
+
+        $supervisiAdmin = $isKepala || $isWakil || $isKoorKurikulum || $isTimKurikulum || $isKepalaTu || $isTu;
+
         $allowed = match ($feature) {
-            'supervisi' => $isKepala || $isWakil || $isKoorKurikulum || $isTimKurikulum || $isKepalaTu || $isTu,
+            'supervisi' => $supervisiAdmin || $isConfiguredSupervisor,
+            'supervisi-admin' => $supervisiAdmin,
             'ekstrakurikuler' => $isKepala || $isWakil || $isKoorEkskul || $isPembinaEkskul || $isKepalaTu || $isTu,
             'surat' => $isKepala || $isWakil || $isKepalaTu || $isTu,
             default => false,

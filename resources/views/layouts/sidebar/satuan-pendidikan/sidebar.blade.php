@@ -102,6 +102,18 @@
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
     $isTimKurikulumG   = $isKoorKurik || $isTimKurikulum || $isKepala || $isWakil;
 
+    /* ── Supervisor yang ditetapkan pada Pengaturan Supervisor ─────── */
+    $supervisorProfileId = $sekolahId
+        ? \App\Models\GtkProfile::where('user_id', $userId)->value('id')
+        : null;
+    $isConfiguredSupervisor = $supervisorProfileId && $sekolahId
+        && \App\Models\SupervisiPengaturan::query()
+            ->where('school_id', $sekolahId)
+            ->where('supervisor_gtk_id', $supervisorProfileId)
+            ->where('is_active', true)
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
+            ->exists();
+
     /* ── Absensi Kelas — wali kelas & kewenangan (KSP/Waka/Kurikulum/Kesiswaan/TU) ── */
     $canAbsensiAuthority = $isKepala || $isWakil || $isAdminTU
         || $isKoorKurik || $isTimKurikulum
@@ -916,7 +928,7 @@
      SECTION 6 — GTK & TUGAS
      Data GTK, Pengajuan, Tugas Tambahan, Kinerja, Koordinasi Mapel
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU || $isStruktural || $isKoordinator || $isTimKurikulumG || $isKoorMapel)
+@if($showAll || $isAdminTU || $isStruktural || $isKoordinator || $isTimKurikulumG || $isKoorMapel || $isConfiguredSupervisor)
     <li class="menu-title"><span>GTK &amp; Tugas</span></li>
 
     @if($showAll || $isAdminTU || $isStruktural || $isTimKurikulumG || $isKoorMapel)
@@ -993,11 +1005,11 @@
         </li>
     @endif
 
-    @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU)
+    @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU || $isConfiguredSupervisor)
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi.']) ? ' active' : '' }}"
-               href="{{ route('waka.supervisi.index') }}">
-                <i class="ri-file-excel-2-line"></i><span>Supervisi Pembelajaran</span>
+               href="{{ route('waka.supervisi.index', $isConfiguredSupervisor ? ['supervisor_id' => $supervisorProfileId] : []) }}">
+                <i class="ri-file-excel-2-line"></i><span>{{ $isConfiguredSupervisor && ! $isStruktural && ! $isKoorKurik && ! $isTimKurikulum && ! $isAdminTU ? 'Penilaian Saya' : 'Supervisi Pembelajaran' }}</span>
             </a>
         </li>
         <li class="nav-item">
@@ -1006,12 +1018,14 @@
                 <i class="ri-list-settings-line"></i><span>Instrumen Supervisi</span>
             </a>
         </li>
+        @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU)
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-pengaturan.']) ? ' active' : '' }}"
                href="{{ route('waka.supervisi-pengaturan.index') }}">
                 <i class="ri-user-settings-line"></i><span>Pengaturan Supervisor</span>
             </a>
         </li>
+        @endif
     @endif
 
     @if($showAll || $isKoorMapel)
