@@ -14,6 +14,7 @@ use App\Models\SuratKeluar;
 use App\Models\SupervisiSk;
 use App\Models\SupervisiTimAnggota;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SupervisiSkController extends Controller
@@ -154,6 +155,72 @@ class SupervisiSkController extends Controller
         ]);
 
         return back()->with('success', 'Anggota tim ditambahkan.');
+    }
+
+    public function syncMembers(Request $request, string $id)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $sk = SupervisiSk::where('school_id', $schoolId)->findOrFail($id);
+
+        $validated = $request->validate([
+            'members' => 'required|array|min:1|max:200',
+            'members.*.gtk_profile_id' => 'required|uuid|exists:gtk_profiles,id',
+            'members.*.peran' => 'required|in:ksp,wksp,guru',
+        ]);
+
+        $rows = collect($validated['members'])
+            ->filter(fn ($row) => ! empty($row['gtk_profile_id']))
+            ->values();
+
+        $gtkIds = $rows->pluck('gtk_profile_id');
+        if ($gtkIds->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'members' => 'GTK yang sama tidak boleh dipilih lebih dari satu baris.',
+            ]);
+        }
+
+        foreach (['ksp', 'wksp'] as $role) {
+            if ($rows->where('peran', $role)->count() > 1) {
+                throw ValidationException::withMessages([
+                    'members' => 'Peran '.strtoupper($role).' hanya boleh satu orang.',
+                ]);
+            }
+        }
+
+        foreach ($gtkIds as $gtkId) {
+            $this->ensureGtkBelongsToSchool($schoolId, $gtkId);
+        }
+
+        DB::transaction(function () use ($sk, $rows) {
+            $existing = SupervisiTimAnggota::where('supervisi_sk_id', $sk->id)
+                ->get()
+                ->keyBy('gtk_profile_id');
+            $seen = [];
+
+            foreach ($rows as $index => $row) {
+                $gtkId = $row['gtk_profile_id'];
+                $seen[] = $gtkId;
+                $payload = [
+                    'peran' => $row['peran'],
+                    'urutan' => $index,
+                ];
+
+                if ($existing->has($gtkId)) {
+                    $existing->get($gtkId)->update($payload);
+                } else {
+                    SupervisiTimAnggota::create($payload + [
+                        'supervisi_sk_id' => $sk->id,
+                        'gtk_profile_id' => $gtkId,
+                    ]);
+                }
+            }
+
+            SupervisiTimAnggota::where('supervisi_sk_id', $sk->id)
+                ->whereNotIn('gtk_profile_id', $seen)
+                ->delete();
+        });
+
+        return back()->with('success', 'Anggota tim berhasil disimpan.');
     }
 
     public function storeMemberBulk(Request $request, string $id)

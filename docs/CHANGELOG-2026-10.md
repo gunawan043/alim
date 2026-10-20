@@ -2923,6 +2923,19 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Simpan massal 3 guru berhasil.
   - Cetak SK memuat Cambria dan A4.
 
+## 236. Editor Baris Anggota Tim Supervisi
+
+- Card **Tambah Anggota** dihapus.
+- Tabel **Anggota Tim** sekarang menjadi editor langsung:
+  - tombol **Tambah Baris** menambah baris baru;
+  - pilih GTK dan peran langsung di baris;
+  - jabatan terisi otomatis;
+  - tombol hapus per baris;
+  - **Simpan Anggota Tim** menyimpan semua baris sekaligus.
+- Backend `syncMembers` memperbarui anggota lama, menambah anggota baru, dan menghapus anggota yang barisnya dihapus.
+- KSP/WKSP tetap dibatasi satu orang; GTK duplikat ditolak.
+- Diuji: sinkronisasi 3 baris berhasil, halaman edit merespons `200`, dan card Tambah Anggota tidak lagi tampil.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

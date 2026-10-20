@@ -3250,6 +3250,7 @@ Route::prefix('waka')
             Route::put('/{id}', [SupervisiSkController::class, 'update'])->name('update');
             Route::delete('/{id}', [SupervisiSkController::class, 'destroy'])->name('destroy');
             Route::post('/{id}/anggota-bulk', [SupervisiSkController::class, 'storeMemberBulk'])->name('member.bulk');
+            Route::put('/{id}/anggota', [SupervisiSkController::class, 'syncMembers'])->name('member.sync');
             Route::post('/{id}/anggota', [SupervisiSkController::class, 'storeMember'])->name('member.store');
             Route::delete('/{id}/anggota/{memberId}', [SupervisiSkController::class, 'destroyMember'])->name('member.destroy');
             Route::get('/{id}/cetak', [SupervisiSkController::class, 'cetak'])->name('cetak');
