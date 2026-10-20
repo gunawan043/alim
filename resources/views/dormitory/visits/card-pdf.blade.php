@@ -160,12 +160,12 @@
         <div class="qr-section">
             @php
                 $token = base64_encode($visit->id.'::'.hash_hmac('sha256', (string) $visit->id, config('app.key')));
-                $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+                $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
                     ->size(200)
                     ->margin(2)
                     ->generate($token);
             @endphp
-            <img src="data:image/png;base64,{{ base64_encode($qrImage) }}" alt="QR">
+            <img src="data:image/svg+xml;base64,{{ base64_encode((string) $qrImage) }}" alt="QR">
         </div>
 
         <hr class="section-divider" style="margin:2mm 1mm">

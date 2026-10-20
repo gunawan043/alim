@@ -434,16 +434,8 @@ class DormitoryVisitLogController extends Controller
      */
     public function card(string $userId, string $asramaUuid, string $visitUuid)
     {
-        $dormitory = Dormitory::findOrFail($asramaUuid);
-        $user = auth()->user();
-        if ($user && ! $user->canAccessDormitory($asramaUuid)) {
-            abort(403, 'Anda tidak memiliki akses ke asrama ini.');
-        }
-        $visit = DormitoryVisitLog::with(['student', 'room', 'approvedBy'])
-            ->where('dormitory_id', $asramaUuid)
-            ->findOrFail($visitUuid);
-
-        return view('dormitory.visits.card', compact('dormitory', 'visit', 'userId'));
+        // Cetak kartu kunjungan langsung PDF (58 mm), bukan preview HTML.
+        return $this->cardPdf($userId, $asramaUuid, $visitUuid);
     }
 
     /**

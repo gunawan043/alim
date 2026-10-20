@@ -194,12 +194,12 @@
             @php
                 $token = $permit->scan_token ?: $permit->getOrCreateScanToken();
                 $qrPayload = json_encode($permit->qrPayload() ?? ['token' => $token]);
-                $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+                $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
                     ->size(200)
                     ->margin(2)
                     ->generate($qrPayload);
             @endphp
-            <img src="data:image/png;base64,{{ base64_encode($qrImage) }}" alt="QR">
+            <img src="data:image/svg+xml;base64,{{ base64_encode((string) $qrImage) }}" alt="QR">
         </div>
 
         <hr class="section-divider" style="margin:2mm 1mm">

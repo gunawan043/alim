@@ -486,27 +486,8 @@ class DormitoryPermitController extends Controller
      */
     public function card(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
-        $dormitory = $this->enforceDormitoryScope($asramaUuid);
-        $permit = DormitoryPermit::with([
-            'student',
-            'student.currentClassHistory.studyGroup.gradeLevel',
-            'room',
-        ])
-            ->where('dormitory_id', $asramaUuid)
-            ->findOrFail($permitUuid);
-
-        // Permit dapat dicetak ulang selama belum berpending/rejected (misal: kartu hilang)
-        if (! in_array($permit->status, ['approved', 'picked_up', 'returned', 'overdue'])) {
-            return redirect()->route('user.asrama.permits.show', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid,
-                'permitUuid' => $permit->id,
-            ])->with('warning', 'Kartu hanya dapat dicetak untuk izin yang telah aktif.');
-        }
-
-        $now = now();
-
-        return view('dormitory.permits.card', compact('dormitory', 'permit', 'userId', 'now'));
+        // Cetak kartu izin langsung PDF (58 mm), bukan preview HTML.
+        return $this->cardPdf($request, $userId, $asramaUuid, $permitUuid);
     }
 
     /**

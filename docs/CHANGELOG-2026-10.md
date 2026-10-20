@@ -2956,10 +2956,12 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   SK supervisi, jadwal supervisi, instrumen supervisi, surat keluar, SK institusi,
   jadwal KBM, kisi-kisi, naskah/kartu/validasi soal, leger, muqorror, RPP tahfidz,
   mutabaah, syahadah tasmi’, resep UKS, surat rujukan UKS, peraturan asrama,
-  kartu izin asrama, QR kelas, QR sarpras, dan laporan proyek kurikulum.
+  kartu izin asrama (satuan dan massal), kartu kunjungan asrama, QR kelas,
+  QR sarpras, dan laporan proyek kurikulum.
 - Cetak Kurikulum (`cetak.layout`) tidak lagi mengunci `@page` ke portrait sehingga
   orientasi mengikuti controller/Dompdf.
-- QR verifikasi surat keluar diubah ke data URI SVG karena SVG inline tidak dirender Dompdf.
+- QR verifikasi surat keluar dan QR kartu izin/kunjungan diubah ke data URI SVG
+  karena SVG inline tidak dirender Dompdf; kartu tidak lagi membutuhkan ekstensi Imagick.
 - Endpoint export rekrutmen dan poin pelanggaran yang masih memakai paket
   `Barryvdh\DomPDF` (tidak terpasang) dialihkan ke layanan PDF yang sama.
 - Audit lengkap: `docs/AUDIT-CETAK-PDF-2026-10-20.md`.

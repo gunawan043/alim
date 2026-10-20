@@ -42,7 +42,9 @@ Layanan ini:
 | UKS | `user.uks.prescriptions.print` | Portrait |
 | UKS | `user.uks.referrals.print` | Portrait |
 | Asrama | `user.boarding-regulations.print` | Portrait |
+| Asrama | `user.asrama.permits.card` | PDF kartu (58 mm) |
 | Asrama | `user.asrama.permits.bulk-card` | PDF kartu (58 mm) |
+| Asrama | `user.asrama.visits.card` | PDF kartu (58 mm) |
 | QR | `user.qr.print` | Portrait |
 | Sarpras | `sarpras.qr.print` | PDF label A4 |
 | Kurikulum | `user.kurikulum.proyek.print` | Landscape |
@@ -83,3 +85,6 @@ Pengujian HTTP dengan data nyata pada 14 endpoint utama:
 File yang diuji: SK supervisi, jadwal supervisi, surat keluar, SK institusi,
 jadwal KBM, kisi-kisi, naskah soal, kartu soal, validasi soal, QR kelas,
 muqorror, RPP tahfidz, mutabaah, dan leger.
+
+Kartu izin dan kartu kunjungan diuji terpisah dengan data sementara:
+keduanya menghasilkan PDF 58 mm dan QR tampil tanpa ekstensi Imagick.
