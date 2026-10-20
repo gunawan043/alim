@@ -163,7 +163,13 @@ class EkstrakurikulerController extends Controller
         if ($schoolId) {
             $userIds = \App\Models\GtkEmployment::query()
                 ->where('school_id', $schoolId)
-                ->pluck('user_id');
+                ->pluck('user_id')
+                ->merge(
+                    \App\Models\GtkWorkUnit::query()
+                        ->whereHas('workUnit.school', fn ($q) => $q->where('id', $schoolId))
+                        ->pluck('user_id')
+                )
+                ->unique();
             $query->whereIn('user_id', $userIds);
         }
 
