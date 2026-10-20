@@ -1,7 +1,11 @@
 @extends('layouts.master')
 @section('title', 'Peminjaman Perpustakaan')
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+        $scopeLabels = ['' => 'Semua Transaksi', 'borrow' => 'Peminjaman', 'return' => 'Pengembalian', 'renew' => 'Perpanjangan', 'overdue' => 'Buku Terlambat', 'history' => 'Riwayat Sirkulasi'];
+        $activeScope = $scope ?? '';
+    @endphp
     @include('perpustakaan._styles')
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('li_2') Sirkulasi @endslot @slot('title') Peminjaman & Pengembalian @endslot @endcomponent
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
@@ -11,12 +15,17 @@
     </div>
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2 align-items-center">
-            <div><h5 class="card-title mb-0"><i class="ri-exchange-line text-primary me-1"></i>Transaksi Peminjaman</h5><p class="text-muted mb-0 small">Kartu fisik wajib diverifikasi. Kartu biru, kartu merah, dan stempel tanggal kembali tetap diproses.</p></div>
-            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nomor / nama"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua</option><option value="active" @selected(request('status')==='active')>Aktif</option><option value="returned" @selected(request('status')==='returned')>Selesai</option></select></form><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
+            <div><h5 class="card-title mb-0"><i class="ri-exchange-line text-primary me-1"></i>{{ $scopeLabels[$activeScope] ?? 'Transaksi Sirkulasi' }}</h5><p class="text-muted mb-0 small">Kartu fisik wajib diverifikasi. Kartu biru, kartu merah, dan stempel tanggal kembali tetap diproses.</p></div>
+            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="scope" value="{{ $activeScope }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nomor / nama"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua</option><option value="active" @selected(request('status')==='active')>Aktif</option><option value="returned" @selected(request('status')==='returned')>Selesai</option></select></form><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
+        </div>
+        <div class="px-3 pt-2 pb-1 border-bottom d-flex flex-wrap gap-1">
+            @foreach($scopeLabels as $key => $label)
+                <a href="{{ route('user.perpustakaan.loans.index', ['userId'=>$userId, 'unit_id'=>$unit->id, 'scope'=>$key]) }}" class="btn btn-sm {{ $activeScope === $key ? 'btn-primary' : 'btn-light' }}">{{ $label }}</a>
+            @endforeach
         </div>
         <div class="table-responsive"><table class="table table-hover library-table align-middle mb-0"><thead class="table-light"><tr><th>Nomor</th><th>Anggota</th><th>Buku</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($loans as $loan)
-            <tr><td><code>{{ $loan->loan_number }}</code></td><td>{{ $loan->member?->display_name }}</td><td class="small">{{ $loan->items->pluck('item.title.title')->filter()->implode(', ') ?: '—' }}</td><td>{{ $loan->loan_date?->format('d/m/Y') }}</td><td>{{ $loan->due_date?->format('d/m/Y') }}</td><td><span class="badge {{ $loan->status==='active'?'bg-primary-subtle text-primary':'bg-success-subtle text-success' }}">{{ ucfirst($loan->status) }}</span></td><td class="text-end">@if($loan->status==='active')<button class="btn btn-sm btn-soft-success" data-loan="{{ json_encode(['id'=>$loan->id,'items'=>$loan->items->map(fn($i)=>['id'=>$i->id,'title'=>$i->item?->title?->title,'code'=>$i->item?->inventory_code]),JSON_HEX_APOS|JSON_HEX_QUOT]) }}" onclick="openReturn(this)">Kembalikan</button>@else<span class="text-muted small">Selesai</span>@endif</td></tr>
+            <tr><td><code>{{ $loan->loan_number }}</code></td><td>{{ $loan->member?->display_name }}</td><td class="small">{{ $loan->items->pluck('item.title.title')->filter()->implode(', ') ?: '—' }}</td><td>{{ $loan->loan_date?->format('d/m/Y') }}</td><td>{{ $loan->due_date?->format('d/m/Y') }}@if($loan->renewals_count)<div class="text-muted small">{{ $loan->renewals_count }}× diperpanjang</div>@endif</td><td>@if($loan->status==='active' && $loan->due_date?->isBefore(today()))<span class="badge bg-danger-subtle text-danger">Terlambat</span>@else<span class="badge {{ $loan->status==='active'?'bg-primary-subtle text-primary':'bg-success-subtle text-success' }}">{{ ucfirst($loan->status) }}</span>@endif</td><td class="text-end">@if($loan->status==='active')<div class="btn-group btn-group-sm">@if($setting->allow_renewal && $loan->renewals_count < $setting->max_renewals && ! $loan->due_date?->isBefore(today()))<form method="POST" action="{{ route('user.perpustakaan.loans.renew',['userId'=>$userId,'id'=>$loan->id]) }}" onsubmit="return confirm('Perpanjang pinjaman ini?')">@csrf<button class="btn btn-soft-primary" title="Perpanjang"><i class="ri-refresh-line"></i></button></form>@endif<button class="btn btn-soft-success" data-loan="{{ json_encode(['id'=>$loan->id,'items'=>$loan->items->map(fn($i)=>['id'=>$i->id,'title'=>$i->item?->title?->title,'code'=>$i->item?->inventory_code]),JSON_HEX_APOS|JSON_HEX_QUOT]) }}" onclick="openReturn(this)">Kembalikan</button></div>@else<span class="text-muted small">Selesai</span>@endif</td></tr>
         @empty<tr><td colspan="7" class="text-center text-muted py-5">Belum ada transaksi.</td></tr>@endforelse
         </tbody></table></div>
     </div>

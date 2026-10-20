@@ -30,6 +30,7 @@ class LibraryMemberController extends Controller
         $schoolId = $unit->school_id;
         $members = LibraryMember::with(['student:id,name,nis,nisn,gender,photo_path', 'user:id,name', 'cards' => fn ($q) => $q->where('status', LibraryMemberCard::STATUS_ACTIVE)])
             ->where('library_unit_id', $unit->id)
+            ->when($request->filled('member_type'), fn ($q) => $q->where('member_type', $request->member_type))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('member_number', 'like', '%'.$request->search.'%')->orWhereHas('student', fn ($st) => $st->where('name', 'like', '%'.$request->search.'%')->orWhere('nis', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
         $students = Student::with('currentClassHistory.studyGroup.gradeLevel')

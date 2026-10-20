@@ -20,12 +20,16 @@ class LibraryLoan extends Model
     protected $fillable = [
         'library_unit_id', 'library_member_id', 'loan_number', 'loan_date', 'due_date',
         'returned_at', 'status', 'physical_card_verified', 'card_verified_at',
-        'processed_by', 'notes',
+        'processed_by', 'notes', 'renewals_count', 'last_renewed_at',
+        'fine_amount', 'fine_paid_at', 'fine_waived_at', 'fine_notes',
     ];
 
     protected $casts = [
         'loan_date' => 'date', 'due_date' => 'date', 'returned_at' => 'date',
         'physical_card_verified' => 'boolean', 'card_verified_at' => 'datetime',
+        'renewals_count' => 'integer', 'last_renewed_at' => 'datetime',
+        'fine_amount' => 'decimal:2', 'fine_paid_at' => 'datetime',
+        'fine_waived_at' => 'datetime',
     ];
 
     public function unit(): BelongsTo { return $this->belongsTo(LibraryUnit::class, 'library_unit_id'); }

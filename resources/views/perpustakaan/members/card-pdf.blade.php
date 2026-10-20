@@ -19,7 +19,11 @@
     <div class="member-card">
         <div class="head"><div class="unit">{{ $member->unit?->name }}</div><div class="sub">Kartu Anggota Perpustakaan</div></div>
         <div class="body">
-            @if(($member->student?->photo_path && file_exists(storage_path('app/public/'.$member->student->photo_path)))<img class="photo" src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$member->student->photo_path))) }}" alt="Foto">@else<div class="photo"></div>@endif
+            @if($member->student?->photo_path && file_exists(storage_path('app/public/'.$member->student->photo_path)))
+                        <img class="photo" src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$member->student->photo_path))) }}" alt="Foto">
+                    @else
+                        <div class="photo"></div>
+                    @endif
             <div>
                 <div class="name">{{ $member->display_name }}</div>
                 <div class="meta">{{ $member->member_number }}</div>

@@ -7,6 +7,7 @@ use App\Models\AssetRoom;
 use App\Models\LibraryGenre;
 use App\Models\LibraryItem;
 use App\Models\LibraryMember;
+use App\Models\LibraryProgram;
 use App\Models\LibraryMemberCard;
 use App\Models\LibraryTitle;
 use App\Models\LibraryUnit;
@@ -65,6 +66,12 @@ class LibraryModuleTest extends TestCase
 
         $this->assertDatabaseHas('library_loans', ['library_member_id' => $member->id, 'status' => 'active']);
         $this->assertDatabaseHas('library_items', ['id' => $item->id, 'status' => 'on_loan']);
+
+        $loan = \App\Models\LibraryLoan::firstOrFail();
+        $oldDue = $loan->due_date->copy();
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/loans/{$loan->id}/renew")->assertRedirect();
+        $this->assertSame(1, $loan->fresh()->renewals_count);
+        $this->assertTrue($loan->fresh()->due_date->greaterThan($oldDue));
     }
 
     public function test_ruang_dan_stock_opname_perpustakaan(): void
@@ -105,5 +112,36 @@ class LibraryModuleTest extends TestCase
             'condition' => 'baik',
         ])->assertRedirect();
         $this->assertDatabaseHas('library_stock_opname_items', ['id' => $row->id, 'finding' => 'found']);
+    }
+
+    public function test_halaman_rak_laporan_denda_dan_program_perpustakaan(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Perpus Halaman', 'code' => 'PERPUS-PAGE', 'type' => 'Unit Akademik', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '77777777', 'name' => 'Sekolah Halaman']);
+        $year = AcademicYear::create(['name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true, 'start_date' => '2026-07-01', 'end_date' => '2027-06-30']);
+        $admin = User::create(['name' => 'Admin Halaman', 'email' => 'admin.halaman@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $unit = LibraryUnit::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'code' => 'PERPUS-P', 'name' => 'Perpustakaan Halaman', 'gender_scope' => 'mixed', 'level_scope' => 'sd_smp', 'is_active' => true]);
+        $genre = LibraryGenre::create(['school_id' => $school->id, 'name' => 'Referensi', 'is_active' => true]);
+        $title = LibraryTitle::create(['school_id' => $school->id, 'genre_id' => $genre->id, 'collection_type' => 'referensi', 'title' => 'Kitab Halaman', 'is_active' => true]);
+        LibraryItem::create(['library_title_id' => $title->id, 'library_unit_id' => $unit->id, 'inventory_code' => 'PAGE-001', 'shelf_location' => 'Rak A', 'status' => 'available', 'condition' => 'baik']);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/racks?unit_id={$unit->id}")->assertOk()->assertSee('Rak A');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/reports?unit_id={$unit->id}")->assertOk()->assertSee('Laporan');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/fines?unit_id={$unit->id}")->assertOk()->assertSee('Denda');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/catalog?unit_id={$unit->id}&collection=reference")->assertOk()->assertSee('Kitab Halaman');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/programs/procurement?unit_id={$unit->id}")->assertOk()->assertSee('Pengadaan');
+
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/programs/procurement", [
+            'library_unit_id' => $unit->id,
+            'title' => 'Pengadaan Buku Uji',
+            'category' => 'Referensi',
+            'status' => 'submitted',
+            'event_date' => now()->toDateString(),
+            'quantity' => 5,
+            'amount' => 100000,
+        ])->assertRedirect();
+        $this->assertDatabaseHas('library_programs', ['library_unit_id' => $unit->id, 'type' => 'procurement', 'title' => 'Pengadaan Buku Uji']);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/programs/literacy?unit_id={$unit->id}&category=Resensi%20Buku")->assertOk()->assertSee('Resensi');
     }
 }

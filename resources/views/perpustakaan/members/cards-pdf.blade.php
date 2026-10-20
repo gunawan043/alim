@@ -23,7 +23,11 @@
             @foreach($page->chunk(2) as $row)
                 <tr>@foreach($row as $entry)
                     @php($member = $entry['member'])
-                    <td><div class="member-card"><div class="head"><div class="unit">{{ $member->unit?->name }}</div><div class="sub">Kartu Anggota Perpustakaan</div></div><div class="body">@if(($member->student?->photo_path && file_exists(storage_path('app/public/'.$member->student->photo_path)))<img class="photo" src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$member->student->photo_path))) }}" alt="Foto">@else<div class="photo"></div>@endif<div><div class="name">{{ $member->display_name }}</div><div class="meta">{{ $member->member_number }}</div><div class="meta">{{ $member->student?->nis ? 'NIS: '.$member->student->nis : ($member->user?->name ?? 'GTK') }}</div><div class="meta">Berlaku s.d. {{ $entry['card']->valid_until?->format('d/m/Y') ?? '—' }}</div></div><div class="qr"><img src="{{ $entry['qr'] }}" alt="QR"><div class="meta">{{ $entry['card']->card_number }}</div></div></div><div class="foot">Wajib dibawa saat meminjam. QR bukan pengganti kartu fisik.</div></div></td>
+                    <td><div class="member-card"><div class="head"><div class="unit">{{ $member->unit?->name }}</div><div class="sub">Kartu Anggota Perpustakaan</div></div><div class="body">@if($member->student?->photo_path && file_exists(storage_path('app/public/'.$member->student->photo_path)))
+                        <img class="photo" src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$member->student->photo_path))) }}" alt="Foto">
+                    @else
+                        <div class="photo"></div>
+                    @endif<div><div class="name">{{ $member->display_name }}</div><div class="meta">{{ $member->member_number }}</div><div class="meta">{{ $member->student?->nis ? 'NIS: '.$member->student->nis : ($member->user?->name ?? 'GTK') }}</div><div class="meta">Berlaku s.d. {{ $entry['card']->valid_until?->format('d/m/Y') ?? '—' }}</div></div><div class="qr"><img src="{{ $entry['qr'] }}" alt="QR"><div class="meta">{{ $entry['card']->card_number }}</div></div></div><div class="foot">Wajib dibawa saat meminjam. QR bukan pengganti kartu fisik.</div></div></td>
                 @endforeach</tr>
             @endforeach
         </tbody></table>

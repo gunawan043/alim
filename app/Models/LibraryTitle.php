@@ -15,7 +15,7 @@ class LibraryTitle extends Model
     protected $table = 'library_titles';
 
     protected $fillable = [
-        'school_id', 'genre_id', 'title', 'author', 'publisher',
+        'school_id', 'genre_id', 'collection_type', 'title', 'author', 'publisher',
         'publication_year', 'isbn', 'description', 'cover_path', 'is_active',
     ];
 

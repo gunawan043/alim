@@ -28,15 +28,50 @@ class LibraryCatalogController extends Controller
 
         $titles = LibraryTitle::with('genre:id,name')->where('school_id', $schoolId)
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$request->search.'%')->orWhere('author', 'like', '%'.$request->search.'%')))
+            ->when($request->input('collection') === 'reference', fn ($q) => $q->whereIn('collection_type', ['kitab', 'referensi']))
+            ->when($request->filled('collection') && $request->input('collection') !== 'reference', fn ($q) => $q->where('collection_type', $request->collection))
             ->orderBy('title')->limit(200)->get();
-        $items = LibraryItem::with(['title:id,title,author', 'title.genre:id,name'])
+        $items = LibraryItem::with(['title:id,title,author,collection_type', 'title.genre:id,name'])
             ->where('library_unit_id', $unit->id)
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->input('condition') === 'damaged', fn ($q) => $q->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat']))
+            ->when($request->input('condition') === 'problem', fn ($q) => $q->where(fn ($inner) => $inner->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])->orWhere('status', LibraryItem::STATUS_LOST)))
+            ->when($request->input('collection') === 'reference', fn ($q) => $q->whereHas('title', fn ($t) => $t->whereIn('collection_type', ['kitab', 'referensi'])))
+            ->when($request->filled('collection') && $request->input('collection') !== 'reference', fn ($q) => $q->whereHas('title', fn ($t) => $t->where('collection_type', $request->collection)))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('inventory_code', 'like', '%'.$request->search.'%')->orWhereHas('title', fn ($t) => $t->where('title', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
         $genres = LibraryGenre::whereNull('school_id')->orWhere('school_id', $schoolId)->orderBy('name')->get();
 
         return view('perpustakaan.catalog.index', compact('userId', 'units', 'unit', 'titles', 'items', 'genres'));
+    }
+
+    public function racks(Request $request, string $userId)
+    {
+        abort_unless($this->access->canManage($request->user()), 403);
+        $units = $this->access->unitsFor($request->user());
+        $unit = $units->firstWhere('id', $request->input('unit_id')) ?? $units->first();
+        abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
+        $shelves = LibraryItem::where('library_unit_id', $unit->id)
+            ->whereNotNull('shelf_location')->where('shelf_location', '!=', '')
+            ->selectRaw('shelf_location, count(*) as total, sum(case when status = ? then 1 else 0 end) as available', [LibraryItem::STATUS_AVAILABLE])
+            ->groupBy('shelf_location')->orderBy('shelf_location')->get();
+        $items = LibraryItem::with('title:id,title,author')->where('library_unit_id', $unit->id)
+            ->when($request->filled('shelf'), fn ($q) => $q->where('shelf_location', $request->shelf))
+            ->orderBy('shelf_location')->orderBy('inventory_code')->limit(500)->get();
+        $unassigned = LibraryItem::where('library_unit_id', $unit->id)->where(fn ($q) => $q->whereNull('shelf_location')->orWhere('shelf_location', ''))->count();
+
+        return view('perpustakaan.racks.index', compact('userId', 'units', 'unit', 'shelves', 'items', 'unassigned'));
+    }
+
+    public function moveItem(Request $request, string $userId, string $id)
+    {
+        abort_unless($this->access->canManage($request->user()), 403);
+        $item = LibraryItem::with('unit')->findOrFail($id);
+        abort_unless($this->access->canAccessUnit($request->user(), $item->unit), 403);
+        $validated = $request->validate(['shelf_location' => 'required|string|max:191']);
+        $item->update(['shelf_location' => $validated['shelf_location']]);
+
+        return back()->with('success', 'Lokasi rak diperbarui.');
     }
 
     public function storeTitle(Request $request, string $userId)
@@ -48,6 +83,7 @@ class LibraryCatalogController extends Controller
             'publisher' => 'nullable|string|max:191',
             'publication_year' => 'nullable|integer|min:1900|max:2100',
             'genre_id' => 'nullable|exists:library_genres,id',
+            'collection_type' => 'nullable|in:umum,fiksi,nonfiksi,pelajaran,kitab,referensi',
             'isbn' => 'nullable|string|max:30',
             'description' => 'nullable|string|max:5000',
             'is_active' => 'boolean',
@@ -69,6 +105,7 @@ class LibraryCatalogController extends Controller
             'publisher' => 'nullable|string|max:191',
             'publication_year' => 'nullable|integer|min:1900|max:2100',
             'genre_id' => 'nullable|exists:library_genres,id',
+            'collection_type' => 'nullable|in:umum,fiksi,nonfiksi,pelajaran,kitab,referensi',
             'isbn' => 'nullable|string|max:30',
             'description' => 'nullable|string|max:5000',
             'is_active' => 'boolean',
