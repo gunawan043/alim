@@ -827,4 +827,49 @@ class AiContentGenerationTest extends TestCase
         $this->assertSame($project->id, $record->fresh()->saved_project_id);
         $this->assertSame('Kampung Cinta Lingkungan', $project->title);
     }
+
+    public function test_draft_rpm_ai_dapat_diedit_sebelum_disetujui(): void
+    {
+        $record = AiGeneratedContent::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester' => 'ganjil',
+            'type' => 'rpm',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'title' => 'Draft RPM Edit',
+            'content' => [
+                'judul' => 'Judul Lama',
+                'capaian' => 'Capaian lama',
+                'tujuan' => ['Tujuan lama'],
+                'langkah' => [['pertemuan' => 1, 'pembuka' => 'Lama', 'inti' => 'Lama', 'penutup' => 'Lama']],
+            ],
+            'status' => 'draft',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get("/{$this->admin->id}/kurikulum/ai/{$record->id}/edit")
+            ->assertOk()
+            ->assertSee('Edit Draft');
+
+        $this->actingAs($this->admin)
+            ->put("/{$this->admin->id}/kurikulum/ai/{$record->id}", [
+                'judul' => 'Judul Baru',
+                'capaian' => 'Capaian baru',
+                'tujuan_text' => "Tujuan satu\nTujuan dua",
+                'media_text' => "Media satu",
+                'asesmen_formatif' => 'Formatif baru',
+                'asesmen_sumatif' => 'Sumatif baru',
+                'refleksi' => 'Refleksi baru',
+                'langkah_json' => json_encode([['pertemuan' => 1, 'pembuka' => 'Buka', 'inti' => 'Inti baru', 'penutup' => 'Tutup']]),
+            ])
+            ->assertRedirect();
+
+        $record->refresh();
+        $this->assertSame('Judul Baru', $record->content['judul']);
+        $this->assertSame(['Tujuan satu', 'Tujuan dua'], $record->content['tujuan']);
+        $this->assertSame('Inti baru', $record->content['langkah'][0]['inti']);
+        $this->assertSame('Formatif baru', $record->content['asesmen']['formatif']);
+    }
 }

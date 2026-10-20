@@ -228,7 +228,7 @@ class RpmVersionLockPolicyTest extends TestCase
         );
     }
 
-    public function test_tim_kurikulum_dapat_menetapkan_final_langsung_dan_terkunci(): void
+    public function test_tim_kurikulum_tidak_dapat_menetapkan_final_tanpa_approval_rumpun(): void
     {
         $perangkat = $this->buatRpm();
 
@@ -239,19 +239,11 @@ class RpmVersionLockPolicyTest extends TestCase
                 'status' => 'final',
             ])
             ->assertStatus(302)
-            ->assertSessionHas('success');
+            ->assertSessionHas('error');
 
         $perangkat->refresh();
-        $this->assertSame(PerangkatPembelajaran::STATUS_FINAL, $perangkat->status);
-        $this->assertNotNull($perangkat->locked_at);
-        $this->assertSame($this->kurikulum->id, $perangkat->locked_by);
-
-        $this->actingAs($this->kurikulum)
-            ->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
-                'judul' => 'Ubah lagi',
-                'status' => 'draft',
-            ])
-            ->assertStatus(403);
+        $this->assertSame(PerangkatPembelajaran::STATUS_DRAFT, $perangkat->status);
+        $this->assertNull($perangkat->locked_at);
     }
 
     // ─────────────────────────────────────────────────────────────

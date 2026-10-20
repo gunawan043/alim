@@ -66,6 +66,11 @@
                     </div>
                 </div>
                 <div class="d-flex flex-wrap gap-2 no-print">
+                    @if(in_array($record->type, ['rpm', 'projek'], true) && $record->status === 'draft' && ! $record->saved_at)
+                        <a href="{{ route('user.kurikulum.ai.edit', ['userId' => $userId, 'id' => $record->id]) }}" class="btn btn-soft-warning">
+                            <i class="ri-edit-2-line me-1"></i>Edit Draft
+                        </a>
+                    @endif
                     @if($isTeam && ! $record->isApproved())
                         <form method="POST" action="{{ route('user.kurikulum.ai.approve', ['userId' => $userId, 'id' => $record->id]) }}">
                             @csrf

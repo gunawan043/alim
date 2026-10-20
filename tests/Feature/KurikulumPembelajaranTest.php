@@ -386,12 +386,10 @@ class KurikulumPembelajaranTest extends TestCase
             ],
         ])->assertStatus(302);
 
-        // Final = kunci; ditetapkan tim kurikulum (atau via approval kolektif rumpun).
-        $this->actingAs($this->kurikulum);
-        $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
-            'judul' => 'Perangkat Matematika 7A',
-            'status' => 'final',
-        ])->assertStatus(302);
+        // Final hanya melalui approval kolektif guru serumpun.
+        $workflow = app(\App\Services\Evaluasi\ReviewWorkflowService::class);
+        $assignments = $workflow->submit($perangkat, $this->kurikulum, [$this->guru->id]);
+        $workflow->decide($perangkat, $assignments->first()->id, $this->guru, 'approved');
 
         $this->actingAs($this->guru);
         $perangkat->refresh();
@@ -1174,7 +1172,7 @@ class KurikulumPembelajaranTest extends TestCase
 
         $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
             'judul' => 'Modul Ajar KBC Matematika',
-            'status' => 'final',
+            'status' => 'draft',
             'desain' => [
                 'tema_kbc' => 'Cinta kepada Allah',
                 'materi_insersi' => 'Bilangan sebagai tanda keteraturan ciptaan Allah.',
@@ -1184,6 +1182,11 @@ class KurikulumPembelajaranTest extends TestCase
                 'asesmen_kbc' => 'Observasi sikap syukur dan tanggung jawab.',
             ],
         ])->assertRedirect();
+
+        $perangkat->refresh();
+        $workflow = app(\App\Services\Evaluasi\ReviewWorkflowService::class);
+        $assignments = $workflow->submit($perangkat, $this->kurikulum, [$this->guru->id]);
+        $workflow->decide($perangkat, $assignments->first()->id, $this->guru, 'approved');
 
         $this->assertSame('final', $perangkat->fresh()->status);
 

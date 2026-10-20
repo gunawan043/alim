@@ -225,6 +225,116 @@ class AiContentController extends Controller
         return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels', 'canSaveProject'));
     }
 
+    public function edit(Request $request, string $userId, string $id)
+    {
+        $record = AiGeneratedContent::findOrFail($id);
+        $this->authorizeSchool($request, $record);
+        $this->authorizeManage($request, $record);
+
+        if ($record->type === 'soal') {
+            return redirect()
+                ->route('user.kurikulum.ai.show', ['userId' => $userId, 'id' => $record->id])
+                ->with('error', 'Gunakan editor butir soal pada halaman detail draft.');
+        }
+        abort_unless($record->status === 'draft' && ! $record->saved_at, 403, 'Hanya draft yang belum disimpan yang dapat diedit.');
+
+        $profile = $record->curriculum_profile_id
+            ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
+            : $this->profiles->resolve($record->school_id, $record->academic_year_id);
+        $labels = $this->profiles->labels($profile);
+        $values = $profile?->values() ?? [];
+        $content = is_array($record->content) ? $record->content : [];
+
+        return view('kurikulum.ai.edit', compact('userId', 'record', 'content', 'profile', 'labels', 'values'));
+    }
+
+    public function updateDraft(Request $request, string $userId, string $id)
+    {
+        $record = AiGeneratedContent::findOrFail($id);
+        $this->authorizeSchool($request, $record);
+        $this->authorizeManage($request, $record);
+        abort_unless(in_array($record->type, ['rpm', 'projek'], true), 404, 'Draft ini tidak mendukung editor ini.');
+        abort_unless($record->status === 'draft' && ! $record->saved_at, 403, 'Hanya draft yang belum disimpan yang dapat diedit.');
+
+        $validated = $request->validate([
+            'judul' => 'required|string|max:255',
+            'capaian' => 'nullable|string|max:5000',
+            'tujuan_text' => 'nullable|string|max:5000',
+            'media_text' => 'nullable|string|max:5000',
+            'refleksi' => 'nullable|string|max:5000',
+            'asesmen_formatif' => 'nullable|string|max:5000',
+            'asesmen_sumatif' => 'nullable|string|max:5000',
+            'langkah_json' => 'nullable|string',
+            'tema' => 'nullable|string|max:500',
+            'deskripsi' => 'nullable|string|max:5000',
+            'dimensions' => 'nullable|array',
+            'dimensions.*' => 'string|max:100',
+            'activities_json' => 'nullable|string',
+            'kbc_tema' => 'nullable|string|max:500',
+            'kbc_materi' => 'nullable|string|max:5000',
+            'kbc_pilar' => 'nullable|string|max:1000',
+            'kbc_indikator' => 'nullable|string|max:5000',
+            'kbc_refleksi' => 'nullable|string|max:5000',
+            'kbc_asesmen' => 'nullable|string|max:5000',
+        ]);
+
+        $content = is_array($record->content) ? $record->content : [];
+        $lines = fn (?string $value) => collect(preg_split('/\r\n|\r|\n/', (string) $value))->map(fn ($line) => trim($line))->filter()->values()->all();
+
+        $content['judul'] = $validated['judul'];
+
+        if ($record->type === 'rpm') {
+            $content['capaian'] = $validated['capaian'] ?? null;
+            $content['tujuan'] = $lines($validated['tujuan_text'] ?? null);
+            $content['media'] = $lines($validated['media_text'] ?? null);
+            $content['refleksi'] = $validated['refleksi'] ?? null;
+            $content['asesmen'] = array_merge(
+                is_array($content['asesmen'] ?? null) ? $content['asesmen'] : [],
+                [
+                    'formatif' => $validated['asesmen_formatif'] ?? null,
+                    'sumatif' => $validated['asesmen_sumatif'] ?? null,
+                ]
+            );
+
+            if (filled($validated['langkah_json'] ?? null)) {
+                $decoded = json_decode((string) $validated['langkah_json'], true);
+                if (! is_array($decoded)) {
+                    return back()->withInput()->with('error', 'JSON langkah pembelajaran tidak valid.');
+                }
+                $content['langkah'] = $decoded;
+            }
+
+            $kbc = array_filter([
+                'tema' => $validated['kbc_tema'] ?? null,
+                'materi_insersi' => $validated['kbc_materi'] ?? null,
+                'pilar' => filled($validated['kbc_pilar'] ?? null) ? $lines($validated['kbc_pilar']) : null,
+                'indikator' => $validated['kbc_indikator'] ?? null,
+                'refleksi' => $validated['kbc_refleksi'] ?? null,
+                'asesmen' => $validated['kbc_asesmen'] ?? null,
+            ], fn ($value) => filled($value));
+            if ($kbc !== []) {
+                $content['kbc'] = $kbc;
+            }
+        } else {
+            $content['tema'] = $validated['tema'] ?? null;
+            $content['deskripsi'] = $validated['deskripsi'] ?? null;
+            $content['dimensi'] = array_values($validated['dimensions'] ?? []);
+            if (filled($validated['activities_json'] ?? null)) {
+                $decoded = json_decode((string) $validated['activities_json'], true);
+                if (! is_array($decoded)) {
+                    return back()->withInput()->with('error', 'JSON aktivitas projek tidak valid.');
+                }
+                $content['aktivitas'] = $decoded;
+            }
+        }
+
+        $record->forceFill(['content' => $content])->save();
+
+        return redirect()
+            ->route('user.kurikulum.ai.show', ['userId' => $userId, 'id' => $record->id])
+            ->with('success', 'Draft AI berhasil diperbarui. Tinjau kembali sebelum disetujui.');
+    }
+
     /**
      * Simpan perubahan butir soal pada draft (sebelum disetujui/disimpan ke bank).
      */

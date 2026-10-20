@@ -379,16 +379,11 @@ class SoalController extends Controller
      */
     public function approve(string $userId, string $bankId, string $id)
     {
-        $soal = Soal::findOrFail($id);
+        // Approval langsung tidak lagi dipakai. Soal hanya boleh dipakai
+        // setelah disetujui oleh guru serumpun melalui ReviewSoalController.
+        Soal::findOrFail($id);
 
-        if (! app(KurikulumAccess::class)->isKurikulumTeam(request()->user())) {
-            abort(403, 'Hanya tim kurikulum yang dapat menyetujui langsung.');
-        }
-
-        $soal->syncWorkflowStatus(Soal::WORKFLOW_APPROVED);
-        $soal->forceFill(['approved_by' => $userId])->save();
-
-        return back()->with('success', 'Soal disetujui.');
+        return back()->with('error', 'Soal tidak dapat disetujui langsung. Ajukan review dan tunggu persetujuan seluruh guru serumpun.');
     }
 
     // ── Otorisasi bank soal (tanpa Gate: registrar snapshot meng-intercept ability) ──

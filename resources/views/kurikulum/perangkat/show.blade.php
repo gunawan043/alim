@@ -222,8 +222,11 @@
                         <label class="form-label">Status</label>
                         <select name="status" class="form-select" {{ $disabled }}>
                             <option value="draft" {{ $perangkat->status === 'draft' ? 'selected' : '' }}>Draft</option>
-                            <option value="final" {{ $perangkat->status === 'final' ? 'selected' : '' }}>Final</option>
+                            @if($perangkat->status === 'final')
+                                <option value="final" selected>Final — via approval rumpun</option>
+                            @endif
                         </select>
+                        <div class="form-text">Final ditetapkan otomatis setelah seluruh guru serumpun menyetujui.</div>
                     </div>
                     <div class="col-lg-9">
                         <label class="form-label">Catatan</label>

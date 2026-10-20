@@ -263,7 +263,7 @@ class ProtaProsemRpmTest extends TestCase
         $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
             'judul' => 'Diverifikasi Kurikulum',
             'tipe' => 'umum',
-            'status' => 'final',
+            'status' => 'draft',
         ])->assertStatus(302);
     }
 

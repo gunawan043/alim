@@ -273,11 +273,10 @@ class PerangkatPembelajaranController extends Controller
             'desain.*' => 'nullable|string|max:5000',
         ]);
 
-        // Final = kunci: hanya tim kurikulum, atau melalui approval kolektif
-        // seluruh anggota rumpun (kebijakan Tahap 2).
+        // Final bukan aksi edit manual: harus melalui approval kolektif guru serumpun.
         if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL
-            && ! $this->access->isKurikulumEditor($request->user())) {
-            return back()->with('error', 'Penetapan final RPM dilakukan oleh tim kurikulum atau melalui approval anggota rumpun.');
+            && ! $perangkat->isApproved()) {
+            return back()->with('error', 'Final hanya dapat ditetapkan setelah seluruh guru serumpun menyetujui dokumen ini melalui Ajukan Approval Rumpun.');
         }
 
         // Bagian desain yang tidak dikirim tetap dipertahankan (merge, bukan overwrite).

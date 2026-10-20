@@ -818,6 +818,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('ai')->name('ai.')->group(function () {
                     Route::get('/', [AiContentController::class, 'index'])->name('index');
                     Route::post('/generate', [AiContentController::class, 'generate'])->name('generate');
+                    Route::get('/{id}/edit', [AiContentController::class, 'edit'])->name('edit');
+                    Route::put('/{id}', [AiContentController::class, 'updateDraft'])->name('update');
                     Route::get('/{id}', [AiContentController::class, 'show'])->name('show');
                     Route::post('/{id}/items', [AiContentController::class, 'updateItems'])->name('items.update');
                     Route::post('/{id}/save-bank', [AiContentController::class, 'saveToBank'])->name('save-bank');
