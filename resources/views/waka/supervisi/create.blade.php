@@ -11,6 +11,11 @@
         @slot('title') Tambah Data Supervisi @endslot
     @endcomponent
 
+    <div class="alert alert-light border small">
+        <i class="ri-information-line me-1 text-primary"></i>
+        Instrumen penilaian tidak dipilih di form ini. Setelah jadwal disimpan, buka detail supervisi → <strong>Isi Penilaian</strong> → pilih instrumen → isi skor.
+    </div>
+
     <div class="row">
         <div class="col-xl-8">
             <div class="card">

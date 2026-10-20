@@ -78,7 +78,7 @@
                                                 data-subject="{{ $paket->kisiKisi?->subject_id }}"
                                                 data-year="{{ $paket->kisiKisi?->academic_year_id }}"
                                                 data-semester="{{ $paket->kisiKisi?->semester }}"
-                                                {{ old('paket_soal_id') === $paket->id ? 'selected' : '' }}>
+                                                {{ old('paket_soal_id', request('paket_soal_id')) === $paket->id ? 'selected' : '' }}>
                                             {{ $paket->judul }} · {{ $paket->kisiKisi?->subject?->name }} · v{{ $paket->versi }}
                                             ({{ $paket->kode_paket }})
                                         </option>

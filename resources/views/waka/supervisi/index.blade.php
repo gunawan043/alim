@@ -24,6 +24,13 @@
         </div>
     @endif
 
+    <div class="alert alert-light border small d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="ri-route-line me-1 text-primary"></i><strong>Alur:</strong> buat jadwal supervisi → buka detail → isi penilaian → pilih instrumen → isi skor → simpan → cetak.</span>
+        <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-outline-primary">
+            <i class="ri-settings-3-line me-1"></i>Atur Instrumen
+        </a>
+    </div>
+
     <div class="card" id="supervisiList">
         <div class="card-header border-bottom-dashed">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">

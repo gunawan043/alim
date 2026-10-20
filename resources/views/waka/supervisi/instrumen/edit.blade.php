@@ -26,6 +26,26 @@
         </div>
     @endif
 
+    <div class="card border-0 bg-light mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex flex-wrap align-items-center gap-2 small">
+                <span class="fw-semibold text-muted me-1"><i class="ri-route-line me-1"></i>Alur pengisian:</span>
+                <span class="badge bg-white text-muted border">1. Identitas</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">2. Bagian</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-primary text-white">3. Item &amp; Poin</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">4. Aktif</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">5. Nilai Supervisi</span>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                <div class="text-muted" style="font-size:.72rem">Isi poin tiap item. Centang <strong>Ya/Tidak</strong> bila item membutuhkan kondisi khusus. Gunakan tombol simpan pada baris item setelah mengubah.</div>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-light">Kembali</a>
+                    <a href="{{ route('waka.supervisi.create') }}" class="btn btn-sm btn-outline-primary"><i class="ri-add-line me-1"></i>Buat Supervisi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if($readOnly)
         <div class="alert alert-warning py-2 px-3 small" role="alert">
             <i class="ri-lock-line me-1"></i>

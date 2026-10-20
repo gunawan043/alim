@@ -11,6 +11,13 @@
 
     <x-soal-flow current="paket" />
 
+    <div class="alert alert-light border small d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="ri-route-line me-1 text-primary"></i>Setelah paket final: cetak naskah → terbitkan LJK → pindai jawaban → verifikasi → sinkronkan nilai ke buku nilai.</span>
+        @if($paket->isFinal())
+            <a href="{{ route('user.ljk.create', ['userId' => $userId, 'paket_soal_id' => $paket->id]) }}" class="btn btn-sm btn-success">Lanjut ke LJK &amp; Penilaian</a>
+        @endif
+    </div>
+
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between">
             <div>
@@ -44,6 +51,15 @@
                 <a href="{{ route('user.paket-soal.naskah', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-primary">
                     <i class="ri-printer-line"></i> Naskah & Cetak
                 </a>
+                @if($paket->isFinal())
+                    <a href="{{ route('user.ljk.create', ['userId' => $userId, 'paket_soal_id' => $paket->id]) }}" class="btn btn-sm btn-success">
+                        <i class="ri-scan-2-line"></i> Terbitkan LJK & Nilai
+                    </a>
+                @else
+                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Publish paket terlebih dahulu">
+                        <i class="ri-scan-2-line"></i> Terbitkan LJK
+                    </button>
+                @endif
                 <a href="{{ route('user.paket-soal.kartu-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-primary">
                     <i class="ri-file-list-3-line"></i> Kartu Soal
                 </a>

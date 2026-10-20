@@ -85,6 +85,11 @@
             title="Pilih instrumen terlebih dahulu"
             message="Tentukan instrumen penilaian di atas untuk mulai mengisi skor."
         />
+        <div class="text-center mb-3">
+            <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-outline-primary">
+                <i class="ri-settings-3-line me-1"></i>Atur / Buat Instrumen Supervisi
+            </a>
+        </div>
     @else
         <form method="POST" action="{{ route('waka.supervisi.penilaian.store', $supervisi->id) }}" id="penilaianForm">
             @csrf

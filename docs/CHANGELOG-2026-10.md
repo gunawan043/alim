@@ -2706,6 +2706,26 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Cetak naskah berisi 72 blok pertanyaan, 93 opsi, tanpa kunci/pembahasan.
   - Blade view berhasil di-cache.
 
+## 225. Soal → Penilaian dan Alur Instrumen Supervisi
+
+- **Soal sampai penilaian**
+  - Halaman Paket Soal menampilkan alur lanjutan: cetak naskah → terbitkan LJK → pindai → verifikasi → sinkron nilai.
+  - Paket final mendapat tombol **Terbitkan LJK & Nilai** yang langsung membuka form LJK dengan paket terpilih.
+  - Paket belum final menampilkan tombol nonaktif dengan petunjuk publish terlebih dahulu.
+  - Form LJK membaca `paket_soal_id` dari query sehingga paket tidak perlu dipilih ulang.
+  - Penilaian tetap berakhir di LJK: pindai → verifikasi → final → sinkron ke buku nilai.
+- **Instrumen Supervisi**
+  - Halaman daftar instrumen diberi alur: Tambah/Duplikat → Identitas → Bagian → Item & Poin → Aktif → Nilai Supervisi.
+  - Halaman edit instrumen diberi panduan yang sama dan tombol langsung ke **Buat Supervisi**.
+  - Halaman penilaian tanpa instrumen menyediakan tombol **Atur / Buat Instrumen Supervisi**.
+  - Halaman daftar supervisi menjelaskan alur: buat jadwal → detail → isi penilaian → pilih instrumen → isi skor → simpan → cetak.
+  - Form pembuatan jadwal supervisi menjelaskan bahwa instrumen dipilih saat mengisi penilaian.
+- **Diuji**
+  - Semua halaman instrumen/supervisi merespons `200` untuk Wakil.
+  - Pembuatan instrumen baru berhasil dan mengarah ke halaman edit.
+  - Form LJK menerima `paket_soal_id` dari query dan menandai paket terpilih.
+  - Paket final menampilkan tautan LJK; paket belum final menampilkan tombol nonaktif.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

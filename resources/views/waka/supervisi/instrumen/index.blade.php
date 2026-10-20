@@ -24,6 +24,24 @@
         </div>
     @endif
 
+    <div class="card border-0 bg-light mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex flex-wrap align-items-center gap-2 small">
+                <span class="fw-semibold text-muted me-1"><i class="ri-route-line me-1"></i>Alur instrumen:</span>
+                <span class="badge bg-primary text-white">1. Tambah / Duplikat</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">2. Atur Identitas</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">3. Tambah Bagian</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">4. Item &amp; Poin</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">5. Aktif</span><i class="ri-arrow-right-s-line text-muted"></i>
+                <span class="badge bg-white text-muted border">6. Nilai Supervisi</span>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                <div class="text-muted" style="font-size:.72rem">Instrumen bawaan tidak bisa diubah. Duplikat dulu ke satuan, lalu atur bagian/item/poin. Instrumen dipilih saat mengisi penilaian supervisi.</div>
+                <a href="{{ route('waka.supervisi.create') }}" class="btn btn-sm btn-outline-primary"><i class="ri-add-line me-1"></i>Buat Supervisi</a>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header border-bottom-dashed">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
