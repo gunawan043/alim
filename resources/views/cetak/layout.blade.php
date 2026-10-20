@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>@yield('title', 'Dokumen')</title>
     <style>
-        @page { margin: 13mm 10mm 16mm 10mm; }
+        @page { size: A4; margin: 13mm 10mm 16mm 10mm; }
 
         * { box-sizing: border-box; }
 

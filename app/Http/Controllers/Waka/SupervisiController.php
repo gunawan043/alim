@@ -8,6 +8,7 @@ use App\Models\GtkProfile;
 use App\Models\Supervisi;
 use App\Models\SupervisiInstrumen;
 use App\Models\SupervisiPengaturan;
+use App\Models\SupervisiSk;
 use App\Services\Sarpras\SupervisiWorkflowService;
 use App\Models\SupervisiPenilaian;
 use Illuminate\Http\Request;
@@ -83,8 +84,22 @@ class SupervisiController extends Controller
             ? app(SupervisiWorkflowService::class)->status($schoolId, $workflowYearId, $workflowSemester)
             : null;
 
+        $pengaturanSupervisor = SupervisiPengaturan::with([
+            'academicYear:id,name',
+            'supervisor.user:id,name',
+            'supervisee.user:id,name',
+        ])
+            ->where('school_id', $schoolId)
+            ->when($workflowYearId, fn ($q) => $q->where('academic_year_id', $workflowYearId))
+            ->orderByDesc('is_active')
+            ->orderBy('supervisor_gtk_id')
+            ->get();
+
+        $gtks = $this->gtkOptionsForSchool($schoolId);
+
         return view('waka.supervisi.index', compact(
-            'supervisiList', 'academicYears', 'statistics', 'supervisors', 'workflow', 'workflowYearId', 'workflowSemester'
+            'supervisiList', 'academicYears', 'statistics', 'supervisors', 'workflow',
+            'workflowYearId', 'workflowSemester', 'pengaturanSupervisor', 'gtks'
         ));
     }
 
@@ -94,6 +109,10 @@ class SupervisiController extends Controller
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
         $activeYearId = AcademicYear::where('is_active', true)->value('id');
         $formOptions = $this->formOptions($schoolId, $activeYearId);
+        $activeSk = SupervisiSk::where('school_id', $schoolId)
+            ->where('academic_year_id', $activeYearId)
+            ->where('semester', (int) $request->input('semester', 1))
+            ->first();
 
         $observerId = $request->input('observer_id');
         $gtkId = $request->input('gtk_id');
@@ -103,7 +122,7 @@ class SupervisiController extends Controller
         }
 
         return view('waka.supervisi.create', array_merge(
-            compact('academicYears', 'activeYearId'),
+            compact('academicYears', 'activeYearId', 'activeSk'),
             $formOptions
         ));
     }
@@ -134,6 +153,7 @@ class SupervisiController extends Controller
             return back()->withInput()->with('error', 'Konteks satuan pendidikan tidak ditemukan.');
         }
         $validated['school_id'] = $schoolId;
+        $validated['supervisi_sk_id'] = $this->resolveSk($validated);
         $validated = array_merge($validated, $this->resolveTeacherSchedule($validated, $schoolId));
 
         $this->validateSupervisorPair($validated);
@@ -370,8 +390,9 @@ class SupervisiController extends Controller
             ->findOrFail($id);
 
         $penilaian = $supervisi->penilaian()->get()->keyBy('item_id');
+        $school = $supervisi->school;
 
-        return view('waka.supervisi.cetak', compact('supervisi', 'penilaian'));
+        return view('waka.supervisi.cetak', compact('supervisi', 'penilaian', 'school'));
     }
 
     /**
@@ -514,6 +535,23 @@ class SupervisiController extends Controller
         }
     }
 
+    protected function resolveSk(array $data): string
+    {
+        $sk = SupervisiSk::query()
+            ->where('school_id', $data['school_id'])
+            ->where('academic_year_id', $data['academic_year_id'])
+            ->where('semester', $data['semester'])
+            ->first();
+
+        if (! $sk) {
+            throw ValidationException::withMessages([
+                'academic_year_id' => 'SK tim supervisi belum ada untuk tahun ajaran dan semester ini. Buat SK terlebih dahulu di menu Tim & SK.',
+            ]);
+        }
+
+        return $sk->id;
+    }
+
     protected function resolveTeacherSchedule(array $data, string $schoolId): array
     {
         $schedule = \App\Models\JadwalKbm::with(['subject:id,name'])
@@ -642,6 +680,10 @@ class SupervisiController extends Controller
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
         $activeYearId = $supervisi->academic_year_id ?: AcademicYear::where('is_active', true)->value('id');
         $formOptions = $this->formOptions($schoolId, $activeYearId);
+        $activeSk = $supervisi->sk ?: SupervisiSk::where('school_id', $schoolId)
+            ->where('academic_year_id', $activeYearId)
+            ->where('semester', $supervisi->semester)
+            ->first();
 
         // Pasangan yang sedang diedit tetap ditampilkan meskipun pengaturannya
         // sudah dinonaktifkan/diubah.
@@ -673,7 +715,7 @@ class SupervisiController extends Controller
         $formOptions['selectedScheduleId'] = $supervisi->jadwal_kbm_id;
 
         return view('waka.supervisi.edit', array_merge(
-            compact('supervisi', 'academicYears', 'activeYearId', 'hasPenilaian'),
+            compact('supervisi', 'academicYears', 'activeYearId', 'hasPenilaian', 'activeSk'),
             $formOptions
         ));
     }
@@ -702,6 +744,7 @@ class SupervisiController extends Controller
         ]);
 
         $validated['school_id'] = $schoolId;
+        $validated['supervisi_sk_id'] = $this->resolveSk($validated);
         $validated = array_merge($validated, $this->resolveTeacherSchedule($validated, $schoolId));
 
         if ($supervisi->instrumen_id

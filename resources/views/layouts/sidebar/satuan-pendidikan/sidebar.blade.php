@@ -1037,12 +1037,6 @@
                     </li>
                     @if($supervisiAdmin)
                         <li class="nav-item">
-                            <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi-pengaturan.']) ? ' active' : '' }}"
-                               href="{{ route('waka.supervisi-pengaturan.index') }}">
-                                Pengaturan Supervisor
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi-sk.']) ? ' active' : '' }}"
                                href="{{ route('waka.supervisi-sk.index') }}">
                                 Tim &amp; SK

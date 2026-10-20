@@ -28,6 +28,17 @@
                     <form action="{{ route('waka.supervisi.update', $supervisi->id) }}" method="POST" autocomplete="off" data-schedule-url="{{ route('waka.supervisi.jadwal-guru') }}">
                         @csrf @method('PUT')
 
+                        @if($activeSk)
+                            <div class="alert alert-light border small">
+                                <i class="ri-file-shield-2-line me-1 text-primary"></i>Tercatat pada <strong>SK {{ $activeSk->nomor }}</strong> tanggal {{ $activeSk->tanggal?->translatedFormat('d F Y') }}.
+                            </div>
+                        @else
+                            <div class="alert alert-warning small">
+                                <i class="ri-alert-line me-1"></i>SK untuk tahun ajaran/semester ini belum tersedia.
+                                <a href="{{ route('waka.supervisi-sk.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold">Buat SK terlebih dahulu</a>.
+                            </div>
+                        @endif
+
                         <h6 class="border-bottom pb-2 mb-3">Pasangan Supervisor</h6>
                         @if($selectedPair)
                             <input type="hidden" name="observer_id" value="{{ $selectedPair['observer_id'] }}">

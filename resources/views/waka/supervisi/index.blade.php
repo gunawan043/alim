@@ -68,9 +68,9 @@
                 <div class="d-flex gap-2 flex-wrap">
                     <span class="badge bg-primary-subtle text-primary align-self-center">{{ $supervisiList->total() }} supervisi</span>
                     @if($canManageSupervisi)
-                        <a href="{{ route('waka.supervisi-pengaturan.index') }}" class="btn btn-outline-primary btn-sm">
-                            <i class="ri-settings-3-line me-1"></i>Pengaturan Supervisor
-                        </a>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#supervisorSettingsModal">
+                            <i class="ri-team-line me-1"></i>Atur Pasangan Supervisor
+                        </button>
                         <a href="{{ route('waka.supervisi-sk.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="ri-file-shield-2-line me-1"></i>Tim &amp; SK
                         </a>
@@ -162,6 +162,10 @@
             @include('shared._pagination', ['paginator' => $supervisiList])
         </div>
     </div>
+
+    @if($canManageSupervisi)
+        @include('waka.supervisi.partials.supervisor-settings-modal')
+    @endif
 
     <div class="modal fade" id="filterSupervisiModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -266,6 +270,11 @@
                 }
             });
         });
+
+        @if(request('settings'))
+            const settingsModal = document.getElementById('supervisorSettingsModal');
+            if (settingsModal) bootstrap.Modal.getOrCreateInstance(settingsModal).show();
+        @endif
     </script>
     @endpush
 @endsection

@@ -20,6 +20,7 @@ class Supervisi extends Model
 
     protected $fillable = [
         'school_id',
+        'supervisi_sk_id',
         'academic_year_id',
         'gtk_id',
         'observer_id',
@@ -45,6 +46,7 @@ class Supervisi extends Model
         'semester' => 'integer',
         'tanggal_supervisi' => 'date',
         'distributed_at' => 'datetime',
+        'reported_to_wadir_at' => 'datetime',
     ];
 
     const JENIS_PERANGKAT = 'perangkat_pembelajaran';
@@ -90,6 +92,11 @@ class Supervisi extends Model
     public function school()
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function sk()
+    {
+        return $this->belongsTo(SupervisiSk::class, 'supervisi_sk_id');
     }
 
     public function academicYear()

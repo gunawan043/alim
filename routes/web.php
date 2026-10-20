@@ -3256,7 +3256,7 @@ Route::prefix('waka')
 
         // ── PENGATURAN SUPERVISOR ───────────────────────────────
         Route::prefix('supervisi-pengaturan')->middleware('satuan.feature:supervisi-admin')->name('supervisi-pengaturan.')->group(function () {
-            Route::get('/', [SupervisiPengaturanController::class, 'index'])->name('index');
+            Route::get('/', fn () => redirect()->route('waka.supervisi.index'))->name('index');
             Route::post('/', [SupervisiPengaturanController::class, 'store'])->name('store');
             Route::post('/{id}/toggle', [SupervisiPengaturanController::class, 'toggle'])->name('toggle');
             Route::delete('/{id}', [SupervisiPengaturanController::class, 'destroy'])->name('destroy');

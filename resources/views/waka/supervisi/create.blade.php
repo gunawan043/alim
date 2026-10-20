@@ -39,7 +39,18 @@
                         @if(! $hasSettings)
                             <div class="alert alert-warning small">
                                 <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Tambahkan pasangan supervisor → guru terlebih dahulu sebelum membuat jadwal.
-                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
+                                <a href="{{ route('waka.supervisi.index', ['academic_year_id' => $activeYearId, 'settings' => 1]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
+                            </div>
+                        @endif
+
+                        @if($activeSk)
+                            <div class="alert alert-light border small">
+                                <i class="ri-file-shield-2-line me-1 text-primary"></i>Jadwal ini akan tercatat pada <strong>SK {{ $activeSk->nomor }}</strong> tanggal {{ $activeSk->tanggal?->translatedFormat('d F Y') }}.
+                            </div>
+                        @else
+                            <div class="alert alert-warning small">
+                                <i class="ri-alert-line me-1"></i>Belum ada SK tim supervisi untuk tahun ajaran/semester ini. Buat SK terlebih dahulu di
+                                <a href="{{ route('waka.supervisi-sk.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold">Tim &amp; SK</a>.
                             </div>
                         @endif
 
@@ -57,7 +68,7 @@
                                     <div class="small text-muted">Guru yang Disupervisi</div>
                                     <div class="fw-semibold">{{ $selectedPair['supervisee_name'] }}</div>
                                 </div>
-                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="btn btn-sm btn-outline-secondary">Ubah Pengaturan</a>
+                                <a href="{{ route('waka.supervisi.index', ['academic_year_id' => $activeYearId, 'settings' => 1]) }}" class="btn btn-sm btn-outline-secondary">Ubah Pengaturan</a>
                             </div>
                         @elseif($hasSettings)
                             <div class="row mb-3">
@@ -182,7 +193,7 @@
 
                         <div class="mt-4">
                             <a href="{{ route('waka.supervisi.index') }}" class="btn btn-secondary me-1"><i class="ri-arrow-go-back-line"></i> Kembali</a>
-                            <button type="submit" class="btn btn-primary" @if(! $hasSettings || $instrumenOptions->isEmpty()) disabled @endif><i class="ri-save-line"></i> Simpan</button>
+                            <button type="submit" class="btn btn-primary" @if(! $hasSettings || $instrumenOptions->isEmpty() || ! $activeSk) disabled @endif><i class="ri-save-line"></i> Simpan</button>
                         </div>
                     </form>
                 </div>

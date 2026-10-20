@@ -56,6 +56,7 @@
                                 <tr><th>Tahun Ajaran</th><td>{{ $supervisi->academicYear?->name ?? '-' }} ({{ ucfirst(['1'=>'Ganjil','2'=>'Genap'][$supervisi->semester] ?? $supervisi->semester) }})</td></tr>
                                 <tr><th>Mata Pelajaran</th><td>{{ $supervisi->mata_pelajaran ?: '-' }}</td></tr>
                                 <tr><th>Jenis</th><td>{{ \Illuminate\Support\Str::headline($supervisi->jenis_supervisi) }}</td></tr>
+                                <tr><th>SK Tim</th><td>{{ $supervisi->sk?->nomor ?? '-' }}</td></tr>
                                 <tr><th>Status</th><td><span class="badge bg-secondary">{{ ucfirst($supervisi->status) }}</span></td></tr>
                             </table>
                         </div>

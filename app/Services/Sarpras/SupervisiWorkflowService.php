@@ -65,17 +65,10 @@ class SupervisiWorkflowService
                 'route' => 'waka.supervisi-instrumen.index',
             ],
             [
-                'key' => 'setting',
-                'label' => 'Pengaturan Supervisor',
-                'done' => $settingsCount > 0,
-                'detail' => $settingsCount.' pasangan supervisor–guru',
-                'route' => 'waka.supervisi-pengaturan.index',
-            ],
-            [
                 'key' => 'schedule',
                 'label' => 'Jadwal',
                 'done' => $scheduleCount > 0,
-                'detail' => $scheduleCount.' jadwal',
+                'detail' => $settingsCount.' pasangan · '.$scheduleCount.' jadwal',
                 'route' => 'waka.supervisi.index',
             ],
             [

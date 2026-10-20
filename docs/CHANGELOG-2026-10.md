@@ -2872,6 +2872,32 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Migrasi baru: `2026_10_20_000004_add_distribution_to_supervisi_table`.
 - Diuji: aksi distribusi mengembalikan `302` dan timestamp tersimpan.
 
+## 234. Penyederhanaan Alur Supervisi & Cetak Instrumen
+
+- **Pengaturan supervisor dipindahkan ke halaman jadwal**
+  - Menu terpisah Pengaturan Supervisor dihapus dari sidebar.
+  - Tombol **Atur Pasangan Supervisor** membuka modal dari halaman Supervisi & Jadwal.
+  - Modal berisi tambah pasangan, aktif/nonaktif, dan hapus.
+  - URL lama `/waka/supervisi-pengaturan` diarahkan ke halaman jadwal.
+- **Alur UI dirapikan**
+  - Stepper menjadi kartu langkah yang lebih jelas: Tim & SK → Instrumen → Jadwal & Supervisor → Distribusi → Penilaian → Laporan & Refleksi.
+  - Tombol **Lanjut** mengikuti langkah yang belum selesai dan menyesuaikan akses supervisor.
+- **Jadwal terkait SK**
+  - Kolom `supervisi_sk_id` ditambahkan.
+  - Jadwal tidak dapat disimpan tanpa SK tim untuk tahun ajaran/semester tersebut.
+  - Form jadwal menampilkan nomor SK; detail supervisi juga menampilkan SK.
+  - Migrasi: `2026_10_20_000005_add_sk_to_supervisi_table`.
+- **Cetak instrumen A4**
+  - Layout cetak memakai ukuran A4.
+  - Controller cetak meneruskan data sekolah sehingga kop satuan pendidikan tampil.
+- **Perbaikan bug**
+  - `reported_to_wadir_at` di-cast sebagai datetime sehingga `format()` tidak error.
+- **Diuji**
+  - Halaman jadwal, form supervisi, dan cetak instrumen merespons `200`.
+  - Cetak instrumen memuat nama/kop sekolah.
+  - Jadwal berhasil menyimpan `supervisi_sk_id`.
+  - Modal pengaturan supervisor tampil dari halaman jadwal.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
