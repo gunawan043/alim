@@ -2787,6 +2787,21 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - create tanpa query menampilkan dropdown penugasan pasangan;
   - halaman tetap merespons `200`.
 
+## 229. Penilaian Supervisi Mengikuti Instrumen Jadwal
+
+- Form Tambah/Edit Supervisi sekarang memilih **Instrumen Penilaian** dan menyimpannya pada jadwal (`supervisi.instrumen_id`).
+- Halaman penilaian menggunakan instrumen yang tersimpan pada jadwal:
+  - item yang diisi hanya item dari instrumen tersebut;
+  - skor A–D, kondisi Ya/Tidak, dan catatan per item;
+  - instrumen tidak dapat diganti setelah penilaian diisi.
+- Field **Catatan Temuan**, **Rekomendasi**, dan **Tindak Lanjut** dihapus dari form jadwal karena bukan bagian dari instrumen; field tersebut hanya diisi di halaman penilaian/report.
+- Instrumen wajib dipilih saat membuat jadwal; jika belum ada instrumen aktif, form menampilkan tautan untuk membuat/mengatur instrumen.
+- Validasi server memastikan instrumen berasal dari satuan pendidikan atau template bawaan.
+- Diuji:
+  - penyimpanan jadwal dengan instrumen berhasil dan langsung menuju penilaian;
+  - halaman penilaian menampilkan item instrumen dan mengunci pilihan instrumen;
+  - form jadwal tidak lagi menampilkan field temuan/rekomendasi/tindak lanjut.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

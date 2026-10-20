@@ -64,19 +64,26 @@
                 </div>
             </div>
 
-            <form method="GET" action="{{ route('waka.supervisi.penilaian', $supervisi->id) }}" class="row g-2 align-items-end mt-3">
-                <div class="col-md-6">
-                    <label class="form-label small text-muted mb-1">Instrumen Penilaian</label>
-                    <select name="instrumen_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">-- Pilih Instrumen --</option>
-                        @foreach($instrumenOptions as $opt)
-                            <option value="{{ $opt->id }}" {{ $instrumen && $instrumen->id === $opt->id ? 'selected' : '' }}>
-                                {{ $opt->nama }}{{ $opt->school_id ? '' : ' (bawaan)' }}
-                            </option>
-                        @endforeach
-                    </select>
+            @if($supervisi->instrumen_id)
+                <div class="alert alert-light border small mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span><i class="ri-lock-line me-1"></i>Instrumen: <strong>{{ $supervisi->instrumen?->nama ?? $instrumen?->nama ?? '-' }}</strong> <span class="text-muted ms-1">(sesuai jadwal supervisi)</span></span>
+                    <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-outline-secondary">Lihat Instrumen</a>
                 </div>
-            </form>
+            @else
+                <form method="GET" action="{{ route('waka.supervisi.penilaian', $supervisi->id) }}" class="row g-2 align-items-end mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label small text-muted mb-1">Instrumen Penilaian</label>
+                        <select name="instrumen_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">-- Pilih Instrumen --</option>
+                            @foreach($instrumenOptions as $opt)
+                                <option value="{{ $opt->id }}" {{ $instrumen && $instrumen->id === $opt->id ? 'selected' : '' }}>
+                                    {{ $opt->nama }}{{ $opt->school_id ? '' : ' (bawaan)' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </form>
+            @endif
         </div>
     </div>
 

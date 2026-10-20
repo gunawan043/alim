@@ -114,10 +114,8 @@ class SupervisiController extends Controller
             'jam_selesai' => 'nullable|date_format:H:i|after:jam_mulai',
             'jenis_supervisi' => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
             'tujuan' => 'nullable|string',
-            'catatan_temuan' => 'nullable|string',
-            'rekomendasi' => 'nullable|string',
-            'tindak_lanjut' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
+            'instrumen_id' => 'required|uuid|exists:supervisi_instrumen,id',
             'redirect_to' => 'nullable|in:penilaian',
         ]);
 
@@ -169,10 +167,13 @@ class SupervisiController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($id);
 
-        // Instrumen: dari query (dipilih operator) atau yang tersimpan di supervisi.
-        $instrumen = $request->filled('instrumen_id')
-            ? SupervisiInstrumen::with(['bagian.items.subItems'])->find($request->input('instrumen_id'))
-            : $supervisi->instrumen;
+        // Instrumen mengikuti jadwal. Query hanya dipakai untuk data lama
+        // yang belum memiliki instrumen.
+        $instrumen = $supervisi->instrumen_id
+            ? $supervisi->instrumen
+            : ($request->filled('instrumen_id')
+                ? SupervisiInstrumen::with(['bagian.items.subItems'])->find($request->input('instrumen_id'))
+                : null);
 
         $instrumenOptions = SupervisiInstrumen::query()
             ->where('is_active', true)
@@ -197,7 +198,7 @@ class SupervisiController extends Controller
         $supervisi = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
-            'instrumen_id' => 'required|exists:supervisi_instrumen,id',
+            'instrumen_id' => 'nullable|uuid|exists:supervisi_instrumen,id',
             'catatan_temuan' => 'nullable|string',
             'rekomendasi' => 'nullable|string',
             'tindak_lanjut' => 'nullable|string',
@@ -209,7 +210,21 @@ class SupervisiController extends Controller
             'item_catatan.*' => 'nullable|string|max:500',
         ]);
 
-        $instrumen = SupervisiInstrumen::with(['bagian.items.subItems'])->findOrFail($validated['instrumen_id']);
+        if ($supervisi->instrumen_id && ! empty($validated['instrumen_id'])
+            && (string) $supervisi->instrumen_id !== (string) $validated['instrumen_id']) {
+            throw ValidationException::withMessages([
+                'instrumen_id' => 'Instrumen tidak boleh diubah setelah jadwal dibuat.',
+            ]);
+        }
+
+        $instrumenId = $supervisi->instrumen_id ?: ($validated['instrumen_id'] ?? null);
+        if (! $instrumenId) {
+            throw ValidationException::withMessages([
+                'instrumen_id' => 'Pilih instrumen penilaian terlebih dahulu.',
+            ]);
+        }
+
+        $instrumen = SupervisiInstrumen::with(['bagian.items.subItems'])->findOrFail($instrumenId);
 
         $items = $instrumen->bagian
             ->flatMap(fn ($bagian) => $bagian->items)
@@ -332,10 +347,23 @@ class SupervisiController extends Controller
             ->values()
             ->all();
 
+        $instrumenOptions = SupervisiInstrumen::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($schoolId) {
+                $q->whereNull('school_id');
+                if ($schoolId) {
+                    $q->orWhere('school_id', $schoolId);
+                }
+            })
+            ->orderByRaw('school_id IS NULL')
+            ->orderBy('nama')
+            ->get();
+
         return [
             'assignmentOptions' => $assignmentOptions,
             'hasSettings' => $assignmentOptions !== [],
             'selectedPair' => null,
+            'instrumenOptions' => $instrumenOptions,
         ];
     }
 
@@ -346,6 +374,7 @@ class SupervisiController extends Controller
     {
         $this->ensureGtkBelongsToSchool($data['school_id'], $data['observer_id']);
         $this->ensureGtkBelongsToSchool($data['school_id'], $data['gtk_id']);
+        $this->ensureInstrumenAllowed($data['school_id'], $data['instrumen_id'] ?? null);
 
         $settingsQuery = SupervisiPengaturan::query()
             ->where('school_id', $data['school_id'])
@@ -400,6 +429,26 @@ class SupervisiController extends Controller
         if ($conflict) {
             throw ValidationException::withMessages([
                 'tanggal_supervisi' => 'Jadwal bentrok: supervisor atau guru yang dipilih sudah memiliki supervisi pada jam tersebut.',
+            ]);
+        }
+    }
+
+    protected function ensureInstrumenAllowed(string $schoolId, ?string $instrumenId): void
+    {
+        if (! $instrumenId) {
+            return;
+        }
+
+        $exists = SupervisiInstrumen::query()
+            ->whereKey($instrumenId)
+            ->where(function ($q) use ($schoolId) {
+                $q->whereNull('school_id')->orWhere('school_id', $schoolId);
+            })
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'instrumen_id' => 'Instrumen tidak tersedia untuk satuan pendidikan ini.',
             ]);
         }
     }
@@ -495,8 +544,17 @@ class SupervisiController extends Controller
             $formOptions['selectedPair'] = $currentPair;
         }
 
+        if ($supervisi->instrumen_id && ! $formOptions['instrumenOptions']->contains('id', $supervisi->instrumen_id)) {
+            $currentInstrumen = SupervisiInstrumen::find($supervisi->instrumen_id);
+            if ($currentInstrumen) {
+                $formOptions['instrumenOptions']->push($currentInstrumen);
+            }
+        }
+
+        $hasPenilaian = $supervisi->penilaian()->exists();
+
         return view('waka.supervisi.edit', array_merge(
-            compact('supervisi', 'academicYears', 'activeYearId'),
+            compact('supervisi', 'academicYears', 'activeYearId', 'hasPenilaian'),
             $formOptions
         ));
     }
@@ -519,13 +577,20 @@ class SupervisiController extends Controller
             'jam_selesai' => 'nullable|date_format:H:i|after:jam_mulai',
             'jenis_supervisi' => 'required|in:perangkat_pembelajaran,proses_pembelajaran,penilaian,lainnya',
             'tujuan' => 'nullable|string',
-            'catatan_temuan' => 'nullable|string',
-            'rekomendasi' => 'nullable|string',
-            'tindak_lanjut' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
+            'instrumen_id' => 'required|uuid|exists:supervisi_instrumen,id',
         ]);
 
         $validated['school_id'] = $schoolId;
+
+        if ($supervisi->instrumen_id
+            && $supervisi->penilaian()->exists()
+            && (string) $supervisi->instrumen_id !== (string) $validated['instrumen_id']) {
+            throw ValidationException::withMessages([
+                'instrumen_id' => 'Instrumen tidak dapat diubah karena penilaian sudah diisi.',
+            ]);
+        }
+
         $this->validateSupervisorPair($validated);
         $this->assertNoScheduleConflict($validated, $supervisi->id);
 

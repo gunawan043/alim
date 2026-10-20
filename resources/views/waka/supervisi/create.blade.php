@@ -75,9 +75,30 @@
                         @endif
 
                         <hr>
-                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Instrumen Penilaian</h6>
+                        <div class="row mb-3">
+                            <label class="col-sm-3 col-form-label">Instrumen <span class="text-danger">*</span></label>
+                            <div class="col-sm-9">
+                                <select name="instrumen_id" class="form-select" required @if($instrumenOptions->isEmpty()) disabled @endif>
+                                    <option value="">— Pilih Instrumen —</option>
+                                    @foreach($instrumenOptions as $instrumen)
+                                        <option value="{{ $instrumen->id }}" {{ (string) old('instrumen_id') === (string) $instrumen->id ? 'selected' : '' }}>
+                                            {{ $instrumen->nama }}{{ $instrumen->school_id ? '' : ' (bawaan)' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if($instrumenOptions->isEmpty())
+                                    <div class="alert alert-warning small mt-2 mb-0">
+                                        Belum ada instrumen aktif.
+                                        <a href="{{ route('waka.supervisi-instrumen.index') }}" class="fw-semibold">Buat / atur instrumen</a>.
+                                    </div>
+                                @endif
+                                @error('instrumen_id')<span class="text-danger">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+
                         <hr>
-                        <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
 
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Tahun Ajaran <span class="text-danger">*</span></label>
@@ -145,24 +166,6 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Catatan Temuan</label>
-                            <div class="col-sm-9">
-                                <textarea name="catatan_temuan" class="form-control" rows="3">{{ old('catatan_temuan') }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Rekomendasi</label>
-                            <div class="col-sm-9">
-                                <textarea name="rekomendasi" class="form-control" rows="3">{{ old('rekomendasi') }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Tindak Lanjut</label>
-                            <div class="col-sm-9">
-                                <textarea name="tindak_lanjut" class="form-control" rows="3">{{ old('tindak_lanjut') }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Status <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <select name="status" class="form-select" required>
@@ -177,7 +180,7 @@
 
                         <div class="mt-4">
                             <a href="{{ route('waka.supervisi.index') }}" class="btn btn-secondary me-1"><i class="ri-arrow-go-back-line"></i> Kembali</a>
-                            <button type="submit" class="btn btn-primary" @unless($hasSettings) disabled @endunless><i class="ri-save-line"></i> Simpan</button>
+                            <button type="submit" class="btn btn-primary" @if(! $hasSettings || $instrumenOptions->isEmpty()) disabled @endif><i class="ri-save-line"></i> Simpan</button>
                         </div>
                     </form>
                 </div>

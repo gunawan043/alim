@@ -44,9 +44,38 @@
                         @endif
 
                         <hr>
-                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Instrumen Penilaian</h6>
+                        <div class="row mb-3">
+                            <label class="col-sm-3 col-form-label">Instrumen <span class="text-danger">*</span></label>
+                            <div class="col-sm-9">
+                                @if($hasPenilaian)
+                                    <input type="hidden" name="instrumen_id" value="{{ $supervisi->instrumen_id }}">
+                                    <div class="alert alert-light border mb-0">
+                                        <i class="ri-lock-line me-1"></i>{{ $supervisi->instrumen?->nama ?? 'Instrumen' }}
+                                        <span class="text-muted small ms-2">Instrumen dikunci karena penilaian sudah diisi.</span>
+                                    </div>
+                                @else
+                                    <select name="instrumen_id" class="form-select" required @if($instrumenOptions->isEmpty()) disabled @endif>
+                                        <option value="">— Pilih Instrumen —</option>
+                                        @foreach($instrumenOptions as $instrumen)
+                                            <option value="{{ $instrumen->id }}" {{ (string) old('instrumen_id', $supervisi->instrumen_id) === (string) $instrumen->id ? 'selected' : '' }}>
+                                                {{ $instrumen->nama }}{{ $instrumen->school_id ? '' : ' (bawaan)' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if($instrumenOptions->isEmpty())
+                                        <div class="alert alert-warning small mt-2 mb-0">
+                                            Belum ada instrumen aktif.
+                                            <a href="{{ route('waka.supervisi-instrumen.index') }}" class="fw-semibold">Buat / atur instrumen</a>.
+                                        </div>
+                                    @endif
+                                @endif
+                                @error('instrumen_id')<span class="text-danger">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+
                         <hr>
-                        <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
 
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Tahun Ajaran <span class="text-danger">*</span></label>
@@ -107,24 +136,6 @@
                             <label class="col-sm-3 col-form-label">Tujuan</label>
                             <div class="col-sm-9">
                                 <textarea name="tujuan" class="form-control" rows="2">{{ old('tujuan', $supervisi->tujuan) }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Catatan Temuan</label>
-                            <div class="col-sm-9">
-                                <textarea name="catatan_temuan" class="form-control" rows="3">{{ old('catatan_temuan', $supervisi->catatan_temuan) }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Rekomendasi</label>
-                            <div class="col-sm-9">
-                                <textarea name="rekomendasi" class="form-control" rows="3">{{ old('rekomendasi', $supervisi->rekomendasi) }}</textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Tindak Lanjut</label>
-                            <div class="col-sm-9">
-                                <textarea name="tindak_lanjut" class="form-control" rows="3">{{ old('tindak_lanjut', $supervisi->tindak_lanjut) }}</textarea>
                             </div>
                         </div>
                         <div class="row mb-3">
