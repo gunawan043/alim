@@ -144,4 +144,13 @@ class LibraryModuleTest extends TestCase
 
         $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/programs/literacy?unit_id={$unit->id}&category=Resensi%20Buku")->assertOk()->assertSee('Resensi');
     }
+
+    public function test_tanpa_unit_perpustakaan_diarahkan_ke_pengaturan_unit(): void
+    {
+        $admin = User::create(['name' => 'Admin Tanpa Unit', 'email' => 'admin.tanpa.unit@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get("/{$admin->id}/perpustakaan/catalog")
+            ->assertRedirect(route('user.perpustakaan.units.index', ['userId' => $admin->id]));
+    }
 }

@@ -298,6 +298,7 @@ use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
 use App\Http\Middleware\EnsureBoardingSchool;
+use App\Http\Middleware\EnsureLibraryUnit;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Models\User;
@@ -564,7 +565,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             });
 
-            Route::prefix('perpustakaan')->name('perpustakaan.')->group(function () {
+            Route::prefix('perpustakaan')->name('perpustakaan.')->middleware(EnsureLibraryUnit::class)->group(function () {
                     Route::get('/', [LibraryDashboardController::class, 'index'])->name('index');
                     Route::get('/units', [LibraryUnitController::class, 'index'])->name('units.index');
                     Route::post('/units', [LibraryUnitController::class, 'store'])->name('units.store');
