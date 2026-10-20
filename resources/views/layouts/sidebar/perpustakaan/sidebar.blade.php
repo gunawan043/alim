@@ -186,7 +186,7 @@
     <li class="menu-title"><span>Literasi</span></li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.programs.']) && request()->route('type') === 'literacy' ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.programs.index', ['type' => 'literacy']) }}">
-            <i class="ri-book-read-line"></i><span>Pojok Baca &amp; Literasi</span>
+            <i class="ri-book-read-line"></i><span>Pojok Baca</span>
         </a>
     </li>
     <li class="nav-item">
