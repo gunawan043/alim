@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\WorkUnit;
 use Database\Seeders\LibraryUnitSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class LibraryModuleTest extends TestCase
@@ -168,5 +169,41 @@ class LibraryModuleTest extends TestCase
         $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-PUTRA', 'name' => 'Perpustakaan Putra']);
         $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-PUTRI', 'name' => 'Perpustakaan Putri']);
         $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-SD', 'name' => 'Perpustakaan SD']);
+    }
+
+    public function test_import_anggota_dan_katalog_perpustakaan(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Import Perpus', 'code' => 'PERPUS-IMP', 'type' => 'Unit Akademik', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '66666666', 'name' => 'Sekolah Import']);
+        $admin = User::create(['name' => 'Admin Import', 'email' => 'admin.import@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $unit = LibraryUnit::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'code' => 'PERPUS-I', 'name' => 'Perpustakaan Import', 'gender_scope' => 'mixed', 'level_scope' => 'sd_smp', 'is_active' => true]);
+        $student = Student::create(['school_id' => $school->id, 'name' => 'Santri Import', 'nis' => 'IMP-001', 'nisn' => 'IMP-N-001', 'gender' => 'L', 'status' => 'active']);
+        $gtk = User::create(['name' => 'GTK Import', 'email' => 'gtk.import@test.local', 'password' => bcrypt('password'), 'is_active' => true]);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/members")->assertOk()->assertSee('Import Anggota');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/members/template")->assertOk();
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/import/members", [
+            'library_unit_id' => $unit->id,
+            'file' => UploadedFile::fake()->createWithContent('anggota.csv', "nis,nisn,nama,email,jenis\nIMP-001,,Santri Import,,santri\n,,GTK Import,gtk.import@test.local,gtk\n"),
+        ])->assertRedirect()->assertSessionHas('import_result');
+        $this->assertDatabaseHas('library_members', ['library_unit_id' => $unit->id, 'student_id' => $student->id]);
+        $this->assertDatabaseHas('library_members', ['library_unit_id' => $unit->id, 'user_id' => $gtk->id]);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/catalog")->assertOk()->assertSee('Import Katalog');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/catalog/template")->assertOk();
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/import/catalog", [
+            'library_unit_id' => $unit->id,
+            'file' => UploadedFile::fake()->createWithContent('katalog.csv', "judul,penulis,penerbit,tahun,genre,jenis_koleksi,kode_inventaris,rak,kondisi,status\nBuku Import,Penulis Import,Penerbit Import,2026,Referensi,referensi,IMP-BUKU-001,Rak Import,baik,tersedia\n"),
+        ])->assertRedirect()->assertSessionHas('import_result');
+        $this->assertDatabaseHas('library_titles', ['title' => 'Buku Import', 'school_id' => $school->id]);
+        $this->assertDatabaseHas('library_items', ['inventory_code' => 'IMP-BUKU-001', 'library_unit_id' => $unit->id]);
+
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/genres")->assertOk()->assertSee('Import Genre');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/import/genres/template")->assertOk();
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/import/genres", [
+            'library_unit_id' => $unit->id,
+            'file' => UploadedFile::fake()->createWithContent('genre.csv', "nama,kode,deskripsi,status\nGenre Import,G-IMP,Genre dari import,aktif\n"),
+        ])->assertRedirect()->assertSessionHas('import_result');
+        $this->assertDatabaseHas('library_genres', ['name' => 'Genre Import', 'school_id' => $school->id]);
     }
 }

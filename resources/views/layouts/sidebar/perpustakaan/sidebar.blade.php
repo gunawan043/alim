@@ -57,6 +57,16 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.imports.catalog']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.imports.catalog.form') }}">
+                <i class="ri-upload-cloud-2-line"></i><span>Import Katalog</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.imports.genres']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.imports.genres.form') }}">
+                <i class="ri-upload-cloud-2-line"></i><span>Import Genre</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.genres.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.genres.index') }}">
                 <i class="ri-price-tag-3-line"></i><span>Kategori &amp; Klasifikasi</span>
             </a>
@@ -124,6 +134,11 @@
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.members.']) && ! request('member_type') ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.members.index') }}">
             <i class="ri-id-card-line"></i><span>Kartu Anggota</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.imports.members']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.imports.members.form') }}">
+            <i class="ri-user-add-line"></i><span>Import Anggota</span>
         </a>
     </li>
     <li class="nav-item">
