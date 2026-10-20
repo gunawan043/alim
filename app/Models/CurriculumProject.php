@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class CurriculumProject extends Model
@@ -77,6 +78,11 @@ class CurriculumProject extends Model
     public function curriculumProfile(): BelongsTo
     {
         return $this->belongsTo(CurriculumProfile::class, 'curriculum_profile_id');
+    }
+
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(CurriculumProjectAssessment::class, 'project_id');
     }
 
     public function coordinator(): BelongsTo

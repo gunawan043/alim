@@ -15,6 +15,7 @@ use App\Models\KurikulumEditGrant;
 use App\Models\PerangkatPembelajaran;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Student;
 use App\Models\SchoolCurriculumSetting;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
@@ -1049,6 +1050,42 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertOk()
             ->assertSee('Kampung Cinta Lingkungan')
             ->assertSee('Cinta kepada Lingkungan');
+
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'Santri Projek',
+            'nis' => 'PRJ-01',
+            'nisn' => 'PRJ-01',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/nilai", [
+                'student_id' => $student->id,
+                'scores' => ['hubbulbiah' => 4, 'hubbunnaas' => 3],
+                'notes' => 'Aktif dan peduli lingkungan.',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('curriculum_project_assessments', [
+            'project_id' => $project->id,
+            'student_id' => $student->id,
+            'average' => 3.50,
+            'predicate' => 'Sangat Baik',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}")
+            ->assertOk()
+            ->assertSee('Santri Projek')
+            ->assertSee('Sangat Baik');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/cetak")
+            ->assertOk()
+            ->assertSee('Laporan Projek')
+            ->assertSee('Santri Projek');
     }
 
     public function test_prompt_ai_kbc_memuat_profil_nilai_dan_struktur_kbc(): void

@@ -116,6 +116,7 @@
                             <td><span class="badge bg-{{ $statusColors[$project->status] ?? 'secondary' }}-subtle text-{{ $statusColors[$project->status] ?? 'secondary' }}">{{ $project->status_label }}</span></td>
                             <td class="text-end">
                                 <div class="btn-group btn-group-sm">
+                                    <a href="{{ route('user.kurikulum.proyek.show', ['userId' => $userId, 'id' => $project->id]) }}" class="btn btn-soft-primary" title="Nilai & laporan"><i class="ri-bar-chart-box-line"></i></a>
                                     @if($canManage)
                                         <button class="btn btn-soft-warning" data-project="{{ json_encode($editPayload, JSON_HEX_APOS | JSON_HEX_QUOT) }}" onclick="openProjectEdit(this)" title="Edit"><i class="ri-pencil-line"></i></button>
                                         <form method="POST" action="{{ route('user.kurikulum.proyek.destroy', ['userId' => $userId, 'id' => $project->id]) }}" onsubmit="return confirm('Hapus projek ini?');">

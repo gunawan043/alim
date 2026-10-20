@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Kurikulum;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\CurriculumProject;
+use App\Models\CurriculumProjectAssessment;
 use App\Models\GradeLevel;
+use App\Models\Student;
 use App\Models\SchoolCurriculumSetting;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
@@ -77,6 +79,143 @@ class CurriculumProjectController extends Controller
             'semester', 'profile', 'labels', 'profileValues', 'projectTypes',
             'projects', 'stats', 'gradeLevels', 'canManage', 'setting'
         ));
+    }
+
+    public function show(Request $request, string $userId, string $id)
+    {
+        $project = CurriculumProject::with(['assessments.student:id,name,nis', 'assessments.assessor:id,name'])
+            ->findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
+
+        $profile = $project->curriculumProfile
+            ?? $this->profiles->resolve($project->school_id, $project->academic_year_id);
+        $labels = $this->profiles->labels($profile);
+        $profileValues = $profile?->values() ?? [];
+        $dimensions = collect($project->dimensions ?? [])
+            ->filter()
+            ->mapWithKeys(fn ($key) => [$key => $profileValues[$key] ?? $key])
+            ->all();
+        if (empty($dimensions)) {
+            $dimensions = $profileValues;
+        }
+
+        $students = Student::query()
+            ->where('school_id', $project->school_id)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'nis']);
+
+        $assessments = $project->assessments->sortBy(fn ($assessment) => $assessment->student?->name)->values();
+        $average = $assessments->where('average', '>', 0)->avg('average');
+        $dimensionAverages = collect(array_keys($dimensions))->mapWithKeys(function ($key) use ($assessments) {
+            $values = $assessments->map(fn ($assessment) => (float) data_get($assessment->scores, $key, 0))->filter(fn ($value) => $value > 0);
+
+            return [$key => $values->isEmpty() ? null : round($values->avg(), 2)];
+        });
+
+        $canManage = $this->access->isKurikulumEditor($request->user());
+        $rubric = $this->rubricLabels();
+
+        return view('kurikulum.proyek.show', compact(
+            'userId', 'project', 'profile', 'labels', 'dimensions', 'students',
+            'assessments', 'average', 'dimensionAverages', 'canManage', 'rubric'
+        ));
+    }
+
+    public function assess(Request $request, string $userId, string $id)
+    {
+        $project = CurriculumProject::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
+        abort_unless($this->access->isKurikulumEditor($request->user()), 403, 'Hanya editor kurikulum yang dapat menilai projek.');
+
+        $profile = $project->curriculumProfile
+            ?? $this->profiles->resolve($project->school_id, $project->academic_year_id);
+        $projectDimensions = array_values(array_filter((array) ($project->dimensions ?? []), fn ($key) => is_string($key) && $key !== ''));
+        $allowedDimensions = $projectDimensions ?: array_keys($profile?->values() ?? []);
+
+        $validated = $request->validate([
+            'student_id' => ['required', Rule::exists('students', 'id')->where('school_id', $schoolId)],
+            'scores' => 'required|array|min:1',
+            'scores.*' => 'nullable|integer|min:1|max:4',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $scores = collect($validated['scores'])
+            ->filter(fn ($value, $key) => $value !== null && ($allowedDimensions === [] || in_array($key, $allowedDimensions, true)))
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        abort_if(empty($scores), 422, 'Isi minimal satu skor dimensi.');
+
+        $average = round(array_sum($scores) / count($scores), 2);
+
+        CurriculumProjectAssessment::updateOrCreate(
+            ['project_id' => $project->id, 'student_id' => $validated['student_id']],
+            [
+                'scores' => $scores,
+                'average' => $average,
+                'predicate' => CurriculumProjectAssessment::predicateFor($average),
+                'notes' => $validated['notes'] ?? null,
+                'assessed_by' => $request->user()->id,
+            ]
+        );
+
+        return redirect()
+            ->route('user.kurikulum.proyek.show', ['userId' => $userId, 'id' => $project->id])
+            ->with('success', 'Penilaian projek disimpan.');
+    }
+
+    public function destroyAssessment(Request $request, string $userId, string $id, string $assessmentId)
+    {
+        $project = CurriculumProject::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
+        abort_unless($this->access->isKurikulumEditor($request->user()), 403, 'Hanya editor kurikulum yang dapat menghapus penilaian.');
+
+        CurriculumProjectAssessment::where('project_id', $project->id)->findOrFail($assessmentId)->delete();
+
+        return back()->with('success', 'Penilaian dihapus.');
+    }
+
+    public function print(Request $request, string $userId, string $id)
+    {
+        $project = CurriculumProject::with(['assessments.student:id,name,nis', 'school', 'academicYear', 'coordinator:id,name'])
+            ->findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
+
+        $profile = $project->curriculumProfile
+            ?? $this->profiles->resolve($project->school_id, $project->academic_year_id);
+        $labels = $this->profiles->labels($profile);
+        $profileValues = $profile?->values() ?? [];
+        $dimensions = collect($project->dimensions ?? [])
+            ->filter()
+            ->mapWithKeys(fn ($key) => [$key => $profileValues[$key] ?? $key])
+            ->all();
+        if (empty($dimensions)) {
+            $dimensions = $profileValues;
+        }
+
+        $assessments = $project->assessments->sortBy(fn ($assessment) => $assessment->student?->name)->values();
+        $average = $assessments->where('average', '>', 0)->avg('average');
+        $rubric = $this->rubricLabels();
+        $school = $project->school;
+        $curriculumProfile = $profile;
+        $curriculumLabels = $labels;
+
+        return view('cetak.proyek', compact('school', 'project', 'profile', 'curriculumProfile', 'labels', 'curriculumLabels', 'dimensions', 'assessments', 'average', 'rubric'));
+    }
+
+    private function rubricLabels(): array
+    {
+        return [
+            1 => 'Belum Berkembang',
+            2 => 'Mulai Berkembang',
+            3 => 'Berkembang Baik',
+            4 => 'Sangat Berkembang',
+        ];
     }
 
     public function store(Request $request, string $userId)

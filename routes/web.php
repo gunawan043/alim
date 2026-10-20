@@ -790,6 +790,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/', [CurriculumProjectController::class, 'store'])->name('store');
                     Route::put('/{id}', [CurriculumProjectController::class, 'update'])->name('update');
                     Route::delete('/{id}', [CurriculumProjectController::class, 'destroy'])->name('destroy');
+                    Route::get('/{id}/cetak', [CurriculumProjectController::class, 'print'])->name('print');
+                    Route::post('/{id}/nilai', [CurriculumProjectController::class, 'assess'])->name('assess');
+                    Route::delete('/{id}/nilai/{assessmentId}', [CurriculumProjectController::class, 'destroyAssessment'])->name('assessment.destroy');
+                    Route::get('/{id}', [CurriculumProjectController::class, 'show'])->name('show');
                 });
 
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
