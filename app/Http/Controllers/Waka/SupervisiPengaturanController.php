@@ -10,6 +10,7 @@ use App\Models\GtkEmployment;
 use App\Models\GtkProfile;
 use App\Models\Supervisi;
 use App\Models\SupervisiPengaturan;
+use App\Models\SupervisiSk;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +24,7 @@ class SupervisiPengaturanController extends Controller
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
         $activeYearId = AcademicYear::where('is_active', true)->value('id');
         $selectedYearId = $request->input('academic_year_id', $activeYearId);
+        $selectedSemester = (int) $request->input('semester', 1);
 
         $pengaturan = SupervisiPengaturan::with([
             'academicYear:id,name',
@@ -31,6 +33,7 @@ class SupervisiPengaturanController extends Controller
         ])
             ->where('school_id', $schoolId)
             ->when($selectedYearId, fn ($q) => $q->where('academic_year_id', $selectedYearId))
+            ->where('semester', $selectedSemester)
             ->orderByDesc('is_active')
             ->orderBy('supervisor_gtk_id')
             ->get();
@@ -51,6 +54,7 @@ class SupervisiPengaturanController extends Controller
             'academicYears',
             'activeYearId',
             'selectedYearId',
+            'selectedSemester',
             'gtks',
             'latestByPair'
         ));
@@ -63,6 +67,7 @@ class SupervisiPengaturanController extends Controller
 
         $validated = $request->validate([
             'academic_year_id' => 'required|uuid|exists:academic_years,id',
+            'semester' => 'required|integer|in:1,2',
             'supervisor_gtk_id' => 'required|uuid|exists:gtk_profiles,id',
             'supervisee_gtk_id' => 'required|uuid|exists:gtk_profiles,id|different:supervisor_gtk_id',
             'notes' => 'nullable|string|max:1000',
@@ -71,9 +76,25 @@ class SupervisiPengaturanController extends Controller
         $this->ensureGtkBelongsToSchool($schoolId, $validated['supervisor_gtk_id']);
         $this->ensureGtkBelongsToSchool($schoolId, $validated['supervisee_gtk_id']);
 
+        $sk = SupervisiSk::where('school_id', $schoolId)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('semester', $validated['semester'])
+            ->first();
+
+        $isSkMember = $sk && $sk->anggota()
+            ->where('gtk_profile_id', $validated['supervisor_gtk_id'])
+            ->exists();
+
+        if (! $isSkMember) {
+            throw ValidationException::withMessages([
+                'supervisor_gtk_id' => 'Supervisor harus termasuk anggota SK tim supervisi pada semester tersebut.',
+            ]);
+        }
+
         $exists = SupervisiPengaturan::query()
             ->where('school_id', $schoolId)
             ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('semester', $validated['semester'])
             ->where('supervisor_gtk_id', $validated['supervisor_gtk_id'])
             ->where('supervisee_gtk_id', $validated['supervisee_gtk_id'])
             ->exists();
@@ -87,6 +108,7 @@ class SupervisiPengaturanController extends Controller
         SupervisiPengaturan::create([
             'school_id' => $schoolId,
             'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
             'supervisor_gtk_id' => $validated['supervisor_gtk_id'],
             'supervisee_gtk_id' => $validated['supervisee_gtk_id'],
             'notes' => $validated['notes'] ?? null,

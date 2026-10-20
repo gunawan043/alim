@@ -21,6 +21,7 @@ class SupervisiPengaturan extends Model
     protected $fillable = [
         'school_id',
         'academic_year_id',
+        'semester',
         'supervisor_gtk_id',
         'supervisee_gtk_id',
         'is_active',
@@ -28,6 +29,7 @@ class SupervisiPengaturan extends Model
     ];
 
     protected $casts = [
+        'semester' => 'integer',
         'is_active' => 'boolean',
     ];
 

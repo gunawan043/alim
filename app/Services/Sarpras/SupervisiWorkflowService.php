@@ -35,6 +35,7 @@ class SupervisiWorkflowService
 
         $settingsCount = SupervisiPengaturan::where('school_id', $schoolId)
             ->where('academic_year_id', $yearId)
+            ->where('semester', $semester)
             ->where('is_active', true)
             ->count();
 

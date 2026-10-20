@@ -3,6 +3,7 @@
 
 @section('css')
     @include('shared._styles')
+    <link href="{{ URL::asset('build/vendor/select2/css/select2.min.css') }}" rel="stylesheet">
 @endsection
 
 @section('content')
@@ -82,8 +83,17 @@
 @endsection
 
 @section('script')
+<script src="{{ URL::asset('build/vendor/select2/js/select2.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function initMemberSelect(row) {
+        if (!window.jQuery || !jQuery.fn.select2) return;
+        jQuery(row).find('.member-gtk').select2({
+            width: '100%',
+            placeholder: 'Cari nama guru…',
+            allowClear: true
+        });
+    }
     const tbody = document.getElementById('memberRows');
     const template = document.getElementById('memberRowTemplate');
     const addButton = document.getElementById('addMemberRow');
@@ -107,6 +117,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function bindRow(row) {
         row.querySelector('.member-gtk')?.addEventListener('change', function () { updatePosition(row); });
         row.querySelector('.remove-member-row')?.addEventListener('click', function () {
+            const select = row.querySelector('.member-gtk');
+            if (window.jQuery && select && jQuery(select).data('select2')) {
+                jQuery(select).select2('destroy');
+            }
             row.remove();
             renumber();
         });
@@ -114,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tbody.querySelectorAll('.member-row').forEach(function (row) {
         bindRow(row);
+        initMemberSelect(row);
         updatePosition(row);
     });
     renumber();
@@ -123,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tbody.insertAdjacentHTML('beforeend', html);
         const row = tbody.lastElementChild;
         bindRow(row);
+        initMemberSelect(row);
         updatePosition(row);
         renumber();
         row.querySelector('.member-gtk')?.focus();

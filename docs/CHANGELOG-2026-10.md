@@ -2936,6 +2936,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - KSP/WKSP tetap dibatasi satu orang; GTK duplikat ditolak.
 - Diuji: sinkronisasi 3 baris berhasil, halaman edit merespons `200`, dan card Tambah Anggota tidak lagi tampil.
 
+## 237. Pencarian Guru & Supervisor Terbatas pada Anggota SK
+
+- Dropdown GTK pada editor **Anggota Tim** memakai Select2 sehingga nama guru bisa dicari.
+- Supervisor pada modal **Supervisor untuk Setiap Guru** hanya dapat dipilih dari anggota SK pada tahun ajaran dan semester yang aktif.
+- Validasi server menolak supervisor yang bukan anggota SK.
+- Pengaturan supervisor sekarang menyimpan `semester`; daftar, jadwal, dan workflow memfilter berdasarkan semester.
+- Migrasi baru: `2026_10_20_000007_add_semester_to_supervisi_pengaturan`.
+- Diuji:
+  - simpan pengaturan dengan supervisor anggota SK berhasil;
+  - halaman SK menampilkan Select2;
+  - halaman Supervisi dan editor anggota merespons `200`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

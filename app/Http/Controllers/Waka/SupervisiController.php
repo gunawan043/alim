@@ -84,6 +84,16 @@ class SupervisiController extends Controller
             ? app(SupervisiWorkflowService::class)->status($schoolId, $workflowYearId, $workflowSemester)
             : null;
 
+        $activeSkForIndex = SupervisiSk::with(['anggota.gtk.user'])
+            ->where('school_id', $schoolId)
+            ->where('academic_year_id', $workflowYearId)
+            ->where('semester', $workflowSemester)
+            ->first();
+        $supervisorGtks = $activeSkForIndex
+            ? $activeSkForIndex->anggota->pluck('gtk')->filter()->unique('id')->values()
+            : collect();
+        $supervisorIdsInSk = $supervisorGtks->pluck('id')->all();
+
         $pengaturanSupervisor = SupervisiPengaturan::with([
             'academicYear:id,name',
             'supervisor.user:id,name',
@@ -91,6 +101,9 @@ class SupervisiController extends Controller
         ])
             ->where('school_id', $schoolId)
             ->when($workflowYearId, fn ($q) => $q->where('academic_year_id', $workflowYearId))
+            ->where('semester', $workflowSemester)
+            ->when($supervisorIdsInSk === [], fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($supervisorIdsInSk !== [], fn ($q) => $q->whereIn('supervisor_gtk_id', $supervisorIdsInSk))
             ->orderByDesc('is_active')
             ->orderBy('supervisor_gtk_id')
             ->get();
@@ -99,7 +112,7 @@ class SupervisiController extends Controller
 
         return view('waka.supervisi.index', compact(
             'supervisiList', 'academicYears', 'statistics', 'supervisors', 'workflow',
-            'workflowYearId', 'workflowSemester', 'pengaturanSupervisor', 'gtks'
+            'workflowYearId', 'workflowSemester', 'pengaturanSupervisor', 'gtks', 'supervisorGtks'
         ));
     }
 
@@ -108,7 +121,7 @@ class SupervisiController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
         $activeYearId = AcademicYear::where('is_active', true)->value('id');
-        $formOptions = $this->formOptions($schoolId, $activeYearId);
+        $formOptions = $this->formOptions($schoolId, $activeYearId, (int) $request->input('semester', 1));
         $activeSk = SupervisiSk::where('school_id', $schoolId)
             ->where('academic_year_id', $activeYearId)
             ->where('semester', (int) $request->input('semester', 1))
@@ -417,9 +430,16 @@ class SupervisiController extends Controller
      *
      * @return array<string, mixed>
      */
-    protected function formOptions(?string $schoolId, ?string $yearId = null): array
+    protected function formOptions(?string $schoolId, ?string $yearId = null, ?int $semester = 1): array
     {
         $yearId = $yearId ?: AcademicYear::where('is_active', true)->value('id');
+
+        $sk = SupervisiSk::with('anggota')
+            ->where('school_id', $schoolId)
+            ->where('academic_year_id', $yearId)
+            ->where('semester', $semester)
+            ->first();
+        $skMemberIds = $sk?->anggota->pluck('gtk_profile_id')->all() ?? [];
 
         $settings = SupervisiPengaturan::query()
             ->with([
@@ -431,6 +451,9 @@ class SupervisiController extends Controller
             ->where('school_id', $schoolId)
             ->where('is_active', true)
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->where('semester', $semester)
+            ->when($skMemberIds === [], fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($skMemberIds !== [], fn ($q) => $q->whereIn('supervisor_gtk_id', $skMemberIds))
             ->get();
 
         $assignmentOptions = $settings
@@ -679,7 +702,7 @@ class SupervisiController extends Controller
 
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
         $activeYearId = $supervisi->academic_year_id ?: AcademicYear::where('is_active', true)->value('id');
-        $formOptions = $this->formOptions($schoolId, $activeYearId);
+        $formOptions = $this->formOptions($schoolId, $activeYearId, (int) $supervisi->semester);
         $activeSk = $supervisi->sk ?: SupervisiSk::where('school_id', $schoolId)
             ->where('academic_year_id', $activeYearId)
             ->where('semester', $supervisi->semester)

@@ -12,9 +12,15 @@
                 <div class="alert alert-light border small">
                     Daftar ini yang muncul saat membuat jadwal. Supervisor hanya dapat menilai guru yang sudah ditentukan.
                 </div>
+                @if($supervisorGtks->isEmpty())
+                    <div class="alert alert-warning small">
+                        <i class="ri-alert-line me-1"></i>Belum ada anggota SK untuk semester {{ $workflowSemester }}. Isi <strong>Tim &amp; SK</strong> terlebih dahulu; supervisor hanya boleh dipilih dari anggota SK.
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('waka.supervisi-pengaturan.store') }}" class="row g-2 align-items-end border rounded p-3 mb-3">
                     @csrf
+                    <input type="hidden" name="semester" value="{{ $workflowSemester }}">
                     <div class="col-md-3">
                         <label class="form-label small">Tahun Ajaran</label>
                         <select name="academic_year_id" class="form-select form-select-sm" required>
@@ -27,7 +33,7 @@
                         <label class="form-label small">Supervisor</label>
                         <select name="supervisor_gtk_id" class="form-select form-select-sm" required>
                             <option value="">— Pilih —</option>
-                            @foreach($gtks as $gtk)
+                            @foreach($supervisorGtks as $gtk)
                                 <option value="{{ $gtk->id }}">{{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}</option>
                             @endforeach
                         </select>
@@ -46,7 +52,7 @@
                         <input name="notes" class="form-control form-control-sm" maxlength="1000" placeholder="Opsional">
                     </div>
                     <div class="col-md-1">
-                        <button class="btn btn-sm btn-success w-100" title="Tambahkan supervisor untuk guru"><i class="ri-add-line"></i></button>
+                        <button class="btn btn-sm btn-success w-100" title="Tambahkan supervisor untuk guru" @if($supervisorGtks->isEmpty()) disabled @endif><i class="ri-add-line"></i></button>
                     </div>
                 </form>
 
