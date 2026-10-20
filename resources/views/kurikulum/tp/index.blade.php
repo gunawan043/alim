@@ -183,7 +183,16 @@
                                         <div class="small text-muted mt-1">{{ $tp->subject?->name }}</div>
                                         <div class="small text-muted">{{ $tp->gradeLevel?->name ?? 'Semua Jenjang' }}</div>
                                     </td>
-                                    <td class="small">{{ $tp->deskripsi }}</td>
+                                    <td class="small">
+                                        {{ $tp->deskripsi }}
+                                        @if($curriculumProfile?->isKemenag() && ! empty($tp->kbc_values))
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach($tp->kbc_values as $value)
+                                                    <span class="badge bg-success-subtle text-success">{{ $kbcValues[$value] ?? $value }}</span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="small text-muted">
                                         @if($tp->capaianPembelajaran)
                                             <div>{{ \Illuminate\Support\Str::limit($tp->capaianPembelajaran->deskripsi, 60) }}</div>
@@ -222,6 +231,8 @@
                                                     'kode_tp' => $tp->kode_tp,
                                                     'deskripsi' => $tp->deskripsi,
                                                     'elemen' => $tp->elemen,
+                                                    'kbc_values' => $tp->kbc_values ?? [],
+                                                    'kbc_indicator' => $tp->kbc_indicator,
                                                     'fase' => $tp->fase,
                                                     'alokasi_waktu' => $tp->alokasi_waktu,
                                                     'urutan' => $tp->urutan,
@@ -336,6 +347,26 @@
                                 <label class="form-label">Urutan</label>
                                 <input type="number" name="urutan" id="tp-urutan" class="form-control" min="0" value="0">
                             </div>
+                            @if($curriculumProfile?->isKemenag() && ! empty($kbcValues))
+                                <div class="col-md-12">
+                                    <hr class="my-1">
+                                    <label class="form-label fw-semibold"><i class="ri-heart-3-line text-danger me-1"></i>Integrasi {{ $curriculumLabels['values_label'] ?? 'Nilai Cinta' }}</label>
+                                    <div class="row g-2">
+                                        @foreach($kbcValues as $valueKey => $valueLabel)
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input tp-kbc-value" type="checkbox" name="kbc_values[]" id="tp-kbc-{{ $valueKey }}" value="{{ $valueKey }}">
+                                                    <label class="form-check-label" for="tp-kbc-{{ $valueKey }}">{{ $valueLabel }}</label>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Indikator Nilai Cinta</label>
+                                    <textarea name="kbc_indicator" id="tp-kbc-indicator" rows="2" class="form-control" maxlength="2000" placeholder="Contoh: peserta didik menunjukkan sikap ..."></textarea>
+                                </div>
+                            @endif
                             <div class="col-md-12">
                                 <div class="form-check form-switch">
                                     <input type="checkbox" name="is_active" id="tp-active" class="form-check-input" value="1" checked>
@@ -405,6 +436,9 @@
             document.getElementById('tp-jp').value = 2;
             document.getElementById('tp-urutan').value = 0;
             document.getElementById('tp-active').checked = true;
+            document.querySelectorAll('.tp-kbc-value').forEach(function (el) { el.checked = false; });
+            var kbcIndicator = document.getElementById('tp-kbc-indicator');
+            if (kbcIndicator) kbcIndicator.value = '';
             filterCpOptions();
         }
 
@@ -424,6 +458,10 @@
             document.getElementById('tp-jp').value = tp.alokasi_waktu || 2;
             document.getElementById('tp-urutan').value = tp.urutan || 0;
             document.getElementById('tp-active').checked = tp.is_active !== false;
+            var selectedKbc = Array.isArray(tp.kbc_values) ? tp.kbc_values : [];
+            document.querySelectorAll('.tp-kbc-value').forEach(function (el) { el.checked = selectedKbc.indexOf(el.value) !== -1; });
+            var kbcIndicator = document.getElementById('tp-kbc-indicator');
+            if (kbcIndicator) kbcIndicator.value = tp.kbc_indicator || '';
             filterCpOptions(tp.capaian_pembelajaran_id);
             new bootstrap.Modal(document.getElementById('tp-modal')).show();
         }

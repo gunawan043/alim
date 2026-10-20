@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCurriculumProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,8 @@ use Illuminate\Support\Str;
  */
 class TujuanPembelajaran extends Model
 {
+    use HasCurriculumProfile;
+
     use SoftDeletes;
 
     protected $table = 'tujuan_pembelajaran';
@@ -34,6 +37,7 @@ class TujuanPembelajaran extends Model
     }
 
     protected $fillable = [
+        'curriculum_profile_id',
         'id',
         'school_id',
         'capaian_pembelajaran_id',
@@ -45,6 +49,8 @@ class TujuanPembelajaran extends Model
         'kode_tp',
         'deskripsi',
         'elemen',
+        'kbc_values',
+        'kbc_indicator',
         'alokasi_waktu',
         'urutan',
         'is_active',
@@ -55,9 +61,15 @@ class TujuanPembelajaran extends Model
         'alokasi_waktu' => 'integer',
         'urutan' => 'integer',
         'is_active' => 'boolean',
+        'kbc_values' => 'array',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
+
+    public function curriculumProfile(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProfile::class, 'curriculum_profile_id');
+    }
 
     public function school(): BelongsTo
     {

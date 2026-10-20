@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCurriculumProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,6 +26,8 @@ use Illuminate\Support\Str;
  */
 class PerangkatPembelajaran extends Model
 {
+    use HasCurriculumProfile;
+
     use SoftDeletes;
 
     protected $table = 'perangkat_pembelajaran';
@@ -110,6 +113,12 @@ class PerangkatPembelajaran extends Model
         'topik' => 'Topik',
         'lintas_disiplin' => 'Lintas Disiplin Ilmu',
         'praktik_pedagogik' => 'Praktik Pedagogik',
+        'tema_kbc' => 'Tema Kurikulum Berbasis Cinta',
+        'materi_insersi' => 'Materi Insersi Nilai Cinta',
+        'pilar_kbc' => 'Pilar Nilai Cinta',
+        'indikator_kbc' => 'Indikator Nilai Cinta',
+        'refleksi_kbc' => 'Refleksi Nilai Cinta',
+        'asesmen_kbc' => 'Asesmen Nilai Cinta',
     ];
 
     /**
@@ -133,6 +142,15 @@ class PerangkatPembelajaran extends Model
             'icon' => 'ri-draft-line',
             'desc' => 'Rencana asesmen selama dan di akhir pembelajaran.',
             'keys' => ['asesmen_formatif', 'asesmen_sumatif'],
+        ],
+    ];
+
+    const GROUPS_KBC = [
+        'kbc' => [
+            'label' => 'Integrasi Kurikulum Berbasis Cinta',
+            'icon' => 'ri-heart-3-line',
+            'desc' => 'Tema, materi insersi, pilar, indikator, refleksi, dan asesmen nilai cinta.',
+            'keys' => ['tema_kbc', 'materi_insersi', 'pilar_kbc', 'indikator_kbc', 'refleksi_kbc', 'asesmen_kbc'],
         ],
     ];
 
@@ -173,6 +191,7 @@ class PerangkatPembelajaran extends Model
     }
 
     protected $fillable = [
+        'curriculum_profile_id',
         'id',
         'school_id',
         'academic_year_id',
@@ -210,6 +229,11 @@ class PerangkatPembelajaran extends Model
     ];
 
     // ── Relationships ────────────────────────────────────────────────
+
+    public function curriculumProfile(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProfile::class, 'curriculum_profile_id');
+    }
 
     public function school(): BelongsTo
     {
@@ -337,7 +361,13 @@ class PerangkatPembelajaran extends Model
      */
     public function groups(): array
     {
-        return $this->tipe === self::TIPE_AGAMA ? self::GROUPS_AGAMA : self::GROUPS_UMUM;
+        $groups = $this->tipe === self::TIPE_AGAMA ? self::GROUPS_AGAMA : self::GROUPS_UMUM;
+
+        if ($this->curriculumProfile?->isKemenag()) {
+            $groups = array_merge(self::GROUPS_KBC, $groups);
+        }
+
+        return $groups;
     }
 
     /**

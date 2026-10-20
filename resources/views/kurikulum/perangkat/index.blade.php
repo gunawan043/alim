@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title', 'RPM / Perangkat Pembelajaran')
+@section('title', $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran')
 
 @section('css')
     @include('kurikulum._styles')
@@ -17,6 +17,7 @@
 
             return ! $isOwner && in_array($p->subject_id, $mySubjectIds ?? [], true);
         })->count();
+        $perangkatShort = $curriculumLabels['perangkat_short'] ?? 'RPM';
     @endphp
 
     @component('components.breadcrumb')
@@ -48,11 +49,11 @@
                             <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-booklet-line text-primary"></i></span>
                         </div>
                         <div class="flex-grow-1">
-                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total RPM</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total {{ $perangkatShort }}</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalRpm) }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Rencana Pembelajaran Mendalam</p>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>{{ $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran' }}</p>
                 </div>
             </div>
         </div>
@@ -112,9 +113,12 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Daftar RPM / Perangkat</h5>
+                            <h5 class="card-title mb-0">Daftar {{ $curriculumLabels['perangkat_label'] ?? 'Perangkat' }}</h5>
                             <p class="text-muted mb-0">
-                                <span class="badge bg-primary-subtle text-primary">{{ $totalRpm }} RPM</span>
+                                <span class="badge bg-primary-subtle text-primary">{{ $totalRpm }} {{ $perangkatShort }}</span>
+                                @if($curriculumProfile ?? null)
+                                    <span class="badge bg-success-subtle text-success ms-1">{{ $curriculumProfile->name }}</span>
+                                @endif
                                 <span class="text-muted small ms-2">Disiapkan dari ATP: kelas, mapel, guru, CP/TP, dan JP efektif yang sama.</span>
                             </p>
                         </div>
@@ -139,7 +143,7 @@
                                     <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
                                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#perangkat-modal">
-                                    <i class="ri-add-line align-bottom me-1"></i> Buat RPM
+                                    <i class="ri-add-line align-bottom me-1"></i> Buat {{ $perangkatShort }}
                                 </button>
                             </div>
                         </div>

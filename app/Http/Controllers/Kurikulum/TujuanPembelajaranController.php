@@ -10,8 +10,10 @@ use App\Models\GradeLevel;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * TP — Tujuan Pembelajaran. Diturunkan dari CP, dapat dibuat, diubah,
@@ -121,6 +123,11 @@ class TujuanPembelajaranController extends Controller
 
         $tpUpdateUrlTemplate = route('user.kurikulum.tp.update', ['userId' => $userId, 'id' => '__ID__']);
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $curriculumLabels = $profileService->labels($curriculumProfile);
+        $kbcValues = $profileService->kbcValues($curriculumProfile);
+
         return view('kurikulum.tp.index', compact(
             'userId',
             'academicYears',
@@ -135,13 +142,18 @@ class TujuanPembelajaranController extends Controller
             'usedTpIds',
             'isKurikulumEditor',
             'taughtSubjectIds',
-            'tpUpdateUrlTemplate'
+            'tpUpdateUrlTemplate',
+            'curriculumProfile',
+            'curriculumLabels',
+            'kbcValues'
         ));
     }
 
     public function store(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
+        $profileService = app(CurriculumProfileService::class);
+        $kbcValues = $profileService->kbcValues($profileService->resolve($schoolId, $request->input('academic_year_id')));
 
         $validated = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
@@ -152,6 +164,9 @@ class TujuanPembelajaranController extends Controller
             'kode_tp' => 'required|string|max:20',
             'deskripsi' => 'required|string|max:5000',
             'elemen' => 'nullable|string|max:100',
+            'kbc_values' => 'nullable|array',
+            'kbc_values.*' => ['string', Rule::in(array_keys($kbcValues ?? []))],
+            'kbc_indicator' => 'nullable|string|max:2000',
             'fase' => 'nullable|string|max:5',
             'alokasi_waktu' => 'nullable|integer|min:1|max:100',
             'urutan' => 'nullable|integer|min:0',
@@ -176,6 +191,7 @@ class TujuanPembelajaranController extends Controller
         $validated['elemen'] = $validated['elemen'] ?? $cp?->elemen;
         $validated['alokasi_waktu'] = $validated['alokasi_waktu'] ?? 2;
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['kbc_values'] = array_values(array_unique($validated['kbc_values'] ?? []));
         $validated['created_by'] = $request->user()->id;
 
         if ($this->kodeTpExists($validated)) {
@@ -193,6 +209,8 @@ class TujuanPembelajaranController extends Controller
     {
         $tp = TujuanPembelajaran::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
+        $profileService = app(CurriculumProfileService::class);
+        $kbcValues = $profileService->kbcValues($profileService->resolve($schoolId, $request->input('academic_year_id')));
 
         $validated = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
@@ -203,6 +221,9 @@ class TujuanPembelajaranController extends Controller
             'kode_tp' => 'required|string|max:20',
             'deskripsi' => 'required|string|max:5000',
             'elemen' => 'nullable|string|max:100',
+            'kbc_values' => 'nullable|array',
+            'kbc_values.*' => ['string', Rule::in(array_keys($kbcValues ?? []))],
+            'kbc_indicator' => 'nullable|string|max:2000',
             'fase' => 'nullable|string|max:5',
             'alokasi_waktu' => 'nullable|integer|min:1|max:100',
             'urutan' => 'nullable|integer|min:0',
@@ -225,6 +246,7 @@ class TujuanPembelajaranController extends Controller
         $validated['elemen'] = $validated['elemen'] ?? $cp?->elemen;
         $validated['alokasi_waktu'] = $validated['alokasi_waktu'] ?? 2;
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['kbc_values'] = array_values(array_unique($validated['kbc_values'] ?? []));
 
         if ($this->kodeTpExists($validated, $tp->id)) {
             return back()->withInput()->with('error', 'Kode TP sudah dipakai untuk mapel, jenjang, tahun ajaran, dan semester ini.');

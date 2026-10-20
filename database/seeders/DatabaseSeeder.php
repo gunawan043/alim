@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
             SchoolSeeder::class,       // master jenis izin (pulang, sakit, dll.)
             DormitorySeeder::class,       // master jenis izin (pulang, sakit, dll.)
             AcademicYearSeeder::class,
+            CurriculumProfileSeeder::class,    // profil KBC Kemenag & Merdeka Dinas
             CurriculumStructureSeeder::class,   // WAJIB: tingkat, mapel, alokasi jam per satuan pendidikan
             SchoolRombelStructureSeeder::class, // WAJIB: rombel SD/SMP/SMA + tautan mapel ke rombel
             ClassScheduleSlotSeeder::class,    // WAJIB: master jam pelajaran (kegiatan/istirahat/pulang)       // master jenis izin (pulang, sakit, dll.)

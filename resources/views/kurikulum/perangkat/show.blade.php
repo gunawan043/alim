@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title', 'RPM / Perangkat Pembelajaran')
+@section('title', $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran')
 
 @section('css')
     @include('kurikulum._styles')
@@ -18,7 +18,7 @@
 
     @component('components.breadcrumb')
         @slot('li_1') Kurikulum @endslot
-        @slot('li_2') <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">Perangkat / RPM</a> @endslot
+        @slot('li_2') <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">{{ $curriculumLabels['perangkat_label'] ?? 'Perangkat' }}</a> @endslot
         @slot('title') {{ $perangkat->judul }} @endslot
     @endcomponent
 
@@ -37,6 +37,9 @@
             <span class="badge bg-primary-subtle text-primary p-2">
                 {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
             </span>
+            @if($curriculumProfile ?? null)
+                <span class="badge bg-success-subtle text-success p-2">{{ $curriculumProfile->name }}</span>
+            @endif
             <span class="badge {{ $perangkat->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} p-2">
                 {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$perangkat->status] ?? $perangkat->status }}
             </span>
@@ -161,7 +164,7 @@
                         </select>
                     </div>
                     <div class="col-lg-3">
-                        <label class="form-label">Struktur RPM</label>
+                        <label class="form-label">Struktur {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</label>
                         <select name="tipe" class="form-select" {{ $disabled }}>
                             @foreach(\App\Models\PerangkatPembelajaran::TIPE_OPTIONS as $value => $label)
                                 <option value="{{ $value }}" {{ $perangkat->tipe === $value ? 'selected' : '' }}>{{ $label }}</option>
@@ -256,7 +259,7 @@
         @if($canEdit)
             <div class="d-flex gap-2 mb-4">
                 <button type="submit" class="btn btn-success">
-                    <i class="ri-save-line align-bottom me-1"></i> Simpan RPM
+                    <i class="ri-save-line align-bottom me-1"></i> Simpan {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}
                 </button>
                 <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $perangkat->academic_year_id, 'semester' => $perangkat->semester]) }}" class="btn btn-light">Batal</a>
             </div>
@@ -265,9 +268,9 @@
 
     @if($canEdit)
         <form method="POST" action="{{ route('user.kurikulum.perangkat.destroy', ['userId' => $userId, 'id' => $perangkat->id]) }}"
-              onsubmit="return confirm('Hapus RPM ini?');">
+              onsubmit="return confirm('Hapus {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }} ini?');">
             @csrf @method('DELETE')
-            <button class="btn btn-soft-danger btn-sm"><i class="ri-delete-bin-line align-bottom me-1"></i> Hapus RPM</button>
+            <button class="btn btn-soft-danger btn-sm"><i class="ri-delete-bin-line align-bottom me-1"></i> Hapus {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</button>
         </form>
     @endif
 

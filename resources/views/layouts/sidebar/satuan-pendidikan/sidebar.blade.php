@@ -483,7 +483,7 @@
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
-                        Modul Ajar (RPM)
+                        Perangkat Pembelajaran
                     </a>
                 </li>
                 <li class="nav-item">
@@ -828,6 +828,14 @@
                         Peta Kurikulum
                     </a>
                 </li>
+                @if($isTimKurikulumG)
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
+                        Profil Kurikulum
+                    </a>
+                </li>
+                @endif
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.cp.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}">
@@ -861,7 +869,7 @@
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
-                        Modul Ajar (RPM)
+                        Perangkat Pembelajaran
                     </a>
                 </li>
                 <li class="nav-item">

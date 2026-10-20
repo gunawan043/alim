@@ -5,6 +5,7 @@
     $kopEmail = $school?->kop_email ?: $school?->email;
     $kopWebsite = $school?->kop_website ?: $school?->website;
     $kopNpsn = $school?->npsn ?: $school?->kop_npsn;
+    $authorityLabel = ($curriculumProfile ?? null)?->configValue('labels.authority_label');
 
     $logoBase64 = null;
     if ($school?->logo_path) {
@@ -26,6 +27,7 @@
                 @endif
             </td>
             <td class="kop-text">
+                @if($authorityLabel)<div class="sub">{{ $authorityLabel }}</div>@endif
                 <div class="nama">{{ $kopNama }}</div>
                 @if($kopAlamat)<div class="sub">{{ $kopAlamat }}</div>@endif
                 <div class="sub">

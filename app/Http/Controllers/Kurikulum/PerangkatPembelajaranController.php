@@ -11,6 +11,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 
@@ -108,6 +109,10 @@ class PerangkatPembelajaranController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $curriculumLabels = $profileService->labels($curriculumProfile);
+
         return view('kurikulum.perangkat.index', compact(
             'userId',
             'academicYears',
@@ -118,7 +123,9 @@ class PerangkatPembelajaranController extends Controller
             'studyGroups',
             'subjects',
             'isKurikulumTeam',
-            'mySubjectIds'
+            'mySubjectIds',
+            'curriculumProfile',
+            'curriculumLabels'
         ));
     }
 
@@ -218,9 +225,16 @@ class PerangkatPembelajaranController extends Controller
             || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId))
             && $perangkat->isLocked();
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $perangkat->curriculumProfile
+            ?? $profileService->resolve($perangkat->school_id, $perangkat->academic_year_id);
+        $perangkat->setRelation('curriculumProfile', $curriculumProfile);
+        $curriculumLabels = $profileService->labels($curriculumProfile);
+
         return view('kurikulum.perangkat.show', compact(
             'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
-            'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion'
+            'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion',
+            'curriculumProfile', 'curriculumLabels'
         ));
     }
 

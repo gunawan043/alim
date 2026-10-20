@@ -21,6 +21,9 @@
             <td class="label">Semester</td><td class="colon">:</td><td>{{ ucfirst($atp->semester) }}</td>
         </tr>
         <tr>
+            <td class="label">Profil Kurikulum</td><td class="colon">:</td><td colspan="3">{{ ($curriculumProfile ?? null)?->name ?? '—' }}</td>
+        </tr>
+        <tr>
             <td class="label">JP Efektif Tersedia</td><td class="colon">:</td><td>{{ $jpEfektif }} JP ({{ $weeklyHours }} JP/minggu × {{ $mingguEfektif }} minggu efektif)</td>
             <td class="label">JP Teralokasi</td><td class="colon">:</td>
             <td>
@@ -44,6 +47,9 @@
                 <th>Tujuan Pembelajaran</th>
                 <th style="width:120px">Elemen</th>
                 <th style="width:70px">Alokasi JP</th>
+                @if(($curriculumProfile ?? null)?->isKemenag())
+                    <th style="width:130px">Nilai Cinta</th>
+                @endif
                 <th style="width:130px">Keterangan</th>
             </tr>
         </thead>
@@ -55,6 +61,16 @@
                     <td>{{ $item->tujuanPembelajaran?->deskripsi ?? '—' }}</td>
                     <td>{{ $item->tujuanPembelajaran?->elemen ?? '—' }}</td>
                     <td class="center">{{ $item->jp_alokasi }}</td>
+                    @if(($curriculumProfile ?? null)?->isKemenag())
+                        @php $kbcMap = ($curriculumProfile ?? null)?->values() ?? []; @endphp
+                        <td class="small">
+                            @forelse(($item->tujuanPembelajaran?->kbc_values ?? []) as $value)
+                                <span class="badge">{{ $kbcMap[$value] ?? $value }}</span>
+                            @empty
+                                —
+                            @endforelse
+                        </td>
+                    @endif
                     <td class="small">{{ $item->catatan ?: '—' }}</td>
                 </tr>
             @empty
@@ -76,7 +92,8 @@
                 Mengetahui,<br>Kepala Satuan Pendidikan
                 <div class="space"></div>
                 <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                @if(($curriculumProfile ?? null)?->isKemenag() && $school?->principal_nupy)<div class="nip">NUPY. {{ $school->principal_nupy }}</div>
+                @elseif($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
             </td>
             <td style="width:50%">
                 {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran

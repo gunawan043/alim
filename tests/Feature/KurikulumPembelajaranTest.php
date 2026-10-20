@@ -6,6 +6,7 @@ use App\Authorization\ValueObjects\ScopeKey;
 use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\CapaianPembelajaran;
+use App\Models\CurriculumProfile;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
@@ -932,5 +933,72 @@ class KurikulumPembelajaranTest extends TestCase
         }
 
         return $user;
+    }
+
+    public function test_profil_kurikulum_kbc_ditetapkan_dan_tp_membawa_nilai_cinta(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/profil", [
+                'academic_year_id' => $this->ay->id,
+                'curriculum_profile_id' => $kbc->id,
+                'kokurikuler_type' => 'p5ra',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('school_curriculum_settings', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/profil")
+            ->assertOk()
+            ->assertSee('Profil Kurikulum')
+            ->assertSee('Kurikulum Berbasis Cinta');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum")
+            ->assertOk()
+            ->assertSee('Kurikulum Berbasis Cinta');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/perangkat")
+            ->assertOk()
+            ->assertSee('Daftar Modul Ajar')
+            ->assertSee('Kurikulum Berbasis Cinta');
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/tp", [
+                'subject_id' => $this->math->id,
+                'grade_level_id' => $this->grade->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'kode_tp' => 'TP-KBC-01',
+                'deskripsi' => 'Peserta didik mampu membaca ayat dengan penuh cinta kepada Allah.',
+                'kbc_values' => ['hubbullah', 'hubbunnaas'],
+                'kbc_indicator' => 'Menunjukkan sikap cinta kepada Allah dan sesama saat pembelajaran.',
+                'alokasi_waktu' => 2,
+                'is_active' => 1,
+            ])
+            ->assertRedirect();
+
+        $tp = TujuanPembelajaran::where('kode_tp', 'TP-KBC-01')->firstOrFail();
+        $this->assertSame(['hubbullah', 'hubbunnaas'], $tp->kbc_values);
+        $this->assertSame($kbc->id, $tp->curriculum_profile_id);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/tp")
+            ->assertOk()
+            ->assertSee('Cinta kepada Allah')
+            ->assertSee('Cinta kepada Sesama');
+
+        $perangkat = new PerangkatPembelajaran(['tipe' => PerangkatPembelajaran::TIPE_UMUM]);
+        $perangkat->setRelation('curriculumProfile', $kbc);
+        $this->assertArrayHasKey('kbc', $perangkat->groups());
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCurriculumProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,8 @@ use Illuminate\Support\Str;
  */
 class Prota extends Model
 {
+    use HasCurriculumProfile;
+
     use SoftDeletes;
 
     protected $table = 'prota';
@@ -38,6 +41,7 @@ class Prota extends Model
     }
 
     protected $fillable = [
+        'curriculum_profile_id',
         'id',
         'school_id',
         'academic_year_id',
@@ -66,6 +70,11 @@ class Prota extends Model
     ];
 
     // ── Relations ────────────────────────────────────────────────────
+
+    public function curriculumProfile(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProfile::class, 'curriculum_profile_id');
+    }
 
     public function school(): BelongsTo
     {

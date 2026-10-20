@@ -1,7 +1,7 @@
 @extends('cetak.layout')
 
 @section('title', 'RPM')
-@section('doc_title', 'Rencana Pembelajaran Mendalam (RPM)')
+@section('doc_title', ($curriculumLabels['perangkat_label'] ?? 'RPM').' — '.($curriculumProfile?->isKemenag() ? 'Kurikulum Berbasis Cinta' : 'Pembelajaran Mendalam'))
 @section('doc_subtitle')
     {{ $perangkat->judul }}
 @endsection
@@ -32,12 +32,16 @@
                 <td class="label">Kelas / Fase</td><td>: {{ $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}{{ $perangkat->gradeLevel?->fase ? ' / '.$perangkat->gradeLevel->fase : '' }}</td>
             </tr>
             <tr>
-                <td class="label">Tahun Ajaran</td><td>: {{ $perangkat->academicYear?->name ?? '-' }}</td>
                 <td class="label">Semester</td><td>: {{ ucfirst($perangkat->semester) }}</td>
+                <td class="label">Fase</td><td>: {{ $perangkat->gradeLevel?->fase ?? '—' }}</td>
             </tr>
             <tr>
-                <td class="label">Tipe RPM</td><td>: {{ $tipeLabel }}</td>
+                <td class="label">Tipe {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</td><td>: {{ $tipeLabel }}</td>
+                <td class="label">Profil Kurikulum</td><td>: {{ $curriculumProfile?->name ?? '—' }}</td>
+            </tr>
+            <tr>
                 <td class="label">ATP Acuan</td><td>: {{ $atp?->subject?->name ?? '-' }} {{ $atp ? '('.$atp->total_jp.' JP)' : '' }}</td>
+                <td class="label">Tahun Ajaran</td><td>: {{ $perangkat->academicYear?->name ?? '-' }}</td>
             </tr>
         </table>
     </div>
@@ -61,7 +65,17 @@
                 @foreach($tps as $tp)
                     <tr>
                         <td style="width:70px"><strong>{{ $tp->kode_tp }}</strong></td>
-                        <td>{{ $tp->deskripsi }}</td>
+                        <td>
+                            {{ $tp->deskripsi }}
+                            @if(($curriculumProfile ?? null)?->isKemenag() && ! empty($tp->kbc_values))
+                                @php $kbcMap = ($curriculumProfile ?? null)?->values() ?? []; @endphp
+                                <div class="small" style="margin-top:2px">
+                                    <strong>Nilai Cinta:</strong>
+                                    @foreach($tp->kbc_values as $value){{ $kbcMap[$value] ?? $value }}@if(! $loop->last), @endif @endforeach
+                                    @if($tp->kbc_indicator) · {{ $tp->kbc_indicator }} @endif
+                                </div>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </table>
@@ -109,7 +123,8 @@
                 Mengetahui,<br>Kepala Satuan Pendidikan
                 <div class="space"></div>
                 <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                @if($curriculumProfile?->isKemenag() && $school?->principal_nupy)<div class="nip">NUPY. {{ $school->principal_nupy }}</div>
+                @elseif($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
             </td>
             <td style="width:50%">
                 {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran

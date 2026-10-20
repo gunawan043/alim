@@ -122,6 +122,9 @@
                             <h5 class="card-title mb-0">Peta Kurikulum per Jenjang &amp; Mapel</h5>
                             <p class="text-muted mb-0">
                                 <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} baris</span>
+                                @if($curriculumProfile ?? null)
+                                    <span class="badge bg-success-subtle text-success ms-1">{{ $curriculumProfile->name }}</span>
+                                @endif
                                 <span class="text-muted small ms-2">Kalender → Pekan Efektif → JP Efektif → CP → TP → ATP.</span>
                             </p>
                         </div>
@@ -170,7 +173,7 @@
                                         <li><a class="dropdown-item" href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"><i class="ri-calendar-2-line me-1"></i> PROSEM</a></li>
                                         <li><a class="dropdown-item" href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"><i class="ri-line-chart-line me-1"></i> Realisasi</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"><i class="ri-booklet-line me-1"></i> RPM / Perangkat</a></li>
+                                        <li><a class="dropdown-item" href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"><i class="ri-booklet-line me-1"></i> Perangkat Pembelajaran</a></li>
                                     </ul>
                                 </div>
                             </div>

@@ -11,6 +11,7 @@ use App\Models\PerangkatPembelajaran;
 use App\Models\Prosem;
 use App\Models\Prota;
 use App\Models\School;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\ProsemService;
@@ -30,6 +31,7 @@ class CetakDokumenKurikulumController extends Controller
 {
     public function __construct(
         private readonly KurikulumAccess $access,
+        private readonly CurriculumProfileService $profiles,
         private readonly PekanEfektifService $pekanService,
         private readonly ProsemService $prosemService,
         private readonly TeachingHoursResolver $hoursResolver,
@@ -102,8 +104,10 @@ class CetakDokumenKurikulumController extends Controller
         $jpTerpakai = (int) $atp->items->sum('jp_alokasi');
 
         $school = School::find($atp->school_id);
+        $curriculumProfile = $this->profiles->resolve($atp->school_id, $atp->academic_year_id);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
 
-        $html = view('cetak.atp', compact('school', 'atp', 'mingguEfektif', 'weeklyHours', 'jpEfektif', 'jpTerpakai'))->render();
+        $html = view('cetak.atp', compact('school', 'atp', 'mingguEfektif', 'weeklyHours', 'jpEfektif', 'jpTerpakai', 'curriculumProfile', 'curriculumLabels'))->render();
 
         return $this->pdf($html, 'ATP-'.($atp->subject?->name ?? '').'-'.($atp->gradeLevel?->name ?? ''), 'portrait');
     }
@@ -121,8 +125,10 @@ class CetakDokumenKurikulumController extends Controller
 
         $school = School::find($prota->school_id);
         $totalJp = (int) $prota->items->sum('alokasi_jp');
+        $curriculumProfile = $this->profiles->resolve($prota->school_id, $prota->academic_year_id);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
 
-        $html = view('cetak.prota', compact('school', 'prota', 'totalJp'))->render();
+        $html = view('cetak.prota', compact('school', 'prota', 'totalJp', 'curriculumProfile', 'curriculumLabels'))->render();
 
         return $this->pdf($html, 'PROTA-'.($prota->subject?->name ?? '').'-'.($prota->gradeLevel?->name ?? ''), 'portrait');
     }
@@ -141,8 +147,10 @@ class CetakDokumenKurikulumController extends Controller
         $school = School::find($prosem->school_id);
         $weeks = $this->prosemService->pekanEfektif($prosem)->keyBy('minggu_ke');
         $totalJp = (int) $prosem->items->sum('jp');
+        $curriculumProfile = $this->profiles->resolve($prosem->school_id, $prosem->academic_year_id);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
 
-        $html = view('cetak.prosem', compact('school', 'prosem', 'weeks', 'totalJp'))->render();
+        $html = view('cetak.prosem', compact('school', 'prosem', 'weeks', 'totalJp', 'curriculumProfile', 'curriculumLabels'))->render();
 
         return $this->pdf($html, 'PROSEM-'.($prosem->subject?->name ?? '').'-'.($prosem->gradeLevel?->name ?? ''), 'landscape');
     }
@@ -159,10 +167,14 @@ class CetakDokumenKurikulumController extends Controller
         $this->authorizeKurikulumDoc($request, $perangkat->school_id, $perangkat->subject_id, $perangkat->academic_year_id);
 
         $school = School::find($perangkat->school_id);
-        $groups = $perangkat->groups();
         $legacyFilled = $perangkat->legacyFilledSections();
+        $curriculumProfile = $perangkat->curriculumProfile
+            ?? $this->profiles->resolve($perangkat->school_id, $perangkat->academic_year_id);
+        $perangkat->setRelation('curriculumProfile', $curriculumProfile);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
+        $groups = $perangkat->groups();
 
-        $html = view('cetak.rpm', compact('school', 'perangkat', 'groups', 'legacyFilled'))->render();
+        $html = view('cetak.rpm', compact('school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels'))->render();
 
         return $this->pdf($html, 'RPM-'.($perangkat->subject?->name ?? '').'-'.($perangkat->judul ?? ''), 'portrait');
     }

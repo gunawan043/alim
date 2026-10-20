@@ -13,6 +13,7 @@ use App\Models\SubjectKktp;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Services\AcademicPeriodService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
@@ -224,6 +225,10 @@ class KurikulumController extends Controller
         // Izin menyiapkan Peta TA baru: editor kurikulum (tim/koordinator kurikulum, super admin).
         $canPrepare = app(KurikulumAccess::class)->isKurikulumEditor($request->user());
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $curriculumLabels = $profileService->labels($curriculumProfile);
+
         return view('kurikulum.index', compact(
             'userId',
             'academicYears',
@@ -238,7 +243,9 @@ class KurikulumController extends Controller
             'canPrepare',
             'isArchive',
             'activeAcademicYearId',
-            'jpSummary'
+            'jpSummary',
+            'curriculumProfile',
+            'curriculumLabels'
         ));
     }
 

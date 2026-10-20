@@ -98,6 +98,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
 use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
+use App\Http\Controllers\Kurikulum\CurriculumProfileController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
 use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
 use App\Http\Controllers\Kurikulum\KurikulumController;
@@ -778,6 +779,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── KURIKULUM & PERANGKAT PEMBELAJARAN ────────────────
             // Kalender → Pekan Efektif → JP Efektif → Kurikulum → CP → TP → ATP → Perangkat
             Route::prefix('kurikulum')->name('kurikulum.')->middleware('kurikulum.access')->group(function () {
+                Route::prefix('profil')->name('profil.')->group(function () {
+                    Route::get('/', [CurriculumProfileController::class, 'index'])->name('index');
+                    Route::post('/', [CurriculumProfileController::class, 'store'])->name('store');
+                });
+
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
                 Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
