@@ -24,6 +24,9 @@ class LibraryVisitController extends Controller
         $visits = LibraryVisit::with(['member.student:id,name,nis', 'member.user:id,name', 'officer:id,name'])
             ->where('library_unit_id', $unit->id)
             ->when($request->filled('date'), fn ($q) => $q->whereDate('visit_date', $request->date))
+            ->when($request->input('range') === 'today', fn ($q) => $q->whereDate('visit_date', today()))
+            ->when($request->input('range') === 'week', fn ($q) => $q->whereBetween('visit_date', [today()->subDays(6), today()]))
+            ->when($request->input('range') === 'month', fn ($q) => $q->whereMonth('visit_date', now()->month)->whereYear('visit_date', now()->year))
             ->latest()->limit(200)->get();
         $stats = [
             'today' => LibraryVisit::where('library_unit_id', $unit->id)->whereDate('visit_date', today())->count(),

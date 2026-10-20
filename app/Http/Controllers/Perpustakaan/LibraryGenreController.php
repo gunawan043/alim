@@ -18,9 +18,13 @@ class LibraryGenreController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         $genres = LibraryGenre::query()
             ->where(fn ($q) => $q->whereNull('school_id')->when($schoolId, fn ($q2) => $q2->orWhere('school_id', $schoolId)))
+            ->when($request->filled('search'), fn ($q) => $q->where(fn ($inner) => $inner->where('name', 'like', '%'.$request->search.'%')->orWhere('code', 'like', '%'.$request->search.'%')))
+            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->status === 'active'))
             ->orderBy('name')->get();
 
-        return view('perpustakaan.genres.index', compact('userId', 'genres', 'schoolId'));
+        $stats = ['total' => $genres->count(), 'active' => $genres->where('is_active', true)->count(), 'inactive' => $genres->where('is_active', false)->count()];
+
+        return view('perpustakaan.genres.index', compact('userId', 'genres', 'schoolId', 'stats'));
     }
 
     public function store(Request $request, string $userId)

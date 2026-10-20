@@ -1,18 +1,39 @@
 @extends('layouts.master')
 @section('title', 'Kunjungan Perpustakaan')
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+        $quickBase = ['userId' => $userId, 'unit_id' => $unit->id];
+        $filterAction = route('user.perpustakaan.visits.index');
+        $filterHidden = ['unit_id' => $unit->id];
+        $filterFields = [
+            ['name' => 'date', 'label' => 'Tanggal Kunjungan', 'type' => 'date', 'value' => request('date')],
+            ['name' => 'range', 'label' => 'Rentang', 'type' => 'select', 'options' => ['' => 'Semua', 'today' => 'Hari ini', 'week' => '7 hari terakhir', 'month' => 'Bulan ini']],
+        ];
+        $quickFilters = [
+            ['label' => 'Semua', 'url' => route('user.perpustakaan.visits.index', $quickBase), 'icon' => 'ri-list-check', 'active' => ! request('range') && ! request('date')],
+            ['label' => 'Hari Ini', 'url' => route('user.perpustakaan.visits.index', $quickBase + ['range' => 'today']), 'icon' => 'ri-calendar-check-line', 'active' => request('range') === 'today'],
+            ['label' => '7 Hari', 'url' => route('user.perpustakaan.visits.index', $quickBase + ['range' => 'week']), 'icon' => 'ri-calendar-2-line', 'active' => request('range') === 'week'],
+            ['label' => 'Bulan Ini', 'url' => route('user.perpustakaan.visits.index', $quickBase + ['range' => 'month']), 'icon' => 'ri-calendar-line', 'active' => request('range') === 'month'],
+        ];
+    @endphp
     @include('perpustakaan._styles')
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('li_2') Keanggotaan @endslot @slot('title') Kunjungan Harian @endslot @endcomponent
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <div class="row g-2 mb-3"><div class="col-md-6"><div class="card"><div class="card-body py-3"><div class="text-muted small">Kunjungan Hari Ini</div><div class="fs-4 fw-bold">{{ $stats['today'] }}</div></div></div></div><div class="col-md-6"><div class="card"><div class="card-body py-3"><div class="text-muted small">Kunjungan Bulan Ini</div><div class="fs-4 fw-bold">{{ $stats['month'] }}</div></div></div></div></div>
-    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-footprint-line text-primary me-1"></i>Buku Kunjungan {{ $unit->name }}</h5><p class="text-muted mb-0 small">Catat kunjungan harian; paraf ditampilkan sebagai identitas petugas pada laporan.</p></div><div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="date" name="date" value="{{ request('date') }}" class="form-control form-control-sm"><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#visitModal"><i class="ri-add-line me-1"></i>Catat Kunjungan</button></div></div>
-        <div class="table-responsive"><table class="table table-hover library-table align-middle mb-0"><thead class="table-light"><tr><th>Hari/Tanggal</th><th>Nama Pengunjung</th><th>Kelas</th><th>Keperluan</th><th>Petugas</th></tr></thead><tbody>
+    <div class="row g-2 mb-3 library-stats">
+        @foreach([['Kunjungan Hari Ini', $stats['today'], 'ri-calendar-check-line', 'primary', 'Pengunjung yang tercatat hari ini'], ['Kunjungan Bulan Ini', $stats['month'], 'ri-calendar-2-line', 'info', 'Akumulasi bulan berjalan']] as [$label, $value, $icon, $color, $hint])
+            @include('perpustakaan._stat-card', ['label' => $label, 'value' => $value, 'icon' => $icon, 'color' => $color, 'hint' => $hint])
+        @endforeach
+    </div>
+    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-footprint-line text-primary me-1"></i>Buku Kunjungan {{ $unit->name }}</h5><p class="text-muted mb-0 small">Catat kunjungan harian; paraf ditampilkan sebagai identitas petugas pada laporan.</p></div><div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="date" name="date" value="{{ request('date') }}" class="form-control form-control-sm"><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#visitModal"><i class="ri-add-line me-1"></i>Catat Kunjungan</button></div></div>
+        @include('perpustakaan._quick-filters')
+        <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Hari/Tanggal</th><th>Nama Pengunjung</th><th>Kelas</th><th>Keperluan</th><th>Petugas</th></tr></thead><tbody>
         @forelse($visits as $visit)
             <tr><td>{{ $visit->visit_date?->translatedFormat('l, d/m/Y') }}</td><td class="fw-medium">{{ $visit->visitor_name }}</td><td>{{ $visit->class_snapshot ?? '—' }}</td><td>{{ $visit->purpose ?: '—' }}</td><td class="small">{{ $visit->officer?->name ?? '—' }}</td></tr>
         @empty<tr><td colspan="5" class="text-center text-muted py-5">Belum ada kunjungan.</td></tr>@endforelse
         </tbody></table></div>
     </div>
     <div class="modal fade library-modal" id="visitModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" action="{{ route('user.perpustakaan.visits.store',['userId'=>$userId]) }}">@csrf<input type="hidden" name="library_unit_id" value="{{ $unit->id }}"><div class="modal-header bg-primary-subtle"><h5 class="modal-title">Catat Kunjungan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label">Anggota (opsional)</label><select name="library_member_id" class="form-select"><option value="">— Pengunjung non-anggota —</option>@foreach($members as $member)<option value="{{ $member->id }}">{{ $member->member_number }} — {{ $member->display_name }}</option>@endforeach</select></div><div class="col-md-6"><label class="form-label">Nama Pengunjung</label><input name="visitor_name" class="form-control" placeholder="Wajib jika non-anggota"></div><div class="col-md-6"><label class="form-label">Jenis</label><select name="visitor_type" class="form-select"><option value="student">Santri</option><option value="gtk">GTK</option><option value="guest">Tamu</option></select></div><div class="col-md-6"><label class="form-label">Tanggal</label><input type="date" name="visit_date" class="form-control" value="{{ today()->toDateString() }}" required></div><div class="col-md-6"><label class="form-label">Keperluan</label><input name="purpose" class="form-control" placeholder="Membaca, meminjam, belajar..."></div><div class="col-12"><label class="form-label">Catatan</label><textarea name="notes" rows="2" class="form-control"></textarea></div></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan Kunjungan</button></div></form></div></div></div>
+    @include('perpustakaan._filter-modal')
 @endsection

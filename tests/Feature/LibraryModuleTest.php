@@ -127,6 +127,10 @@ class LibraryModuleTest extends TestCase
         LibraryItem::create(['library_title_id' => $title->id, 'library_unit_id' => $unit->id, 'inventory_code' => 'PAGE-001', 'shelf_location' => 'Rak A', 'status' => 'available', 'condition' => 'baik']);
 
         $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/racks?unit_id={$unit->id}")->assertOk()->assertSee('Rak A');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/genres")->assertOk()->assertSee('Genre');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/visits?unit_id={$unit->id}")->assertOk()->assertSee('Kunjungan');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/units")->assertOk()->assertSee('Unit Perpustakaan');
+        $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/stock-opnames?unit_id={$unit->id}")->assertOk()->assertSee('Stock Opname');
         $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/reports?unit_id={$unit->id}")->assertOk()->assertSee('Laporan');
         $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/fines?unit_id={$unit->id}")->assertOk()->assertSee('Denda');
         $this->actingAs($admin)->get("/{$admin->id}/perpustakaan/catalog?unit_id={$unit->id}&collection=reference")->assertOk()->assertSee('Kitab Halaman');

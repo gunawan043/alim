@@ -7,12 +7,17 @@
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
+    <div class="row g-2 mb-3 library-stats">
+        @foreach([['Total Unit', $units->count(), 'ri-building-2-line', 'primary', 'Unit perpustakaan terdaftar'], ['Aktif', $units->where('is_active', true)->count(), 'ri-checkbox-circle-line', 'success', 'Dapat digunakan'], ['Sudah Diatur', $settings->count(), 'ri-settings-4-line', 'info', 'Pengaturan tahun '.($year?->name ?? 'aktif')]] as [$label, $value, $icon, $color, $hint])
+            @include('perpustakaan._stat-card', ['label' => $label, 'value' => $value, 'icon' => $icon, 'color' => $color, 'hint' => $hint])
+        @endforeach
+    </div>
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-settings-4-line text-primary me-1"></i>Unit Perpustakaan</h5><p class="text-muted mb-0 small">Pisahkan koleksi dan transaksi berdasarkan unit. Pengaturan mengikuti tahun ajaran {{ $year?->name ?? 'aktif' }}.</p></div>
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#unitModal" onclick="openUnitCreate()"><i class="ri-add-line me-1"></i>Tambah Unit</button>
         </div>
-        <div class="table-responsive"><table class="table table-hover library-table align-middle mb-0">
+        <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze">
             <thead class="table-light"><tr><th>Unit</th><th>Sekolah</th><th>Gender / Jenjang</th><th>Lokasi</th><th>Pengaturan</th><th class="text-end">Aksi</th></tr></thead>
             <tbody>
             @forelse($units as $unit)

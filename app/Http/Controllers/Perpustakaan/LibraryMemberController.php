@@ -39,7 +39,15 @@ class LibraryMemberController extends Controller
         $gtkUsers = User::whereHas('employment', fn ($q) => $q->when($schoolId, fn ($s) => $s->where('school_id', $schoolId)))
             ->orderBy('name')->limit(500)->get(['id', 'name']);
 
-        return view('perpustakaan.members.index', compact('userId', 'units', 'unit', 'members', 'students', 'gtkUsers'));
+        $baseMembers = LibraryMember::where('library_unit_id', $unit->id);
+        $stats = [
+            'total' => (clone $baseMembers)->count(),
+            'active' => (clone $baseMembers)->where('status', LibraryMember::STATUS_ACTIVE)->count(),
+            'student' => (clone $baseMembers)->where('member_type', 'student')->count(),
+            'gtk' => (clone $baseMembers)->where('member_type', 'gtk')->count(),
+        ];
+
+        return view('perpustakaan.members.index', compact('userId', 'units', 'unit', 'members', 'students', 'gtkUsers', 'stats'));
     }
 
     public function store(Request $request, string $userId)

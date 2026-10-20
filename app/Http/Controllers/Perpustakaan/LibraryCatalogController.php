@@ -41,8 +41,15 @@ class LibraryCatalogController extends Controller
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('inventory_code', 'like', '%'.$request->search.'%')->orWhereHas('title', fn ($t) => $t->where('title', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
         $genres = LibraryGenre::whereNull('school_id')->orWhere('school_id', $schoolId)->orderBy('name')->get();
+        $allItems = LibraryItem::where('library_unit_id', $unit->id);
+        $stats = [
+            'titles' => LibraryTitle::where('school_id', $schoolId)->count(),
+            'items' => (clone $allItems)->count(),
+            'available' => (clone $allItems)->where('status', LibraryItem::STATUS_AVAILABLE)->count(),
+            'on_loan' => (clone $allItems)->where('status', LibraryItem::STATUS_ON_LOAN)->count(),
+        ];
 
-        return view('perpustakaan.catalog.index', compact('userId', 'units', 'unit', 'titles', 'items', 'genres'));
+        return view('perpustakaan.catalog.index', compact('userId', 'units', 'unit', 'titles', 'items', 'genres', 'stats'));
     }
 
     public function racks(Request $request, string $userId)

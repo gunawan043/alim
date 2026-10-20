@@ -23,7 +23,9 @@ class LibraryStockOpnameController extends Controller
         $unit = $units->firstWhere('id', $request->input('unit_id')) ?? $units->first();
         abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
         $sessions = LibraryStockOpname::withCount(['items as checked_count' => fn ($q) => $q->where('finding', '!=', 'pending')])
-            ->where('library_unit_id', $unit->id)->latest('session_date')->get();
+            ->where('library_unit_id', $unit->id)
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->latest('session_date')->get();
         $session = $request->filled('session_id') ? $sessions->firstWhere('id', $request->session_id) : $sessions->first();
         $items = $session ? LibraryStockOpnameItem::with(['item.title:id,title,author,publisher,publication_year,genre_id', 'item.title.genre:id,name', 'checker:id,name'])
             ->where('library_stock_opname_id', $session->id)->get() : collect();

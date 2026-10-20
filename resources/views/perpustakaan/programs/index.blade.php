@@ -4,13 +4,25 @@
     @php
         $userId = $userId ?? auth()->id();
         $statusLabels = ['draft' => 'Draft', 'submitted' => 'Diajukan', 'approved' => 'Disetujui', 'ordered' => 'Dipesan', 'active' => 'Berjalan', 'completed' => 'Selesai', 'rejected' => 'Ditolak', 'cancelled' => 'Batal'];
+        $quickBase = ['userId' => $userId, 'unit_id' => $unit->id];
+        if (request('category')) { $quickBase['category'] = request('category'); }
+        $filterAction = route('user.perpustakaan.programs.index', ['userId' => $userId, 'type' => $type]);
+        $filterHidden = ['unit_id' => $unit->id];
+        $filterFields = [
+            ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['' => 'Semua status'] + $statusLabels],
+            ['name' => 'category', 'label' => $meta['category'], 'type' => 'text', 'placeholder' => 'Ketik kategori'],
+        ];
+        $quickFilters = [['label' => 'Semua', 'url' => route('user.perpustakaan.programs.index', array_merge($quickBase, ['type' => $type])), 'icon' => 'ri-list-check', 'active' => ! request('status')]];
+        foreach ($statusLabels as $key => $label) {
+            $quickFilters[] = ['label' => $label, 'url' => route('user.perpustakaan.programs.index', array_merge($quickBase, ['type' => $type, 'status' => $key])), 'icon' => 'ri-filter-line', 'active' => request('status') === $key];
+        }
     @endphp
     @include('perpustakaan._styles')
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('li_2') {{ $type === 'literacy' ? 'Literasi' : 'Inventaris' }} @endslot @slot('title') {{ $meta['label'] }} @endslot @endcomponent
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
-    <div class="row g-2 mb-3">
+    <div class="row g-2 mb-3 library-stats">
         @foreach([['Total',$stats['total'],'ri-list-check-2','primary'],['Draft',$stats['draft'],'ri-draft-line','secondary'],['Berjalan',$stats['active'],'ri-time-line','warning'],['Selesai',$stats['done'],'ri-checkbox-circle-line','success']] as [$label,$value,$icon,$color])
             <div class="col-md-3"><div class="card"><div class="card-body py-3"><div class="d-flex gap-2 align-items-center"><span class="avatar-sm"><span class="avatar-title bg-{{ $color }}-subtle rounded"><i class="{{ $icon }} text-{{ $color }}"></i></span></span><div><div class="text-muted small">{{ $label }}</div><div class="fs-4 fw-bold">{{ $value }}</div></div></div></div></div></div>
         @endforeach
@@ -28,10 +40,12 @@
                         @foreach($statusLabels as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach
                     </select>
                 </form>
+                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#programModal" onclick="openProgramCreate()"><i class="ri-add-line me-1"></i>Tambah</button>
             </div>
         </div>
-        <div class="table-responsive"><table class="table table-hover library-table align-middle mb-0">
+        @include('perpustakaan._quick-filters')
+        <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze">
             <thead class="table-light"><tr><th>Judul / Kegiatan</th><th>{{ $meta['category'] }}</th><th>Tanggal</th><th>Jumlah</th><th>Nilai</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
             <tbody>
             @forelse($programs as $program)
@@ -71,6 +85,7 @@
             <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan</button></div>
         </form>
     </div></div></div>
+    @include('perpustakaan._filter-modal')
 @endsection
 @section('script')
 <script>

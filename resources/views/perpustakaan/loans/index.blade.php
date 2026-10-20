@@ -5,25 +5,39 @@
         $userId = $userId ?? auth()->id();
         $scopeLabels = ['' => 'Semua Transaksi', 'borrow' => 'Peminjaman', 'return' => 'Pengembalian', 'renew' => 'Perpanjangan', 'overdue' => 'Buku Terlambat', 'history' => 'Riwayat Sirkulasi'];
         $activeScope = $scope ?? '';
+        $quickBase = ['userId' => $userId, 'unit_id' => $unit->id];
+        $filterAction = route('user.perpustakaan.loans.index');
+        $filterHidden = ['unit_id' => $unit->id];
+        $filterFields = [
+            ['name' => 'search', 'label' => 'Pencarian', 'type' => 'text', 'placeholder' => 'Nomor pinjaman atau nama anggota'],
+            ['name' => 'scope', 'label' => 'Tahap Sirkulasi', 'type' => 'select', 'options' => $scopeLabels],
+            ['name' => 'status', 'label' => 'Status Transaksi', 'type' => 'select', 'options' => ['' => 'Semua status', 'active' => 'Aktif', 'returned' => 'Selesai']],
+        ];
+        $quickFilters = [];
+        foreach ($scopeLabels as $key => $label) {
+            $quickFilters[] = [
+                'label' => $label,
+                'url' => route('user.perpustakaan.loans.index', $quickBase + ['scope' => $key]),
+                'icon' => $key === 'overdue' ? 'ri-timer-line' : ($key === 'history' ? 'ri-history-line' : 'ri-exchange-line'),
+                'active' => $activeScope === $key,
+            ];
+        }
     @endphp
     @include('perpustakaan._styles')
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('li_2') Sirkulasi @endslot @slot('title') Peminjaman & Pengembalian @endslot @endcomponent
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <div class="row g-2 mb-3">
+    <div class="row g-2 mb-3 library-stats">
         @foreach([['Pinjaman Aktif',$stats['active'],'ri-exchange-line','primary'],['Terlambat',$stats['overdue'],'ri-timer-line','danger'],['Selesai',$stats['returned'],'ri-checkbox-circle-line','success']] as [$l,$v,$i,$c])<div class="col-md-4"><div class="card"><div class="card-body py-3"><div class="d-flex gap-2 align-items-center"><span class="avatar-sm"><span class="avatar-title bg-{{ $c }}-subtle rounded"><i class="{{ $i }} text-{{ $c }}"></i></span></span><div><div class="text-muted small">{{ $l }}</div><div class="fs-4 fw-bold">{{ $v }}</div></div></div></div></div></div>@endforeach
     </div>
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2 align-items-center">
             <div><h5 class="card-title mb-0"><i class="ri-exchange-line text-primary me-1"></i>{{ $scopeLabels[$activeScope] ?? 'Transaksi Sirkulasi' }}</h5><p class="text-muted mb-0 small">Kartu fisik wajib diverifikasi. Kartu biru, kartu merah, dan stempel tanggal kembali tetap diproses.</p></div>
-            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="scope" value="{{ $activeScope }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nomor / nama"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua</option><option value="active" @selected(request('status')==='active')>Aktif</option><option value="returned" @selected(request('status')==='returned')>Selesai</option></select></form><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
+            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="scope" value="{{ $activeScope }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nomor / nama"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua</option><option value="active" @selected(request('status')==='active')>Aktif</option><option value="returned" @selected(request('status')==='returned')>Selesai</option></select></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
         </div>
-        <div class="px-3 pt-2 pb-1 border-bottom d-flex flex-wrap gap-1">
-            @foreach($scopeLabels as $key => $label)
-                <a href="{{ route('user.perpustakaan.loans.index', ['userId'=>$userId, 'unit_id'=>$unit->id, 'scope'=>$key]) }}" class="btn btn-sm {{ $activeScope === $key ? 'btn-primary' : 'btn-light' }}">{{ $label }}</a>
-            @endforeach
-        </div>
-        <div class="table-responsive"><table class="table table-hover library-table align-middle mb-0"><thead class="table-light"><tr><th>Nomor</th><th>Anggota</th><th>Buku</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
+@include('perpustakaan._quick-filters')
+        <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Nomor</th><th>Anggota</th><th>Buku</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($loans as $loan)
             <tr><td><code>{{ $loan->loan_number }}</code></td><td>{{ $loan->member?->display_name }}</td><td class="small">{{ $loan->items->pluck('item.title.title')->filter()->implode(', ') ?: '—' }}</td><td>{{ $loan->loan_date?->format('d/m/Y') }}</td><td>{{ $loan->due_date?->format('d/m/Y') }}@if($loan->renewals_count)<div class="text-muted small">{{ $loan->renewals_count }}× diperpanjang</div>@endif</td><td>@if($loan->status==='active' && $loan->due_date?->isBefore(today()))<span class="badge bg-danger-subtle text-danger">Terlambat</span>@else<span class="badge {{ $loan->status==='active'?'bg-primary-subtle text-primary':'bg-success-subtle text-success' }}">{{ ucfirst($loan->status) }}</span>@endif</td><td class="text-end">@if($loan->status==='active')<div class="btn-group btn-group-sm">@if($setting->allow_renewal && $loan->renewals_count < $setting->max_renewals && ! $loan->due_date?->isBefore(today()))<form method="POST" action="{{ route('user.perpustakaan.loans.renew',['userId'=>$userId,'id'=>$loan->id]) }}" onsubmit="return confirm('Perpanjang pinjaman ini?')">@csrf<button class="btn btn-soft-primary" title="Perpanjang"><i class="ri-refresh-line"></i></button></form>@endif<button class="btn btn-soft-success" data-loan="{{ json_encode(['id'=>$loan->id,'items'=>$loan->items->map(fn($i)=>['id'=>$i->id,'title'=>$i->item?->title?->title,'code'=>$i->item?->inventory_code]),JSON_HEX_APOS|JSON_HEX_QUOT]) }}" onclick="openReturn(this)">Kembalikan</button></div>@else<span class="text-muted small">Selesai</span>@endif</td></tr>
         @empty<tr><td colspan="7" class="text-center text-muted py-5">Belum ada transaksi.</td></tr>@endforelse
@@ -31,6 +45,7 @@
     </div>
     <div class="modal fade library-modal" id="loanModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" action="{{ route('user.perpustakaan.loans.store',['userId'=>$userId]) }}">@csrf<input type="hidden" name="library_unit_id" value="{{ $unit->id }}"><div class="modal-header bg-primary-subtle"><h5 class="modal-title">Peminjaman Baru</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Anggota</label><select name="library_member_id" class="form-select" required><option value="">— Pilih Anggota —</option>@foreach($members as $member)<option value="{{ $member->id }}">{{ $member->member_number }} — {{ $member->display_name }}</option>@endforeach</select></div><div class="col-md-6"><label class="form-label">Nomor Kartu Fisik</label><input name="card_number" class="form-control" required placeholder="CARD-..."></div><div class="col-md-6"><label class="form-label">Tanggal Pinjam</label><input type="date" name="loan_date" class="form-control" value="{{ today()->toDateString() }}" required></div><div class="col-md-6"><label class="form-label">Eksemplar</label><select name="item_ids[]" class="form-select" multiple size="6" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->inventory_code }} — {{ $item->title?->title }}</option>@endforeach</select><div class="form-text">Gunakan Ctrl/Cmd untuk memilih lebih dari satu.</div></div><div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="physical_card_verified" value="1" id="physicalCard" required><label class="form-check-label" for="physicalCard">Kartu anggota fisik sudah diperiksa dan ditunjukkan</label></div></div><div class="col-12"><label class="form-label">Catatan</label><textarea name="notes" rows="2" class="form-control"></textarea></div></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan Peminjaman</button></div></form></div></div></div>
     <div class="modal fade library-modal" id="returnModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" id="returnForm" action="">@csrf<div class="modal-header bg-success-subtle"><h5 class="modal-title">Pengembalian Buku</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="returnItems"></div><div class="mt-3"><label class="form-label">Catatan Pengembalian</label><textarea name="return_notes" rows="2" class="form-control"></textarea></div><div class="alert alert-info py-2 mt-3 mb-0 small">Kondisi rusak sedang/berat akan masuk perbaikan; hilang akan ditandai hilang. Petugas tetap memperbarui kartu merah/kartu biru fisik.</div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success">Simpan Pengembalian</button></div></form></div></div></div>
+    @include('perpustakaan._filter-modal')
 @endsection
 @section('script')
 <script>
