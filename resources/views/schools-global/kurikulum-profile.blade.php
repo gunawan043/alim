@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title', 'Pemetaan Profil Kurikulum')
+@section('title', 'Dashboard & Pemetaan Profil Kurikulum')
 @section('content')
     @php
         $userId = $userId ?? auth()->id();
@@ -21,7 +21,7 @@
         <div class="card-body py-3">
             <div class="row align-items-center g-3">
                 <div class="col-md">
-                    <h5 class="card-title mb-2"><i class="ri-map-2-line me-1 text-primary"></i>Pemetaan Massal Profil Kurikulum</h5>
+                    <h5 class="card-title mb-2"><i class="ri-map-2-line me-1 text-primary"></i>Dashboard & Pemetaan Profil Kurikulum</h5>
                     <p class="text-muted mb-0 small">Tetapkan profil per sekolah dan tahun ajaran. Sekolah yang dikunci tidak akan berubah.</p>
                 </div>
                 <div class="col-md-auto">
@@ -35,10 +35,26 @@
         </div>
     </div>
 
-    <div class="row g-2 mb-3">
-        @foreach([['Sekolah', $schools->count(), 'ri-building-2-line', 'primary'], ['Sudah dipetakan', $settings->whereNotNull('curriculum_profile_id')->count(), 'ri-checkbox-circle-line', 'success'], ['Belum dipetakan', $schools->count() - $settings->whereNotNull('curriculum_profile_id')->count(), 'ri-error-warning-line', 'warning']] as [$label, $value, $icon, $color])
-            <div class="col-md-4"><div class="card"><div class="card-body py-3"><div class="d-flex align-items-center gap-2"><div class="avatar-sm"><span class="avatar-title bg-{{ $color }}-subtle rounded fs-2"><i class="{{ $icon }} text-{{ $color }}"></i></span></div><div><div class="text-muted small text-uppercase">{{ $label }}</div><div class="fs-4 fw-bold">{{ $value }}</div></div></div></div></div></div>
+    <div class="row g-2 mb-2">
+        @foreach([['Sekolah', $schools->count(), 'ri-building-2-line', 'primary'], ['Sudah dipetakan', $settings->whereNotNull('curriculum_profile_id')->count(), 'ri-checkbox-circle-line', 'success'], ['Belum dipetakan', $unmappedCount, 'ri-error-warning-line', 'warning'], ['Total Dokumen', array_sum($documentTotals), 'ri-folder-3-line', 'info']] as [$label, $value, $icon, $color])
+            <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body py-3"><div class="d-flex align-items-center gap-2"><div class="avatar-sm"><span class="avatar-title bg-{{ $color }}-subtle rounded fs-2"><i class="{{ $icon }} text-{{ $color }}"></i></span></div><div><div class="text-muted small text-uppercase">{{ $label }}</div><div class="fs-4 fw-bold">{{ $value }}</div></div></div></div></div></div>
         @endforeach
+    </div>
+
+    <div class="row g-2 mb-3">
+        @foreach($countLabels as $key => $label)
+            <div class="col-xl-2 col-md-4 col-6"><div class="border rounded bg-white p-2 text-center"><div class="text-muted small text-uppercase">{{ $label }}</div><div class="fw-bold fs-5">{{ (int) ($documentTotals[$key] ?? 0) }}</div></div></div>
+        @endforeach
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted small"><i class="ri-pie-chart-line me-1"></i>Distribusi profil:</span>
+            @foreach($profiles as $profile)
+                <span class="badge bg-light text-dark border">{{ $profile->name }} <strong>{{ (int) ($profileDistribution[$profile->id] ?? 0) }}</strong></span>
+            @endforeach
+            <span class="badge bg-warning-subtle text-warning">Belum dipetakan {{ $unmappedCount }}</span>
+        </div>
     </div>
 
     <form method="POST" action="{{ route('user.schools-global.kurikulum-profile.store', ['userId' => $userId]) }}" id="bulkProfileForm">
@@ -111,6 +127,47 @@
             <div class="card-footer d-flex justify-content-end"><button class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Pemetaan</button></div>
         </div>
     </form>
+
+    <div class="card mt-3">
+        <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div><h5 class="card-title mb-0"><i class="ri-history-line me-1 text-primary"></i>Riwayat Batch Pemetaan</h5><p class="text-muted mb-0 small">Rollback mengembalikan profil sekolah pada batch tersebut, kecuali sekolah yang terkunci.</p></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>Waktu</th><th>Oleh</th><th class="text-center">Sekolah</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+                <tbody>
+                    @forelse($batches as $batch)
+                        <tr>
+                            <td class="small">{{ $batch->changed_at ? \Illuminate\Support\Carbon::parse($batch->changed_at)->translatedFormat('d M Y H:i') : '—' }}</td>
+                            <td>{{ $batch->changer ?: '—' }}</td>
+                            <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ $batch->schools_count }}</span></td>
+                            <td>
+                                @if($batch->pending === 0)
+                                    <span class="badge bg-secondary-subtle text-secondary">Sudah di-rollback</span>
+                                @elseif($batch->rolled_back > 0)
+                                    <span class="badge bg-warning-subtle text-warning">{{ $batch->rolled_back }} dibatalkan, {{ $batch->pending }} aktif</span>
+                                @else
+                                    <span class="badge bg-success-subtle text-success">Aktif</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if($batch->pending > 0)
+                                    <form method="POST" action="{{ route('user.schools-global.kurikulum-profile.rollback', ['userId' => $userId, 'batchId' => $batch->batch_id]) }}" onsubmit="return confirm('Rollback batch pemetaan ini? Profil sekolah akan dikembalikan ke kondisi sebelumnya.');">
+                                        @csrf
+                                        <button class="btn btn-sm btn-soft-danger"><i class="ri-arrow-go-back-line me-1"></i>Rollback</button>
+                                    </form>
+                                @else
+                                    <span class="text-muted small">Selesai</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada riwayat pemetaan pada tahun ajaran ini.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 @endsection
 
 @section('script')

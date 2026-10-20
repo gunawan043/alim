@@ -9,6 +9,7 @@ use App\Models\CapaianPembelajaran;
 use App\Models\CurriculumProfile;
 use App\Models\CurriculumProject;
 use App\Models\CurriculumProjectBankItem;
+use App\Models\CurriculumProfileMappingLog;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
@@ -1303,8 +1304,9 @@ class KurikulumPembelajaranTest extends TestCase
         $this->actingAs($admin)
             ->get("/{$admin->id}/schools-global/kurikulum-profile")
             ->assertOk()
-            ->assertSee('Pemetaan Massal Profil Kurikulum')
-            ->assertSee($this->school->name);
+            ->assertSee('Dashboard & Pemetaan Profil Kurikulum')
+            ->assertSee($this->school->name)
+            ->assertSee('Riwayat Batch Pemetaan');
 
         $this->actingAs($admin)
             ->post("/{$admin->id}/schools-global/kurikulum-profile", [
@@ -1323,6 +1325,17 @@ class KurikulumPembelajaranTest extends TestCase
             'academic_year_id' => $this->ay->id,
             'curriculum_profile_id' => $kbc->id,
             'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $batchId = CurriculumProfileMappingLog::firstOrFail()->batch_id;
+
+        $this->actingAs($admin)
+            ->post("/{$admin->id}/schools-global/kurikulum-profile/{$batchId}/rollback")
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('school_curriculum_settings', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
         ]);
     }
 }

@@ -650,6 +650,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/schools-global', [SchoolsGlobalController::class, 'index'])->name('schools-global.index');
             Route::get('/schools-global/kurikulum-profile', [CurriculumProfileBulkController::class, 'index'])->name('schools-global.kurikulum-profile.index');
             Route::post('/schools-global/kurikulum-profile', [CurriculumProfileBulkController::class, 'store'])->name('schools-global.kurikulum-profile.store');
+            Route::post('/schools-global/kurikulum-profile/{batchId}/rollback', [CurriculumProfileBulkController::class, 'rollback'])->name('schools-global.kurikulum-profile.rollback');
             Route::get('/schools-global/index', [SchoolsGlobalController::class, 'index'])->name('schools-global-show.index');
 
             // ── GTK ────────────────────────────────────────────────
