@@ -120,10 +120,14 @@
                     </form>
                 @endif
                 @if($canSubmitReview)
-                    <form method="POST" action="{{ route('user.kurikulum.perangkat.submit-review', ['userId' => $userId, 'id' => $perangkat->id]) }}">
-                        @csrf
-                        <button class="btn btn-sm btn-primary"><i class="ri-send-plane-line me-1"></i>Ajukan Approval Rumpun</button>
-                    </form>
+                    @if(! ($curriculumProfile ?? null)?->isKemenag() || empty($kbcReviewMissing))
+                        <form method="POST" action="{{ route('user.kurikulum.perangkat.submit-review', ['userId' => $userId, 'id' => $perangkat->id]) }}">
+                            @csrf
+                            <button class="btn btn-sm btn-primary"><i class="ri-send-plane-line me-1"></i>Ajukan Approval Rumpun</button>
+                        </form>
+                    @else
+                        <button class="btn btn-sm btn-secondary" disabled title="Lengkapi checklist KBC wajib review terlebih dahulu."><i class="ri-lock-line me-1"></i>Ajukan Approval Rumpun</button>
+                    @endif
                 @endif
                 @if($canCreateVersion)
                     <form method="POST" action="{{ route('user.kurikulum.perangkat.new-version', ['userId' => $userId, 'id' => $perangkat->id]) }}"
@@ -141,6 +145,43 @@
             </div>
         @endif
     </div>
+
+    @if(($curriculumProfile ?? null)?->isKemenag())
+        <div class="card mb-3">
+            <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0"><i class="ri-heart-3-line text-danger me-1"></i>Checklist Integrasi KBC</h5>
+                    <p class="text-muted mb-0 small">Bagian wajib saat review: tema, materi insersi, pilar, dan indikator. Saat final: seluruh checklist.</p>
+                </div>
+                <span class="badge {{ $kbcPercentage >= 100 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} p-2">{{ $kbcPercentage }}% lengkap</span>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3" style="height:8px"><div class="progress-bar {{ $kbcPercentage >= 100 ? 'bg-success' : 'bg-warning' }}" style="width:{{ $kbcPercentage }}%"></div></div>
+                <div class="row g-2">
+                    @foreach($kbcChecklist as $key => $item)
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center gap-2 small">
+                                @if($item['filled'])
+                                    <i class="ri-checkbox-circle-fill text-success"></i>
+                                @else
+                                    <i class="ri-checkbox-blank-circle-line text-muted"></i>
+                                @endif
+                                <span class="{{ $item['filled'] ? 'text-muted text-decoration-line-through' : 'fw-medium' }}">{{ $item['label'] }}</span>
+                                @if(! $item['filled'] && in_array($key, $kbcReviewMissing, true))
+                                    <span class="badge bg-warning-subtle text-warning">wajib review</span>
+                                @elseif(! $item['filled'])
+                                    <span class="badge bg-secondary-subtle text-secondary">wajib final</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                @if($kbcMissing !== [])
+                    <div class="alert alert-warning py-2 mt-3 mb-0 small"><i class="ri-error-warning-line me-1"></i>Belum dapat ditetapkan final sampai seluruh bagian KBC terisi.</div>
+                @endif
+            </div>
+        </div>
+    @endif
 
     <form method="POST" action="{{ route('user.kurikulum.perangkat.update', ['userId' => $userId, 'id' => $perangkat->id]) }}">
         @csrf @method('PUT')

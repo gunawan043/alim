@@ -1086,6 +1086,12 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertOk()
             ->assertSee('Laporan Projek')
             ->assertSee('Santri Projek');
+
+        $pdf = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/pdf");
+        $pdf->assertOk();
+        $this->assertSame('application/pdf', $pdf->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $pdf->getContent());
     }
 
     public function test_prompt_ai_kbc_memuat_profil_nilai_dan_struktur_kbc(): void
@@ -1173,9 +1179,16 @@ class KurikulumPembelajaranTest extends TestCase
                 'materi_insersi' => 'Bilangan sebagai tanda keteraturan ciptaan Allah.',
                 'pilar_kbc' => 'Cinta kepada Allah',
                 'indikator_kbc' => 'Peserta didik menunjukkan rasa syukur atas keteraturan.',
+                'refleksi_kbc' => 'Apa yang membuat saya bersyukur hari ini?',
+                'asesmen_kbc' => 'Observasi sikap syukur dan tanggung jawab.',
             ],
         ])->assertRedirect();
 
         $this->assertSame('final', $perangkat->fresh()->status);
+
+        $this->get("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}")
+            ->assertOk()
+            ->assertSee('Checklist Integrasi KBC')
+            ->assertSee('100% lengkap');
     }
 }

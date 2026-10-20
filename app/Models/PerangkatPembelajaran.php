@@ -145,6 +145,22 @@ class PerangkatPembelajaran extends Model
         ],
     ];
 
+    const KBC_FIELDS = [
+        'tema_kbc' => 'Tema Kurikulum Berbasis Cinta',
+        'materi_insersi' => 'Materi Insersi Nilai Cinta',
+        'pilar_kbc' => 'Pilar Nilai Cinta',
+        'indikator_kbc' => 'Indikator Nilai Cinta',
+        'refleksi_kbc' => 'Refleksi Nilai Cinta',
+        'asesmen_kbc' => 'Asesmen Nilai Cinta',
+    ];
+
+    const KBC_CORE_FIELDS = [
+        'tema_kbc',
+        'materi_insersi',
+        'pilar_kbc',
+        'indikator_kbc',
+    ];
+
     const GROUPS_KBC = [
         'kbc' => [
             'label' => 'Integrasi Kurikulum Berbasis Cinta',
@@ -368,6 +384,46 @@ class PerangkatPembelajaran extends Model
         }
 
         return $groups;
+    }
+
+    /**
+     * Checklist kelengkapan integrasi KBC.
+     *
+     * @return array<string, array{label: string, filled: bool}>
+     */
+    public function kbcChecklist(?array $desain = null): array
+    {
+        $desain ??= $this->desain ?? [];
+
+        return collect(self::KBC_FIELDS)
+            ->mapWithKeys(fn ($label, $key) => [$key => [
+                'label' => $label,
+                'filled' => filled($desain[$key] ?? null),
+            ]])
+            ->all();
+    }
+
+    public function kbcCompletionPercentage(?array $desain = null): int
+    {
+        $checklist = $this->kbcChecklist($desain);
+        if ($checklist === []) {
+            return 0;
+        }
+
+        $filled = collect($checklist)->where('filled', true)->count();
+
+        return (int) round(($filled / count($checklist)) * 100);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function missingKbcFields(string $stage = 'final', ?array $desain = null): array
+    {
+        $keys = $stage === 'review' ? self::KBC_CORE_FIELDS : array_keys(self::KBC_FIELDS);
+        $desain ??= $this->desain ?? [];
+
+        return array_values(array_filter($keys, fn ($key) => blank($desain[$key] ?? null)));
     }
 
     /**

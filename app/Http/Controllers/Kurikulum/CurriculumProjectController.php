@@ -12,6 +12,8 @@ use App\Models\SchoolCurriculumSetting;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Validation\Rule;
 
 class CurriculumProjectController extends Controller
@@ -206,6 +208,54 @@ class CurriculumProjectController extends Controller
         $curriculumLabels = $labels;
 
         return view('cetak.proyek', compact('school', 'project', 'profile', 'curriculumProfile', 'labels', 'curriculumLabels', 'dimensions', 'assessments', 'average', 'rubric'));
+    }
+
+    public function pdf(Request $request, string $userId, string $id)
+    {
+        $project = CurriculumProject::with(['assessments.student:id,name,nis', 'school', 'academicYear', 'coordinator:id,name'])
+            ->findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
+
+        $profile = $project->curriculumProfile
+            ?? $this->profiles->resolve($project->school_id, $project->academic_year_id);
+        $labels = $this->profiles->labels($profile);
+        $profileValues = $profile?->values() ?? [];
+        $dimensions = collect($project->dimensions ?? [])
+            ->filter()
+            ->mapWithKeys(fn ($key) => [$key => $profileValues[$key] ?? $key])
+            ->all();
+        if (empty($dimensions)) {
+            $dimensions = $profileValues;
+        }
+
+        $assessments = $project->assessments->sortBy(fn ($assessment) => $assessment->student?->name)->values();
+        $average = $assessments->where('average', '>', 0)->avg('average');
+        $rubric = $this->rubricLabels();
+        $school = $project->school;
+        $curriculumProfile = $profile;
+        $curriculumLabels = $labels;
+
+        $html = view('cetak.proyek', compact(
+            'school', 'project', 'profile', 'curriculumProfile', 'labels', 'curriculumLabels',
+            'dimensions', 'assessments', 'average', 'rubric'
+        ))->render();
+
+        $options = new Options;
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $safe = preg_replace('/[^A-Za-z0-9\-]+/', '-', 'Laporan-Projek-'.$project->type_label.'-'.$project->title) ?: 'Laporan-Projek';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$safe.'.pdf"',
+        ]);
     }
 
     private function rubricLabels(): array

@@ -36,6 +36,7 @@
                 </div>
                 <div class="col-md-auto d-flex flex-wrap gap-2">
                     <a href="{{ route('user.kurikulum.proyek.print', ['userId' => $userId, 'id' => $project->id]) }}" target="_blank" class="btn btn-soft-secondary btn-sm"><i class="ri-printer-line me-1"></i>Cetak Laporan</a>
+                    <a href="{{ route('user.kurikulum.proyek.pdf', ['userId' => $userId, 'id' => $project->id]) }}" target="_blank" class="btn btn-soft-danger btn-sm"><i class="ri-file-pdf-2-line me-1"></i>PDF</a>
                     <a href="{{ route('user.kurikulum.proyek.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
                 </div>
             </div>

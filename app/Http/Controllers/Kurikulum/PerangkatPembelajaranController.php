@@ -230,11 +230,15 @@ class PerangkatPembelajaranController extends Controller
             ?? $profileService->resolve($perangkat->school_id, $perangkat->academic_year_id);
         $perangkat->setRelation('curriculumProfile', $curriculumProfile);
         $curriculumLabels = $profileService->labels($curriculumProfile);
+        $kbcChecklist = $perangkat->kbcChecklist();
+        $kbcPercentage = $perangkat->kbcCompletionPercentage();
+        $kbcMissing = $perangkat->missingKbcFields('final');
+        $kbcReviewMissing = $perangkat->missingKbcFields('review');
 
         return view('kurikulum.perangkat.show', compact(
             'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
             'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion',
-            'curriculumProfile', 'curriculumLabels'
+            'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing'
         ));
     }
 
@@ -273,11 +277,12 @@ class PerangkatPembelajaranController extends Controller
             ?? app(CurriculumProfileService::class)->resolve($perangkat->school_id, $perangkat->academic_year_id);
 
         if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL && $profile?->isKemenag()) {
-            $missingKbc = collect(['tema_kbc', 'materi_insersi', 'pilar_kbc', 'indikator_kbc'])
-                ->filter(fn ($key) => blank($desain[$key] ?? null));
+            $missingKbc = $perangkat->missingKbcFields('final', $desain);
 
-            if ($missingKbc->isNotEmpty()) {
-                return back()->withInput()->with('error', 'Perangkat KBC belum lengkap. Isi tema, materi insersi, pilar, dan indikator nilai cinta sebelum menetapkan final.');
+            if ($missingKbc !== []) {
+                $labels = collect($missingKbc)->map(fn ($key) => PerangkatPembelajaran::KBC_FIELDS[$key] ?? $key)->implode(', ');
+
+                return back()->withInput()->with('error', 'Perangkat KBC belum lengkap. Lengkapi: '.$labels.'.');
             }
         }
 
@@ -331,6 +336,17 @@ class PerangkatPembelajaranController extends Controller
 
         if ($perangkat->isLocked()) {
             return back()->with('error', 'RPM sudah final dan terkunci — buat versi baru untuk revisi.');
+        }
+
+        $profile = $perangkat->curriculumProfile
+            ?? app(CurriculumProfileService::class)->resolve($perangkat->school_id, $perangkat->academic_year_id);
+        if ($profile?->isKemenag()) {
+            $missingKbc = $perangkat->missingKbcFields('review');
+            if ($missingKbc !== []) {
+                $labels = collect($missingKbc)->map(fn ($key) => PerangkatPembelajaran::KBC_FIELDS[$key] ?? $key)->implode(', ');
+
+                return back()->with('error', 'Lengkapi integrasi KBC sebelum mengajukan review: '.$labels.'.');
+            }
         }
 
         if ($perangkat->workflow_status === PerangkatPembelajaran::WORKFLOW_REVIEW) {
