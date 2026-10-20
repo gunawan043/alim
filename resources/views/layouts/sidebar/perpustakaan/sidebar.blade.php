@@ -83,10 +83,9 @@
 <li class="menu-title"><span>Dashboard</span></li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-book-2-line"></i>
-        <span>Dashboard <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}"
+       href="{{ $pustakaUrl('user.perpustakaan.index') }}">
+        <i class="ri-book-2-line"></i><span>Dashboard</span>
     </a>
 </li>
 

@@ -96,6 +96,13 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JenjangKarirController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
+use App\Http\Controllers\Perpustakaan\LibraryCatalogController;
+use App\Http\Controllers\Perpustakaan\LibraryDashboardController;
+use App\Http\Controllers\Perpustakaan\LibraryGenreController;
+use App\Http\Controllers\Perpustakaan\LibraryLoanController;
+use App\Http\Controllers\Perpustakaan\LibraryMemberController;
+use App\Http\Controllers\Perpustakaan\LibraryUnitController;
+use App\Http\Controllers\Perpustakaan\LibraryVisitController;
 use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
 use App\Http\Controllers\Kurikulum\CurriculumProjectBankController;
@@ -551,6 +558,37 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
             });
+
+            Route::prefix('perpustakaan')->name('perpustakaan.')->group(function () {
+                    Route::get('/', [LibraryDashboardController::class, 'index'])->name('index');
+                    Route::get('/units', [LibraryUnitController::class, 'index'])->name('units.index');
+                    Route::post('/units', [LibraryUnitController::class, 'store'])->name('units.store');
+                    Route::put('/units/{id}', [LibraryUnitController::class, 'update'])->name('units.update');
+                    Route::post('/units/{id}/settings', [LibraryUnitController::class, 'updateSettings'])->name('units.settings');
+                    Route::get('/genres', [LibraryGenreController::class, 'index'])->name('genres.index');
+                    Route::post('/genres', [LibraryGenreController::class, 'store'])->name('genres.store');
+                    Route::put('/genres/{id}', [LibraryGenreController::class, 'update'])->name('genres.update');
+                    Route::delete('/genres/{id}', [LibraryGenreController::class, 'destroy'])->name('genres.destroy');
+                    Route::get('/catalog', [LibraryCatalogController::class, 'index'])->name('catalog.index');
+                    Route::post('/catalog/titles', [LibraryCatalogController::class, 'storeTitle'])->name('catalog.titles.store');
+                    Route::put('/catalog/titles/{id}', [LibraryCatalogController::class, 'updateTitle'])->name('catalog.titles.update');
+                    Route::delete('/catalog/titles/{id}', [LibraryCatalogController::class, 'destroyTitle'])->name('catalog.titles.destroy');
+                    Route::post('/catalog/items', [LibraryCatalogController::class, 'storeItem'])->name('catalog.items.store');
+                    Route::put('/catalog/items/{id}', [LibraryCatalogController::class, 'updateItem'])->name('catalog.items.update');
+                    Route::delete('/catalog/items/{id}', [LibraryCatalogController::class, 'destroyItem'])->name('catalog.items.destroy');
+                    Route::get('/catalog/labels', [LibraryCatalogController::class, 'printLabels'])->name('catalog.labels');
+                    Route::get('/members', [LibraryMemberController::class, 'index'])->name('members.index');
+                    Route::post('/members', [LibraryMemberController::class, 'store'])->name('members.store');
+                    Route::put('/members/{id}', [LibraryMemberController::class, 'update'])->name('members.update');
+                    Route::post('/members/{id}/replace-card', [LibraryMemberController::class, 'replaceCard'])->name('members.replace-card');
+                    Route::get('/members/{id}/card', [LibraryMemberController::class, 'printCard'])->name('members.card');
+                    Route::get('/members/cards/print', [LibraryMemberController::class, 'printCards'])->name('members.cards');
+                    Route::get('/loans', [LibraryLoanController::class, 'index'])->name('loans.index');
+                    Route::post('/loans', [LibraryLoanController::class, 'store'])->name('loans.store');
+                    Route::post('/loans/{id}/return', [LibraryLoanController::class, 'returnLoan'])->name('loans.return');
+                    Route::get('/visits', [LibraryVisitController::class, 'index'])->name('visits.index');
+                    Route::post('/visits', [LibraryVisitController::class, 'store'])->name('visits.store');
+                });
 
             // ── SCHOOLS ───────────────────────────────────────────────
             Route::prefix('schools')->name('schools.')->group(function () {
