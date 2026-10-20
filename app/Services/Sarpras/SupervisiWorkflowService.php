@@ -43,6 +43,7 @@ class SupervisiWorkflowService
             ->where('semester', $semester);
 
         $scheduleCount = (clone $scheduleQuery)->count();
+        $distributedCount = (clone $scheduleQuery)->whereNotNull('distributed_at')->count();
         $assessedCount = (clone $scheduleQuery)->whereNotNull('nilai_akhir')->count();
         $reportedCount = (clone $scheduleQuery)->whereNotNull('reported_to_wadir_at')->count();
 
@@ -78,6 +79,13 @@ class SupervisiWorkflowService
                 'route' => 'waka.supervisi.index',
             ],
             [
+                'key' => 'distribution',
+                'label' => 'Distribusi',
+                'done' => $distributedCount > 0,
+                'detail' => $distributedCount.' jadwal/instrumen didistribusikan',
+                'route' => 'waka.supervisi.index',
+            ],
+            [
                 'key' => 'assessment',
                 'label' => 'Penilaian',
                 'done' => $assessedCount > 0,
@@ -103,6 +111,7 @@ class SupervisiWorkflowService
             'instrumen_count' => $instrumenCount,
             'settings_count' => $settingsCount,
             'schedule_count' => $scheduleCount,
+            'distributed_count' => $distributedCount,
             'assessed_count' => $assessedCount,
             'reported_count' => $reportedCount,
         ];

@@ -38,12 +38,13 @@ class Supervisi extends Model
         'status',
         'instrumen_id', 'skor_total', 'skor_maks', 'nilai_akhir', 'ketercapaian',
         'jadwal_kbm_id', 'study_group_id', 'subject_id', 'slot_index',
-        'reported_to_wadir_at', 'reflection_notes',
+        'reported_to_wadir_at', 'reflection_notes', 'distributed_at', 'distributed_by',
     ];
 
     protected $casts = [
         'semester' => 'integer',
         'tanggal_supervisi' => 'date',
+        'distributed_at' => 'datetime',
     ];
 
     const JENIS_PERANGKAT = 'perangkat_pembelajaran';

@@ -736,6 +736,18 @@ class SupervisiController extends Controller
             ->with('success', 'Data supervisi berhasil diperbarui.');
     }
 
+    public function markDistributed(Request $request, string $id)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $supervisi = Supervisi::where('school_id', $schoolId)->findOrFail($id);
+        $supervisi->update([
+            'distributed_at' => now(),
+            'distributed_by' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Jadwal dan instrumen ditandai sudah didistribusikan.');
+    }
+
     public function reportToWadir(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');

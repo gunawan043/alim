@@ -86,6 +86,24 @@
 
                         <div class="col-md-12 detail-section">
                             <h6 class="mb-2">Pelaporan &amp; Refleksi</h6>
+                            @php
+                                $jabatan = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+                                $canReport = str_contains($jabatan, 'KEPALA') || str_contains($jabatan, 'WAKIL') || str_contains($jabatan, 'TATA USAHA') || str_contains($jabatan, 'KOORDINATOR KURIKULUM');
+                            @endphp
+                            <div class="mb-2">
+                                <span class="text-muted">Distribusi jadwal/instrumen:</span>
+                                @if($supervisi->distributed_at)
+                                    <span class="badge bg-success-subtle text-success">Sudah didistribusikan {{ $supervisi->distributed_at->format('d/m/Y H:i') }}</span>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning">Belum didistribusikan</span>
+                                @endif
+                                @if($canReport && ! $supervisi->distributed_at)
+                                    <form method="POST" action="{{ route('waka.supervisi.distribute', $supervisi->id) }}" class="d-inline ms-2">
+                                        @csrf
+                                        <button class="btn btn-sm btn-outline-success"><i class="ri-share-forward-line me-1"></i>Tandai Sudah Didistribusikan</button>
+                                    </form>
+                                @endif
+                            </div>
                             <div class="mb-2">
                                 <span class="text-muted">Laporan ke Wadir:</span>
                                 @if($supervisi->reported_to_wadir_at)
@@ -94,10 +112,6 @@
                                     <span class="badge bg-warning-subtle text-warning">Belum dilaporkan</span>
                                 @endif
                             </div>
-                            @php
-                                $jabatan = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
-                                $canReport = str_contains($jabatan, 'KEPALA') || str_contains($jabatan, 'WAKIL') || str_contains($jabatan, 'TATA USAHA') || str_contains($jabatan, 'KOORDINATOR KURIKULUM');
-                            @endphp
                             @if($canReport)
                                 @if(! $supervisi->reported_to_wadir_at)
                                     <form method="POST" action="{{ route('waka.supervisi.report-wadir', $supervisi->id) }}" class="mb-3">

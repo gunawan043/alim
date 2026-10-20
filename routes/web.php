@@ -3232,6 +3232,8 @@ Route::prefix('waka')
             Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
             Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
             Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+            Route::post('/{supervisi}/distribusi', [SupervisiController::class, 'markDistributed'])
+                ->middleware('satuan.feature:supervisi-admin')->name('supervisi.distribute');
             Route::post('/{supervisi}/lapor-wadir', [SupervisiController::class, 'reportToWadir'])
                 ->middleware('satuan.feature:supervisi-admin')->name('supervisi.report-wadir');
             Route::post('/{supervisi}/refleksi', [SupervisiController::class, 'saveReflection'])

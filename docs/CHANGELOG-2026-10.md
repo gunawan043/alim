@@ -2864,6 +2864,14 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Instrumen tetap terkunci pada jadwal; supervisor hanya mengisi item sesuai instrumen.
 - Diuji: halaman Supervisi, form, instrumen, pengaturan, SK, penilaian, dan cetak tetap merespons `200`.
 
+## 233. Distribusi Jadwal & Instrumen Supervisi
+
+- Menambahkan status distribusi jadwal/instrumen (`distributed_at`, `distributed_by`).
+- Langkah **Distribusi** masuk ke stepper alur supervisi antara Jadwal dan Penilaian.
+- Pada halaman detail supervisi, KSP/Wakil/TU/Kurikulum dapat menandai bahwa jadwal dan instrumen sudah didistribusikan.
+- Migrasi baru: `2026_10_20_000004_add_distribution_to_supervisi_table`.
+- Diuji: aksi distribusi mengembalikan `302` dan timestamp tersimpan.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.
