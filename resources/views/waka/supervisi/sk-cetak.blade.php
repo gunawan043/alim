@@ -16,7 +16,7 @@
     <style>
         @page { size: A4; margin: 18mm 20mm 18mm 22mm; }
         * { box-sizing: border-box; }
-        body { font-family: "Times New Roman", Times, serif; font-size: 11.5pt; line-height: 1.45; color: #111; }
+        body { font-family: Cambria, Georgia, "Times New Roman", serif; font-size: 11pt; line-height: 1.45; color: #111; }
         .center { text-align: center; }
         .kop { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 18px; }
         .kop .nama { font-size: 16pt; font-weight: bold; text-transform: uppercase; }

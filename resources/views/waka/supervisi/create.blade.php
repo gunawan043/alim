@@ -38,7 +38,7 @@
 
                         @if(! $hasSettings)
                             <div class="alert alert-warning small">
-                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Tambahkan pasangan supervisor → guru terlebih dahulu sebelum membuat jadwal.
+                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Tentukan supervisor untuk guru terlebih dahulu sebelum membuat jadwal.
                                 <a href="{{ route('waka.supervisi.index', ['academic_year_id' => $activeYearId, 'settings' => 1]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
                             </div>
                         @endif
@@ -54,7 +54,7 @@
                             </div>
                         @endif
 
-                        <h6 class="border-bottom pb-2 mb-3">Pasangan Supervisor</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Supervisor dan Guru yang Disupervisi</h6>
                         @if($selectedPair)
                             <input type="hidden" name="observer_id" value="{{ $selectedPair['observer_id'] }}">
                             <input type="hidden" name="gtk_id" value="{{ $selectedPair['gtk_id'] }}">
@@ -75,7 +75,7 @@
                                 <label class="col-sm-3 col-form-label">Penugasan Supervisor <span class="text-danger">*</span></label>
                                 <div class="col-sm-9">
                                     <select id="assignment_pair" class="form-select" required>
-                                        <option value="">— Pilih Pasangan Supervisor → Guru —</option>
+                                        <option value="">— Pilih Supervisor dan Guru yang Disupervisi → Guru —</option>
                                         @foreach($assignmentOptions as $pair)
                                             <option value="{{ $pair['value'] }}"
                                                     data-observer="{{ $pair['observer_id'] }}"

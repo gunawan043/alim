@@ -27,6 +27,8 @@ class SupervisiSk extends Model
         'tanggal',
         'menimbang',
         'mengingat',
+        'institution_decree_id',
+        'surat_keluar_id',
     ];
 
     protected $casts = [
@@ -53,6 +55,16 @@ class SupervisiSk extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
+    }
+
+    public function decree(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionDecree::class, 'institution_decree_id');
+    }
+
+    public function suratKeluar(): BelongsTo
+    {
+        return $this->belongsTo(SuratKeluar::class, 'surat_keluar_id');
     }
 
     public function anggota(): HasMany

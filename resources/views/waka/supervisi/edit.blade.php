@@ -39,7 +39,7 @@
                             </div>
                         @endif
 
-                        <h6 class="border-bottom pb-2 mb-3">Pasangan Supervisor</h6>
+                        <h6 class="border-bottom pb-2 mb-3">Supervisor dan Guru yang Disupervisi</h6>
                         @if($selectedPair)
                             <input type="hidden" name="observer_id" value="{{ $selectedPair['observer_id'] }}">
                             <input type="hidden" name="gtk_id" value="{{ $selectedPair['gtk_id'] }}">
@@ -57,7 +57,7 @@
                             </div>
                         @else
                             <div class="alert alert-warning small">
-                                <i class="ri-alert-line me-1"></i>Pasangan supervisor untuk jadwal ini belum tersedia. Atur pasangan terlebih dahulu di
+                                <i class="ri-alert-line me-1"></i>Supervisor untuk jadwal ini belum tersedia. Atur terlebih dahulu di
                                 <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $supervisi->academic_year_id]) }}">Pengaturan Supervisor</a>.
                             </div>
                         @endif

@@ -52,6 +52,9 @@
                             <td class="text-end">
                                 <a href="{{ route('waka.supervisi-sk.edit', $sk->id) }}" class="btn btn-sm btn-soft-primary"><i class="ri-settings-3-line me-1"></i>Atur</a>
                                 <a href="{{ route('waka.supervisi-sk.cetak', $sk->id) }}" target="_blank" class="btn btn-sm btn-soft-secondary"><i class="ri-printer-line me-1"></i>SK</a>
+                                @if($sk->surat_keluar_id)
+                                    <a href="{{ route('waka.surat-keluar.show', $sk->surat_keluar_id) }}" class="btn btn-sm btn-soft-success" title="Surat keluar terkait"><i class="ri-mail-line"></i></a>
+                                @endif
                                 <form action="{{ route('waka.supervisi-sk.destroy', $sk->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus SK ini?')">
                                     @csrf @method('DELETE')<button class="btn btn-sm btn-soft-danger"><i class="ri-delete-bin-line"></i></button>
                                 </form>

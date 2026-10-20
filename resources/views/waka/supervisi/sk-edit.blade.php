@@ -18,7 +18,16 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div><h4 class="mb-1">Tim Supervisi — {{ $sk->academicYear?->name }}</h4><p class="text-muted small mb-0">Semester {{ $sk->semester === 1 ? 'Ganjil' : 'Genap' }} · {{ $sk->nomor }}</p></div>
-        <div class="d-flex gap-2"><a href="{{ route('waka.supervisi-sk.index') }}" class="btn btn-light">Kembali</a><a href="{{ route('waka.supervisi-sk.cetak', $sk->id) }}" target="_blank" class="btn btn-primary"><i class="ri-printer-line me-1"></i>Cetak SK</a></div>
+        <div class="d-flex gap-2">
+            @if($sk->institution_decree_id)
+                <a href="{{ route('user.institution-decrees.show', ['userId' => auth()->id(), 'id' => $sk->institution_decree_id]) }}" class="btn btn-outline-secondary">Database SK</a>
+            @endif
+            @if($sk->surat_keluar_id)
+                <a href="{{ route('waka.surat-keluar.show', $sk->surat_keluar_id) }}" class="btn btn-outline-success">Surat Keluar</a>
+            @endif
+            <a href="{{ route('waka.supervisi-sk.index') }}" class="btn btn-light">Kembali</a>
+            <a href="{{ route('waka.supervisi-sk.cetak', $sk->id) }}" target="_blank" class="btn btn-primary"><i class="ri-printer-line me-1"></i>Cetak SK</a>
+        </div>
     </div>
 
     <div class="card mb-3">
@@ -68,13 +77,45 @@
     <div class="card">
         <div class="card-header"><h5 class="card-title mb-0">Tambah Anggota</h5></div>
         <div class="card-body">
-            <form method="POST" action="{{ route('waka.supervisi-sk.member.store', $sk->id) }}" class="row g-2 align-items-end">
+            @php $existingMemberIds = $sk->anggota->pluck('gtk_profile_id')->all(); @endphp
+            <form method="POST" action="{{ route('waka.supervisi-sk.member.bulk', $sk->id) }}">
                 @csrf
-                <div class="col-md-5"><label class="form-label">GTK</label><select name="gtk_profile_id" class="form-select" required><option value="">— Pilih GTK —</option>@foreach($gtks as $gtk)<option value="{{ $gtk->id }}">{{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}</option>@endforeach</select></div>
-                <div class="col-md-3"><label class="form-label">Peran</label><select name="peran" class="form-select"><option value="ksp">KSP</option><option value="wksp">WKSP</option><option value="guru" selected>Perwakilan Guru</option></select></div>
-                <div class="col-md-2"><label class="form-label">Urutan</label><input type="number" name="urutan" class="form-control" min="0" max="99" value="0"></div>
-                <div class="col-md-2"><button class="btn btn-success w-100"><i class="ri-add-line me-1"></i>Tambah</button></div>
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-md-3">
+                        <label class="form-label">Peran Anggota <span class="text-danger">*</span></label>
+                        <select name="peran" class="form-select" required>
+                            <option value="guru" selected>Perwakilan Guru (bisa banyak)</option>
+                            <option value="wksp">WKSP (satu orang)</option>
+                            <option value="ksp">KSP (satu orang)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label">Pilih GTK <span class="text-danger">*</span></label>
+                        <div class="border rounded p-2" style="max-height:220px;overflow:auto">
+                            <div class="row g-2">
+                                @foreach($gtks as $gtk)
+                                    @php $isExisting = in_array($gtk->id, $existingMemberIds, true); @endphp
+                                    <div class="col-md-6">
+                                        <label class="form-check mb-0 {{ $isExisting ? 'text-muted' : '' }}">
+                                            <input class="form-check-input" type="checkbox" name="gtk_profile_ids[]" value="{{ $gtk->id }}" {{ $isExisting ? 'disabled' : '' }}>
+                                            <span class="form-check-label">
+                                                {{ $gtk->name }}
+                                                @if($gtk->latestEmployment?->jabatan)<small class="text-muted d-block">{{ $gtk->latestEmployment->jabatan }}</small>@endif
+                                                @if($isExisting)<small class="text-success">sudah menjadi anggota</small>@endif
+                                            </span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-success w-100"><i class="ri-add-line me-1"></i>Tambah Terpilih</button>
+                    </div>
+                </div>
+                <div class="form-text">Centang beberapa guru sekaligus untuk menambahkan perwakilan guru secara massal. Untuk KSP/WKSP, pilih satu orang saja.</div>
             </form>
+
         </div>
     </div>
 @endsection

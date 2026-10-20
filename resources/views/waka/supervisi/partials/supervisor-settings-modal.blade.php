@@ -3,14 +3,14 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title mb-0"><i class="ri-team-line me-1"></i>Pengaturan Pasangan Supervisor</h5>
-                    <div class="small text-muted">Bagian dari pengaturan jadwal: tentukan siapa supervisor dan guru yang disupervisi.</div>
+                    <h5 class="modal-title mb-0"><i class="ri-team-line me-1"></i>Supervisor untuk Setiap Guru</h5>
+                    <div class="small text-muted">Bagian dari pengaturan jadwal: tentukan supervisor yang akan menilai setiap guru.</div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-light border small">
-                    Pasangan ini yang akan muncul saat membuat jadwal. Supervisor tidak dapat memilih guru secara bebas di luar daftar ini.
+                    Daftar ini yang muncul saat membuat jadwal. Supervisor hanya dapat menilai guru yang sudah ditentukan.
                 </div>
 
                 <form method="POST" action="{{ route('waka.supervisi-pengaturan.store') }}" class="row g-2 align-items-end border rounded p-3 mb-3">
@@ -46,7 +46,7 @@
                         <input name="notes" class="form-control form-control-sm" maxlength="1000" placeholder="Opsional">
                     </div>
                     <div class="col-md-1">
-                        <button class="btn btn-sm btn-success w-100" title="Tambah pasangan"><i class="ri-add-line"></i></button>
+                        <button class="btn btn-sm btn-success w-100" title="Tambahkan supervisor untuk guru"><i class="ri-add-line"></i></button>
                     </div>
                 </form>
 
@@ -65,14 +65,14 @@
                                         @csrf
                                         <button class="btn btn-sm {{ $row->is_active ? 'btn-soft-warning' : 'btn-soft-success' }}" title="{{ $row->is_active ? 'Nonaktifkan' : 'Aktifkan' }}"><i class="{{ $row->is_active ? 'ri-pause-line' : 'ri-play-line' }}"></i></button>
                                     </form>
-                                    <form method="POST" action="{{ route('waka.supervisi-pengaturan.destroy', $row->id) }}" class="d-inline" data-confirm="Hapus pasangan {{ $row->supervisor?->name }} → {{ $row->supervisee?->name }}?">
+                                    <form method="POST" action="{{ route('waka.supervisi-pengaturan.destroy', $row->id) }}" class="d-inline" data-confirm="Hapus penugasan {{ $row->supervisor?->name }} → {{ $row->supervisee?->name }}?">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-soft-danger"><i class="ri-delete-bin-line"></i></button>
                                     </form>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center py-4 text-muted">Belum ada pasangan supervisor. Tambahkan di atas.</td></tr>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">Belum ada penugasan supervisor. Tambahkan di atas.</td></tr>
                         @endforelse
                         </tbody>
                     </table>

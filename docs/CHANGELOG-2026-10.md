@@ -2898,6 +2898,31 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Jadwal berhasil menyimpan `supervisi_sk_id`.
   - Modal pengaturan supervisor tampil dari halaman jadwal.
 
+## 235. Anggota Tim Massal, Integrasi SK/Surat, dan Bahasa UI
+
+- **Tambah anggota tim massal**
+  - Form satu-per-satu diganti dengan pilihan checkbox banyak GTK.
+  - Pilih peran (KSP/WKSP/Perwakilan Guru), centang beberapa guru, lalu **Tambah Terpilih**.
+  - Anggota yang sudah ada otomatis dilewati.
+  - KSP/WKSP dibatasi satu orang per SK.
+- **SK terhubung ke database SK dan surat**
+  - Tabel `supervisi_sk` mendapat `institution_decree_id` dan `surat_keluar_id`.
+  - Saat SK dibuat/diubah, sistem membuat/menyinkronkan:
+    - `institution_decrees`;
+    - `surat_keluar`.
+  - Tautan **Database SK** dan **Surat Keluar** tersedia di halaman atur SK.
+  - Migrasi: `2026_10_20_000006_link_supervisi_sk_to_decree_and_letter`.
+- **Cetak SK**
+  - Ukuran A4.
+  - Font Cambria 11pt.
+- **Bahasa UI**
+  - “Pasangan Supervisor” diganti menjadi “Supervisor untuk Setiap Guru” / “Supervisor per Guru”.
+  - Penjelasan modal: daftar ini menentukan supervisor yang menilai setiap guru.
+- **Diuji**
+  - SK baru otomatis memiliki data decree dan surat keluar.
+  - Simpan massal 3 guru berhasil.
+  - Cetak SK memuat Cambria dan A4.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

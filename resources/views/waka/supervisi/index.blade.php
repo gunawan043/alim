@@ -69,7 +69,7 @@
                     <span class="badge bg-primary-subtle text-primary align-self-center">{{ $supervisiList->total() }} supervisi</span>
                     @if($canManageSupervisi)
                         <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#supervisorSettingsModal">
-                            <i class="ri-team-line me-1"></i>Atur Pasangan Supervisor
+                            <i class="ri-team-line me-1"></i>Atur Supervisor per Guru
                         </button>
                         <a href="{{ route('waka.supervisi-sk.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="ri-file-shield-2-line me-1"></i>Tim &amp; SK

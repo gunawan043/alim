@@ -68,7 +68,7 @@ class SupervisiWorkflowService
                 'key' => 'schedule',
                 'label' => 'Jadwal',
                 'done' => $scheduleCount > 0,
-                'detail' => $settingsCount.' pasangan · '.$scheduleCount.' jadwal',
+                'detail' => $settingsCount.' penugasan · '.$scheduleCount.' jadwal',
                 'route' => 'waka.supervisi.index',
             ],
             [

@@ -9,6 +9,8 @@ use App\Models\AcademicYear;
 use App\Models\GtkEmployment;
 use App\Models\GtkProfile;
 use App\Models\GtkWorkUnit;
+use App\Models\InstitutionDecree;
+use App\Models\SuratKeluar;
 use App\Models\SupervisiSk;
 use App\Models\SupervisiTimAnggota;
 use Illuminate\Http\Request;
@@ -60,6 +62,7 @@ class SupervisiSkController extends Controller
         }
 
         $sk = SupervisiSk::create($validated + ['school_id' => $schoolId]);
+        $this->syncDecreeAndLetter($sk);
 
         return redirect()
             ->route('waka.supervisi-sk.edit', $sk->id)
@@ -106,8 +109,9 @@ class SupervisiSkController extends Controller
         }
 
         $sk->update($validated);
+        $this->syncDecreeAndLetter($sk->fresh(['anggota.gtk.user', 'academicYear', 'school']));
 
-        return back()->with('success', 'Identitas SK diperbarui.');
+        return back()->with('success', 'Identitas SK diperbarui dan disinkronkan ke database SK/surat.');
     }
 
     public function destroy(Request $request, string $id)
@@ -152,6 +156,63 @@ class SupervisiSkController extends Controller
         return back()->with('success', 'Anggota tim ditambahkan.');
     }
 
+    public function storeMemberBulk(Request $request, string $id)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $sk = SupervisiSk::where('school_id', $schoolId)->findOrFail($id);
+
+        $validated = $request->validate([
+            'gtk_profile_ids' => 'required|array|min:1|max:200',
+            'gtk_profile_ids.*' => 'uuid|exists:gtk_profiles,id',
+            'peran' => 'required|in:ksp,wksp,guru',
+        ]);
+
+        $ids = array_values(array_unique($validated['gtk_profile_ids']));
+
+        if (in_array($validated['peran'], ['ksp', 'wksp'], true)) {
+            if (count($ids) > 1) {
+                throw ValidationException::withMessages([
+                    'gtk_profile_ids' => 'Peran KSP/WKSP hanya boleh satu orang. Pilih satu anggota.',
+                ]);
+            }
+
+            $alreadyHasRole = SupervisiTimAnggota::where('supervisi_sk_id', $sk->id)
+                ->where('peran', $validated['peran'])
+                ->exists();
+
+            if ($alreadyHasRole) {
+                throw ValidationException::withMessages([
+                    'peran' => 'Peran '.strtoupper($validated['peran']).' sudah diisi pada SK ini.',
+                ]);
+            }
+        }
+
+        $existingIds = SupervisiTimAnggota::where('supervisi_sk_id', $sk->id)
+            ->whereIn('gtk_profile_id', $ids)
+            ->pluck('gtk_profile_id')
+            ->all();
+
+        $nextOrder = (int) SupervisiTimAnggota::where('supervisi_sk_id', $sk->id)->max('urutan') + 1;
+        $added = 0;
+
+        foreach ($ids as $gtkId) {
+            if (in_array($gtkId, $existingIds, true)) {
+                continue;
+            }
+
+            $this->ensureGtkBelongsToSchool($schoolId, $gtkId);
+            SupervisiTimAnggota::create([
+                'supervisi_sk_id' => $sk->id,
+                'gtk_profile_id' => $gtkId,
+                'peran' => $validated['peran'],
+                'urutan' => $nextOrder++,
+            ]);
+            $added++;
+        }
+
+        return back()->with('success', $added.' anggota tim ditambahkan. '.count($existingIds).' anggota sudah ada.');
+    }
+
     public function destroyMember(Request $request, string $id, string $memberId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -170,6 +231,54 @@ class SupervisiSkController extends Controller
             ->findOrFail($id);
 
         return view('waka.supervisi.sk-cetak', compact('sk'));
+    }
+
+    private function syncDecreeAndLetter(SupervisiSk $sk): void
+    {
+        $sk->loadMissing(['anggota.gtk.user', 'academicYear', 'school']);
+
+        $ksp = $sk->anggota->firstWhere('peran', 'ksp')?->gtk;
+        $semester = $sk->semester === 1 ? 'Ganjil' : 'Genap';
+        $title = 'Pembentukan Tim Supervisi Pembelajaran Semester '.$semester.' Tahun Ajaran '.($sk->academicYear?->name ?? '-');
+
+        $decree = $sk->decree ?: InstitutionDecree::firstOrNew(['decree_number' => $sk->nomor]);
+        $decree->fill([
+            'decree_number' => $sk->nomor,
+            'decree_type' => 'SK Tim Supervisi',
+            'title' => $title,
+            'description' => $sk->menimbang,
+            'academic_year_id' => $sk->academic_year_id,
+            'school_id' => $sk->school_id,
+            'issued_date' => $sk->tanggal,
+            'effective_date' => $sk->tanggal,
+            'signed_by' => $ksp?->user_id,
+            'signed_position' => 'Kepala Satuan Pendidikan',
+            'status' => InstitutionDecree::STATUS_ACTIVE,
+        ]);
+        $decree->save();
+
+        $surat = $sk->suratKeluar ?: SuratKeluar::firstOrNew([
+            'school_id' => $sk->school_id,
+            'nomor_surat' => $sk->nomor,
+        ]);
+        $surat->fill([
+            'school_id' => $sk->school_id,
+            'nomor_surat' => $sk->nomor,
+            'tanggal_surat' => $sk->tanggal,
+            'tujuan' => 'Wadir Akademik dan Pengasuhan; Dewan Guru',
+            'perihal' => $title,
+            'isi_surat' => $sk->menimbang,
+            'sifat' => SuratKeluar::SIFAT_BIASA,
+            'penandatangan' => $ksp?->user?->name,
+            'jabatan_penandatangan' => 'Kepala Satuan Pendidikan',
+            'status' => SuratKeluar::STATUS_DRAFT,
+        ]);
+        $surat->save();
+
+        $sk->update([
+            'institution_decree_id' => $decree->id,
+            'surat_keluar_id' => $surat->id,
+        ]);
     }
 
     private function gtkOptions(string $schoolId)
