@@ -838,6 +838,12 @@
                 </li>
                 @endif
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.proyek.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.proyek.index', ['userId' => $userId]) }}">
+                        Projek P5 / P5RA
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.cp.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}">
                         Capaian Pembelajaran

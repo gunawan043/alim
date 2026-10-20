@@ -58,6 +58,7 @@
                             <span class="badge bg-warning-subtle text-warning">Draft — belum disetujui</span>
                         @endif
                         <span class="badge bg-secondary-subtle text-secondary">{{ $record->subject?->name ?? '—' }}{{ $record->gradeLevel ? ' · '.$record->gradeLevel->name : '' }}</span>
+                        @if($curriculumProfile ?? null)<span class="badge bg-success-subtle text-success">{{ $curriculumProfile->name }}</span>@endif
                         <span class="badge bg-secondary-subtle text-secondary">{{ $record->academicYear?->name }} · {{ ucfirst((string) $record->semester) }}</span>
                         @if($record->provider)
                             <span class="badge bg-dark-subtle text-dark">{{ $record->provider }} · {{ $record->model }}</span>
@@ -84,11 +85,11 @@
 
                     @if($record->saved_perangkat_id)
                         <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $record->saved_perangkat_id]) }}" class="btn btn-info">
-                            <i class="ri-booklet-line me-1"></i>Lihat RPM
+                            <i class="ri-booklet-line me-1"></i>Lihat {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}
                         </a>
                     @elseif($canSaveRpm)
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveRpmModal">
-                            <i class="ri-save-3-line me-1"></i>Simpan sebagai RPM
+                            <i class="ri-save-3-line me-1"></i>Simpan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}
                         </button>
                     @endif
 
@@ -277,8 +278,8 @@
         </form>
         <x-modal-confirm id="saveRpmModal"
             icon="https://cdn.lordicon.com/lupuorrc.json"
-            title="Simpan sebagai RPM?"
-            message="Draft RPM yang disetujui akan dibuat sebagai <strong>Perangkat Pembelajaran (RPM)</strong> berstatus draft. Bila sudah ada RPM current untuk konteks yang sama, sistem membuat versi baru."
+            title="Simpan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}?"
+            message="Draft {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }} yang disetujui akan dibuat sebagai <strong>{{ $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran' }}</strong> berstatus draft. Bila sudah ada dokumen current untuk konteks yang sama, sistem membuat versi baru."
             submit-label="Ya, Simpan"
             submit-icon="ri-save-3-line"
             submit-class="btn-primary"

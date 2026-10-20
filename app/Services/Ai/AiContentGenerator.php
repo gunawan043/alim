@@ -62,22 +62,36 @@ class AiContentGenerator
      */
     private function soalMessages(array $context): array
     {
+        $curriculum = is_array($context['curriculum'] ?? null) ? $context['curriculum'] : [];
+        $isKbc = ($curriculum['code'] ?? '') === 'kbc_kemenag' || ($curriculum['authority'] ?? '') === 'kemenag';
+        $values = array_values((array) ($curriculum['values'] ?? []));
+
         $system = 'Anda penyusun soal pesantren yang teliti. Hasilkan HANYA JSON valid tanpa markdown. '
             .'Struktur: {"items":[{"pertanyaan":"...","bentuk":"pg|essay","pilihan":{"A":"...","B":"...","C":"...","D":"..."},"jawaban":"A atau jawaban ideal","pembahasan":"...","level":"C1|C2|C3|C4|C5|C6","indikator":"..."}]}. '
             .'Untuk essay, pilihan boleh objek kosong dan jawaban berupa jawaban ideal. '
             .'Soal harus sesuai tingkat/fase, tidak ambigu, dan bahasa sesuai permintaan.';
 
+        if ($isKbc) {
+            $system .= ' Integrasikan Kurikulum Berbasis Cinta (KBC): setiap butir harus mendorong salah satu nilai cinta, '
+                .'tanpa memaksakan nilai yang tidak relevan dengan materi. Indikator harus mengukur pengetahuan sekaligus sikap.';
+        }
+
         $user = 'Konteks penyusunan soal:'."\n"
             .'- Mata pelajaran: '.($context['subject'] ?? '-')."\n"
             .'- Tingkat/Fase: '.($context['grade'] ?? '-').' / '.($context['fase'] ?? '-')."\n"
             .'- Tahun ajaran/semester: '.($context['academic_year'] ?? '-').' / '.($context['semester'] ?? '-')."\n"
+            .'- Profil kurikulum: '.($curriculum['name'] ?? '-')."\n"
+            .'- Nilai/dimensi: '.($values ? implode(', ', $values) : '-')."\n"
             .'- Materi/TP/CP: '.($context['topik'] ?: 'Sesuaikan dengan mapel & tingkat')."\n"
             .'- Jumlah soal: '.(int) ($context['jumlah_soal'] ?? 5)."\n"
             .'- Bentuk: '.($context['bentuk_soal'] ?? 'campuran')."\n"
             .'- Level kognitif: '.($context['level_kognitif'] ?: 'campuran C1–C6')."\n"
             .'- Bahasa: '.($context['bahasa'] === 'ar' ? 'Arab' : 'Indonesia')."\n"
-            .'- Instruksi tambahan: '.($context['instruksi'] ?: '-')."\n"
-            .'Balas hanya JSON.';
+            .'- Instruksi tambahan: '.($context['instruksi'] ?: '-')."\n";
+        if ($isKbc) {
+            $user .= '- Instruksi KBC: cantumkan nilai cinta yang disasar pada kolom indikator, misalnya "Cinta kepada sesama: ...".'."\n";
+        }
+        $user .= 'Balas hanya JSON.';
 
         return [
             ['role' => 'system', 'content' => $system],
@@ -90,22 +104,46 @@ class AiContentGenerator
      */
     private function rpmMessages(array $context): array
     {
-        $system = 'Anda penyusun RPM (Rencana Pembelajaran Mendalam) pesantren. Hasilkan HANYA JSON valid tanpa markdown. '
+        $curriculum = is_array($context['curriculum'] ?? null) ? $context['curriculum'] : [];
+        $isKbc = ($curriculum['code'] ?? '') === 'kbc_kemenag' || ($curriculum['authority'] ?? '') === 'kemenag';
+        $values = array_values((array) ($curriculum['values'] ?? []));
+
+        $system = 'Anda penyusun '.($isKbc ? 'Modul Ajar Kurikulum Berbasis Cinta (KBC)' : 'RPM (Rencana Pembelajaran Mendalam)').' pesantren. '
+            .'Hasilkan HANYA JSON valid tanpa markdown. '
             .'Struktur: {"judul":"...","identitas":{"mata_pelajaran":"...","kelas":"...","alokasi_waktu":"...","semester":"..."},'
             .'"capaian":"...","tujuan":["..."],"alur":["..."],'
             .'"langkah":[{"pertemuan":1,"pembuka":"...","inti":"...","penutup":"..."}],'
-            .'"asesmen":{"formatif":"...","sumatif":"..."},"media":["..."],"refleksi":"..."}. '
-            .'Isi harus operasional, kontekstual pesantren, dan bahasa sesuai permintaan.';
+            .'"asesmen":{"formatif":"...","sumatif":"..."},"media":["..."],"refleksi":"..."';
 
-        $user = 'Konteks penyusunan RPM:'."\n"
+        if ($isKbc) {
+            $system .= ',"kbc":{"tema":"...","materi_insersi":"...","pilar":["..."],"indikator":"...","refleksi":"...","asesmen":"..."}';
+        } else {
+            $system .= ',"p5":{"tema":"...","dimensi":["..."],"catatan":"..."}';
+        }
+        $system .= '}. Isi harus operasional, kontekstual, dan bahasa sesuai permintaan.';
+
+        if ($isKbc) {
+            $system .= ' KBC wajib mengintegrasikan nilai cinta secara bermakna, bukan sekadar menempelkan slogan. '
+                .'Gunakan tema, materi insersi, pilar, indikator, refleksi, dan asesmen nilai cinta yang eksplisit.';
+        } else {
+            $system .= ' Gunakan prinsip pembelajaran mendalam: berkesadaran, bermakna, dan menggembirakan.';
+        }
+
+        $user = 'Konteks penyusunan '.($isKbc ? 'Modul Ajar KBC' : 'RPM').':'."\n"
             .'- Mata pelajaran: '.($context['subject'] ?? '-')."\n"
             .'- Tingkat/Fase: '.($context['grade'] ?? '-').' / '.($context['fase'] ?? '-')."\n"
             .'- Tahun ajaran/semester: '.($context['academic_year'] ?? '-').' / '.($context['semester'] ?? '-')."\n"
+            .'- Profil kurikulum: '.($curriculum['name'] ?? '-')."\n"
+            .'- Nilai/dimensi: '.($values ? implode(', ', $values) : '-')."\n"
+            .'- Kokurikuler: '.($curriculum['kokurikuler'] ?? '-')."\n"
             .'- Materi/TP/CP: '.($context['topik'] ?: 'Sesuaikan dengan mapel & tingkat')."\n"
             .'- Jumlah pertemuan: '.(int) ($context['jumlah_pertemuan'] ?? 2)."\n"
             .'- Bahasa: '.($context['bahasa'] === 'ar' ? 'Arab' : 'Indonesia')."\n"
-            .'- Instruksi tambahan: '.($context['instruksi'] ?: '-')."\n"
-            .'Balas hanya JSON.';
+            .'- Instruksi tambahan: '.($context['instruksi'] ?: '-')."\n";
+        if ($isKbc) {
+            $user .= '- Pilih minimal satu pilar cinta yang paling relevan dan tuliskan indikator yang dapat diamati.'."\n";
+        }
+        $user .= 'Balas hanya JSON.';
 
         return [
             ['role' => 'system', 'content' => $system],

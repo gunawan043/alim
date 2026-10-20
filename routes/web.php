@@ -98,6 +98,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
 use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
+use App\Http\Controllers\Kurikulum\CurriculumProjectController;
 use App\Http\Controllers\Kurikulum\CurriculumProfileController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
 use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
@@ -782,6 +783,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('profil')->name('profil.')->group(function () {
                     Route::get('/', [CurriculumProfileController::class, 'index'])->name('index');
                     Route::post('/', [CurriculumProfileController::class, 'store'])->name('store');
+                });
+
+                Route::prefix('proyek')->name('proyek.')->group(function () {
+                    Route::get('/', [CurriculumProjectController::class, 'index'])->name('index');
+                    Route::post('/', [CurriculumProjectController::class, 'store'])->name('store');
+                    Route::put('/{id}', [CurriculumProjectController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [CurriculumProjectController::class, 'destroy'])->name('destroy');
                 });
 
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');

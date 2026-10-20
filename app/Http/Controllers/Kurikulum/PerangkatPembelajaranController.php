@@ -269,6 +269,18 @@ class PerangkatPembelajaranController extends Controller
         // Bagian desain yang tidak dikirim tetap dipertahankan (merge, bukan overwrite).
         $desain = $perangkat->mergeDesain($validated['desain'] ?? []);
 
+        $profile = $perangkat->curriculumProfile
+            ?? app(CurriculumProfileService::class)->resolve($perangkat->school_id, $perangkat->academic_year_id);
+
+        if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL && $profile?->isKemenag()) {
+            $missingKbc = collect(['tema_kbc', 'materi_insersi', 'pilar_kbc', 'indikator_kbc'])
+                ->filter(fn ($key) => blank($desain[$key] ?? null));
+
+            if ($missingKbc->isNotEmpty()) {
+                return back()->withInput()->with('error', 'Perangkat KBC belum lengkap. Isi tema, materi insersi, pilar, dan indikator nilai cinta sebelum menetapkan final.');
+            }
+        }
+
         $payload = [
             'judul' => $validated['judul'],
             'study_group_id' => $validated['study_group_id'] ?? null,

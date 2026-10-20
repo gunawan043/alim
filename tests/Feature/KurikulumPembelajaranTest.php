@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\CapaianPembelajaran;
 use App\Models\CurriculumProfile;
+use App\Models\CurriculumProject;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
@@ -14,6 +15,7 @@ use App\Models\KurikulumEditGrant;
 use App\Models\PerangkatPembelajaran;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\SchoolCurriculumSetting;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
@@ -21,6 +23,7 @@ use App\Models\SubjectGroup;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
+use App\Services\Ai\AiContentGenerator;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1000,5 +1003,142 @@ class KurikulumPembelajaranTest extends TestCase
         $perangkat = new PerangkatPembelajaran(['tipe' => PerangkatPembelajaran::TIPE_UMUM]);
         $perangkat->setRelation('curriculumProfile', $kbc);
         $this->assertArrayHasKey('kbc', $perangkat->groups());
+    }
+
+    public function test_projek_p5ra_kbc_disimpan_dengan_dimensi_dan_aktivitas(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/profil", [
+                'academic_year_id' => $this->ay->id,
+                'curriculum_profile_id' => $kbc->id,
+                'kokurikuler_type' => 'p5ra',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/proyek", [
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'type' => 'p5ra',
+                'title' => 'Kampung Cinta Lingkungan',
+                'theme' => 'Gaya Hidup Berkelanjutan',
+                'description' => 'Projek kolaboratif membersihkan lingkungan madrasah.',
+                'dimensions' => ['hubbulbiah', 'hubbunnaas'],
+                'grade_level_ids' => [$this->grade->id],
+                'start_date' => '2026-08-01',
+                'end_date' => '2026-08-31',
+                'status' => 'active',
+                'activities' => [
+                    ['judul' => 'Observasi lingkungan', 'deskripsi' => 'Mengamati kondisi kebersihan.', 'tanggal' => '2026-08-05'],
+                    ['judul' => 'Aksi bersih-bersih', 'deskripsi' => 'Kerja bakti bersama.', 'tanggal' => '2026-08-12'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $project = CurriculumProject::firstOrFail();
+        $this->assertSame('p5ra', $project->type);
+        $this->assertSame(['hubbulbiah', 'hubbunnaas'], $project->dimensions);
+        $this->assertCount(2, $project->activities);
+        $this->assertSame($kbc->id, $project->curriculum_profile_id);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek")
+            ->assertOk()
+            ->assertSee('Kampung Cinta Lingkungan')
+            ->assertSee('Cinta kepada Lingkungan');
+    }
+
+    public function test_prompt_ai_kbc_memuat_profil_nilai_dan_struktur_kbc(): void
+    {
+        $generator = app(AiContentGenerator::class);
+        $method = new \ReflectionMethod($generator, 'rpmMessages');
+        $messages = $method->invoke($generator, [
+            'subject' => 'Akidah Akhlak',
+            'grade' => 'Kelas VIII',
+            'fase' => 'D',
+            'academic_year' => '2026/2027',
+            'semester' => 'ganjil',
+            'topik' => 'Adab kepada sesama',
+            'jumlah_pertemuan' => 2,
+            'bahasa' => 'id',
+            'instruksi' => null,
+            'curriculum' => [
+                'code' => 'kbc_kemenag',
+                'name' => 'Kurikulum Berbasis Cinta (KBC) — Kemenag',
+                'authority' => 'kemenag',
+                'labels' => ['unit_label' => 'Madrasah', 'perangkat_label' => 'Modul Ajar', 'kokurikuler_label' => 'P5RA'],
+                'values' => ['hubbullah' => 'Cinta kepada Allah', 'hubbunnaas' => 'Cinta kepada Sesama'],
+                'kokurikuler' => 'P5RA',
+            ],
+        ]);
+
+        $prompt = $messages[0]['content'].' '.$messages[1]['content'];
+        $this->assertStringContainsString('Kurikulum Berbasis Cinta', $prompt);
+        $this->assertStringContainsString('Cinta kepada Allah', $prompt);
+        $this->assertStringContainsString('"kbc"', $prompt);
+        $this->assertStringContainsString('P5RA', $prompt);
+    }
+
+    public function test_perangkat_kbc_tidak_boleh_final_tanpa_integrasi_nilai_cinta(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        SchoolCurriculumSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $this->makeLiburAwalTahun();
+        $tp = $this->makeTp('TP.KBC.01', 100);
+
+        $atp = AlurTujuanPembelajaran::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'subject_id' => $this->math->id,
+            'grade_level_id' => $this->grade->id,
+            'fase' => 'D',
+            'teacher_id' => $this->guru->id,
+            'status' => 'draft',
+            'total_jp' => 0,
+            'created_by' => $this->kurikulum->id,
+        ]);
+
+        $this->actingAs($this->guru);
+        $this->post("/{$this->guru->id}/kurikulum/perangkat", [
+            'atp_id' => $atp->id,
+            'study_group_id' => $this->group->id,
+            'judul' => 'Modul Ajar KBC Matematika',
+        ])->assertRedirect();
+
+        $perangkat = PerangkatPembelajaran::firstOrFail();
+        $perangkat->update(['curriculum_profile_id' => $kbc->id]);
+
+        $this->actingAs($this->kurikulum);
+        $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
+            'judul' => 'Modul Ajar KBC Matematika',
+            'status' => 'final',
+        ])->assertSessionHas('error');
+
+        $this->assertSame('draft', $perangkat->fresh()->status);
+
+        $this->put("/{$this->kurikulum->id}/kurikulum/perangkat/{$perangkat->id}", [
+            'judul' => 'Modul Ajar KBC Matematika',
+            'status' => 'final',
+            'desain' => [
+                'tema_kbc' => 'Cinta kepada Allah',
+                'materi_insersi' => 'Bilangan sebagai tanda keteraturan ciptaan Allah.',
+                'pilar_kbc' => 'Cinta kepada Allah',
+                'indikator_kbc' => 'Peserta didik menunjukkan rasa syukur atas keteraturan.',
+            ],
+        ])->assertRedirect();
+
+        $this->assertSame('final', $perangkat->fresh()->status);
     }
 }

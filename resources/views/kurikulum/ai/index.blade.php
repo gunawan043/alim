@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title', 'AI Assistant — RPM & Soal')
+@section('title', 'AI Assistant — '.($curriculumLabels['perangkat_short'] ?? 'RPM').' & Soal')
 
 @section('css')
     @include('kurikulum._styles')
@@ -45,7 +45,7 @@
             <div class="card">
                 <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="ri-magic-line text-primary me-1"></i>Buat Draft dengan AI</h5>
-                    <p class="text-muted mb-0 small">Hasil berupa draft — wajib ditinjau sebelum dipakai pada RPM/Bank Soal resmi.</p>
+                    <p class="text-muted mb-0 small">Profil: <strong>{{ $curriculumProfile?->name ?? 'Default' }}</strong> · Hasil berupa draft — wajib ditinjau sebelum dipakai pada {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}/Bank Soal resmi.</p>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('user.kurikulum.ai.generate', ['userId' => $userId]) }}">
@@ -55,7 +55,7 @@
                                 <label class="form-label">Jenis Draft <span class="text-danger">*</span></label>
                                 <select name="type" id="aiType" class="form-select" onchange="toggleAiFields()">
                                     <option value="soal" {{ old('type', 'soal') === 'soal' ? 'selected' : '' }}>Soal</option>
-                                    <option value="rpm" {{ old('type') === 'rpm' ? 'selected' : '' }}>RPM / Modul Ajar</option>
+                                    <option value="rpm" {{ old('type') === 'rpm' ? 'selected' : '' }}>{{ $curriculumLabels['perangkat_label'] ?? 'RPM / Modul Ajar' }}</option>
                                 </select>
                             </div>
 
@@ -189,7 +189,7 @@
                                     </td>
                                     <td class="text-center">
                                         <span class="badge {{ $record->type === 'soal' ? 'bg-primary-subtle text-primary' : 'bg-info-subtle text-info' }}">
-                                            {{ strtoupper($record->type) }}
+                                            {{ $record->type === 'rpm' ? ($curriculumLabels['perangkat_short'] ?? 'RPM') : 'SOAL' }}
                                         </span>
                                     </td>
                                     <td class="text-center">

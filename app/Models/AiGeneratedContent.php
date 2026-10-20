@@ -27,6 +27,7 @@ class AiGeneratedContent extends Model
     protected $fillable = [
         'school_id',
         'academic_year_id',
+        'curriculum_profile_id',
         'semester',
         'bahasa',
         'type',
@@ -56,6 +57,11 @@ class AiGeneratedContent extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function curriculumProfile(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProfile::class, 'curriculum_profile_id');
     }
 
     public function academicYear(): BelongsTo

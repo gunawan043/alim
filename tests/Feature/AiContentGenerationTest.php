@@ -7,10 +7,12 @@ use App\Models\AcademicYear;
 use App\Models\AiGeneratedContent;
 use App\Models\AiProviderSetting;
 use App\Models\BankSoal;
+use App\Models\CurriculumProfile;
 use App\Models\GradeLevel;
 use App\Models\InstitutionDecree;
 use App\Models\PerangkatPembelajaran;
 use App\Models\School;
+use App\Models\SchoolCurriculumSetting;
 use App\Models\Soal;
 use App\Models\SoalOption;
 use App\Models\StudyGroup;
@@ -667,5 +669,60 @@ class AiContentGenerationTest extends TestCase
             ->get("/{$this->admin->id}/kurikulum/ai")
             ->assertOk()
             ->assertSee('AI Assistant');
+    }
+
+    public function test_simpan_draft_rpm_kbc_memetakan_nilai_cinta_ke_perangkat(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $profile = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        SchoolCurriculumSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'curriculum_profile_id' => $profile->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $record = AiGeneratedContent::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'curriculum_profile_id' => $profile->id,
+            'semester' => 'ganjil',
+            'type' => 'rpm',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'title' => 'Draft Modul Ajar KBC',
+            'topik' => 'Thaharah',
+            'content' => [
+                'judul' => 'Modul Ajar Fiqih — Thaharah',
+                'capaian' => 'Memahami thaharah.',
+                'langkah' => [['pertemuan' => 1, 'pembuka' => 'Doa', 'inti' => 'Praktik wudhu', 'penutup' => 'Refleksi']],
+                'asesmen' => ['formatif' => 'Observasi', 'sumatif' => 'Tes tulis'],
+                'kbc' => [
+                    'tema' => 'Cinta kepada Allah',
+                    'materi_insersi' => 'Menjaga kesucian sebagai bentuk cinta kepada Allah.',
+                    'pilar' => ['Cinta kepada Allah'],
+                    'indikator' => 'Peserta didik menjaga wudhu dengan sungguh-sungguh.',
+                    'refleksi' => 'Bagaimana menjaga kesucian?',
+                    'asesmen' => 'Observasi sikap menjaga kesucian.',
+                ],
+            ],
+            'status' => 'approved',
+            'approved_by' => $this->admin->id,
+            'approved_at' => now(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $request = Request::create('/save-rpm', 'POST');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $this->admin);
+
+        app(AiContentController::class)->saveToRpm($request, $this->admin->id, $record->id);
+
+        $perangkat = PerangkatPembelajaran::firstOrFail();
+        $this->assertSame($profile->id, $perangkat->curriculum_profile_id);
+        $this->assertSame('Cinta kepada Allah', $perangkat->desain['tema_kbc']);
+        $this->assertSame('Peserta didik menjaga wudhu dengan sungguh-sungguh.', $perangkat->desain['indikator_kbc']);
+        $this->assertSame('Cinta kepada Allah', $perangkat->desain['pilar_kbc']);
     }
 }

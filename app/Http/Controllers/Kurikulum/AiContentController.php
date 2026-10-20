@@ -16,6 +16,7 @@ use App\Models\Subject;
 use App\Services\Ai\AiContentGenerator;
 use App\Services\Ai\AiProviderService;
 use App\Services\Evaluasi\ContentHashEngine;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,10 @@ class AiContentController extends Controller
 {
     use AssertsPeriodLock;
 
-    public function __construct(private readonly KurikulumAccess $access) {}
+    public function __construct(
+        private readonly KurikulumAccess $access,
+        private readonly CurriculumProfileService $profiles,
+    ) {}
 
     public function index(Request $request, string $userId)
     {
@@ -65,6 +69,8 @@ class AiContentController extends Controller
 
         $aiConfigured = app(AiProviderService::class)->isConfigured();
         $isTeam = $this->access->isKurikulumTeam($user);
+        $curriculumProfile = $this->profiles->resolve($schoolId, $activeAy?->id);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
 
         return view('kurikulum.ai.index', compact(
             'userId',
@@ -74,7 +80,9 @@ class AiContentController extends Controller
             'gradeLevels',
             'history',
             'aiConfigured',
-            'isTeam'
+            'isTeam',
+            'curriculumProfile',
+            'curriculumLabels'
         ));
     }
 
@@ -119,6 +127,9 @@ class AiContentController extends Controller
         $grade = ! empty($validated['grade_level_id']) ? GradeLevel::find($validated['grade_level_id']) : null;
         $academicYear = AcademicYear::find($validated['academic_year_id']);
 
+        $curriculumProfile = $this->profiles->resolve($schoolId, $validated['academic_year_id']);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
+
         $context = [
             'subject' => $subject?->name,
             'grade' => $grade?->name,
@@ -132,6 +143,14 @@ class AiContentController extends Controller
             'jumlah_pertemuan' => $validated['jumlah_pertemuan'] ?? 2,
             'bahasa' => $validated['bahasa'] ?? 'id',
             'instruksi' => $validated['instruksi'] ?? null,
+            'curriculum' => [
+                'code' => $curriculumProfile?->code,
+                'name' => $curriculumProfile?->name,
+                'authority' => $curriculumProfile?->authority,
+                'labels' => $curriculumLabels,
+                'values' => $curriculumProfile?->values() ?? [],
+                'kokurikuler' => $curriculumProfile?->configValue('labels.kokurikuler_label'),
+            ],
         ];
 
         $result = $generator->generate($validated['type'], $context);
@@ -140,7 +159,7 @@ class AiContentController extends Controller
             return back()->withInput()->with('error', 'Gagal membuat draft AI: '.($result['error'] ?? 'tidak diketahui'));
         }
 
-        $title = ($validated['type'] === 'soal' ? 'Soal AI' : 'RPM AI')
+        $title = ($validated['type'] === 'soal' ? 'Soal AI' : ($curriculumLabels['perangkat_short'] ?? 'RPM').' AI')
             .' — '.($subject?->name ?? 'Mapel')
             .($grade ? ' '.$grade->name : '')
             .' — '.now()->format('d M Y H:i');
@@ -148,6 +167,7 @@ class AiContentController extends Controller
         $record = AiGeneratedContent::create([
             'school_id' => $schoolId,
             'academic_year_id' => $validated['academic_year_id'],
+            'curriculum_profile_id' => $curriculumProfile?->id,
             'semester' => $validated['semester'],
             'bahasa' => $validated['bahasa'] ?? 'id',
             'type' => $validated['type'],
@@ -183,7 +203,12 @@ class AiContentController extends Controller
             'Anda tidak berwenang melihat draft ini.'
         );
 
-        return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam'));
+        $curriculumProfile = $record->curriculum_profile_id
+            ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
+            : $this->profiles->resolve($record->school_id, $record->academic_year_id);
+        $curriculumLabels = $this->profiles->labels($curriculumProfile);
+
+        return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels'));
     }
 
     /**
@@ -413,6 +438,11 @@ class AiContentController extends Controller
             ->where('is_current', true)
             ->first();
 
+        $profile = $record->curriculum_profile_id
+            ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
+            : $this->profiles->resolve($record->school_id, $record->academic_year_id);
+        $labels = $this->profiles->labels($profile);
+
         $desain = PerangkatPembelajaran::defaultDesain();
         $asesmen = is_array($content['asesmen'] ?? null) ? $content['asesmen'] : [];
         $langkah = is_array($content['langkah'] ?? null) ? $content['langkah'] : [];
@@ -433,7 +463,17 @@ class AiContentController extends Controller
         $desain['pengalaman_refleksi'] = $this->toText(collect($langkah)->pluck('penutup')->filter()->all());
         $desain['penutup'] = $this->toText(collect($langkah)->pluck('penutup')->filter()->all());
 
-        $perangkat = DB::transaction(function () use ($record, $existing, $desain, $judul, $request) {
+        $kbc = is_array($content['kbc'] ?? null) ? $content['kbc'] : [];
+        if (! empty($kbc)) {
+            $desain['tema_kbc'] = $this->toText($kbc['tema'] ?? null);
+            $desain['materi_insersi'] = $this->toText($kbc['materi_insersi'] ?? null);
+            $desain['pilar_kbc'] = $this->toText($kbc['pilar'] ?? null);
+            $desain['indikator_kbc'] = $this->toText($kbc['indikator'] ?? null);
+            $desain['refleksi_kbc'] = $this->toText($kbc['refleksi'] ?? null);
+            $desain['asesmen_kbc'] = $this->toText($kbc['asesmen'] ?? null);
+        }
+
+        $perangkat = DB::transaction(function () use ($record, $existing, $desain, $judul, $request, $profile) {
             if ($existing) {
                 $existing->forceFill(['is_current' => false])->saveQuietly();
             }
@@ -441,6 +481,7 @@ class AiContentController extends Controller
             $perangkat = PerangkatPembelajaran::create([
                 'school_id' => $record->school_id,
                 'academic_year_id' => $record->academic_year_id,
+                'curriculum_profile_id' => $profile?->id ?? $record->curriculum_profile_id,
                 'semester' => $record->semester,
                 'subject_id' => $record->subject_id,
                 'grade_level_id' => $record->grade_level_id,
@@ -468,7 +509,7 @@ class AiContentController extends Controller
 
         return redirect()
             ->route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id])
-            ->with('success', 'Draft AI disimpan sebagai RPM (status draft).');
+            ->with('success', 'Draft AI disimpan sebagai '.($labels['perangkat_label'] ?? 'RPM').' (status draft).');
     }
 
     private function difficultyFromLevel(?string $level): string
