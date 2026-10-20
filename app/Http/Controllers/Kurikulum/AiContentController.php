@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AiGeneratedContent;
+use App\Models\AiGeneratedContentRevision;
 use App\Models\AuditLog;
 use App\Models\BankSoal;
 use App\Models\CurriculumProject;
@@ -192,6 +193,13 @@ class AiContentController extends Controller
             'created_by' => $user?->id,
         ]);
 
+        AiGeneratedContentRevision::create([
+            'ai_generated_content_id' => $record->id,
+            'content' => $record->content,
+            'changed_by' => $user?->id,
+            'note' => 'Draft awal AI',
+        ]);
+
         return redirect()
             ->route('user.kurikulum.ai.show', ['userId' => $userId, 'id' => $record->id])
             ->with('success', 'Draft AI berhasil dibuat. Tinjau sebelum disetujui/dipakai.');
@@ -328,6 +336,12 @@ class AiContentController extends Controller
             }
         }
 
+        AiGeneratedContentRevision::create([
+            'ai_generated_content_id' => $record->id,
+            'content' => $record->content,
+            'changed_by' => $request->user()?->id,
+            'note' => 'Edit draft '.$record->type,
+        ]);
         $record->forceFill(['content' => $content])->save();
 
         return redirect()
@@ -381,6 +395,12 @@ class AiContentController extends Controller
             ];
         })->values()->all();
 
+        AiGeneratedContentRevision::create([
+            'ai_generated_content_id' => $record->id,
+            'content' => $record->content,
+            'changed_by' => $request->user()?->id,
+            'note' => 'Edit butir soal',
+        ]);
         $record->update(['content' => ['items' => $items]]);
 
         return back()->with('success', 'Butir soal diperbarui.');

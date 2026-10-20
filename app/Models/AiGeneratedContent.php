@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -79,6 +80,11 @@ class AiGeneratedContent extends Model
     public function gradeLevel(): BelongsTo
     {
         return $this->belongsTo(GradeLevel::class);
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(AiGeneratedContentRevision::class, 'ai_generated_content_id')->orderByDesc('created_at');
     }
 
     public function creator(): BelongsTo

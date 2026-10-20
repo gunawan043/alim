@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Kurikulum;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\CapaianPembelajaran;
 use App\Models\CurriculumProfile;
@@ -75,7 +76,7 @@ class CurriculumProfileBulkController extends Controller
                 continue;
             }
 
-            SchoolCurriculumSetting::updateOrCreate(
+            $setting = SchoolCurriculumSetting::updateOrCreate(
                 ['school_id' => $schoolId, 'academic_year_id' => $validated['academic_year_id']],
                 [
                     'curriculum_profile_id' => $assignment['curriculum_profile_id'],
@@ -83,6 +84,16 @@ class CurriculumProfileBulkController extends Controller
                     'updated_by' => $request->user()->id,
                 ]
             );
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'CURRICULUM_PROFILE_BULK_UPDATED',
+                'table_name' => $setting->getTable(),
+                'record_id' => $setting->id,
+                'record_type' => $setting::class,
+                'ip_address' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ]);
             $saved++;
         }
 

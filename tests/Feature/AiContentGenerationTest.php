@@ -871,5 +871,9 @@ class AiContentGenerationTest extends TestCase
         $this->assertSame(['Tujuan satu', 'Tujuan dua'], $record->content['tujuan']);
         $this->assertSame('Inti baru', $record->content['langkah'][0]['inti']);
         $this->assertSame('Formatif baru', $record->content['asesmen']['formatif']);
+        $this->assertDatabaseHas('ai_generated_content_revisions', [
+            'ai_generated_content_id' => $record->id,
+            'changed_by' => $this->admin->id,
+        ]);
     }
 }

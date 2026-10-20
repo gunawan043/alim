@@ -11,9 +11,12 @@ use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\SubjectGroupResolver;
 use App\Models\User;
+use App\Services\KurikulumAccess;
+use App\Services\NotificationUniversalService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Workflow review generik untuk Soal & Paket Soal.
@@ -35,22 +38,31 @@ class ReviewWorkflowService
      */
     public function submit(Model $reviewable, User $submitter, ?array $reviewerIds = null): Collection
     {
-        $reviewerIds = $reviewerIds ?: $this->resolveSerumpunReviewers($reviewable, $submitter);
+        $reviewerIds = array_values(array_unique($reviewerIds ?: $this->resolveSerumpunReviewers($reviewable, $submitter)));
+        $reviewerIds = array_values(array_filter($reviewerIds, fn ($id) => (string) $id !== (string) $submitter->id));
+
+        if ($reviewerIds === []) {
+            throw ValidationException::withMessages([
+                'reviewer' => 'Belum ada guru serumpun yang dapat ditetapkan sebagai reviewer. Hubungi koordinator atau tim kurikulum untuk menetapkan reviewer.',
+            ]);
+        }
 
         return DB::transaction(function () use ($reviewable, $reviewerIds, $submitter) {
             $reviewable->reviewAssignments()->delete();
 
-            foreach (array_values(array_unique($reviewerIds)) as $reviewerId) {
-                ReviewAssignment::create([
+            $assignments = collect();
+            foreach ($reviewerIds as $reviewerId) {
+                $assignments->push(ReviewAssignment::create([
                     'reviewable_type' => $reviewable->getMorphClass(),
                     'reviewable_id' => $reviewable->getKey(),
                     'reviewer_id' => $reviewerId,
                     'status' => ReviewAssignment::STATUS_PENDING,
-                ]);
+                ]));
             }
 
             $this->applyWorkflow($reviewable, Soal::WORKFLOW_REVIEW);
             $this->audit($reviewable, 'submit_review', $submitter, ['reviewers' => count($reviewerIds)]);
+            $this->notifyReviewers($reviewable, $assignments);
 
             return $reviewable->reviewAssignments()->with('reviewer:id,name')->get();
         });
@@ -64,6 +76,11 @@ class ReviewWorkflowService
      */
     public function assignReviewers(Model $reviewable, array $reviewerIds, User $by): Collection
     {
+        $reviewerIds = array_values(array_unique($reviewerIds));
+        if ($reviewerIds === []) {
+            throw ValidationException::withMessages(['reviewer' => 'Pilih minimal satu reviewer.']);
+        }
+
         return DB::transaction(function () use ($reviewable, $reviewerIds, $by) {
             foreach (array_values(array_unique($reviewerIds)) as $reviewerId) {
                 ReviewAssignment::updateOrCreate(
@@ -115,6 +132,8 @@ class ReviewWorkflowService
                 'note' => $note,
             ]);
         });
+
+        $this->notifyOwnerOfDecision($reviewable, $reviewer, $status, $note);
 
         return $assignment->fresh();
     }
@@ -245,6 +264,10 @@ class ReviewWorkflowService
                 ->all();
         }
 
+        if ($ids === []) {
+            $ids = $this->fallbackCurriculumReviewers($context, $submitter, $limit);
+        }
+
         return $ids;
     }
 
@@ -283,6 +306,10 @@ class ReviewWorkflowService
             ->reject(fn ($id) => $id === (string) $submitter->id)
             ->unique()
             ->values();
+
+        if ($ordered->isEmpty()) {
+            $ordered = collect($this->fallbackCurriculumReviewers($context, $submitter, $limit));
+        }
 
         return $limit ? $ordered->take($limit)->values()->all() : $ordered->all();
     }
@@ -344,6 +371,138 @@ class ReviewWorkflowService
             ->all();
     }
 
+    /**
+     * Fallback terakhir: editor kurikulum pada sekolah yang sama.
+     *
+     * @return array<int, string>
+     */
+    private function fallbackCurriculumReviewers(array $context, User $submitter, ?int $limit = null): array
+    {
+        if (empty($context['school_id'])) {
+            return [];
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($submitter->id)
+            ->whereHas('employments', fn ($query) => $query->where('school_id', $context['school_id']))
+            ->get()
+            ->filter(fn (User $user) => app(KurikulumAccess::class)->isKurikulumEditor($user))
+            ->take($limit ?: self::MAX_AUTO_REVIEWERS)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    private function notifyReviewers(Model $reviewable, Collection $assignments): void
+    {
+        foreach ($assignments as $assignment) {
+            try {
+                app(NotificationUniversalService::class)->send($assignment->reviewer_id, [
+                    'module' => 'education',
+                    'reference_type' => $reviewable->getMorphClass(),
+                    'reference_id' => $reviewable->getKey(),
+                    'type' => 'info',
+                    'action' => 'kurikulum_review_assigned',
+                    'title' => 'Dokumen menunggu review serumpun',
+                    'message' => 'Dokumen '.$this->documentLabel($reviewable).' menunggu keputusan review Anda.',
+                    'action_url' => route('user.review-soal.show', [
+                        'userId' => $assignment->reviewer_id,
+                        'assignmentId' => $assignment->id,
+                    ]),
+                    'action_text' => 'Buka Review',
+                    'priority' => 'high',
+                    'work_unit_id' => $this->documentWorkUnitId($reviewable),
+                    'data' => ['assignment_id' => $assignment->id],
+                ]);
+            } catch (\Throwable) {
+                // Notifikasi tidak boleh menggagalkan alur review.
+            }
+        }
+    }
+
+    private function notifyOwnerOfDecision(Model $reviewable, User $reviewer, string $status, ?string $note): void
+    {
+        $ownerId = $this->documentOwnerId($reviewable);
+        if (! $ownerId || (string) $ownerId === (string) $reviewer->id) {
+            return;
+        }
+
+        $progress = $this->progress($reviewable);
+        $approved = $status === ReviewAssignment::STATUS_APPROVED;
+        $allApproved = $approved && $progress['total'] > 0 && $progress['approved'] === $progress['total'];
+        $title = $approved
+            ? ($allApproved ? 'Dokumen disetujui guru serumpun' : 'Review Anda disetujui')
+            : 'Dokumen perlu perbaikan';
+        $message = $approved
+            ? ($allApproved
+                ? 'Dokumen '.$this->documentLabel($reviewable).' telah disetujui seluruh guru serumpun.'
+                : 'Review Anda disetujui. Menunggu keputusan reviewer serumpun lainnya.')
+            : 'Dokumen '.$this->documentLabel($reviewable).' dikembalikan untuk perbaikan'.($note ? ': '.$note : '.');
+
+        try {
+            app(NotificationUniversalService::class)->send($ownerId, [
+                'module' => 'education',
+                'reference_type' => $reviewable->getMorphClass(),
+                'reference_id' => $reviewable->getKey(),
+                'type' => $approved ? 'success' : 'warning',
+                'action' => $approved ? 'kurikulum_review_approved' : 'kurikulum_review_revision',
+                'title' => $title,
+                'message' => $message,
+                'action_url' => $this->documentUrl($reviewable, $ownerId),
+                'action_text' => 'Buka Dokumen',
+                'priority' => $approved ? 'medium' : 'high',
+                'work_unit_id' => $this->documentWorkUnitId($reviewable),
+                'data' => ['status' => $status, 'note' => $note],
+            ]);
+        } catch (\Throwable) {
+            // Notifikasi tidak boleh menggagalkan keputusan review.
+        }
+    }
+
+    private function documentOwnerId(Model $reviewable): ?string
+    {
+        return match (true) {
+            $reviewable instanceof Soal => $reviewable->dibuat_oleh,
+            $reviewable instanceof PerangkatPembelajaran => $reviewable->created_by,
+            $reviewable instanceof PaketSoal => $reviewable->created_by,
+            default => null,
+        };
+    }
+
+    private function documentLabel(Model $reviewable): string
+    {
+        return match (true) {
+            $reviewable instanceof Soal => 'soal',
+            $reviewable instanceof PerangkatPembelajaran => 'perangkat pembelajaran',
+            $reviewable instanceof PaketSoal => 'paket soal',
+            default => 'dokumen',
+        };
+    }
+
+    private function documentWorkUnitId(Model $reviewable): ?string
+    {
+        $schoolId = $this->academicContext($reviewable)['school_id'] ?? null;
+        $school = $schoolId ? \App\Models\School::find($schoolId) : null;
+
+        return $school?->work_unit_id;
+    }
+
+    private function documentUrl(Model $reviewable, string $userId): ?string
+    {
+        try {
+            return match (true) {
+                $reviewable instanceof Soal && $reviewable->bank_soal_id => route('user.bank-soal.show', ['userId' => $userId, 'id' => $reviewable->bank_soal_id]),
+                $reviewable instanceof PerangkatPembelajaran => route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $reviewable->id]),
+                $reviewable instanceof PaketSoal => route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $reviewable->id]),
+                default => null,
+            };
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     private function applyWorkflow(Model $reviewable, string $workflow, ?string $approvedBy = null): void
     {
         if ($reviewable instanceof Soal) {
@@ -393,6 +552,16 @@ class ReviewWorkflowService
             }
 
             if ($workflow === Soal::WORKFLOW_APPROVED) {
+                if ($reviewable->curriculumProfile?->isKemenag()) {
+                    $missing = $reviewable->missingKbcFields('final');
+                    $formatIssues = $reviewable->kbcFormatIssues();
+                    if ($missing !== [] || $formatIssues !== []) {
+                        throw ValidationException::withMessages([
+                            'kbc' => 'Perangkat KBC belum lengkap/valid untuk final: '.implode(' ', array_merge($missing, $formatIssues)),
+                        ]);
+                    }
+                }
+
                 $payload['approved_at'] = $reviewable->approved_at ?: now();
                 $payload['approved_by'] = $approvedBy ?: $reviewable->approved_by;
                 $payload['status'] = PerangkatPembelajaran::STATUS_FINAL;

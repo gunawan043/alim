@@ -282,6 +282,15 @@ class PerangkatPembelajaranController extends Controller
         // Bagian desain yang tidak dikirim tetap dipertahankan (merge, bukan overwrite).
         $desain = $perangkat->mergeDesain($validated['desain'] ?? []);
 
+        // Dokumen yang sedang review/revisi: perubahan konten membatalkan approval lama.
+        $resetReview = in_array($perangkat->workflow_status, [
+            PerangkatPembelajaran::WORKFLOW_REVIEW,
+            PerangkatPembelajaran::WORKFLOW_REVISI,
+        ], true);
+        if ($resetReview) {
+            $perangkat->reviewAssignments()->delete();
+        }
+
         $profile = $perangkat->curriculumProfile
             ?? app(CurriculumProfileService::class)->resolve($perangkat->school_id, $perangkat->academic_year_id);
 
@@ -317,9 +326,20 @@ class PerangkatPembelajaranController extends Controller
             $payload['locked_by'] = $perangkat->locked_by ?: $request->user()->id;
         }
 
+        if ($resetReview) {
+            $payload = array_merge($payload, [
+                'workflow_status' => PerangkatPembelajaran::WORKFLOW_DRAFT,
+                'submitted_at' => null,
+                'approved_at' => null,
+                'approved_by' => null,
+            ]);
+        }
+
         $perangkat->update($payload);
 
-        return back()->with('success', 'RPM / perangkat pembelajaran berhasil disimpan.');
+        return back()->with('success', $resetReview
+            ? 'Perangkat diperbarui. Approval sebelumnya dibatalkan dan dokumen kembali ke draft untuk diajukan ulang.'
+            : 'RPM / perangkat pembelajaran berhasil disimpan.');
     }
 
     public function destroy(Request $request, string $userId, string $id)
@@ -355,11 +375,16 @@ class PerangkatPembelajaranController extends Controller
         $profile = $perangkat->curriculumProfile
             ?? app(CurriculumProfileService::class)->resolve($perangkat->school_id, $perangkat->academic_year_id);
         if ($profile?->isKemenag()) {
-            $missingKbc = $perangkat->missingKbcFields('review');
-            if ($missingKbc !== []) {
+            $missingKbc = $perangkat->missingKbcFields('final');
+            $formatIssues = $perangkat->kbcFormatIssues();
+            if ($missingKbc !== [] || $formatIssues !== []) {
                 $labels = collect($missingKbc)->map(fn ($key) => PerangkatPembelajaran::KBC_FIELDS[$key] ?? $key)->implode(', ');
+                $messages = array_filter([
+                    $missingKbc !== [] ? 'Belum diisi: '.$labels.'.' : null,
+                    ...$formatIssues,
+                ]);
 
-                return back()->with('error', 'Lengkapi integrasi KBC sebelum mengajukan review: '.$labels.'.');
+                return back()->with('error', 'Lengkapi integrasi KBC sebelum mengajukan review. '.implode(' ', $messages));
             }
         }
 
