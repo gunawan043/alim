@@ -105,6 +105,9 @@
                             <td>
                                 <div class="fw-semibold">{{ $project->title }}
                                     @include('kurikulum.partials.profile-badge', ['model' => $project, 'class' => 'ms-1'])
+                                    @if(($project->source ?? 'manual') === 'ai')
+                                        <span class="badge bg-info-subtle text-info ms-1">AI — tinjau</span>
+                                    @endif
                                 </div>
                                 <div class="text-muted small">{{ $project->theme ?: 'Tema belum diisi' }}</div>
                             </td>

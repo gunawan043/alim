@@ -295,6 +295,7 @@ class CurriculumProjectController extends Controller
         CurriculumProject::create(array_merge($validated, [
             'school_id' => $schoolId,
             'curriculum_profile_id' => $profile?->id,
+            'source' => 'manual',
             'activities' => $this->cleanActivities($validated['activities'] ?? []),
             'coordinator_id' => $request->user()->id,
             'created_by' => $request->user()->id,

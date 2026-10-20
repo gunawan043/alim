@@ -439,6 +439,48 @@ class PerangkatPembelajaran extends Model
     }
 
     /**
+     * Validasi format minimal integrasi KBC.
+     *
+     * @return array<int, string>
+     */
+    public function kbcFormatIssues(?array $desain = null): array
+    {
+        $desain ??= $this->desain ?? [];
+        $minimums = [
+            'tema_kbc' => 3,
+            'materi_insersi' => 15,
+            'pilar_kbc' => 3,
+            'indikator_kbc' => 15,
+            'refleksi_kbc' => 10,
+            'asesmen_kbc' => 10,
+        ];
+
+        $issues = [];
+        foreach ($minimums as $key => $minimum) {
+            $value = trim((string) ($desain[$key] ?? ''));
+            if ($value !== '' && mb_strlen($value) < $minimum) {
+                $issues[] = (self::KBC_FIELDS[$key] ?? $key).' minimal '.$minimum.' karakter.';
+            }
+        }
+
+        $pilar = trim((string) ($desain['pilar_kbc'] ?? ''));
+        $values = $this->curriculumProfile?->values() ?? [];
+        if ($pilar !== '' && ! empty($values)) {
+            $haystack = mb_strtolower($pilar);
+            $matched = collect($values)->contains(function ($label, $key) use ($haystack) {
+                return str_contains($haystack, mb_strtolower((string) $key))
+                    || str_contains($haystack, mb_strtolower((string) $label));
+            });
+
+            if (! $matched) {
+                $issues[] = 'Pilar KBC harus menyebut salah satu pilar/nilai pada profil.';
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
      * Desain default dengan seluruh bagian dikenal.
      *
      * @return array<string, string|null>

@@ -1278,4 +1278,45 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('CP KBC Matematika')
             ->assertSee('CP Merdeka Fisika');
     }
+
+    public function test_pemetaan_massal_profil_sekolah_oleh_super_admin(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        $admin = User::create([
+            'name' => 'Super Admin Pemetaan',
+            'email' => 'superadmin.pemetaan@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'is_system_admin' => true,
+        ]);
+        $role = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web'], ['level' => 1]);
+        $admin->assignRole($role);
+
+        $this->actingAs($admin)
+            ->get("/{$admin->id}/schools-global/kurikulum-profile")
+            ->assertOk()
+            ->assertSee('Pemetaan Massal Profil Kurikulum')
+            ->assertSee($this->school->name);
+
+        $this->actingAs($admin)
+            ->post("/{$admin->id}/schools-global/kurikulum-profile", [
+                'academic_year_id' => $this->ay->id,
+                'assignments' => [
+                    $this->school->id => [
+                        'curriculum_profile_id' => $kbc->id,
+                        'kokurikuler_type' => 'p5ra',
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('school_curriculum_settings', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+    }
 }

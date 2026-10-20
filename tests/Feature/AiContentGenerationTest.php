@@ -8,6 +8,7 @@ use App\Models\AiGeneratedContent;
 use App\Models\AiProviderSetting;
 use App\Models\BankSoal;
 use App\Models\CurriculumProfile;
+use App\Models\CurriculumProject;
 use App\Models\GradeLevel;
 use App\Models\InstitutionDecree;
 use App\Models\PerangkatPembelajaran;
@@ -773,5 +774,57 @@ class AiContentGenerationTest extends TestCase
         $this->assertSame(1, PerangkatPembelajaran::count());
         $this->assertSame('Perangkat Manual Fiqih', $manual->fresh()->judul);
         $this->assertNull($record->fresh()->saved_perangkat_id);
+    }
+
+    public function test_simpan_draft_projek_ai_menjadi_projek_tanpa_menimpa_manual(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $profile = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+        SchoolCurriculumSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'curriculum_profile_id' => $profile->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $record = AiGeneratedContent::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'curriculum_profile_id' => $profile->id,
+            'semester' => 'ganjil',
+            'type' => 'projek',
+            'project_type' => 'p5ra',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'title' => 'Draft Projek AI',
+            'content' => [
+                'judul' => 'Kampung Cinta Lingkungan',
+                'tema' => 'Cinta Lingkungan',
+                'deskripsi' => 'Aksi nyata menjaga lingkungan madrasah.',
+                'dimensi' => ['hubbulbiah'],
+                'aktivitas' => [
+                    ['judul' => 'Observasi sampah', 'deskripsi' => 'Mengamati kondisi lingkungan.', 'pekan' => 1],
+                ],
+                'asesmen' => ['formatif' => 'Observasi', 'sumatif' => 'Laporan'],
+            ],
+            'status' => 'approved',
+            'approved_by' => $this->admin->id,
+            'approved_at' => now(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $request = Request::create('/save-project', 'POST');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $this->admin);
+
+        app(AiContentController::class)->saveToProject($request, $this->admin->id, $record->id);
+
+        $project = CurriculumProject::firstOrFail();
+        $this->assertSame('ai', $project->source);
+        $this->assertSame('p5ra', $project->type);
+        $this->assertSame($profile->id, $project->curriculum_profile_id);
+        $this->assertSame(['hubbulbiah'], $project->dimensions);
+        $this->assertSame($project->id, $record->fresh()->saved_project_id);
+        $this->assertSame('Kampung Cinta Lingkungan', $project->title);
     }
 }

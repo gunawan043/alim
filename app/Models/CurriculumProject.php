@@ -43,6 +43,8 @@ class CurriculumProject extends Model
         'semester',
         'curriculum_profile_id',
         'type',
+        'source',
+        'ai_generated_content_id',
         'title',
         'theme',
         'dimensions',
@@ -83,6 +85,16 @@ class CurriculumProject extends Model
     public function assessments(): HasMany
     {
         return $this->hasMany(CurriculumProjectAssessment::class, 'project_id');
+    }
+
+    public function aiGeneratedContent(): BelongsTo
+    {
+        return $this->belongsTo(AiGeneratedContent::class, 'ai_generated_content_id');
+    }
+
+    public function getSourceLabelAttribute(): string
+    {
+        return $this->source === 'ai' ? 'AI — perlu ditinjau' : 'Manual';
     }
 
     public function coordinator(): BelongsTo

@@ -243,11 +243,12 @@ class PerangkatPembelajaranController extends Controller
         $kbcPercentage = $perangkat->kbcCompletionPercentage();
         $kbcMissing = $perangkat->missingKbcFields('final');
         $kbcReviewMissing = $perangkat->missingKbcFields('review');
+        $kbcFormatIssues = $perangkat->kbcFormatIssues();
 
         return view('kurikulum.perangkat.show', compact(
             'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
             'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion',
-            'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing'
+            'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing', 'kbcFormatIssues'
         ));
     }
 
@@ -287,11 +288,16 @@ class PerangkatPembelajaranController extends Controller
 
         if ($validated['status'] === PerangkatPembelajaran::STATUS_FINAL && $profile?->isKemenag()) {
             $missingKbc = $perangkat->missingKbcFields('final', $desain);
+            $formatIssues = $perangkat->kbcFormatIssues($desain);
 
-            if ($missingKbc !== []) {
+            if ($missingKbc !== [] || $formatIssues !== []) {
                 $labels = collect($missingKbc)->map(fn ($key) => PerangkatPembelajaran::KBC_FIELDS[$key] ?? $key)->implode(', ');
+                $messages = array_filter([
+                    $missingKbc !== [] ? 'Belum diisi: '.$labels.'.' : null,
+                    ...$formatIssues,
+                ]);
 
-                return back()->withInput()->with('error', 'Perangkat KBC belum lengkap. Lengkapi: '.$labels.'.');
+                return back()->withInput()->with('error', 'Perangkat KBC belum valid. '.implode(' ', $messages));
             }
         }
 

@@ -56,6 +56,7 @@
                                 <select name="type" id="aiType" class="form-select" onchange="toggleAiFields()">
                                     <option value="soal" {{ old('type', 'soal') === 'soal' ? 'selected' : '' }}>Soal</option>
                                     <option value="rpm" {{ old('type') === 'rpm' ? 'selected' : '' }}>{{ $curriculumLabels['perangkat_label'] ?? 'RPM / Modul Ajar' }}</option>
+                                    <option value="projek" {{ old('type') === 'projek' ? 'selected' : '' }}>Projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5 / P5RA' }}</option>
                                 </select>
                             </div>
 
@@ -126,9 +127,16 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 ai-rpm-fields d-none">
-                                <label class="form-label">Jumlah Pertemuan</label>
+                            <div class="col-md-4 ai-rpm-fields ai-project-fields d-none">
+                                <label class="form-label">Jumlah Pertemuan / Aktivitas</label>
                                 <input type="number" name="jumlah_pertemuan" class="form-control" min="1" max="12" value="{{ old('jumlah_pertemuan', 2) }}">
+                            </div>
+                            <div class="col-md-4 ai-project-fields d-none">
+                                <label class="form-label">Jenis Projek</label>
+                                <select name="project_type" class="form-select">
+                                    <option value="p5ra" @selected($curriculumProfile?->isKemenag())>P5RA</option>
+                                    <option value="p5" @selected(! $curriculumProfile?->isKemenag())>P5</option>
+                                </select>
                             </div>
 
                             <div class="col-md-6">
@@ -254,7 +262,11 @@
         function toggleAiFields() {
             const type = document.getElementById('aiType').value;
             document.querySelectorAll('.ai-soal-fields').forEach(el => el.classList.toggle('d-none', type !== 'soal'));
-            document.querySelectorAll('.ai-rpm-fields').forEach(el => el.classList.toggle('d-none', type !== 'rpm'));
+            document.querySelectorAll('.ai-rpm-fields').forEach(function (el) {
+                const alsoProject = el.classList.contains('ai-project-fields');
+                el.classList.toggle('d-none', !(type === 'rpm' || (alsoProject && type === 'projek')));
+            });
+            document.querySelectorAll('.ai-project-fields:not(.ai-rpm-fields)').forEach(el => el.classList.toggle('d-none', type !== 'projek'));
         }
 
         document.addEventListener('DOMContentLoaded', toggleAiFields);

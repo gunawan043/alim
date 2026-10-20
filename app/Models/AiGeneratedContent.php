@@ -31,6 +31,7 @@ class AiGeneratedContent extends Model
         'semester',
         'bahasa',
         'type',
+        'project_type',
         'subject_id',
         'grade_level_id',
         'title',
@@ -45,6 +46,7 @@ class AiGeneratedContent extends Model
         'approved_at',
         'saved_bank_id',
         'saved_perangkat_id',
+        'saved_project_id',
         'saved_at',
     ];
 

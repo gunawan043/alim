@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\AiGeneratedContent;
 use App\Models\AuditLog;
 use App\Models\BankSoal;
+use App\Models\CurriculumProject;
 use App\Models\GradeLevel;
 use App\Models\PerangkatPembelajaran;
 use App\Models\Soal;
@@ -92,7 +93,8 @@ class AiContentController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'type' => 'required|in:rpm,soal',
+            'type' => 'required|in:rpm,soal,projek',
+            'project_type' => 'nullable|in:p5,p5ra',
             'subject_id' => [
                 'required',
                 Rule::exists('subjects', 'id')->where(function ($query) use ($schoolId) {
@@ -129,6 +131,7 @@ class AiContentController extends Controller
 
         $curriculumProfile = $this->profiles->resolve($schoolId, $validated['academic_year_id']);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
+        $projectType = $validated['project_type'] ?? ($curriculumProfile?->isKemenag() ? 'p5ra' : 'p5');
 
         $context = [
             'subject' => $subject?->name,
@@ -143,6 +146,7 @@ class AiContentController extends Controller
             'jumlah_pertemuan' => $validated['jumlah_pertemuan'] ?? 2,
             'bahasa' => $validated['bahasa'] ?? 'id',
             'instruksi' => $validated['instruksi'] ?? null,
+            'project_type' => $projectType,
             'curriculum' => [
                 'code' => $curriculumProfile?->code,
                 'name' => $curriculumProfile?->name,
@@ -159,8 +163,12 @@ class AiContentController extends Controller
             return back()->withInput()->with('error', 'Gagal membuat draft AI: '.($result['error'] ?? 'tidak diketahui'));
         }
 
-        $title = ($validated['type'] === 'soal' ? 'Soal AI' : ($curriculumLabels['perangkat_short'] ?? 'RPM').' AI')
-            .' — '.($subject?->name ?? 'Mapel')
+        $title = match ($validated['type']) {
+            'soal' => 'Soal AI',
+            'projek' => 'Projek '.strtoupper($projectType).' AI',
+            default => ($curriculumLabels['perangkat_short'] ?? 'RPM').' AI',
+        };
+        $title .= ' — '.($subject?->name ?? 'Mapel')
             .($grade ? ' '.$grade->name : '')
             .' — '.now()->format('d M Y H:i');
 
@@ -171,6 +179,7 @@ class AiContentController extends Controller
             'semester' => $validated['semester'],
             'bahasa' => $validated['bahasa'] ?? 'id',
             'type' => $validated['type'],
+            'project_type' => $validated['type'] === 'projek' ? $projectType : null,
             'subject_id' => $validated['subject_id'],
             'grade_level_id' => $validated['grade_level_id'] ?? null,
             'title' => $title,
@@ -207,8 +216,13 @@ class AiContentController extends Controller
             ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
             : $this->profiles->resolve($record->school_id, $record->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
+        $canSaveProject = $record->type === 'projek'
+            && $record->isApproved()
+            && ! $record->saved_project_id
+            && is_array($record->content)
+            && ! empty($record->content);
 
-        return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels'));
+        return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels', 'canSaveProject'));
     }
 
     /**
@@ -521,6 +535,92 @@ class AiContentController extends Controller
         return redirect()
             ->route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id])
             ->with('success', 'Draft AI disimpan sebagai '.($labels['perangkat_label'] ?? 'RPM').' (status draft).');
+    }
+
+    public function saveToProject(Request $request, string $userId, string $id)
+    {
+        $record = AiGeneratedContent::with(['subject', 'gradeLevel', 'school'])->findOrFail($id);
+        $this->authorizeSchool($request, $record);
+        $this->authorizeManage($request, $record);
+
+        abort_unless($record->type === 'projek', 404, 'Draft ini bukan projek.');
+        abort_unless($record->isApproved(), 403, 'Setujui draft terlebih dahulu sebelum menyimpan sebagai projek.');
+        abort_if($record->saved_project_id, 409, 'Draft ini sudah disimpan sebagai projek.');
+        abort_unless($record->school_id && $record->academic_year_id, 422, 'Konteks draft projek tidak lengkap.');
+
+        $content = is_array($record->content) ? $record->content : [];
+        abort_if(empty($content), 422, 'Draft projek tidak memiliki konten terstruktur.');
+        $this->assertPeriodNotLocked($record->academic_year_id, 'Projek Kokurikuler');
+
+        $profile = $record->curriculum_profile_id
+            ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
+            : $this->profiles->resolve($record->school_id, $record->academic_year_id);
+        $profileValues = $profile?->values() ?? [];
+        $projectType = in_array($record->project_type, ['p5', 'p5ra'], true)
+            ? $record->project_type
+            : ($profile?->isKemenag() ? 'p5ra' : 'p5');
+
+        $dimensions = collect($content['dimensi'] ?? [])
+            ->map(function ($value) use ($profileValues) {
+                $value = (string) $value;
+                if (isset($profileValues[$value])) {
+                    return $value;
+                }
+                $needle = mb_strtolower($value);
+                foreach ($profileValues as $key => $label) {
+                    if (mb_strtolower((string) $label) === $needle || mb_strtolower((string) $key) === $needle) {
+                        return $key;
+                    }
+                }
+
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $activities = collect($content['aktivitas'] ?? [])
+            ->filter(fn ($activity) => is_array($activity) && (filled($activity['judul'] ?? null) || filled($activity['deskripsi'] ?? null)))
+            ->map(fn ($activity) => [
+                'judul' => trim((string) ($activity['judul'] ?? 'Aktivitas')),
+                'deskripsi' => trim((string) ($activity['deskripsi'] ?? '')),
+                'tanggal' => $activity['tanggal'] ?? null,
+            ])
+            ->values()
+            ->all();
+
+        $project = DB::transaction(function () use ($record, $content, $projectType, $profile, $dimensions, $activities, $request) {
+            $project = CurriculumProject::create([
+                'school_id' => $record->school_id,
+                'academic_year_id' => $record->academic_year_id,
+                'semester' => $record->semester ?: 'ganjil',
+                'curriculum_profile_id' => $profile?->id,
+                'type' => $projectType,
+                'source' => 'ai',
+                'ai_generated_content_id' => $record->id,
+                'title' => mb_substr($this->toText($content['judul'] ?? null) ?? $record->title, 0, 191),
+                'theme' => $this->toText($content['tema'] ?? null),
+                'description' => $this->toText($content['deskripsi'] ?? null),
+                'dimensions' => $dimensions,
+                'grade_level_ids' => $record->grade_level_id ? [$record->grade_level_id] : null,
+                'activities' => $activities,
+                'status' => CurriculumProject::STATUS_DRAFT,
+                'coordinator_id' => $record->created_by ?: $request->user()?->id,
+                'created_by' => $request->user()?->id,
+            ]);
+
+            $record->forceFill([
+                'saved_project_id' => $project->id,
+                'saved_at' => now(),
+            ])->save();
+
+            return $project;
+        });
+
+        return redirect()
+            ->route('user.kurikulum.proyek.show', ['userId' => $userId, 'id' => $project->id])
+            ->with('success', 'Draft AI disimpan sebagai projek (status draft). Tinjau sebelum dijalankan.');
     }
 
     private function difficultyFromLevel(?string $level): string

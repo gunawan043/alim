@@ -182,6 +182,9 @@
                 @if($kbcMissing !== [])
                     <div class="alert alert-warning py-2 mt-3 mb-0 small"><i class="ri-error-warning-line me-1"></i>Belum dapat ditetapkan final sampai seluruh bagian KBC terisi.</div>
                 @endif
+                @if(! empty($kbcFormatIssues))
+                    <div class="alert alert-danger py-2 mt-2 mb-0 small"><i class="ri-error-warning-line me-1"></i><strong>Perbaiki format KBC:</strong><ul class="mb-0 mt-1">@foreach($kbcFormatIssues as $issue)<li>{{ $issue }}</li>@endforeach</ul></div>
+                @endif
             </div>
         </div>
     @endif

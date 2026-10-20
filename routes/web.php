@@ -100,6 +100,7 @@ use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
 use App\Http\Controllers\Kurikulum\CurriculumProjectBankController;
 use App\Http\Controllers\Kurikulum\CurriculumProjectController;
+use App\Http\Controllers\Kurikulum\CurriculumProfileBulkController;
 use App\Http\Controllers\Kurikulum\CurriculumProfileController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
 use App\Http\Controllers\Kurikulum\CetakDokumenKurikulumController;
@@ -647,6 +648,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── SCHOOLS GLOBAL
             Route::get('/schools-global', [SchoolsGlobalController::class, 'index'])->name('schools-global.index');
+            Route::get('/schools-global/kurikulum-profile', [CurriculumProfileBulkController::class, 'index'])->name('schools-global.kurikulum-profile.index');
+            Route::post('/schools-global/kurikulum-profile', [CurriculumProfileBulkController::class, 'store'])->name('schools-global.kurikulum-profile.store');
             Route::get('/schools-global/index', [SchoolsGlobalController::class, 'index'])->name('schools-global-show.index');
 
             // ── GTK ────────────────────────────────────────────────
@@ -819,6 +822,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{id}/items', [AiContentController::class, 'updateItems'])->name('items.update');
                     Route::post('/{id}/save-bank', [AiContentController::class, 'saveToBank'])->name('save-bank');
                     Route::post('/{id}/save-rpm', [AiContentController::class, 'saveToRpm'])->name('save-rpm');
+                    Route::post('/{id}/save-project', [AiContentController::class, 'saveToProject'])->name('save-project');
                     Route::post('/{id}/approve', [AiContentController::class, 'approve'])->name('approve');
                     Route::delete('/{id}', [AiContentController::class, 'destroy'])->name('destroy');
                 });

@@ -93,6 +93,16 @@
                         </button>
                     @endif
 
+                    @if($record->saved_project_id)
+                        <a href="{{ route('user.kurikulum.proyek.show', ['userId' => $userId, 'id' => $record->saved_project_id]) }}" class="btn btn-info">
+                            <i class="ri-seedling-line me-1"></i>Lihat Projek
+                        </a>
+                    @elseif($canSaveProject)
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveProjectModal">
+                            <i class="ri-save-3-line me-1"></i>Simpan sebagai Projek
+                        </button>
+                    @endif
+
                     <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="ri-printer-line me-1"></i>Cetak</button>
                     <a href="{{ route('user.kurikulum.ai.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
                 </div>
@@ -253,6 +263,28 @@
                 @if(empty($content['judul']) && empty($content['langkah']) && empty($content['tujuan']))
                     <pre class="bg-light p-3 rounded" style="max-height:600px;overflow:auto;">{{ $record->raw_content }}</pre>
                 @endif
+            @elseif($record->type === 'projek' && is_array($content))
+                @if(! empty($content['judul']))<h4 class="mb-2">{{ $content['judul'] }}</h4>@endif
+                @if(! empty($content['tema']))<p class="mb-2"><span class="badge bg-primary-subtle text-primary">{{ $content['tema'] }}</span></p>@endif
+                @if(! empty($content['deskripsi']))<p>{!! nl2br(e($content['deskripsi'])) !!}</p>@endif
+                @if(! empty($content['dimensi']) && is_array($content['dimensi']))
+                    <h6 class="mt-3">Dimensi / Nilai</h6>
+                    <div class="d-flex flex-wrap gap-1">@foreach($content['dimensi'] as $dimension)<span class="badge bg-success-subtle text-success">{{ is_array($dimension) ? implode(' — ', $dimension) : $dimension }}</span>@endforeach</div>
+                @endif
+                @if(! empty($content['tujuan']) && is_array($content['tujuan']))
+                    <h6 class="mt-3">Tujuan Projek</h6><ul>@foreach($content['tujuan'] as $goal)<li>{{ is_array($goal) ? implode(' — ', $goal) : $goal }}</li>@endforeach</ul>
+                @endif
+                @if(! empty($content['aktivitas']) && is_array($content['aktivitas']))
+                    <h6 class="mt-3">Aktivitas</h6>
+                    <div class="row g-2">
+                        @foreach($content['aktivitas'] as $activity)
+                            <div class="col-md-6"><div class="border rounded p-3 h-100"><div class="fw-semibold">{{ $activity['judul'] ?? 'Aktivitas' }}</div>@if(! empty($activity['pekan']))<div class="text-muted small">Pekan {{ $activity['pekan'] }}</div>@endif<div class="small mt-1">{{ $activity['deskripsi'] ?? '' }}</div></div></div>
+                        @endforeach
+                    </div>
+                @endif
+                @if(! empty($content['asesmen']) && is_array($content['asesmen']))
+                    <h6 class="mt-3">Asesmen</h6><ul>@foreach($content['asesmen'] as $key => $value)<li><strong class="text-capitalize">{{ $key }}:</strong> {{ is_array($value) ? implode(' ', $value) : $value }}</li>@endforeach</ul>
+                @endif
             @else
                 <div class="alert alert-info small">
                     Model tidak mengembalikan JSON terstruktur. Konten mentah ditampilkan di bawah — dapat disalin/diolah manual.
@@ -291,5 +323,19 @@
             submit-icon="ri-save-3-line"
             submit-class="btn-primary"
             form-id="saveRpmForm" />
+    @endif
+
+    @if($canSaveProject)
+        <form id="saveProjectForm" method="POST" action="{{ route('user.kurikulum.ai.save-project', ['userId' => $userId, 'id' => $record->id]) }}">
+            @csrf
+        </form>
+        <x-modal-confirm id="saveProjectModal"
+            icon="https://cdn.lordicon.com/lupuorrc.json"
+            title="Simpan sebagai Projek?"
+            message="Draft projek yang disetujui akan dibuat sebagai <strong>projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5/P5RA' }}</strong> berstatus draft. Projek manual yang sudah ada tidak akan diubah."
+            submit-label="Ya, Simpan"
+            submit-icon="ri-save-3-line"
+            submit-class="btn-primary"
+            form-id="saveProjectForm" />
     @endif
 @endsection

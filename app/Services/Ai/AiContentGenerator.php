@@ -20,9 +20,11 @@ class AiContentGenerator
     {
         $provider = $this->ai->defaultProvider();
 
-        $messages = $type === 'soal'
-            ? $this->soalMessages($context)
-            : $this->rpmMessages($context);
+        $messages = match ($type) {
+            'soal' => $this->soalMessages($context),
+            'projek' => $this->projectMessages($context),
+            default => $this->rpmMessages($context),
+        };
 
         $result = $this->ai->chat($messages, [
             'temperature' => 0.4,
@@ -144,6 +146,47 @@ class AiContentGenerator
             $user .= '- Pilih minimal satu pilar cinta yang paling relevan dan tuliskan indikator yang dapat diamati.'."\n";
         }
         $user .= 'Balas hanya JSON.';
+
+        return [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user', 'content' => $user],
+        ];
+    }
+
+    /**
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function projectMessages(array $context): array
+    {
+        $curriculum = is_array($context['curriculum'] ?? null) ? $context['curriculum'] : [];
+        $isKbc = ($curriculum['code'] ?? '') === 'kbc_kemenag' || ($curriculum['authority'] ?? '') === 'kemenag';
+        $values = array_values((array) ($curriculum['values'] ?? []));
+        $projectType = $context['project_type'] ?? ($isKbc ? 'p5ra' : 'p5');
+
+        $system = 'Anda perancang projek kokurikuler '.strtoupper((string) $projectType).' untuk satuan pendidikan. '
+            .'Hasilkan HANYA JSON valid tanpa markdown. '
+            .'Struktur: {"judul":"...","tema":"...","deskripsi":"...","dimensi":["..."],'
+            .'"tujuan":["..."],"aktivitas":[{"judul":"...","deskripsi":"...","pekan":1}],'
+            .'"asesmen":{"formatif":"...","sumatif":"...","rubrik":"..."}}. '
+            .'Projek harus kontekstual, kolaboratif, aman, dan dapat dilaksanakan.';
+
+        if ($isKbc) {
+            $system .= ' Integrasikan Kurikulum Berbasis Cinta: pilih pilar cinta yang relevan, rumuskan aksi nyata, refleksi, dan asesmen sikap.';
+        } else {
+            $system .= ' Gunakan dimensi Profil Pelajar Pancasila dan prinsip pembelajaran mendalam.';
+        }
+
+        $user = 'Konteks penyusunan projek:'."\n"
+            .'- Jenis projek: '.strtoupper((string) $projectType)."\n"
+            .'- Profil kurikulum: '.($curriculum['name'] ?? '-')."\n"
+            .'- Dimensi/nilai yang tersedia: '.($values ? implode(', ', $values) : '-')."\n"
+            .'- Tema/topik: '.($context['topik'] ?: 'Tentukan tema yang relevan')."\n"
+            .'- Jenjang/kelas: '.($context['grade'] ?? '-')."\n"
+            .'- Tahun ajaran/semester: '.($context['academic_year'] ?? '-').' / '.($context['semester'] ?? '-')."\n"
+            .'- Jumlah aktivitas: '.(int) ($context['jumlah_pertemuan'] ?? 4)."\n"
+            .'- Bahasa: '.($context['bahasa'] === 'ar' ? 'Arab' : 'Indonesia')."\n"
+            .'- Instruksi tambahan: '.($context['instruksi'] ?: '-')."\n"
+            .'Gunakan hanya nilai/dimensi yang tersedia. Balas hanya JSON.';
 
         return [
             ['role' => 'system', 'content' => $system],
