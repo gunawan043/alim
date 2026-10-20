@@ -13,6 +13,7 @@ use App\Models\SchoolCurriculumSetting;
 use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
+use App\Services\Pdf\CurriculumPdfStyle;
 use Illuminate\Http\Request;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -157,6 +158,8 @@ class CurriculumProjectController extends Controller
             'scores' => 'required|array|min:1',
             'scores.*' => 'nullable|integer|min:1|max:4',
             'notes' => 'nullable|string|max:2000',
+            'evidence_note' => 'nullable|string|max:3000',
+            'evidence_url' => 'nullable|url|max:500',
         ]);
 
         $scores = collect($validated['scores'])
@@ -175,6 +178,8 @@ class CurriculumProjectController extends Controller
                 'average' => $average,
                 'predicate' => CurriculumProjectAssessment::predicateFor($average),
                 'notes' => $validated['notes'] ?? null,
+                'evidence_note' => $validated['evidence_note'] ?? null,
+                'evidence_url' => $validated['evidence_url'] ?? null,
                 'assessed_by' => $request->user()->id,
             ]
         );
@@ -259,8 +264,15 @@ class CurriculumProjectController extends Controller
         $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
+        $fontDir = storage_path('fonts');
+        if (! is_dir($fontDir)) {
+            mkdir($fontDir, 0755, true);
+        }
+        $options->setFontDir($fontDir);
+        $options->setFontCache($fontDir);
 
         $dompdf = new Dompdf($options);
+        app(CurriculumPdfStyle::class)->registerCambria($dompdf);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();

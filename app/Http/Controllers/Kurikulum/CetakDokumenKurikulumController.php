@@ -13,6 +13,7 @@ use App\Models\Prota;
 use App\Models\School;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
+use App\Services\Pdf\CurriculumPdfStyle;
 use App\Services\PekanEfektifService;
 use App\Services\ProsemService;
 use App\Services\TeachingHoursResolver;
@@ -186,8 +187,15 @@ class CetakDokumenKurikulumController extends Controller
         $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
+        $fontDir = storage_path('fonts');
+        if (! is_dir($fontDir)) {
+            mkdir($fontDir, 0755, true);
+        }
+        $options->setFontDir($fontDir);
+        $options->setFontCache($fontDir);
 
         $dompdf = new Dompdf($options);
+        app(CurriculumPdfStyle::class)->registerCambria($dompdf);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', $orientation);
         $dompdf->render();

@@ -78,7 +78,11 @@
                         @endforeach
                         <td class="center"><strong>{{ number_format((float) $assessment->average, 2) }}</strong></td>
                         <td class="center">{{ $assessment->predicate ?? '—' }}</td>
-                        <td class="small">{{ $assessment->notes ?: '—' }}</td>
+                        <td class="small">
+                            {{ $assessment->notes ?: '—' }}
+                            @if($assessment->evidence_note)<br><span class="muted">Bukti: {{ $assessment->evidence_note }}</span>@endif
+                            @if($assessment->evidence_url)<br><span class="muted">{{ $assessment->evidence_url }}</span>@endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="{{ 4 + count($dimensions) }}" class="center muted">Belum ada penilaian.</td></tr>

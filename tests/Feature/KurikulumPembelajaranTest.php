@@ -1064,6 +1064,8 @@ class KurikulumPembelajaranTest extends TestCase
                 'student_id' => $student->id,
                 'scores' => ['hubbulbiah' => 4, 'hubbunnaas' => 3],
                 'notes' => 'Aktif dan peduli lingkungan.',
+                'evidence_note' => 'Foto aksi kebersihan dan karya poster.',
+                'evidence_url' => 'https://contoh.test/bukti-projek',
             ])
             ->assertRedirect();
 
@@ -1072,6 +1074,7 @@ class KurikulumPembelajaranTest extends TestCase
             'student_id' => $student->id,
             'average' => 3.50,
             'predicate' => 'Sangat Baik',
+            'evidence_note' => 'Foto aksi kebersihan dan karya poster.',
         ]);
 
         $this->actingAs($this->kurikulum)

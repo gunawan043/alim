@@ -93,9 +93,17 @@
                                         </select>
                                     </div>
                                 @endforeach
-                                <div class="mb-3">
+                                <div class="mb-2">
                                     <label class="form-label">Catatan</label>
                                     <textarea name="notes" id="assessmentNotes" rows="2" class="form-control" maxlength="2000"></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Bukti / Catatan Evidence</label>
+                                    <textarea name="evidence_note" id="assessmentEvidenceNote" rows="2" class="form-control" maxlength="3000" placeholder="Deskripsi foto, karya, atau bukti projek..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">URL Bukti <span class="text-muted small">(opsional)</span></label>
+                                    <input type="url" name="evidence_url" id="assessmentEvidenceUrl" class="form-control" maxlength="500" placeholder="https://...">
                                 </div>
                                 <button class="btn btn-primary w-100"><i class="ri-save-line me-1"></i>Simpan Penilaian</button>
                             </form>
@@ -126,7 +134,7 @@
                         <tbody>
                             @forelse($assessments as $assessment)
                                 @php
-                                    $editPayload = ['student_id' => $assessment->student_id, 'scores' => $assessment->scores ?? [], 'notes' => $assessment->notes];
+                                    $editPayload = ['student_id' => $assessment->student_id, 'scores' => $assessment->scores ?? [], 'notes' => $assessment->notes, 'evidence_note' => $assessment->evidence_note, 'evidence_url' => $assessment->evidence_url];
                                 @endphp
                                 <tr>
                                     <td><div class="fw-medium">{{ $assessment->student?->name ?? '—' }}</div><div class="text-muted small">{{ $assessment->student?->nis }}</div></td>
@@ -135,7 +143,15 @@
                                     @endforeach
                                     <td class="text-center fw-bold">{{ number_format((float) $assessment->average, 2) }}</td>
                                     <td><span class="badge {{ (float) $assessment->average >= 3.5 ? 'bg-success-subtle text-success' : ((float) $assessment->average >= 2.5 ? 'bg-info-subtle text-info' : ((float) $assessment->average >= 1.5 ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')) }}">{{ $assessment->predicate ?? '—' }}</span></td>
-                                    <td class="small text-muted">{{ $assessment->notes ?: '—' }}</td>
+                                    <td class="small text-muted">
+                                        {{ $assessment->notes ?: '—' }}
+                                        @if($assessment->evidence_note)
+                                            <div class="mt-1"><i class="ri-attachment-2 me-1"></i>{{ \Illuminate\Support\Str::limit($assessment->evidence_note, 60) }}</div>
+                                        @endif
+                                        @if($assessment->evidence_url)
+                                            <a href="{{ $assessment->evidence_url }}" target="_blank" class="small">Buka bukti</a>
+                                        @endif
+                                    </td>
                                     @if($canManage)
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm">
@@ -180,6 +196,10 @@
             });
             var notes = document.getElementById('assessmentNotes');
             if (notes) notes.value = data.notes || '';
+            var evidenceNote = document.getElementById('assessmentEvidenceNote');
+            if (evidenceNote) evidenceNote.value = data.evidence_note || '';
+            var evidenceUrl = document.getElementById('assessmentEvidenceUrl');
+            if (evidenceUrl) evidenceUrl.value = data.evidence_url || '';
             document.getElementById('assessmentForm')?.scrollIntoView({behavior: 'smooth', block: 'start'});
         }
     </script>

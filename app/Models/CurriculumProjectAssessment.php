@@ -27,6 +27,8 @@ class CurriculumProjectAssessment extends Model
         'average',
         'predicate',
         'notes',
+        'evidence_note',
+        'evidence_url',
         'assessed_by',
     ];
 
