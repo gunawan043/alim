@@ -18,6 +18,8 @@
         @slot('title') Daftar Paket Soal @endslot
     @endcomponent
 
+    <x-soal-flow current="paket" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
@@ -112,6 +114,9 @@
                             </p>
                         </div>
                         <div class="col-sm-auto">
+                            <a href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}" class="btn btn-success mb-2">
+                                <i class="ri-add-line me-1"></i>Buat Paket dari Kisi-kisi
+                            </a>
                             <form class="d-flex flex-wrap gap-2 align-items-center">
                                 @if(request()->filled('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
                                 <select name="jenis_ujian" class="form-select" style="width:180px">

@@ -78,7 +78,8 @@
     $isBendahara    = $hasJabatan('Bendahara Sekolah');
     $isKoorKurik    = $hasJabatan('Koordinator Kurikulum');
     $isKoorKesiswa  = $hasJabatan('Koordinator Kesiswaan');
-    $isKoorEkskul   = $hasJabatan('Koordinator Ekstrakurikuler');
+    $isKoorEkskul   = $hasJabatan('Koordinator Ekstrakurikuler')
+        || $hasTugas('Koordinator Ekstrakurikuler');
 
     $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruTahfidz;
     $isAdminTU      = $isKepalaTU || $isTU;
@@ -130,7 +131,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ $currentRoute === 'root' ? ' active' : '' }}"
        href="{{ route('root') }}">
-        <i class="ri-home-6-line"></i><span>Dashboard</span>
+        <i class="ri-home-6-line"></i><span>Beranda</span>
     </a>
 </li>
 
@@ -187,7 +188,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.kepala-satuan-pendidikan']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.kepala-satuan-pendidikan', ['userId' => $userId]) }}">
-        <i class="ri-vip-crown-line"></i><span>Dashboard</span>
+        <i class="ri-vip-crown-line"></i><span>Dashboard Kepala</span>
     </a>
 </li>
 @endif
@@ -196,7 +197,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.wakil-kepala']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.wakil-kepala', ['userId' => $userId]) }}">
-        <i class="ri-shield-star-line"></i><span>Dashboard</span>
+        <i class="ri-shield-star-line"></i><span>Dashboard Wakil</span>
     </a>
 </li>
 @endif
@@ -205,7 +206,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.guru']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.guru', ['userId' => $userId]) }}">
-        <i class="ri-user-star-line"></i><span>Dashboard</span>
+        <i class="ri-user-star-line"></i><span>Dashboard Guru</span>
     </a>
 </li>
 @endif
@@ -223,7 +224,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.ka-tata-usaha']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.ka-tata-usaha', ['userId' => $userId]) }}">
-        <i class="ri-admin-line"></i><span>Dashboard</span>
+        <i class="ri-admin-line"></i><span>Dashboard Kepala TU</span>
     </a>
 </li>
 @endif
@@ -232,7 +233,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.staf-tata-usaha']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.staf-tata-usaha', ['userId' => $userId]) }}">
-        <i class="ri-file-user-line"></i><span>Dashboard</span>
+        <i class="ri-file-user-line"></i><span>Dashboard Tata Usaha</span>
     </a>
 </li>
 @endif
@@ -241,7 +242,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.bendahara']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.bendahara', ['userId' => $userId]) }}">
-        <i class="ri-money-dollar-circle-line"></i><span>Dashboard</span>
+        <i class="ri-money-dollar-circle-line"></i><span>Dashboard Bendahara</span>
     </a>
 </li>
 @endif
@@ -250,7 +251,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-kurikulum']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-kurikulum', ['userId' => $userId]) }}">
-        <i class="ri-book-mark-line"></i><span>Dashboard</span>
+        <i class="ri-book-mark-line"></i><span>Dashboard Kurikulum</span>
     </a>
 </li>
 @endif
@@ -259,7 +260,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-kesiswaan']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-kesiswaan', ['userId' => $userId]) }}">
-        <i class="ri-group-line"></i><span>Dashboard</span>
+        <i class="ri-group-line"></i><span>Dashboard Kesiswaan</span>
     </a>
 </li>
 @endif
@@ -268,7 +269,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-ekskul']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-ekskul', ['userId' => $userId]) }}">
-        <i class="ri-basketball-line"></i><span>Dashboard</span>
+        <i class="ri-basketball-line"></i><span>Dashboard Ekstrakurikuler</span>
     </a>
 </li>
 @endif
@@ -277,7 +278,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.wali-kelas']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.wali-kelas', ['userId' => $userId]) }}">
-        <i class="ri-parent-line"></i><span>Dashboard</span>
+        <i class="ri-parent-line"></i><span>Dashboard Wali Kelas</span>
     </a>
 </li>
 @endif
@@ -286,7 +287,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-guru']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-guru', ['userId' => $userId]) }}">
-        <i class="ri-team-line"></i><span>Dashboard</span>
+        <i class="ri-team-line"></i><span>Dashboard Koordinator Mapel</span>
     </a>
 </li>
 @endif
@@ -295,7 +296,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-lab']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-lab', ['userId' => $userId]) }}">
-        <i class="ri-flask-line"></i><span>Dashboard</span>
+        <i class="ri-flask-line"></i><span>Dashboard Laboratorium</span>
     </a>
 </li>
 @endif
@@ -304,7 +305,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-sarpras']) ? ' active' : '' }}"
        href="{{ route('user.dashboard.koordinator-sarpras', ['userId' => $userId]) }}">
-        <i class="ri-tools-line"></i><span>Dashboard</span>
+        <i class="ri-tools-line"></i><span>Dashboard Koordinator Sarpras</span>
     </a>
 </li>
 @endif
@@ -897,15 +898,16 @@
     <li class="menu-title"><span>Bank Soal &amp; Asesmen</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
            href="#sp_asesmen" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
+           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
            aria-controls="sp_asesmen">
             <i class="ri-file-edit-line"></i><span>Bank Soal &amp; Asesmen</span><span class="menu-arrow"></span>
         </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
+        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
              id="sp_asesmen">
             <ul class="nav nav-sm flex-column">
+                <li class="nav-item"><div class="px-3 py-1 text-muted" style="font-size:.68rem;line-height:1.25">Alur: kisi-kisi → input soal → paket → validasi → cetak</div></li>
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
                        href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}">
@@ -913,15 +915,9 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.soal.']) ? ' active' : '' }}"
                        href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
                         Bank Soal &amp; Input Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
-                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-                        Repository Soal
                     </a>
                 </li>
                 <li class="nav-item">
@@ -931,9 +927,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
+                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
+                        Repository Soal
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
                        href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
-                        Paket Soal Sumatif
+                        Paket &amp; Validasi Soal
                     </a>
                 </li>
                 @if($showAll || $isAdminTU)
@@ -1101,7 +1103,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 7 — EKSTRAKURIKULER
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isKoorEkskul || $isPembinaEkskul || $isAdminTU) && menu_allowed('ekstrakurikuler'))
+@if(($showAll || $isStruktural || $isKoorEkskul || $isPembinaEkskul || $isAdminTU) && menu_allowed('ekstrakurikuler'))
     <li class="menu-title"><span>Ekstrakurikuler</span></li>
 
     <li class="nav-item">
@@ -1111,12 +1113,6 @@
         </a>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
-           href="{{ route('user.kalender-kegiatan.akademik', ['userId' => $userId]) }}">
-            <i class="ri-calendar-event-line"></i><span>Agenda Kegiatan Ekskul</span>
-        </a>
-    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -1350,12 +1346,7 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Referensi</span></li>
 
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
-       href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">
-        <i class="ri-calendar-event-line"></i><span>Kalender Pendidikan</span>
-    </a>
-</li>
+{{-- Kalender Pendidikan sudah tersedia di submenu Kalender Akademik. --}}
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 14 — LAPORAN (Kepala, Wakil, Kepala TU)

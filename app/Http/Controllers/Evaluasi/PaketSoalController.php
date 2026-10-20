@@ -665,6 +665,62 @@ class PaketSoalController extends Controller
     /**
      * Kartu Soal (web) — satu baris per butir soal paket.
      */
+    public function naskah(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildNaskahData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.naskah', $data + ['userId' => $userId]);
+    }
+
+    public function naskahCetak(Request $request, string $userId, string $paketUuid)
+    {
+        $data = $this->buildNaskahData($request, $paketUuid);
+
+        return view('evalusi.paket-soal.naskah-cetak', $data);
+    }
+
+    /**
+     * Data naskah soal untuk siswa: tanpa kunci jawaban/pembahasan.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildNaskahData(Request $request, string $paketUuid): array
+    {
+        $paket = PaketSoal::with([
+            'kisiKisi.subject',
+            'kisiKisi.gradeLevel',
+            'kisiKisi.academicYear',
+        ])->findOrFail($paketUuid);
+
+        $this->authorizePaket($request, $paket, false);
+
+        $rows = $paket->items()
+            ->with('soal')
+            ->orderBy('urutan')
+            ->get()
+            ->map(function (PaketSoalItem $item) {
+                $konten = $item->kontenFinal();
+
+                return [
+                    'nomor' => $konten['nomor'] ?? $item->urutan,
+                    'jenis' => $konten['jenis'] ?? $item->soal?->tipe_soal,
+                    'wacana' => $konten['wacana'] ?? null,
+                    'pertanyaan' => (string) ($konten['pertanyaan'] ?? ''),
+                    'opsi' => collect($konten['opsi'] ?? [])->values()->all(),
+                ];
+            });
+
+        $school = $paket->kisiKisi?->school_id
+            ? School::find($paket->kisiKisi->school_id)
+            : null;
+
+        return [
+            'paket' => $paket,
+            'rows' => $rows,
+            'school' => $school,
+        ];
+    }
+
     public function kartuSoal(Request $request, string $userId, string $paketUuid)
     {
         $data = $this->buildKartuSoalData($request, $paketUuid);

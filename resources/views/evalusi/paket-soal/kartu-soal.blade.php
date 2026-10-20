@@ -8,6 +8,8 @@
         @slot('title') Kartu Soal @endslot
     @endcomponent
 
+    <x-soal-flow current="cetak" />
+
     <div class="card mb-3">
         <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>

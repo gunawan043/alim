@@ -9,6 +9,8 @@
         @slot('title') Buat dari Kisi-kisi @endslot
     @endcomponent
 
+    <x-soal-flow current="paket" />
+
     <!-- Kisi-kisi info -->
     <div class="card mb-3">
         <div class="card-header bg-success text-white">

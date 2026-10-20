@@ -47,15 +47,13 @@ class RoleMiddleware
 
         if ($bag === null) {
             $this->logSnapshotMissing($request, $user, $scopeKey, $roles);
-
-            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
-        }
-
-        // Snapshot-based permission check (preferred)
-        $manager = app(AuthorizationManager::class);
-        foreach ($roles as $role) {
-            if ($manager->canPermission($bag, $role)) {
-                return $next($request);
+        } else {
+            // Snapshot-based permission check (preferred).
+            // $roles dapat berisi nama permission snapshot ATAU nama role.
+            foreach ($roles as $role) {
+                if (in_array($role, $bag->getPermissions(), true)) {
+                    return $next($request);
+                }
             }
         }
 

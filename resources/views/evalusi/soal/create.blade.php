@@ -12,6 +12,8 @@
         @slot('title') Buat Soal Baru @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" />
+
     <form method="POST" action="{{ route('user.soal.store', ['userId' => $userId, 'bankId' => $bank->id]) }}">
         @csrf
 

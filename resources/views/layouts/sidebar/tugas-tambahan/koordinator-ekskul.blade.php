@@ -26,15 +26,8 @@
 
 <li class="menu-title"><span>Koordinator Ekstrakurikuler</span></li>
 
-{{-- 1. Daftar Ekstrakurikuler --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.index', 'waka.ekstrakurikuler.show']) ? ' active' : '' }}"
-       href="{{ route('waka.ekstrakurikuler.index') }}">
-        <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
-    </a>
-</li>
-
-{{-- 2. Tambah Ekskul --}}
+{{-- Daftar & agenda ekskul sudah tersedia di sidebar Satuan Pendidikan. --}}
+{{-- 1. Tambah Ekskul --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.create']) ? ' active' : '' }}"
        href="{{ route('waka.ekstrakurikuler.create') }}">
@@ -42,7 +35,7 @@
     </a>
 </li>
 
-{{-- 3. Prestasi Ekskul --}}
+{{-- 2. Prestasi Ekskul --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' active' : '' }}"
        href="{{ $koorEksUrl('user.student-achievement.index') }}">
@@ -50,15 +43,8 @@
     </a>
 </li>
 
-{{-- 4. Agenda Kegiatan --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
-       href="{{ $koorEksUrl('user.kalender-kegiatan.akademik') }}">
-        <i class="ri-calendar-event-line"></i><span>Agenda Kegiatan</span>
-    </a>
-</li>
-
-{{-- 5. Laporan Ekskul --}}
+{{-- Daftar & agenda ekskul sudah tersedia di sidebar Satuan Pendidikan. --}}
+{{-- 3. Laporan Ekskul --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.santri']) ? ' active' : '' }}"
        href="{{ $koorEksUrl('user.laporan.santri') }}">

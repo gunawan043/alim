@@ -8,6 +8,8 @@
         @slot('title') Validasi Soal @endslot
     @endcomponent
 
+    <x-soal-flow current="cetak" />
+
     @php
         $jenisLabel = strtoupper(str_replace('_', ' ', (string) ($jenisUjian ?? '-')));
         $semesterLabel = strtoupper((string) ($semester ?? '-'));

@@ -9,6 +9,8 @@
         @slot('title') {{ $kisi->judul }} @endslot
     @endcomponent
 
+    <x-soal-flow current="kisi" />
+
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between">
             <div>

@@ -9,6 +9,8 @@
         @slot('title') {{ $paket->judul }} @endslot
     @endcomponent
 
+    <x-soal-flow current="paket" />
+
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between">
             <div>
@@ -39,6 +41,9 @@
                 </form>
                 @endif
 
+                <a href="{{ route('user.paket-soal.naskah', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-primary">
+                    <i class="ri-printer-line"></i> Naskah & Cetak
+                </a>
                 <a href="{{ route('user.paket-soal.kartu-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-outline-primary">
                     <i class="ri-file-list-3-line"></i> Kartu Soal
                 </a>

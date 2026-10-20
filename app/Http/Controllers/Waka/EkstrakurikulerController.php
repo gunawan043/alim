@@ -19,7 +19,8 @@ class EkstrakurikulerController extends Controller
             $baseQuery->where('school_id', $schoolId);
         }
 
-        $query = (clone $baseQuery)->withCount(['anggotaAktif as jumlah_anggota'])->with('gtk:id,name', 'gtk.latestEmployment:id,nupy');
+        $query = (clone $baseQuery)->withCount(['anggotaAktif as jumlah_anggota'])
+            ->with(['gtk:id,user_id', 'gtk.user:id,name', 'gtk.latestEmployment:id,user_id,nupy']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -35,7 +36,7 @@ class EkstrakurikulerController extends Controller
         }
 
         $ekskulList = $query->orderBy('nama')->paginate(15)->withQueryString();
-        $gtkProfiles = GtkProfile::whereNotNull('name')->orderBy('name')->get();
+        $gtkProfiles = $this->gtkOptions($schoolId);
 
         $statistics = [
             'total' => (clone $baseQuery)->count(),
@@ -52,10 +53,7 @@ class EkstrakurikulerController extends Controller
     public function create(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $gtks = [];
-        if ($schoolId) {
-            $gtks = GtkProfile::where('school_id', $schoolId)->orderBy('name')->get();
-        }
+        $gtks = $this->gtkOptions($schoolId);
 
         return view('waka.ekstrakurikuler.create', compact('gtks'));
     }
@@ -91,7 +89,7 @@ class EkstrakurikulerController extends Controller
     public function show(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $query = Ekstrakurikuler::with(['gtk:id,name', 'gtk.latestEmployment:id,nupy'])
+        $query = Ekstrakurikuler::with(['gtk:id,user_id', 'gtk.user:id,name', 'gtk.latestEmployment:id,user_id,nupy'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $ekskul = $query->findOrFail($id);
         $anggota = EkstrakurikulerAnggota::with(['student:id,name,nisn', 'ekstrakurikuler:id,nama'])
@@ -108,10 +106,7 @@ class EkstrakurikulerController extends Controller
         $query = Ekstrakurikuler::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $ekskul = $query->findOrFail($id);
 
-        $gtks = [];
-        if ($schoolId) {
-            $gtks = GtkProfile::where('school_id', $schoolId)->orderBy('name')->get();
-        }
+        $gtks = $this->gtkOptions($schoolId);
 
         return view('waka.ekstrakurikuler.edit', compact('ekskul', 'gtks'));
     }
@@ -154,5 +149,22 @@ class EkstrakurikulerController extends Controller
 
         return redirect()->route('waka.ekstrakurikuler.index')
             ->with('success', 'Ekstrakurikuler berhasil dihapus.');
+    }
+
+    private function gtkOptions(?string $schoolId)
+    {
+        $query = GtkProfile::query()
+            ->with(['user:id,name', 'latestEmployment:id,user_id,nupy']);
+
+        if ($schoolId) {
+            $userIds = \App\Models\GtkEmployment::query()
+                ->where('school_id', $schoolId)
+                ->pluck('user_id');
+            $query->whereIn('user_id', $userIds);
+        }
+
+        return $query->get()
+            ->sortBy(fn ($gtk) => mb_strtolower((string) $gtk->user?->name))
+            ->values();
     }
 }

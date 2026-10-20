@@ -141,6 +141,14 @@ class GtkProfile extends Model
         return (string) ($this->user?->name ?? '-');
     }
 
+    /**
+     * Alias `name` untuk view lama yang masih memakai $gtk->name.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->nama;
+    }
+
     public function latestEmployment()
     {
         return $this->hasOne(GtkEmployment::class, 'user_id', 'user_id')

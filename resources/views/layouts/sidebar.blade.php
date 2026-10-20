@@ -107,9 +107,29 @@
 
     $userJabatan = trim((string) ($userJabatan ?? ''));
 
-    $userTugas = method_exists($user, 'tugasTambahan')
-        ? $user->tugasTambahan->pluck('nama')->toArray()
-        : [];
+    // Tugas tambahan dapat berasal dari GtkAdditionalTask (SK) maupun
+    // OtherTeacherTask (penugasan operasional). Gabungkan keduanya.
+    $userTugas = collect();
+
+    if ($user && method_exists($user, 'tugasTambahan')) {
+        $userTugas = $userTugas->merge($user->tugasTambahan->pluck('nama_tugas'));
+    }
+
+    if ($user && class_exists(\App\Models\OtherTeacherTask::class)) {
+        $userTugas = $userTugas->merge(
+            \App\Models\OtherTeacherTask::query()
+                ->where('teacher_id', $user->id)
+                ->where('is_active', 1)
+                ->pluck('task_name')
+        );
+    }
+
+    $userTugas = $userTugas
+        ->filter()
+        ->map(fn ($tugas) => trim((string) $tugas))
+        ->unique()
+        ->values()
+        ->toArray();
 
     // ── Helper: cek role / jabatan / tugas (case-insensitive untuk jabatan) ─
     $hasRole    = fn ($role)  => in_array($role, $userRoles, true);

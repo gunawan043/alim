@@ -1527,6 +1527,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{paketUuid}/distribute', [PaketSoalController::class, 'distribute'])->name('distribute');
                 Route::put('/{paketUuid}/komposisi', [PaketSoalController::class, 'simpanKomposisi'])->name('komposisi.simpan');
                 Route::post('/{paketUuid}/komposisi/generate', [PaketSoalController::class, 'generateKomposisi'])->name('komposisi.generate');
+                Route::get('/{paketUuid}/naskah', [PaketSoalController::class, 'naskah'])->name('naskah');
+                Route::get('/{paketUuid}/naskah/cetak', [PaketSoalController::class, 'naskahCetak'])->name('naskah.cetak');
                 Route::get('/{paketUuid}/kartu-soal', [PaketSoalController::class, 'kartuSoal'])->name('kartu-soal');
                 Route::get('/{paketUuid}/kartu-soal/cetak', [PaketSoalController::class, 'kartuSoalCetak'])->name('kartu-soal.cetak');
                 Route::get('/{paketUuid}/validasi-soal', [PaketSoalController::class, 'validasiSoal'])->name('validasi-soal');
@@ -3137,8 +3139,8 @@ Route::domain('wadir1.'.env('APP_DOMAIN', 'localhost'))
 | WAKA / ADMIN TU SUBDOMAIN
 |--------------------------------------------------------------------------
 */
-Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
-    ->middleware(['auth', 'role:Admin Tata Usaha,Wakil Kepala Sekolah,Admin Sarpras', 'school.context'])
+Route::prefix('waka')
+    ->middleware(['auth', 'role:Satuan Pendidikan|Super Admin', 'school.context'])
     ->name('waka.')
     ->group(function () {
         Route::get('/', [WakaController::class, 'dashboard'])->name('dashboard');
@@ -3178,23 +3180,27 @@ Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
         Route::get('/hafalan-hadits', fn () => redirect()->route('user.student-achievement.index', ['userId' => auth()->user()->id])->with('achievement_type', 'hafalan_hadits'))->name('hafalan-hadits');
 
         // ── EKSTRAKURIKULER ──────────────────────────────────────
-        Route::resource('ekstrakurikuler', EkstrakurikulerController::class);
-        Route::post('ekstrakurikuler/{ekstrakurikuler}/anggota', [EkstrakurikulerAnggotaController::class, 'store'])
-            ->name('ekstrakurikuler.anggota.store');
-        Route::put('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'update'])
-            ->name('ekstrakurikuler.anggota.update');
-        Route::delete('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'destroy'])
-            ->name('ekstrakurikuler.anggota.destroy');
+        Route::middleware('satuan.feature:ekstrakurikuler')->group(function () {
+            Route::resource('ekstrakurikuler', EkstrakurikulerController::class);
+            Route::post('ekstrakurikuler/{ekstrakurikuler}/anggota', [EkstrakurikulerAnggotaController::class, 'store'])
+                ->name('ekstrakurikuler.anggota.store');
+            Route::put('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'update'])
+                ->name('ekstrakurikuler.anggota.update');
+            Route::delete('ekstrakurikuler/{ekstrakurikuler}/anggota/{id}', [EkstrakurikulerAnggotaController::class, 'destroy'])
+                ->name('ekstrakurikuler.anggota.destroy');
+        });
 
         // ── SUPERVISI ───────────────────────────────────────────
-        Route::resource('supervisi', SupervisiController::class);
+        Route::middleware('satuan.feature:supervisi')->group(function () {
+            Route::resource('supervisi', SupervisiController::class);
 
-        Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
-        Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
-        Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+            Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
+            Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
+            Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+        });
 
         // ── PENGATURAN INSTRUMEN SUPERVISI (bagian → item + poin) ──
-        Route::prefix('supervisi-instrumen')->name('supervisi-instrumen.')->group(function () {
+        Route::prefix('supervisi-instrumen')->middleware('satuan.feature:supervisi')->name('supervisi-instrumen.')->group(function () {
             Route::get('/', [SupervisiInstrumenController::class, 'index'])->name('index');
             Route::post('/', [SupervisiInstrumenController::class, 'store'])->name('store');
             Route::get('/{id}', [SupervisiInstrumenController::class, 'edit'])->name('edit');
@@ -3209,18 +3215,18 @@ Route::domain('waka.'.env('APP_DOMAIN', 'localhost'))
             Route::post('/item/{itemId}/pindah', [SupervisiInstrumenController::class, 'moveItem'])->name('item.move');
         });
 
-        // ── TEMPLATE SURAT ──────────────────────────────────────
-        Route::get('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'index'])->name('surat-template.index');
-        Route::post('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'store'])->name('surat-template.store');
-        Route::put('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'update'])->name('surat-template.update');
-        Route::delete('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'destroy'])->name('surat-template.destroy');
+        // ── SURAT MENYURAT ──────────────────────────────────────
+        Route::middleware('satuan.feature:surat')->group(function () {
+            Route::get('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'index'])->name('surat-template.index');
+            Route::post('surat-template', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'store'])->name('surat-template.store');
+            Route::put('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'update'])->name('surat-template.update');
+            Route::delete('surat-template/{id}', [\App\Http\Controllers\Waka\SuratTemplateController::class, 'destroy'])->name('surat-template.destroy');
 
-        // ── SURAT MASUK ─────────────────────────────────────────
-        Route::resource('surat-masuk', SuratMasukController::class);
+            Route::resource('surat-masuk', SuratMasukController::class);
 
-        // ── SURAT KELUAR ────────────────────────────────────────
-        Route::get('surat-keluar/{id}/cetak', [SuratKeluarController::class, 'cetak'])->name('surat-keluar.cetak');
-        Route::resource('surat-keluar', SuratKeluarController::class);
+            Route::get('surat-keluar/{id}/cetak', [SuratKeluarController::class, 'cetak'])->name('surat-keluar.cetak');
+            Route::resource('surat-keluar', SuratKeluarController::class);
+        });
 
         // ── PEKAN EFEKTIF ───────────────────────────────────────
         Route::post('pekan-efektif/generate', [PekanEfektifController::class, 'generate'])

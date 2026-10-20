@@ -11,6 +11,8 @@
         @slot('title') {{ $bank->nama }} @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
@@ -169,8 +171,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="#" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#soalDetailModal{{ $loop->iteration }}">
-                                                    <i class="ri-eye-line"></i> Lihat
+                                                <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $bank->id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary" title="Detail / Edit Soal">
+                                                    <i class="ri-pencil-line"></i> Detail
                                                 </a>
                                             </td>
                                         </tr>

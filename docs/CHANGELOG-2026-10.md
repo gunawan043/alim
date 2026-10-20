@@ -2666,6 +2666,44 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - tab kedua menerima peringatan perubahan dari tab pertama;
   - JavaScript keempat halaman lolos `node --check`.
 
+## 224. Satuan Pendidikan: Sidebar, Supervisi, Ekstrakurikuler & Alur Soal
+
+- **Perbaikan tautan `about:blank#blocked`**
+  - Route Waka tidak lagi memakai subdomain `waka.<APP_DOMAIN>`.
+  - Route dipindahkan ke path `/waka/...` pada domain utama, sehingga tetap bisa dibuka di localhost/IP dan produksi.
+  - Nama route `waka.*` dipertahankan agar seluruh view/controller lama tetap berjalan.
+- **Akses sesuai jabatan**
+  - Role yang dipakai route diselaraskan menjadi `Satuan Pendidikan`.
+  - Middleware `satuan.feature` membatasi:
+    - Supervisi/Instrumen: Kepala, Wakil, Koordinator/Tim Kurikulum, Kepala TU/TU.
+    - Ekstrakurikuler: Kepala, Wakil, Koordinator/Pembina Ekskul, Kepala TU/TU.
+    - Surat Menyurat: Kepala, Wakil, Kepala TU/TU.
+  - Guru biasa yang membuka URL langsung mendapat `403`.
+  - Middleware role diperbaiki dari pemanggilan `canPermission()` yang tidak ada menjadi pengecekan permission snapshot + fallback role.
+- **Sidebar Satuan Pendidikan**
+  - Halaman Waka memakai sidebar utama Satuan Pendidikan, bukan sidebar Waka terpisah.
+  - Dashboard diberi label per peran agar tidak tampil berulang dengan nama sama.
+  - Menu Ekstrakurikuler, Kalender, Agenda, dan Dashboard dideduplikasi.
+  - Tugas tambahan dibaca dari `GtkAdditionalTask` dan `OtherTeacherTask`, sehingga Koordinator/Pembina Ekskul benar-benar mendapat menu.
+  - Daftar/agenda ekskul di sidebar tugas tidak lagi mengulang menu utama.
+- **Alur Soal**
+  - Ditambahkan komponen stepper: Kisi-kisi → Bank & Input Soal → Paket & Validasi → Cetak Naskah.
+  - Kisi-kisi index punya aksi langsung **Buat Paket Soal**.
+  - Paket Soal index punya tombol **Buat Paket dari Kisi-kisi**.
+  - Bank Soal Detail sekarang punya aksi **Detail/Edit** (sebelumnya tombol Lihat tidak membuka modal).
+  - Ditambahkan halaman **Naskah Soal** dan **Cetak Naskah** tanpa kunci jawaban/pembahasan.
+  - Paket Soal dan halaman TU punya tombol menuju cetak naskah.
+  - Sidebar Bank Soal diurutkan sesuai alur dan diberi petunjuk alur.
+- **Perbaikan data Ekstrakurikuler**
+  - Query `GtkProfile` tidak lagi memakai kolom `name`/`school_id` yang tidak ada.
+  - Ditambahkan alias accessor `name` dari nama user untuk kompatibilitas view lama.
+- **Diuji**
+  - `/waka/supervisi`, `/waka/supervisi-instrumen`, `/waka/ekstrakurikuler`, `/waka/surat-masuk`: `200` untuk Wakil/Kepala TU, `403` untuk guru biasa.
+  - Sidebar sampel Wakil dan Koordinator Ekskul tidak memiliki tautan duplikat.
+  - Halaman Kisi-kisi, Bank Soal, Paket Soal, Naskah, dan Cetak Naskah merespons `200`.
+  - Cetak naskah berisi 72 blok pertanyaan, 93 opsi, tanpa kunci/pembahasan.
+  - Blade view berhasil di-cache.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

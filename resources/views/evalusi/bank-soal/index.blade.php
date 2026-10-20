@@ -16,6 +16,8 @@
         @slot('title') Daftar Bank Soal @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}

@@ -45,15 +45,8 @@
 </li>
 @endif
 
-{{-- 1. Ekskul Saya --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.index']) ? ' active' : '' }}"
-       href="{{ route('waka.ekstrakurikuler.index') }}">
-        <i class="ri-basketball-line"></i><span>Ekskul Saya</span>
-    </a>
-</li>
-
-{{-- 2. Absensi Anggota --}}
+{{-- Daftar ekskul sudah tersedia di sidebar Satuan Pendidikan. --}}
+{{-- 1. Absensi Anggota --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.index', 'user.absensi.harian.create']) ? ' active' : '' }}"
        href="{{ $pembinaEksUrl('user.absensi.harian.index') }}">
@@ -61,7 +54,7 @@
     </a>
 </li>
 
-{{-- 3. Prestasi Anggota --}}
+{{-- 2. Prestasi Anggota --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.student-achievements.', 'user.student-achievement.']) ? ' active' : '' }}"
        href="{{ $pembinaEksUrl('user.student-achievement.index') }}">
@@ -69,15 +62,8 @@
     </a>
 </li>
 
-{{-- 4. Agenda Kegiatan --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
-       href="{{ $pembinaEksUrl('user.kalender-kegiatan.akademik') }}">
-        <i class="ri-calendar-event-line"></i><span>Agenda Kegiatan</span>
-    </a>
-</li>
-
-{{-- 5. Jadwal Latihan (Soon) --}}
+{{-- Daftar ekskul sudah tersedia di sidebar Satuan Pendidikan. --}}
+{{-- 3. Jadwal Latihan (Soon) --}}
 <li class="nav-item">
     <a class="nav-link menu-link text-muted" href="#" onclick="return false"
        style="cursor:not-allowed">

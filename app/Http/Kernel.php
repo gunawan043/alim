@@ -127,6 +127,7 @@ class Kernel extends HttpKernel
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
         'sarpras.access' => EnsureSarprasAccess::class,
+        'satuan.feature' => \App\Http\Middleware\EnsureSatuanPendidikanFeature::class,
         'pos.api-key' => VerifyPosApiKey::class,
         'period.book' => EnsureBookPeriodWritable::class,
     ];

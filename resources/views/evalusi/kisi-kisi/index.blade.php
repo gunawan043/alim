@@ -24,6 +24,8 @@
         @slot('title') Daftar Kisi-kisi @endslot
     @endcomponent
 
+    <x-soal-flow current="kisi" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
@@ -194,6 +196,9 @@
                                     </td>
                                     <td class="small text-muted">{{ $kisi->created_at->format('d M Y') }}</td>
                                     <td class="text-end">
+                                        <a href="{{ route('user.paket-soal.create', ['userId' => $userId, 'kisiKisiId' => $kisi->id]) }}" class="btn btn-sm btn-soft-success" title="Buat Paket Soal">
+                                            <i class="ri-stack-line"></i>
+                                        </a>
                                         <a href="{{ route('user.kisi-kisi-soal.edit', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" class="btn btn-sm btn-soft-warning" title="Edit">
                                             <i class="ri-pencil-line"></i>
                                         </a>

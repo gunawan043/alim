@@ -12,6 +12,8 @@
         @slot('title') Edit Soal #{{ substr($soal->id, 0, 8) }} @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" />
+
     <form method="POST" id="soal-main-form" action="{{ route('user.soal.update', ['userId' => $userId, 'bankId' => $bank->id, 'id' => $soal->id]) }}">
         @csrf
         @method('PUT')

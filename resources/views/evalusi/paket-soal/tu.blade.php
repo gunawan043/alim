@@ -9,6 +9,8 @@
         @slot('title') Tata Usaha — Cetak & Perbanyak @endslot
     @endcomponent
 
+    <x-soal-flow current="cetak" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
@@ -70,6 +72,11 @@
                 </h2>
                 <div id="paket-{{ $paket->id }}" class="accordion-collapse collapse {{ $index === 0 ? 'show' : '' }}" data-bs-parent="#tuPaketAccordion">
                     <div class="accordion-body">
+                        <div class="mb-3">
+                            <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="ri-printer-line me-1"></i>Cetak Naskah Soal
+                            </a>
+                        </div>
                         <div class="row g-3">
                             <div class="col-lg-5">
                                 <h6 class="fw-semibold"><i class="ri-add-circle-line me-1"></i>Catat Perintah Cetak</h6>
