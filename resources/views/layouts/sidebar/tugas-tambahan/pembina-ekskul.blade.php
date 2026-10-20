@@ -18,10 +18,13 @@
 @php
     $showAll = $isSystemAdmin ?? false;
 
-    /* ── Ekskul yang dibina user ─────────────────────────────────────── */
-    $pembinaEkskul = \App\Models\Ekstrakurikuler::where('pembina_id', auth()->id())
-        ->where('is_active', true)
-        ->get();
+    /* ── Ekskul yang dibina user (gtk_profiles + status aktif) ──────── */
+    $pembinaProfileId = \App\Models\GtkProfile::where('user_id', auth()->id())->value('id');
+    $pembinaEkskul = $pembinaProfileId
+        ? \App\Models\Ekstrakurikuler::where('gtk_id', $pembinaProfileId)
+            ->where('status', 'aktif')
+            ->get()
+        : collect();
     $isActuallyPembina = $pembinaEkskul->isNotEmpty();
 
     $pembinaEksUrl = function (string $routeName, array $extra = []) {

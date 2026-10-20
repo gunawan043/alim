@@ -7,9 +7,11 @@ use App\Models\AcademicYear;
 use App\Models\GtkProfile;
 use App\Models\Supervisi;
 use App\Models\SupervisiInstrumen;
+use App\Models\SupervisiPengaturan;
 use App\Models\SupervisiPenilaian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupervisiController extends Controller
 {
@@ -37,6 +39,9 @@ class SupervisiController extends Controller
         if ($request->filled('academic_year_id')) {
             $query->where('academic_year_id', $request->academic_year_id);
         }
+        if ($request->filled('supervisor_id')) {
+            $query->where('observer_id', $request->supervisor_id);
+        }
         if ($request->filled('semester')) {
             $query->where('semester', $request->semester);
         }
@@ -55,23 +60,43 @@ class SupervisiController extends Controller
         $supervisiList = $query->orderBy('tanggal_supervisi', 'desc')->paginate(15)->withQueryString();
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
 
-        return view('waka.supervisi.index', compact('supervisiList', 'academicYears'));
+        $baseQuery = Supervisi::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
+        $statistics = [
+            'total' => (clone $baseQuery)->count(),
+            'terjadwal' => (clone $baseQuery)->where('status', Supervisi::STATUS_TERJADWAL)->count(),
+            'selesai' => (clone $baseQuery)->where('status', Supervisi::STATUS_SELESAI)->count(),
+            'avg_nilai' => (float) ((clone $baseQuery)->whereNotNull('nilai_akhir')->avg('nilai_akhir') ?? 0),
+        ];
+
+        $supervisorIds = (clone $baseQuery)->whereNotNull('observer_id')->distinct()->pluck('observer_id');
+        $supervisors = GtkProfile::query()
+            ->with('user:id,name')
+            ->whereIn('id', $supervisorIds)
+            ->get()
+            ->sortBy(fn ($gtk) => mb_strtolower((string) $gtk->user?->name))
+            ->values();
+
+        return view('waka.supervisi.index', compact('supervisiList', 'academicYears', 'statistics', 'supervisors'));
     }
 
     public function create(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $gtks = $this->gtkOptionsForSchool($schoolId);
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
+        $activeYearId = AcademicYear::where('is_active', true)->value('id');
+        $formOptions = $this->formOptions($schoolId, $activeYearId);
 
-        return view('waka.supervisi.create', compact('gtks', 'academicYears'));
+        return view('waka.supervisi.create', array_merge(
+            compact('academicYears', 'activeYearId'),
+            $formOptions
+        ));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'gtk_id' => 'nullable|exists:gtk_profiles,id',
-            'observer_id' => 'nullable|exists:gtk_profiles,id',
+            'gtk_id' => 'required|uuid|exists:gtk_profiles,id',
+            'observer_id' => 'required|uuid|exists:gtk_profiles,id|different:gtk_id',
             'gtk_name' => 'nullable|string|max:255',
             'observer_name' => 'nullable|string|max:255',
             'academic_year_id' => 'required|exists:academic_years,id',
@@ -93,6 +118,9 @@ class SupervisiController extends Controller
             return back()->withInput()->with('error', 'Konteks satuan pendidikan tidak ditemukan.');
         }
         $validated['school_id'] = $schoolId;
+
+        $this->validateSupervisorPair($validated);
+        $this->assertNoScheduleConflict($validated);
 
         // Kolom denormalisasi `gtk_name`/`observer_name` diisi dari relasi bila kosong,
         // karena gtk_profiles tidak menyimpan nama (nama ada di tabel users).
@@ -251,6 +279,138 @@ class SupervisiController extends Controller
         };
     }
 
+    /**
+     * Opsi form: supervisor dan guru dibatasi oleh pengaturan supervisor.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formOptions(?string $schoolId, ?string $yearId = null): array
+    {
+        $yearId = $yearId ?: AcademicYear::where('is_active', true)->value('id');
+
+        $settings = SupervisiPengaturan::query()
+            ->with([
+                'supervisor.user:id,name',
+                'supervisor.latestEmployment:id,user_id,nupy,jabatan',
+                'supervisee.user:id,name',
+                'supervisee.latestEmployment:id,user_id,nupy,jabatan',
+            ])
+            ->where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->get();
+
+        $hasSettings = $settings->isNotEmpty();
+
+        if ($hasSettings) {
+            $supervisorGtks = $settings->pluck('supervisor')->filter()->unique('id')->values();
+            $superviseeGtks = $settings->pluck('supervisee')->filter()->unique('id')->values();
+        } else {
+            $supervisorGtks = $this->gtkOptionsForSchool($schoolId);
+            $superviseeGtks = $supervisorGtks;
+        }
+
+        $supervisorPairs = [];
+        foreach ($settings as $setting) {
+            $supervisorPairs[$setting->supervisor_gtk_id][] = $setting->supervisee_gtk_id;
+        }
+
+        $currentProfileId = GtkProfile::where('user_id', auth()->id())->value('id');
+        $defaultSupervisorId = $supervisorGtks->contains('id', $currentProfileId)
+            ? $currentProfileId
+            : $supervisorGtks->first()?->id;
+
+        return compact(
+            'supervisorGtks',
+            'superviseeGtks',
+            'supervisorPairs',
+            'hasSettings',
+            'defaultSupervisorId'
+        );
+    }
+
+    /**
+     * Pastikan pasangan supervisor → guru memang diatur untuk tahun ajaran ini.
+     */
+    protected function validateSupervisorPair(array $data): void
+    {
+        $this->ensureGtkBelongsToSchool($data['school_id'], $data['observer_id']);
+        $this->ensureGtkBelongsToSchool($data['school_id'], $data['gtk_id']);
+
+        $settingsQuery = SupervisiPengaturan::query()
+            ->where('school_id', $data['school_id'])
+            ->where('academic_year_id', $data['academic_year_id'])
+            ->where('is_active', true);
+
+        if (! (clone $settingsQuery)->exists()) {
+            return;
+        }
+
+        $pairExists = (clone $settingsQuery)
+            ->where('supervisor_gtk_id', $data['observer_id'])
+            ->where('supervisee_gtk_id', $data['gtk_id'])
+            ->exists();
+
+        if (! $pairExists) {
+            throw ValidationException::withMessages([
+                'gtk_id' => 'Pasangan supervisor dan guru ini belum diatur. Buka Pengaturan Supervisor terlebih dahulu.',
+            ]);
+        }
+    }
+
+    /**
+     * Cegah supervisor/guru memiliki dua jadwal pada rentang waktu yang sama.
+     */
+    protected function assertNoScheduleConflict(array $data, ?string $ignoreId = null): void
+    {
+        $start = $data['jam_mulai'] ?? null;
+        $end = $data['jam_selesai'] ?? null;
+
+        if (! $start || ! $end) {
+            return;
+        }
+
+        $conflict = Supervisi::query()
+            ->where('school_id', $data['school_id'])
+            ->whereDate('tanggal_supervisi', $data['tanggal_supervisi'])
+            ->where('status', '!=', Supervisi::STATUS_DIBATALKAN)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->where(function ($q) use ($data) {
+                $q->where('observer_id', $data['observer_id'])
+                    ->orWhere('gtk_id', $data['gtk_id']);
+            })
+            ->where(function ($q) use ($start, $end) {
+                $q->where('jam_mulai', '<', $end)
+                    ->where('jam_selesai', '>', $start);
+            })
+            ->exists();
+
+        if ($conflict) {
+            throw ValidationException::withMessages([
+                'tanggal_supervisi' => 'Jadwal bentrok: supervisor atau guru yang dipilih sudah memiliki supervisi pada jam tersebut.',
+            ]);
+        }
+    }
+
+    protected function ensureGtkBelongsToSchool(string $schoolId, string $gtkProfileId): void
+    {
+        $userIds = GtkProfile::query()->whereKey($gtkProfileId)->pluck('user_id');
+        $belongsToSchool = app(\App\Models\GtkEmployment::class)::query()
+            ->where('school_id', $schoolId)
+            ->whereIn('user_id', $userIds)
+            ->exists()
+            || app(\App\Models\GtkWorkUnit::class)::query()
+                ->whereIn('user_id', $userIds)
+                ->whereHas('workUnit.school', fn ($q) => $q->where('id', $schoolId))
+                ->exists();
+
+        if (! $belongsToSchool) {
+            throw ValidationException::withMessages([
+                'gtk_id' => 'GTK yang dipilih tidak terdaftar pada satuan pendidikan ini.',
+            ]);
+        }
+    }
+
     protected function gtkOptionsForSchool(?string $schoolId)
     {
         if (! $schoolId) {
@@ -261,7 +421,13 @@ class SupervisiController extends Controller
         // NUPY diambil lewat accessor `latest_nupy` (lazy) agar nilainya benar.
         $userIds = \App\Models\GtkEmployment::query()
             ->where('school_id', $schoolId)
-            ->pluck('user_id');
+            ->pluck('user_id')
+            ->merge(
+                \App\Models\GtkWorkUnit::query()
+                    ->whereHas('workUnit.school', fn ($q) => $q->where('id', $schoolId))
+                    ->pluck('user_id')
+            )
+            ->unique();
 
         return GtkProfile::query()
             ->with('user:id,name')
@@ -294,10 +460,35 @@ class SupervisiController extends Controller
         $query = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $supervisi = $query->findOrFail($id);
 
-        $gtks = $this->gtkOptionsForSchool($schoolId);
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
+        $activeYearId = $supervisi->academic_year_id ?: AcademicYear::where('is_active', true)->value('id');
+        $formOptions = $this->formOptions($schoolId, $activeYearId);
 
-        return view('waka.supervisi.edit', compact('supervisi', 'gtks', 'academicYears'));
+        // Pastikan pasangan yang sedang diedit tetap tersedia meskipun
+        // pengaturannya sudah dinonaktifkan/diubah.
+        if ($supervisi->observer_id && ! $formOptions['supervisorGtks']->contains('id', $supervisi->observer_id)) {
+            $currentSupervisor = GtkProfile::with('user:id,name')->find($supervisi->observer_id);
+            if ($currentSupervisor) {
+                $formOptions['supervisorGtks']->push($currentSupervisor);
+            }
+        }
+        if ($supervisi->gtk_id && ! $formOptions['superviseeGtks']->contains('id', $supervisi->gtk_id)) {
+            $currentSupervisee = GtkProfile::with('user:id,name')->find($supervisi->gtk_id);
+            if ($currentSupervisee) {
+                $formOptions['superviseeGtks']->push($currentSupervisee);
+            }
+        }
+        if ($supervisi->observer_id && $supervisi->gtk_id) {
+            $formOptions['supervisorPairs'][$supervisi->observer_id] = array_values(array_unique(array_merge(
+                $formOptions['supervisorPairs'][$supervisi->observer_id] ?? [],
+                [$supervisi->gtk_id]
+            )));
+        }
+
+        return view('waka.supervisi.edit', array_merge(
+            compact('supervisi', 'academicYears', 'activeYearId'),
+            $formOptions
+        ));
     }
 
     public function update(Request $request, string $id)
@@ -306,8 +497,8 @@ class SupervisiController extends Controller
         $supervisi = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
 
         $validated = $request->validate([
-            'gtk_id' => 'nullable|exists:gtk_profiles,id',
-            'observer_id' => 'nullable|exists:gtk_profiles,id',
+            'gtk_id' => 'required|uuid|exists:gtk_profiles,id',
+            'observer_id' => 'required|uuid|exists:gtk_profiles,id|different:gtk_id',
             'gtk_name' => 'nullable|string|max:255',
             'observer_name' => 'nullable|string|max:255',
             'academic_year_id' => 'required|exists:academic_years,id',
@@ -323,6 +514,17 @@ class SupervisiController extends Controller
             'tindak_lanjut' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
         ]);
+
+        $validated['school_id'] = $schoolId;
+        $this->validateSupervisorPair($validated);
+        $this->assertNoScheduleConflict($validated, $supervisi->id);
+
+        if (empty($validated['gtk_name']) && ! empty($validated['gtk_id'])) {
+            $validated['gtk_name'] = GtkProfile::with('user')->find($validated['gtk_id'])?->user?->name;
+        }
+        if (empty($validated['observer_name']) && ! empty($validated['observer_id'])) {
+            $validated['observer_name'] = GtkProfile::with('user')->find($validated['observer_id'])?->user?->name;
+        }
 
         $supervisi->update($validated);
 

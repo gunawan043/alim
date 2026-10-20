@@ -26,6 +26,10 @@ class EkstrakurikulerController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('hari')) {
+            $query->where('hari', $request->hari);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

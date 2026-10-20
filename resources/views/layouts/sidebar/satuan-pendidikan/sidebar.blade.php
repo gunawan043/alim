@@ -1006,6 +1006,12 @@
                 <i class="ri-list-settings-line"></i><span>Instrumen Supervisi</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-pengaturan.']) ? ' active' : '' }}"
+               href="{{ route('waka.supervisi-pengaturan.index') }}">
+                <i class="ri-user-settings-line"></i><span>Pengaturan Supervisor</span>
+            </a>
+        </li>
     @endif
 
     @if($showAll || $isKoorMapel)

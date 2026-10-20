@@ -25,9 +25,14 @@
             <h4 class="mb-1">Daftar Ekstrakurikuler</h4>
             <p class="text-muted small mb-0">Kelola kegiatan ekstrakurikuler, pembina, dan anggotanya.</p>
         </div>
-        <a href="{{ route('waka.ekstrakurikuler.create') }}" class="btn btn-primary">
-            <i class="ri-add-line align-middle me-1"></i> Tambah Ekstrakurikuler
-        </a>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#filterEkskulModal">
+                <i class="ri-filter-3-line me-1"></i> Filter
+            </button>
+            <a href="{{ route('waka.ekstrakurikuler.create') }}" class="btn btn-primary">
+                <i class="ri-add-line align-middle me-1"></i> Tambah Ekstrakurikuler
+            </a>
+        </div>
     </div>
 
     {{-- STATISTIK --}}
@@ -110,15 +115,7 @@
                                 <span class="text-muted small ms-2">Kelola pembina, jadwal, dan anggota.</span>
                             </p>
                         </div>
-                        <div class="col-sm-auto">
-                            <form method="GET" action="{{ route('waka.ekstrakurikuler.index') }}" class="d-flex flex-wrap gap-2">
-                                @if(request()->filled('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
-                                <input type="text" name="search" value="{{ request('search') }}" class="form-control"
-                                       style="width:220px" placeholder="Nama, pembimbing, lokasi">
-                                <button type="submit" class="btn btn-primary"><i class="ri-search-line"></i></button>
-                                <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
-                            </form>
-                        </div>
+
                     </div>
                 </div>
 
@@ -188,11 +185,12 @@
                                         <a href="{{ route('waka.ekstrakurikuler.edit', $ekskul->id) }}" class="btn btn-sm btn-soft-warning" title="Edit">
                                             <i class="ri-pencil-line"></i>
                                         </a>
-                                        <form action="{{ route('waka.ekstrakurikuler.destroy', $ekskul->id) }}" method="POST" class="d-inline"
-                                              onsubmit="return confirm('Hapus ekstrakurikuler ini? Anggota yang terdaftar juga akan terhapus.')">
-                                            @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-soft-danger" title="Hapus"><i class="ri-delete-bin-line"></i></button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-soft-danger" title="Hapus"
+                                                data-bs-toggle="modal" data-bs-target="#deleteEkskulModal"
+                                                data-action="{{ route('waka.ekstrakurikuler.destroy', $ekskul->id) }}"
+                                                data-name="{{ $ekskul->nama }}">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
@@ -215,6 +213,49 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="filterEkskulModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="GET" action="{{ route('waka.ekstrakurikuler.index') }}">
+                    <div class="modal-header"><h5 class="modal-title"><i class="ri-filter-3-line me-1"></i>Filter Ekstrakurikuler</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Cari</label>
+                                <input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Nama, pembina, lokasi">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted mb-1">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="">Semua</option>
+                                    @foreach(['aktif' => 'Aktif', 'berhenti' => 'Berhenti'] as $key => $label)
+                                        <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted mb-1">Hari</label>
+                                <select name="hari" class="form-select">
+                                    <option value="">Semua</option>
+                                    @foreach(['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'] as $hari)
+                                        <option value="{{ $hari }}" {{ request('hari') === $hari ? 'selected' : '' }}>{{ $hari }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('waka.ekstrakurikuler.index') }}" class="btn btn-light">Reset</a>
+                        <button class="btn btn-primary"><i class="ri-filter-3-line me-1"></i>Terapkan Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form id="deleteEkskulForm" method="POST" action="" class="d-none">@csrf @method('DELETE')</form>
+    <x-modal-confirm id="deleteEkskulModal" icon="https://cdn.lordicon.com/tdrtiskw.json" primary-color="#f7b84b" secondary-color="#005981"
+        title="Hapus Ekstrakurikuler?" message="Ekstrakurikuler <strong id=&quot;deleteEkskulLabel&quot;>ini</strong> beserta anggota terdaftar akan dihapus." form-id="deleteEkskulForm" submit-label="Ya, Hapus" submit-icon="ri-delete-bin-line" submit-class="btn-danger" />
 @endsection
 
 @section('script')
@@ -223,5 +264,17 @@
         @if(session('success'))
             Swal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session('success') }}', timer: 2000 });
         @endif
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var modal = document.getElementById('deleteEkskulModal');
+            if (!modal) return;
+            modal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) return;
+                document.getElementById('deleteEkskulForm')?.setAttribute('action', trigger.dataset.action || '');
+                var label = document.getElementById('deleteEkskulLabel');
+                if (label) label.textContent = trigger.dataset.name || 'ini';
+            });
+        });
     </script>
 @endsection

@@ -20,44 +20,23 @@
                     <form action="{{ route('waka.supervisi.update', $supervisi->id) }}" method="POST" autocomplete="off">
                         @csrf @method('PUT')
 
-                        <h6 class="border-bottom pb-2 mb-3">GTK yang Disupervisi</h6>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Pilih GTK</label>
-                            <div class="col-sm-9">
-                                <select name="gtk_id" id="gtk_select" class="form-select">
-                                    <option value="">— Pilih GTK —</option>
-                                    @foreach($gtks as $gtk)
-                                        <option value="{{ $gtk->id }}"
-                                            data-name="{{ $gtk->user?->name }}"
-                                            {{ old('gtk_id', $supervisi->gtk_id)==$gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->user?->name }}{{ $gtk->latest_nupy ? ' | NUPY. '.$gtk->latest_nupy : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('gtk_id')<span class="text-danger">{{ $message }}</span>@enderror
+                        @if(! $hasSettings)
+                            <div class="alert alert-warning small">
+                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Semua GTK ditampilkan.
+                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
                             </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Nama GTK <span class="text-danger">*</span></label>
-                            <div class="col-sm-9">
-                                <input type="text" name="gtk_name" id="gtk_name" class="form-control" value="{{ old('gtk_name', $supervisi->gtk_name) }}" required>
-                                @error('gtk_name')<span class="text-danger">{{ $message }}</span>@enderror
-                            </div>
-                        </div>
+                        @endif
 
-                        <hr>
-                        <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
-
+                        <h6 class="border-bottom pb-2 mb-3">Supervisor &amp; Guru yang Disupervisi</h6>
                         <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Observer <span class="text-danger">*</span></label>
+                            <label class="col-sm-3 col-form-label">Supervisor <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <select name="observer_id" id="observer_select" class="form-select" required>
-                                    <option value="">— Pilih —</option>
-                                    @foreach($gtks as $gtk)
+                                    <option value="">— Pilih Supervisor —</option>
+                                    @foreach($supervisorGtks as $gtk)
                                         <option value="{{ $gtk->id }}"
-                                            data-name="{{ $gtk->user?->name }}"
-                                            {{ old('observer_id', $supervisi->observer_id)==$gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->user?->name }}
+                                            {{ (string) old('observer_id', $supervisi->observer_id) === (string) $gtk->id ? 'selected' : '' }}>
+                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -65,18 +44,30 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Nama Observer</label>
+                            <label class="col-sm-3 col-form-label">Guru yang Disupervisi <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="text" name="observer_name" id="observer_name" class="form-control" value="{{ old('observer_name', $supervisi->observer_name) }}">
+                                <select name="gtk_id" id="gtk_select" class="form-select" required>
+                                    <option value="">— Pilih Guru —</option>
+                                    @foreach($superviseeGtks as $gtk)
+                                        <option value="{{ $gtk->id }}"
+                                            {{ (string) old('gtk_id', $supervisi->gtk_id) === (string) $gtk->id ? 'selected' : '' }}>
+                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->nupy ? ' · NUPY. '.$gtk->latestEmployment->nupy : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('gtk_id')<span class="text-danger">{{ $message }}</span>@enderror
                             </div>
                         </div>
+
+                        <hr>
+                        <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
 
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Tahun Ajaran <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
                                 <select name="academic_year_id" class="form-select" required>
                                     @foreach($academicYears as $ay)
-                                        <option value="{{ $ay->id }}" {{ old('academic_year_id', $supervisi->academic_year_id)==$ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                        <option value="{{ $ay->id }}" {{ (string) old('academic_year_id', $supervisi->academic_year_id) === (string) $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('academic_year_id')<span class="text-danger">{{ $message }}</span>@enderror
@@ -176,16 +167,32 @@
 @section('script')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const populate = (selId, nameId) => {
-        const sel = document.getElementById(selId);
-        const name = document.getElementById(nameId);
-        sel.addEventListener('change', () => {
-            const opt = sel.options[sel.selectedIndex];
-            name.value = opt.dataset.name || '';
+    const supervisor = document.getElementById('observer_select');
+    const supervisee = document.getElementById('gtk_select');
+    const pairs = @json($supervisorPairs);
+    const hasSettings = @json($hasSettings);
+
+    if (!supervisor || !supervisee) return;
+
+    function syncSupervisees() {
+        const allowed = pairs[supervisor.value] || [];
+        let firstAllowed = null;
+
+        Array.from(supervisee.options).forEach(function (option) {
+            if (!option.value) return;
+            const visible = !hasSettings || allowed.includes(option.value);
+            option.hidden = !visible;
+            option.disabled = !visible;
+            if (visible && !firstAllowed) firstAllowed = option;
         });
-    };
-    populate('gtk_select', 'gtk_name');
-    populate('observer_select', 'observer_name');
+
+        if (supervisee.value && supervisee.selectedOptions[0]?.disabled) {
+            supervisee.value = firstAllowed ? firstAllowed.value : '';
+        }
+    }
+
+    supervisor.addEventListener('change', syncSupervisees);
+    syncSupervisees();
 });
 </script>
 @endsection

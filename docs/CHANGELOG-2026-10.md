@@ -2726,6 +2726,36 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Form LJK menerima `paket_soal_id` dari query dan menandai paket terpilih.
   - Paket final menampilkan tautan LJK; paket belum final menampilkan tombol nonaktif.
 
+## 226. Pengaturan Supervisor & UI Supervisi/Ekstrakurikuler
+
+- **Pengaturan Supervisor**
+  - Menambahkan tabel `supervisi_pengaturan` dan model `SupervisiPengaturan`.
+  - Halaman **Supervisi → Pengaturan Supervisor**:
+    - memilih tahun ajaran;
+    - menetapkan pasangan Supervisor → Guru yang Disupervisi;
+    - aktif/nonaktif dan hapus pasangan.
+  - Pasangan dibatasi pada GTK yang terdaftar di satuan pendidikan (GtkEmployment atau GtkWorkUnit).
+  - Form jadwal supervisi sekarang hanya menampilkan supervisor dan guru sesuai pengaturan.
+  - Supervisor default diisi dari akun yang login jika terdaftar sebagai supervisor.
+  - Validasi server: supervisor ≠ guru, pasangan harus terdaftar, dan tidak boleh bentrok jadwal pada tanggal/jam yang sama.
+- **UI Supervisi**
+  - Menambahkan 4 kartu statistik: total, terjadwal, selesai, rata-rata nilai.
+  - Filter dipindahkan ke modal: pencarian, supervisor, status, jenis, tahun ajaran.
+  - Kolom tabel diperjelas: **Jadwal**, **Guru yang Disupervisi**, **Supervisor**.
+  - Label form diperjelas dan input nama manual dihapus.
+  - Default tahun ajaran diperbaiki.
+- **UI Ekstrakurikuler**
+  - Filter dipindahkan ke modal: pencarian, status, hari.
+  - Hapus ekstrakurikuler memakai modal konfirmasi global, bukan `confirm()` browser.
+  - Controller mendukung filter hari.
+  - Sidebar Pembina Ekstrakurikuler diperbaiki: memakai `gtk_id` dan `status`, bukan kolom `pembina_id`/`is_active` yang tidak ada.
+- **Diuji**
+  - Halaman Supervisi, form create, Pengaturan Supervisor, dan Ekstrakurikuler merespons `200`.
+  - Penyimpanan pengaturan supervisor berhasil.
+  - Form create hanya menampilkan 1 supervisor + 1 guru sesuai pasangan (di luar placeholder).
+  - Penyimpanan jadwal valid berhasil; jadwal bentrok ditolak.
+  - Migrasi `supervisi_pengaturan` berhasil dijalankan lokal.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

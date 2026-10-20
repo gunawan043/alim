@@ -24,6 +24,28 @@
         </div>
     @endif
 
+    @php
+        $stats = $statistics ?? ['total' => 0, 'terjadwal' => 0, 'selesai' => 0, 'avg_nilai' => 0];
+    @endphp
+
+    <div class="row">
+        @foreach([
+            ['Total Supervisi', number_format($stats['total']), 'primary', 'ri-file-list-3-line'],
+            ['Terjadwal', number_format($stats['terjadwal']), 'warning', 'ri-calendar-event-line'],
+            ['Selesai', number_format($stats['selesai']), 'success', 'ri-checkbox-circle-line'],
+            ['Rata-rata Nilai', number_format((float) $stats['avg_nilai'], 2), 'info', 'ri-bar-chart-line'],
+        ] as [$label, $value, $tone, $icon])
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3 d-flex align-items-center gap-2">
+                        <span class="avatar-sm flex-shrink-0"><span class="avatar-title bg-{{ $tone }}-subtle rounded fs-2"><i class="{{ $icon }} text-{{ $tone }}"></i></span></span>
+                        <div><p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px">{{ $label }}</p><h3 class="fw-bold mb-0">{{ $value }}</h3></div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
     <div class="alert alert-light border small d-flex flex-wrap justify-content-between align-items-center gap-2">
         <span><i class="ri-route-line me-1 text-primary"></i><strong>Alur:</strong> buat jadwal supervisi → buka detail → isi penilaian → pilih instrumen → isi skor → simpan → cetak.</span>
         <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-outline-primary">
@@ -40,6 +62,12 @@
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <span class="badge bg-primary-subtle text-primary align-self-center">{{ $supervisiList->total() }} supervisi</span>
+                    <a href="{{ route('waka.supervisi-pengaturan.index') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="ri-settings-3-line me-1"></i>Pengaturan Supervisor
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSupervisiModal">
+                        <i class="ri-filter-3-line me-1"></i>Filter
+                    </button>
                     <a href="{{ route('waka.supervisi.create') }}" class="btn btn-success btn-sm">
                         <i class="ri-add-line me-1"></i>Tambah Supervisi
                     </a>
@@ -48,53 +76,15 @@
         </div>
 
         <div class="card-body">
-            <form method="GET" action="{{ route('waka.supervisi.index') }}" class="row g-2 align-items-end mb-3">
-                <div class="col-lg-3 col-md-6">
-                    <label class="form-label small text-muted mb-1">Cari</label>
-                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="GTK / observer / mapel">
-                </div>
-                <div class="col-lg-2 col-md-6">
-                    <label class="form-label small text-muted mb-1">Status</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach(['terjadwal','berlangsung','selesai','dibatalkan'] as $s)
-                            <option value="{{ $s }}" {{ request('status')===$s?'selected':'' }}>{{ ucfirst($s) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-6">
-                    <label class="form-label small text-muted mb-1">Jenis</label>
-                    <select name="jenis_supervisi" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach(['perangkat_pembelajaran'=>'Perangkat','proses_pembelajaran'=>'Proses','penilaian'=>'Penilaian','lainnya'=>'Lainnya'] as $k=>$v)
-                            <option value="{{ $k }}" {{ request('jenis_supervisi')===$k?'selected':'' }}>{{ $v }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
-                    <select name="academic_year_id" class="form-select form-select-sm">
-                        <option value="">Semua</option>
-                        @foreach($academicYears as $ay)
-                            <option value="{{ $ay->id }}" {{ request('academic_year_id')==$ay->id?'selected':'' }}>{{ $ay->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-6">
-                    <div class="d-flex gap-1">
-                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="ri-filter-3-line me-1"></i>Filter</button>
-                        <a href="{{ route('waka.supervisi.index') }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-refresh-line"></i></a>
-                    </div>
-                </div>
-            </form>
+
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:110px">Tanggal</th>
-                            <th>GTK</th>
-                            <th style="width:180px">Observer</th>
+                            <th style="width:130px">Jadwal</th>
+                            <th>Guru yang Disupervisi</th>
+                            <th style="width:190px">Supervisor</th>
                             <th style="width:160px">Mapel</th>
                             <th style="width:120px">Jenis</th>
                             <th style="width:120px" class="text-center">Status</th>
@@ -107,7 +97,10 @@
                                 $badge = ['terjadwal' => 'warning', 'berlangsung' => 'info', 'selesai' => 'success', 'dibatalkan' => 'secondary'][$s->status] ?? 'secondary';
                             @endphp
                             <tr>
-                                <td class="small">{{ $s->tanggal_supervisi?->format('d/m/Y') ?? '—' }}</td>
+                                <td class="small">
+                                    <div class="fw-medium">{{ $s->tanggal_supervisi?->format('d/m/Y') ?? '—' }}</div>
+                                    <div class="text-muted">{{ $s->jam_mulai ? substr($s->jam_mulai, 0, 5) : '—' }}{{ $s->jam_selesai ? ' – '.substr($s->jam_selesai, 0, 5) : '' }}</div>
+                                </td>
                                 <td>
                                     <span class="fw-semibold">{{ $s->gtk?->user?->name ?? $s->gtk_name ?? '—' }}</span>
                                     @if($s->gtk?->latest_nupy)
@@ -151,6 +144,64 @@
             </div>
 
             @include('shared._pagination', ['paginator' => $supervisiList])
+        </div>
+    </div>
+
+    <div class="modal fade" id="filterSupervisiModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="GET" action="{{ route('waka.supervisi.index') }}">
+                    <div class="modal-header"><h5 class="modal-title"><i class="ri-filter-3-line me-1"></i>Filter Supervisi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Cari</label>
+                                <input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Guru / supervisor / mapel">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Supervisor</label>
+                                <select name="supervisor_id" class="form-select">
+                                    <option value="">Semua supervisor</option>
+                                    @foreach($supervisors as $supervisor)
+                                        <option value="{{ $supervisor->id }}" {{ (string) request('supervisor_id') === (string) $supervisor->id ? 'selected' : '' }}>{{ $supervisor->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="">Semua status</option>
+                                    @foreach(\App\Models\Supervisi::STATUS_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Jenis</label>
+                                <select name="jenis_supervisi" class="form-select">
+                                    <option value="">Semua jenis</option>
+                                    @foreach(\App\Models\Supervisi::JENIS_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" {{ request('jenis_supervisi') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
+                                <select name="academic_year_id" class="form-select">
+                                    <option value="">Semua tahun</option>
+                                    @foreach($academicYears as $ay)
+                                        <option value="{{ $ay->id }}" {{ (string) request('academic_year_id') === (string) $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('waka.supervisi.index') }}" class="btn btn-light">Reset</a>
+                        <button class="btn btn-primary"><i class="ri-filter-3-line me-1"></i>Terapkan Filter</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

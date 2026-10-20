@@ -272,6 +272,7 @@ use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\Waka\SupervisiController;
+use App\Http\Controllers\Waka\SupervisiPengaturanController;
 use App\Http\Controllers\Waka\SupervisiInstrumenController;
 use App\Http\Controllers\Waka\SuratKeluarController;
 use App\Http\Controllers\WhatsAppWebhookController;
@@ -3210,6 +3211,14 @@ Route::prefix('waka')
             Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
             Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
             Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+        });
+
+        // ── PENGATURAN SUPERVISOR ───────────────────────────────
+        Route::prefix('supervisi-pengaturan')->middleware('satuan.feature:supervisi')->name('supervisi-pengaturan.')->group(function () {
+            Route::get('/', [SupervisiPengaturanController::class, 'index'])->name('index');
+            Route::post('/', [SupervisiPengaturanController::class, 'store'])->name('store');
+            Route::post('/{id}/toggle', [SupervisiPengaturanController::class, 'toggle'])->name('toggle');
+            Route::delete('/{id}', [SupervisiPengaturanController::class, 'destroy'])->name('destroy');
         });
 
         // ── PENGATURAN INSTRUMEN SUPERVISI (bagian → item + poin) ──
