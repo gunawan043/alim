@@ -12,6 +12,8 @@ use App\Models\ProtaItem;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\CurriculumProfileFilterService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\ProtaService;
 use Illuminate\Http\Request;
@@ -47,8 +49,12 @@ class ProtaController extends Controller
             $semester = 'ganjil';
         }
 
-        $protaList = Prota::query()
-            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'atp:id,total_jp,status'])
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
+        $protaQuery = Prota::query()
+            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'atp:id,total_jp,status', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
@@ -59,7 +65,10 @@ class ProtaController extends Controller
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
-            ->orderBy('subject_id')
+            ->orderBy('subject_id');
+
+        $protaList = app(CurriculumProfileFilterService::class)
+            ->apply($protaQuery, $curriculumProfile?->id, $profileScope)
             ->get();
 
         // Sumber ATP yang bisa dijadikan PROTA (mapel yang diampu atau semua untuk editor kurikulum).
@@ -72,6 +81,7 @@ class ProtaController extends Controller
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester);
+        app(CurriculumProfileFilterService::class)->apply($atpQuery, $curriculumProfile?->id, $profileScope);
 
         if (! $isKurikulumEditor) {
             $taught = $this->taughtSubjectIds($user, $academicYearId, $schoolId);
@@ -111,7 +121,9 @@ class ProtaController extends Controller
             'atpOptions',
             'existingAtpIds',
             'staleIds',
-            'subjects'
+            'subjects',
+            'curriculumProfile',
+            'profileScope'
         ));
     }
 

@@ -9,6 +9,8 @@ use App\Models\CapaianPembelajaran;
 use App\Models\GradeLevel;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
+use App\Services\CurriculumProfileFilterService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 
@@ -33,8 +35,12 @@ class CapaianPembelajaranController extends Controller
         $selectedAy = $academicYears->firstWhere('id', $academicYearId);
         $isArchiveAy = $academicYearId && $activeAyId && (string) $academicYearId !== (string) $activeAyId;
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
         $query = CapaianPembelajaran::query()
-            ->with(['subject:id,name,code', 'creator:id,name'])
+            ->with(['subject:id,name,code', 'creator:id,name', 'curriculumProfile:id,code,name,authority'])
             ->forSchool($schoolId)
             ->forAcademicYear($academicYearId)
             ->orderByAcademicYearFirst()
@@ -48,6 +54,8 @@ class CapaianPembelajaranController extends Controller
             ->orderBy('fase')
             ->orderBy('urutan')
             ->orderBy('created_at');
+
+        app(CurriculumProfileFilterService::class)->apply($query, $curriculumProfile?->id, $profileScope);
 
         // Baris versi TA menutupi baris lama (NULL) dengan kunci logis yang sama.
         $cpList = $query->get()
@@ -94,7 +102,9 @@ class CapaianPembelajaranController extends Controller
             'academicYears',
             'academicYearId',
             'selectedAy',
-            'isArchiveAy'
+            'isArchiveAy',
+            'curriculumProfile',
+            'profileScope'
         ));
     }
 

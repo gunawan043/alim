@@ -1230,4 +1230,52 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('Cinta Lingkungan Sekolah')
             ->assertSee('Cinta kepada Lingkungan');
     }
+
+    public function test_daftar_cp_mengikuti_filter_profil_aktif_dan_arsip(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+        $merdeka = CurriculumProfile::where('code', 'merdeka_dinas')->firstOrFail();
+
+        SchoolCurriculumSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        CapaianPembelajaran::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'fase' => 'D',
+            'elemen' => 'Bilangan',
+            'deskripsi' => 'CP KBC Matematika',
+            'is_active' => true,
+        ]);
+
+        CapaianPembelajaran::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->fisika->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $merdeka->id,
+            'fase' => 'D',
+            'elemen' => 'Pengukuran',
+            'deskripsi' => 'CP Merdeka Fisika',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/cp?profile_scope=active")
+            ->assertOk()
+            ->assertSee('CP KBC Matematika')
+            ->assertDontSee('CP Merdeka Fisika');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/cp?profile_scope=all")
+            ->assertOk()
+            ->assertSee('CP KBC Matematika')
+            ->assertSee('CP Merdeka Fisika');
+    }
 }

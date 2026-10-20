@@ -35,6 +35,8 @@
         </div>
     @endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $curriculumProfile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -178,7 +180,10 @@
                         <tbody>
                             @forelse($cpList as $cp)
                                 <tr>
-                                    <td class="fw-medium">{{ $cp->subject?->name ?? '-' }}</td>
+                                    <td class="fw-medium">
+                                        {{ $cp->subject?->name ?? '-' }}
+                                        @include('kurikulum.partials.profile-badge', ['model' => $cp, 'class' => 'ms-1'])
+                                    </td>
                                     <td class="text-center"><span class="badge bg-info-subtle text-info">{{ $cp->fase }}</span></td>
                                     <td>{{ $cp->elemen ?: '—' }}</td>
                                     <td class="small text-muted">{{ \Illuminate\Support\Str::limit($cp->deskripsi, 90) }}

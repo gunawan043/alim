@@ -34,6 +34,8 @@
         </div>
     @endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $curriculumProfile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -172,7 +174,10 @@
                         <tbody>
                             @forelse($atpList as $atp)
                                 <tr>
-                                    <td class="fw-medium">{{ $atp->subject?->name ?? '-' }}</td>
+                                    <td class="fw-medium">
+                                        {{ $atp->subject?->name ?? '-' }}
+                                        @include('kurikulum.partials.profile-badge', ['model' => $atp, 'class' => 'ms-1'])
+                                    </td>
                                     <td>
                                         {{ $atp->gradeLevel?->name ?? 'Semua Jenjang' }}
                                         @if($atp->fase) <span class="badge bg-info-subtle text-info ms-1">{{ $atp->fase }}</span> @endif

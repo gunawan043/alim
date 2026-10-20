@@ -13,6 +13,8 @@ use App\Models\PerangkatPembelajaran;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
+use App\Services\CurriculumProfileFilterService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
@@ -50,8 +52,12 @@ class AlurTujuanPembelajaranController extends Controller
             $semester = 'ganjil';
         }
 
-        $atpList = AlurTujuanPembelajaran::query()
-            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name'])
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
+        $atpQuery = AlurTujuanPembelajaran::query()
+            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
@@ -63,7 +69,10 @@ class AlurTujuanPembelajaranController extends Controller
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->when($request->filled('grade_level_id'), fn ($q) => $q->where('grade_level_id', $request->grade_level_id))
-            ->orderBy('subject_id')
+            ->orderBy('subject_id');
+
+        $atpList = app(CurriculumProfileFilterService::class)
+            ->apply($atpQuery, $curriculumProfile?->id, $profileScope)
             ->get();
 
         // Filter daftar: guru boleh melihat mapel serumpun.
@@ -99,7 +108,9 @@ class AlurTujuanPembelajaranController extends Controller
             'atpList',
             'subjects',
             'filterSubjects',
-            'gradeLevels'
+            'gradeLevels',
+            'curriculumProfile',
+            'profileScope'
         ));
     }
 
@@ -184,6 +195,8 @@ class AlurTujuanPembelajaranController extends Controller
 
         $usedTpIds = $atp->items->pluck('tujuan_pembelajaran_id')->all();
 
+        $atpProfile = $atp->curriculumProfile
+            ?? app(CurriculumProfileService::class)->resolve($atp->school_id, $atp->academic_year_id);
         $availableTps = TujuanPembelajaran::query()
             ->active()
             ->bySchool($atp->school_id)
@@ -197,8 +210,10 @@ class AlurTujuanPembelajaranController extends Controller
             })
             ->whereNotIn('id', $usedTpIds ?: ['-'])
             ->orderBy('urutan')
-            ->orderBy('kode_tp')
-            ->get();
+            ->orderBy('kode_tp');
+
+        app(CurriculumProfileFilterService::class)->apply($availableTps, $atpProfile?->id, 'active');
+        $availableTps = $availableTps->get();
 
         $perangkatCount = PerangkatPembelajaran::where('atp_id', $atp->id)->count();
 

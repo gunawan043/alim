@@ -39,6 +39,8 @@
         </div>
     @endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $curriculumProfile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -181,7 +183,10 @@
                                     $isSerumpun = ! $isOwner && in_array($perangkat->subject_id, $mySubjectIds ?? [], true);
                                 @endphp
                                 <tr>
-                                    <td class="fw-medium">{{ $perangkat->judul }}</td>
+                                    <td class="fw-medium">
+                                        {{ $perangkat->judul }}
+                                        @include('kurikulum.partials.profile-badge', ['model' => $perangkat, 'class' => 'ms-1'])
+                                    </td>
                                     <td>
                                         {{ $perangkat->subject?->name ?? '-' }}
                                         @if($isSerumpun)

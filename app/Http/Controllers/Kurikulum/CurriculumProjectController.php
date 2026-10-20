@@ -10,6 +10,7 @@ use App\Models\CurriculumProjectBankItem;
 use App\Models\GradeLevel;
 use App\Models\Student;
 use App\Models\SchoolCurriculumSetting;
+use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class CurriculumProjectController extends Controller
 
         $profile = $this->profiles->resolve($schoolId, $academicYearId);
         $labels = $this->profiles->labels($profile);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
         $profileValues = $profile?->values() ?? [];
         $projectTypes = (array) $profile?->configValue('kokurikuler_options', []);
         if (empty($projectTypes)) {
@@ -49,7 +51,7 @@ class CurriculumProjectController extends Controller
             ];
         }
 
-        $query = CurriculumProject::with(['coordinator:id,name', 'creator:id,name'])
+        $query = CurriculumProject::with(['coordinator:id,name', 'creator:id,name', 'curriculumProfile:id,code,name,authority'])
             ->where('school_id', $schoolId)
             ->where('academic_year_id', $academicYearId)
             ->where('semester', $semester)
@@ -58,6 +60,7 @@ class CurriculumProjectController extends Controller
             ->orderByDesc('start_date')
             ->orderByDesc('created_at');
 
+        app(CurriculumProfileFilterService::class)->apply($query, $profile?->id, $profileScope);
         $projects = $query->get();
         $stats = [
             'total' => $projects->count(),
@@ -91,7 +94,7 @@ class CurriculumProjectController extends Controller
             'userId', 'schoolId', 'academicYears', 'academicYear', 'academicYearId',
             'semester', 'profile', 'labels', 'profileValues', 'projectTypes',
             'projects', 'stats', 'gradeLevels', 'canManage', 'setting',
-            'bankThemes', 'bankActivities'
+            'bankThemes', 'bankActivities', 'profileScope'
         ));
     }
 

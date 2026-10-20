@@ -10,6 +10,7 @@ use App\Models\GradeLevel;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
@@ -39,8 +40,12 @@ class TujuanPembelajaranController extends Controller
 
         $subjectId = $request->input('subject_id');
 
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
         $query = TujuanPembelajaran::query()
-            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'capaianPembelajaran:id,fase,elemen'])
+            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'capaianPembelajaran:id,fase,elemen', 'curriculumProfile:id,code,name,authority'])
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
@@ -56,6 +61,7 @@ class TujuanPembelajaranController extends Controller
             ->orderBy('urutan')
             ->orderBy('kode_tp');
 
+        app(CurriculumProfileFilterService::class)->apply($query, $curriculumProfile?->id, $profileScope);
         $tpList = $query->get();
 
         $subjects = Subject::query()
@@ -74,12 +80,13 @@ class TujuanPembelajaranController extends Controller
             ->get(['id', 'name', 'fase']);
 
         // CP untuk form (difilter di sisi klien berdasarkan mapel terpilih).
-        $cpOptions = CapaianPembelajaran::query()
+        $cpOptionsQuery = CapaianPembelajaran::query()
             ->active()
             ->forSchool($schoolId)
             ->orderBy('fase')
-            ->orderBy('urutan')
-            ->get(['id', 'subject_id', 'fase', 'elemen', 'deskripsi']);
+            ->orderBy('urutan');
+        app(CurriculumProfileFilterService::class)->apply($cpOptionsQuery, $curriculumProfile?->id, $profileScope);
+        $cpOptions = $cpOptionsQuery->get(['id', 'subject_id', 'fase', 'elemen', 'deskripsi']);
 
         $usedTpIds = AlurTujuanPembelajaranItem::query()
             ->whereIn('tujuan_pembelajaran_id', $tpList->pluck('id'))
@@ -145,7 +152,8 @@ class TujuanPembelajaranController extends Controller
             'tpUpdateUrlTemplate',
             'curriculumProfile',
             'curriculumLabels',
-            'kbcValues'
+            'kbcValues',
+            'profileScope'
         ));
     }
 

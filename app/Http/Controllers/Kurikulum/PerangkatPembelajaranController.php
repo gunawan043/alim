@@ -11,6 +11,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
@@ -45,8 +46,12 @@ class PerangkatPembelajaranController extends Controller
             $semester = 'ganjil';
         }
 
-        $perangkatList = PerangkatPembelajaran::query()
-            ->with(['subject:id,name,code', 'gradeLevel:id,name', 'studyGroup:id,name', 'atp:id,total_jp,status', 'teacher:id,name'])
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
+        $perangkatQuery = PerangkatPembelajaran::query()
+            ->with(['subject:id,name,code', 'gradeLevel:id,name', 'studyGroup:id,name', 'atp:id,total_jp,status', 'teacher:id,name', 'curriculumProfile:id,code,name,authority'])
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
@@ -57,7 +62,10 @@ class PerangkatPembelajaranController extends Controller
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
             ->when($request->filled('study_group_id'), fn ($q) => $q->where('study_group_id', $request->study_group_id))
-            ->orderByDesc('created_at')
+            ->orderByDesc('created_at');
+
+        $perangkatList = app(CurriculumProfileFilterService::class)
+            ->apply($perangkatQuery, $curriculumProfile?->id, $profileScope)
             ->get();
 
         $isKurikulumTeam = $this->access->isKurikulumTeam($user);
@@ -80,6 +88,7 @@ class PerangkatPembelajaranController extends Controller
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
             ->orderBy('subject_id');
+        app(CurriculumProfileFilterService::class)->apply($atpQuery, $curriculumProfile?->id, $profileScope);
 
         if (! $this->access->isKurikulumEditor($user)) {
             $taughtSubjectIds = TeachingAssignment::query()
@@ -109,8 +118,6 @@ class PerangkatPembelajaranController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
-        $profileService = app(CurriculumProfileService::class);
-        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $curriculumLabels = $profileService->labels($curriculumProfile);
 
         return view('kurikulum.perangkat.index', compact(
@@ -125,7 +132,8 @@ class PerangkatPembelajaranController extends Controller
             'isKurikulumTeam',
             'mySubjectIds',
             'curriculumProfile',
-            'curriculumLabels'
+            'curriculumLabels',
+            'profileScope'
         ));
     }
 

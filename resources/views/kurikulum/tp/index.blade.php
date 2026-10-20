@@ -34,6 +34,8 @@
         </div>
     @endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $curriculumProfile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -180,6 +182,7 @@
                                 <tr>
                                     <td>
                                         <span class="badge bg-primary-subtle text-primary">{{ $tp->kode_tp }}</span>
+                                        @include('kurikulum.partials.profile-badge', ['model' => $tp, 'class' => 'ms-1'])
                                         <div class="small text-muted mt-1">{{ $tp->subject?->name }}</div>
                                         <div class="small text-muted">{{ $tp->gradeLevel?->name ?? 'Semua Jenjang' }}</div>
                                     </td>

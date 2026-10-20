@@ -19,6 +19,8 @@
     @if(session('error'))<div class="alert alert-danger alert-dismissible fade show"><i class="ri-error-warning-line me-1"></i>{{ session('error') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger alert-dismissible fade show"><strong>Periksa projek.</strong><ul class="mb-0 mt-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul><button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $profile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     <div class="card border-primary-subtle mb-3">
         <div class="card-body py-3">
             <div class="row align-items-center g-3">
@@ -101,7 +103,9 @@
                         @endphp
                         <tr>
                             <td>
-                                <div class="fw-semibold">{{ $project->title }}</div>
+                                <div class="fw-semibold">{{ $project->title }}
+                                    @include('kurikulum.partials.profile-badge', ['model' => $project, 'class' => 'ms-1'])
+                                </div>
                                 <div class="text-muted small">{{ $project->theme ?: 'Tema belum diisi' }}</div>
                             </td>
                             <td><span class="badge bg-primary-subtle text-primary">{{ $project->type_label }}</span></td>

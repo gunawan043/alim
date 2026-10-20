@@ -35,6 +35,8 @@
         </div>
     @endif
 
+    @include('kurikulum.partials.profile-scope', ['curriculumProfile' => $curriculumProfile ?? null, 'profileScope' => $profileScope ?? 'active'])
+
     {{-- STATISTIK --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -169,6 +171,7 @@
                                 <tr>
                                     <td class="fw-medium">
                                         {{ $prosem->subject?->name ?? '-' }}
+                                        @include('kurikulum.partials.profile-badge', ['model' => $prosem, 'class' => 'ms-1'])
                                         @if(in_array($prosem->id, $staleIds, true))
                                             <span class="badge bg-warning-subtle text-warning ms-1" title="PROTA berubah — perlu sinkron">
                                                 <i class="ri-refresh-line me-1"></i>Perlu diperbarui

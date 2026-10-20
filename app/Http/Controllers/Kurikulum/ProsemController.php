@@ -11,6 +11,8 @@ use App\Models\ProsemItem;
 use App\Models\Prota;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\CurriculumProfileFilterService;
+use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\ProsemService;
 use Illuminate\Http\Request;
@@ -46,8 +48,12 @@ class ProsemController extends Controller
             $semester = 'ganjil';
         }
 
-        $prosemList = Prosem::query()
-            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'prota:id,total_jp,synced_at'])
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
+        $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
+
+        $prosemQuery = Prosem::query()
+            ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'prota:id,total_jp,synced_at', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
@@ -58,7 +64,10 @@ class ProsemController extends Controller
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
-            ->orderBy('subject_id')
+            ->orderBy('subject_id');
+
+        $prosemList = app(CurriculumProfileFilterService::class)
+            ->apply($prosemQuery, $curriculumProfile?->id, $profileScope)
             ->get();
 
         // PROTA yang belum punya PROSEM (mapel diampu atau semua untuk editor kurikulum).
@@ -72,6 +81,7 @@ class ProsemController extends Controller
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
             ->whereDoesntHave('prosem');
+        app(CurriculumProfileFilterService::class)->apply($protaQuery, $curriculumProfile?->id, $profileScope);
 
         if (! $isKurikulumEditor) {
             $taught = $this->taughtSubjectIds($user, $academicYearId, $schoolId);
@@ -103,7 +113,9 @@ class ProsemController extends Controller
             'prosemList',
             'protaOptions',
             'staleIds',
-            'adjustedIds'
+            'adjustedIds',
+            'curriculumProfile',
+            'profileScope'
         ));
     }
 
