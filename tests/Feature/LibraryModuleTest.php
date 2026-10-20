@@ -17,6 +17,7 @@ use App\Models\Student;
 use App\Models\LibraryStockOpname;
 use App\Models\User;
 use App\Models\WorkUnit;
+use Database\Seeders\LibraryUnitSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -152,5 +153,16 @@ class LibraryModuleTest extends TestCase
         $this->actingAs($admin)
             ->get("/{$admin->id}/perpustakaan/catalog")
             ->assertRedirect(route('user.perpustakaan.units.index', ['userId' => $admin->id]));
+    }
+
+    public function test_seeder_unit_perpustakaan_wajib_dan_idempotent(): void
+    {
+        $this->seed(LibraryUnitSeeder::class);
+        $this->seed(LibraryUnitSeeder::class);
+
+        $this->assertDatabaseCount('library_units', 3);
+        $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-PUTRA', 'name' => 'Perpustakaan Putra']);
+        $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-PUTRI', 'name' => 'Perpustakaan Putri']);
+        $this->assertDatabaseHas('library_units', ['code' => 'PERPUS-SD', 'name' => 'Perpustakaan SD']);
     }
 }
