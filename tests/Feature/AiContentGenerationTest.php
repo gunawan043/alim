@@ -426,6 +426,7 @@ class AiContentGenerationTest extends TestCase
         $perangkat = PerangkatPembelajaran::firstOrFail();
         $this->assertSame('RPM Fiqih — Thaharah', $perangkat->judul);
         $this->assertSame('draft', $perangkat->status);
+        $this->assertSame('ai', $perangkat->source);
         $this->assertSame('Doa', $perangkat->desain['kegiatan_awal']);
         $this->assertSame('Observasi', $perangkat->desain['asesmen_formatif']);
         $this->assertSame($perangkat->id, $record->fresh()->saved_perangkat_id);
@@ -724,5 +725,53 @@ class AiContentGenerationTest extends TestCase
         $this->assertSame('Cinta kepada Allah', $perangkat->desain['tema_kbc']);
         $this->assertSame('Peserta didik menjaga wudhu dengan sungguh-sungguh.', $perangkat->desain['indikator_kbc']);
         $this->assertSame('Cinta kepada Allah', $perangkat->desain['pilar_kbc']);
+    }
+
+    public function test_ai_tidak_menimpa_perangkat_manual_yang_sudah_ada(): void
+    {
+        $manual = PerangkatPembelajaran::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester' => 'ganjil',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'teacher_id' => $this->admin->id,
+            'judul' => 'Perangkat Manual Fiqih',
+            'tipe' => PerangkatPembelajaran::TIPE_UMUM,
+            'source' => 'manual',
+            'status' => 'draft',
+            'is_current' => true,
+            'desain' => PerangkatPembelajaran::defaultDesain(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $record = AiGeneratedContent::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester' => 'ganjil',
+            'type' => 'rpm',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'title' => 'Draft AI yang Tidak Boleh Menimpa',
+            'content' => [
+                'judul' => 'Draft AI',
+                'langkah' => [['pertemuan' => 1, 'pembuka' => 'Doa', 'inti' => 'Materi', 'penutup' => 'Refleksi']],
+            ],
+            'status' => 'approved',
+            'approved_by' => $this->admin->id,
+            'approved_at' => now(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $request = Request::create('/save-rpm', 'POST');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $this->admin);
+
+        $response = app(AiContentController::class)->saveToRpm($request, $this->admin->id, $record->id);
+
+        $this->assertTrue($response->isRedirect());
+        $this->assertSame(1, PerangkatPembelajaran::count());
+        $this->assertSame('Perangkat Manual Fiqih', $manual->fresh()->judul);
+        $this->assertNull($record->fresh()->saved_perangkat_id);
     }
 }

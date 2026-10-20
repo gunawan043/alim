@@ -175,6 +175,7 @@ class PerangkatPembelajaranController extends Controller
             'teacher_id' => $request->user()->id,
             'judul' => $validated['judul'],
             'tipe' => $validated['tipe'] ?? PerangkatPembelajaran::TIPE_UMUM,
+            'source' => 'manual',
             'status' => PerangkatPembelajaran::STATUS_DRAFT,
             'desain' => PerangkatPembelajaran::defaultDesain(),
             'catatan' => $validated['catatan'] ?? null,

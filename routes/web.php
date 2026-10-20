@@ -98,6 +98,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
 use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
+use App\Http\Controllers\Kurikulum\CurriculumProjectBankController;
 use App\Http\Controllers\Kurikulum\CurriculumProjectController;
 use App\Http\Controllers\Kurikulum\CurriculumProfileController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
@@ -791,6 +792,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/', [CurriculumProjectController::class, 'store'])->name('store');
                     Route::put('/{id}', [CurriculumProjectController::class, 'update'])->name('update');
                     Route::delete('/{id}', [CurriculumProjectController::class, 'destroy'])->name('destroy');
+                    Route::prefix('bank')->name('bank.')->group(function () {
+                        Route::get('/', [CurriculumProjectBankController::class, 'index'])->name('index');
+                        Route::post('/', [CurriculumProjectBankController::class, 'store'])->name('store');
+                        Route::put('/{id}', [CurriculumProjectBankController::class, 'update'])->name('update');
+                        Route::delete('/{id}', [CurriculumProjectBankController::class, 'destroy'])->name('destroy');
+                    });
+
                     Route::get('/{id}/cetak', [CurriculumProjectController::class, 'print'])->name('print');
                     Route::get('/{id}/pdf', [CurriculumProjectController::class, 'pdf'])->name('pdf');
                     Route::post('/{id}/nilai', [CurriculumProjectController::class, 'assess'])->name('assess');

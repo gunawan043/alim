@@ -8,6 +8,7 @@ use App\Models\AlurTujuanPembelajaran;
 use App\Models\CapaianPembelajaran;
 use App\Models\CurriculumProfile;
 use App\Models\CurriculumProject;
+use App\Models\CurriculumProjectBankItem;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Kaldik;
@@ -1190,5 +1191,43 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertOk()
             ->assertSee('Checklist Integrasi KBC')
             ->assertSee('100% lengkap');
+    }
+
+    public function test_bank_tema_dan_aktivitas_p5ra_dapat_disimpan(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+
+        SchoolCurriculumSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+            'kokurikuler_type' => 'p5ra',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/kurikulum/proyek/bank", [
+                'academic_year_id' => $this->ay->id,
+                'type' => 'p5ra',
+                'kind' => 'theme',
+                'title' => 'Cinta Lingkungan Sekolah',
+                'description' => 'Tema internal untuk aksi kebersihan lingkungan.',
+                'dimensions' => ['hubbulbiah'],
+                'is_active' => 1,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('curriculum_project_bank_items', [
+            'school_id' => $this->school->id,
+            'type' => 'p5ra',
+            'kind' => 'theme',
+            'title' => 'Cinta Lingkungan Sekolah',
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek/bank")
+            ->assertOk()
+            ->assertSee('Cinta Lingkungan Sekolah')
+            ->assertSee('Cinta kepada Lingkungan');
     }
 }

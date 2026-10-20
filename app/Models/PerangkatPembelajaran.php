@@ -219,6 +219,8 @@ class PerangkatPembelajaran extends Model
         'teacher_id',
         'judul',
         'tipe',
+        'source',
+        'ai_generated_content_id',
         'status',
         'workflow_status',
         'root_id',
@@ -245,6 +247,16 @@ class PerangkatPembelajaran extends Model
     ];
 
     // ── Relationships ────────────────────────────────────────────────
+
+    public function aiGeneratedContent(): BelongsTo
+    {
+        return $this->belongsTo(AiGeneratedContent::class, 'ai_generated_content_id');
+    }
+
+    public function getSourceLabelAttribute(): string
+    {
+        return $this->source === 'ai' ? 'AI — perlu ditinjau' : 'Manual';
+    }
 
     public function curriculumProfile(): BelongsTo
     {

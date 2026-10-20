@@ -37,6 +37,9 @@
             <span class="badge bg-primary-subtle text-primary p-2">
                 {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
             </span>
+            <span class="badge {{ ($perangkat->source ?? 'manual') === 'ai' ? 'bg-info-subtle text-info' : 'bg-secondary-subtle text-secondary' }} p-2">
+                {{ ($perangkat->source ?? 'manual') === 'ai' ? 'Sumber: AI — tinjau' : 'Sumber: Manual' }}
+            </span>
             @if($curriculumProfile ?? null)
                 <span class="badge bg-success-subtle text-success p-2">{{ $curriculumProfile->name }}</span>
             @endif

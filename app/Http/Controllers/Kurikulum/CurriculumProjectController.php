@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\CurriculumProject;
 use App\Models\CurriculumProjectAssessment;
+use App\Models\CurriculumProjectBankItem;
 use App\Models\GradeLevel;
 use App\Models\Student;
 use App\Models\SchoolCurriculumSetting;
@@ -70,6 +71,16 @@ class CurriculumProjectController extends Controller
             ->orderBy('level')
             ->get(['id', 'name', 'fase']);
 
+        $bankItems = CurriculumProjectBankItem::query()
+            ->where(function ($query) use ($schoolId) {
+                $query->where('school_id', $schoolId)->orWhereNull('school_id');
+            })
+            ->where('is_active', true)
+            ->orderBy('title')
+            ->get(['id', 'type', 'kind', 'title', 'description', 'dimensions']);
+        $bankThemes = $bankItems->where('kind', 'theme')->values();
+        $bankActivities = $bankItems->where('kind', 'activity')->values();
+
         $canManage = $this->access->isKurikulumEditor($request->user());
         $setting = SchoolCurriculumSetting::query()
             ->where('school_id', $schoolId)
@@ -79,7 +90,8 @@ class CurriculumProjectController extends Controller
         return view('kurikulum.proyek.index', compact(
             'userId', 'schoolId', 'academicYears', 'academicYear', 'academicYearId',
             'semester', 'profile', 'labels', 'profileValues', 'projectTypes',
-            'projects', 'stats', 'gradeLevels', 'canManage', 'setting'
+            'projects', 'stats', 'gradeLevels', 'canManage', 'setting',
+            'bankThemes', 'bankActivities'
         ));
     }
 

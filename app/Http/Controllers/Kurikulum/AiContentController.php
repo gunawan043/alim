@@ -438,6 +438,15 @@ class AiContentController extends Controller
             ->where('is_current', true)
             ->first();
 
+        if ($existing && ($existing->source ?? 'manual') === 'manual') {
+            return back()->with('error', 'Perangkat manual sudah ada untuk konteks ini. AI tidak akan menimpa dokumen manual. Buka perangkat yang ada untuk mereview atau membuat versi baru secara manual.');
+        }
+
+        if ($existing && ($existing->source ?? 'manual') === 'ai'
+            && (string) $existing->ai_generated_content_id !== (string) $record->id) {
+            return back()->with('error', 'Sudah ada perangkat dari draft AI lain untuk konteks ini. Tinjau perangkat tersebut terlebih dahulu; AI tidak akan membuat dokumen paralel.');
+        }
+
         $profile = $record->curriculum_profile_id
             ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
             : $this->profiles->resolve($record->school_id, $record->academic_year_id);
@@ -488,6 +497,8 @@ class AiContentController extends Controller
                 'teacher_id' => $record->created_by ?: $request->user()?->id,
                 'judul' => mb_substr($judul, 0, 191),
                 'tipe' => PerangkatPembelajaran::TIPE_UMUM,
+                'source' => 'ai',
+                'ai_generated_content_id' => $record->id,
                 'status' => PerangkatPembelajaran::STATUS_DRAFT,
                 'workflow_status' => PerangkatPembelajaran::WORKFLOW_DRAFT,
                 'root_id' => $existing?->root_id ?: $existing?->id,

@@ -194,6 +194,9 @@
                                         <span class="badge {{ $perangkat->tipe === 'agama' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary' }}">
                                             {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
                                         </span>
+                                        @if(($perangkat->source ?? 'manual') === 'ai')
+                                            <div class="small text-info mt-1"><i class="ri-sparkling-line me-1"></i>AI</div>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         @if($perangkat->atp)

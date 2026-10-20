@@ -100,6 +100,13 @@
         </div>
 
         <div class="card-body">
+            @if($record->type === 'rpm' && ! $record->saved_perangkat_id)
+                <div class="alert alert-info small">
+                    <i class="ri-information-line me-1"></i>
+                    Draft AI disimpan sebagai dokumen baru. Perangkat yang dibuat manual tidak akan ditimpa; jika sudah ada perangkat manual untuk konteks yang sama, simpan lewat alur manual/versi baru.
+                </div>
+            @endif
+
             @if($canEditItems)
                 <div class="alert alert-info small">
                     <i class="ri-edit-2-line me-1"></i>Draft belum disetujui — Anda dapat memperbaiki butir soal sebelum mengajukan persetujuan.

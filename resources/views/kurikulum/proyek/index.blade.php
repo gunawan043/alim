@@ -30,6 +30,7 @@
                     @if($profile)
                         <span class="badge bg-success-subtle text-success p-2">{{ $profile->name }}</span>
                     @endif
+                    <a href="{{ route('user.kurikulum.proyek.bank.index', ['userId' => $userId]) }}" class="btn btn-soft-info btn-sm"><i class="ri-archive-line me-1"></i>Bank Tema &amp; Aktivitas</a>
                     @if($canManage)
                         <button class="btn btn-primary btn-sm" onclick="openProjectCreate()"><i class="ri-add-line me-1"></i>Tambah Projek</button>
                     @endif
@@ -151,7 +152,7 @@
                                 <div class="col-md-3"><label class="form-label">Semester</label><select name="semester" id="projectSemester" class="form-select"><option value="ganjil" @selected($semester === 'ganjil')>Ganjil</option><option value="genap" @selected($semester === 'genap')>Genap</option></select></div>
                                 <div class="col-md-3"><label class="form-label">Status</label><select name="status" id="projectStatus" class="form-select">@foreach(\App\Models\CurriculumProject::STATUS_OPTIONS as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
                                 <div class="col-md-8"><label class="form-label">Judul Projek <span class="text-danger">*</span></label><input name="title" id="projectTitle" class="form-control" required maxlength="191" placeholder="Mis. Kampung Cinta Lingkungan"></div>
-                                <div class="col-md-4"><label class="form-label">Tema</label><input name="theme" id="projectTheme" class="form-control" maxlength="191" placeholder="Mis. Gaya Hidup Berkelanjutan"></div>
+                                <div class="col-md-4"><label class="form-label">Tema</label><input name="theme" id="projectTheme" class="form-control" maxlength="191" list="themeBank" placeholder="Mis. Gaya Hidup Berkelanjutan"></div>
                                 <div class="col-12"><label class="form-label">Deskripsi</label><textarea name="description" id="projectDescription" rows="2" class="form-control" maxlength="5000" placeholder="Tujuan dan gambaran projek..."></textarea></div>
                                 <div class="col-md-6">
                                     <label class="form-label">{{ $labels['values_label'] ?? 'Dimensi / Nilai' }}</label>
@@ -185,6 +186,17 @@
             </div>
         </div>
     @endif
+
+    <datalist id="themeBank">
+        @foreach($bankThemes as $theme)
+            <option value="{{ $theme->title }}">{{ $theme->description }}</option>
+        @endforeach
+    </datalist>
+    <datalist id="activityBank">
+        @foreach($bankActivities as $activity)
+            <option value="{{ $activity->title }}">{{ $activity->description }}</option>
+        @endforeach
+    </datalist>
 @endsection
 
 @section('script')
@@ -197,7 +209,7 @@
             var wrap = document.getElementById('projectActivities');
             var row = document.createElement('div');
             row.className = 'row g-2 align-items-end mb-2 project-activity';
-            row.innerHTML = '<div class="col-md-4"><input class="form-control form-control-sm activity-title" placeholder="Nama aktivitas" value="' + escapeHtml(activity.judul || '') + '"></div>'
+            row.innerHTML = '<div class="col-md-4"><input class="form-control form-control-sm activity-title" list="activityBank" placeholder="Nama aktivitas" value="' + escapeHtml(activity.judul || '') + '"></div>'
                 + '<div class="col-md-5"><input class="form-control form-control-sm activity-desc" placeholder="Deskripsi singkat" value="' + escapeHtml(activity.deskripsi || '') + '"></div>'
                 + '<div class="col-md-2"><input type="date" class="form-control form-control-sm activity-date" value="' + escapeHtml(activity.tanggal || '') + '"></div>'
                 + '<div class="col-md-1"><button type="button" class="btn btn-sm btn-soft-danger w-100" onclick="this.closest(\'.project-activity\').remove();reindexActivities()"><i class="ri-delete-bin-line"></i></button></div>';
