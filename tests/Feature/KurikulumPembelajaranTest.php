@@ -1084,11 +1084,11 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('Santri Projek')
             ->assertSee('Sangat Baik');
 
-        $this->actingAs($this->kurikulum)
-            ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/cetak")
-            ->assertOk()
-            ->assertSee('Laporan Projek')
-            ->assertSee('Santri Projek');
+        $cetak = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/cetak");
+        $cetak->assertOk();
+        $this->assertSame('application/pdf', $cetak->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $cetak->getContent());
 
         $pdf = $this->actingAs($this->kurikulum)
             ->get("/{$this->kurikulum->id}/kurikulum/proyek/{$project->id}/pdf");

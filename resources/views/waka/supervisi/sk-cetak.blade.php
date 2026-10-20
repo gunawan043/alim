@@ -7,6 +7,26 @@
     $mengingat = $sk->mengingat ?: "Undang-Undang Republik Indonesia Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional\nPeraturan Pemerintah Nomor 19 Tahun 2015 tentang Standar Nasional Pendidikan\nProgram Kerja ".$schoolName."\nKalender Pendidikan ".$schoolName;
     $roles = ['ksp' => 'KSP', 'wksp' => 'WKSP', 'guru' => 'Perwakilan Guru'];
     $kspName = $sk->anggota->firstWhere('peran', 'ksp')?->gtk?->name;
+
+    $kopBase64 = null;
+    if ($school?->kop_path) {
+        $kopAbs = storage_path('app/public/'.$school->kop_path);
+        if (file_exists($kopAbs)) {
+            $ext = strtolower(pathinfo($kopAbs, PATHINFO_EXTENSION) ?: 'png');
+            $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
+            $kopBase64 = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($kopAbs));
+        }
+    }
+
+    $logoBase64 = null;
+    if ($school?->logo_path) {
+        $logoAbs = storage_path('app/public/'.$school->logo_path);
+        if (file_exists($logoAbs)) {
+            $ext = strtolower(pathinfo($logoAbs, PATHINFO_EXTENSION) ?: 'png');
+            $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
+            $logoBase64 = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($logoAbs));
+        }
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -14,11 +34,12 @@
     <meta charset="utf-8">
     <title>SK Tim Supervisi — {{ $sk->nomor }}</title>
     <style>
-        @page { size: A4; margin: 18mm 20mm 18mm 22mm; }
+        @page { size: A4; margin: 8mm 20mm 18mm 22mm; }
         * { box-sizing: border-box; }
-        body { font-family: Cambria, Georgia, "Times New Roman", serif; font-size: 11pt; line-height: 1.45; color: #111; }
+        body { font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif; font-size: 11pt; line-height: 1.15; color: #111; }
         .center { text-align: center; }
-        .kop { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 18px; }
+        .kop { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+        .kop-image { display: block; width: 100%; max-height: 34mm; object-fit: contain; margin: 0 auto; }
         .kop .nama { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
         .kop .sub { font-size: 10pt; }
         .title { text-align: center; font-weight: bold; text-transform: uppercase; margin: 18px 0 2px; }
@@ -47,9 +68,21 @@
 <div class="toolbar"><button onclick="window.print()">Cetak SK</button></div>
 
 <div class="kop">
-    <div class="nama">{{ $schoolName }}</div>
-    @if($school?->address)<div class="sub">{{ $school->address }}</div>@endif
-    @if($school?->phone || $school?->email)<div class="sub">{{ $school->phone }}{{ $school?->phone && $school?->email ? ' · ' : '' }}{{ $school->email }}</div>@endif
+    @if($kopBase64)
+        <img src="{{ $kopBase64 }}" alt="Kop {{ $schoolName }}" class="kop-image">
+    @else
+        @if($logoBase64)<img src="{{ $logoBase64 }}" alt="Logo" style="max-height:22mm;margin-bottom:4px;">@endif
+        <div class="nama">{{ $school?->kop_nama ?: $schoolName }}</div>
+        @if($school?->kop_alamat ?: $school?->address)<div class="sub">{{ $school?->kop_alamat ?: $school->address }}</div>@endif
+        @if($school?->kop_telp ?: $school?->phone ?: $school?->kop_email ?: $school?->email)
+            <div class="sub">
+                {{ $school?->kop_telp ?: $school?->phone }}
+                @if(($school?->kop_telp ?: $school?->phone) && ($school?->kop_email ?: $school?->email)) · @endif
+                {{ $school?->kop_email ?: $school?->email }}
+            </div>
+        @endif
+        @if($school?->kop_npsn ?: $school?->npsn)<div class="sub">NPSN: {{ $school?->kop_npsn ?: $school->npsn }}</div>@endif
+    @endif
 </div>
 
 <div class="title">KEPUTUSAN KEPALA {{ strtoupper($schoolName) }}</div>

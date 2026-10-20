@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <title>@yield('title', 'Dokumen')</title>
     <style>
-        @page { size: A4; margin: 8mm 10mm 14mm 10mm; }
+        @page { margin: 8mm 10mm 14mm 10mm; }
 
         * { box-sizing: border-box; }
 
         body {
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 11px;
+            font-size: 11pt;
             color: #111;
             line-height: 1.15;
         }
@@ -40,8 +40,8 @@
         /* ── Tabel umum ──────────────────────────────────────────── */
         table.data { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         table.data th, table.data td { border: 1px solid #444; padding: 3px 5px; vertical-align: top; }
-        table.data th { background: #ececec; font-size: 11px; text-align: center; }
-        table.data td { font-size: 11px; }
+        table.data th { background: #ececec; font-size: 11pt; text-align: center; }
+        table.data td { font-size: 11pt; }
         table.data tr { page-break-inside: avoid; }
         table.data td.center { text-align: center; }
         table.data td.right { text-align: right; }
@@ -49,7 +49,7 @@
 
         /* ── Tabel informasi (tanpa garis) ───────────────────────── */
         table.info { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        table.info td { border: none; padding: 1.5px 4px; font-size: 11px; vertical-align: top; }
+        table.info td { border: none; padding: 1.5px 4px; font-size: 11pt; vertical-align: top; }
         table.info td.label { width: 150px; color: #333; }
         table.info td.colon { width: 10px; }
 
@@ -59,20 +59,20 @@
             border-bottom: none;
             padding: 4px 6px;
             font-weight: bold;
-            font-size: 11px;
+            font-size: 11pt;
             margin-top: 10px;
             text-transform: uppercase;
         }
         .section-body { border: 1px solid #444; padding: 6px 8px; margin-bottom: 0; }
         .section-body table.inside { width: 100%; border-collapse: collapse; }
-        .section-body table.inside td { border: none; padding: 2px 4px; vertical-align: top; font-size: 11px; }
+        .section-body table.inside td { border: none; padding: 2px 4px; vertical-align: top; font-size: 11pt; }
         .section-body table.inside td.label { width: 165px; font-weight: bold; }
         .section-body p { margin: 0 0 4px; }
         .section-body p:last-child { margin-bottom: 0; }
 
         /* ── Tanda tangan ────────────────────────────────────────── */
         table.sign { width: 100%; border-collapse: collapse; margin-top: 26px; page-break-inside: avoid; }
-        table.sign td { border: none; text-align: center; font-size: 11px; vertical-align: bottom; padding: 0 8px; }
+        table.sign td { border: none; text-align: center; font-size: 11pt; vertical-align: bottom; padding: 0 8px; }
         table.sign .space { height: 62px; }
         table.sign .name { font-weight: bold; text-decoration: underline; }
         table.sign .nip { font-size: 9px; color: #333; }
