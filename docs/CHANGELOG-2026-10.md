@@ -2802,6 +2802,32 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - halaman penilaian menampilkan item instrumen dan mengunci pilihan instrumen;
   - form jadwal tidak lagi menampilkan field temuan/rekomendasi/tindak lanjut.
 
+## 230. Prosedur Tim Supervisi, SK, Jadwal Otomatis & Pelaporan
+
+- **Tim Supervisi & SK**
+  - Tabel `supervisi_sk` dan `supervisi_tim_anggota`.
+  - Halaman **Tim Supervisi & SK** untuk membuat SK per tahun ajaran/semester.
+  - Anggota tim: KSP, WKSP, dan perwakilan guru.
+  - Cetak SK mengikuti format resmi: menimbang, mengingat, memutuskan, menetapkan, tanda tangan, tembusan, dan lampiran daftar anggota.
+- **Jadwal otomatis**
+  - Supervisi terhubung ke `jadwal_kbms` melalui `jadwal_kbm_id`.
+  - Saat guru dan tanggal dipilih, form mengambil jadwal KBM guru pada hari tersebut.
+  - Jam ke-, pukul, kelas, dan mata pelajaran terisi otomatis dari jadwal KBM; server memvalidasi ulang agar tidak bisa dimanipulasi.
+  - Cetak jadwal supervisi menggunakan format: No, Hari/Tgl, Jam ke-, Pukul, Nama Guru, Kelas, Mata Pelajaran, Supervisor.
+- **Pelaporan & refleksi**
+  - Status laporan ke Wadir Akademik dan Pengasuhan (`reported_to_wadir_at`).
+  - Catatan refleksi KSP (`reflection_notes`).
+  - Aksi menandai laporan dan menyimpan refleksi pada halaman detail supervisi.
+- **Migrasi baru**
+  - `2026_10_20_000002_add_schedule_links_to_supervisi_table`
+  - `2026_10_20_000003_create_supervisi_sk_tables`
+- **Diuji**
+  - API jadwal guru mengembalikan jadwal sesuai hari.
+  - Penyimpanan supervisi mengisi slot, pukul, mapel, dan kelas dari jadwal KBM.
+  - SK dapat dibuat, anggota ditambahkan, dan halaman cetak SK merespons `200`.
+  - Halaman cetak jadwal merespons `200`.
+  - Halaman detail, pengaturan, dan form supervisi merespons `200`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

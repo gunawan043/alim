@@ -116,6 +116,7 @@ class SupervisiController extends Controller
             'tujuan' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
             'instrumen_id' => 'required|uuid|exists:supervisi_instrumen,id',
+            'jadwal_kbm_id' => 'required|uuid|exists:jadwal_kbms,id',
             'redirect_to' => 'nullable|in:penilaian',
         ]);
 
@@ -124,6 +125,7 @@ class SupervisiController extends Controller
             return back()->withInput()->with('error', 'Konteks satuan pendidikan tidak ditemukan.');
         }
         $validated['school_id'] = $schoolId;
+        $validated = array_merge($validated, $this->resolveTeacherSchedule($validated, $schoolId));
 
         $this->validateSupervisorPair($validated);
         $this->assertNoScheduleConflict($validated);
@@ -160,6 +162,75 @@ class SupervisiController extends Controller
      * Form penilaian supervisi: item instrumen (dengan poin) → skor A–D + Ya/Tidak,
      * jumlah per bagian, jumlah keseluruhan, dan ketercapaian.
      */
+    /**
+     * Jadwal mengajar guru pada tanggal tertentu, dipakai form supervisi.
+     */
+    public function teacherSchedule(Request $request)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $validated = $request->validate([
+            'gtk_profile_id' => 'required|uuid|exists:gtk_profiles,id',
+            'tanggal' => 'required|date',
+            'academic_year_id' => 'nullable|uuid|exists:academic_years,id',
+        ]);
+
+        $profile = GtkProfile::findOrFail($validated['gtk_profile_id']);
+        $this->ensureGtkBelongsToSchool((string) $schoolId, $profile->id);
+
+        $date = \Carbon\Carbon::parse($validated['tanggal']);
+        $yearId = $validated['academic_year_id'] ?? AcademicYear::where('is_active', true)->value('id');
+
+        $schedules = \App\Models\JadwalKbm::query()
+            ->with(['studyGroup:id,name', 'subject:id,name'])
+            ->where('school_id', $schoolId)
+            ->where('teacher_id', $profile->user_id)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->where('day_of_week', $date->dayOfWeekIso)
+            ->where('is_active', true)
+            ->orderBy('slot_index')
+            ->orderBy('start_time')
+            ->get()
+            ->map(fn (\App\Models\JadwalKbm $schedule) => [
+                'id' => $schedule->id,
+                'slot_index' => $schedule->slot_index,
+                'start_time' => substr((string) $schedule->start_time, 0, 5),
+                'end_time' => substr((string) $schedule->end_time, 0, 5),
+                'subject' => $schedule->subject?->name ?? '-',
+                'study_group' => $schedule->studyGroup?->name ?? '-',
+                'room' => $schedule->room,
+                'label' => 'Jam '.($schedule->slot_index ?: '-').' · '.substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5).' · '.($schedule->subject?->name ?? '-').' · '.($schedule->studyGroup?->name ?? '-'),
+            ]);
+
+        return response()->json([
+            'date' => $date->toDateString(),
+            'day' => $date->locale('id')->translatedFormat('l'),
+            'schedules' => $schedules,
+        ]);
+    }
+
+    /**
+     * Cetak jadwal supervisi per semester.
+     */
+    public function schedulePrint(Request $request)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $yearId = $request->input('academic_year_id', AcademicYear::where('is_active', true)->value('id'));
+        $semester = $request->input('semester');
+
+        $rows = Supervisi::with(['gtk.user:id,name', 'observer.user:id,name', 'studyGroup:id,name', 'subject:id,name'])
+            ->where('school_id', $schoolId)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->when($semester, fn ($q) => $q->where('semester', $semester))
+            ->orderBy('tanggal_supervisi')
+            ->orderBy('slot_index')
+            ->get();
+
+        $school = \App\Models\School::find($schoolId);
+        $academicYear = $yearId ? AcademicYear::find($yearId) : null;
+
+        return view('waka.supervisi.jadwal-cetak', compact('rows', 'school', 'academicYear', 'semester'));
+    }
+
     public function penilaian(Request $request, string $id)
     {
         $schoolId = $request->attributes->get('schoolContextId');
@@ -363,6 +434,7 @@ class SupervisiController extends Controller
             'assignmentOptions' => $assignmentOptions,
             'hasSettings' => $assignmentOptions !== [],
             'selectedPair' => null,
+            'selectedScheduleId' => null,
             'instrumenOptions' => $instrumenOptions,
         ];
     }
@@ -431,6 +503,43 @@ class SupervisiController extends Controller
                 'tanggal_supervisi' => 'Jadwal bentrok: supervisor atau guru yang dipilih sudah memiliki supervisi pada jam tersebut.',
             ]);
         }
+    }
+
+    protected function resolveTeacherSchedule(array $data, string $schoolId): array
+    {
+        $schedule = \App\Models\JadwalKbm::with(['subject:id,name'])
+            ->where('school_id', $schoolId)
+            ->findOrFail($data['jadwal_kbm_id']);
+
+        $profile = GtkProfile::find($data['gtk_id']);
+        if (! $profile || (string) $schedule->teacher_id !== (string) $profile->user_id) {
+            throw ValidationException::withMessages([
+                'jadwal_kbm_id' => 'Jadwal mengajar tidak sesuai dengan guru yang dipilih.',
+            ]);
+        }
+
+        if ((string) $schedule->academic_year_id !== (string) $data['academic_year_id']) {
+            throw ValidationException::withMessages([
+                'jadwal_kbm_id' => 'Jadwal mengajar bukan untuk tahun ajaran yang dipilih.',
+            ]);
+        }
+
+        $date = \Carbon\Carbon::parse($data['tanggal_supervisi']);
+        if ((int) $schedule->day_of_week !== (int) $date->dayOfWeekIso) {
+            throw ValidationException::withMessages([
+                'jadwal_kbm_id' => 'Jadwal mengajar tidak sesuai dengan hari pada tanggal supervisi.',
+            ]);
+        }
+
+        return [
+            'jadwal_kbm_id' => $schedule->id,
+            'study_group_id' => $schedule->study_group_id,
+            'subject_id' => $schedule->subject_id,
+            'slot_index' => $schedule->slot_index,
+            'mata_pelajaran' => $schedule->subject?->name,
+            'jam_mulai' => substr((string) $schedule->start_time, 0, 5),
+            'jam_selesai' => substr((string) $schedule->end_time, 0, 5),
+        ];
     }
 
     protected function ensureInstrumenAllowed(string $schoolId, ?string $instrumenId): void
@@ -552,6 +661,7 @@ class SupervisiController extends Controller
         }
 
         $hasPenilaian = $supervisi->penilaian()->exists();
+        $formOptions['selectedScheduleId'] = $supervisi->jadwal_kbm_id;
 
         return view('waka.supervisi.edit', array_merge(
             compact('supervisi', 'academicYears', 'activeYearId', 'hasPenilaian'),
@@ -579,15 +689,25 @@ class SupervisiController extends Controller
             'tujuan' => 'nullable|string',
             'status' => 'required|in:terjadwal,berlangsung,selesai,dibatalkan',
             'instrumen_id' => 'required|uuid|exists:supervisi_instrumen,id',
+            'jadwal_kbm_id' => 'required|uuid|exists:jadwal_kbms,id',
         ]);
 
         $validated['school_id'] = $schoolId;
+        $validated = array_merge($validated, $this->resolveTeacherSchedule($validated, $schoolId));
 
         if ($supervisi->instrumen_id
             && $supervisi->penilaian()->exists()
             && (string) $supervisi->instrumen_id !== (string) $validated['instrumen_id']) {
             throw ValidationException::withMessages([
                 'instrumen_id' => 'Instrumen tidak dapat diubah karena penilaian sudah diisi.',
+            ]);
+        }
+
+        if ($supervisi->penilaian()->exists()
+            && ((string) $supervisi->jadwal_kbm_id !== (string) $validated['jadwal_kbm_id']
+                || (string) $supervisi->tanggal_supervisi?->toDateString() !== (string) $validated['tanggal_supervisi'])) {
+            throw ValidationException::withMessages([
+                'jadwal_kbm_id' => 'Jadwal tidak dapat diubah karena penilaian sudah diisi.',
             ]);
         }
 
@@ -605,6 +725,29 @@ class SupervisiController extends Controller
 
         return redirect()->route('waka.supervisi.show', $supervisi->id)
             ->with('success', 'Data supervisi berhasil diperbarui.');
+    }
+
+    public function reportToWadir(Request $request, string $id)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $supervisi = Supervisi::where('school_id', $schoolId)->findOrFail($id);
+        $supervisi->update(['reported_to_wadir_at' => now()]);
+
+        return back()->with('success', 'Hasil supervisi ditandai sudah dilaporkan ke Wadir Akademik dan Pengasuhan.');
+    }
+
+    public function saveReflection(Request $request, string $id)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $supervisi = Supervisi::where('school_id', $schoolId)->findOrFail($id);
+
+        $validated = $request->validate([
+            'reflection_notes' => 'required|string|max:5000',
+        ]);
+
+        $supervisi->update(['reflection_notes' => $validated['reflection_notes']]);
+
+        return back()->with('success', 'Catatan refleksi KSP disimpan.');
     }
 
     public function destroy(Request $request, string $id)

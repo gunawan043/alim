@@ -68,6 +68,47 @@
                             <p class="mb-0">{!! nl2br(e($supervisi->tindak_lanjut)) ?: '<span class="text-muted">-</span>' !!}</p>
                         </div>
                         <div class="col-md-12 detail-section">
+                            <h6 class="mb-2">Pelaksanaan Jadwal</h6>
+                            <table class="table table-borderless mb-0">
+                                <tr><th style="width:200px">Kelas</th><td>{{ $supervisi->studyGroup?->name ?? '-' }}</td></tr>
+                                <tr><th>Jam ke-</th><td>{{ $supervisi->slot_index ?: '-' }}</td></tr>
+                                <tr><th>Mata Pelajaran</th><td>{{ $supervisi->subject?->name ?? $supervisi->mata_pelajaran ?? '-' }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="col-md-12 detail-section">
+                            <h6 class="mb-2">Pelaporan &amp; Refleksi</h6>
+                            <div class="mb-2">
+                                <span class="text-muted">Laporan ke Wadir:</span>
+                                @if($supervisi->reported_to_wadir_at)
+                                    <span class="badge bg-success-subtle text-success">Sudah dilaporkan {{ $supervisi->reported_to_wadir_at->format('d/m/Y H:i') }}</span>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning">Belum dilaporkan</span>
+                                @endif
+                            </div>
+                            @php
+                                $jabatan = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+                                $canReport = str_contains($jabatan, 'KEPALA') || str_contains($jabatan, 'WAKIL') || str_contains($jabatan, 'TATA USAHA') || str_contains($jabatan, 'KOORDINATOR KURIKULUM');
+                            @endphp
+                            @if($canReport)
+                                @if(! $supervisi->reported_to_wadir_at)
+                                    <form method="POST" action="{{ route('waka.supervisi.report-wadir', $supervisi->id) }}" class="mb-3">
+                                        @csrf
+                                        <button class="btn btn-sm btn-success"><i class="ri-send-plane-line me-1"></i>Tandai Sudah Dilaporkan ke Wadir</button>
+                                    </form>
+                                @endif
+                                <form method="POST" action="{{ route('waka.supervisi.reflection', $supervisi->id) }}">
+                                    @csrf
+                                    <label class="form-label small">Refleksi KSP</label>
+                                    <textarea name="reflection_notes" class="form-control" rows="3" placeholder="Catatan refleksi hasil supervisi…">{{ old('reflection_notes', $supervisi->reflection_notes) }}</textarea>
+                                    <button class="btn btn-sm btn-outline-primary mt-2"><i class="ri-save-line me-1"></i>Simpan Refleksi</button>
+                                </form>
+                            @elseif($supervisi->reflection_notes)
+                                <p class="mb-0 small">{!! nl2br(e($supervisi->reflection_notes)) !!}</p>
+                            @endif
+                        </div>
+
+                        <div class="col-md-12 detail-section">
                             <h6 class="mb-2">Hasil Penilaian</h6>
                             @if($supervisi->instrumen)
                                 @php $nilaiAkhir = (float) $supervisi->nilai_akhir; @endphp

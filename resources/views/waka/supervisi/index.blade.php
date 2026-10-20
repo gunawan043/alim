@@ -26,6 +26,9 @@
 
     @php
         $stats = $statistics ?? ['total' => 0, 'terjadwal' => 0, 'selesai' => 0, 'avg_nilai' => 0];
+        $jabatanUser = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+        $canManageSupervisi = str_contains($jabatanUser, 'KEPALA') || str_contains($jabatanUser, 'WAKIL')
+            || str_contains($jabatanUser, 'TATA USAHA') || str_contains($jabatanUser, 'KOORDINATOR KURIKULUM');
     @endphp
 
     <div class="row">
@@ -62,8 +65,16 @@
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <span class="badge bg-primary-subtle text-primary align-self-center">{{ $supervisiList->total() }} supervisi</span>
-                    <a href="{{ route('waka.supervisi-pengaturan.index') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="ri-settings-3-line me-1"></i>Pengaturan Supervisor
+                    @if($canManageSupervisi)
+                        <a href="{{ route('waka.supervisi-pengaturan.index') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="ri-settings-3-line me-1"></i>Pengaturan Supervisor
+                        </a>
+                        <a href="{{ route('waka.supervisi-sk.index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-file-shield-2-line me-1"></i>Tim &amp; SK
+                        </a>
+                    @endif
+                    <a href="{{ route('waka.supervisi.jadwal.cetak', ['academic_year_id' => request('academic_year_id'), 'semester' => request('semester')]) }}" target="_blank" class="btn btn-outline-dark btn-sm">
+                        <i class="ri-printer-line me-1"></i>Cetak Jadwal
                     </a>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSupervisiModal">
                         <i class="ri-filter-3-line me-1"></i>Filter

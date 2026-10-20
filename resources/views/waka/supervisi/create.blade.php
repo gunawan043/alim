@@ -21,7 +21,7 @@
             <div class="card">
                 <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0">Form Tambah Supervisi</h5></div>
                 <div class="card-body">
-                    <form action="{{ route('waka.supervisi.store') }}" method="POST" autocomplete="off">
+                    <form action="{{ route('waka.supervisi.store') }}" method="POST" autocomplete="off" data-schedule-url="{{ route('waka.supervisi.jadwal-guru') }}">
                         @csrf
                         <input type="hidden" name="redirect_to" value="{{ request('redirect_to') }}">
                         @php
@@ -103,7 +103,7 @@
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Tahun Ajaran <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <select name="academic_year_id" class="form-select" required>
+                                <select name="academic_year_id" id="academic_year_id" class="form-select" required>
                                     <option value="">— Pilih —</option>
                                     @foreach($academicYears as $ay)
                                         <option value="{{ $ay->id }}" {{ (string) old('academic_year_id', $activeYearId) === (string) $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
@@ -123,28 +123,22 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Mata Pelajaran</label>
-                            <div class="col-sm-9">
-                                <input type="text" name="mata_pelajaran" class="form-control" value="{{ old('mata_pelajaran') }}">
-                            </div>
-                        </div>
-                        <div class="row mb-3">
                             <label class="col-sm-3 col-form-label">Tanggal Supervisi <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="date" name="tanggal_supervisi" class="form-control" value="{{ old('tanggal_supervisi') }}" required>
+                                <input type="date" name="tanggal_supervisi" id="tanggal_supervisi" class="form-control" value="{{ old('tanggal_supervisi') }}" required>
                                 @error('tanggal_supervisi')<span class="text-danger">{{ $message }}</span>@enderror
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Jam Mulai</label>
+                            <label class="col-sm-3 col-form-label">Jadwal Mengajar <span class="text-danger">*</span></label>
                             <div class="col-sm-9">
-                                <input type="time" name="jam_mulai" class="form-control" value="{{ old('jam_mulai') }}">
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Jam Selesai</label>
-                            <div class="col-sm-9">
-                                <input type="time" name="jam_selesai" class="form-control" value="{{ old('jam_selesai') }}">
+                                <input type="hidden" name="jadwal_kbm_id" id="jadwal_kbm_id" value="{{ old('jadwal_kbm_id', $selectedScheduleId) }}">
+                                <select id="jadwal_kbm_select" class="form-select" required>
+                                    <option value="">Pilih tanggal dan guru terlebih dahulu…</option>
+                                </select>
+                                <div id="scheduleInfo" class="alert alert-light border small mt-2 mb-0 d-none"></div>
+                                @error('jadwal_kbm_id')<span class="text-danger">{{ $message }}</span>@enderror
+                                <div class="form-text">Jam, kelas, dan mata pelajaran terisi otomatis dari jadwal KBM guru pada tanggal tersebut.</div>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -196,16 +190,83 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = document.getElementById('observer_id');
     const supervisee = document.getElementById('gtk_id');
 
-    if (!pair || !observer || !supervisee) return;
+    if (!observer || !supervisee) return;
 
     function syncPair() {
+        if (!pair) return;
         const option = pair.options[pair.selectedIndex];
         observer.value = option?.dataset.observer || '';
         supervisee.value = option?.dataset.gtk || '';
     }
 
-    pair.addEventListener('change', syncPair);
-    syncPair();
+    if (pair) {
+        pair.addEventListener('change', function () {
+            syncPair();
+            loadSchedules();
+        });
+        syncPair();
+    }
+
+    const form = pair.closest('form');
+    const date = document.getElementById('tanggal_supervisi');
+    const year = document.getElementById('academic_year_id');
+    const scheduleSelect = document.getElementById('jadwal_kbm_select');
+    const scheduleId = document.getElementById('jadwal_kbm_id');
+    const info = document.getElementById('scheduleInfo');
+    const currentScheduleId = @json($selectedScheduleId);
+
+    async function loadSchedules() {
+        const gtk = document.getElementById('gtk_id')?.value;
+        if (!form || !date?.value || !gtk) return;
+
+        scheduleSelect.innerHTML = '<option value="">Memuat jadwal…</option>';
+        try {
+            const params = new URLSearchParams({ gtk_profile_id: gtk, tanggal: date.value, academic_year_id: year?.value || '' });
+            const response = await fetch(form.dataset.scheduleUrl + '?' + params.toString(), { headers: { 'Accept': 'application/json' } });
+            const data = await response.json();
+            scheduleSelect.innerHTML = '<option value="">— Pilih Jadwal Mengajar —</option>';
+            (data.schedules || []).forEach(function (item) {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.label;
+                option.dataset.start = item.start_time;
+                option.dataset.end = item.end_time;
+                option.dataset.subject = item.subject;
+                option.dataset.class = item.study_group;
+                option.dataset.slot = item.slot_index;
+                scheduleSelect.appendChild(option);
+            });
+
+            if ((data.schedules || []).length === 1) {
+                scheduleSelect.selectedIndex = 1;
+            } else if (currentScheduleId) {
+                scheduleSelect.value = currentScheduleId;
+            }
+            applySchedule();
+        } catch (error) {
+            scheduleSelect.innerHTML = '<option value="">Gagal memuat jadwal</option>';
+        }
+    }
+
+    function applySchedule() {
+        const option = scheduleSelect.options[scheduleSelect.selectedIndex];
+        if (!option || !option.value) {
+            scheduleId.value = '';
+            info.classList.add('d-none');
+            info.textContent = '';
+            return;
+        }
+        scheduleId.value = option.value;
+        info.innerHTML = '<strong>Jam ' + (option.dataset.slot || '-') + '</strong> · ' +
+            option.dataset.start + '–' + option.dataset.end + ' · ' +
+            option.dataset.subject + ' · Kelas ' + option.dataset.class;
+        info.classList.remove('d-none');
+    }
+
+    scheduleSelect.addEventListener('change', applySchedule);
+    date?.addEventListener('change', loadSchedules);
+    year?.addEventListener('change', loadSchedules);
+    loadSchedules();
 });
 </script>
 @endsection

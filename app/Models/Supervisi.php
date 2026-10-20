@@ -37,6 +37,8 @@ class Supervisi extends Model
         'tindak_lanjut',
         'status',
         'instrumen_id', 'skor_total', 'skor_maks', 'nilai_akhir', 'ketercapaian',
+        'jadwal_kbm_id', 'study_group_id', 'subject_id', 'slot_index',
+        'reported_to_wadir_at', 'reflection_notes',
     ];
 
     protected $casts = [
@@ -112,6 +114,21 @@ class Supervisi extends Model
     public function observer()
     {
         return $this->belongsTo(GtkProfile::class, 'observer_id');
+    }
+
+    public function jadwalKbm()
+    {
+        return $this->belongsTo(JadwalKbm::class, 'jadwal_kbm_id');
+    }
+
+    public function studyGroup()
+    {
+        return $this->belongsTo(StudyGroup::class, 'study_group_id');
+    }
+
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
     public function scopeBySchool($query, ?string $schoolId)

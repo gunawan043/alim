@@ -273,6 +273,7 @@ use App\Http\Controllers\Waka\EkstrakurikulerAnggotaController;
 use App\Http\Controllers\Waka\EkstrakurikulerController;
 use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Http\Controllers\Waka\SupervisiController;
+use App\Http\Controllers\Waka\SupervisiSkController;
 use App\Http\Controllers\Waka\SupervisiPengaturanController;
 use App\Http\Controllers\Waka\SupervisiInstrumenController;
 use App\Http\Controllers\Waka\SuratKeluarController;
@@ -3212,6 +3213,14 @@ Route::prefix('waka')
                 ->name('ekstrakurikuler.anggota.destroy');
         });
 
+        // ── JADWAL SUPERVISI ───────────────────────────────────
+        Route::get('/supervisi/jadwal-guru', [SupervisiController::class, 'teacherSchedule'])
+            ->middleware('satuan.feature:supervisi')
+            ->name('supervisi.jadwal-guru');
+        Route::get('/supervisi/jadwal/cetak', [SupervisiController::class, 'schedulePrint'])
+            ->middleware('satuan.feature:supervisi')
+            ->name('supervisi.jadwal.cetak');
+
         // ── SUPERVISI ───────────────────────────────────────────
         Route::middleware('satuan.feature:supervisi')->group(function () {
             Route::resource('supervisi', SupervisiController::class);
@@ -3219,6 +3228,22 @@ Route::prefix('waka')
             Route::get('/{supervisi}/penilaian', [SupervisiController::class, 'penilaian'])->name('supervisi.penilaian');
             Route::post('/{supervisi}/penilaian', [SupervisiController::class, 'penilaianStore'])->name('supervisi.penilaian.store');
             Route::get('/{supervisi}/cetak', [SupervisiController::class, 'cetak'])->name('supervisi.cetak');
+            Route::post('/{supervisi}/lapor-wadir', [SupervisiController::class, 'reportToWadir'])
+                ->middleware('satuan.feature:supervisi-admin')->name('supervisi.report-wadir');
+            Route::post('/{supervisi}/refleksi', [SupervisiController::class, 'saveReflection'])
+                ->middleware('satuan.feature:supervisi-admin')->name('supervisi.reflection');
+        });
+
+        // ── TIM SUPERVISI & SK ─────────────────────────────────
+        Route::prefix('supervisi-sk')->middleware('satuan.feature:supervisi-admin')->name('supervisi-sk.')->group(function () {
+            Route::get('/', [SupervisiSkController::class, 'index'])->name('index');
+            Route::post('/', [SupervisiSkController::class, 'store'])->name('store');
+            Route::get('/{id}', [SupervisiSkController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [SupervisiSkController::class, 'update'])->name('update');
+            Route::delete('/{id}', [SupervisiSkController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/anggota', [SupervisiSkController::class, 'storeMember'])->name('member.store');
+            Route::delete('/{id}/anggota/{memberId}', [SupervisiSkController::class, 'destroyMember'])->name('member.destroy');
+            Route::get('/{id}/cetak', [SupervisiSkController::class, 'cetak'])->name('cetak');
         });
 
         // ── PENGATURAN SUPERVISOR ───────────────────────────────
