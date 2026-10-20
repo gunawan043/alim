@@ -101,6 +101,8 @@ use App\Http\Controllers\Perpustakaan\LibraryDashboardController;
 use App\Http\Controllers\Perpustakaan\LibraryGenreController;
 use App\Http\Controllers\Perpustakaan\LibraryLoanController;
 use App\Http\Controllers\Perpustakaan\LibraryMemberController;
+use App\Http\Controllers\Perpustakaan\LibraryRoomController;
+use App\Http\Controllers\Perpustakaan\LibraryStockOpnameController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
 use App\Http\Controllers\Perpustakaan\LibraryVisitController;
 use App\Http\Controllers\Kurikulum\AiContentController;
@@ -588,6 +590,15 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/loans/{id}/return', [LibraryLoanController::class, 'returnLoan'])->name('loans.return');
                     Route::get('/visits', [LibraryVisitController::class, 'index'])->name('visits.index');
                     Route::post('/visits', [LibraryVisitController::class, 'store'])->name('visits.store');
+                Route::get('/rooms', [LibraryRoomController::class, 'index'])->name('rooms.index');
+                Route::post('/rooms', [LibraryRoomController::class, 'store'])->name('rooms.store');
+                Route::post('/rooms/{id}/approve', [LibraryRoomController::class, 'approve'])->name('rooms.approve');
+                Route::post('/rooms/{id}/reject', [LibraryRoomController::class, 'reject'])->name('rooms.reject');
+                Route::post('/rooms/{id}/complete', [LibraryRoomController::class, 'complete'])->name('rooms.complete');
+                Route::get('/stock-opnames', [LibraryStockOpnameController::class, 'index'])->name('stock-opnames.index');
+                Route::post('/stock-opnames', [LibraryStockOpnameController::class, 'store'])->name('stock-opnames.store');
+                Route::post('/stock-opnames/{sessionId}/items/{itemId}', [LibraryStockOpnameController::class, 'updateItem'])->name('stock-opnames.items.update');
+                Route::post('/stock-opnames/{id}/complete', [LibraryStockOpnameController::class, 'complete'])->name('stock-opnames.complete');
                 });
 
             // ── SCHOOLS ───────────────────────────────────────────────
