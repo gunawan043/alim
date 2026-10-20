@@ -8,7 +8,7 @@
 
 @section('content')
     <style>
-        @media print { @page { size: A4 landscape; margin: 12mm 10mm; } }
+        @media print { @page { size: A4 landscape; margin: 8mm 10mm; } }
         .rubric-note { font-size: 8.5px; color: #444; }
     </style>
 

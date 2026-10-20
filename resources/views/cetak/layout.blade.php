@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>@yield('title', 'Dokumen')</title>
     <style>
-        @page { size: A4; margin: 13mm 10mm 16mm 10mm; }
+        @page { size: A4; margin: 8mm 10mm 14mm 10mm; }
 
         * { box-sizing: border-box; }
 
@@ -12,7 +12,7 @@
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
             font-size: 11px;
             color: #111;
-            line-height: 1.35;
+            line-height: 1.15;
         }
 
         /* ── Kop identitas satuan pendidikan ─────────────────────── */
@@ -21,6 +21,7 @@
         .kop-table td { border: none; padding: 0 4px; vertical-align: middle; }
         .kop-logo { width: 60px; text-align: center; }
         .kop-logo img { width: 55px; }
+        .kop-image { display: block; width: 100%; max-height: 34mm; object-fit: contain; }
         .kop-text { text-align: center; }
         .kop-text .nama { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: .3px; }
         .kop-text .sub { font-size: 10.5px; color: #222; }
@@ -31,7 +32,7 @@
             font-size: 13px;
             font-weight: bold;
             text-transform: uppercase;
-            margin: 10px 0 2px;
+            margin: 6px 0 2px;
             text-decoration: underline;
         }
         .doc-subtitle { text-align: center; font-size: 11px; margin-bottom: 10px; color: #333; }
