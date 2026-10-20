@@ -86,6 +86,13 @@ class SupervisiController extends Controller
         $activeYearId = AcademicYear::where('is_active', true)->value('id');
         $formOptions = $this->formOptions($schoolId, $activeYearId);
 
+        $observerId = $request->input('observer_id');
+        $gtkId = $request->input('gtk_id');
+        if ($observerId && $gtkId) {
+            $formOptions['selectedPair'] = collect($formOptions['assignmentOptions'])
+                ->first(fn ($pair) => $pair['observer_id'] === $observerId && $pair['gtk_id'] === $gtkId);
+        }
+
         return view('waka.supervisi.create', array_merge(
             compact('academicYears', 'activeYearId'),
             $formOptions
@@ -310,33 +317,26 @@ class SupervisiController extends Controller
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
             ->get();
 
-        $hasSettings = $settings->isNotEmpty();
+        $assignmentOptions = $settings
+            ->map(function (SupervisiPengaturan $setting) {
+                return [
+                    'value' => $setting->supervisor_gtk_id.'|'.$setting->supervisee_gtk_id,
+                    'observer_id' => $setting->supervisor_gtk_id,
+                    'gtk_id' => $setting->supervisee_gtk_id,
+                    'supervisor_name' => $setting->supervisor?->name ?? '-',
+                    'supervisee_name' => $setting->supervisee?->name ?? '-',
+                    'label' => ($setting->supervisor?->name ?? '-').' → '.($setting->supervisee?->name ?? '-'),
+                ];
+            })
+            ->unique('value')
+            ->values()
+            ->all();
 
-        if ($hasSettings) {
-            $supervisorGtks = $settings->pluck('supervisor')->filter()->unique('id')->values();
-            $superviseeGtks = $settings->pluck('supervisee')->filter()->unique('id')->values();
-        } else {
-            $supervisorGtks = $this->gtkOptionsForSchool($schoolId);
-            $superviseeGtks = $supervisorGtks;
-        }
-
-        $supervisorPairs = [];
-        foreach ($settings as $setting) {
-            $supervisorPairs[$setting->supervisor_gtk_id][] = $setting->supervisee_gtk_id;
-        }
-
-        $currentProfileId = GtkProfile::where('user_id', auth()->id())->value('id');
-        $defaultSupervisorId = $supervisorGtks->contains('id', $currentProfileId)
-            ? $currentProfileId
-            : $supervisorGtks->first()?->id;
-
-        return compact(
-            'supervisorGtks',
-            'superviseeGtks',
-            'supervisorPairs',
-            'hasSettings',
-            'defaultSupervisorId'
-        );
+        return [
+            'assignmentOptions' => $assignmentOptions,
+            'hasSettings' => $assignmentOptions !== [],
+            'selectedPair' => null,
+        ];
     }
 
     /**
@@ -353,7 +353,9 @@ class SupervisiController extends Controller
             ->where('is_active', true);
 
         if (! (clone $settingsQuery)->exists()) {
-            return;
+            throw ValidationException::withMessages([
+                'observer_id' => 'Belum ada pengaturan supervisor untuk tahun ajaran ini. Atur pasangan supervisor dan guru terlebih dahulu.',
+            ]);
         }
 
         $pairExists = (clone $settingsQuery)
@@ -474,25 +476,23 @@ class SupervisiController extends Controller
         $activeYearId = $supervisi->academic_year_id ?: AcademicYear::where('is_active', true)->value('id');
         $formOptions = $this->formOptions($schoolId, $activeYearId);
 
-        // Pastikan pasangan yang sedang diedit tetap tersedia meskipun
-        // pengaturannya sudah dinonaktifkan/diubah.
-        if ($supervisi->observer_id && ! $formOptions['supervisorGtks']->contains('id', $supervisi->observer_id)) {
-            $currentSupervisor = GtkProfile::with('user:id,name')->find($supervisi->observer_id);
-            if ($currentSupervisor) {
-                $formOptions['supervisorGtks']->push($currentSupervisor);
-            }
-        }
-        if ($supervisi->gtk_id && ! $formOptions['superviseeGtks']->contains('id', $supervisi->gtk_id)) {
-            $currentSupervisee = GtkProfile::with('user:id,name')->find($supervisi->gtk_id);
-            if ($currentSupervisee) {
-                $formOptions['superviseeGtks']->push($currentSupervisee);
-            }
-        }
+        // Pasangan yang sedang diedit tetap ditampilkan meskipun pengaturannya
+        // sudah dinonaktifkan/diubah.
         if ($supervisi->observer_id && $supervisi->gtk_id) {
-            $formOptions['supervisorPairs'][$supervisi->observer_id] = array_values(array_unique(array_merge(
-                $formOptions['supervisorPairs'][$supervisi->observer_id] ?? [],
-                [$supervisi->gtk_id]
-            )));
+            $currentPair = [
+                'value' => $supervisi->observer_id.'|'.$supervisi->gtk_id,
+                'observer_id' => $supervisi->observer_id,
+                'gtk_id' => $supervisi->gtk_id,
+                'supervisor_name' => $supervisi->observer?->name ?? $supervisi->observer_name ?? '-',
+                'supervisee_name' => $supervisi->gtk?->name ?? $supervisi->gtk_name ?? '-',
+                'label' => ($supervisi->observer?->name ?? $supervisi->observer_name ?? '-').' → '.($supervisi->gtk?->name ?? $supervisi->gtk_name ?? '-'),
+            ];
+
+            if (! collect($formOptions['assignmentOptions'])->contains('value', $currentPair['value'])) {
+                $formOptions['assignmentOptions'][] = $currentPair;
+            }
+
+            $formOptions['selectedPair'] = $currentPair;
         }
 
         return view('waka.supervisi.edit', array_merge(

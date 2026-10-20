@@ -30,43 +30,52 @@
 
                         @if(! $hasSettings)
                             <div class="alert alert-warning small">
-                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Semua GTK ditampilkan.
+                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Tambahkan pasangan supervisor → guru terlebih dahulu sebelum membuat jadwal.
                                 <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
                             </div>
                         @endif
 
-                        <h6 class="border-bottom pb-2 mb-3">Supervisor &amp; Guru yang Disupervisi</h6>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Supervisor <span class="text-danger">*</span></label>
-                            <div class="col-sm-9">
-                                <select name="observer_id" id="observer_select" class="form-select" required>
-                                    <option value="">— Pilih Supervisor —</option>
-                                    @foreach($supervisorGtks as $gtk)
-                                        <option value="{{ $gtk->id }}"
-                                            {{ (string) old('observer_id', request('observer_id', $defaultSupervisorId)) === (string) $gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('observer_id')<span class="text-danger">{{ $message }}</span>@enderror
+                        <h6 class="border-bottom pb-2 mb-3">Pasangan Supervisor</h6>
+                        @if($selectedPair)
+                            <input type="hidden" name="observer_id" value="{{ $selectedPair['observer_id'] }}">
+                            <input type="hidden" name="gtk_id" value="{{ $selectedPair['gtk_id'] }}">
+                            <div class="alert alert-light border d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <div class="small text-muted">Supervisor</div>
+                                    <div class="fw-semibold">{{ $selectedPair['supervisor_name'] }}</div>
+                                </div>
+                                <i class="ri-arrow-right-line text-muted"></i>
+                                <div>
+                                    <div class="small text-muted">Guru yang Disupervisi</div>
+                                    <div class="fw-semibold">{{ $selectedPair['supervisee_name'] }}</div>
+                                </div>
+                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="btn btn-sm btn-outline-secondary">Ubah Pengaturan</a>
                             </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Guru yang Disupervisi <span class="text-danger">*</span></label>
-                            <div class="col-sm-9">
-                                <select name="gtk_id" id="gtk_select" class="form-select" required>
-                                    <option value="">— Pilih Guru —</option>
-                                    @foreach($superviseeGtks as $gtk)
-                                        <option value="{{ $gtk->id }}"
-                                            {{ (string) old('gtk_id', request('gtk_id')) === (string) $gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->nupy ? ' · NUPY. '.$gtk->latestEmployment->nupy : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('gtk_id')<span class="text-danger">{{ $message }}</span>@enderror
+                        @elseif($hasSettings)
+                            <div class="row mb-3">
+                                <label class="col-sm-3 col-form-label">Penugasan Supervisor <span class="text-danger">*</span></label>
+                                <div class="col-sm-9">
+                                    <select id="assignment_pair" class="form-select" required>
+                                        <option value="">— Pilih Pasangan Supervisor → Guru —</option>
+                                        @foreach($assignmentOptions as $pair)
+                                            <option value="{{ $pair['value'] }}"
+                                                    data-observer="{{ $pair['observer_id'] }}"
+                                                    data-gtk="{{ $pair['gtk_id'] }}"
+                                                    {{ old('observer_id') === $pair['observer_id'] && old('gtk_id') === $pair['gtk_id'] ? 'selected' : '' }}>
+                                                {{ $pair['label'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <input type="hidden" name="observer_id" id="observer_id" value="{{ old('observer_id') }}">
+                                    <input type="hidden" name="gtk_id" id="gtk_id" value="{{ old('gtk_id') }}">
+                                    @error('observer_id')<span class="text-danger">{{ $message }}</span>@enderror
+                                    @error('gtk_id')<span class="text-danger">{{ $message }}</span>@enderror
+                                </div>
                             </div>
-                        </div>
+                        @endif
 
+                        <hr>
+                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
                         <hr>
                         <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
 
@@ -168,7 +177,7 @@
 
                         <div class="mt-4">
                             <a href="{{ route('waka.supervisi.index') }}" class="btn btn-secondary me-1"><i class="ri-arrow-go-back-line"></i> Kembali</a>
-                            <button type="submit" class="btn btn-primary"><i class="ri-save-line"></i> Simpan</button>
+                            <button type="submit" class="btn btn-primary" @unless($hasSettings) disabled @endunless><i class="ri-save-line"></i> Simpan</button>
                         </div>
                     </form>
                 </div>
@@ -180,32 +189,20 @@
 @section('script')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const supervisor = document.getElementById('observer_select');
-    const supervisee = document.getElementById('gtk_select');
-    const pairs = @json($supervisorPairs);
-    const hasSettings = @json($hasSettings);
+    const pair = document.getElementById('assignment_pair');
+    const observer = document.getElementById('observer_id');
+    const supervisee = document.getElementById('gtk_id');
 
-    if (!supervisor || !supervisee) return;
+    if (!pair || !observer || !supervisee) return;
 
-    function syncSupervisees() {
-        const allowed = pairs[supervisor.value] || [];
-        let firstAllowed = null;
-
-        Array.from(supervisee.options).forEach(function (option) {
-            if (!option.value) return;
-            const visible = !hasSettings || allowed.includes(option.value);
-            option.hidden = !visible;
-            option.disabled = !visible;
-            if (visible && !firstAllowed) firstAllowed = option;
-        });
-
-        if (supervisee.value && supervisee.selectedOptions[0]?.disabled) {
-            supervisee.value = firstAllowed ? firstAllowed.value : '';
-        }
+    function syncPair() {
+        const option = pair.options[pair.selectedIndex];
+        observer.value = option?.dataset.observer || '';
+        supervisee.value = option?.dataset.gtk || '';
     }
 
-    supervisor.addEventListener('change', syncSupervisees);
-    syncSupervisees();
+    pair.addEventListener('change', syncPair);
+    syncPair();
 });
 </script>
 @endsection

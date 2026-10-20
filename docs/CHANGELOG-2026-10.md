@@ -2773,6 +2773,20 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - akun guru yang dijadikan supervisor mendapat menu `Penilaian Saya` dan `Instrumen Supervisi`, serta dapat membuka halaman instrumen;
   - akun supervisor biasa mendapat `403` saat membuka Pengaturan Supervisor.
 
+## 228. Pisahkan Pengaturan Supervisor dari Jadwal Supervisi
+
+- **Pengaturan Supervisor** tetap menjadi satu-satunya tempat menetapkan pasangan Supervisor → Guru.
+- **Form Tambah Supervisi** tidak lagi memilih supervisor dan guru secara terpisah:
+  - jika dibuka dari aksi **Buat & Nilai**, pasangan ditampilkan read-only;
+  - jika dibuka dari menu, pengguna memilih satu **Penugasan Supervisor** dari pasangan yang sudah diatur;
+  - jika belum ada pengaturan, form tidak dapat disimpan dan menampilkan tautan ke Pengaturan Supervisor.
+- **Form Edit Supervisi** menampilkan pasangan read-only; perubahan pasangan dilakukan melalui Pengaturan Supervisor.
+- Validasi server mewajibkan pasangan supervisor sudah diatur untuk tahun ajaran.
+- Diuji:
+  - create dengan query pasangan menampilkan ringkasan read-only dan tidak menampilkan dropdown supervisor lama;
+  - create tanpa query menampilkan dropdown penugasan pasangan;
+  - halaman tetap merespons `200`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

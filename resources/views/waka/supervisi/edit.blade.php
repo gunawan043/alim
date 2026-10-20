@@ -20,45 +20,31 @@
                     <form action="{{ route('waka.supervisi.update', $supervisi->id) }}" method="POST" autocomplete="off">
                         @csrf @method('PUT')
 
-                        @if(! $hasSettings)
+                        <h6 class="border-bottom pb-2 mb-3">Pasangan Supervisor</h6>
+                        @if($selectedPair)
+                            <input type="hidden" name="observer_id" value="{{ $selectedPair['observer_id'] }}">
+                            <input type="hidden" name="gtk_id" value="{{ $selectedPair['gtk_id'] }}">
+                            <div class="alert alert-light border d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <div class="small text-muted">Supervisor</div>
+                                    <div class="fw-semibold">{{ $selectedPair['supervisor_name'] }}</div>
+                                </div>
+                                <i class="ri-arrow-right-line text-muted"></i>
+                                <div>
+                                    <div class="small text-muted">Guru yang Disupervisi</div>
+                                    <div class="fw-semibold">{{ $selectedPair['supervisee_name'] }}</div>
+                                </div>
+                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $supervisi->academic_year_id]) }}" class="btn btn-sm btn-outline-secondary">Ubah Pengaturan</a>
+                            </div>
+                        @else
                             <div class="alert alert-warning small">
-                                <i class="ri-alert-line me-1"></i>Belum ada pengaturan supervisor untuk tahun ajaran ini. Semua GTK ditampilkan.
-                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $activeYearId]) }}" class="fw-semibold ms-1">Atur Supervisor</a>
+                                <i class="ri-alert-line me-1"></i>Pasangan supervisor untuk jadwal ini belum tersedia. Atur pasangan terlebih dahulu di
+                                <a href="{{ route('waka.supervisi-pengaturan.index', ['academic_year_id' => $supervisi->academic_year_id]) }}">Pengaturan Supervisor</a>.
                             </div>
                         @endif
 
-                        <h6 class="border-bottom pb-2 mb-3">Supervisor &amp; Guru yang Disupervisi</h6>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Supervisor <span class="text-danger">*</span></label>
-                            <div class="col-sm-9">
-                                <select name="observer_id" id="observer_select" class="form-select" required>
-                                    <option value="">— Pilih Supervisor —</option>
-                                    @foreach($supervisorGtks as $gtk)
-                                        <option value="{{ $gtk->id }}"
-                                            {{ (string) old('observer_id', $supervisi->observer_id) === (string) $gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->jabatan ? ' · '.$gtk->latestEmployment->jabatan : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('observer_id')<span class="text-danger">{{ $message }}</span>@enderror
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label">Guru yang Disupervisi <span class="text-danger">*</span></label>
-                            <div class="col-sm-9">
-                                <select name="gtk_id" id="gtk_select" class="form-select" required>
-                                    <option value="">— Pilih Guru —</option>
-                                    @foreach($superviseeGtks as $gtk)
-                                        <option value="{{ $gtk->id }}"
-                                            {{ (string) old('gtk_id', $supervisi->gtk_id) === (string) $gtk->id ? 'selected' : '' }}>
-                                            {{ $gtk->name }}{{ $gtk->latestEmployment?->nupy ? ' · NUPY. '.$gtk->latestEmployment->nupy : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('gtk_id')<span class="text-danger">{{ $message }}</span>@enderror
-                            </div>
-                        </div>
-
+                        <hr>
+                        <h6 class="border-bottom pb-2 mb-3">Jadwal Supervisi</h6>
                         <hr>
                         <h6 class="border-bottom pb-2 mb-3">Detail Supervisi</h6>
 
@@ -162,37 +148,4 @@
             </div>
         </div>
     </div>
-@endsection
-
-@section('script')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const supervisor = document.getElementById('observer_select');
-    const supervisee = document.getElementById('gtk_select');
-    const pairs = @json($supervisorPairs);
-    const hasSettings = @json($hasSettings);
-
-    if (!supervisor || !supervisee) return;
-
-    function syncSupervisees() {
-        const allowed = pairs[supervisor.value] || [];
-        let firstAllowed = null;
-
-        Array.from(supervisee.options).forEach(function (option) {
-            if (!option.value) return;
-            const visible = !hasSettings || allowed.includes(option.value);
-            option.hidden = !visible;
-            option.disabled = !visible;
-            if (visible && !firstAllowed) firstAllowed = option;
-        });
-
-        if (supervisee.value && supervisee.selectedOptions[0]?.disabled) {
-            supervisee.value = firstAllowed ? firstAllowed.value : '';
-        }
-    }
-
-    supervisor.addEventListener('change', syncSupervisees);
-    syncSupervisees();
-});
-</script>
 @endsection
