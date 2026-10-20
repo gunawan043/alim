@@ -444,3 +444,44 @@
 
 <!-- Overlay: close sidebar on mobile -->
 <div class="vertical-overlay"></div>
+
+<script>
+    (function () {
+        function scrollSidebarToActive() {
+            const candidates = Array.from(document.querySelectorAll('#navbar-nav .nav-link.active'));
+            const active = candidates.find(function (link) {
+                const rect = link.getBoundingClientRect();
+                return link.offsetParent !== null && rect.width > 0 && rect.height > 0;
+            }) || candidates[candidates.length - 1];
+
+            const sidebar = document.querySelector('.scrollbar_sidebar');
+            if (!active || !sidebar) return;
+
+            const scroller = sidebar.querySelector('.simplebar-content-wrapper') || sidebar;
+            const activeRect = active.getBoundingClientRect();
+            const scrollRect = scroller.getBoundingClientRect();
+
+            if (activeRect.top >= scrollRect.top && activeRect.bottom <= scrollRect.bottom) {
+                return;
+            }
+
+            const target = scroller.scrollTop
+                + (activeRect.top - scrollRect.top)
+                - (scrollRect.height / 2)
+                + (activeRect.height / 2);
+
+            scroller.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
+        }
+
+        function initSidebarActiveScroll() {
+            setTimeout(scrollSidebarToActive, 200);
+            setTimeout(scrollSidebarToActive, 650);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSidebarActiveScroll);
+        } else {
+            initSidebarActiveScroll();
+        }
+    })();
+</script>

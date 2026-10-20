@@ -121,6 +121,35 @@
 
     /* ── Sarpras Dashboard Route ─────────────────────────────────────── */
     $sarprasDashboardRoute = route('sarpras.user.dashboard', ['userId' => $userId]);
+
+    /* ── Opsi dashboard sesuai jabatan/tugas (satu pintu di atas) ───── */
+    $dashboardOptions = [];
+    $addDashboard = function (bool $condition, string $routeName, string $label, string $icon) use (&$dashboardOptions): void {
+        if ($condition) {
+            $dashboardOptions[] = compact('routeName', 'label', 'icon');
+        }
+    };
+
+    $addDashboard($isKepala, 'user.dashboard.kepala-satuan-pendidikan', 'Dashboard Kepala', 'ri-vip-crown-line');
+    $addDashboard($isWakil, 'user.dashboard.wakil-kepala', 'Dashboard Wakil', 'ri-shield-star-line');
+    $addDashboard($isGuru && ! $isGuruTahfidz, 'user.dashboard.guru', 'Dashboard Guru', 'ri-user-star-line');
+    $addDashboard($isGuruTahfidz, 'user.dashboard.tahfidz', 'Dashboard Tahfidz', 'ri-book-read-line');
+    $addDashboard($isKepalaTU, 'user.dashboard.ka-tata-usaha', 'Dashboard Kepala TU', 'ri-admin-line');
+    $addDashboard($isTU, 'user.dashboard.staf-tata-usaha', 'Dashboard Tata Usaha', 'ri-file-user-line');
+    $addDashboard($isBendahara, 'user.dashboard.bendahara', 'Dashboard Bendahara', 'ri-money-dollar-circle-line');
+    $addDashboard($isKoorKurik, 'user.dashboard.koordinator-kurikulum', 'Dashboard Kurikulum', 'ri-book-mark-line');
+    $addDashboard($isKoorKesiswa, 'user.dashboard.koordinator-kesiswaan', 'Dashboard Kesiswaan', 'ri-group-line');
+    $addDashboard($isKoorEkskul, 'user.dashboard.koordinator-ekskul', 'Dashboard Ekstrakurikuler', 'ri-basketball-line');
+    $addDashboard($isWaliKelas, 'user.dashboard.wali-kelas', 'Dashboard Wali Kelas', 'ri-parent-line');
+    $addDashboard($isKoorMapel, 'user.dashboard.koordinator-guru', 'Dashboard Koordinator Mapel', 'ri-team-line');
+    $addDashboard($isKoorLab, 'user.dashboard.koordinator-lab', 'Dashboard Laboratorium', 'ri-flask-line');
+    $addDashboard($isKoorSarpras, 'user.dashboard.koordinator-sarpras', 'Dashboard Koordinator Sarpras', 'ri-tools-line');
+
+    if ($dashboardOptions === []) {
+        $dashboardOptions[] = ['routeName' => 'root', 'label' => 'Dashboard', 'icon' => 'ri-home-6-line'];
+    }
+
+    $dashboardOptions = collect($dashboardOptions)->unique('routeName')->values()->all();
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
@@ -129,10 +158,24 @@
 <li class="menu-title"><span>Menu</span></li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ $currentRoute === 'root' ? ' active' : '' }}"
-       href="{{ route('root') }}">
-        <i class="ri-home-6-line"></i><span>Beranda</span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.', 'root']) ? ' active' : '' }}"
+       href="#sidebar_dashboard" data-bs-toggle="collapse" role="button"
+       aria-expanded="{{ isActiveAny($currentRoute, ['user.dashboard.', 'root']) ? 'true' : 'false' }}"
+       aria-controls="sidebar_dashboard">
+        <i class="ri-dashboard-3-line"></i><span>Dashboard</span><span class="menu-arrow"></span>
     </a>
+    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.dashboard.', 'root']) ? ' show' : '' }}" id="sidebar_dashboard">
+        <ul class="nav nav-sm flex-column">
+            @foreach($dashboardOptions as $dashboard)
+                <li class="nav-item">
+                    <a class="nav-link{{ $currentRoute === $dashboard['routeName'] ? ' active' : '' }}"
+                       href="{{ $dashboard['routeName'] === 'root' ? route('root') : route($dashboard['routeName'], ['userId' => $userId]) }}">
+                        <i class="{{ $dashboard['icon'] }} me-1"></i>{{ $dashboard['label'] }}
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </div>
 </li>
 
 <li class="nav-item">
@@ -175,137 +218,6 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.approvals.']) ? ' active' : '' }}"
        href="{{ route('user.approvals.index', ['userId' => $userId]) }}">
         <i class="ri-check-double-line"></i><span>Approval Center</span>
-    </a>
-</li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 2 — DASHBOARD (multi per jabatan & tugas)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-<li class="menu-title"><span>Dashboard</span></li>
-
-@if($showAll || $isKepala)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.kepala-satuan-pendidikan']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.kepala-satuan-pendidikan', ['userId' => $userId]) }}">
-        <i class="ri-vip-crown-line"></i><span>Dashboard Kepala</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isWakil)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.wakil-kepala']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.wakil-kepala', ['userId' => $userId]) }}">
-        <i class="ri-shield-star-line"></i><span>Dashboard Wakil</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || ($isGuru && ! $isGuruTahfidz))
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.guru']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.guru', ['userId' => $userId]) }}">
-        <i class="ri-user-star-line"></i><span>Dashboard Guru</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isGuruTahfidz || $isKoorGuruTahfidz)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.tahfidz']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.tahfidz', ['userId' => $userId]) }}">
-        <i class="ri-book-read-line"></i><span>Dashboard Tahfidz</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKepalaTU)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.ka-tata-usaha']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.ka-tata-usaha', ['userId' => $userId]) }}">
-        <i class="ri-admin-line"></i><span>Dashboard Kepala TU</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isTU)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.staf-tata-usaha']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.staf-tata-usaha', ['userId' => $userId]) }}">
-        <i class="ri-file-user-line"></i><span>Dashboard Tata Usaha</span>
-    </a>
-</li>
-@endif
-
-@if(($showAll || $isBendahara) && menu_allowed('keuangan'))
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.bendahara']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.bendahara', ['userId' => $userId]) }}">
-        <i class="ri-money-dollar-circle-line"></i><span>Dashboard Bendahara</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorKurik)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-kurikulum']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-kurikulum', ['userId' => $userId]) }}">
-        <i class="ri-book-mark-line"></i><span>Dashboard Kurikulum</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorKesiswa)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-kesiswaan']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-kesiswaan', ['userId' => $userId]) }}">
-        <i class="ri-group-line"></i><span>Dashboard Kesiswaan</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorEkskul)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-ekskul']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-ekskul', ['userId' => $userId]) }}">
-        <i class="ri-basketball-line"></i><span>Dashboard Ekstrakurikuler</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isWaliKelas)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.wali-kelas']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.wali-kelas', ['userId' => $userId]) }}">
-        <i class="ri-parent-line"></i><span>Dashboard Wali Kelas</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorMapel)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-guru']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-guru', ['userId' => $userId]) }}">
-        <i class="ri-team-line"></i><span>Dashboard Koordinator Mapel</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorLab)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-lab']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-lab', ['userId' => $userId]) }}">
-        <i class="ri-flask-line"></i><span>Dashboard Laboratorium</span>
-    </a>
-</li>
-@endif
-
-@if($showAll || $isKoorSarpras)
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.dashboard.koordinator-sarpras']) ? ' active' : '' }}"
-       href="{{ route('user.dashboard.koordinator-sarpras', ['userId' => $userId]) }}">
-        <i class="ri-tools-line"></i><span>Dashboard Koordinator Sarpras</span>
     </a>
 </li>
 @endif

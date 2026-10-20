@@ -2682,7 +2682,9 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - Middleware role diperbaiki dari pemanggilan `canPermission()` yang tidak ada menjadi pengecekan permission snapshot + fallback role.
 - **Sidebar Satuan Pendidikan**
   - Halaman Waka memakai sidebar utama Satuan Pendidikan, bukan sidebar Waka terpisah.
-  - Dashboard diberi label per peran agar tidak tampil berulang dengan nama sama.
+  - **Beranda dihapus** karena sama dengan Dashboard.
+  - Dashboard digabung menjadi satu menu dropdown di bagian paling atas; label tiap peran tetap berbeda.
+  - **Auto-scroll sidebar** ke menu aktif saat berpindah halaman, termasuk menu yang berada jauh di bawah.
   - Menu Ekstrakurikuler, Kalender, Agenda, dan Dashboard dideduplikasi.
   - Tugas tambahan dibaca dari `GtkAdditionalTask` dan `OtherTeacherTask`, sehingga Koordinator/Pembina Ekskul benar-benar mendapat menu.
   - Daftar/agenda ekskul di sidebar tugas tidak lagi mengulang menu utama.
