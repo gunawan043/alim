@@ -82,10 +82,10 @@ class TahfidzMasterTest extends TestCase
             ->assertOk()
             ->assertSee('Al-Fatihah');
 
-        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/muqorror/{$plan->id}/print")
-            ->assertOk()
-            ->assertSee('Muqorror Tahfizh Al-Qur');
+        $print = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/muqorror/{$plan->id}/print");
+        $print->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 
     public function test_rpp_tahfizh_dan_iqro_dapat_disusun_dilihat_dan_dicetak(): void
@@ -125,9 +125,9 @@ class TahfidzMasterTest extends TestCase
             ->assertOk()
             ->assertSee('Menyimak bacaan santri');
 
-        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/rpp/{$plan->id}/print")
-            ->assertOk()
-            ->assertSee('Rencana Pembelajaran Iqro');
+        $print = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/rpp/{$plan->id}/print");
+        $print->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 }

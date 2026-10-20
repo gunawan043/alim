@@ -98,9 +98,9 @@ class JadwalPergantianJamTest extends TestCase
         $this->get("/{$this->admin->id}/qr/{$this->sgA->id}")
             ->assertOk()
             ->assertSee('QR Kelas');
-        $this->get("/{$this->admin->id}/qr/{$this->sgA->id}/print")
-            ->assertOk()
-            ->assertSee('Cetak QR Kelas');
+        $qrPrint = $this->get("/{$this->admin->id}/qr/{$this->sgA->id}/print");
+        $qrPrint->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $qrPrint->getContent());
 
         // Regenerate — token lama expired, token baru aktif
         $this->post("/{$this->admin->id}/qr/{$this->sgA->id}/regenerate")

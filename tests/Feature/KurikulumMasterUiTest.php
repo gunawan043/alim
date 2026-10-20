@@ -540,10 +540,10 @@ class KurikulumMasterUiTest extends TestCase
             ->assertSee('Matriks Pembagian Tugas Mengajar')
             ->assertSee('Guru Matematika');
 
-        $this->actingAs($this->kurikulum)
-            ->get("/{$this->kurikulum->id}/institution-decrees/{$decree->id}/print")
-            ->assertOk()
-            ->assertSee('LAMPIRAN');
+        $print = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/institution-decrees/{$decree->id}/print");
+        $print->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 
     public function test_halaman_jadwal_pelajaran_tampil_dan_filter_terjadwal(): void

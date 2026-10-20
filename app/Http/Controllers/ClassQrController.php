@@ -135,8 +135,16 @@ class ClassQrController extends Controller
 
         $academicYear = AcademicYear::where('is_active', true)->first();
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
-        $signedUrl = $this->qrTokenService->generateSignedUrl($token);
+        $qrSvg = QrCode::format('svg')
+            ->size(320)
+            ->margin(2)
+            ->generate(json_encode($this->qrTokenService->buildQrPayload($token)));
+        $qrData = 'data:image/svg+xml;base64,'.base64_encode((string) $qrSvg);
 
-        return view('teacher.qr.print', compact('studyGroup', 'token', 'signedUrl'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'teacher.qr.pdf',
+            compact('studyGroup', 'token', 'qrData'),
+            'QR-Kelas-'.($studyGroup->full_name ?? $studyGroup->name),
+        );
     }
 }

@@ -11,7 +11,6 @@ use App\Services\CandidateConversionService;
 use App\Services\NotificationUniversalService;
 use App\Services\RecruitmentDocumentService;
 use App\Services\RecruitmentNotificationService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -653,22 +652,22 @@ class ApplicationController extends Controller
         $applications = $query->orderBy('created_at', 'desc')->get();
 
         try {
-            $pdf = Pdf::loadView('recruitment.applications.pdf', [
-                'applications' => $applications,
-                'userId' => $userId,
-            ])->setPaper('a4', 'landscape');
-
-            return $pdf->download('recruitment-applications-'.now()->format('Ymd-His').'.pdf');
+            return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+                'recruitment.applications.pdf',
+                compact('applications', 'userId'),
+                'recruitment-applications-'.now()->format('Ymd-His'),
+                'landscape',
+                'A4',
+                'attachment',
+            );
         } catch (\Throwable $e) {
-            Log::warning('ApplicationController@exportPdf: PDF generation failed, returning JSON placeholder', [
+            Log::error('ApplicationController@exportPdf: PDF generation failed', [
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'PDF export queued',
-                'count' => $applications->count(),
-            ]);
+            abort(500, 'Gagal membuat PDF data pelamar.');
         }
     }
 

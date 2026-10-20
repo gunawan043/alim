@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\ViolationPoint;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -323,12 +322,14 @@ class ViolationPointController extends Controller
         $violations = $query->get();
         $totalPoints = $violations->sum('points');
 
-        $pdf = Pdf::loadView('violation-points.pdf.export', compact('violations', 'totalPoints', 'userId'));
-        $pdf->setPaper('A4', 'landscape');
-
-        $filename = 'poin-pelanggaran-'.now()->format('Ymd-His').'.pdf';
-
-        return $pdf->download($filename);
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'violation-points.pdf.export',
+            compact('violations', 'totalPoints', 'userId'),
+            'poin-pelanggaran-'.now()->format('Ymd-His'),
+            'landscape',
+            'A4',
+            'attachment',
+        );
     }
 
     /**

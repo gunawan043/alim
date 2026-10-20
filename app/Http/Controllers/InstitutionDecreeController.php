@@ -314,10 +314,15 @@ class InstitutionDecreeController extends Controller
         try {
             $decree = InstitutionDecree::with(['academicYear', 'school', 'signer', 'teachingAssignments'])->findOrFail($id);
 
-            return view('institution-decrees.print', array_merge(
-                ['decree' => $decree, 'userId' => $userId],
-                $this->buildDecreeMatrixData($decree)
-            ));
+            return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+                'institution-decrees.print',
+                array_merge(
+                    ['decree' => $decree, 'userId' => $userId],
+                    $this->buildDecreeMatrixData($decree)
+                ),
+                'SK-'.$decree->decree_number,
+                'landscape',
+            );
         } catch (\Throwable $e) {
             Log::error('InstitutionDecree print failed', [
                 'decree_id' => $id,

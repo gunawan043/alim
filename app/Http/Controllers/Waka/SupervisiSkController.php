@@ -297,7 +297,11 @@ class SupervisiSkController extends Controller
             ->where('school_id', $schoolId)
             ->findOrFail($id);
 
-        return view('waka.supervisi.sk-cetak', compact('sk'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'waka.supervisi.sk-cetak',
+            compact('sk'),
+            'SK-Tim-Supervisi-'.$sk->nomor,
+        );
     }
 
     private function syncDecreeAndLetter(SupervisiSk $sk): void

@@ -40,6 +40,7 @@
         $qrSvg = $verifyUrl
             ? \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(110)->margin(0)->generate($verifyUrl)
             : null;
+        $qrData = $qrSvg ? 'data:image/svg+xml;base64,'.base64_encode((string) $qrSvg) : null;
     @endphp
 
     <div class="no-print">
@@ -90,7 +91,9 @@
 
     @if($qrSvg)
         <div class="verify">
-            {!! $qrSvg !!}
+            @if($qrData)
+                <img src="{{ $qrData }}" width="84" height="84" alt="QR Verifikasi">
+            @endif
             <div class="small">
                 Verifikasi keaslian dokumen:<br>
                 {{ $verifyUrl }}

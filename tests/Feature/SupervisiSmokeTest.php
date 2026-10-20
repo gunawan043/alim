@@ -282,8 +282,9 @@ class SupervisiSmokeTest extends TestCase
         $penilaianView = $controller->penilaian($this->makeRequest('GET'), $supervisi->id);
         $this->assertSame('waka.supervisi.penilaian', $penilaianView->name());
 
-        $cetakView = $controller->cetak($this->makeRequest('GET'), $supervisi->id);
-        $this->assertSame('waka.supervisi.cetak', $cetakView->name());
+        $cetakPdf = $controller->cetak($this->makeRequest('GET'), $supervisi->id);
+        $this->assertSame('application/pdf', $cetakPdf->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', (string) $cetakPdf->getContent());
     }
 
     private function makeRequest(string $method, array $data = []): Request

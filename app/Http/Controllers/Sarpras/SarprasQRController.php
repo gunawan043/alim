@@ -96,32 +96,9 @@ class SarprasQRController extends SarprasBaseController
      */
     public function printLabel(Request $request)
     {
-        $schoolId = $request->attributes->get('schoolContextId');
-
-        $query = Asset::where('is_active', true)->whereNotNull('qr_generated_at');
-        if ($schoolId) {
-            $query->where('school_id', $schoolId);
-        }
-
-        if ($request->filled('room_id')) {
-            $query->where('room_id', $request->room_id);
-        }
-
-        $assets = $query->orderBy('asset_name')->limit(100)->get();
-
-        if ($assets->isEmpty()) {
-            return back()->with('error', 'Tidak ada aset dengan QR code untuk dicetak.');
-        }
-
-        // Generate QR codes inline using base64
-        $qrData = [];
-        foreach ($assets as $asset) {
-            $url = url('/sarpras/scan/'.$asset->asset_code);
-            $qrImage = QrCode::format('svg')->size(150)->margin(1)->generate($url);
-            $qrData[$asset->id] = 'data:image/svg+xml;base64,'.base64_encode((string) $qrImage);
-        }
-
-        return view('sarpras.qr.print', compact('assets', 'qrData'));
+        // Halaman cetak langsung menghasilkan PDF; tidak ada lagi preview HTML
+        // yang meminta pengguna menekan tombol cetak browser.
+        return $this->downloadPdf($request);
     }
 
     /**

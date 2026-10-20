@@ -132,7 +132,12 @@ class TahfidzMasterController extends Controller
         $plan = TahfidzMuqorrorPlan::with(['months', 'package', 'gradeLevel', 'academicYear', 'school', 'creator'])->findOrFail($id);
         $this->authorizeMuqorrorRecord($request, $plan);
 
-        return view('tahfidz.muqorror.print', compact('plan'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'tahfidz.muqorror.print',
+            compact('plan'),
+            'Muqorror-'.$plan->title,
+            'landscape',
+        );
     }
 
     public function rppIndex(Request $request, string $userId)
@@ -240,7 +245,11 @@ class TahfidzMasterController extends Controller
         $plan = TahfidzLessonPlan::with(['items', 'school', 'gradeLevel', 'academicYear', 'creator'])->findOrFail($id);
         $this->authorizeRppRecord($request, $plan);
 
-        return view('tahfidz.rpp.print', compact('plan'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'tahfidz.rpp.print',
+            compact('plan'),
+            'RPP-Tahfidz-'.$plan->title,
+        );
     }
 
     private function muqorrorFormData(Request $request, ?TahfidzMuqorrorPlan $plan = null): array

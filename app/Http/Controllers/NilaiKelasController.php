@@ -687,7 +687,12 @@ class NilaiKelasController extends Controller
             $jenis,
         );
 
-        return view('nilai-kelas.leger-cetak', $data + ['userId' => $userId]);
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'nilai-kelas.leger-cetak',
+            $data + ['userId' => $userId],
+            'Leger-'.strtoupper($jenis).'-'.$studyGroup->name.'-'.$selectedSem,
+            'landscape',
+        );
     }
 
     /**

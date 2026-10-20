@@ -135,10 +135,9 @@ class TahfidzMutabaahTest extends TestCase
             ->assertSee('Santri Mutabaah')
             ->assertSee('Waraqat al-Mutaba’ah');
 
-        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/mutabaah/{$this->student->id}/print?month=".now()->format('Y-m')."&group_id={$this->group->id}")
-            ->assertOk()
-            ->assertSee('Santri Mutabaah')
-            ->assertSee('Waraqat al-Mutaba’ah');
+        $print = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/mutabaah/{$this->student->id}/print?month=".now()->format('Y-m')."&group_id={$this->group->id}");
+        $print->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 }

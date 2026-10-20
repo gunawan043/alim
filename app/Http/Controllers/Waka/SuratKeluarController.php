@@ -159,7 +159,11 @@ class SuratKeluarController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($id);
 
-        return view('waka.surat-keluar.cetak', compact('surat'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'waka.surat-keluar.cetak',
+            compact('surat'),
+            'Surat-Keluar-'.$surat->nomor_surat,
+        );
     }
 
     public function destroy(Request $request, string $id)

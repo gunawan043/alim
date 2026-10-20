@@ -284,7 +284,12 @@ class KisiKisiController extends Controller
         $school = \App\Models\School::find($kisi->school_id);
         $penyusun = \App\Models\User::find($kisi->created_by)?->name;
 
-        return view('evalusi.kisi-kisi.cetak', compact('kisi', 'school', 'userId', 'penyusun'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'evalusi.kisi-kisi.cetak',
+            compact('kisi', 'school', 'userId', 'penyusun'),
+            'Kisi-Kisi-'.$kisi->judul,
+            'landscape',
+        );
     }
 
     /**

@@ -431,7 +431,12 @@ class JadwalKbmController extends Controller
 
         $days = $this->days();
 
-        return view('jadwal-kbm.cetak', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'jadwal-kbm.cetak',
+            compact('studyGroup', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules'),
+            'Jadwal-KBM-'.($studyGroup->full_name ?? $studyGroup->name),
+            'landscape',
+        );
     }
 
     public function forTeacher(Request $request, string $userId, string $teacherId)

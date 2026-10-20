@@ -270,7 +270,12 @@ class SupervisiController extends Controller
         $school = \App\Models\School::find($schoolId);
         $academicYear = $yearId ? AcademicYear::find($yearId) : null;
 
-        return view('waka.supervisi.jadwal-cetak', compact('rows', 'school', 'academicYear', 'semester'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'waka.supervisi.jadwal-cetak',
+            compact('rows', 'school', 'academicYear', 'semester'),
+            'Jadwal-Supervisi-'.($academicYear?->name ?? 'Semua-Tahun').'-Semester-'.($semester ?: 'Semua'),
+            'landscape',
+        );
     }
 
     public function penilaian(Request $request, string $id)
@@ -405,7 +410,11 @@ class SupervisiController extends Controller
         $penilaian = $supervisi->penilaian()->get()->keyBy('item_id');
         $school = $supervisi->school;
 
-        return view('waka.supervisi.cetak', compact('supervisi', 'penilaian', 'school'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'waka.supervisi.cetak',
+            compact('supervisi', 'penilaian', 'school'),
+            'Instrumen-Supervisi-'.($supervisi->gtk?->user?->name ?? $supervisi->gtk_name ?? 'Guru'),
+        );
     }
 
     /**

@@ -213,12 +213,10 @@ Dengan hormat, kami mengundang Bapak/Ibu.",
         $this->assertMatchesRegularExpression('#^\d{3}/SK/[IVX]+/\d{4}$#', $suratKeluar->nomor_surat);
         $this->assertSame($template->isi_template, $suratKeluar->isi_surat);
 
-        // Cetak surat keluar (dokumen + QR verifikasi).
+        // Cetak surat keluar langsung PDF (dokumen + QR verifikasi).
         $print = $keluar->cetak($this->request(), $suratKeluar->id);
-        $html = $print->render();
-        $this->assertStringContainsString('Undangan Rapat Koordinasi', $html);
-        $this->assertStringContainsString('verifikasi-surat/'.$suratKeluar->verification_token, $html);
-        $this->assertStringContainsString('<svg', $html);
+        $this->assertSame('application/pdf', $print->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 
     private function request(string $method = 'GET', array $data = []): Request

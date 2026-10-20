@@ -151,11 +151,9 @@ class TahfidzTasmiTest extends TestCase
             ->assertSee('Audit Akhir Syahadah')
             ->assertSee('Semua syahadah lengkap');
 
-        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/tasmi/certificates/{$certificate->id}/print")
-            ->assertOk()
-            ->assertSee('Syahadah Tasmi')
-            ->assertSee('أحمد تسميع')
-            ->assertSee($certificate->certificate_number);
+        $print = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->admin->id}/tahfidz/tasmi/certificates/{$certificate->id}/print");
+        $print->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $print->getContent());
     }
 }

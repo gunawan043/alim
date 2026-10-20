@@ -420,9 +420,21 @@ class SumatifHarianDinamisTest extends TestCase
             'predicate' => AcademicNilai::predikat(85.0),
         ]);
 
-        // Istilah seragam KKTP di Leger (tidak ada lagi "KKM")
+        // Leger langsung PDF. Istilah seragam KKTP diverifikasi dari view yang sama.
         $leger = $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/leger/cetak?academic_year_id={$this->ay->id}&semester=ganjil");
-        $leger->assertOk()->assertSee('KKTP')->assertDontSee('KKM');
+        $leger->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $leger->getContent());
+
+        $legerHtml = view('nilai-kelas.leger-cetak', app(\App\Services\Arsip\LegerPdfService::class)->buildData(
+            $this->studyGroup->school_id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sts',
+        ) + ['userId' => $this->teacher->id])->render();
+        $this->assertStringContainsString('KKTP', $legerHtml);
+        $this->assertStringNotContainsString('KKM', $legerHtml);
     }
 
     public function test_leger_sas_and_sts_show_different_scores(): void
@@ -434,13 +446,37 @@ class SumatifHarianDinamisTest extends TestCase
         $this->actingAs($this->teacher);
         $base = "/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/leger/cetak?academic_year_id={$this->ay->id}&semester=ganjil";
 
-        // Leger STS → nilai STS (90), judul Tengah Semester
+        // Leger STS → PDF; isi diverifikasi dari view sumber yang sama.
         $sts = $this->get($base.'&jenis=sts');
-        $sts->assertOk()->assertSee('SUMATIF TENGAH SEMESTER (STS)')->assertSee('90');
+        $sts->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $sts->getContent());
 
-        // Leger SAS → Nilai Akhir / NR Final (82.5 → dibulatkan 83), judul Akhir Semester
+        $stsHtml = view('nilai-kelas.leger-cetak', app(\App\Services\Arsip\LegerPdfService::class)->buildData(
+            $this->studyGroup->school_id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sts',
+        ) + ['userId' => $this->teacher->id])->render();
+        $this->assertStringContainsString('SUMATIF TENGAH SEMESTER (STS)', $stsHtml);
+        $this->assertStringContainsString('90', $stsHtml);
+
+        // Leger SAS → Nilai Akhir / NR Final (82.5 → dibulatkan 83).
         $sas = $this->get($base.'&jenis=sas');
-        $sas->assertOk()->assertSee('AKHIR SEMESTER (SAS)')->assertSee('83');
+        $sas->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $sas->getContent());
+
+        $sasHtml = view('nilai-kelas.leger-cetak', app(\App\Services\Arsip\LegerPdfService::class)->buildData(
+            $this->studyGroup->school_id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sas',
+        ) + ['userId' => $this->teacher->id])->render();
+        $this->assertStringContainsString('AKHIR SEMESTER (SAS)', $sasHtml);
+        $this->assertStringContainsString('83', $sasHtml);
 
         // Rapor SAS pakai nilai akhir; Rapor STS tetap jalan
         $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor/{$this->students[0]->id}/cetak?academic_year_id={$this->ay->id}&semester=ganjil&jenis=sas")
@@ -486,10 +522,10 @@ class SumatifHarianDinamisTest extends TestCase
 
         $this->actingAs($this->teacher);
 
-        // Leger cetak
+        // Leger cetak langsung PDF
         $leger = $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/leger/cetak");
-        $leger->assertOk();
-        $leger->assertSee('LEGER');
+        $leger->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $leger->getContent());
 
         // Rapor cetak (PDF)
         $rapor = $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor/{$this->students[0]->id}/cetak");

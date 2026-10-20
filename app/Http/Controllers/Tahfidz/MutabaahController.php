@@ -177,9 +177,12 @@ class MutabaahController extends Controller
         $days = $month->daysInMonth;
         $monthLabel = $month->locale('id')->translatedFormat('F Y');
 
-        return view('tahfidz.mutabaah.print', compact(
-            'student', 'group', 'month', 'monthLabel', 'days', 'records'
-        ));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'tahfidz.mutabaah.print',
+            compact('student', 'group', 'month', 'monthLabel', 'days', 'records'),
+            'Mutabaah-'.$student->name.'-'.$monthLabel,
+            'landscape',
+        );
     }
 
     private function validateMutabaah(Request $request): array

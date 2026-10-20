@@ -514,37 +514,8 @@ class DormitoryPermitController extends Controller
      */
     public function bulkCard(Request $request, string $userId, string $asramaUuid)
     {
-        $dormitory = $this->enforceDormitoryScope($asramaUuid);
-        $activeYear = AcademicYear::where('is_active', true)->first();
-
-        $query = DormitoryPermit::with([
-            'student',
-            'student.currentClassHistory.studyGroup.gradeLevel',
-            'room',
-        ])
-            ->where('dormitory_id', $asramaUuid)
-            ->where('academic_year_id', $activeYear?->id);
-
-        if ($request->filled('status')) {
-            $query->whereIn('status', $request->status === 'approved' ? ['approved', 'returned'] : [$request->status]);
-        }
-
-        if ($request->filled('permit_type')) {
-            $query->where('permit_type', $request->permit_type);
-        }
-
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('departure_datetime', [$request->start_date, $request->end_date]);
-        }
-
-        // Permit dapat dicetak ulang selama belum berstatus pending/rejected (mis. kartu hilang)
-        $query->whereIn('status', ['approved', 'picked_up', 'returned', 'overdue']);
-
-        $permits = $query->orderByDesc('departure_datetime')->paginate(30)->withQueryString();
-
-        $now = now();
-
-        return view('dormitory.permits.bulk-card', compact('dormitory', 'permits', 'userId', 'now'));
+        // Cetak kartu langsung PDF; halaman preview HTML tidak dipakai lagi.
+        return $this->bulkCardPdf($request, $userId, $asramaUuid);
     }
 
     /**

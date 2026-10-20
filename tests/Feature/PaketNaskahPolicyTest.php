@@ -308,11 +308,11 @@ class PaketNaskahPolicyTest extends TestCase
             ->assertSee('Ibu kota Indonesia?')
             ->assertDontSee('Disembunyikan');
 
-        // Halaman cetak tersedia dengan struktur dokumen.
-        $this->actingAs($this->guruA)
-            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/kartu-soal/cetak")
-            ->assertOk()
-            ->assertSee('KARTU SOAL');
+        // Halaman cetak langsung menghasilkan PDF.
+        $cetak = $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/kartu-soal/cetak");
+        $cetak->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $cetak->getContent());
 
         // Peran bukan serumpun (TU) tetap dapat membuka kartu, tetapi kunci disamarkan.
         $this->actingAs($this->tu)
@@ -344,11 +344,10 @@ class PaketNaskahPolicyTest extends TestCase
             ->assertSee('Perbaiki opsi C')
             ->assertSee('Soal yang perlu diperbaiki');
 
-        $this->actingAs($this->guruA)
-            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/validasi-soal/cetak")
-            ->assertOk()
-            ->assertSee('VALIDASI SOAL')
-            ->assertSee('Perbaiki opsi C');
+        $cetak = $this->actingAs($this->guruA)
+            ->get("/{$this->guruA->id}/paket-soal/{$paket->id}/validasi-soal/cetak");
+        $cetak->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', (string) $cetak->getContent());
     }
 
     // ─────────────────────────────────────────────────────────────

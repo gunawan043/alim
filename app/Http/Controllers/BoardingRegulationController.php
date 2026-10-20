@@ -112,6 +112,10 @@ class BoardingRegulationController extends Controller
     {
         $regulation = BoardingRegulation::with(['category'])->findOrFail($id);
 
-        return view('dormitory.regulations.print', compact('regulation'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'dormitory.regulations.print',
+            compact('regulation'),
+            'Peraturan-Asrama-'.$regulation->name,
+        );
     }
 }

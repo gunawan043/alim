@@ -566,7 +566,12 @@ class TasmiController extends Controller
             'printed_at' => now(),
         ]);
 
-        return view('tahfidz.tasmi.certificate-print', compact('certificate'));
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'tahfidz.tasmi.certificate-print',
+            compact('certificate'),
+            'Syahadah-Tasmi-'.$certificate->student?->name,
+            'landscape',
+        );
     }
 
     private function authorizeView(Request $request): void

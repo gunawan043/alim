@@ -203,31 +203,9 @@ class CurriculumProjectController extends Controller
 
     public function print(Request $request, string $userId, string $id)
     {
-        $project = CurriculumProject::with(['assessments.student:id,name,nis', 'school', 'academicYear', 'coordinator:id,name'])
-            ->findOrFail($id);
-        $schoolId = $request->attributes->get('schoolContextId');
-        abort_unless($schoolId && $project->school_id === $schoolId, 403, 'Akses ditolak.');
-
-        $profile = $project->curriculumProfile
-            ?? $this->profiles->resolve($project->school_id, $project->academic_year_id);
-        $labels = $this->profiles->labels($profile);
-        $profileValues = $profile?->values() ?? [];
-        $dimensions = collect($project->dimensions ?? [])
-            ->filter()
-            ->mapWithKeys(fn ($key) => [$key => $profileValues[$key] ?? $key])
-            ->all();
-        if (empty($dimensions)) {
-            $dimensions = $profileValues;
-        }
-
-        $assessments = $project->assessments->sortBy(fn ($assessment) => $assessment->student?->name)->values();
-        $average = $assessments->where('average', '>', 0)->avg('average');
-        $rubric = $this->rubricLabels();
-        $school = $project->school;
-        $curriculumProfile = $profile;
-        $curriculumLabels = $labels;
-
-        return view('cetak.proyek', compact('school', 'project', 'profile', 'curriculumProfile', 'labels', 'curriculumLabels', 'dimensions', 'assessments', 'average', 'rubric'));
+        // Endpoint cetak lama dipertahankan agar tautan lama tetap bekerja,
+        // tetapi hasilnya langsung PDF (bukan preview HTML).
+        return $this->pdf($request, $userId, $id);
     }
 
     public function pdf(Request $request, string $userId, string $id)

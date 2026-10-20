@@ -2948,6 +2948,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - halaman SK menampilkan Select2;
   - halaman Supervisi dan editor anggota merespons `200`.
 
+## 238. Audit Cetak: Semua Halaman Print Langsung PDF
+
+- Layanan baru `app/Services/Pdf/DocumentPdfService.php` menjadi satu pintu untuk cetak A4:
+  Dompdf, font Cambria/Caladea, orientasi portrait/landscape, dan pembersihan toolbar browser.
+- Endpoint yang sebelumnya membuka preview HTML kini langsung mengembalikan PDF:
+  SK supervisi, jadwal supervisi, instrumen supervisi, surat keluar, SK institusi,
+  jadwal KBM, kisi-kisi, naskah/kartu/validasi soal, leger, muqorror, RPP tahfidz,
+  mutabaah, syahadah tasmi’, resep UKS, surat rujukan UKS, peraturan asrama,
+  kartu izin asrama, QR kelas, QR sarpras, dan laporan proyek kurikulum.
+- Cetak Kurikulum (`cetak.layout`) tidak lagi mengunci `@page` ke portrait sehingga
+  orientasi mengikuti controller/Dompdf.
+- QR verifikasi surat keluar diubah ke data URI SVG karena SVG inline tidak dirender Dompdf.
+- Endpoint export rekrutmen dan poin pelanggaran yang masih memakai paket
+  `Barryvdh\DomPDF` (tidak terpasang) dialihkan ke layanan PDF yang sama.
+- Audit lengkap: `docs/AUDIT-CETAK-PDF-2026-10-20.md`.
+- Diuji dengan data nyata pada 14 endpoint: semuanya `200`, `application/pdf`,
+  magic bytes `%PDF`, dan orientasi MediaBox sesuai.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

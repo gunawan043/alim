@@ -676,7 +676,11 @@ class PaketSoalController extends Controller
     {
         $data = $this->buildNaskahData($request, $paketUuid);
 
-        return view('evalusi.paket-soal.naskah-cetak', $data);
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'evalusi.paket-soal.naskah-cetak',
+            $data,
+            'Naskah-Soal-'.$data['paket']->judul,
+        );
     }
 
     /**
@@ -734,8 +738,14 @@ class PaketSoalController extends Controller
     public function kartuSoalCetak(Request $request, string $userId, string $paketUuid)
     {
         $data = $this->buildKartuSoalData($request, $paketUuid);
+        $judul = $data['paket']->judul ?? $data['paket']->nama ?? 'Paket';
 
-        return view('evalusi.paket-soal.kartu-soal-cetak', $data);
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'evalusi.paket-soal.kartu-soal-cetak',
+            $data,
+            'Kartu-Soal-'.$judul,
+            'landscape',
+        );
     }
 
     /**
@@ -838,8 +848,13 @@ class PaketSoalController extends Controller
     public function validasiSoalCetak(Request $request, string $userId, string $paketUuid)
     {
         $data = $this->buildValidasiSoalData($request, $paketUuid);
+        $judul = $data['paket']->judul ?? $data['paket']->nama ?? 'Paket';
 
-        return view('evalusi.paket-soal.validasi-soal-cetak', $data);
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'evalusi.paket-soal.validasi-soal-cetak',
+            $data,
+            'Validasi-Soal-'.$judul,
+        );
     }
 
     /**

@@ -86,15 +86,9 @@ class KisiKisiCetakTest extends TestCase
 
         $this->actingAs($this->user);
 
-        $view = app(KisiKisiController::class)->cetak($request, $this->user->id, $this->kisi->id);
-        $html = $view->render();
+        $response = app(KisiKisiController::class)->cetak($request, $this->user->id, $this->kisi->id);
 
-        $this->assertStringContainsString('Kisi-Kisi Soal', $html);
-        $this->assertStringContainsString('MTs Uji Kisi', $html);
-        $this->assertStringContainsString('Fiqih', $html);
-        $this->assertStringContainsString('Kisi-Kisi STS Fiqih', $html);
-        $this->assertStringContainsString('Kepala Uji', $html);
-        $this->assertStringContainsString('Guru Kisi', $html);
-        $this->assertStringContainsString('window.print()', $html);
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', (string) $response->getContent());
     }
 }
