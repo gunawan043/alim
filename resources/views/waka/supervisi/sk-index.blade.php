@@ -11,6 +11,8 @@
         @slot('title') Tim Supervisi & SK @endslot
     @endcomponent
 
+    <x-supervisi-workflow current="team" :year-id="$selectedYearId" :semester="'1'" :admin="true" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert"><i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif

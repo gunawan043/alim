@@ -11,6 +11,14 @@
         @slot('title') Tambah Data Supervisi @endslot
     @endcomponent
 
+    @php
+        $jabatanWorkflow = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+        $canManageWorkflow = str_contains($jabatanWorkflow, 'KEPALA') || str_contains($jabatanWorkflow, 'WAKIL')
+            || str_contains($jabatanWorkflow, 'TATA USAHA') || str_contains($jabatanWorkflow, 'KOORDINATOR KURIKULUM');
+    @endphp
+    <x-supervisi-workflow current="schedule" :year-id="$activeYearId" :semester="'1'" :admin="$canManageWorkflow" />
+
+
     <div class="alert alert-light border small">
         <i class="ri-information-line me-1 text-primary"></i>
         Instrumen penilaian tidak dipilih di form ini. Setelah jadwal disimpan, buka detail supervisi → <strong>Isi Penilaian</strong> → pilih instrumen → isi skor.

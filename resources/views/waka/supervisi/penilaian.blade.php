@@ -12,6 +12,14 @@
         @slot('title') Penilaian Supervisi @endslot
     @endcomponent
 
+    @php
+        $jabatanWorkflow = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+        $canManageWorkflow = str_contains($jabatanWorkflow, 'KEPALA') || str_contains($jabatanWorkflow, 'WAKIL')
+            || str_contains($jabatanWorkflow, 'TATA USAHA') || str_contains($jabatanWorkflow, 'KOORDINATOR KURIKULUM');
+    @endphp
+    <x-supervisi-workflow current="assessment" :year-id="$supervisi->academic_year_id" :semester="$supervisi->semester" :admin="$canManageWorkflow" />
+
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
@@ -22,6 +30,31 @@
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if($instrumen)
+        <div class="card border-info mb-3">
+            <div class="card-body py-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <div class="small text-muted">Instrumen yang Digunakan</div>
+                        <div class="fw-bold">{{ $instrumen->nama }}</div>
+                        @if($instrumen->deskripsi)<div class="small text-muted mt-1">{{ $instrumen->deskripsi }}</div>@endif
+                    </div>
+                    <div class="text-end small text-muted">
+                        {{ $instrumen->bagian->count() }} bagian ·
+                        {{ $instrumen->bagian->sum(fn ($b) => $b->items->count()) }} item utama
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info small">
+            <strong>Cara pengisian:</strong>
+            nilai setiap item sesuai instrumen — <strong>A (4) = sangat baik, B (3) = baik, C (2) = cukup, D (1) = kurang</strong>.
+            Pilih <strong>Ya/Tidak</strong> jika item meminta kondisi. Isi catatan pada item yang perlu penjelasan.
+            Semua skor wajib diisi sebelum penilaian disimpan.
         </div>
     @endif
 
@@ -283,6 +316,21 @@
 
             document.querySelectorAll('.skor-select').forEach(function (sel) {
                 sel.addEventListener('change', hitungNilai);
+            });
+
+            const form = document.getElementById('penilaianForm');
+            form?.addEventListener('submit', function (event) {
+                const missingScore = Array.from(form.querySelectorAll('.skor-select')).some(function (select) {
+                    return !select.value;
+                });
+                const missingCondition = Array.from(form.querySelectorAll('select[name^="kondisi["]')).some(function (select) {
+                    return select.offsetParent !== null && !select.value;
+                });
+
+                if (missingScore || missingCondition) {
+                    event.preventDefault();
+                    alert('Lengkapi semua skor dan kondisi Ya/Tidak sesuai instrumen sebelum menyimpan.');
+                }
             });
 
             document.addEventListener('DOMContentLoaded', hitungNilai);

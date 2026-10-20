@@ -12,6 +12,14 @@
         @slot('title') Edit Supervisi @endslot
     @endcomponent
 
+    @php
+        $jabatanWorkflow = strtoupper((string) (auth()->user()->employment?->jabatan ?? ''));
+        $canManageWorkflow = str_contains($jabatanWorkflow, 'KEPALA') || str_contains($jabatanWorkflow, 'WAKIL')
+            || str_contains($jabatanWorkflow, 'TATA USAHA') || str_contains($jabatanWorkflow, 'KOORDINATOR KURIKULUM');
+    @endphp
+    <x-supervisi-workflow current="schedule" :year-id="$supervisi->academic_year_id" :semester="$supervisi->semester" :admin="$canManageWorkflow" />
+
+
     <div class="row">
         <div class="col-xl-8">
             <div class="card">

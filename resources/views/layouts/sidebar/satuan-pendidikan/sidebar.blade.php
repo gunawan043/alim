@@ -1006,32 +1006,52 @@
     @endif
 
     @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU || $isConfiguredSupervisor)
+        @php
+            $supervisiAdmin = $showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU;
+            $supervisiActive = isActiveAny($currentRoute, [
+                'waka.supervisi.',
+                'waka.supervisi-instrumen.',
+                'waka.supervisi-pengaturan.',
+                'waka.supervisi-sk.',
+            ]);
+        @endphp
         <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi.']) ? ' active' : '' }}"
-               href="{{ route('waka.supervisi.index', $isConfiguredSupervisor ? ['supervisor_id' => $supervisorProfileId] : []) }}">
-                <i class="ri-file-excel-2-line"></i><span>{{ $isConfiguredSupervisor && ! $isStruktural && ! $isKoorKurik && ! $isTimKurikulum && ! $isAdminTU ? 'Penilaian Saya' : 'Supervisi Pembelajaran' }}</span>
+            <a class="nav-link menu-link{{ $supervisiActive ? ' active' : '' }}"
+               href="#sidebar_supervisi" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ $supervisiActive ? 'true' : 'false' }}" aria-controls="sidebar_supervisi">
+                <i class="ri-file-excel-2-line"></i><span>{{ $isConfiguredSupervisor && ! $supervisiAdmin ? 'Supervisi & Penilaian' : 'Supervisi Pembelajaran' }}</span><span class="menu-arrow"></span>
             </a>
+            <div class="collapse menu-dropdown{{ $supervisiActive ? ' show' : '' }}" id="sidebar_supervisi">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi.']) ? ' active' : '' }}"
+                           href="{{ route('waka.supervisi.index', $isConfiguredSupervisor && ! $supervisiAdmin ? ['supervisor_id' => $supervisorProfileId] : []) }}">
+                            Alur &amp; Jadwal
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi-instrumen.']) ? ' active' : '' }}"
+                           href="{{ route('waka.supervisi-instrumen.index') }}">
+                            Instrumen
+                        </a>
+                    </li>
+                    @if($supervisiAdmin)
+                        <li class="nav-item">
+                            <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi-pengaturan.']) ? ' active' : '' }}"
+                               href="{{ route('waka.supervisi-pengaturan.index') }}">
+                                Pengaturan Supervisor
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link{{ isActiveAny($currentRoute, ['waka.supervisi-sk.']) ? ' active' : '' }}"
+                               href="{{ route('waka.supervisi-sk.index') }}">
+                                Tim &amp; SK
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </div>
         </li>
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-instrumen.']) ? ' active' : '' }}"
-               href="{{ route('waka.supervisi-instrumen.index') }}">
-                <i class="ri-list-settings-line"></i><span>Instrumen Supervisi</span>
-            </a>
-        </li>
-        @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU)
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-pengaturan.']) ? ' active' : '' }}"
-               href="{{ route('waka.supervisi-pengaturan.index') }}">
-                <i class="ri-user-settings-line"></i><span>Pengaturan Supervisor</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.supervisi-sk.']) ? ' active' : '' }}"
-               href="{{ route('waka.supervisi-sk.index') }}">
-                <i class="ri-file-shield-2-line"></i><span>Tim Supervisi &amp; SK</span>
-            </a>
-        </li>
-        @endif
     @endif
 
     @if($showAll || $isKoorMapel)

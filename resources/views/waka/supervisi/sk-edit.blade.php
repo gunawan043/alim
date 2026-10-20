@@ -11,6 +11,8 @@
         @slot('title') {{ $sk->nomor }} @endslot
     @endcomponent
 
+    <x-supervisi-workflow current="team" :year-id="$sk->academic_year_id" :semester="$sk->semester" :admin="true" />
+
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger alert-dismissible fade show">{{ $errors->first() }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>@endif
 

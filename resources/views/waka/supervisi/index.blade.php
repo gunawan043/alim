@@ -49,8 +49,10 @@
         @endforeach
     </div>
 
+    <x-supervisi-workflow :workflow="$workflow ?? null" current="overview" :year-id="$workflowYearId ?? null" :semester="$workflowSemester ?? 1" :admin="$canManageSupervisi" />
+
     <div class="alert alert-light border small d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <span><i class="ri-route-line me-1 text-primary"></i><strong>Alur:</strong> buat jadwal supervisi → buka detail → isi penilaian → pilih instrumen → isi skor → simpan → cetak.</span>
+        <span><i class="ri-route-line me-1 text-primary"></i><strong>Langkah:</strong> Tim/SK → instrumen → pengaturan supervisor → jadwal → penilaian → laporan/refleksi.</span>
         <a href="{{ route('waka.supervisi-instrumen.index') }}" class="btn btn-sm btn-outline-primary">
             <i class="ri-settings-3-line me-1"></i>Atur Instrumen
         </a>
@@ -181,7 +183,15 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted mb-1">Semester</label>
+                                <select name="semester" class="form-select">
+                                    <option value="">Semua semester</option>
+                                    <option value="1" {{ (string) request('semester') === '1' ? 'selected' : '' }}>Ganjil</option>
+                                    <option value="2" {{ (string) request('semester') === '2' ? 'selected' : '' }}>Genap</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label small text-muted mb-1">Status</label>
                                 <select name="status" class="form-select">
                                     <option value="">Semua status</option>

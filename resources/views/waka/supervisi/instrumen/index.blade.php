@@ -11,6 +11,8 @@
         @slot('title') Instrumen Supervisi @endslot
     @endcomponent
 
+    <x-supervisi-workflow current="instrument" :admin="$canManageInstrumen" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}

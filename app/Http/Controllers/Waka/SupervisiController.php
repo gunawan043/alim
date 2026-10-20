@@ -8,6 +8,7 @@ use App\Models\GtkProfile;
 use App\Models\Supervisi;
 use App\Models\SupervisiInstrumen;
 use App\Models\SupervisiPengaturan;
+use App\Services\Sarpras\SupervisiWorkflowService;
 use App\Models\SupervisiPenilaian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +77,15 @@ class SupervisiController extends Controller
             ->sortBy(fn ($gtk) => mb_strtolower((string) $gtk->user?->name))
             ->values();
 
-        return view('waka.supervisi.index', compact('supervisiList', 'academicYears', 'statistics', 'supervisors'));
+        $workflowYearId = $request->input('academic_year_id', AcademicYear::where('is_active', true)->value('id'));
+        $workflowSemester = (int) $request->input('semester', 1);
+        $workflow = $workflowYearId
+            ? app(SupervisiWorkflowService::class)->status($schoolId, $workflowYearId, $workflowSemester)
+            : null;
+
+        return view('waka.supervisi.index', compact(
+            'supervisiList', 'academicYears', 'statistics', 'supervisors', 'workflow', 'workflowYearId', 'workflowSemester'
+        ));
     }
 
     public function create(Request $request)

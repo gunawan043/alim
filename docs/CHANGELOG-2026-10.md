@@ -2846,6 +2846,24 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
   - percobaan menyimpan instrumen oleh supervisor mendapat `403`;
   - Wakil/TU/Kurikulum tetap dapat mengelola instrumen.
 
+## 232. Alur Supervisi Terpadu & Panduan Pengisian Instrumen
+
+- Ditambahkan **stepper alur supervisi** di halaman terkait:
+  - Tim & SK → Instrumen → Pengaturan Supervisor → Jadwal → Penilaian → Laporan & Refleksi.
+- Halaman daftar supervisi menampilkan status kelengkapan tiap langkah dan tombol **Lanjut** ke langkah berikutnya.
+- Sidebar supervisi digabung menjadi satu submenu agar tidak terpecah:
+  - Alur & Jadwal;
+  - Instrumen;
+  - Pengaturan Supervisor;
+  - Tim & SK.
+- Halaman penilaian menampilkan:
+  - nama dan deskripsi instrumen;
+  - jumlah bagian/item;
+  - panduan skor A–D;
+  - validasi agar semua skor dan kondisi wajib terisi sebelum menyimpan.
+- Instrumen tetap terkunci pada jadwal; supervisor hanya mengisi item sesuai instrumen.
+- Diuji: halaman Supervisi, form, instrumen, pengaturan, SK, penilaian, dan cetak tetap merespons `200`.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

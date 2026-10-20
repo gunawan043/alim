@@ -18,6 +18,8 @@
         @slot('title') Pengaturan Supervisor @endslot
     @endcomponent
 
+    <x-supervisi-workflow current="setting" :year-id="$selectedYearId" :semester="'1'" :admin="true" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
