@@ -584,6 +584,8 @@ class LabController extends Controller
                 $loan->items()->create([
                     'asset_id' => $asset->id,
                     'asset_school_id' => $asset->school_id,
+                    'origin_room_id' => $asset->room_id,
+                    'loan_location' => $validated['institution'] ?? $lab->name,
                     'item_name' => $asset->asset_name,
                     'quantity' => $item['row']['quantity'],
                     'unit' => $asset->unit ?: 'unit',
@@ -623,6 +625,7 @@ class LabController extends Controller
         $record->update(['status' => 'handed_over', 'handed_over_by' => auth()->id()]);
         foreach ($record->items as $item) {
             if ($item->asset) {
+                $item->update(['loan_location' => $record->institution ?: $record->lab?->name]);
                 $item->asset->update(['status' => 'dipinjam']);
             }
         }
@@ -654,9 +657,13 @@ class LabController extends Controller
                 $item->update([
                     'quantity_returned' => min($row['quantity_returned'], $item->quantity),
                     'condition_on_return' => $row['condition_on_return'],
+                    'return_location' => $lab->name,
                     'damage_notes' => $row['damage_notes'] ?? null,
                 ]);
                 if ($item->asset) {
+                    if ($item->origin_room_id) {
+                        $item->asset->update(['room_id' => $item->origin_room_id]);
+                    }
                     $previous = $this->conditionCode($item->asset->condition);
                     $item->asset->update([
                         'condition' => $row['condition_on_return'],
