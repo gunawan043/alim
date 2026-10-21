@@ -331,7 +331,7 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link fs-14" data-bs-toggle="tab" href="#keluarga" role="tab">
-                                    <i class="ri-group-line me-1"></i> Keluarga
+                                    <i class="ri-group-line me-1"></i> Data Keluarga GTK
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -695,7 +695,6 @@
                                     @endif
                                 </div>
                             </div>
-                        </div>
 
                         {{-- ============================================================
                              TAB 2: INFO PENSIUN (embedded in profile)
@@ -712,9 +711,9 @@
                                 ? ($pensionSisa <= 0 ? 'Sudah BUP' : (intval($pensionSisa) . ' bulan (' . round($pensionSisa/12, 1) . ' tahun)'))
                                 : '–';
                         @endphp
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="mb-0"><i class="ri-time-line text-primary me-2"></i>Informasi Pensiun</h5>
+                        <div class="card mt-3"><div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0"><i class="ri-time-line text-primary me-2"></i>Informasi Pensiun <span class="text-muted fs-12">(bagian kepegawaian)</span></h5>
                                 <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
                                    class="btn btn-sm btn-primary">
                                     <i class="ri-edit-2-line me-1"></i> Edit
@@ -858,7 +857,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div></div></div>
 
                         {{-- ============================================================
                              TAB 3: PENDIDIKAN
@@ -973,13 +972,16 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center mb-4">
                                         <h5 class="card-title mb-0 d-flex align-items-center">
-                                            <i class="ri-group-line text-primary me-2"></i>Data Keluarga
+                                            <i class="ri-group-line text-primary me-2"></i>Data Keluarga GTK
                                         </h5>
-                                        <div>
-                                            <span class="badge bg-primary me-2">
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <span class="badge bg-primary">
                                                 <i class="ri-user-line me-1"></i>
                                                 {{ $gtk->gtkProfile?->familyMembers->count() ?? 0 }} Anggota
                                             </span>
+                                            <a href="{{ route('user.gtk.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}#v-pills-keluarga" class="btn btn-sm btn-outline-primary">
+                                                <i class="ri-links-line me-1"></i> Kelola / Tautkan Pasangan
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-success" onclick="fmShowModal()">
                                                 <i class="ri-user-add-line me-1"></i> Tambah Anggota
                                             </button>
@@ -1013,6 +1015,11 @@
                                                                         <span class="badge bg-{{ in_array(strtolower($anggota->relationship), ['suami', 'istri']) ? 'success' : (strtolower($anggota->relationship) == 'anak' ? 'info' : 'warning') }}-subtle text-{{ in_array(strtolower($anggota->relationship), ['suami', 'istri']) ? 'success' : (strtolower($anggota->relationship) == 'anak' ? 'info' : 'warning') }} mt-1">
                                                                             {{ ucfirst($anggota->relationship) }}
                                                                         </span>
+                                                                        @if($anggota->linkedGtkProfile)
+                                                                            <a href="{{ route('user.gtk.show', ['userId' => $userId, 'uuid' => $anggota->linkedGtkProfile->user_id]) }}" class="badge bg-success text-white text-decoration-none mt-1">
+                                                                                <i class="ri-verified-badge-line me-1"></i>GTK Terhubung
+                                                                            </a>
+                                                                        @endif
                                                                     </div>
                                                                 </div>
                                                                 <div class="dropdown">

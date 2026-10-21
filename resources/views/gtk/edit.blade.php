@@ -943,7 +943,7 @@ jabatanByJenis['{{ $j->jenis_gtk_id }}'].push({
             'pekerjaan'           => $m->pekerjaan ?? '',
             'pendidikan_terakhir' => $m->pendidikan_terakhir ?? '',
             'alamat'              => $m->alamat ?? '',
-            'gtk_id'              => null,
+            'gtk_id'              => $m->linkedGtkProfile?->user_id,
         ];
     })->values()->toArray() ?? [];
 @endphp
@@ -982,6 +982,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupSpouseSearch();
     renderEducationList();
     renderFamilyList();
+
+    if (['#v-pills-keluarga', '#step-family'].includes(window.location.hash)) {
+        document.getElementById('v-pills-keluarga-tab')?.click();
+    }
 
     if (currentJenisGtk) {
         populateJabatan(currentJenisGtk, currentJabatan);

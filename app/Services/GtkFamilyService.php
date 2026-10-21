@@ -123,7 +123,8 @@ class GtkFamilyService
         $this->household($profile);
         $record = GtkFamilyMember::where('household_id', $profile->household_id)->findOrFail($id);
 
-        $linked = $this->resolveLinkedProfile($member['gtk_id'] ?? null);
+        $linked = $this->resolveLinkedProfile($member['gtk_id'] ?? null)
+            ?: ($record->linked_gtk_profile_id ? GtkProfile::find($record->linked_gtk_profile_id) : null);
         if ($linked) {
             $this->linkSpouse($profile, $linked);
             $profile->refresh();
