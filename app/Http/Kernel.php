@@ -129,6 +129,7 @@ class Kernel extends HttpKernel
         'employee.access' => EnsureEmployeeAccess::class,
         'organization.context' => BindOrganizationContext::class,
         'permission' => RequirePermission::class,
+        'personalia.access' => \App\Http\Middleware\EnsurePersonaliaPermission::class,
         'permission-all' => RequirePermission::class,
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,

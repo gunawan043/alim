@@ -1141,7 +1141,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/dashboard', [PersonaliaDashboardController::class, 'dashboard'])->name('dashboard');
 
             // ── ABSENSI GTK ───────────────────────────────────────────
-            Route::prefix('absensi-gtk')->name('absensi-gtk.')->group(function () {
+            Route::prefix('absensi-gtk')->name('absensi-gtk.')->middleware('personalia.access:absensi')->group(function () {
                 Route::get('/', [AbsensiGtkController::class, 'index'])->name('index');
                 Route::get('/harian', [AbsensiGtkController::class, 'harian'])->name('harian');
                 Route::get('/rekap-bulanan', [AbsensiGtkController::class, 'rekapBulanan'])->name('rekap-bulanan');
@@ -1195,7 +1195,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 ->name('qr.print');
 
             // ── PAYROLL & GAJI ────────────────────────────────────────
-            Route::prefix('payroll')->name('payroll.')->group(function () {
+            Route::prefix('payroll')->name('payroll.')->middleware('personalia.access:payroll')->group(function () {
                 Route::get('/', [PayrollController::class, 'index'])->name('index');
                 Route::get('/create', [PayrollController::class, 'create'])->name('create');
                 Route::post('/', [PayrollController::class, 'store'])->name('store');
@@ -1235,18 +1235,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}/edit', [CutiController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [CutiController::class, 'update'])->name('update');
                 Route::delete('/{id}', [CutiController::class, 'destroy'])->name('destroy');
-                Route::get('/approval', [CutiController::class, 'approval'])->name('approval');
-                Route::post('/{id}/approve', [CutiController::class, 'approve'])->name('approve');
-                Route::post('/{id}/reject', [CutiController::class, 'reject'])->name('reject');
-                Route::get('/rekap', [CutiController::class, 'rekap'])->name('rekap');
-                Route::get('/quota', [CutiController::class, 'quota'])->name('quota');
-                Route::get('/settings', [CutiController::class, 'settings'])->name('settings');
-                Route::post('/settings', [CutiController::class, 'settingsStore'])->name('settings.store');
+                Route::get('/approval', [CutiController::class, 'approval'])->name('approval')->middleware('personalia.access:cuti');
+                Route::post('/{id}/approve', [CutiController::class, 'approve'])->name('approve')->middleware('personalia.access:cuti');
+                Route::post('/{id}/reject', [CutiController::class, 'reject'])->name('reject')->middleware('personalia.access:cuti');
+                Route::get('/rekap', [CutiController::class, 'rekap'])->name('rekap')->middleware('personalia.access:cuti');
+                Route::get('/quota', [CutiController::class, 'quota'])->name('quota')->middleware('personalia.access:cuti');
+                Route::get('/settings', [CutiController::class, 'settings'])->name('settings')->middleware('personalia.access:cuti');
+                Route::post('/settings', [CutiController::class, 'settingsStore'])->name('settings.store')->middleware('personalia.access:cuti');
                 Route::post('/datatable', [CutiController::class, 'datatable'])->name('datatable');
             });
 
             // ── KONTRAK KERJA ─────────────────────────────────────────
-            Route::prefix('kontrak')->name('kontrak.')->group(function () {
+            Route::prefix('kontrak')->name('kontrak.')->middleware('personalia.access:kontrak')->group(function () {
                 Route::get('/', [KontrakController::class, 'index'])->name('index');
                 Route::get('/create', [KontrakController::class, 'create'])->name('create');
                 Route::post('/', [KontrakController::class, 'store'])->name('store');
@@ -1267,7 +1267,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── PENILAIAN KINERJA ─────────────────────────────────────
-            Route::prefix('kinerja')->name('kinerja.')->group(function () {
+            Route::prefix('kinerja')->name('kinerja.')->middleware('personalia.access:kinerja')->group(function () {
                 Route::get('/', [KinerjaController::class, 'index'])->name('index');
                 Route::get('/create', [KinerjaController::class, 'create'])->name('create');
                 Route::post('/', [KinerjaController::class, 'store'])->name('store');
@@ -1293,7 +1293,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── PELATIHAN & PENGEMBANGAN ─────────────────────────────
-            Route::prefix('pelatihan')->name('pelatihan.')->group(function () {
+            Route::prefix('pelatihan')->name('pelatihan.')->middleware('personalia.access:pelatihan')->group(function () {
                 Route::get('/', [PelatihanController::class, 'index'])->name('index');
                 Route::get('/create', [PelatihanController::class, 'create'])->name('create');
                 Route::post('/', [PelatihanController::class, 'store'])->name('store');
@@ -1312,7 +1312,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── KESEJAHTERAAN GTK ─────────────────────────────────────
-            Route::prefix('kesejahteraan')->name('kesejahteraan.')->group(function () {
+            Route::prefix('kesejahteraan')->name('kesejahteraan.')->middleware('personalia.access:kesejahteraan')->group(function () {
                 Route::get('/', [KesejahteraanController::class, 'index'])->name('index');
                 Route::get('/create', [KesejahteraanController::class, 'create'])->name('create');
                 Route::post('/', [KesejahteraanController::class, 'store'])->name('store');
@@ -1336,7 +1336,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── PERATURAN & KEBIJAKAN ─────────────────────────────────
-            Route::prefix('peraturan')->name('peraturan.')->group(function () {
+            Route::prefix('peraturan')->name('peraturan.')->middleware('personalia.access:peraturan')->group(function () {
                 Route::get('/', [PeraturanController::class, 'index'])->name('index');
                 Route::get('/create', [PeraturanController::class, 'create'])->name('create');
                 Route::post('/', [PeraturanController::class, 'store'])->name('store');
@@ -1365,7 +1365,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── JAM KERJA & SHIFT ─────────────────────────────────────
-            Route::prefix('jam-kerja')->name('jam-kerja.')->group(function () {
+            Route::prefix('jam-kerja')->name('jam-kerja.')->middleware('personalia.access:jam-kerja')->group(function () {
                 Route::get('/', [JamKerjaController::class, 'index'])->name('index');
                 Route::get('/create', [JamKerjaController::class, 'create'])->name('create');
                 Route::post('/', [JamKerjaController::class, 'store'])->name('store');
