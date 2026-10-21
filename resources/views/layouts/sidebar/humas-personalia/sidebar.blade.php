@@ -668,12 +668,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Pengumuman & Publikasi --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-megaphone-line"></i>
-            <span>Pengumuman & Publikasi <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.announcements.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.humas.announcements.index') }}">
+            <i class="ri-megaphone-line"></i><span>Pengumuman &amp; Publikasi</span>
         </a>
     </li>
 
@@ -695,12 +693,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Survei Kepuasan Wali --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-survey-line"></i>
-            <span>Survei Kepuasan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.satisfaction.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.humas.satisfaction.index') }}">
+            <i class="ri-survey-line"></i><span>Survei Kepuasan</span>
         </a>
     </li>
 @endif

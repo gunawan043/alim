@@ -83,6 +83,68 @@ class GuardianPortalController extends Controller
         ]);
     }
 
+    public function satisfaction(string $token)
+    {
+        $wali = $this->resolveWaliByToken($token);
+        if (! $wali) {
+            return view('portal.token-expired');
+        }
+        Auth::loginUsingId($wali->user_id);
+        $surveys = \App\Models\HumasSatisfactionSurvey::active()
+            ->whereIn('audience', ['all', 'wali'])
+            ->with(['responses' => fn ($q) => $q->where('user_id', $wali->user_id)])
+            ->latest()->get();
+
+        return view('portal.satisfaction', compact('wali', 'surveys', 'token'));
+    }
+
+    public function satisfactionSubmit(Request $request, string $token, string $id)
+    {
+        $wali = $this->resolveWaliByToken($token);
+        if (! $wali) {
+            return view('portal.token-expired');
+        }
+        Auth::loginUsingId($wali->user_id);
+        $survey = \App\Models\HumasSatisfactionSurvey::active()
+            ->whereIn('audience', ['all', 'wali'])->findOrFail($id);
+        $validated = $request->validate(['rating' => 'required|integer|min:1|max:5', 'feedback' => 'nullable|string|max:2000']);
+        \App\Models\HumasSatisfactionResponse::updateOrCreate(
+            ['humas_satisfaction_survey_id' => $survey->id, 'user_id' => $wali->user_id],
+            ['rating' => $validated['rating'], 'feedback' => $validated['feedback'] ?? null, 'submitted_at' => now()]
+        );
+
+        return back()->with('success', 'Terima kasih, penilaian Anda sudah tersimpan.');
+    }
+
+    public function announcements(string $token)
+    {
+        $wali = $this->resolveWaliByToken($token);
+        if (! $wali) {
+            return view('portal.token-expired');
+        }
+        Auth::loginUsingId($wali->user_id);
+
+        $announcements = \App\Models\HumasAnnouncement::published()
+            ->whereIn('audience', ['all', 'wali'])
+            ->orderByDesc('is_pinned')->latest('published_at')->paginate(12);
+
+        return view('portal.announcements', compact('wali', 'announcements', 'token'));
+    }
+
+    public function announcementShow(string $token, string $id)
+    {
+        $wali = $this->resolveWaliByToken($token);
+        if (! $wali) {
+            return view('portal.token-expired');
+        }
+        Auth::loginUsingId($wali->user_id);
+
+        $announcement = \App\Models\HumasAnnouncement::published()
+            ->whereIn('audience', ['all', 'wali'])->findOrFail($id);
+
+        return view('portal.announcement-show', compact('wali', 'announcement', 'token'));
+    }
+
     /**
      * Halaman pusat notifikasi wali.
      * URL: /portal/{token}/notifications

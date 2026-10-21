@@ -47,6 +47,18 @@ function isActivePortal($routeName, $pattern) {
         <span>Notifikasi</span>
     </a>
 </li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePortal($currentRoute, 'portal.announcements') ? ' active' : '' }}"
+       href="{{ route('portal.announcements', ['token' => $currentUser->waliAccessToken() ?? 'placeholder']) }}">
+        <i class="ri-megaphone-line"></i><span>Pengumuman</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActivePortal($currentRoute, 'portal.satisfaction') ? ' active' : '' }}"
+       href="{{ route('portal.satisfaction.index', ['token' => $currentUser->waliAccessToken() ?? 'placeholder']) }}">
+        <i class="ri-survey-line"></i><span>Survei Kepuasan</span>
+    </a>
+</li>
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActivePortal($currentRoute, 'user.jadwal-kbm.') ? ' active' : '' }}"

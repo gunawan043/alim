@@ -90,6 +90,8 @@ use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HumasComplaintController;
+use App\Http\Controllers\HumasAnnouncementController;
+use App\Http\Controllers\HumasSatisfactionController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
@@ -381,6 +383,10 @@ Route::post('/auth/validator/verify', [AccessValidatorController::class, 'verify
 Route::prefix('portal')->name('portal.')->group(function () {
     Route::get('/{token}', [GuardianPortalController::class, 'dashboard'])->name('dashboard');
     Route::get('/{token}/timeline', [GuardianPortalController::class, 'timeline'])->name('timeline');
+    Route::get('/{token}/announcements', [GuardianPortalController::class, 'announcements'])->name('announcements');
+    Route::get('/{token}/announcements/{id}', [GuardianPortalController::class, 'announcementShow'])->name('announcements.show');
+    Route::get('/{token}/survei', [GuardianPortalController::class, 'satisfaction'])->name('satisfaction.index');
+    Route::post('/{token}/survei/{id}', [GuardianPortalController::class, 'satisfactionSubmit'])->name('satisfaction.submit');
     Route::get('/{token}/notifications', [GuardianPortalController::class, 'notifications'])->name('notifications');
     Route::post('/{token}/notifications/{id}/read', [GuardianPortalController::class, 'markRead'])->name('notifications.read');
     Route::post('/{token}/notifications/read-all', [GuardianPortalController::class, 'markAllRead'])->name('notifications.read-all');
@@ -1380,11 +1386,24 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── GTK REQUESTS ───────────────────────────────────────
             Route::prefix('humas')->name('humas.')->group(function () {
+                Route::get('/announcements', [HumasAnnouncementController::class, 'index'])->name('announcements.index');
+                Route::post('/announcements', [HumasAnnouncementController::class, 'store'])->name('announcements.store');
+                Route::put('/announcements/{id}', [HumasAnnouncementController::class, 'update'])->name('announcements.update');
+                Route::post('/announcements/{id}/publish', [HumasAnnouncementController::class, 'publish'])->name('announcements.publish');
+                Route::delete('/announcements/{id}', [HumasAnnouncementController::class, 'destroy'])->name('announcements.destroy');
+                Route::get('/satisfaction', [HumasSatisfactionController::class, 'index'])->name('satisfaction.index');
+                Route::post('/satisfaction', [HumasSatisfactionController::class, 'store'])->name('satisfaction.store');
+                Route::post('/satisfaction/{id}/publish', [HumasSatisfactionController::class, 'publish'])->name('satisfaction.publish');
+                Route::delete('/satisfaction/{id}', [HumasSatisfactionController::class, 'destroy'])->name('satisfaction.destroy');
                 Route::get('/complaints', [HumasComplaintController::class, 'index'])->name('complaints.index');
                 Route::post('/complaints', [HumasComplaintController::class, 'store'])->name('complaints.store');
                 Route::post('/complaints/{id}/respond', [HumasComplaintController::class, 'respond'])->name('complaints.respond');
             });
 
+            Route::get('/announcements', [HumasAnnouncementController::class, 'feed'])->name('announcements.index');
+            Route::get('/announcements/{id}', [HumasAnnouncementController::class, 'show'])->name('announcements.show');
+            Route::get('/survei', [HumasSatisfactionController::class, 'feed'])->name('satisfaction.index');
+            Route::post('/survei/{id}', [HumasSatisfactionController::class, 'submit'])->name('satisfaction.submit');
             Route::prefix('gtk-requests')->name('gtk-requests.')->group(function () {
                 Route::get('/', [GtkRequestController::class, 'index'])->name('index');
                 Route::get('/create', [GtkRequestController::class, 'create'])->name('create');
