@@ -682,12 +682,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Hubungan Media & Instansi --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-newspaper-line"></i>
-            <span>Hubungan Media <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.media-contacts.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.humas.media-contacts.index') }}">
+            <i class="ri-newspaper-line"></i><span>Hubungan Media</span>
         </a>
     </li>
 

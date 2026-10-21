@@ -91,6 +91,7 @@ use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HumasComplaintController;
 use App\Http\Controllers\HumasGuestVisitController;
+use App\Http\Controllers\HumasMediaContactController;
 use App\Http\Controllers\HumasAnnouncementController;
 use App\Http\Controllers\HumasSatisfactionController;
 use App\Http\Controllers\ImpersonateController;
@@ -1390,6 +1391,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── GTK REQUESTS ───────────────────────────────────────
             Route::prefix('humas')->name('humas.')->group(function () {
+                Route::get('/media-contacts', [HumasMediaContactController::class, 'index'])->name('media-contacts.index');
+                Route::post('/media-contacts', [HumasMediaContactController::class, 'store'])->name('media-contacts.store');
+                Route::put('/media-contacts/{id}', [HumasMediaContactController::class, 'update'])->name('media-contacts.update');
+                Route::delete('/media-contacts/{id}', [HumasMediaContactController::class, 'destroy'])->name('media-contacts.destroy');
                 Route::get('/guest-visits', [HumasGuestVisitController::class, 'index'])->name('guest-visits.index');
                 Route::post('/guest-visits', [HumasGuestVisitController::class, 'store'])->name('guest-visits.store');
                 Route::post('/guest-visits/{id}/checkout', [HumasGuestVisitController::class, 'checkout'])->name('guest-visits.checkout');
