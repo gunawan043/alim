@@ -34,7 +34,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Pending</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Menunggu</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['pending'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -51,7 +51,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Approved</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Menunggu Tamu</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['approved'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -68,7 +68,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Arrived</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Sedang Berkunjung</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['arrived'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Checked Out</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Kunjungan Selesai</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['checked_out'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -134,10 +134,10 @@
                         <div class="col-md-2">
                             <select name="status" class="form-control">
                                 <option value="">Semua Status</option>
-                                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
-                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
-                                <option value="arrived" {{ request('status') === 'arrived' ? 'selected' : '' }}>Arrived</option>
-                                <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Checked Out</option>
+                                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Menunggu</option>
+                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Menunggu Tamu</option>
+                                <option value="arrived" {{ request('status') === 'arrived' ? 'selected' : '' }}>Sedang Berkunjung</option>
+                                <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Kunjungan Selesai</option>
                                 <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                                 <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>

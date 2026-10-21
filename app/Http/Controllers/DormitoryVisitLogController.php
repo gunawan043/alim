@@ -356,22 +356,25 @@ class DormitoryVisitLogController extends Controller
             'scan_url' => ['required', 'string', 'max:2048'],
         ]);
 
-        $scanUrl = $request->input('scan_url');
+        $scanUrl = trim((string) $request->input('scan_url'));
 
-        // 1. Reject if signature invalid
-        if (! $request->hasValidSignature()) {
-            return $this->scanResponse($request, 'Tanda tangan QR tidak valid atau sudah kadaluarsa.', false);
+        // QR kartu kunjungan berisi token bertanda tangan (id::hmac).
+        $visit = $this->resolveVisitQrToken($scanUrl, $asramaUuid);
+
+        // Kompatibilitas dengan QR lama berupa signed URL.
+        if (! $visit && preg_match('/^https?:\/\//i', $scanUrl)) {
+            $signedRequest = Request::create($scanUrl, 'GET');
+
+            if ($signedRequest->hasValidSignature()) {
+                $visitUuid = $signedRequest->query('visitUuid');
+                $visit = $visitUuid
+                    ? DormitoryVisitLog::where('dormitory_id', $asramaUuid)->find($visitUuid)
+                    : null;
+            }
         }
 
-        // 2. Find the visit by the signed URL's visitUuid parameter
-        $visitUuid = $request->query('visitUuid');
-        if (! $visitUuid) {
-            return $this->scanResponse($request, 'QR tidak berisi ID kunjungan.', false);
-        }
-
-        $visit = DormitoryVisitLog::where('dormitory_id', $asramaUuid)->find($visitUuid);
         if (! $visit) {
-            return $this->scanResponse($request, 'Kunjungan tidak ditemukan untuk asrama ini.', false);
+            return $this->scanResponse($request, 'QR kunjungan tidak valid atau sudah kedaluwarsa.', false);
         }
 
         // 3. Auto check-in / check-out based on status
@@ -380,7 +383,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Check-in {$visit->visitor_name} berhasil via scan.",
+                "Kedatangan tamu {$visit->visitor_name} berhasil dicatat. Status: Sedang Berkunjung.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'arrived']
             );
@@ -391,7 +394,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Check-out {$visit->visitor_name} berhasil via scan.",
+                "Kunjungan {$visit->visitor_name} selesai. Status: Kunjungan Selesai.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'checked_out']
             );
@@ -402,13 +405,34 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "KARTU KADALUARSA — kunjungan untuk santri ".($visit->student?->name ?? '-')." telah selesai (check-out pada {$waktu}). QR Code kartu kunjungan ini tidak berlaku lagi.",
+                "KARTU KADALUARSA — kunjungan untuk santri ".($visit->student?->name ?? '-')." telah selesai pada {$waktu}. QR Code kartu kunjungan ini tidak berlaku lagi.",
                 false,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'expired', 'checked_out_at' => $waktu]
             );
         }
 
         return $this->scanResponse($request, "Kunjungan berstatus '{$visit->status}' — tidak bisa di-scan saat ini.", false);
+    }
+
+    /**
+     * Validasi token QR kartu kunjungan: base64(id::hmac).
+     */
+    private function resolveVisitQrToken(string $raw, string $asramaUuid): ?DormitoryVisitLog
+    {
+        $decoded = base64_decode(trim($raw), true);
+
+        if (! $decoded || ! str_contains($decoded, '::')) {
+            return null;
+        }
+
+        [$visitId, $providedSignature] = explode('::', $decoded, 2);
+        $expectedSignature = hash_hmac('sha256', $visitId, (string) config('app.key'));
+
+        if (! hash_equals($expectedSignature, $providedSignature)) {
+            return null;
+        }
+
+        return DormitoryVisitLog::where('dormitory_id', $asramaUuid)->find($visitId);
     }
 
     /**

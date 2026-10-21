@@ -471,9 +471,9 @@
         }
         const statusLabels = {
             'pending': 'Menunggu Persetujuan',
-            'approved': 'Disetujui',
-            'picked_up': 'Sudah Dijemput',
-            'overdue': 'Terlambat Kembali',
+            'approved': 'Belum Keluar',
+            'picked_up': 'Sedang di Luar Asrama',
+            'overdue': 'Belum Keluar — Melewati Jadwal',
         };
         const when = info.departure_datetime ? new Date(info.departure_datetime).toLocaleString('id-ID') : '—';
         const back = info.expected_return_datetime ? new Date(info.expected_return_datetime).toLocaleString('id-ID') : '—';

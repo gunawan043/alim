@@ -43,14 +43,17 @@ class DormitoryPermit extends Model
         return in_array($newStatus, self::TRANSITIONS[$this->status] ?? [], true);
     }
 
-    /** Fase naskah izin untuk tampilan: menunggu | di luar | kembali | selesai. */
+    /**
+     * Fase izin untuk tampilan:
+     * menunggu → belum_keluar → sedang_keluar → kembali.
+     */
     public function phase(): string
     {
         return match ($this->status) {
             self::STATUS_PENDING => 'menunggu',
-            self::STATUS_APPROVED, self::STATUS_OVERDUE => 'di_luar',
-            self::STATUS_PICKED_UP => 'kembali',
-            self::STATUS_RETURNED => 'selesai',
+            self::STATUS_APPROVED, self::STATUS_OVERDUE => 'belum_keluar',
+            self::STATUS_PICKED_UP => 'sedang_keluar',
+            self::STATUS_RETURNED => 'kembali',
             self::STATUS_REJECTED => 'ditolak',
             default => $this->status,
         };
@@ -184,11 +187,11 @@ class DormitoryPermit extends Model
     {
         return match ($this->status) {
             'pending' => 'Menunggu Persetujuan',
-            'approved' => 'Disetujui / Menunggu Penjemputan',
+            'approved' => 'Belum Keluar',
             'rejected' => 'Ditolak',
-            'returned' => 'Sudah Kembali ke Asrama',
-            'overdue' => 'Telat Pulang',
-            'picked_up' => 'Sudah Dijemput (Sedang Pulang)',
+            'returned' => 'Sudah Kembali',
+            'overdue' => 'Belum Keluar — Melewati Jadwal',
+            'picked_up' => 'Sedang di Luar Asrama',
             default => ucfirst($this->status ?? ''),
         };
     }
@@ -197,20 +200,20 @@ class DormitoryPermit extends Model
     {
         return match ($this->status) {
             'pending' => 'bg-warning-subtle text-warning',
-            'approved' => 'bg-primary-subtle text-primary',
+            'approved' => 'bg-info-subtle text-info',
             'rejected' => 'bg-danger-subtle text-danger',
             'returned' => 'bg-success',
             'overdue' => 'bg-danger',
-            'picked_up' => 'bg-info-subtle text-info',
+            'picked_up' => 'bg-warning-subtle text-warning',
             default => 'bg-secondary',
         };
     }
 
     public function getIsOverdueAttribute(): bool
     {
-        return $this->status === 'approved'
+        return in_array($this->status, [self::STATUS_APPROVED, self::STATUS_OVERDUE], true)
             && $this->actual_return_datetime === null
-            && $this->expected_return_datetime->isPast();
+            && $this->expected_return_datetime?->isPast() === true;
     }
 
     // ── Emergency accessors ───────────────────────────────────────
@@ -291,6 +294,22 @@ class DormitoryPermit extends Model
         }
 
         return $permit->student_id;
+    }
+
+    /**
+     * Cari permit langsung dari token, bukan dari student_id.
+     * Ini mencegah scan mengambil izin lama ketika seorang santri memiliki
+     * lebih dari satu riwayat izin.
+     */
+    public static function findByScanToken(string $raw): ?self
+    {
+        $raw = trim($raw);
+
+        if ($raw === '') {
+            return null;
+        }
+
+        return static::query()->where('scan_token', $raw)->first();
     }
 
     /**

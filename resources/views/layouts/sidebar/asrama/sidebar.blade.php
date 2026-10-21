@@ -273,7 +273,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
             ])
             : $asramaProfileFallback }}">
         <i class="ri-pass-valid-line"></i>
-        <span>Perizinan</span>
+        <span>Daftar Perizinan</span>
     </a>
 </li>
 
@@ -587,16 +587,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
             : $asramaProfileFallback }}">
         <i class="ri-user-follow-line"></i>
         <span>Presensi Kegiatan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.gatepass.') ? ' active' : '' }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.gatepass.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            : $asramaProfileFallback }}">
-        <i class="ri-qr-scan-2-line"></i>
-        <span>Gatepass</span>
     </a>
 </li>
 

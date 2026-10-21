@@ -198,7 +198,7 @@
                             <i class="ri-checkbox-circle-fill me-1"></i>{{ number_format($stats['approved'] ?? 0) }} Disetujui
                         </span>
                         <span class="badge bg-primary-subtle text-primary" style="font-size:10px;">
-                            <i class="ri-arrow-right-circle-fill me-1"></i>{{ number_format($stats['picked_up'] ?? 0) }} Dipinjam
+                            <i class="ri-arrow-right-circle-fill me-1"></i>{{ number_format($stats['picked_up'] ?? 0) }} Sedang di Luar
                         </span>
                     </div>
                 </div>
@@ -347,9 +347,10 @@
                             </div>
                         </div>
                         <div class="col-sm-auto d-flex gap-2 flex-wrap">
-                            <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#tokenSearchModal">
+                            <a href="{{ route('user.asrama.permits.scan', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-outline-info btn-sm">
                                 <i class="ri-qr-scan-2-line me-1"></i> Scan QR
-                            </button>
+                            </a>
                             <a href="{{ route('user.asrama.permits.bulk-card', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                                class="btn btn-outline-success btn-sm" title="Cetak Kartu Izin Massal">
                                 <i class="ri-printer-line me-1"></i> Cetak Kartu
@@ -384,10 +385,10 @@
                                 <select name="status" class="form-select form-select-sm">
                                     <option value="">Semua Status</option>
                                     <option value="pending"   {{ request('status') == 'pending' ? 'selected' : '' }}>Menunggu</option>
-                                    <option value="approved"  {{ request('status') == 'approved' ? 'selected' : '' }}>Disetujui</option>
-                                    <option value="picked_up"  {{ request('status') == 'picked_up' ? 'selected' : '' }}>Dijemput</option>
-                                    <option value="returned"  {{ request('status') == 'returned' ? 'selected' : '' }}>Kembali</option>
-                                    <option value="overdue"   {{ request('status') == 'overdue' ? 'selected' : '' }}>Terlambat</option>
+                                    <option value="approved"  {{ request('status') == 'approved' ? 'selected' : '' }}>Belum Keluar</option>
+                                    <option value="picked_up"  {{ request('status') == 'picked_up' ? 'selected' : '' }}>Sedang di Luar</option>
+                                    <option value="returned"  {{ request('status') == 'returned' ? 'selected' : '' }}>Sudah Kembali</option>
+                                    <option value="overdue"   {{ request('status') == 'overdue' ? 'selected' : '' }}>Melewati Jadwal</option>
                                     <option value="rejected"  {{ request('status') == 'rejected' ? 'selected' : '' }}>Ditolak</option>
                                 </select>
                             </div>
@@ -576,16 +577,16 @@
                                                     <i class="ri-time-line"></i> Menunggu
                                                 </span>
                                             @elseif($permit->status === 'approved')
-                                                <span class="status-pill bg-success-subtle text-success">
-                                                    <i class="ri-check-line"></i> Disetujui
+                                                <span class="status-pill bg-info-subtle text-info">
+                                                    <i class="ri-logout-box-r-line"></i> Belum Keluar
                                                 </span>
                                             @elseif($permit->status === 'picked_up')
-                                                <span class="status-pill bg-primary-subtle text-primary">
-                                                    <i class="ri-arrow-right-circle-line"></i> Dijemput
+                                                <span class="status-pill bg-warning-subtle text-warning">
+                                                    <i class="ri-walk-line"></i> Sedang di Luar
                                                 </span>
                                             @elseif($permit->status === 'returned')
-                                                <span class="status-pill bg-secondary-subtle text-secondary">
-                                                    <i class="ri-home-heart-line"></i> Kembali
+                                                <span class="status-pill bg-success-subtle text-success">
+                                                    <i class="ri-home-heart-line"></i> Sudah Kembali
                                                 </span>
                                             @elseif($permit->status === 'rejected')
                                                 <span class="status-pill bg-dark-subtle text-dark">
@@ -775,28 +776,6 @@
         </div>
     </div>
 
-    {{-- Modal: Scan QR Token --}}
-    <x-modal id="tokenSearchModal" size="sm">
-        @slot('title')<i class="ri-qr-scan-2-line me-1"></i>Scan QR Izin @endslot
-        <form method="POST" action="{{ route('user.asrama.permits.scan.store', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" id="tokenSearchForm">
-            @csrf
-            <input type="hidden" name="userId" value="{{ $userId }}">
-            <input type="hidden" name="asramaUuid" value="{{ $dormitory->id }}">
-            <div class="mb-3">
-                <label class="form-label">Token QR Izin</label>
-                <input type="text" name="token" class="form-control" placeholder="Tempel token atau ketik manual..."
-                       value="{{ old('token', request('token')) }}" autofocus>
-                <small class="text-muted mt-1 d-block">QR code muncul di kartu izin dan halaman detail izin santri</small>
-            </div>
-            <div id="tokenResult" class="mt-3"></div>
-        </form>
-        @slot('actions')
-            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" form="tokenSearchForm" class="btn btn-primary">
-                <i class="ri-check-line me-1"></i> Scan Izin
-            </button>
-        @endslot
-    </x-modal>
 @endsection
 
 @section('script')

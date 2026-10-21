@@ -66,20 +66,17 @@ class DormitoryPermitController extends Controller
 
         // Token-based direct lookup (QR scan search from index)
         if ($request->filled('token')) {
-            $studentId = DormitoryPermit::verifyScanToken($request->token);
-            if ($studentId) {
-                $permitsFound = DormitoryPermit::with(['student', 'room', 'approvedBy'])
-                    ->where('dormitory_id', $asramaUuid)
-                    ->where('student_id', $studentId)
-                    ->whereNotNull('scan_token')
-                    ->get();
-                if ($permitsFound->isNotEmpty()) {
-                    return redirect()->route('user.asrama.permits.show', [
-                        'userId' => $userId,
-                        'asramaUuid' => $asramaUuid,
-                        'permitUuid' => $permitsFound->first()->id,
-                    ])->with('token_found', 'Izin ditemukan untuk token!');
-                }
+            $permit = DormitoryPermit::with(['student', 'room', 'approvedBy'])
+                ->where('dormitory_id', $asramaUuid)
+                ->where('scan_token', trim((string) $request->token))
+                ->first();
+
+            if ($permit) {
+                return redirect()->route('user.asrama.permits.show', [
+                    'userId' => $userId,
+                    'asramaUuid' => $asramaUuid,
+                    'permitUuid' => $permit->id,
+                ])->with('token_found', 'Izin ditemukan untuk token!');
             }
 
             return back()->with('token_error', 'Token tidak valid atau izin tidak ditemukan di asrama ini.');
@@ -717,16 +714,14 @@ class DormitoryPermitController extends Controller
                 return $this->scanResponse($request, 'Format scan tidak benar — gunakan scan URL atau masukkan token.', false);
             }
 
-            $studentId = DormitoryPermit::verifyScanToken($token);
-            if (! $studentId) {
+            if (! DormitoryPermit::verifyScanToken($token)) {
                 \Log::debug('Token verifikasi gagal', ['token_input' => $token]);
 
                 return $this->scanResponse($request, 'Token tidak valid atau izin tidak ditemukan.', false);
             }
 
             $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)
-                ->where('student_id', $studentId)
-                ->whereNotNull('scan_token')
+                ->where('scan_token', $token)
                 ->first();
 
             if (! $permit) {
@@ -772,7 +767,7 @@ class DormitoryPermitController extends Controller
 
                 return $this->scanResponse(
                     $request,
-                    "Penjemputan {$studentName} {$pickerDisplay} berhasil dicatat. Status sekarang: Sudah Dijemput.",
+                    "Keluar asrama {$studentName} {$pickerDisplay} berhasil dicatat. Status sekarang: Sedang di Luar Asrama.",
                     true,
                     ['student_name' => $studentName, 'status' => 'picked_up'],
                     redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
@@ -807,7 +802,7 @@ class DormitoryPermitController extends Controller
 
                 return $this->scanResponse(
                     $request,
-                    "Kepulangan {$studentName} berhasil dicatat via scan.",
+                    "Kepulangan {$studentName} berhasil dicatat. Status sekarang: Sudah Kembali.",
                     true,
                     ['student_name' => $studentName, 'status' => 'returned'],
                     redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
@@ -890,7 +885,7 @@ class DormitoryPermitController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Penjemputan {$permit->student->name} {$pickerDisplay} berhasil dicatat. Status sekarang: Sudah Dijemput.",
+                'message' => "Keluar asrama {$permit->student->name} {$pickerDisplay} berhasil dicatat. Status sekarang: Sedang di Luar Asrama.",
                 'status' => 'picked_up',
             ]);
         }
@@ -959,7 +954,7 @@ class DormitoryPermitController extends Controller
 
         $permit->save();
 
-        $message = "Status izin {$permit->student->name} diubah ke '$newStatus'.";
+        $message = "Status izin {$permit->student->name} diubah menjadi '{$permit->status_text}'.";
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -1005,6 +1000,15 @@ class DormitoryPermitController extends Controller
     private function extractTokenFromUrl(string $scanUrl): ?string
     {
         $scanUrl = trim($scanUrl);
+
+        // QR kartu izin berisi payload JSON (token + metadata).
+        // Ambil token di dalamnya agar kamera dan input manual sama-sama bekerja.
+        if (str_starts_with($scanUrl, '{')) {
+            $payload = json_decode($scanUrl, true);
+            if (is_array($payload) && ! empty($payload['token'])) {
+                return (string) $payload['token'];
+            }
+        }
 
         // Already a raw token (no scheme, no slashes) — return as-is
         if (! preg_match('/^[a-z]+:\/\//i', $scanUrl) && ! str_contains($scanUrl, '/')) {
@@ -1074,11 +1078,8 @@ class DormitoryPermitController extends Controller
 
         // Jika ada token query, verifikasi otomatis
         if ($token) {
-            $studentId = DormitoryPermit::verifyScanToken($token);
-            if ($studentId) {
-                $permit = DormitoryPermit::where('student_id', $studentId)
-                    ->whereNotNull('scan_token')
-                    ->first();
+            if (DormitoryPermit::verifyScanToken($token)) {
+                $permit = DormitoryPermit::where('scan_token', $token)->first();
 
                 if ($permit) {
                     // Halaman publik hanya untuk informasi — pemindaian hanya boleh dilakukan oleh staf asrama.
@@ -1109,14 +1110,11 @@ class DormitoryPermitController extends Controller
             'action' => 'sometimes|in:pickup:return,return',
         ]);
 
-        $studentId = DormitoryPermit::verifyScanToken($request->token);
-        if (! $studentId) {
+        if (! DormitoryPermit::verifyScanToken($request->token)) {
             return back()->withErrors(['token' => 'Token tidak valid atau izin tidak ditemukan.'])->withInput();
         }
 
-        $permit = DormitoryPermit::where('student_id', $studentId)
-            ->whereNotNull('scan_token')
-            ->first();
+        $permit = DormitoryPermit::where('scan_token', trim((string) $request->token))->first();
 
         if (! $permit) {
             return back()->withErrors(['token' => 'Token tidak cocok dengan izin mana pun.'])->withInput();
@@ -1155,7 +1153,7 @@ class DormitoryPermitController extends Controller
             ]);
 
             return redirect()->route('user.asrama.permits.verify', ['userId' => $request->route('userId'), 't' => $request->token])
-                ->with('success', 'Penjemputan berhasil dicatat. Status sekarang: Sudah Dijemput.');
+                ->with('success', 'Keluar asrama berhasil dicatat. Status sekarang: Sedang di Luar Asrama.');
         }
 
         return back()->withErrors(['token' => 'Izin ini tidak dapat dipindai pada kondisi saat ini.'])->withInput();
@@ -1167,18 +1165,14 @@ class DormitoryPermitController extends Controller
      */
     public function publicVerify(string $token)
     {
-        $studentId = DormitoryPermit::verifyScanToken($token);
-
-        if (! $studentId) {
+        if (! DormitoryPermit::verifyScanToken($token)) {
             return view('dormitory.permits.verify', [
                 'token' => null,
                 'error' => 'Token tidak valid. Izin tidak ditemukan.',
             ]);
         }
 
-        $permit = DormitoryPermit::where('student_id', $studentId)
-            ->whereNotNull('scan_token')
-            ->first();
+        $permit = DormitoryPermit::where('scan_token', $token)->first();
 
         if (! $permit) {
             return view('dormitory.permits.verify', [

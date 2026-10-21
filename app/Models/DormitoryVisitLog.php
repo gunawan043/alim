@@ -136,15 +136,29 @@ class DormitoryVisitLog extends Model
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
-            'pending' => 'Menunggu',
-            'approved' => 'Disetujui',
+            'pending' => 'Menunggu Persetujuan',
+            'approved' => 'Menunggu Kedatangan Tamu',
             'rejected' => 'Ditolak',
-            'arrived' => 'Sudah Tiba',
-            'checked_out' => 'Sudah Pulang',
+            'arrived' => 'Sedang Berkunjung',
+            'checked_out' => 'Kunjungan Selesai',
             'cancelled' => 'Dibatalkan',
             'no_show' => 'Tidak Datang',
             default => ucfirst($this->status ?? ''),
         };
+    }
+
+    public function getStatusBadgeAttribute(): string
+    {
+        $class = match ($this->status) {
+            'pending' => 'bg-warning-subtle text-warning',
+            'approved' => 'bg-info-subtle text-info',
+            'arrived' => 'bg-warning-subtle text-warning',
+            'checked_out' => 'bg-success-subtle text-success',
+            'rejected', 'cancelled', 'no_show' => 'bg-danger-subtle text-danger',
+            default => 'bg-secondary-subtle text-secondary',
+        };
+
+        return '<span class="badge '.$class.'">'.e($this->status_text).'</span>';
     }
 
     public function getVisitorRelationshipTextAttribute(): string

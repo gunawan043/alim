@@ -238,28 +238,28 @@
                 </div>
             </div>
 
-            {{-- Wizard Tabs: 1) Menunggu Penjemputan → 2) Sudah Dijemput → 3) Riwayat Kepulangan --}}
+            {{-- Wizard Tabs: 1) Belum Keluar → 2) Sedang di Luar → 3) Sudah Kembali --}}
             <div class="card">
                 <div class="card-header border-bottom-dashed pb-0">
                     <ul class="nav nav-tabs nav-tabs-custom" id="visitStepper" role="tablist" style="border-bottom: none;">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="step-pending-tab" data-bs-toggle="tab"
                                     data-bs-target="#step-pending" type="button" role="tab">
-                                <span class="step-number">1</span><i class="ri-time-line me-1"></i>Menunggu Penjemputan
+                                <span class="step-number">1</span><i class="ri-time-line me-1"></i>Belum Keluar
                                 <span class="badge bg-warning-subtle text-warning ms-2">{{ $awaitingScan->count() }}</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="step-picked-tab" data-bs-toggle="tab"
                                     data-bs-target="#step-picked" type="button" role="tab">
-                                <span class="step-number">2</span><i class="ri-walk-line me-1"></i>Sudah Dijemput
+                                <span class="step-number">2</span><i class="ri-walk-line me-1"></i>Sedang di Luar
                                 <span class="badge bg-info-subtle text-info ms-2">{{ $sudahDijemput->count() }}</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="step-completed-tab" data-bs-toggle="tab"
                                     data-bs-target="#step-completed" type="button" role="tab">
-                                <span class="step-number">3</span><i class="ri-home-heart-line me-1"></i>Riwayat Kepulangan
+                                <span class="step-number">3</span><i class="ri-home-heart-line me-1"></i>Sudah Kembali
                                 <span class="badge bg-success-subtle text-success ms-2">{{ $riwayatKepulangan->count() }}</span>
                             </button>
                         </li>
@@ -268,10 +268,10 @@
 
                 <div class="card-body p-3">
                     <div class="tab-content" id="visitStepperTabContent">
-                         {{-- Tab Menunggu Penjemputan --}}
+                         {{-- Tab Belum Keluar --}}
                         <div class="tab-pane fade show active" id="step-pending" role="tabpanel">
                             @if($awaitingScan->isEmpty())
-                            <div class="text-center py-4 text-muted">Tidak ada izin yang menunggu penjemputan.</div>
+                            <div class="text-center py-4 text-muted">Tidak ada izin yang berstatus belum keluar.</div>
                             @else
                             <div class="permits-table-wrap">
                             <table class="table table-hover">
@@ -321,9 +321,9 @@
                                                 data-status="{{ $permit->status }}"
                                                 data-student-name="{{ $permit->student?->name ?? '—' }}">
                                             @if(in_array($permit->status, ['approved','overdue']))
-                                                <i class="ri-walk-line me-1"></i>Sudah Dijemput
+                                                <i class="ri-logout-box-r-line me-1"></i>Catat Keluar
                                             @elseif($permit->status === 'picked_up')
-                                                <i class="ri-home-heart-line me-1"></i>Sudah Kembali
+                                                <i class="ri-home-heart-line me-1"></i>Catat Kembali
                                             @else
                                                 <i class="ri-edit-line me-1"></i>Aksi Cepat
                                             @endif
@@ -337,14 +337,14 @@
                             @endif
                         </div>
 
-                         {{-- Tab Sudah Dijemput (sudah meninggalkan asrama, menunggu kepulangan) --}}
+                         {{-- Tab Sedang di Luar (sudah meninggalkan asrama, menunggu kepulangan) --}}
                         <div class="tab-pane fade" id="step-picked" role="tabpanel">
                             @if($sudahDijemput->isEmpty())
-                            <div class="text-center py-4 text-muted">Tidak ada izin yang sudah dijemput.</div>
+                            <div class="text-center py-4 text-muted">Tidak ada izin yang sedang di luar asrama.</div>
                             @else
                             <div class="permits-table-wrap">
                             <table class="table table-hover">
-                                <thead><tr><th>#</th><th>Santri</th><th>Jenis</th><th>Waktu Dijemput</th><th>Penjemput</th><th>Status</th><th>Aksi</th></tr></thead>
+                                <thead><tr><th>#</th><th>Santri</th><th>Jenis</th><th>Waktu Keluar</th><th>Penjemput</th><th>Status</th><th>Aksi</th></tr></thead>
                                 <tbody>
                                 @php $n=1; @endphp
                                 @foreach($sudahDijemput as $permit)
@@ -385,9 +385,9 @@
                                                 data-status="{{ $permit->status }}"
                                                 data-student-name="{{ $permit->student?->name ?? '—' }}">
                                             @if(in_array($permit->status, ['approved','overdue']))
-                                                <i class="ri-walk-line me-1"></i>Sudah Dijemput
+                                                <i class="ri-logout-box-r-line me-1"></i>Catat Keluar
                                             @elseif($permit->status === 'picked_up')
-                                                <i class="ri-home-heart-line me-1"></i>Sudah Kembali
+                                                <i class="ri-home-heart-line me-1"></i>Catat Kembali
                                             @else
                                                 <i class="ri-information-line me-1"></i>Lihat Detail
                                             @endif
@@ -401,7 +401,7 @@
                             @endif
                         </div>
 
-                         {{-- Tab Riwayat Kepulangan (sudah kembali ke asrama) --}}
+                         {{-- Tab Sudah Kembali (sudah kembali ke asrama) --}}
                         <div class="tab-pane fade" id="step-completed" role="tabpanel">
                             @if($riwayatKepulangan->isEmpty())
                             <div class="text-center py-4 text-muted">Tidak ada riwayat kepulangan.</div>
@@ -448,13 +448,7 @@
                                                 data-permit-id="{{ $permit->id }}"
                                                 data-status="{{ $permit->status }}"
                                                 data-student-name="{{ $permit->student?->name ?? '—' }}">
-                                            @if(in_array($permit->status, ['approved','overdue']))
-                                                <i class="ri-walk-line me-1"></i>Tandai Sudah Dijemput
-                                            @elseif($permit->status === 'picked_up')
-                                                <i class="ri-home-heart-line me-1"></i>Tandai Sudah Kembali
-                                            @else
-                                                <i class="ri-information-line me-1"></i>Lihat Detail
-                                            @endif
+                                            <i class="ri-information-line me-1"></i>Lihat Detail
                                         </button>
                                     </td>
                                 </tr>
@@ -544,7 +538,7 @@
                                         </button>
                                         <button type="button" class="btn btn-success" id="btn-update-status">
                                             <i class="ri-check-double-line me-1"></i>
-                                            <span id="btn-update-label">Sudah Dijemput</span>
+                                            <span id="btn-update-label">Sedang di Luar</span>
                                         </button>
                                     </div>
                                 </div>
@@ -771,10 +765,10 @@
             const status = btn.dataset.status || 'pending';
             const statusBadge = {
                 'pending': '<span class="badge bg-warning text-dark">Menunggu</span>',
-                'approved': '<span class="badge bg-primary">Disetujui</span>',
-                'overdue': '<span class="badge bg-danger">Telat</span>',
-                'picked_up': '<span class="badge bg-info">Sudah Dijemput</span>',
-                'returned': '<span class="badge bg-success">Pulang</span>',
+                'approved': '<span class="badge bg-info">Belum Keluar</span>',
+                'overdue': '<span class="badge bg-danger">Melewati Jadwal</span>',
+                'picked_up': '<span class="badge bg-info">Sedang di Luar</span>',
+                'returned': '<span class="badge bg-success">Sudah Kembali</span>',
                 'rejected': '<span class="badge bg-secondary">Ditolak</span>',
             };
             document.getElementById('detail-status').innerHTML = statusBadge[status] || `<span class="badge bg-light text-dark">${status}</span>`;
@@ -790,10 +784,10 @@
 
     const statusBadgeMap = {
         'pending': '<span class="badge bg-warning text-dark">Menunggu</span>',
-        'approved': '<span class="badge bg-primary">Disetujui</span>',
-        'overdue': '<span class="badge bg-danger">Telat</span>',
-        'picked_up': '<span class="badge bg-info">Sudah Dijemput</span>',
-        'returned': '<span class="badge bg-success">Pulang</span>',
+        'approved': '<span class="badge bg-info">Belum Keluar</span>',
+        'overdue': '<span class="badge bg-danger">Melewati Jadwal</span>',
+        'picked_up': '<span class="badge bg-info">Sedang di Luar</span>',
+        'returned': '<span class="badge bg-success">Sudah Kembali</span>',
         'rejected': '<span class="badge bg-secondary">Ditolak</span>',
     };
 
@@ -802,9 +796,9 @@
         approved: {
             action: 'pickup',
             title: 'Konfirmasi Penjemputan',
-            buttonLabel: 'Tandai Sudah Dijemput',
+            buttonLabel: 'Tandai Sedang di Luar',
             busyLabel: 'Mencatat Penjemputan...',
-            fallbackMessage: 'Penjemputan berhasil dicatat.',
+            fallbackMessage: 'Santri berhasil dicatat keluar asrama.',
             btnClass: 'btn-info',
             iconSrc: 'https://cdn.lordicon.com/lupuorrc.json',
             iconColor: '#08a88a',
@@ -813,9 +807,9 @@
         overdue: {
             action: 'pickup',
             title: 'Konfirmasi Penjemputan (Terlambat)',
-            buttonLabel: 'Tandai Sudah Dijemput',
+            buttonLabel: 'Tandai Sedang di Luar',
             busyLabel: 'Mencatat Penjemputan...',
-            fallbackMessage: 'Penjemputan berhasil dicatat.',
+            fallbackMessage: 'Santri berhasil dicatat keluar asrama.',
             btnClass: 'btn-info',
             iconSrc: 'https://cdn.lordicon.com/lupuorrc.json',
             iconColor: '#08a88a',
@@ -824,7 +818,7 @@
         picked_up: {
             action: 'return',
             title: 'Konfirmasi Kepulangan',
-            buttonLabel: 'Sudah Kembali ke Asrama',
+            buttonLabel: 'Catat Kembali ke Asrama',
             busyLabel: 'Mencatat Kepulangan...',
             fallbackMessage: 'Kepulangan berhasil dicatat.',
             btnClass: 'btn-success',

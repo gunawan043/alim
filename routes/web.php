@@ -2255,15 +2255,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/{activityId}/buka', [\App\Http\Controllers\DormitoryActivityController::class, 'reopen'])->name('reopen');
                 });
 
-                // ── QR GATEPASS KELUAR/MASUK ──────────────────────────
-                Route::prefix('{asramaUuid}/gatepass')->name('gatepass.')->group(function () {
-                    Route::get('/', [\App\Http\Controllers\DormitoryGatepassController::class, 'index'])->name('index');
-                    Route::get('/kartu', [\App\Http\Controllers\DormitoryGatepassController::class, 'cards'])->name('cards');
-                    Route::get('/kartu-thermal', [\App\Http\Controllers\DormitoryGatepassController::class, 'thermal'])->name('cards.thermal');
-                    Route::get('/scan', [\App\Http\Controllers\DormitoryGatepassController::class, 'scan'])->name('scan');
-                    Route::post('/scan', [\App\Http\Controllers\DormitoryGatepassController::class, 'process'])->name('process');
-                });
-
                 Route::get('/{asramaUuid}/log-kegiatan', [DormitoryPostController::class, 'activityLogIndex'])->name('activities.index');
 
                 // Emergency Broadcast

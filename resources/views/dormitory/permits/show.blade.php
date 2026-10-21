@@ -148,8 +148,8 @@
     @php
         $statusConfig = [
             'pending'   => ['icon' => 'ri-time-line', 'text' => 'Menunggu Persetujuan', 'color' => 'warning', 'bg' => '#fff3cd', 'border' => '#ffc107'],
-            'approved'  => ['icon' => 'ri-check-double-line', 'text' => 'Disetujui / Menunggu Penjemputan', 'color' => 'primary', 'bg' => '#cfe2ff', 'border' => '#0d6efd'],
-            'picked_up' => ['icon' => 'ri-truck-line', 'text' => 'Sudah Dijemput (Sedang Pulang)', 'color' => 'info', 'bg' => '#cff4fc', 'border' => '#0dcaf0'],
+            'approved'  => ['icon' => 'ri-logout-box-r-line', 'text' => 'Belum Keluar', 'color' => 'info', 'bg' => '#cff4fc', 'border' => '#0dcaf0'],
+            'picked_up' => ['icon' => 'ri-walk-line', 'text' => 'Sedang di Luar Asrama', 'color' => 'warning', 'bg' => '#fff3cd', 'border' => '#ffc107'],
             'returned'  => ['icon' => 'ri-login-box-line', 'text' => 'Sudah Kembali ke Asrama', 'color' => 'success', 'bg' => '#d1e7dd', 'border' => '#198754'],
             'rejected'  => ['icon' => 'ri-close-circle-line', 'text' => 'Ditolak', 'color' => 'danger', 'bg' => '#f8d7da', 'border' => '#dc3545'],
             'overdue'   => ['icon' => 'ri-alert-line', 'text' => 'Telat Pulang', 'color' => 'danger', 'bg' => '#f8d7da', 'border' => '#dc3545'],
@@ -471,7 +471,7 @@
                     <h6 class="card-title mb-0 fw-bold"><i class="ri-user-heart-line me-2 text-primary"></i>Data Penjemput</h6>
                     @if($hasScan)
                         <span class="badge bg-success-subtle text-success">
-                            <i class="ri-checkbox-circle-line me-1"></i>Sudah Dijemput
+                            <i class="ri-checkbox-circle-line me-1"></i>Sedang di Luar
                         </span>
                     @else
                         <span class="badge bg-warning-subtle text-warning">
@@ -772,7 +772,7 @@
                 <label class="form-label fw-semibold">Pilih Status Baru</label>
                 <select name="status" class="form-select" required>
                     <option value="">-- Pilih status --</option>
-                    <option value="picked_up" {{ old('status', $permit->status == 'picked_up' ? 'selected' : '') }}>Sudah Dijemput (Sedang Pulang)</option>
+                    <option value="picked_up" {{ old('status', $permit->status == 'picked_up' ? 'selected' : '') }}>Sedang di Luar Asrama</option>
                     <option value="returned" {{ old('status', $permit->status == 'returned' ? 'selected' : '') }}>Sudah Kembali ke Asrama</option>
                     <option value="overdue" {{ old('status', $permit->status == 'overdue' ? 'selected' : '') }}>Terlambat Pulang</option>
                 </select>
