@@ -26,6 +26,12 @@ class AuditLog extends Model
             if (empty($model->id)) {
                 $model->id = (string) Str::uuid();
             }
+
+            if (empty($model->request_id)) {
+                $model->request_id = app()->bound('request_id')
+                    ? (string) app('request_id')
+                    : (request()->headers->get('X-Request-ID') ?: null);
+            }
         });
     }
 
@@ -37,6 +43,7 @@ class AuditLog extends Model
         'record_type',
         'ip_address',
         'user_agent',
+        'request_id',
     ];
 
     protected $casts = [

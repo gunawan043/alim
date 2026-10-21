@@ -372,7 +372,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/force-password', [\App\Http\Controllers\Auth\ForcePasswordController::class, 'show'])->name('password.force');
     Route::post('/force-password', [\App\Http\Controllers\Auth\ForcePasswordController::class, 'update'])->name('password.force.update');
 });
-Route::post('/login', [LoginController::class, 'login'])->name('login.process');
+Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login')->name('login.process');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // ── Public Auth Routes ──────────────────────────────────────────────
@@ -399,13 +399,13 @@ Route::prefix('portal')->name('portal.')->group(function () {
 Route::middleware('guest')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
         Route::get('/forgot', [ForgotPasswordController::class, 'showForm'])->name('request');
-        Route::post('/forgot', [ForgotPasswordController::class, 'sendOtp'])->name('email');
+        Route::post('/forgot', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:otp')->name('email');
         Route::get('/otp', [ForgotPasswordController::class, 'showOtpForm'])->name('otp.form');
-        Route::post('/otp', [ForgotPasswordController::class, 'verifyOtp'])->name('otp.verify');
-        Route::post('/otp/resend', [ForgotPasswordController::class, 'resendOtp'])->name('otp.resend');
-        Route::post('/otp/check', [ForgotPasswordController::class, 'checkOtpValidity'])->name('otp.check');
+        Route::post('/otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:otp')->name('otp.verify');
+        Route::post('/otp/resend', [ForgotPasswordController::class, 'resendOtp'])->middleware('throttle:otp')->name('otp.resend');
+        Route::post('/otp/check', [ForgotPasswordController::class, 'checkOtpValidity'])->middleware('throttle:otp')->name('otp.check');
         Route::get('/reset', [ForgotPasswordController::class, 'showResetForm'])->name('reset.form');
-        Route::post('/reset', [ForgotPasswordController::class, 'resetPassword'])->name('update');
+        Route::post('/reset', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:otp')->name('update');
         Route::post('/cancel', [ForgotPasswordController::class, 'cancelReset'])->name('cancel');
     });
 });

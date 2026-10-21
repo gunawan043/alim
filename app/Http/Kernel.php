@@ -26,6 +26,7 @@ use App\Http\Middleware\RoleLevelMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SchoolContextMiddleware;
 use App\Http\Middleware\SecurityHeadersMiddleware;
+use App\Http\Middleware\WebSecurityHeaders;
 use App\Http\Middleware\ShareRoleId;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
@@ -78,6 +79,8 @@ class Kernel extends HttpKernel
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
             StartSession::class,
+            RequestIdMiddleware::class,
+            WebSecurityHeaders::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
             ShareErrorsFromSession::class,
             VerifyCsrfToken::class,

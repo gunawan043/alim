@@ -13,7 +13,7 @@ return [
     'cookie' => env('SESSION_COOKIE', 'laravel_session'),
     'path' => '/',
     'domain' => env('SESSION_DOMAIN', '.localhost'),
-    'secure' => env('SESSION_SECURE_COOKIE', false),
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
     'http_only' => true,
     'same_site' => env('SESSION_SAME_SITE', 'lax'),
 ];
