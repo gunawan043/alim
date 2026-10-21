@@ -16,111 +16,294 @@
         </div>
     @endif
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-4">
-            <div class="card card-animate">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <span class="avatar-title bg-warning-subtle text-warning rounded fs-22"><i class="ri-user-search-line"></i></span>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Belum Berkamar</p>
-                        <h3 class="fw-bold ff-secondary mb-0" id="belum-berkamar-count">{{ $belumBerkamar }}</h3>
+    @php
+        $totalCapacity = $rooms->sum(fn ($room) => (int) ($room->capacity ?? 0));
+        $totalOccupied = $rooms->sum(fn ($room) => $room->residents->count());
+        $availableBeds = max(0, $totalCapacity - $totalOccupied);
+        $occupancyRate = $totalCapacity > 0 ? round(($totalOccupied / $totalCapacity) * 100) : 0;
+        $wings = $rooms->pluck('wing')->filter()->unique('id')->sortBy('name');
+    @endphp
+
+    {{-- Statistik ringkas penempatan (pola GTK) --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning-subtle rounded">
+                                <i class="ri-user-search-line text-warning"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Belum Berkamar</p>
+                            <h3 class="stat-value" id="belum-berkamar-count">{{ number_format($belumBerkamar) }}</h3>
+                        </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-information-line me-1"></i>Santri siap ditempatkan</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card card-animate">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <span class="avatar-title bg-info-subtle text-info rounded fs-22"><i class="ri-hotel-bed-line"></i></span>
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Kamar</p>
-                        <h3 class="fw-bold ff-secondary mb-0">{{ $rooms->count() }}</h3>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-info-subtle rounded">
+                                <i class="ri-hotel-bed-line text-info"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Total Kamar</p>
+                            <h3 class="stat-value">{{ number_format($rooms->count()) }}</h3>
+                        </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-door-open-line me-1"></i>{{ number_format($totalCapacity) }} kapasitas ranjang</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 d-flex align-items-center justify-content-md-end">
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#pullModal">
-                <i class="ri-download-cloud-2-line me-1"></i> Tarik Data Santri Belum Berkamar
-            </button>
-            <button type="button" class="btn btn-soft-primary ms-1" data-bs-toggle="modal" data-bs-target="#boardingModal">
-                <i class="ri-user-settings-line me-1"></i> Kelola Status Boarding
-            </button>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success-subtle rounded">
+                                <i class="ri-team-line text-success"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Penghuni</p>
+                            <h3 class="stat-value">{{ number_format($totalOccupied) }}</h3>
+                        </div>
+                    </div>
+                    <p class="stat-note mb-0"><i class="ri-checkbox-circle-line me-1"></i>{{ number_format($availableBeds) }} ranjang tersedia</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded">
+                                <i class="ri-pie-chart-line text-primary"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Okupansi</p>
+                            <h3 class="stat-value">{{ $occupancyRate }}%</h3>
+                        </div>
+                    </div>
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar {{ $occupancyRate >= 90 ? 'bg-danger' : ($occupancyRate >= 70 ? 'bg-warning' : 'bg-success') }}"
+                             style="width:{{ min(100, $occupancyRate) }}%"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-header border-bottom-dashed">
-            <h6 class="mb-0"><i class="ri-layout-grid-line me-1"></i>Daftar Kamar &amp; Penghuni</h6>
+            <div class="row g-3 align-items-center">
+                <div class="col-sm">
+                    <h5 class="card-title mb-0"><i class="ri-layout-grid-line me-1 text-primary"></i>Daftar Kamar &amp; Penghuni</h5>
+                    <p class="text-muted mb-0 small">{{ $dormitory->name }} · {{ $dormitory->school?->name }}</p>
+                </div>
+                <div class="col-sm-auto">
+                    <div class="toolbar-actions">
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#pullModal">
+                            <i class="ri-download-cloud-2-line me-1"></i> Tarik Santri
+                        </button>
+                        <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="modal" data-bs-target="#boardingModal">
+                            <i class="ri-user-settings-line me-1"></i> Status Boarding
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card-body">
-            <div class="row g-3">
-                @forelse($rooms as $room)
-                    @php
-                        $aktif = $room->residents->count();
-                        $kapasitas = (int) ($room->capacity ?? 0);
-                        $sisa = max(0, $kapasitas - $aktif);
-                    @endphp
-                    <div class="col-lg-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <div class="fw-semibold">{{ $room->name ?: $room->code }}</div>
-                                    <div class="small text-muted">Kapasitas {{ $kapasitas }} · Terisi {{ $aktif }} · Sisa {{ $sisa }}</div>
-                                </div>
-                                <span class="badge {{ $sisa > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">
-                                    {{ $sisa > 0 ? $sisa.' ranjang kosong' : 'Penuh' }}
-                                </span>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <div class="d-flex gap-2 flex-grow-1" style="max-width:420px;">
+                    <input type="search" id="placement-search" class="form-control form-control-sm"
+                           placeholder="Cari kamar, gedung, atau nama santri...">
+                    <button type="button" class="btn btn-primary btn-sm flex-shrink-0" onclick="applyPlacementFilters()">
+                        <i class="ri-search-line"></i> Cari
+                    </button>
+                </div>
+                <div class="toolbar-actions">
+                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#placementFilterModal">
+                        <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
+                        <span id="placementFilterCount" class="badge bg-light text-dark ms-1" style="display:none;">0</span>
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm" onclick="resetPlacementFilters()" title="Reset filter">
+                        <i class="ri-refresh-line"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="placementActiveFilters" class="mb-3"></div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <small class="text-muted">
+                    <i class="ri-file-list-line me-1"></i> Menampilkan
+                    <strong id="placementVisibleCount">{{ $rooms->count() }}</strong> dari
+                    <strong>{{ $rooms->count() }}</strong> kamar
+                </small>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-hover align-middle table-freeze mb-0" id="placementTable">
+                    <thead>
+                        <tr>
+                            <th>Kamar</th>
+                            <th>Gedung</th>
+                            <th class="text-center">Kapasitas</th>
+                            <th class="text-center">Terisi</th>
+                            <th class="text-center">Sisa</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center" style="width:220px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($rooms as $room)
+                            @php
+                                $aktif = $room->residents->count();
+                                $kapasitas = (int) ($room->capacity ?? 0);
+                                $sisa = max(0, $kapasitas - $aktif);
+                                $isEmpty = $sisa <= 0;
+                                $searchText = strtolower(($room->name ?: $room->code).' '.$room->code.' '.($room->wing?->name ?? '').' '.$room->residents->pluck('student.name')->filter()->implode(' '));
+                            @endphp
+                            <tr class="placement-room-row"
+                                data-search-text="{{ $searchText }}"
+                                data-status="{{ $isEmpty ? 'full' : 'available' }}"
+                                data-wing="{{ $room->wing?->id ?? '' }}"
+                                data-room-id="{{ $room->id }}">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="avatar-xs rounded-circle bg-primary-subtle d-flex align-items-center justify-content-center">
+                                            <i class="ri-door-open-line text-primary"></i>
+                                        </span>
+                                        <div>
+                                            <span class="fw-semibold d-block">{{ $room->name ?: $room->code }}</span>
+                                            <small class="text-muted">{{ $room->code }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ $room->wing?->name ?? '—' }}</td>
+                                <td class="text-center">{{ $kapasitas }}</td>
+                                <td class="text-center">{{ $aktif }}</td>
+                                <td class="text-center">{{ $sisa }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ $isEmpty ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success' }}">
+                                        {{ $isEmpty ? 'Penuh' : $sisa.' kosong' }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-toggle-residents"
+                                                data-target="#residents-{{ $room->id }}"
+                                                aria-expanded="false"
+                                                title="Lihat penghuni">
+                                            <i class="ri-eye-line"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-soft-primary btn-tempatkan"
+                                                data-room="{{ $room->id }}"
+                                                data-room-name="{{ $room->name ?: $room->code }}"
+                                                data-sisa="{{ $sisa }}"
+                                                {{ $isEmpty ? 'disabled' : '' }}>
+                                            <i class="ri-user-add-line me-1"></i>Tempatkan
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="placement-residents-row" id="residents-{{ $room->id }}" style="display:none;">
+                                <td colspan="7" class="bg-light-subtle">
+                                    <div class="px-2 py-2">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                            <strong class="small"><i class="ri-team-line me-1"></i>Penghuni {{ $room->name ?: $room->code }}</strong>
+                                            <span class="text-muted small">{{ $aktif }} / {{ $kapasitas }} ranjang terisi</span>
+                                        </div>
+                                        @if($aktif > 0)
+                                            <div class="row g-2">
+                                                @foreach($room->residents as $resident)
+                                                    <div class="col-md-6">
+                                                        <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1">
+                                                            <span class="small">
+                                                                <i class="ri-user-line me-1 text-muted"></i>
+                                                                <strong>{{ $resident->student?->name ?? '—' }}</strong>
+                                                                <span class="text-muted">· ranjang #{{ $resident->bed_number }}</span>
+                                                            </span>
+                                                            <span class="d-flex gap-1">
+                                                                <button type="button" class="btn btn-sm btn-soft-danger btn-keluar"
+                                                                        data-resident="{{ $resident->id }}" data-room="{{ $room->id }}"
+                                                                        title="Keluarkan dari kamar"><i class="ri-logout-box-r-line"></i></button>
+                                                                <button type="button" class="btn btn-sm btn-soft-warning btn-berhenti"
+                                                                        data-resident="{{ $resident->id }}" data-nama="{{ $resident->student?->name }}"
+                                                                        title="Berhenti mondok (tetap sekolah)"><i class="ri-user-unfollow-line"></i></button>
+                                                                <button type="button" class="btn btn-sm btn-soft-primary btn-pindah"
+                                                                        data-resident="{{ $resident->id }}" data-nama="{{ $resident->student?->name }}"
+                                                                        title="Ajukan pindah kamar (butuh persetujuan)"><i class="ri-arrow-left-right-line"></i></button>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="text-muted small mb-0">Belum ada penghuni.</p>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    Belum ada kamar. <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah kamar</a> terlebih dahulu.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal filter lanjutan --}}
+    <div class="modal fade" id="placementFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-filter-3-line me-2 text-primary"></i>Filter Kamar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="filter-group mb-0">
+                                <div class="filter-group-title"><i class="ri-door-open-line"></i>Status Kamar</div>
+                                <select id="placementFilterStatus" class="form-select">
+                                    <option value="">Semua status</option>
+                                    <option value="available">Tersedia</option>
+                                    <option value="full">Penuh</option>
+                                </select>
                             </div>
-
-                            @if($aktif > 0)
-                                <ul class="list-unstyled mb-2 small">
-                                    @foreach($room->residents as $resident)
-                                        <li class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                            <span>
-                                                <i class="ri-user-line me-1"></i>
-                                                {{ $resident->student?->name ?? '—' }}
-                                                <span class="text-muted">· ranjang #{{ $resident->bed_number }}</span>
-                                            </span>
-                                            <button type="button" class="btn btn-sm btn-soft-danger btn-keluar"
-                                                    data-resident="{{ $resident->id }}"
-                                                    data-room="{{ $room->id }}"
-                                                    title="Keluarkan dari kamar">
-                                                <i class="ri-logout-box-r-line"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-soft-warning btn-berhenti ms-1"
-                                                    data-resident="{{ $resident->id }}"
-                                                    data-nama="{{ $resident->student?->name }}"
-                                                    title="Berhenti mondok (tetap sekolah)">
-                                                <i class="ri-user-unfollow-line"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-soft-primary btn-pindah ms-1"
-                                                    data-resident="{{ $resident->id }}"
-                                                    data-nama="{{ $resident->student?->name }}"
-                                                    title="Ajukan pindah kamar (butuh persetujuan)">
-                                                <i class="ri-arrow-left-right-line"></i>
-                                            </button>
-                                        </li>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="filter-group mb-0">
+                                <div class="filter-group-title"><i class="ri-building-line"></i>Gedung</div>
+                                <select id="placementFilterWing" class="form-select">
+                                    <option value="">Semua gedung</option>
+                                    @foreach($wings as $wing)
+                                        <option value="{{ $wing->id }}">{{ $wing->name }}</option>
                                     @endforeach
-                                </ul>
-                            @else
-                                <p class="text-muted small mb-2">Belum ada penghuni.</p>
-                            @endif
-
-                            <button type="button" class="btn btn-sm btn-soft-primary btn-tempatkan"
-                                    data-room="{{ $room->id }}"
-                                    data-room-name="{{ $room->name ?: $room->code }}"
-                                    data-sisa="{{ $sisa }}"
-                                    {{ $sisa <= 0 ? 'disabled' : '' }}>
-                                <i class="ri-user-add-line me-1"></i> Tempatkan Santri
-                            </button>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                @empty
-                    <div class="col-12 text-center text-muted py-5">
-                        Belum ada kamar. <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah kamar</a> terlebih dahulu.
-                    </div>
-                @endforelse
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" onclick="resetPlacementFilters()"><i class="ri-refresh-line me-1"></i>Reset</button>
+                    <button type="button" class="btn btn-primary" onclick="applyPlacementFilters()"><i class="ri-filter-3-line me-1"></i>Terapkan Filter</button>
+                </div>
             </div>
         </div>
     </div>
@@ -531,5 +714,137 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+</script>
+<script>
+(function () {
+    const searchInput = document.getElementById('placement-search');
+    const table = document.getElementById('placementTable');
+    const rows = table ? Array.from(table.querySelectorAll('.placement-room-row')) : [];
+    const activeBox = document.getElementById('placementActiveFilters');
+    const visibleCount = document.getElementById('placementVisibleCount');
+    const filterCount = document.getElementById('placementFilterCount');
+    if (!table || !rows.length) return;
+
+    const statusLabels = { available: 'Status: Tersedia', full: 'Status: Penuh' };
+
+    function selectedWingLabel() {
+        const select = document.getElementById('placementFilterWing');
+        return select && select.value ? (select.options[select.selectedIndex]?.text || '') : '';
+    }
+
+    function renderActiveBadges() {
+        if (!activeBox) return;
+        activeBox.innerHTML = '';
+
+        const status = document.getElementById('placementFilterStatus')?.value || '';
+        if (status) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = (statusLabels[status] || status) + ' <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                document.getElementById('placementFilterStatus').value = '';
+                applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+
+        const wingId = document.getElementById('placementFilterWing')?.value || '';
+        if (wingId) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = 'Gedung: ' + selectedWingLabel() + ' <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                document.getElementById('placementFilterWing').value = '';
+                applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+
+        const query = (searchInput?.value || '').trim();
+        if (query) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = 'Cari: "' + query + '" <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                searchInput.value = '';
+                applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+    }
+
+    window.applyPlacementFilters = function () {
+        const query = (searchInput?.value || '').trim().toLowerCase();
+        const status = document.getElementById('placementFilterStatus')?.value || '';
+        const wingId = document.getElementById('placementFilterWing')?.value || '';
+        let visible = 0;
+
+        rows.forEach(function (row) {
+            const text = (row.dataset.searchText || '').toLowerCase();
+            const matches = (!query || text.includes(query))
+                && (!status || row.dataset.status === status)
+                && (!wingId || row.dataset.wing === wingId);
+
+            row.style.display = matches ? '' : 'none';
+            const detail = document.getElementById('residents-' + row.dataset.roomId);
+            if (detail) {
+                if (!matches) detail.style.display = 'none';
+            }
+            if (matches) visible++;
+        });
+
+        if (visibleCount) visibleCount.textContent = visible;
+        const count = [status, wingId, query].filter(Boolean).length;
+        if (filterCount) {
+            filterCount.textContent = count;
+            filterCount.style.display = count ? '' : 'none';
+        }
+        renderActiveBadges();
+    };
+
+    window.resetPlacementFilters = function () {
+        if (searchInput) searchInput.value = '';
+        const status = document.getElementById('placementFilterStatus');
+        const wing = document.getElementById('placementFilterWing');
+        if (status) status.value = '';
+        if (wing) wing.value = '';
+        rows.forEach(function (row) {
+            row.style.display = '';
+            const detail = document.getElementById('residents-' + row.dataset.roomId);
+            if (detail) detail.style.display = 'none';
+        });
+        applyPlacementFilters();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('placementFilterModal'));
+        if (modal) modal.hide();
+    };
+
+    searchInput?.addEventListener('input', window.applyPlacementFilters);
+
+    // Tombol mata: buka/tutup daftar penghuni kamar.
+    document.querySelectorAll('.btn-toggle-residents').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const target = document.querySelector(this.dataset.target);
+            if (!target) return;
+            const isHidden = target.style.display === 'none' || target.style.display === '';
+            target.style.display = isHidden ? '' : 'none';
+            this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            this.classList.toggle('btn-outline-primary', !isHidden);
+            this.classList.toggle('btn-primary', isHidden);
+        });
+    });
+
+    // Tombol Tempatkan: pilih kamar di modal tarik santri lalu buka modal.
+    document.querySelectorAll('.btn-tempatkan').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const select = document.getElementById('pull-room');
+            if (!select) return;
+            select.value = this.dataset.room || '';
+            const modal = new bootstrap.Modal(document.getElementById('pullModal'));
+            modal.show();
+        });
+    });
+
+    window.applyPlacementFilters();
+})();
 </script>
 @endsection

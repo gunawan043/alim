@@ -58,9 +58,12 @@ class DormitoryRoomController extends Controller
     {
         $dormitory = \App\Models\Dormitory::findOrFail($asramaUuid);
 
-        $rooms = \App\Models\DormitoryRoom::with(['residents' => function ($q) {
-                $q->where('is_active', true)->with('student:id,name,nisn,gender');
-            }])
+        $rooms = \App\Models\DormitoryRoom::with([
+                'wing:id,name',
+                'residents' => function ($q) {
+                    $q->where('is_active', true)->with('student:id,name,nisn,gender');
+                },
+            ])
             ->where('dormitory_id', $asramaUuid)
             ->orderBy('code')
             ->get();
