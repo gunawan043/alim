@@ -196,21 +196,21 @@
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.positions', 'user.gtk-positions.']) ? ' active' : '' }}"
-           href="{{ $workUnitUrl('user.schools.satuan-kerja.positions') }}">
+           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.positions') : $humasUrl('user.gtk-positions.index') }}">
             <i class="ri-briefcase-line"></i><span>Jabatan GTK</span>
         </a>
     </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.additional-tasks', 'user.gtk-additional-tasks.']) ? ' active' : '' }}"
-           href="{{ $workUnitUrl('user.schools.satuan-kerja.additional-tasks') }}">
+           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.additional-tasks') : $humasUrl('user.gtk-additional-tasks.index') }}">
             <i class="ri-task-line"></i><span>Tugas Tambahan GTK</span>
         </a>
     </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.other-tasks', 'user.other-teacher-tasks.']) ? ' active' : '' }}"
-           href="{{ $workUnitUrl('user.schools.satuan-kerja.other-tasks') }}">
+           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.other-tasks') : $humasUrl('user.other-teacher-tasks.index') }}">
             <i class="ri-user-settings-line"></i><span>Tugas Tambahan Guru</span>
         </a>
     </li>
@@ -547,7 +547,7 @@
      Akses: Kepala & Staf Personalia
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if(($showAll || $canPersonal) && menu_allowed('humas'))
-    <li class="menu-title"><span>Kesejahteraan & Payroll</span></li>
+    <li class="menu-title"><span>Kesejahteraan GTK</span></li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesejahteraan.index', 'user.kesejahteraan.asuransi', 'user.kesejahteraan.benefit']) ? ' active' : '' }}"
@@ -563,33 +563,13 @@
         </a>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll.index']) ? ' active' : '' }}"
-           href="{{ $humasUrl('user.payroll.index') }}">
-            <i class="ri-wallet-3-line"></i><span>Payroll</span>
-        </a>
-    </li>
+    
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll.tunjangan']) ? ' active' : '' }}"
-           href="{{ $humasUrl('user.payroll.tunjangan') }}">
-            <i class="ri-add-circle-line"></i><span>Tunjangan</span>
-        </a>
-    </li>
+    
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll.potongan']) ? ' active' : '' }}"
-           href="{{ $humasUrl('user.payroll.potongan') }}">
-            <i class="ri-subtract-line"></i><span>Potongan</span>
-        </a>
-    </li>
+    
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll-slip.index', 'user.payroll-slip.show']) ? ' active' : '' }}"
-           href="{{ $humasUrl('user.payroll-slip.index') }}">
-            <i class="ri-receipt-line"></i><span>Slip Gaji</span>
-        </a>
-    </li>
+    
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════

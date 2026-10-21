@@ -2594,6 +2594,9 @@ class GtkWizardController extends Controller
             auth()->check() && (
                 auth()->user()->hasRole('Satuan Pendidikan')
                 || auth()->user()->hasRole('Unit Rumah Tangga')
+                || auth()->user()->hasRole('Humas Personalia')
+                || (method_exists(auth()->user(), 'isSystemAdmin') && auth()->user()->isSystemAdmin())
+                || (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
             ),
             403,
             'Hanya Kepala Satuan Kerja dan Tata Usaha yang dapat mengakses manajemen massal GTK.'
