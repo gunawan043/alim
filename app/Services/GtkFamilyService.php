@@ -34,10 +34,13 @@ class GtkFamilyService
     {
         $profile->refresh();
         $this->household($profile);
+        $this->reconcileSpouseNupy($profile);
+        $profile->refresh();
         $household = $this->household($profile);
 
         $existing = GtkFamilyMember::where('household_id', $household->id)->get();
         $incomingIds = array_filter(array_column($members, 'id'));
+        $keptIds = [];
 
         foreach ($members as $member) {
             if (empty($member['nama'])) {
@@ -54,9 +57,9 @@ class GtkFamilyService
 
             $key = $this->memberKey($member, $linked);
             $data = array_filter([
-                'gtk_profile_id' => $profile->id,
                 'household_id' => $household->id,
                 'linked_gtk_profile_id' => $linked?->id,
+                'spouse_nupy' => $member['spouse_nupy'] ?? null,
                 'member_key' => $key,
                 'relationship' => $member['relationship'] ?? null,
                 'nama' => trim((string) $member['nama']),
@@ -80,15 +83,21 @@ class GtkFamilyService
 
             if ($record) {
                 $record->update($data);
+                $keptIds[] = $record->id;
             } else {
-                GtkFamilyMember::create($data + ['id' => (string) Str::uuid()]);
+                $created = GtkFamilyMember::create($data + [
+                    'id' => (string) Str::uuid(),
+                    'gtk_profile_id' => $profile->id,
+                ]);
+                $keptIds[] = $created->id;
             }
         }
 
         // Hanya hapus baris milik profil ini; anggota milik pasangan tetap.
         $toDelete = $existing
-            ->where('gtk_profile_id', $profile->id)
-            ->whereNotIn('id', $incomingIds);
+            ->whereNotIn('id', array_merge($incomingIds, $keptIds))
+            ->reject(fn (GtkFamilyMember $member) => $member->linked_gtk_profile_id
+                && in_array($member->relationship, ['suami', 'istri'], true));
         if ($toDelete->isNotEmpty()) {
             GtkFamilyMember::whereIn('id', $toDelete->pluck('id'))->delete();
         }
@@ -122,6 +131,7 @@ class GtkFamilyService
 
         $record->update(array_filter([
             'linked_gtk_profile_id' => $linked?->id,
+            'spouse_nupy' => $member['spouse_nupy'] ?? $record->spouse_nupy,
             'member_key' => $this->memberKey($member, $linked),
             'relationship' => $member['relationship'] ?? $record->relationship,
             'nama' => $member['nama'] ?? $record->nama,
@@ -228,6 +238,31 @@ class GtkFamilyService
             ?? GtkProfile::where('user_id', $userOrProfileId)->first();
     }
 
+    public function reconcileSpouseNupy(GtkProfile $profile): void
+    {
+        $nupy = $profile->latestEmployment?->nupy;
+        if (! $nupy) {
+            return;
+        }
+
+        $members = GtkFamilyMember::where('spouse_nupy', $nupy)
+            ->whereNull('linked_gtk_profile_id')
+            ->where('gtk_profile_id', '!=', $profile->id)
+            ->get();
+
+        foreach ($members as $member) {
+            $owner = GtkProfile::find($member->gtk_profile_id);
+            if (! $owner) {
+                continue;
+            }
+            $this->linkSpouse($owner, $profile);
+            $member->update([
+                'linked_gtk_profile_id' => $profile->id,
+                'member_key' => 'spouse|'.$profile->id,
+            ]);
+        }
+    }
+
     private function memberKey(array $member, ?GtkProfile $linked = null): string
     {
         if ($linked) {
@@ -244,7 +279,20 @@ class GtkFamilyService
     private function dedupe(GtkHousehold $household): void
     {
         $seen = [];
+        $seenSpouse = [];
         foreach (GtkFamilyMember::where('household_id', $household->id)->orderBy('created_at')->get() as $member) {
+            if ($member->linked_gtk_profile_id && in_array($member->relationship, ['suami', 'istri'], true)) {
+                if (isset($seenSpouse[$member->linked_gtk_profile_id])) {
+                    $member->delete();
+                    continue;
+                }
+                $seenSpouse[$member->linked_gtk_profile_id] = true;
+                $key = 'spouse|'.$member->linked_gtk_profile_id;
+                if ($member->member_key !== $key) {
+                    $member->updateQuietly(['member_key' => $key]);
+                }
+            }
+
             if (! $member->member_key) {
                 continue;
             }

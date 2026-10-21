@@ -33,6 +33,7 @@ class GtkFamilyMember extends Model
         'gtk_profile_id',
         'household_id',
         'linked_gtk_profile_id',
+        'spouse_nupy',
         'member_key',
         'relationship',
         'nama',

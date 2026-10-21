@@ -1967,9 +1967,7 @@ class GtkWizardController extends Controller
                 ]);
 
                 $importedFamily = $this->familyMembersFromImportRow($row, $profile);
-                if ($importedFamily !== []) {
-                    app(\App\Services\GtkFamilyService::class)->sync($profile, $importedFamily);
-                }
+                app(\App\Services\GtkFamilyService::class)->sync($profile, $importedFamily);
 
                 $address = $this->resolveAddressFromNames($row);
                 if (! empty($address['province_code'])) {
@@ -2180,6 +2178,7 @@ class GtkWizardController extends Controller
                 'jenis_kelamin' => $linkedProfile?->jenis_kelamin ?: ($profile->jenis_kelamin === 'L' ? 'P' : 'L'),
                 'tanggal_lahir' => $linkedProfile?->tanggal_lahir?->toDateString(),
                 'gtk_id' => $linkedProfile?->user_id,
+                'spouse_nupy' => $spouseNupy ?: null,
             ];
         }
 
