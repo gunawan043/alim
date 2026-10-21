@@ -258,7 +258,7 @@
     <div class="bg-glow glow-2"></div>
 
     <a href="{{ url('/') }}" class="logo-mark mb-3">
-        <img src="/build/images/alim-dark-name.png" alt="ALIM">
+        <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" alt="ALIM">
     </a>
 
     <div class="auth-wrapper">

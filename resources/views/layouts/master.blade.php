@@ -20,6 +20,15 @@
     <link href="{{ URL::asset('build/vendor/select2/css/select2.min.css') }}" rel="stylesheet" />
     <script src="{{ URL::asset('build/vendor/select2/js/select2.min.js') }}"></script>
     @include('layouts.head-css')
+    <style>
+        /* Logo ALIM: paksa logo yang tepat untuk mode terang/gelap. */
+        [data-bs-theme="light"] .logo.logo-light { display: none !important; }
+        [data-bs-theme="light"] .logo.logo-dark { display: inline-block !important; }
+        [data-bs-theme="dark"] .logo.logo-dark { display: none !important; }
+        [data-bs-theme="dark"] .logo.logo-light { display: inline-block !important; }
+        .navbar-brand-box .logo-sm img { object-fit: contain; }
+        .app-menu .logo-lg img, .navbar-brand-box .logo-lg img { object-fit: contain; }
+    </style>
     @if(request()->routeIs('user.dashboard', 'user.payroll.*', 'user.payroll-slip.*', 'user.cuti.*', 'user.kontrak.*', 'user.kinerja.*', 'user.pelatihan.*', 'user.kesejahteraan.*', 'user.peraturan.*', 'user.jam-kerja.*', 'user.absensi-gtk.*', 'user.kehadiran.*', 'user.personalia.*', 'user.analisis-gtk.*', 'user.rapor-gtk.*'))
         @include('personalia._gtk-ui')
     @endif
