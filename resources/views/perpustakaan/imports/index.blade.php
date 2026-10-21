@@ -83,6 +83,31 @@
             font-size: 13px;
             flex-shrink: 0;
         }
+        .import-step-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 13px;
+            background: #e7f1ff;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .import-template-card {
+            border: 1px solid #dbeafe;
+            border-radius: 16px;
+            padding: 1.25rem;
+            background: linear-gradient(160deg, #f8fbff 0%, #f1f8ff 100%);
+            height: 100%;
+        }
+        .import-template-card .import-step-icon { background: #dcfce7; color: #15803d; }
+        .import-template-card .format-list {
+            border-top: 1px dashed var(--vz-border-color, #dbeafe);
+            margin-top: 1rem;
+            padding-top: .85rem;
+        }
         .import-meta-card {
             border: 1px solid #e9ecef;
             border-radius: 16px;
@@ -152,6 +177,12 @@
             border-color: var(--vz-border-color, #2b3648);
         }
         [data-bs-theme="dark"] .step-number { background: #172b4d; color: #93c5fd; }
+        [data-bs-theme="dark"] .import-step-icon { background: #172b4d; color: #93c5fd; }
+        [data-bs-theme="dark"] .import-template-card {
+            background: linear-gradient(160deg, #101b2d 0%, #0c1d2a 100%);
+            border-color: #243247;
+        }
+        [data-bs-theme="dark"] .import-template-card .import-step-icon { background: #0f2a1d; color: #86efac; }
         [data-bs-theme="dark"] .import-file-chip {
             background: #0f2a1d;
             border-color: #166534;
@@ -186,6 +217,27 @@
             <a href="{{ route($meta['template'], ['userId' => $userId]) }}" class="btn btn-success">
                 <i class="ri-download-2-line me-1"></i>Unduh Template
             </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="step-card">
+                <div class="import-step-icon"><i class="ri-building-4-line"></i></div>
+                <div><div class="text-muted small text-uppercase" style="font-size:10px;">Langkah 1</div><div class="fw-semibold">Pilih unit</div><div class="text-muted small">Tentukan tujuan data.</div></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="step-card">
+                <div class="import-step-icon"><i class="ri-file-edit-line"></i></div>
+                <div><div class="text-muted small text-uppercase" style="font-size:10px;">Langkah 2</div><div class="fw-semibold">Isi template</div><div class="text-muted small">Jangan ubah nama kolom.</div></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="step-card">
+                <div class="import-step-icon"><i class="ri-upload-cloud-2-line"></i></div>
+                <div><div class="text-muted small text-uppercase" style="font-size:10px;">Langkah 3</div><div class="fw-semibold">Upload &amp; import</div><div class="text-muted small">Periksa hasil per baris.</div></div>
+            </div>
         </div>
     </div>
 
@@ -231,11 +283,14 @@
                     <div class="col-lg-8">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Unit Perpustakaan <span class="text-danger">*</span></label>
-                            <select name="library_unit_id" class="form-select" required>
-                                @foreach($units as $unit)
-                                    <option value="{{ $unit->id }}" @selected(old('library_unit_id', request('unit_id')) === $unit->id)>{{ $unit->name }} ({{ $unit->code }})</option>
-                                @endforeach
-                            </select>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-building-4-line"></i></span>
+                                <select name="library_unit_id" class="form-select" required>
+                                    @foreach($units as $unit)
+                                        <option value="{{ $unit->id }}" @selected(old('library_unit_id', request('unit_id')) === $unit->id)>{{ $unit->name }} ({{ $unit->code }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
 
                         <div class="import-dropzone" id="importDropzone" onclick="document.getElementById('importFile').click()">
@@ -261,19 +316,23 @@
                     </div>
 
                     <div class="col-lg-4">
-                        <div class="step-card mb-3">
-                            <div class="step-number">1</div>
-                            <div><div class="fw-semibold">Pilih unit</div><div class="text-muted small">Data akan masuk ke unit yang dipilih.</div></div>
+                        <div class="import-template-card">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="import-step-icon"><i class="ri-file-excel-2-line"></i></div>
+                                <div><div class="fw-semibold">Persiapan file</div><div class="text-muted small">{{ $meta['title'] }}</div></div>
+                            </div>
+                            <ul class="list-unstyled small text-muted mb-0">
+                                <li class="mb-2"><i class="ri-checkbox-circle-fill text-success me-1"></i>Gunakan template resmi</li>
+                                <li class="mb-2"><i class="ri-checkbox-circle-fill text-success me-1"></i>Jangan ubah nama kolom</li>
+                                <li class="mb-2"><i class="ri-checkbox-circle-fill text-success me-1"></i>Maksimal 10 MB</li>
+                                <li><i class="ri-checkbox-circle-fill text-success me-1"></i>Baris kosong dilewati</li>
+                            </ul>
+                            <div class="format-list">
+                                <div class="text-muted small text-uppercase mb-2" style="font-size:10px;">Format didukung</div>
+                                <div class="d-flex flex-wrap gap-2 mb-3"><span class="badge bg-success-subtle text-success">XLSX</span><span class="badge bg-success-subtle text-success">XLS</span><span class="badge bg-info-subtle text-info">CSV</span><span class="badge bg-info-subtle text-info">TXT</span></div>
+                                <a href="{{ route($meta['template'], ['userId' => $userId]) }}" class="small text-success text-decoration-none"><i class="ri-download-2-line me-1"></i>Unduh template</a>
+                            </div>
                         </div>
-                        <div class="step-card mb-3">
-                            <div class="step-number">2</div>
-                            <div><div class="fw-semibold">Isi template</div><div class="text-muted small">Jangan mengubah nama kolom.</div></div>
-                        </div>
-                        <div class="step-card mb-3">
-                            <div class="step-number">3</div>
-                            <div><div class="fw-semibold">Upload &amp; import</div><div class="text-muted small">Periksa ringkasan hasil setelah proses.</div></div>
-                        </div>
-                        <a href="{{ route($meta['template'], ['userId' => $userId]) }}" class="btn btn-outline-success w-100"><i class="ri-file-download-line me-1"></i>Template Excel</a>
                     </div>
                 </div>
             </div>
