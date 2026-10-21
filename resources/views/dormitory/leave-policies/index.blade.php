@@ -200,6 +200,7 @@
                 </div>
 
                 <div class="card-body">
+                    <div id="policyActiveFilters" class="mb-3"></div>
                     <div id="policyFilterInfo" class="d-flex justify-content-between align-items-center mb-3 small text-muted"></div>
 
                     <div class="table-responsive">
@@ -449,9 +450,64 @@
     const tableBody = document.getElementById('policyTableBody');
     const filterInfo = document.getElementById('policyFilterInfo');
     const filterCount = document.getElementById('policyFilterCount');
+    const activeFilterBox = document.getElementById('policyActiveFilters');
     if (!searchInput || !tableBody) return;
 
     const allRows = Array.from(tableBody.querySelectorAll('tr[data-search-text]'));
+
+    const filterLabels = {
+        filterCategory: {
+            default: 'Kategori: Default',
+            special: 'Kategori: Khusus',
+            emergency: 'Kategori: Darurat',
+            custom: 'Kategori: Kustom',
+        },
+        filterStatus: {
+            active: 'Status: Aktif',
+            disabled: 'Status: Off di asrama',
+            inactive: 'Status: Nonaktif master',
+        },
+        filterQuota: {
+            limited: 'Kuota: Berkuota',
+            unlimited: 'Kuota: Tanpa batas',
+            shared: 'Kuota: Ikut pulang',
+        },
+        filterApproval: {
+            required: 'Approval: Perlu approval',
+            auto: 'Approval: Auto-approve',
+        },
+    };
+
+    function renderActiveFilterBadges() {
+        if (!activeFilterBox) return;
+        activeFilterBox.innerHTML = '';
+
+        Object.keys(filterLabels).forEach(function (id) {
+            const element = document.getElementById(id);
+            const value = element ? element.value : '';
+            if (!value || !filterLabels[id][value]) return;
+
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = filterLabels[id][value] + ' <span class="remove-filter" aria-hidden="true">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                element.value = '';
+                window.applyFilters();
+            });
+            activeFilterBox.appendChild(badge);
+        });
+
+        if ((searchInput.value || '').trim() !== '') {
+            const searchBadge = document.createElement('span');
+            searchBadge.className = 'filter-badge active';
+            searchBadge.innerHTML = 'Pencarian: "' + searchInput.value + '" <span class="remove-filter" aria-hidden="true">&times;</span>';
+            searchBadge.querySelector('.remove-filter').addEventListener('click', function () {
+                searchInput.value = '';
+                window.applyFilters();
+            });
+            activeFilterBox.appendChild(searchBadge);
+        }
+    }
 
     function renumberVisible() {
         let n = 1;
@@ -476,8 +532,10 @@
         ].filter(Boolean).length;
         if (filterCount) {
             filterCount.textContent = filters;
-            filterCount.style.display = filters ? '' : 'none';
+            filterCount.style.display = filters || (searchInput.value || '').trim() ? '' : 'none';
         }
+
+        renderActiveFilterBadges();
     }
 
     window.applyFilters = function () {
@@ -514,6 +572,7 @@
 
     searchInput.addEventListener('input', window.applyFilters);
     updateFilterInfo();
+    renderActiveFilterBadges();
 })();
 </script>
 @endpush

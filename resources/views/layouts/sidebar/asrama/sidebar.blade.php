@@ -81,6 +81,17 @@ $isKepalaAsrama = in_array($currentUserJob, [
 ]);
 @endphp
 
+@php
+    // Dipakai untuk dedupe menu Kedatangan Santri antara scope global dan per-asrama.
+    $isStafPerizinanGlobal = $hasJabatan('Staf Perizinan') || $hasTugas('Staf Perizinan');
+    $userGender = $user->gender ?? $user->assigned_gender ?? null;
+    $genderLabel = match($userGender) {
+        'L', 'putra', 'male'   => 'Putra',
+        'P', 'putri', 'female' => 'Putri',
+        default                => 'Semua',
+    };
+@endphp
+
 @if(! school_supports_boarding())
     <div class="alert alert-warning m-3 small">
         <i class="ri-information-line me-1"></i>
@@ -91,14 +102,14 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 
 {{-- ================================================================
-     MENU
+     MENU UTAMA
 ================================================================= --}}
 <li class="menu-title">
-    <span>Menu</span>
+    <span>Menu Utama</span>
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ $currentRoute === 'root' ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ in_array($currentRoute, ['root', 'user.dashboard.asrama'], true) ? ' active' : '' }}"
        href="{{ route('root') }}">
         <i class="ri-home-6-line"></i>
         <span>Dashboard</span>
@@ -112,28 +123,12 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <span>Profile</span>
     </a>
 </li>
-@if($showAll || $isKepalaAsrama || $hasJabatan('Wakil Kepala Asrama') || $hasJabatan('Kepala Asrama'))
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.operators.') ? ' active' : '' }}"
-       href="{{ route('user.asrama.operators.index', ['userId' => $userId]) }}">
-        <i class="ri-user-star-line"></i><span>Petugas Santri</span>
-    </a>
-</li>
-@endif
-
-
-{{-- ================================================================
-     ASRAMA
-================================================================= --}}
-<li class="menu-title">
-    <span>Asrama</span>
-</li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         $currentRoute === 'user.asrama.my-profile' ||
         $currentRoute === 'user.asrama.show'
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.asrama.my-profile', ['userId' => $userId]) }}">
         <i class="ri-hotel-line"></i>
@@ -141,32 +136,115 @@ $isKepalaAsrama = in_array($currentUserJob, [
     </a>
 </li>
 
+{{-- ================================================================
+     OPERASIONAL
+================================================================= --}}
+<li class="menu-title">
+    <span>Operasional</span>
+</li>
+
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.dashboard.pengasuh')
-        ? ' active' : '' 
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.residents.')
+        ? ' active' : ''
     }}"
-       href="{{ route('user.dashboard.pengasuh', ['userId' => $userId]) }}">
-        <i class="ri-dashboard-3-line"></i>
-        <span>Dashboard Pengasuh</span>
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.residents.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-user-follow-line"></i>
+        <span>Penghuni</span>
     </a>
 </li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.attendance.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.attendance.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-calendar-check-line"></i>
+        <span>Absensi</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.permits.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.permits.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-pass-valid-line"></i>
+        <span>Daftar Perizinan</span>
+    </a>
+</li>
+
+@if (! (($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama') && ($scanAsramaId ?? null)))
+    {{-- Tampil di sini hanya bila menu global Staf Perizinan tidak merender link yang sama. --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.') ? ' active' : '' }}"
+           href="{{ $hasAsramaContext
+                ? route('user.asrama.dormitory-returns.index', [
+                    'userId' => $userId,
+                    'asramaUuid' => $asramaUuid
+                ])
+                : $asramaProfileFallback }}">
+            <i class="ri-login-box-line"></i>
+            <span>Kedatangan Santri</span>
+        </a>
+    </li>
+@endif
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.visits.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.visits.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-footprint-line"></i>
+        <span>Kunjungan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.room-moves.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.room-moves.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-arrow-left-right-line"></i>
+        <span>Mutasi Kamar</span>
+    </a>
+</li>
+
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION — PERIZINAN LINTAS ASRAMA (Staf Perizinan)
      Scope: semua asrama, filter gender (putra/putri)
      Akses: Staf Perizinan (jabatan atau tugas tambahan)
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@php
-    $isStafPerizinanGlobal = $hasJabatan('Staf Perizinan') || $hasTugas('Staf Perizinan');
-    $userGender = $user->gender ?? $user->assigned_gender ?? null; // sesuaikan field
-    $genderLabel = match($userGender) {
-        'L', 'putra', 'male'   => 'Putra',
-        'P', 'putri', 'female' => 'Putri',
-        default                => 'Semua',
-    };
-@endphp
-
 @if(($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama'))
     <li class="menu-title"><span>Perizinan Lintas Asrama</span></li>
 
@@ -182,14 +260,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.']) ? ' active' : '' }}"
            href="{{ route('system.permits.index') }}">
             <i class="ri-pass-valid-line"></i><span>Semua Perizinan</span>
-        </a>
-    </li>
-
-    {{-- Semua kunjungan (lintas asrama) --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.', 'user.asrama.visits.']) ? ' active' : '' }}"
-           href="{{ route('system.permits.index') }}">
-            <i class="ri-footprint-line"></i><span>Semua Kunjungan</span>
         </a>
     </li>
 
@@ -223,110 +293,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 
 {{-- ================================================================
-     OPERASIONAL
-================================================================= --}}
-<li class="menu-title">
-    <span>Operasional</span>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.residents.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.residents.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-user-follow-line"></i>
-        <span>Penghuni</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.attendance.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.attendance.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-calendar-check-line"></i>
-        <span>Absensi</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.permits.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.permits.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-pass-valid-line"></i>
-        <span>Daftar Perizinan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.dormitory-returns.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-login-box-line"></i>
-        <span>Kedatangan Santri</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.visits.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.visits.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-footprint-line"></i>
-        <span>Kunjungan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.room-moves.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.room-moves.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-arrow-left-right-line"></i>
-        <span>Mutasi Kamar</span>
-    </a>
-</li>
-
-
-{{-- ================================================================
      PEMBINAAN
 ================================================================= --}}
 <li class="menu-title">
@@ -334,9 +300,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.violations.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.violations.index', [
@@ -350,9 +316,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.rewards.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.rewards.index', [
@@ -366,9 +332,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.room-supervisors.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.room-supervisors.index', [
@@ -383,6 +349,94 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 
 {{-- ================================================================
+     INFORMASI & KEGIATAN
+================================================================= --}}
+<li class="menu-title">
+    <span>Informasi & Kegiatan</span>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.posts.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.posts.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-megaphone-line"></i>
+        <span>Informasi</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.broadcasts.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.broadcasts.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-notification-3-line"></i>
+        <span>Broadcast</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.kegiatan.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.kegiatan.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-user-follow-line"></i>
+        <span>Presensi Kegiatan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.activities.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.activities.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-file-list-3-line"></i>
+        <span>Log Kegiatan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.templates.')
+        ? ' active' : ''
+    }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.templates.index', [
+                'userId' => $userId,
+                'asramaUuid' => $asramaUuid
+            ])
+            : $asramaProfileFallback }}">
+        <i class="ri-git-branch-line"></i>
+        <span>Template Kegiatan</span>
+    </a>
+</li>
+
+
+{{-- ================================================================
      SARANA & PRASARANA
 ================================================================= --}}
 <li class="menu-title">
@@ -390,9 +444,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.wings.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.wings.index', [
@@ -406,9 +460,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.rooms.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.rooms.index', [
@@ -422,9 +476,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.inventories.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.inventories.index', [
@@ -446,9 +500,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.leave-policies')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.leave-policies.index', [
@@ -462,9 +516,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.boarding-policies.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.boarding-policies.index', ['userId' => $userId]) }}">
         <i class="ri-file-shield-2-line"></i>
@@ -473,9 +527,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.calendar.return.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.calendar.return.index', ['userId' => $userId]) }}">
         <i class="ri-calendar-event-line"></i>
@@ -484,9 +538,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.calendar.visit.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.calendar.visit.index', ['userId' => $userId]) }}">
         <i class="ri-footprint-line"></i>
@@ -503,9 +557,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.reports.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.reports.index', [
@@ -519,9 +573,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.approval-center')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.approval-center', [
@@ -536,94 +590,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 
 {{-- ================================================================
-     INFORMASI & KEGIATAN
-================================================================= --}}
-<li class="menu-title">
-    <span>Informasi & Kegiatan</span>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.posts.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.posts.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-megaphone-line"></i>
-        <span>Informasi</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.broadcasts.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.broadcasts.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-notification-3-line"></i>
-        <span>Broadcast</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.kegiatan.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.kegiatan.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-user-follow-line"></i>
-        <span>Presensi Kegiatan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.activities.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.activities.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-file-list-3-line"></i>
-        <span>Log Kegiatan</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ 
-        isActiveAsr($currentRoute, 'user.asrama.templates.')
-        ? ' active' : '' 
-    }}"
-       href="{{ $hasAsramaContext
-            ? route('user.asrama.templates.index', [
-                'userId' => $userId,
-                'asramaUuid' => $asramaUuid
-            ])
-            : $asramaProfileFallback }}">
-        <i class="ri-git-branch-line"></i>
-        <span>Template Kegiatan</span>
-    </a>
-</li>
-
-
-{{-- ================================================================
      PESERTA DIDIK
 ================================================================= --}}
 <li class="menu-title">
@@ -631,10 +597,10 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.students.') &&
         !str_contains($currentRoute, 'mahrom')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.students.index', ['userId' => $userId]) }}">
         <i class="ri-user-star-line"></i>
@@ -643,9 +609,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         str_contains($currentRoute, 'mahrom')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
         <i class="ri-parent-line"></i>
@@ -653,6 +619,19 @@ $isKepalaAsrama = in_array($currentUserJob, [
     </a>
 </li>
 
+
+{{-- ================================================================
+     ADMINISTRASI
+================================================================= --}}
+@if($showAll || $isKepalaAsrama || $hasJabatan('Wakil Kepala Asrama') || $hasJabatan('Kepala Asrama'))
+<li class="menu-title"><span>Administrasi</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.operators.') ? ' active' : '' }}"
+       href="{{ route('user.asrama.operators.index', ['userId' => $userId]) }}">
+        <i class="ri-user-star-line"></i><span>Petugas Santri</span>
+    </a>
+</li>
+@endif
 
 {{-- ================================================================
      GTK — Kepala Asrama & Pejabat Terkait
@@ -664,9 +643,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.gtk-additional-tasks.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
         <i class="ri-task-line"></i>
@@ -675,9 +654,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.gtk-positions.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
         <i class="ri-briefcase-line"></i>
@@ -686,9 +665,9 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ 
+    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.gtk-position-proposals.')
-        ? ' active' : '' 
+        ? ' active' : ''
     }}"
        href="{{ route('user.gtk-position-proposals.index', ['userId' => $userId]) }}">
         <i class="ri-arrow-up-line"></i>
@@ -697,6 +676,42 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 @endif
+
+{{-- ================================================================
+     BAHASA (pelaksana asrama)
+================================================================= --}}
+<li class="menu-title">
+    <span>Divisi Bahasa</span>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.bahasa.mufradat.') ? ' active' : '' }}"
+       href="{{ route('user.bahasa.mufradat.index', ['userId' => $userId]) }}">
+        <i class="ri-book-2-line"></i><span>Hafalan Mufradat</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.bahasa.violations.') ? ' active' : '' }}"
+       href="{{ route('user.bahasa.violations.index', ['userId' => $userId]) }}">
+        <i class="ri-error-warning-line"></i><span>Pelanggaran Bahasa</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.bahasa.daily.') && request('type', 'percakapan') === 'percakapan' ? ' active' : '' }}"
+       href="{{ route('user.bahasa.daily.index', ['userId' => $userId, 'type' => 'percakapan']) }}">
+        <i class="ri-chat-3-line"></i><span>Percakapan Harian</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.bahasa.daily.') && request('type') === 'jasus' ? ' active' : '' }}"
+       href="{{ route('user.bahasa.daily.index', ['userId' => $userId, 'type' => 'jasus']) }}">
+        <i class="ri-spy-line"></i><span>Monitoring Jasus</span>
+    </a>
+</li>
+
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      REFERENSI — Kalender Pendidikan untuk semua user
