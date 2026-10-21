@@ -112,6 +112,14 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <span>Profile</span>
     </a>
 </li>
+@if($showAll || $isKepalaAsrama || $hasJabatan('Wakil Kepala Asrama') || $hasJabatan('Kepala Asrama'))
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.operators.') ? ' active' : '' }}"
+       href="{{ route('user.asrama.operators.index', ['userId' => $userId]) }}">
+        <i class="ri-user-star-line"></i><span>Petugas Santri</span>
+    </a>
+</li>
+@endif
 
 
 {{-- ================================================================

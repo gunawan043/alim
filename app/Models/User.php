@@ -695,6 +695,15 @@ class User extends Authenticatable
             return true;
         }
 
+        if (StudentOperatorAssignment::query()
+            ->where('user_id', $this->id)
+            ->where('operator_type', 'asrama')
+            ->where('dormitory_id', $dormitoryId)
+            ->where('is_active', true)
+            ->exists()) {
+            return true;
+        }
+
         // Wali kamar aktif juga berhak mengakses asrama tempat kamarnya.
         if (\App\Models\RoomSupervisor::active()
             ->where('user_id', $this->id)

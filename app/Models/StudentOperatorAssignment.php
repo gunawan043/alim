@@ -27,4 +27,5 @@ class StudentOperatorAssignment extends Model
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
     public function unit(): BelongsTo { return $this->belongsTo(LibraryUnit::class, 'library_unit_id'); }
     public function assigner(): BelongsTo { return $this->belongsTo(User::class, 'assigned_by'); }
+    public function dormitory(): BelongsTo { return $this->belongsTo(Dormitory::class, 'dormitory_id'); }
 }

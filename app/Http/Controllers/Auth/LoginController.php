@@ -198,6 +198,15 @@ class LoginController extends Controller
             return redirect()->route('user.perpustakaan.index', ['userId' => $user->id]);
         }
 
+        if ($roles->contains('Operator Asrama Santri')) {
+            $assignment = \App\Models\StudentOperatorAssignment::where('user_id', $user->id)
+                ->where('operator_type', 'asrama')->where('is_active', true)->first();
+            if ($assignment?->dormitory_id) {
+                return redirect()->route('user.asrama.visits.index', ['userId' => $user->id, 'asramaUuid' => $assignment->dormitory_id]);
+            }
+            return redirect()->route('root');
+        }
+
         if ($roles->contains(fn ($name) => stripos($name, 'applicant') !== false)) {
             return redirect()->away(config('app.recruitment_url', 'https://recruitment.abuhurairah.id'))
                 ->with('info', 'Anda akan diarahkan ke portal recruitment.');

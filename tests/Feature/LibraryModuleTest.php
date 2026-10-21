@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\AssetRoom;
+use App\Models\Dormitory;
+use App\Models\DormitoryResident;
 use App\Models\GtkProfile;
 use App\Models\LibraryGenre;
 use App\Models\LibraryItem;
@@ -275,5 +277,37 @@ class LibraryModuleTest extends TestCase
         $this->actingAs($operator)->get("/{$operator->id}/perpustakaan/visits?unit_id={$unit->id}")->assertOk();
         $this->actingAs($operator)->get("/{$operator->id}/perpustakaan/catalog?unit_id={$unit->id}")->assertForbidden();
         $this->actingAs($operator)->get("/{$operator->id}/ai")->assertForbidden();
+    }
+
+    public function test_petugas_santri_asrama_dan_pembatasan_akses(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Asrama Operator', 'code' => 'ASR-OP', 'type' => 'Unit Asrama', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '33333333', 'name' => 'Sekolah Asrama Operator']);
+        $year = AcademicYear::create(['name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true, 'start_date' => '2026-07-01', 'end_date' => '2027-06-30']);
+        $admin = User::create(['name' => 'Admin Asrama Operator', 'email' => 'admin.asrama.operator@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $dormitory = Dormitory::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'name' => 'Asrama Operator', 'gender' => 'putri', 'is_active' => true]);
+        $student = Student::create(['school_id' => $school->id, 'name' => 'Santri Asrama Operator', 'nis' => 'ASR-001', 'nisn' => 'ASR-N-001', 'gender' => 'P', 'status' => 'active']);
+        DormitoryResident::create(['dormitory_id' => $dormitory->id, 'student_id' => $student->id, 'academic_year_id' => $year->id, 'is_active' => true, 'check_in_date' => now()->toDateString()]);
+
+        $this->actingAs($admin)->get("/{$admin->id}/asrama/operator-santri")->assertOk()->assertSee('Petugas Santri Asrama');
+        $this->actingAs($admin)->post("/{$admin->id}/asrama/operator-santri", [
+            'dormitory_id' => $dormitory->id,
+            'student_id' => $student->id,
+        ])->assertRedirect();
+
+        $operator = User::where('username', 'ASR-001')->firstOrFail();
+        $this->assertTrue($operator->hasRole('Operator Asrama Santri'));
+        $this->assertTrue($operator->must_change_password);
+        $this->assertDatabaseHas('student_operator_assignments', ['student_id' => $student->id, 'dormitory_id' => $dormitory->id, 'operator_type' => 'asrama', 'is_active' => 1]);
+
+        $this->post('/logout');
+        $this->post('/login', ['identity' => 'ASR-001', 'password' => 'ASR-001'])
+            ->assertRedirect(route('user.asrama.visits.index', ['userId' => $operator->id, 'asramaUuid' => $dormitory->id]));
+
+        $this->actingAs($operator)->get("/{$operator->id}/asrama/{$dormitory->id}/kunjungan")->assertRedirect(route('password.force'));
+        $this->actingAs($operator)->get('/force-password')->assertOk();
+        $operator->update(['must_change_password' => false]);
+        $this->actingAs($operator)->get("/{$operator->id}/asrama/{$dormitory->id}/kunjungan")->assertOk();
+        $this->actingAs($operator)->get("/{$operator->id}/asrama/{$dormitory->id}/penghuni")->assertForbidden();
     }
 }

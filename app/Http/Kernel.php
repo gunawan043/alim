@@ -12,6 +12,7 @@ use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSarprasAccess;
 use App\Http\Middleware\DenyStudentOperatorAi;
+use App\Http\Middleware\EnsureDormitoryStudentOperatorAccess;
 use App\Http\Middleware\EnsureStudentPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
@@ -88,6 +89,7 @@ class Kernel extends HttpKernel
             CheckIpBlocked::class,
             EnsureStudentPasswordChanged::class,
             DenyStudentOperatorAi::class,
+            EnsureDormitoryStudentOperatorAccess::class,
         ],
 
         'api' => [

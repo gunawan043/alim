@@ -178,6 +178,7 @@
         'Departemen Bahasa'     => 'departemen-bahasa',
         'Perpustakaan'          => 'perpustakaan',
         'Operator Perpustakaan Santri' => 'perpustakaan',
+        'Operator Asrama Santri' => 'asrama-operator',
         'Satuan Keamanan'       => 'satpam',
         'Humas Personalia'      => 'humas-personalia',
         'Unit Rumah Tangga'     => 'unit-rumah-tangga',

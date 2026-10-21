@@ -66,6 +66,7 @@ use App\Http\Controllers\DormitoryStaffAssignmentController;
 use App\Http\Controllers\DormitoryViolationController;
 use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
+use App\Http\Controllers\DormitoryStudentOperatorController;
 use App\Http\Controllers\DormitoryWingController;
 use App\Http\Controllers\Evaluasi\BankSoalController;
 use App\Http\Controllers\Evaluasi\BankSoalTerpusatController;
@@ -2018,6 +2019,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             //  ASRAMA / DORMITORY
             // ═══════════════════════════════════════════════════════════════
             Route::prefix('asrama')->name('asrama.')->middleware(EnsureBoardingSchool::class)->group(function () {
+                Route::get('/operator-santri', [DormitoryStudentOperatorController::class, 'index'])->name('operators.index');
+                Route::post('/operator-santri', [DormitoryStudentOperatorController::class, 'store'])->name('operators.store');
+                Route::get('/operator-santri/students', [DormitoryStudentOperatorController::class, 'searchStudents'])->name('operators.students');
+                Route::post('/operator-santri/{id}/toggle', [DormitoryStudentOperatorController::class, 'toggle'])->name('operators.toggle');
+                Route::post('/operator-santri/{id}/reset-password', [DormitoryStudentOperatorController::class, 'resetPassword'])->name('operators.reset-password');
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');

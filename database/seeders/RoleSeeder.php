@@ -24,6 +24,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Departemen Bahasa', 'level' => 7, 'description' => 'Departemen Bahasa Arab'],
             ['name' => 'Perpustakaan', 'level' => 8, 'description' => 'Unit Perpustakaan'],
             ['name' => 'Operator Perpustakaan Santri', 'level' => 20, 'description' => 'Operator perpustakaan dari santri; akses terbatas.'],
+            ['name' => 'Operator Asrama Santri', 'level' => 21, 'description' => 'Operator asrama dari santri; akses terbatas.'],
             ['name' => 'Satuan Keamanan', 'level' => 9, 'description' => 'Unit Keamanan & Ketertiban'],
             ['name' => 'Humas Personalia', 'level' => 10, 'description' => 'Unit Humas & Personalia'],
             ['name' => 'Unit Rumah Tangga', 'level' => 11, 'description' => 'Unit Sarana Prasarana & Tata Usaha'],
