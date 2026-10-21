@@ -3,6 +3,12 @@
 use App\Http\Controllers\LabController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware(['auth'])->prefix('{userId}/laboratorium/pengajuan')->name('lab.request.')->group(function () {
+    Route::get('/', [LabController::class, 'requestIndex'])->name('index');
+    Route::post('/', [LabController::class, 'requestStore'])->name('store');
+});
+
+
 /*
 |--------------------------------------------------------------------------
 | LABORATORIUM IPA
@@ -16,6 +22,9 @@ Route::middleware(['auth', 'lab.access'])->prefix('{userId}/laboratorium')->name
     Route::get('/inventaris/cetak', [LabController::class, 'inventoryPrint'])->name('inventory.print');
     Route::post('/profil', [LabController::class, 'profileStore'])->name('profile.store');
     Route::post('/inventaris', [LabController::class, 'inventoryStore'])->name('inventory.store');
+    Route::get('/stok', [LabController::class, 'batchIndex'])->name('batches.index');
+    Route::post('/stok', [LabController::class, 'batchStore'])->name('batches.store');
+    Route::post('/stok/{batch}/pakai', [LabController::class, 'batchConsume'])->name('batches.consume');
 
     Route::get('/pemeriksaan', [LabController::class, 'inspectionIndex'])->name('inspection.index');
     Route::post('/pemeriksaan', [LabController::class, 'inspectionStore'])->name('inspection.store');
@@ -24,6 +33,7 @@ Route::middleware(['auth', 'lab.access'])->prefix('{userId}/laboratorium')->name
     Route::get('/kalibrasi', [LabController::class, 'calibrationIndex'])->name('calibration.index');
     Route::post('/kalibrasi', [LabController::class, 'calibrationStore'])->name('calibration.store');
     Route::get('/kalibrasi/cetak', [LabController::class, 'calibrationPrint'])->name('calibration.print');
+    Route::get('/kalibrasi/{calibration}/sertifikat', [LabController::class, 'calibrationDownload'])->name('calibration.download');
 
     Route::get('/peminjaman', [LabController::class, 'loanIndex'])->name('loan.index');
     Route::post('/peminjaman', [LabController::class, 'loanStore'])->name('loan.store');

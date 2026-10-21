@@ -23,17 +23,21 @@ use App\Models\Lab\LabSafetyInspection;
 use App\Models\Lab\LabSafetyInspectionItem;
 use App\Models\Lab\LabScheduleSlot;
 use App\Models\Lab\LabUsageRequest;
+use App\Models\Lab\LabItemBatch;
 use App\Models\Lab\LabItemProfile;
+use App\Models\Lab\LabStockMovement;
 use App\Models\School;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\Uks\UksReferral;
 use App\Services\Lab\LabAccess;
 use App\Services\Pdf\DocumentPdfService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class LabController extends Controller
@@ -222,6 +226,100 @@ class LabController extends Controller
         );
     }
 
+    public function batchIndex(Request $request)
+    {
+        $ctx = $this->context($request);
+        $lab = $ctx['lab'];
+        $batches = $lab ? LabItemBatch::with('asset')->where('lab_id', $lab->id)->orderBy('expiry_date')->get() : collect();
+        $movements = $lab ? LabStockMovement::with(['asset', 'batch'])->where('lab_id', $lab->id)->latest('occurred_at')->limit(50)->get() : collect();
+        $assets = $lab ? $this->inventoryQuery($ctx, $lab)->orderBy('asset_name')->get() : collect();
+
+        return view('lab.batches', array_merge($ctx, compact('lab', 'batches', 'movements', 'assets')));
+    }
+
+    public function batchStore(Request $request)
+    {
+        $ctx = $this->context($request);
+        $lab = $this->requireLab($ctx);
+        $this->ensureManage($lab);
+        $validated = $request->validate([
+            'asset_id' => 'required|uuid|exists:assets,id',
+            'batch_code' => 'nullable|string|max:80',
+            'quantity' => 'required|integer|min:1',
+            'unit' => 'nullable|string|max:30',
+            'received_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after_or_equal:received_date',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        DB::transaction(function () use ($validated, $ctx, $lab) {
+            $asset = Asset::where('school_id', $ctx['schoolId'])->lockForUpdate()->findOrFail($validated['asset_id']);
+            if (! LabItemProfile::where('asset_id', $asset->id)->where('lab_id', $lab->id)->exists()) {
+                throw ValidationException::withMessages(['asset_id' => 'Aset bukan inventaris laboratorium ini.']);
+            }
+            $batch = LabItemBatch::create([
+                'lab_id' => $lab->id,
+                'asset_id' => $asset->id,
+                'batch_code' => $validated['batch_code'] ?? null,
+                'quantity' => $validated['quantity'],
+                'unit' => $validated['unit'] ?? $asset->unit ?: 'unit',
+                'received_date' => $validated['received_date'] ?? null,
+                'expiry_date' => $validated['expiry_date'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+            LabStockMovement::create([
+                'lab_id' => $lab->id,
+                'asset_id' => $asset->id,
+                'batch_id' => $batch->id,
+                'movement_type' => 'in',
+                'quantity' => $validated['quantity'],
+                'unit' => $batch->unit,
+                'reference_type' => LabItemBatch::class,
+                'reference_id' => $batch->id,
+                'actor_id' => auth()->id(),
+                'occurred_at' => now(),
+            ]);
+            $asset->increment('quantity', $validated['quantity']);
+        });
+
+        return back()->with('success', 'Batch/stok masuk berhasil dicatat.');
+    }
+
+    public function batchConsume(Request $request, string $userId, string $batch)
+    {
+        $ctx = $this->context($request);
+        $lab = $this->requireLab($ctx);
+        $this->ensureManage($lab);
+        $record = LabItemBatch::where('lab_id', $lab->id)->findOrFail($batch);
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        if ($validated['quantity'] > $record->quantity) {
+            throw ValidationException::withMessages(['quantity' => 'Jumlah keluar melebihi stok batch.']);
+        }
+
+        DB::transaction(function () use ($record, $validated, $lab) {
+            $record->decrement('quantity', $validated['quantity']);
+            $record->asset?->decrement('quantity', $validated['quantity']);
+            LabStockMovement::create([
+                'lab_id' => $lab->id,
+                'asset_id' => $record->asset_id,
+                'batch_id' => $record->id,
+                'movement_type' => 'out',
+                'quantity' => -$validated['quantity'],
+                'unit' => $record->unit,
+                'reference_type' => LabItemBatch::class,
+                'reference_id' => $record->id,
+                'notes' => $validated['notes'] ?? null,
+                'actor_id' => auth()->id(),
+                'occurred_at' => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Pemakaian stok berhasil dicatat.');
+    }
+
     public function inspectionIndex(Request $request)
     {
         $ctx = $this->context($request);
@@ -342,6 +440,7 @@ class LabController extends Controller
             'institution_name' => 'nullable|string|max:191',
             'result' => 'nullable|string',
             'notes' => 'nullable|string',
+            'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
         $asset = Asset::where('school_id', $ctx['schoolId'])->findOrFail($validated['asset_id']);
@@ -365,6 +464,7 @@ class LabController extends Controller
             'institution_name' => $validated['institution_name'] ?? null,
             'result' => $validated['result'] ?? null,
             'notes' => $validated['notes'] ?? null,
+            'certificate_path' => $request->file('certificate')?->store('lab/calibrations', 'local'),
             'created_by' => auth()->id(),
         ]);
 
@@ -385,12 +485,23 @@ class LabController extends Controller
         );
     }
 
+    public function calibrationDownload(Request $request, string $userId, string $calibration)
+    {
+        $ctx = $this->context($request);
+        $record = LabCalibration::where('lab_id', $ctx['lab']?->id)->findOrFail($calibration);
+        abort_unless($record->certificate_path && Storage::disk('local')->exists($record->certificate_path), 404);
+
+        return Storage::disk('local')->download($record->certificate_path, 'sertifikat-kalibrasi-'.$record->id.'.'.pathinfo($record->certificate_path, PATHINFO_EXTENSION));
+    }
+
     public function loanIndex(Request $request)
     {
         $ctx = $this->context($request);
         $lab = $ctx['lab'];
         $loans = $lab ? $lab->loans()->with(['items.asset', 'borrower', 'approver'])->latest('loan_date')->paginate(15)->withQueryString() : collect();
-        $assets = $lab ? $this->inventoryQuery($ctx, $lab)->where('is_bookable', true)->orderBy('asset_name')->get() : collect();
+        $assets = $lab
+            ? Asset::with('labItemProfile')->whereHas('labItemProfile')->where('is_active', true)->where('is_bookable', true)->whereNotIn('condition', ['rusak_berat', 'hilang', 'dihapus'])->orderBy('asset_name')->get()
+            : collect();
 
         return view('lab.loan', array_merge($ctx, compact('lab', 'loans', 'assets')));
     }
@@ -433,15 +544,16 @@ class LabController extends Controller
             ]);
 
             foreach ($validated['items'] as $row) {
-                $asset = Asset::where('school_id', $ctx['schoolId'])->findOrFail($row['asset_id']);
-                if (! LabItemProfile::where('asset_id', $asset->id)->where('lab_id', $lab->id)->exists()) {
-                    throw ValidationException::withMessages(['items' => $asset->asset_name.' bukan inventaris laboratorium ini.']);
+                $asset = Asset::findOrFail($row['asset_id']);
+                if (! LabItemProfile::where('asset_id', $asset->id)->exists()) {
+                    throw ValidationException::withMessages(['items' => $asset->asset_name.' bukan inventaris laboratorium.']);
                 }
                 if (in_array($asset->condition, ['rusak_berat', 'hilang', 'dihapus'], true) || $asset->status === 'dihapus') {
                     throw ValidationException::withMessages(['items' => $asset->asset_name.' tidak layak dipinjam.']);
                 }
                 $loan->items()->create([
                     'asset_id' => $asset->id,
+                    'asset_school_id' => $asset->school_id,
                     'item_name' => $asset->asset_name,
                     'quantity' => $row['quantity'],
                     'unit' => $asset->unit ?: 'unit',
@@ -692,6 +804,52 @@ class LabController extends Controller
         );
     }
 
+    public function requestIndex(Request $request)
+    {
+        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId') ?? $user?->employment?->school_id;
+        abort_unless($schoolId, 403, 'Konteks satuan pendidikan belum tersedia.');
+        $lab = LabProfile::where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->first();
+        $yearId = AcademicYear::where('is_active', true)->value('id');
+        $year = $yearId ? AcademicYear::find($yearId) : null;
+        $semester = $year?->semester === 'genap' ? 2 : 1;
+        $subjects = Subject::where('school_id', $schoolId)->orderBy('name')->get();
+        $myRequests = LabUsageRequest::with('lab')->where('applicant_id', $user->id)->latest('usage_date')->limit(10)->get();
+
+        return view('lab.request', compact('user', 'schoolId', 'lab', 'yearId', 'year', 'semester', 'subjects', 'myRequests'));
+    }
+
+    public function requestStore(Request $request)
+    {
+        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId') ?? $user?->employment?->school_id;
+        abort_unless($schoolId, 403, 'Konteks satuan pendidikan belum tersedia.');
+        $lab = LabProfile::where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->firstOrFail();
+        $yearId = AcademicYear::where('is_active', true)->value('id');
+        $year = $yearId ? AcademicYear::find($yearId) : null;
+        $semester = $year?->semester === 'genap' ? 2 : 1;
+        $validated = $request->validate([
+            'subject_id' => 'nullable|uuid|exists:subjects,id',
+            'usage_date' => 'required|date|after_or_equal:today',
+            'activity_type' => 'required|in:praktikum,penelitian,lainnya',
+            'other_activity' => 'nullable|string|max:191',
+            'participants_count' => 'nullable|integer|min:0',
+            'risk_notes' => 'nullable|string|max:3000',
+            'applicant_position_class' => 'nullable|string|max:191',
+        ]);
+
+        LabUsageRequest::create(array_merge($validated, [
+            'lab_id' => $lab->id,
+            'school_id' => $schoolId,
+            'academic_year_id' => $yearId,
+            'semester' => $semester,
+            'applicant_id' => $user->id,
+            'status' => 'submitted',
+        ]));
+
+        return back()->with('success', 'Pengajuan izin laboratorium dikirim ke koordinator.');
+    }
+
     public function usageIndex(Request $request)
     {
         $ctx = $this->context($request);
@@ -894,8 +1052,9 @@ class LabController extends Controller
         $ctx = $this->context($request);
         $lab = $ctx['lab'];
         $incidents = $lab ? $lab->incidents()->latest('incident_date')->paginate(15)->withQueryString() : collect();
+        $referrals = $lab ? UksReferral::where('school_id', $ctx['schoolId'])->latest('referred_at')->limit(50)->get() : collect();
 
-        return view('lab.incident', array_merge($ctx, compact('lab', 'incidents')));
+        return view('lab.incident', array_merge($ctx, compact('lab', 'incidents', 'referrals')));
     }
 
     public function incidentStore(Request $request)

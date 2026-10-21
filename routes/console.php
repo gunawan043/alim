@@ -21,3 +21,6 @@ Artisan::command('inspire', function () {
 
 // ── Asrama: overdue & pengingat kembali ─────────────────────────
 Schedule::command('dormitory:remind-returns')->dailyAt('16:00')->withoutOverlapping();
+
+// Pengingat operasional Laboratorium IPA.
+Schedule::command('lab:send-reminders')->dailyAt('07:20')->withoutOverlapping();

@@ -1136,6 +1136,16 @@
     @endif
 @endif
 
+@if($showAll || $isGuru || $isKoorLab)
+    <li class="menu-title"><span>Laboratorium</span></li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['lab.request.']) ? ' active' : '' }}"
+           href="{{ route('lab.request.index', ['userId' => $userId]) }}">
+            <i class="ri-file-shield-2-line"></i><span>Ajukan Izin Laboratorium</span>
+        </a>
+    </li>
+@endif
+
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 9 — KEUANGAN SEKOLAH (Bendahara)
      ═══════════════════════════════════════════════════════════════════════════ --}}
