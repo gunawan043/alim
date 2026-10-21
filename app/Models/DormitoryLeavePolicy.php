@@ -83,6 +83,71 @@ class DormitoryLeavePolicy extends Model
     }
 
     /**
+     * Kuota umum yang berlaku: periode paling spesifik yang diisi.
+     * Nilai 0/null berarti tidak ada batas.
+     *
+     * @return array{quota:int,period:string}|null
+     */
+    public function resolveGeneralQuota(): ?array
+    {
+        foreach ([
+            ['period' => 'week', 'column' => 'quota_per_week'],
+            ['period' => 'month', 'column' => 'quota_per_month'],
+            ['period' => 'semester', 'column' => 'quota_per_semester'],
+            ['period' => 'year', 'column' => 'quota_per_year'],
+        ] as $candidate) {
+            $value = $this->{$candidate['column']};
+
+            if ($value !== null && (int) $value > 0) {
+                return ['quota' => (int) $value, 'period' => $candidate['period']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Ringkasan kuota efektif untuk daftar konfigurasi.
+     *
+     * @return array{quota:int|null,period:string|null,label:string}
+     */
+    public function quotaSummary(): array
+    {
+        if ($this->permit_type === 'pulang') {
+            $resolved = $this->resolvePulangQuota();
+        } elseif (in_array($this->special_quota_mode, ['shared_with_pulang'], true)) {
+            $resolved = null;
+        } elseif ($this->special_quota_mode === 'none' && in_array($this->permit_type, ['keluar_kota', 'berobat', 'sakit', 'keperluan_keluarga', 'lainnya'], true)) {
+            $resolved = null;
+        } else {
+            $resolved = $this->resolveGeneralQuota();
+        }
+
+        if (! $resolved) {
+            return ['quota' => null, 'period' => null, 'label' => 'Tanpa batas'];
+        }
+
+        $labels = [
+            'week' => 'minggu',
+            'month' => 'bulan',
+            'monthly' => 'bulan',
+            'quarter' => 'quarter',
+            'quarterly' => 'quarter',
+            'semester' => 'semester',
+            'year' => 'tahun',
+            'yearly' => 'tahun',
+        ];
+
+        $periodLabel = $labels[$resolved['period']] ?? str_replace('_', ' ', $resolved['period']);
+
+        return [
+            'quota' => (int) $resolved['quota'],
+            'period' => $resolved['period'],
+            'label' => $resolved['quota'].'x / '.$periodLabel,
+        ];
+    }
+
+    /**
      * Resolve quota pulang dengan fallback ke quota_per_month.
      * Return null jika tidak ada kuota yang terdefinisi.
      *
@@ -90,10 +155,10 @@ class DormitoryLeavePolicy extends Model
      */
     public function resolvePulangQuota(): ?array
     {
-        if ($this->pulang_quota !== null && $this->pulang_quota_period !== null) {
+        if ($this->pulang_quota !== null && (int) $this->pulang_quota > 0 && $this->pulang_quota_period !== null) {
             return ['quota' => (int) $this->pulang_quota, 'period' => $this->pulang_quota_period];
         }
-        if ($this->quota_per_month !== null) {
+        if ($this->quota_per_month !== null && (int) $this->quota_per_month > 0) {
             return ['quota' => (int) $this->quota_per_month, 'period' => 'monthly'];
         }
 

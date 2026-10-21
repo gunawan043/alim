@@ -45,9 +45,9 @@ class PermitTypeController extends Controller
     /**
      * Satu jenis izin (untuk modal edit).
      */
-    public function show(string $permitId): JsonResponse
+    public function show(string $userId, string $asramaUuid, string $permitType): JsonResponse
     {
-        $type = PermitType::findOrFail($permitId);
+        $type = PermitType::findOrFail($permitType);
 
         return response()->json(['data' => $this->serialize($type)]);
     }

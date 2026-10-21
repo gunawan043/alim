@@ -13,8 +13,7 @@ use App\Models\Dormitory;
 use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
-use App\Models\DormitoryStaffAssignment;
-use App\Support\UserJabatan;
+use App\Models\PermitType;
 use App\Models\StudentHealthPermit;
 use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
@@ -97,7 +96,11 @@ class DormitoryPermitController extends Controller
         if ($request->filled('search')) {
             $q = $request->search;
             $query->where(fn ($sq) => $sq
-                ->whereHas('student', fn ($st) => $st->where('name', 'like', "%{$q}%"))
+                ->where('destination', 'like', "%{$q}%")
+                ->orWhere('purpose', 'like', "%{$q}%")
+                ->orWhereHas('student', fn ($st) => $st
+                    ->where('name', 'like', "%{$q}%")
+                    ->orWhere('nisn', 'like', "%{$q}%"))
             );
         }
 
@@ -106,6 +109,9 @@ class DormitoryPermitController extends Controller
         $stats = [
             'pending' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'pending')->count(),
             'approved' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'approved')->count(),
+            'picked_up' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'picked_up')->count(),
+            'returned' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'returned')->count(),
+            'rejected' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'rejected')->count(),
             'overdue' => DormitoryPermit::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('status', 'overdue')->count(),
         ];
 
@@ -138,9 +144,11 @@ class DormitoryPermitController extends Controller
             ->get()
             ->keyBy('permit_type');
 
+        $permitTypes = PermitType::orderBy('sort_order')->orderBy('label')->get();
+
         return view('dormitory.permits.index', compact(
             'dormitory', 'permits', 'userId', 'stats', 'activeYear',
-            'residents', 'quotaInfo', 'policies', 'visitQuotaInfo'
+            'residents', 'quotaInfo', 'policies', 'visitQuotaInfo', 'permitTypes'
         ));
     }
 
@@ -169,9 +177,20 @@ class DormitoryPermitController extends Controller
         // Daftar kategori izin khusus (dari PermitType.category='special') — untuk label field di view
         $specialPermitTypes = LeaveWorkflowService::getSpecialPermitTypes();
 
+        // Hanya jenis izin aktif di master dan tidak dinonaktifkan untuk asrama ini.
+        $disabledCodes = DormitoryLeavePolicy::where('dormitory_id', $asramaUuid)
+            ->where('is_enabled', false)
+            ->pluck('permit_type')
+            ->all();
+
+        $permitTypes = PermitType::active()
+            ->ordered()
+            ->when($disabledCodes !== [], fn ($query) => $query->whereNotIn('code', $disabledCodes))
+            ->get();
+
         return view('dormitory.permits.create', compact(
             'dormitory', 'residents', 'userId', 'activeYear',
-            'activePermits', 'specialPermitTypes'
+            'activePermits', 'specialPermitTypes', 'permitTypes'
         ));
     }
 
@@ -245,19 +264,9 @@ class DormitoryPermitController extends Controller
             ]);
         }
 
-        $autoApproved = false;
-        if ($this->canAutoApproveRequest($request->user(), $asramaUuid)) {
-            try {
-                $this->leave->approve($permit->id, $asramaUuid, 'Disetujui otomatis oleh Staf Perizinan/Staf Asrama.');
-                $autoApproved = true;
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Auto-approve izin gagal: '.$e->getMessage());
-            }
-        }
-
         return redirect()->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            ->with('success', $autoApproved
-                ? 'Permintaan izin diajukan dan langsung disetujui.'
+            ->with('success', $permit->status === 'approved'
+                ? 'Permintaan izin diajukan dan langsung disetujui sesuai pengaturan asrama.'
                 : 'Permintaan izin berhasil diajukan.');
     }
 
@@ -309,11 +318,15 @@ class DormitoryPermitController extends Controller
 
         // Delegate to the workflow service. It re-runs the rules engine,
         // transitions the student status to ON_LEAVE, and emits the timeline event.
-        $this->leave->approve(
-            permitId: $permitUuid,
-            dormitoryId: $asramaUuid,
-            note: $data['approval_note'] ?? null,
-        );
+        try {
+            $this->leave->approve(
+                permitId: $permitUuid,
+                dormitoryId: $asramaUuid,
+                note: $data['approval_note'] ?? null,
+            );
+        } catch (QuotaExceededException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_APPROVED', 'dormitory_permits', $permitUuid);
 
@@ -394,26 +407,6 @@ class DormitoryPermitController extends Controller
         \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_REJECTED', 'dormitory_permits', $permitUuid);
 
         return back()->with('success', 'Izin ditolak.');
-    }
-
-    private function canAutoApproveRequest($user, string $dormitoryId): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        if (method_exists($user, 'perizinanGenderScope') && $user->perizinanGenderScope() !== null) {
-            return true;
-        }
-
-        if (DormitoryStaffAssignment::active()->forUser($user->id)->forDormitory($dormitoryId)->exists()) {
-            return true;
-        }
-
-        return UserJabatan::hasAny($user, [
-            'staf perizinan', 'staff perizinan', 'staf asrama', 'staff asrama',
-            'musyrif', 'musyrifah', 'wali kamar',
-        ]);
     }
 
     /**

@@ -93,6 +93,50 @@ class AsramaQuotaGovernanceTest extends TestCase
         $this->assertSame('bulan ini', $info['period_label_id']);
     }
 
+    public function test_satu_kunjungan_dihitung_sekali_setelah_check_in(): void
+    {
+        $visitId = $this->insertVisitEvent(now()->startOfMonth()->addHours(9));
+
+        // Event check-in untuk kunjungan yang sama tidak boleh menambah kuota.
+        DB::table('boarding_timeline_events')->insert([
+            'id' => (string) Str::uuid(),
+            'event_type' => BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
+            'student_id' => $this->student->id,
+            'dormitory_id' => $this->dormitory->id,
+            'event_at' => now()->startOfMonth()->addHours(10),
+            'subject_refs' => json_encode(['visit_id' => $visitId]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Cache::flush();
+
+        $count = app(\App\Domain\Services\BoardingRulesEngine::class)
+            ->countUsageForCurrentPeriod($this->student->id, 'visit', $this->dormitory->id, 'monthly');
+        $info = app(VisitWorkflowService::class)->inspectQuotaForVisit($this->student->id, $this->dormitory->id);
+
+        $this->assertSame(1, $count, 'Approve + check-in untuk satu kunjungan harus dihitung satu kali.');
+        $this->assertSame(1, $info['used']);
+        $this->assertSame(1, $info['remaining']);
+    }
+
+    public function test_pengajuan_kunjungan_ditolak_saat_kuota_habis(): void
+    {
+        $this->insertVisitEvent(now()->startOfMonth()->addHours(9));
+        $this->insertVisitEvent(now()->startOfMonth()->addDays(1)->addHours(9));
+        Cache::flush();
+
+        $this->expectException(\App\Domain\Exceptions\QuotaExceededException::class);
+
+        app(VisitWorkflowService::class)->submit([
+            'student_id' => $this->student->id,
+            'visitor_name' => 'Wali Ketiga',
+            'visitor_relationship' => 'wali',
+            'purpose' => 'menjenguk',
+            'expected_arrival_datetime' => now()->addHour(),
+        ], $this->dormitory->id);
+    }
+
     public function test_export_excel_perizinan_terstruktur(): void
     {
         $permit = new DormitoryPermit([
@@ -130,16 +174,39 @@ class AsramaQuotaGovernanceTest extends TestCase
 
     // ─────────────────────────────────────────────────────────────
 
-    private function insertVisitEvent(\Illuminate\Support\Carbon $at): void
+    private function insertVisitEvent(\Illuminate\Support\Carbon $at): string
     {
+        // Satu kunjungan menghasilkan satu baris domain + satu event timeline.
+        $visitId = (string) Str::uuid();
+
+        DB::table('dormitory_visit_logs')->insert([
+            'id' => $visitId,
+            'dormitory_id' => $this->dormitory->id,
+            'student_id' => $this->student->id,
+            'visitor_name' => 'Wali Santri',
+            'visitor_relationship' => 'wali',
+            'purpose' => 'menjenguk',
+            'expected_arrival_datetime' => $at,
+            'status' => 'approved',
+            'approved_at' => $at,
+            'approved_by' => $this->kepala->id,
+            'created_by' => $this->kepala->id,
+            'created_at' => $at,
+            'updated_at' => $at,
+        ]);
+
         DB::table('boarding_timeline_events')->insert([
             'id' => (string) Str::uuid(),
             'event_type' => BoardingTimelineEvent::TYPE_VISIT_APPROVED,
             'student_id' => $this->student->id,
+            'dormitory_id' => $this->dormitory->id,
             'event_at' => $at,
+            'subject_refs' => json_encode(['visit_id' => $visitId]),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        return $visitId;
     }
 
     private function makeUser(string $name, string $email, string $jabatan, ?string $headOf = null): User

@@ -114,16 +114,16 @@ class AsramaPolicyExecutionTest extends TestCase
 
         $permit->status = DormitoryPermit::STATUS_APPROVED;
         $this->assertTrue($permit->canTransitionTo(DormitoryPermit::STATUS_PICKED_UP));
-        $this->assertSame('di_luar', $permit->phase());
+        $this->assertSame('belum_keluar', $permit->phase());
 
         $permit->status = DormitoryPermit::STATUS_PICKED_UP;
         $this->assertTrue($permit->canTransitionTo(DormitoryPermit::STATUS_RETURNED));
-        $this->assertSame('kembali', $permit->phase());
+        $this->assertSame('sedang_keluar', $permit->phase());
 
         // returned terminal.
         $permit->status = DormitoryPermit::STATUS_RETURNED;
         $this->assertFalse($permit->canTransitionTo(DormitoryPermit::STATUS_APPROVED));
-        $this->assertSame('selesai', $permit->phase());
+        $this->assertSame('kembali', $permit->phase());
 
         // Idempoten: status sama selalu boleh.
         $this->assertTrue($permit->canTransitionTo(DormitoryPermit::STATUS_RETURNED));

@@ -94,7 +94,13 @@ final class BoardingRulesEngine
      */
     public function evaluate(BoardingContextInterface $context): RuleDecision
     {
-        if ($context->isSpecialPermission()) {
+        // Kuota izin/kunjungan bergantung pada pemakaian terbaru. Cache keputusan
+        // lama bisa membuat pengajuan kedua lolos setelah kuota habis.
+        if ($context->isSpecialPermission() || in_array($context->eventType(), [
+            'visit_request',
+            'leave_request',
+            'leave_approval',
+        ], true)) {
             return $this->runEvaluators($context);
         }
 
@@ -243,55 +249,62 @@ final class BoardingRulesEngine
      */
     public function countUsageForCurrentPeriod(string $studentId, string $eventType, string $dormitoryId, string $period): int
     {
-        $cacheKey = sprintf('usage_%s_%s_%s_%s_%s', $studentId, $eventType, $dormitoryId, $period, now()->format($period === QuotaPeriod::WEEKLY ? 'Y-W' : 'Y-m'));
+        $student = Student::find($studentId);
+        if (! $student) {
+            return 0;
+        }
 
-        return Cache::remember($cacheKey, 60, function () use ($studentId, $eventType, $period): int {
-            $student = Student::find($studentId);
-            if (! $student) {
-                return 0;
-            }
+        $allowedTypes = match ($eventType) {
+            'leave' => [
+                BoardingTimelineEvent::TYPE_LEAVE_STARTED,
+                BoardingTimelineEvent::TYPE_LEAVE_APPROVED,
+            ],
+            'visit' => [
+                BoardingTimelineEvent::TYPE_VISIT_APPROVED,
+                BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
+            ],
+            default => [],
+        };
 
-            // Determine which models to count for timeline events
-            $allowedTypes = match ($eventType) {
-                'leave' => [
-                    BoardingTimelineEvent::TYPE_LEAVE_STARTED,
-                    BoardingTimelineEvent::TYPE_LEAVE_APPROVED,
-                ],
-                'visit' => [
-                    BoardingTimelineEvent::TYPE_VISIT_APPROVED,
-                    BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
-                ],
-                default => [],
+        if (empty($allowedTypes)) {
+            return 0;
+        }
+
+        $rangeStart = QuotaPeriod::rangeBound($period);
+
+        if (! $rangeStart instanceof \Carbon\CarbonImmutable && ! $rangeStart instanceof \Carbon\Carbon) {
+            $rangeStart = \Carbon\CarbonImmutable::parse((string) $rangeStart);
+        }
+
+        $rangeEnd = match ($period) {
+            QuotaPeriod::WEEKLY => $rangeStart->copy()->addWeek(),
+            QuotaPeriod::MONTHLY => $rangeStart->copy()->addMonth(),
+            QuotaPeriod::SEMESTER => $rangeStart->copy()->addMonths(6),
+            QuotaPeriod::YEARLY => $rangeStart->copy()->addYear(),
+            QuotaPeriod::DAILY => $rangeStart->copy()->addDay(),
+            default => $rangeStart->copy()->addMonth(),
+        };
+
+        $events = BoardingTimelineEvent::where('student_id', $studentId)
+            ->whereIn('event_type', $allowedTypes)
+            ->where('event_at', '>=', $rangeStart)
+            ->where('event_at', '<', $rangeEnd)
+            ->get(['id', 'subject_refs']);
+
+        // Satu kunjungan/izin bisa punya beberapa event (approved, check-in,
+        // started). Hitung berdasarkan referensi sumbernya, bukan jumlah event.
+        $unique = [];
+        foreach ($events as $event) {
+            $reference = match ($eventType) {
+                'visit' => data_get($event->subject_refs, 'visit_id'),
+                'leave' => data_get($event->subject_refs, 'permit_id'),
+                default => null,
             };
 
-            if (empty($allowedTypes)) {
-                return 0;
-            }
+            $unique[$reference ? 'ref:'.$reference : 'event:'.$event->id] = true;
+        }
 
-            $rangeStart = QuotaPeriod::rangeBound($period);
-
-            // Defensif: pastikan Carbon (mis. semester_starts bisa berupa string).
-            if (! $rangeStart instanceof \Carbon\CarbonImmutable && ! $rangeStart instanceof \Carbon\Carbon) {
-                $rangeStart = \Carbon\CarbonImmutable::parse((string) $rangeStart);
-            }
-
-            // BUGFIX: rentang harus satu periode penuh (bukan +1 hari) agar
-            // kuota bulanan/semester/tahun tidak salah hitung.
-            $rangeEnd = match ($period) {
-                QuotaPeriod::WEEKLY => $rangeStart->copy()->addWeek(),
-                QuotaPeriod::MONTHLY => $rangeStart->copy()->addMonth(),
-                QuotaPeriod::SEMESTER => $rangeStart->copy()->addMonths(6),
-                QuotaPeriod::YEARLY => $rangeStart->copy()->addYear(),
-                QuotaPeriod::DAILY => $rangeStart->copy()->addDay(),
-                default => $rangeStart->copy()->addMonth(),
-            };
-
-            return BoardingTimelineEvent::where('student_id', $studentId)
-                ->whereIn('event_type', $allowedTypes)
-                ->where('event_at', '>=', $rangeStart)
-                ->where('event_at', '<', $rangeEnd)
-                ->count();
-        });
+        return count($unique);
     }
 
     /**

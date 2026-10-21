@@ -41,6 +41,8 @@ class DormitoryLeavePolicyController extends Controller
             'userId' => $userId,
             'policies' => $policies,
             'visitPolicy' => $visitPolicy,
+            'canManageQuota' => app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+                ->canManageQuota(auth()->user(), $asramaUuid),
         ]);
     }
 
@@ -53,8 +55,8 @@ class DormitoryLeavePolicyController extends Controller
 
         $data = $request->validate([
             'visit_strategy' => 'required|in:unrestricted,quota,banned',
-            'visit_quota' => 'nullable|integer|min:0|max:9999',
-            'visit_quota_period' => 'nullable|required_with:visit_quota|in:weekly,monthly,semester,yearly',
+            'visit_quota' => 'nullable|required_if:visit_strategy,quota|integer|min:1|max:9999',
+            'visit_quota_period' => 'nullable|required_if:visit_strategy,quota|in:weekly,monthly,semester,yearly',
             'max_visitors_per_visit' => 'nullable|integer|min:1|max:100',
         ]);
 
@@ -107,8 +109,11 @@ class DormitoryLeavePolicyController extends Controller
         // Dapatkan info master PermitType (untuk label & metadata dinamis).
         $permitTypeMaster = PermitType::where('code', $permitType)->first();
 
+        $canManageQuota = app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+            ->canManageQuota(auth()->user(), $asramaUuid);
+
         return view('dormitory.leave-policies.edit', compact(
-            'dormitory', 'userId', 'policy', 'permitType', 'permitTypeMaster'
+            'dormitory', 'userId', 'policy', 'permitType', 'permitTypeMaster', 'canManageQuota'
         ));
     }
 
@@ -142,7 +147,18 @@ class DormitoryLeavePolicyController extends Controller
             'emergency_notify_wa_kepala' => 'boolean',
             'emergency_approver_roles' => 'nullable|array',
             'emergency_approver_roles.*' => 'string|min:1',
+            'emergency_approver_roles_string' => 'nullable|string|max:500',
         ]);
+
+        if ($request->filled('emergency_approver_roles_string')) {
+            $data['emergency_approver_roles'] = collect(explode(',', (string) $request->input('emergency_approver_roles_string')))
+                ->map(fn ($role) => trim($role))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+        unset($data['emergency_approver_roles_string']);
 
         $data['special_quota_mode'] = $data['special_quota_mode'] ?? 'none';
         $data['dormitory_id'] = $asramaUuid;
@@ -183,13 +199,20 @@ class DormitoryLeavePolicyController extends Controller
         // Iterasi ke SEMUA jenis izin aktif di master, bukan hardcoded list.
         $permitCodes = PermitType::where('is_active', true)->pluck('code');
 
+        // Jangan copy id/timestamps dari baris default; kalau ikut ter-copy,
+        // updateOrCreate akan mencoba memakai UUID yang sama untuk semua jenis.
+        $defaultValues = collect($defaults->toArray())
+            ->only((new DormitoryLeavePolicy)->getFillable())
+            ->except(['id', 'dormitory_id', 'permit_type', 'updated_by'])
+            ->all();
+
         foreach ($permitCodes as $code) {
             DormitoryLeavePolicy::updateOrCreate(
                 ['dormitory_id' => $asramaUuid, 'permit_type' => $code],
-                array_merge(
-                    $defaults->toArray(),
-                    ['permit_type' => $code, 'updated_by' => auth()->id()]
-                )
+                array_merge($defaultValues, [
+                    'permit_type' => $code,
+                    'updated_by' => auth()->id(),
+                ])
             );
         }
 

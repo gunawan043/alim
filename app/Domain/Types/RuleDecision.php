@@ -55,10 +55,25 @@ final class RuleDecision
         return true;
     }
 
+    /**
+     * True jika ada aturan yang meminta override (mis. kuota habis).
+     * Override hanya boleh dilanjutkan lewat jalur special permission.
+     */
+    public function requiresOverride(): bool
+    {
+        foreach ($this->ruleResults as $r) {
+            if ($r->outcome === \App\Domain\Types\DecisionOutcome::REQUIRE_OVERRIDE) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function firstDenyReason(): ?string
     {
         foreach ($this->ruleResults as $r) {
-            if ($r->isDeny()) {
+            if ($r->isDeny() || $r->outcome === \App\Domain\Types\DecisionOutcome::REQUIRE_OVERRIDE) {
                 return $r->reason;
             }
         }

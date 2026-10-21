@@ -8,6 +8,7 @@ use App\Domain\Exceptions\QuotaExceededException;
 use App\Domain\Services\BoardingRulesEngine;
 use App\Domain\Services\BoardingTimelineService;
 use App\Domain\Types\DefaultBoardingContext;
+use App\Domain\Types\QuotaPeriod;
 use App\Models\BoardingPolicy;
 use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
@@ -41,33 +42,41 @@ class VisitWorkflowService
     {
         $student = ! empty($data['student_id']) ? Student::find($data['student_id']) : null;
 
+        $visitorCount = max(1, (int) ($data['visitor_count'] ?? 1));
+
         if ($student) {
             $policy = $this->resolvePolicyForDormitory($dormitoryId);
 
-            $context = DefaultBoardingContext::visitRequest($student, Dormitory::find($dormitoryId), $policy);
+            $context = DefaultBoardingContext::visitRequest(
+                $student,
+                Dormitory::find($dormitoryId),
+                $policy,
+                $visitorCount
+            );
 
             $decision = $this->engine->evaluate($context);
 
-            // Blocking: if denied (e.g., quota exhausted) and cannot be bypassed, throw exception
-            if ($decision->isDenied()) {
-                // Can be bypassed? e.g., special permission exists but requires override.
-                if (! $decision->canBeBypassed()) {
-                    $denyReason = $decision->firstDenyReason();
-                    throw new QuotaExceededException(
-                        $denyReason ?: 'Pengajuan tidak dapat diproses karena melebihi kuota.',
-                        [
-                            'policy_code' => $decision->toArray()['rule_results'][0]['policy_code'] ?? null,
-                            'strategy' => $decision->toArray()['rule_results'][0]['metadata']['strategy'] ?? null,
-                        ]
-                    );
-                }
-                // If can be bypassed (special permission needed), we still allow creation
-                // so admin can review later. The visit will be flagged for override.
+            // Blocking: quota exhausted (require override) dan banned/kapasitas
+            // ditolak harus berhenti di sini. Tanpa ini, requireOverride
+            // dianggap "allowed" dan pengajuan tetap tersimpan melewati kuota.
+            if ($decision->isDenied() || $decision->requiresOverride()) {
+                $denyReason = $decision->firstDenyReason()
+                    ?: 'Kuota kunjungan sudah habis. Selesaikan periode atau ajukan izin khusus.';
+
+                throw new QuotaExceededException(
+                    $denyReason,
+                    [
+                        'policy_code' => $decision->toArray()['rule_results'][0]['policy_code'] ?? null,
+                        'strategy' => $decision->toArray()['rule_results'][0]['metadata']['strategy'] ?? null,
+                    ]
+                );
             }
         }
 
         $data['dormitory_id'] = $dormitoryId;
         $data['created_by'] = auth()->id();
+        // visitor_count hanya dipakai untuk evaluasi kebijakan; bukan kolom tabel.
+        unset($data['visitor_count']);
 
         return DB::transaction(fn () => DormitoryVisitLog::create($data));
     }
@@ -145,7 +154,7 @@ class VisitWorkflowService
 
         $used = 0;
         if ($policy && $strategy === 'quota') {
-            $used = $this->engine->countUsageForCurrentPeriod($studentId, 'visit', $dormitoryId, $period);
+            $used = $this->countVisitsForCurrentPeriod($studentId, $dormitoryId, $period);
         }
 
         return [
@@ -167,9 +176,53 @@ class VisitWorkflowService
         ];
     }
 
+    /**
+     * Hitung satu kunjungan satu kali, bukan per event timeline.
+     * Event approve + check-in untuk kunjungan yang sama tidak boleh
+     * dihitung sebagai dua pemakaian kuota.
+     */
+    public function countVisitsForCurrentPeriod(string $studentId, string $dormitoryId, string $period): int
+    {
+        $rangeStart = QuotaPeriod::rangeBound($period);
+        $rangeEnd = match ($period) {
+            QuotaPeriod::WEEKLY => $rangeStart->copy()->addWeek(),
+            QuotaPeriod::MONTHLY => $rangeStart->copy()->addMonth(),
+            QuotaPeriod::SEMESTER => $rangeStart->copy()->addMonths(6),
+            QuotaPeriod::YEARLY => $rangeStart->copy()->addYear(),
+            QuotaPeriod::DAILY => $rangeStart->copy()->addDay(),
+            default => $rangeStart->copy()->addMonth(),
+        };
+
+        return DormitoryVisitLog::query()
+            ->where('student_id', $studentId)
+            ->where('dormitory_id', $dormitoryId)
+            ->whereIn('status', ['approved', 'arrived', 'checked_out'])
+            ->where(function ($query) use ($rangeStart, $rangeEnd) {
+                $query->whereBetween('approved_at', [$rangeStart, $rangeEnd])
+                    ->orWhere(function ($fallback) use ($rangeStart, $rangeEnd) {
+                        $fallback->whereNull('approved_at')
+                            ->whereBetween('created_at', [$rangeStart, $rangeEnd]);
+                    });
+            })
+            ->count();
+    }
+
     public function approve(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog
     {
         $visit = DormitoryVisitLog::where('dormitory_id', $dormitoryId)->findOrFail($visitId);
+
+        if ($visit->status === 'pending') {
+            $quota = $this->inspectQuotaForVisit($visit->student_id, $dormitoryId);
+
+            if (! $visit->is_special_permission
+                && ($quota['is_banned'] || ($quota['remaining'] !== null && $quota['remaining'] <= 0))) {
+                throw new QuotaExceededException(
+                    $quota['is_banned']
+                        ? 'Kunjungan sedang dinonaktifkan untuk asrama ini.'
+                        : 'Kuota kunjungan sudah habis. Permintaan tidak dapat disetujui.'
+                );
+            }
+        }
 
         return DB::transaction(function () use ($visit, $note) {
             $visit->update([
@@ -179,7 +232,8 @@ class VisitWorkflowService
                 'approval_note' => $note,
             ]);
 
-            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_APPROVED);
+            // Timeline VISIT_APPROVED dicatat oleh listener BoardingVisitDecided
+            // agar satu event domain hanya menghasilkan satu baris timeline.
 
             DB::afterCommit(function () use ($visit, $note) {
                 Event::dispatch(new BoardingVisitDecided(
@@ -253,7 +307,7 @@ class VisitWorkflowService
                 'check_in_at' => now(),
             ]);
 
-            $this->recordTimeline($visit, BoardingTimelineEvent::TYPE_VISIT_CHECK_IN, $note);
+            // Timeline VISIT_CHECK_IN dicatat oleh listener BoardingVisitCheckIn.
 
             DB::afterCommit(fn () => Event::dispatch(new BoardingVisitCheckIn($visit)));
 
@@ -288,8 +342,7 @@ class VisitWorkflowService
             boardingPolicyId: null,
             eventAt: CarbonImmutable::now(),
             subjectRefs: [
-                'subject_type' => 'DormitoryVisitLog',
-                'subject_id' => $visit->id,
+                'visit_id' => $visit->id,
             ],
             payload: [
                 'visitor_name' => $visit->visitor_name,

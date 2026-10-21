@@ -39,6 +39,7 @@ class RecordBoardingVisitTimeline
             eventType: BoardingTimelineEvent::TYPE_VISIT_CHECK_IN,
             dormitoryId: $event->visit->dormitory_id,
             roomId: $event->visit->room_id ?? null,
+            subjectRefs: ['visit_id' => $event->visit->id],
             sourceActorId: $event->visit->created_by,
         );
     }

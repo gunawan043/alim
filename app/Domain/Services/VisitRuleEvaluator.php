@@ -5,6 +5,7 @@ namespace App\Domain\Services;
 use App\Domain\Contracts\BoardingContextInterface;
 use App\Domain\Contracts\BoardingRuleEvaluator;
 use App\Domain\Types\RuleResult;
+use App\Services\Boarding\VisitWorkflowService;
 
 /**
  * Evaluates visit policy: quota, unrestricted, banned.
@@ -24,7 +25,6 @@ final class VisitRuleEvaluator implements BoardingRuleEvaluator
     public function evaluate(BoardingContextInterface $context): RuleResult
     {
         $policy = $context->policy();
-        $engine = BoardingRulesEngine::getInstance();
         $payload = $context->payload();
         $visitorCount = $payload['visitor_count'] ?? 1;
 
@@ -45,6 +45,17 @@ final class VisitRuleEvaluator implements BoardingRuleEvaluator
             );
         }
 
+        // Kapasitas pengunjung berlaku untuk semua strategi, bukan hanya
+        // saat strategi unrestricted.
+        $maxVisitors = $policy->max_visitors_per_visit;
+        if ($maxVisitors && $visitorCount > $maxVisitors) {
+            return RuleResult::deny(
+                'visit_policy',
+                "Visitor count ({$visitorCount}) exceeds max allowed ({$maxVisitors}).",
+                ['strategy' => 'capacity_limit', 'max_visitors' => $maxVisitors]
+            );
+        }
+
         // Banned → deny
         if ($policy->visit_strategy === 'banned') {
             return RuleResult::deny(
@@ -56,16 +67,6 @@ final class VisitRuleEvaluator implements BoardingRuleEvaluator
 
         // Unrestricted → allow
         if ($policy->visit_strategy === 'unrestricted') {
-            // Still check visitor capacity
-            $maxVisitors = $policy->max_visitors_per_visit;
-            if ($maxVisitors && $visitorCount > $maxVisitors) {
-                return RuleResult::deny(
-                    'visit_policy',
-                    "Visitor count ({$visitorCount}) exceeds max allowed ({$maxVisitors}).",
-                    ['strategy' => 'capacity_limit', 'max_visitors' => $maxVisitors]
-                );
-            }
-
             return RuleResult::allow(
                 'visit_policy',
                 'Unrestricted visit policy.',
@@ -75,8 +76,9 @@ final class VisitRuleEvaluator implements BoardingRuleEvaluator
 
         // Quota-based
         if ($policy->visit_strategy === 'quota') {
-            $currentUsage = $engine->countUsageForCurrentPeriod(
-                $context->student()->id, 'visit', $context->dormitory()->id,
+            $currentUsage = app(VisitWorkflowService::class)->countVisitsForCurrentPeriod(
+                $context->student()->id,
+                $context->dormitory()->id,
                 $policy->visit_quota_period
             );
 

@@ -139,8 +139,8 @@ class DormitoryVisitLog extends Model
             'pending' => 'Menunggu Persetujuan',
             'approved' => 'Santri Belum Keluar',
             'rejected' => 'Ditolak',
-            'arrived' => 'Santri Sedang di Luar',
-            'checked_out' => 'Santri Sudah Kembali',
+            'arrived' => 'Sedang dalam Kunjungan',
+            'checked_out' => 'Kunjungan Selesai',
             'cancelled' => 'Dibatalkan',
             'no_show' => 'Tidak Datang',
             default => ucfirst($this->status ?? ''),
@@ -163,14 +163,37 @@ class DormitoryVisitLog extends Model
 
     public function getVisitorRelationshipTextAttribute(): string
     {
-        return match ($this->visitor_relationship) {
+        return match (strtolower(trim((string) $this->visitor_relationship))) {
             'mahrom' => 'Mahrom',
             'wali' => 'Wali Santri',
             'keluarga' => 'Keluarga',
-            'Pihak pondok' => 'Pihak pondok',
-            ' Lainnya' => ' Lainnya',
-            default => ucfirst($this->visitor_relationship ?? ''),
+            'pihak_pondok', 'pihak pondok' => 'Pihak Pondok',
+            'lainnya', ' Lainnya' => 'Lainnya',
+            default => ucfirst(str_replace('_', ' ', (string) ($this->visitor_relationship ?? ''))),
         };
+    }
+
+    /**
+     * Alias tanggal agar view lama dan view baru memakai sumber data yang sama.
+     */
+    public function getExpectedArrivalAttribute()
+    {
+        return $this->expected_arrival_datetime;
+    }
+
+    public function getActualArrivalAtAttribute()
+    {
+        return $this->check_in_at ?? $this->actual_arrival_datetime;
+    }
+
+    public function getActualDepartureAtAttribute()
+    {
+        return $this->check_out_at ?? $this->departure_datetime;
+    }
+
+    public function getExpectedDurationMinutesAttribute()
+    {
+        return $this->expected_meet_duration_minutes;
     }
 
     public function getPurposeTextAttribute(): string
@@ -180,7 +203,7 @@ class DormitoryVisitLog extends Model
             'bawa_bantuan' => 'Bawa Bantuan',
             'pertemuan_wali' => 'Pertemuan Wali',
             'antar_jemput' => 'Antar/Jemput',
-            'lainnya' => ' Lainnya',
+            'lainnya' => 'Lainnya',
             default => ucfirst($this->purpose ?? ''),
         };
     }

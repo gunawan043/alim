@@ -87,15 +87,19 @@ final class DefaultBoardingContext implements BoardingContextInterface
     /**
      * Fluent factory for visit requests.
      */
-    public static function visitRequest(Student $student, Dormitory $dormitory, ?BoardingPolicy $policy): self
-    {
+    public static function visitRequest(
+        Student $student,
+        Dormitory $dormitory,
+        ?BoardingPolicy $policy,
+        int $visitorCount = 1
+    ): self {
         return new self(
             $student,
             $dormitory,
             $policy,
             'visit_request',
             CarbonImmutable::now(),
-            ['visitor_count' => 1]
+            ['visitor_count' => max(1, $visitorCount)]
         );
     }
 

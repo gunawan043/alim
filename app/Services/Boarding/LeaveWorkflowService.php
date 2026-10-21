@@ -120,6 +120,23 @@ class LeaveWorkflowService
     public function submit(array $data, string $dormitoryId, string $activeYearId): DormitoryPermit
     {
         $student = Student::find($data['student_id']);
+        $permitType = (string) ($data['permit_type'] ?? '');
+
+        // ── Sinkronisasi master jenis izin & policy per-asrama ──────
+        // Jenis izin yang dinonaktifkan di master atau di asrama tidak boleh
+        // tetap bisa diajukan lewat request manual.
+        $permitTypeMaster = PermitType::where('code', $permitType)->first();
+        if ($permitTypeMaster && ! $permitTypeMaster->is_active) {
+            throw new \InvalidArgumentException('Jenis izin ini sedang dinonaktifkan oleh pengelola pondok.');
+        }
+
+        $leavePolicy = DormitoryLeavePolicy::where('dormitory_id', $dormitoryId)
+            ->where('permit_type', $permitType)
+            ->first();
+
+        if ($leavePolicy && ! $leavePolicy->is_enabled) {
+            throw new \InvalidArgumentException('Jenis izin ini dinonaktifkan untuk asrama ini.');
+        }
 
         // 1. Pre-submit policy evaluation (run through Rules Engine for context,
         //    but never block submission here — the controller layer may choose to).
@@ -162,11 +179,14 @@ class LeaveWorkflowService
             // Jika special permission active, lewati quota check (izinkan proceed)
         }
 
-        // Block if quota exhausted and cannot be bypassed
-        if ($decision->isDenied() && ! $decision->canBeBypassed()) {
-            $denyReason = $decision->firstDenyReason();
+        // Block if quota exhausted and cannot be bypassed. Aturan yang
+        // meminta override juga harus ditolak, kecuali special permission.
+        if (($decision->isDenied() && ! $decision->canBeBypassed())
+            || ($decision->requiresOverride() && ! $isSpecialFlag)) {
+            $denyReason = $decision->firstDenyReason()
+                ?: 'Pengajuan tidak dapat diproses karena melebihi kuota.';
             throw new QuotaExceededException(
-                $denyReason ?: 'Pengajuan tidak dapat diproses karena melebihi kuota.',
+                $denyReason,
                 [
                     'policy_code' => $decision->toArray()['rule_results'][0]['policy_code'] ?? null,
                     'strategy' => $decision->toArray()['rule_results'][0]['metadata']['strategy'] ?? null,
@@ -214,40 +234,31 @@ class LeaveWorkflowService
         // Only kepala_asrama/admin_asrama can approve these
         // WA notification will fire after commit
 
-        // ── GTK Auto-approve ─────────────────────────────────────────
-        // Lock: izin khusus TIDAK boleh auto-approve walaupun policy.auto_approve_gtk = true.
-        // Hanya kepala_asrama / admin_asrama yang boleh approve izin khusus.
-        $permitType = (string) ($data['permit_type'] ?? '');
+        // ── Auto-approve sesuai pengaturan asrama ──────────────────
+        // Izin khusus tetap wajib approval. Untuk jenis izin biasa, hormati
+        // toggle "Memerlukan persetujuan" di halaman pengaturan.
         $forceRequiresApproval = in_array($permitType, self::getSpecialPermitTypes(), true);
-
-        // Fetch the actual DormitoryLeavePolicy (which has auto_approve_gtk field),
-        // not the BoardingPolicy (which doesn't have this field).
-        $leavePolicy = DormitoryLeavePolicy::where('dormitory_id', $dormitoryId)
-            ->where('permit_type', $permitType)
-            ->first();
+        $requiresApproval = $leavePolicy?->requires_approval ?? true;
 
         $shouldAutoApprove = false;
         if (! $forceRequiresApproval) {
-            if ($this->isGtk($creator) && $leavePolicy && $leavePolicy->auto_approve_gtk) {
+            if (! $requiresApproval) {
                 $shouldAutoApprove = true;
             } elseif (! empty($data['is_special_permission'])) {
                 // Special permission bypass untuk izin pulang
                 $shouldAutoApprove = true;
+            } elseif ($this->isGtk($creator) && $leavePolicy?->auto_approve_gtk) {
+                $shouldAutoApprove = true;
+            } elseif ($leavePolicy?->auto_approve_kepala_asrama
+                && ($creatorUser = User::find($creator))
+                && app(DormitoryPolicyAccess::class)->canManageQuota($creatorUser, $dormitoryId)) {
+                $shouldAutoApprove = true;
             }
         }
 
-        if ($shouldAutoApprove) {
-            // Bypass manual approval → go straight to approved
-            $data['status'] = 'approved';
-            $data['approved_by'] = $creator;
-            $data['approved_at'] = now();
-            $data['approval_note'] = 'Auto-approved: GTK/special permission bypass.';
-        } elseif ($isEmergency) {
-            // Emergency: require only kepala_asrama / admin_asrama approval
-            $data['status'] = 'pending';
-        } else {
-            $data['status'] = 'pending';
-        }
+        // Selalu buat sebagai pending dahulu. Auto-approve harus melewati
+        // approve() agar status santri, timeline, dan notifikasi tetap sinkron.
+        $data['status'] = 'pending';
 
         $permit = DB::transaction(function () use ($data) {
             return DormitoryPermit::create($data);
@@ -261,6 +272,22 @@ class LeaveWorkflowService
                 $this->notifyKepalaAsramaOfEmergency($permit);
             }
         });
+
+        if ($shouldAutoApprove) {
+            try {
+                $permit = $this->approve(
+                    $permit->id,
+                    $dormitoryId,
+                    'Disetujui otomatis sesuai pengaturan asrama.'
+                );
+            } catch (QuotaExceededException $e) {
+                // Permit tetap pending agar pengasuh dapat meninjau kuota.
+                \Log::warning('Auto-approve izin ditahan karena kuota: '.$e->getMessage(), [
+                    'permit_id' => $permit->id,
+                    'student_id' => $permit->student_id,
+                ]);
+            }
+        }
 
         return $permit;
     }
@@ -358,6 +385,11 @@ class LeaveWorkflowService
         if ($permitType === 'darurat') {
             return;
         }
+
+        // ── Jenis izin lain (default/custom): tetap hormati kuota umum
+        // yang diatur pada policy asrama. Sebelumnya jenis izin di luar
+        // pulang/khusus tidak pernah dicek sama sekali.
+        $this->checkPeriodQuota($student?->id, $dormitoryId, $permitType, $policy, $departure);
     }
 
     /**
@@ -482,28 +514,16 @@ class LeaveWorkflowService
             return;
         }
 
-        // Langkah 1: Cari konfigurasi kuota (field yang paling spesifik yang diisi)
-        $quota = null;
-        $period = null;
-        $candidates = [
-            ['period' => 'week', 'column' => 'quota_per_week'],
-            ['period' => 'month', 'column' => 'quota_per_month'],
-            ['period' => 'semester', 'column' => 'quota_per_semester'],
-            ['period' => 'year', 'column' => 'quota_per_year'],
-        ];
-        foreach ($candidates as $cand) {
-            $val = $policy->{$cand['column']};
-            if ($val !== null && $val > 0) {
-                $quota = (int) $val;
-                $period = $cand['period'];
-                break;
-            }
-        }
+        // Langkah 1: Resolver kuota terpusat (minggu > bulan > semester > tahun)
+        $resolved = $policy->resolveGeneralQuota();
 
-        // Jika tidak ada kuota atau kuota = 0 → tidak ada batasan
-        if ($quota === null || $quota <= 0) {
+        // Tidak ada kuota / kuota 0 → tidak ada batasan
+        if (! $resolved) {
             return;
         }
+
+        $quota = $resolved['quota'];
+        $period = $resolved['period'];
 
         // Langkah 2: Hitung rentang periode
         [$rangeStart, $rangeEnd] = $this->resolvePeriodRange($departure, $period);
@@ -592,32 +612,25 @@ class LeaveWorkflowService
             return $this->inspectPulangQuota($studentId, $policy, $departure);
         }
 
+        // Jenis izin default/custom: cek kuota umum bila diatur.
+        if ($policy) {
+            return $this->inspectOwnQuota($studentId, $permitType, $policy, $departure);
+        }
+
         return ['used' => 0, 'quota' => null, 'over' => false, 'period' => null];
     }
 
     private function inspectOwnQuota(string $studentId, string $permitType, DormitoryLeavePolicy $policy, CarbonImmutable $departure): array
     {
-        // Langkah 1: Cari konfigurasi kuota (field yang paling spesifik yang diisi)
-        $quota = null;
-        $period = null;
-        $candidates = [
-            ['period' => 'week', 'column' => 'quota_per_week'],
-            ['period' => 'month', 'column' => 'quota_per_month'],
-            ['period' => 'semester', 'column' => 'quota_per_semester'],
-            ['period' => 'year', 'column' => 'quota_per_year'],
-        ];
-        foreach ($candidates as $cand) {
-            $val = $policy->{$cand['column']};
-            if ($val !== null && $val > 0) {
-                $quota = (int) $val;
-                $period = $cand['period'];
-                break;
-            }
-        }
+        // Langkah 1: Resolver kuota terpusat
+        $resolved = $policy->resolveGeneralQuota();
 
-        if ($quota === null || $quota <= 0) {
+        if (! $resolved) {
             return ['used' => 0, 'quota' => null, 'over' => false, 'period' => null];
         }
+
+        $quota = $resolved['quota'];
+        $period = $resolved['period'];
 
         // Langkah 2: Hitung rentang periode
         [$rangeStart, $rangeEnd] = $this->resolvePeriodRange($departure, $period);
@@ -740,6 +753,20 @@ class LeaveWorkflowService
     public function approve(string $permitId, string $dormitoryId, ?string $note = null): DormitoryPermit
     {
         $permit = DormitoryPermit::where('dormitory_id', $dormitoryId)->findOrFail($permitId);
+
+        // Recheck kuota tepat sebelum approval. Pending permit tidak dihitung
+        // sebagai pemakaian, jadi approval tetap bisa melewati batas jika
+        // kuota terisi oleh pengajuan lain setelah permit ini dibuat.
+        if ($permit->status === 'pending') {
+            $this->assertQuotaAvailable(
+                $permit->student,
+                $dormitoryId,
+                (string) $permit->permit_type,
+                CarbonImmutable::instance($permit->departure_datetime ?? now()),
+                (bool) $permit->is_emergency,
+                (bool) $permit->is_special_permission,
+            );
+        }
 
         return DB::transaction(function () use ($permit, $dormitoryId, $note) {
             // 1. Post-approval policy re-evaluation
@@ -896,11 +923,21 @@ class LeaveWorkflowService
     private function notifyKepalaAsramaOfEmergency(DormitoryPermit $permit): void
     {
         try {
-            // Find all users with kepala_asrama or admin_asrama role for this dormitory
+            $policy = DormitoryLeavePolicy::where('dormitory_id', $permit->dormitory_id)
+                ->where('permit_type', 'darurat')
+                ->first();
+
+            if ($policy && ! $policy->emergency_notify_wa_kepala) {
+                return;
+            }
+
+            $roles = $policy?->emergency_approver_roles ?: ['kepala_asrama', 'admin_asrama'];
+
+            // Find all users with configured approver roles.
             $targets = \DB::table('users')
                 ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
                 ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-                ->whereIn('roles.name', ['kepala_asrama', 'admin_asrama'])
+                ->whereIn('roles.name', $roles)
                 ->select('users.name', 'users.phone', 'users.no_hp')
                 ->get();
 

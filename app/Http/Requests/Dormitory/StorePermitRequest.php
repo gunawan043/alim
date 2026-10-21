@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Dormitory;
 
+use App\Models\PermitType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePermitRequest extends FormRequest
 {
@@ -13,10 +15,15 @@ class StorePermitRequest extends FormRequest
 
     public function rules(): array
     {
+        $activePermitTypes = PermitType::where('is_active', true)->pluck('code')->all();
+        if ($activePermitTypes === []) {
+            $activePermitTypes = ['pulang', 'keluar_kota', 'berobat', 'keperluan_keluarga', 'lainnya', 'sakit', 'darurat'];
+        }
+
         $rules = [
             'student_id' => 'required|exists:students,id',
             'room_id' => 'required|exists:dormitory_rooms,id',
-            'permit_type' => 'required|in:pulang,keluar_kota,berobat,keperluan_keluarga,lainnya,sakit,darurat',
+            'permit_type' => ['required', Rule::in($activePermitTypes)],
             'destination' => 'nullable|string|max:191',
             'purpose' => 'nullable|string',
             'departure_datetime' => 'required|date',

@@ -28,6 +28,15 @@ class DormitoryVisitLogController extends Controller
         private readonly VisitWorkflowService $visit,
     ) {}
 
+    private function ensureDormitoryAccess(string $asramaUuid): void
+    {
+        $user = auth()->user();
+
+        if ($user && ! $user->canAccessDormitory($asramaUuid)) {
+            abort(403, 'Anda tidak memiliki akses ke asrama ini.');
+        }
+    }
+
     public function index(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
@@ -44,7 +53,8 @@ class DormitoryVisitLogController extends Controller
         }
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('expected_arrival_datetime', [$request->start_date, $request->end_date]);
+            $query->whereDate('expected_arrival_datetime', '>=', $request->start_date)
+                ->whereDate('expected_arrival_datetime', '<=', $request->end_date);
         }
 
         if ($request->filled('search')) {
@@ -98,7 +108,9 @@ class DormitoryVisitLogController extends Controller
         // flatten to students collection for the select dropdown
         $students = $residents->pluck('student')->filter()->values();
 
-        return view('dormitory.visits.create', compact('dormitory', 'students', 'userId'));
+        $visitPolicy = $this->visit->resolvePolicyForDormitory($asramaUuid);
+
+        return view('dormitory.visits.create', compact('dormitory', 'students', 'userId', 'visitPolicy'));
     }
 
     /**
@@ -106,6 +118,8 @@ class DormitoryVisitLogController extends Controller
      */
     public function quotaCheck(Request $request, string $userId, string $asramaUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $data = $request->validate([
             'student_id' => 'required|string',
         ]);
@@ -118,6 +132,8 @@ class DormitoryVisitLogController extends Controller
 
     public function store(StoreVisitRequest $request, string $userId, string $asramaUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $data = $request->validated();
 
         $this->assertDormitoryResident($asramaUuid, $data['student_id']);
@@ -198,17 +214,25 @@ class DormitoryVisitLogController extends Controller
 
     public function approve(ApproveVisitLogRequest $request, string $userId, string $asramaUuid, string $visitUuid)
     {
-        $this->visit->approve(
-            visitId: $visitUuid,
-            dormitoryId: $asramaUuid,
-            note: $request->input('approval_note'),
-        );
+        $this->ensureDormitoryAccess($asramaUuid);
+
+        try {
+            $this->visit->approve(
+                visitId: $visitUuid,
+                dormitoryId: $asramaUuid,
+                note: $request->input('approval_note'),
+            );
+        } catch (QuotaExceededException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Kunjungan disetujui.');
     }
 
     public function reject(RejectVisitLogRequest $request, string $userId, string $asramaUuid, string $visitUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $this->visit->reject(
             visitId: $visitUuid,
             dormitoryId: $asramaUuid,
@@ -235,6 +259,8 @@ class DormitoryVisitLogController extends Controller
 
     public function checkIn(Request $request, string $userId, string $asramaUuid, string $visitUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $this->visit->checkIn(
             visitId: $visitUuid,
             dormitoryId: $asramaUuid,
@@ -246,6 +272,8 @@ class DormitoryVisitLogController extends Controller
 
     public function checkOut(Request $request, string $userId, string $asramaUuid, string $visitUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $this->visit->checkOut(
             visitId: $visitUuid,
             dormitoryId: $asramaUuid,
@@ -352,6 +380,8 @@ class DormitoryVisitLogController extends Controller
      */
     public function scanStore(Request $request, string $userId, string $asramaUuid)
     {
+        $this->ensureDormitoryAccess($asramaUuid);
+
         $request->validate([
             'scan_url' => ['required', 'string', 'max:2048'],
         ]);
@@ -383,7 +413,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Santri berhasil dicatat keluar asrama menemui {$visit->visitor_name}. Status: Santri Sedang di Luar.",
+                "Santri berhasil dicatat keluar asrama menemui {$visit->visitor_name}. Status: Sedang dalam Kunjungan.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'arrived']
             );
@@ -394,7 +424,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Santri berhasil dicatat kembali ke asrama. Status: Santri Sudah Kembali.",
+                "Santri berhasil dicatat kembali ke asrama. Status: Kunjungan Selesai.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'checked_out']
             );
