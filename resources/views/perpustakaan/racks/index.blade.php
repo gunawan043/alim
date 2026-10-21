@@ -11,6 +11,9 @@
         $filterFields = [
             ['name' => 'shelf', 'label' => 'Lokasi Rak', 'type' => 'select', 'options' => $shelfOptions],
         ];
+        $filterControls = [
+            ['type' => 'select', 'name' => 'shelf', 'label' => 'Lokasi Rak', 'options' => $shelfOptions],
+        ];
         $quickFilters = [['label' => 'Semua Rak', 'url' => route('user.perpustakaan.racks.index', $quickBase), 'icon' => 'ri-layout-grid-line', 'active' => ! request('shelf')]];
         foreach ($shelves as $shelf) {
             $quickFilters[] = ['label' => $shelf->shelf_location.' ('.$shelf->total.')', 'url' => route('user.perpustakaan.racks.index', $quickBase + ['shelf' => $shelf->shelf_location]), 'icon' => 'ri-archive-2-line', 'active' => request('shelf') === $shelf->shelf_location];
@@ -30,8 +33,9 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-layout-grid-line text-primary me-1"></i>Rak &amp; Lokasi Koleksi</h5><p class="text-muted mb-0 small">Lokasi rak menjadi acuan stok opname dan pencarian fisik.</p></div>
-            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><select name="shelf" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua rak</option>@foreach($shelves as $shelf)<option value="{{ $shelf->shelf_location }}" @selected(request('shelf')===$shelf->shelf_location)>{{ $shelf->shelf_location }} ({{ $shelf->total }})</option>@endforeach</select></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button></div>
+            <span class="badge bg-primary-subtle text-primary">{{ $shelves->count() }} rak</span>
         </div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Kode</th><th>Judul</th><th>Rak</th><th>Kondisi</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($items as $item)

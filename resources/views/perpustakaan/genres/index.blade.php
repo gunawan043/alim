@@ -8,6 +8,10 @@
             ['name' => 'search', 'label' => 'Pencarian', 'type' => 'text', 'placeholder' => 'Nama atau kode genre'],
             ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['' => 'Semua status', 'active' => 'Aktif', 'inactive' => 'Nonaktif']],
         ];
+        $filterControls = [
+            ['type' => 'text', 'name' => 'search', 'label' => 'Pencarian', 'value' => request('search'), 'placeholder' => 'Nama atau kode genre'],
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status', 'options' => ['' => 'Semua status', 'active' => 'Aktif', 'inactive' => 'Nonaktif']],
+        ];
         $quickFilters = [
             ['label' => 'Semua', 'url' => route('user.perpustakaan.genres.index', ['userId' => $userId]), 'icon' => 'ri-list-check', 'active' => ! request('status')],
             ['label' => 'Aktif', 'url' => route('user.perpustakaan.genres.index', ['userId' => $userId, 'status' => 'active']), 'icon' => 'ri-checkbox-circle-line', 'active' => request('status') === 'active'],
@@ -23,7 +27,8 @@
             @include('perpustakaan._stat-card', ['label' => $label, 'value' => $value, 'icon' => $icon, 'color' => $color, 'hint' => $hint])
         @endforeach
     </div>
-    <div class="card"><div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center"><div><h5 class="card-title mb-0"><i class="ri-price-tag-3-line text-primary me-1"></i>Genre Buku</h5><p class="text-muted mb-0 small">Genre dipakai pada katalog, usulan pengadaan, dan laporan.</p></div><div class="d-flex gap-2"><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button><a href="{{ route('user.perpustakaan.imports.genres.form', ['userId'=>$userId]) }}" class="btn btn-success btn-sm"><i class="ri-upload-cloud-2-line me-1"></i>Import</a><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#genreModal" onclick="openGenreCreate()"><i class="ri-add-line me-1"></i>Tambah Genre</button></div></div>
+    <div class="card"><div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center"><div><h5 class="card-title mb-0"><i class="ri-price-tag-3-line text-primary me-1"></i>Genre Buku</h5><p class="text-muted mb-0 small">Genre dipakai pada katalog, usulan pengadaan, dan laporan.</p></div><div class="d-flex gap-2"><a href="{{ route('user.perpustakaan.imports.genres.form', ['userId'=>$userId]) }}" class="btn btn-success btn-sm"><i class="ri-upload-cloud-2-line me-1"></i>Import</a><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#genreModal" onclick="openGenreCreate()"><i class="ri-add-line me-1"></i>Tambah Genre</button></div></div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Nama</th><th>Kode</th><th>Deskripsi</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($genres as $genre)

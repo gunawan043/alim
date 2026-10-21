@@ -10,6 +10,10 @@
             ['name' => 'date', 'label' => 'Tanggal Kunjungan', 'type' => 'date', 'value' => request('date')],
             ['name' => 'range', 'label' => 'Rentang', 'type' => 'select', 'options' => ['' => 'Semua', 'today' => 'Hari ini', 'week' => '7 hari terakhir', 'month' => 'Bulan ini']],
         ];
+        $filterControls = [
+            ['type' => 'date', 'name' => 'date', 'label' => 'Tanggal', 'value' => request('date')],
+            ['type' => 'select', 'name' => 'range', 'label' => 'Rentang', 'options' => ['' => 'Semua', 'today' => 'Hari ini', 'week' => '7 hari terakhir', 'month' => 'Bulan ini']],
+        ];
         $quickFilters = [
             ['label' => 'Semua', 'url' => route('user.perpustakaan.visits.index', $quickBase), 'icon' => 'ri-list-check', 'active' => ! request('range') && ! request('date')],
             ['label' => 'Hari Ini', 'url' => route('user.perpustakaan.visits.index', $quickBase + ['range' => 'today']), 'icon' => 'ri-calendar-check-line', 'active' => request('range') === 'today'],
@@ -26,7 +30,8 @@
             @include('perpustakaan._stat-card', ['label' => $label, 'value' => $value, 'icon' => $icon, 'color' => $color, 'hint' => $hint])
         @endforeach
     </div>
-    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-footprint-line text-primary me-1"></i>Buku Kunjungan {{ $unit->name }}</h5><p class="text-muted mb-0 small">Catat kunjungan harian; paraf ditampilkan sebagai identitas petugas pada laporan.</p></div><div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="date" name="date" value="{{ request('date') }}" class="form-control form-control-sm"><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#visitModal"><i class="ri-add-line me-1"></i>Catat Kunjungan</button></div></div>
+    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-footprint-line text-primary me-1"></i>Buku Kunjungan {{ $unit->name }}</h5><p class="text-muted mb-0 small">Catat kunjungan harian; paraf ditampilkan sebagai identitas petugas pada laporan.</p></div><div class="d-flex gap-2"><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#visitModal"><i class="ri-add-line me-1"></i>Catat Kunjungan</button></div></div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Hari/Tanggal</th><th>Nama Pengunjung</th><th>Kelas</th><th>Keperluan</th><th>Petugas</th></tr></thead><tbody>
         @forelse($visits as $visit)

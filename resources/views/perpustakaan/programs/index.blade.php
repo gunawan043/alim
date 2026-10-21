@@ -12,6 +12,10 @@
             ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['' => 'Semua status'] + $statusLabels],
             ['name' => 'category', 'label' => $meta['category'], 'type' => 'text', 'placeholder' => 'Ketik kategori'],
         ];
+        $filterControls = [
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status', 'options' => ['' => 'Semua status'] + $statusLabels],
+            ['type' => 'text', 'name' => 'category', 'label' => $meta['category'], 'value' => request('category'), 'placeholder' => 'Ketik kategori'],
+        ];
         $quickFilters = [['label' => 'Semua', 'url' => route('user.perpustakaan.programs.index', array_merge($quickBase, ['type' => $type])), 'icon' => 'ri-list-check', 'active' => ! request('status')]];
         foreach ($statusLabels as $key => $label) {
             $quickFilters[] = ['label' => $label, 'url' => route('user.perpustakaan.programs.index', array_merge($quickBase, ['type' => $type, 'status' => $key])), 'icon' => 'ri-filter-line', 'active' => request('status') === $key];
@@ -32,18 +36,11 @@
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="{{ $meta['icon'] }} text-primary me-1"></i>{{ $meta['label'] }} {{ $unit->name }}</h5><p class="text-muted mb-0 small">{{ $year?->name ?? 'Tahun ajaran aktif' }} · pencatatan tahap awal, stok fisik tetap diverifikasi pada penerimaan.</p></div>
             <div class="d-flex flex-wrap gap-2">
-                <form method="GET" class="d-flex gap-2">
-                    <input type="hidden" name="unit_id" value="{{ $unit->id }}">
-                    @if(request('category'))<input type="hidden" name="category" value="{{ request('category') }}">@endif
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">Semua status</option>
-                        @foreach($statusLabels as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach
-                    </select>
-                </form>
-                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
+                
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#programModal" onclick="openProgramCreate()"><i class="ri-add-line me-1"></i>Tambah</button>
             </div>
         </div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze">
             <thead class="table-light"><tr><th>Judul / Kegiatan</th><th>{{ $meta['category'] }}</th><th>Tanggal</th><th>Jumlah</th><th>Nilai</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>

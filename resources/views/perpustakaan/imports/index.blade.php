@@ -128,6 +128,35 @@
             text-align: center;
             box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
         }
+
+        [data-bs-theme="dark"] .import-hero {
+            background: linear-gradient(135deg, #0f1b2d 0%, #102235 55%, #0d2620 100%);
+            border-color: var(--vz-border-color, #243247);
+        }
+        [data-bs-theme="dark"] .import-hero::after { background: rgba(59, 130, 246, .12); }
+        [data-bs-theme="dark"] .import-dropzone {
+            background: var(--vz-secondary-bg, #0f172a);
+            border-color: var(--vz-border-color, #334155);
+        }
+        [data-bs-theme="dark"] .import-dropzone:hover,
+        [data-bs-theme="dark"] .import-dropzone.dragover {
+            background: #10233d;
+            border-color: #3b82f6;
+        }
+        [data-bs-theme="dark"] .import-dropzone .drop-icon { background: #172b4d; color: #60a5fa; }
+        [data-bs-theme="dark"] .step-card,
+        [data-bs-theme="dark"] .import-meta-card,
+        [data-bs-theme="dark"] .import-result-card,
+        [data-bs-theme="dark"] .import-progress-card {
+            background: var(--vz-card-bg, #172033);
+            border-color: var(--vz-border-color, #2b3648);
+        }
+        [data-bs-theme="dark"] .step-number { background: #172b4d; color: #93c5fd; }
+        [data-bs-theme="dark"] .import-file-chip {
+            background: #0f2a1d;
+            border-color: #166534;
+        }
+        [data-bs-theme="dark"] .import-result-card .card-header { background: var(--vz-tertiary-bg, #1e293b); }
         @media (max-width: 767.98px) {
             .import-hero { padding: 1.25rem; }
             .import-hero-icon { width: 52px; height: 52px; font-size: 1.4rem; }

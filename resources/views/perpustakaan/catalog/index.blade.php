@@ -12,6 +12,11 @@
             ['name' => 'status', 'label' => 'Status Eksemplar', 'type' => 'select', 'options' => ['' => 'Semua status', 'available' => 'Tersedia', 'on_loan' => 'Dipinjam', 'maintenance' => 'Perbaikan', 'lost' => 'Hilang', 'withdrawn' => 'Ditarik']],
             ['name' => 'condition', 'label' => 'Kondisi', 'type' => 'select', 'options' => ['' => 'Semua kondisi', 'damaged' => 'Rusak', 'problem' => 'Rusak / Hilang']],
         ];
+        $filterControls = [
+            ['type' => 'text', 'name' => 'search', 'label' => 'Pencarian', 'value' => request('search'), 'placeholder' => 'Judul, penulis, atau kode'],
+            ['type' => 'select', 'name' => 'collection', 'label' => 'Jenis Koleksi', 'options' => ['' => 'Semua koleksi', 'umum' => 'Umum', 'fiksi' => 'Fiksi', 'nonfiksi' => 'Nonfiksi', 'pelajaran' => 'Pelajaran', 'reference' => 'Kitab & Referensi']],
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status', 'options' => ['' => 'Semua status', 'available' => 'Tersedia', 'on_loan' => 'Dipinjam', 'maintenance' => 'Perbaikan', 'lost' => 'Hilang', 'withdrawn' => 'Ditarik']],
+        ];
         $quickFilters = [
             ['label' => 'Semua', 'url' => route('user.perpustakaan.catalog.index', $quickBase), 'icon' => 'ri-list-check', 'active' => ! request('status') && ! request('condition') && ! request('collection')],
             ['label' => 'Tersedia', 'url' => route('user.perpustakaan.catalog.index', $quickBase + ['status' => 'available']), 'icon' => 'ri-checkbox-circle-line', 'active' => request('status') === 'available'],
@@ -33,13 +38,13 @@
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-book-mark-line text-primary me-1"></i>Katalog Buku</h5><p class="text-muted mb-0 small">{{ $unit->name }} · {{ $items->count() }} eksemplar ditampilkan</p></div>
             <div class="d-flex flex-wrap gap-2">
-                <form method="GET" class="d-flex flex-wrap gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari judul / kode"><select name="collection" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua koleksi</option><option value="umum" @selected(request('collection')==='umum')>Umum</option><option value="fiksi" @selected(request('collection')==='fiksi')>Fiksi</option><option value="nonfiksi" @selected(request('collection')==='nonfiksi')>Nonfiksi</option><option value="pelajaran" @selected(request('collection')==='pelajaran')>Pelajaran</option><option value="reference" @selected(request('collection')==='reference')>Kitab &amp; Referensi</option></select><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua status</option>@foreach(['available'=>'Tersedia','on_loan'=>'Dipinjam','maintenance'=>'Perbaikan','lost'=>'Hilang','withdrawn'=>'Ditarik'] as $v=>$l)<option value="{{ $v }}" @selected(request('status')===$v)>{{ $l }}</option>@endforeach</select><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form>
-                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
+                
                 <a href="{{ route('user.perpustakaan.imports.catalog.form', ['userId'=>$userId, 'unit_id'=>$unit->id]) }}" class="btn btn-success btn-sm"><i class="ri-upload-cloud-2-line me-1"></i>Import</a>
                 <button class="btn btn-soft-success btn-sm" data-bs-toggle="modal" data-bs-target="#titleModal"><i class="ri-add-line me-1"></i>Judul</button>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#itemModal" onclick="openItemCreate()"><i class="ri-add-line me-1"></i>Eksemplar</button>
             </div>
         </div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <form method="GET" action="{{ route('user.perpustakaan.catalog.labels',['userId'=>$userId]) }}" target="_blank">
             <input type="hidden" name="unit_id" value="{{ $unit->id }}">

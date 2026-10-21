@@ -9,6 +9,9 @@
         $filterFields = [
             ['name' => 'status', 'label' => 'Status Sesi', 'type' => 'select', 'options' => ['' => 'Semua sesi', 'in_progress' => 'Berjalan', 'completed' => 'Selesai']],
         ];
+        $filterControls = [
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status Sesi', 'options' => ['' => 'Semua sesi', 'in_progress' => 'Berjalan', 'completed' => 'Selesai']],
+        ];
         $quickFilters = [
             ['label' => 'Semua Sesi', 'url' => route('user.perpustakaan.stock-opnames.index', $quickBase), 'icon' => 'ri-list-check', 'active' => ! request('status')],
             ['label' => 'Berjalan', 'url' => route('user.perpustakaan.stock-opnames.index', $quickBase + ['status' => 'in_progress']), 'icon' => 'ri-time-line', 'active' => request('status') === 'in_progress'],
@@ -20,7 +23,8 @@
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
-    <div class="card mb-3"><div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-file-list-2-line text-primary me-1"></i>Sesi Stock Opname {{ $unit->name }}</h5><p class="text-muted mb-0 small">Setiap eksemplar diperiksa. Temuan tidak menghapus inventaris.</p></div><div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><select name="session_id" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">— Pilih sesi —</option>@foreach($sessions as $s)<option value="{{ $s->id }}" @selected($session?->id===$s->id)>{{ $s->session_date?->format('d/m/Y') }} · {{ ucfirst($s->status) }}</option>@endforeach</select></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="ri-add-line me-1"></i>Sesi Baru</button></div></div></div>
+    <div class="card mb-3"><div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-file-list-2-line text-primary me-1"></i>Sesi Stock Opname {{ $unit->name }}</h5><p class="text-muted mb-0 small">Setiap eksemplar diperiksa. Temuan tidak menghapus inventaris.</p></div><div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><select name="session_id" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">— Pilih sesi —</option>@foreach($sessions as $s)<option value="{{ $s->id }}" @selected($session?->id===$s->id)>{{ $s->session_date?->format('d/m/Y') }} · {{ ucfirst($s->status) }}</option>@endforeach</select></form><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="ri-add-line me-1"></i>Sesi Baru</button></div></div></div>
+    <div class="card mb-3">@include('perpustakaan._filter-panel')</div>
     <div class="card mb-3">@include('perpustakaan._quick-filters')</div>
 
     @if($session)

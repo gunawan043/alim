@@ -1,5 +1,5 @@
 @if(!empty($quickFilters))
-    <div class="card-header py-2 bg-light border-bottom">
+    <div class="card-header py-2 library-quick-filter-bar border-bottom">
         <div class="d-flex flex-wrap align-items-center gap-1">
             <span class="text-muted me-2"><i class="ri-flashlight-line"></i> Quick Filter:</span>
             @foreach($quickFilters as $filter)

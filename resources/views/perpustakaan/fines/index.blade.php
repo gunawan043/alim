@@ -10,6 +10,10 @@
             ['name' => 'search', 'label' => 'Pencarian', 'type' => 'text', 'placeholder' => 'Nama anggota atau nomor transaksi'],
             ['name' => 'status', 'label' => 'Status Denda', 'type' => 'select', 'options' => ['' => 'Semua denda', 'unpaid' => 'Belum dibayar', 'paid' => 'Sudah dibayar', 'waived' => 'Dibebaskan']],
         ];
+        $filterControls = [
+            ['type' => 'text', 'name' => 'search', 'label' => 'Pencarian', 'value' => $search, 'placeholder' => 'Nama anggota atau nomor transaksi'],
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status Denda', 'options' => ['' => 'Semua denda', 'unpaid' => 'Belum dibayar', 'paid' => 'Sudah dibayar', 'waived' => 'Dibebaskan']],
+        ];
         $quickFilters = [
             ['label' => 'Daftar Denda', 'url' => route('user.perpustakaan.fines.index', $quickBase + ['tab' => 'fines']), 'icon' => 'ri-hand-coin-line', 'active' => $tab !== 'free' && ! request('status')],
             ['label' => 'Belum Dibayar', 'url' => route('user.perpustakaan.fines.index', $quickBase + ['tab' => 'fines', 'status' => 'unpaid']), 'icon' => 'ri-time-line', 'active' => request('status') === 'unpaid'],
@@ -30,9 +34,9 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-money-dollar-circle-line text-primary me-1"></i>Denda &amp; Bebas Pustaka {{ $unit->name }}</h5><p class="text-muted mb-0 small">Denda mengikuti pengaturan unit. Pemutihan wajib disertai catatan.</p></div>
-            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
-            <form method="GET" class="d-flex flex-wrap gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="tab" value="{{ $tab }}"><input name="search" value="{{ $search }}" class="form-control form-control-sm" placeholder="Cari nama / nomor"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua denda</option><option value="unpaid" @selected(request('status')==='unpaid')>Belum dibayar</option><option value="paid" @selected(request('status')==='paid')>Sudah dibayar</option><option value="waived" @selected(request('status')==='waived')>Dibebaskan</option></select><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form>
+            <span class="badge bg-info-subtle text-info"><i class="ri-information-line me-1"></i>{{ $tab === 'free' ? 'Bebas Pustaka' : 'Daftar Denda' }}</span>
         </div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
 
         @if($tab === 'free')

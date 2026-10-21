@@ -10,6 +10,10 @@
             ['name' => 'month', 'label' => 'Bulan', 'type' => 'month', 'value' => $month],
             ['name' => 'tab', 'label' => 'Jenis Laporan', 'type' => 'select', 'options' => ['summary' => 'Ringkasan', 'loans' => 'Statistik Peminjaman', 'popular' => 'Buku Terpopuler', 'members' => 'Anggota Teraktif', 'annual' => 'Laporan Tahunan']],
         ];
+        $filterControls = [
+            ['type' => 'month', 'name' => 'month', 'label' => 'Bulan', 'value' => $month],
+            ['type' => 'select', 'name' => 'tab', 'label' => 'Jenis Laporan', 'options' => ['summary' => 'Ringkasan', 'loans' => 'Statistik Peminjaman', 'popular' => 'Buku Terpopuler', 'members' => 'Anggota Teraktif', 'annual' => 'Laporan Tahunan']],
+        ];
         $quickFilters = [];
         foreach (['summary'=>'Ringkasan','loans'=>'Statistik Peminjaman','popular'=>'Buku Terpopuler','members'=>'Anggota Teraktif','annual'=>'Laporan Tahunan'] as $key => $label) {
             $quickFilters[] = ['label' => $label, 'url' => route('user.perpustakaan.reports.index', $quickBase + ['tab' => $key]), 'icon' => $key === 'popular' ? 'ri-fire-line' : ($key === 'members' ? 'ri-user-star-line' : 'ri-bar-chart-2-line'), 'active' => $tab === $key];
@@ -18,13 +22,13 @@
     @include('perpustakaan._styles')
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('li_2') Laporan @endslot @slot('title') Statistik &amp; Laporan @endslot @endcomponent
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <div class="card mb-3"><div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-bar-chart-2-line text-primary me-1"></i>Laporan {{ $unit->name }}</h5><p class="text-muted mb-0 small">{{ $rangeStart?->format('d/m/Y') }} — {{ $rangeEnd?->format('d/m/Y') }}</p></div><div class="d-flex flex-wrap gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="tab" value="{{ $tab }}"><input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" onchange="this.form.submit()"></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
-                <button class="btn btn-soft-primary btn-sm" onclick="window.print()"><i class="ri-printer-line me-1"></i>Cetak</button></div></div></div>
+    <div class="card mb-3"><div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h5 class="card-title mb-0"><i class="ri-bar-chart-2-line text-primary me-1"></i>Laporan {{ $unit->name }}</h5><p class="text-muted mb-0 small">{{ $rangeStart?->format('d/m/Y') }} — {{ $rangeEnd?->format('d/m/Y') }}</p></div><div class="d-flex flex-wrap gap-2"><button class="btn btn-soft-primary btn-sm" onclick="window.print()"><i class="ri-printer-line me-1"></i>Cetak</button></div></div></div>
     <div class="row g-2 mb-3 library-stats">
         @foreach([['Peminjaman',$stats['loans'],'ri-exchange-line','primary'],['Sedang Dipinjam',$stats['active'],'ri-book-open-line','info'],['Kunjungan',$stats['visits'],'ri-footprint-line','success'],['Anggota Aktif',$stats['members'],'ri-team-line','warning'],['Koleksi',$stats['items'],'ri-stack-line','secondary'],['Terlambat',$stats['overdue'],'ri-timer-line','danger']] as [$l,$v,$i,$c])
             <div class="col-6 col-md-2"><div class="card"><div class="card-body py-3"><div class="d-flex gap-2 align-items-center"><span class="avatar-sm"><span class="avatar-title bg-{{ $c }}-subtle rounded"><i class="{{ $i }} text-{{ $c }}"></i></span></span><div><div class="text-muted small">{{ $l }}</div><div class="fs-4 fw-bold">{{ $v }}</div></div></div></div></div></div>
         @endforeach
     </div>
+    <div class="card mb-3">@include('perpustakaan._filter-panel')</div>
     <div class="card mb-3">@include('perpustakaan._quick-filters')</div>
 
     @if($tab === 'summary' || $tab === 'annual')

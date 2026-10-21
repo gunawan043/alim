@@ -9,6 +9,9 @@
         $filterFields = [
             ['name' => 'status', 'label' => 'Status Peminjaman', 'type' => 'select', 'options' => ['' => 'Semua status', 'pending' => 'Menunggu', 'approved' => 'Disetujui', 'completed' => 'Selesai', 'rejected' => 'Ditolak', 'cancelled' => 'Batal']],
         ];
+        $filterControls = [
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status Peminjaman', 'options' => ['' => 'Semua status', 'pending' => 'Menunggu', 'approved' => 'Disetujui', 'completed' => 'Selesai', 'rejected' => 'Ditolak', 'cancelled' => 'Batal']],
+        ];
         $quickFilters = [
             ['label' => 'Semua', 'url' => route('user.perpustakaan.rooms.index', $quickBase), 'icon' => 'ri-list-check', 'active' => ! request('status')],
             ['label' => 'Menunggu', 'url' => route('user.perpustakaan.rooms.index', $quickBase + ['status' => 'pending']), 'icon' => 'ri-time-line', 'active' => request('status') === 'pending'],
@@ -23,8 +26,8 @@
     <div class="row g-2 mb-3 library-stats">
         @foreach([['Hari Ini',$stats['today'],'ri-calendar-event-line','primary'],['Menunggu',$stats['pending'],'ri-time-line','warning'],['Disetujui',$stats['approved'],'ri-checkbox-circle-line','success']] as [$l,$v,$i,$c])<div class="col-md-4"><div class="card"><div class="card-body py-3"><div class="d-flex gap-2 align-items-center"><span class="avatar-sm"><span class="avatar-title bg-{{ $c }}-subtle rounded"><i class="{{ $i }} text-{{ $c }}"></i></span></span><div><div class="text-muted small">{{ $l }}</div><div class="fs-4 fw-bold">{{ $v }}</div></div></div></div></div></div>@endforeach
     </div>
-    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2 align-items-center"><div><h5 class="card-title mb-0"><i class="ri-calendar-event-line text-primary me-1"></i>Peminjaman Ruang {{ $unit->name }}</h5><p class="text-muted mb-0 small">Peminjaman langsung di perpustakaan tetap dicatat petugas. Konflik ruang dan jam divalidasi.</p></div><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#roomModal"><i class="ri-add-line me-1"></i>Catat Peminjaman</button></div>
+    <div class="card"><div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2 align-items-center"><div><h5 class="card-title mb-0"><i class="ri-calendar-event-line text-primary me-1"></i>Peminjaman Ruang {{ $unit->name }}</h5><p class="text-muted mb-0 small">Peminjaman langsung di perpustakaan tetap dicatat petugas. Konflik ruang dan jam divalidasi.</p></div><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#roomModal"><i class="ri-add-line me-1"></i>Catat Peminjaman</button></div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Tanggal/Jam</th><th>Agenda</th><th>Ruang</th><th>Peminjam</th><th>Peserta</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($bookings as $booking)

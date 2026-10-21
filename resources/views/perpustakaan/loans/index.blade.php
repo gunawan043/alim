@@ -13,6 +13,11 @@
             ['name' => 'scope', 'label' => 'Tahap Sirkulasi', 'type' => 'select', 'options' => $scopeLabels],
             ['name' => 'status', 'label' => 'Status Transaksi', 'type' => 'select', 'options' => ['' => 'Semua status', 'active' => 'Aktif', 'returned' => 'Selesai']],
         ];
+        $filterControls = [
+            ['type' => 'text', 'name' => 'search', 'label' => 'Pencarian', 'value' => request('search'), 'placeholder' => 'Nomor pinjaman atau nama anggota'],
+            ['type' => 'select', 'name' => 'scope', 'label' => 'Tahap', 'options' => $scopeLabels],
+            ['type' => 'select', 'name' => 'status', 'label' => 'Status', 'options' => ['' => 'Semua status', 'active' => 'Aktif', 'returned' => 'Selesai']],
+        ];
         $quickFilters = [];
         foreach ($scopeLabels as $key => $label) {
             $quickFilters[] = [
@@ -33,10 +38,10 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2 align-items-center">
             <div><h5 class="card-title mb-0"><i class="ri-exchange-line text-primary me-1"></i>{{ $scopeLabels[$activeScope] ?? 'Transaksi Sirkulasi' }}</h5><p class="text-muted mb-0 small">Kartu fisik wajib diverifikasi. Kartu biru, kartu merah, dan stempel tanggal kembali tetap diproses.</p></div>
-            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input type="hidden" name="scope" value="{{ $activeScope }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nomor / nama"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua</option><option value="active" @selected(request('status')==='active')>Aktif</option><option value="returned" @selected(request('status')==='returned')>Selesai</option></select></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
+            <div class="d-flex gap-2"><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loanModal"><i class="ri-add-line me-1"></i>Peminjaman</button></div>
         </div>
-@include('perpustakaan._quick-filters')
+        @include('perpustakaan._filter-panel')
+        @include('perpustakaan._quick-filters')
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze"><thead class="table-light"><tr><th>Nomor</th><th>Anggota</th><th>Buku</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
         @forelse($loans as $loan)
             <tr><td><code>{{ $loan->loan_number }}</code></td><td>{{ $loan->member?->display_name }}</td><td class="small">{{ $loan->items->pluck('item.title.title')->filter()->implode(', ') ?: '—' }}</td><td>{{ $loan->loan_date?->format('d/m/Y') }}</td><td>{{ $loan->due_date?->format('d/m/Y') }}@if($loan->renewals_count)<div class="text-muted small">{{ $loan->renewals_count }}× diperpanjang</div>@endif</td><td>@if($loan->status==='active' && $loan->due_date?->isBefore(today()))<span class="badge bg-danger-subtle text-danger">Terlambat</span>@else<span class="badge {{ $loan->status==='active'?'bg-primary-subtle text-primary':'bg-success-subtle text-success' }}">{{ ucfirst($loan->status) }}</span>@endif</td><td class="text-end">@if($loan->status==='active')<div class="btn-group btn-group-sm">@if($setting->allow_renewal && $loan->renewals_count < $setting->max_renewals && ! $loan->due_date?->isBefore(today()))<form method="POST" action="{{ route('user.perpustakaan.loans.renew',['userId'=>$userId,'id'=>$loan->id]) }}" onsubmit="return confirm('Perpanjang pinjaman ini?')">@csrf<button class="btn btn-soft-primary" title="Perpanjang"><i class="ri-refresh-line"></i></button></form>@endif<button class="btn btn-soft-success" data-loan="{{ json_encode(['id'=>$loan->id,'items'=>$loan->items->map(fn($i)=>['id'=>$i->id,'title'=>$i->item?->title?->title,'code'=>$i->item?->inventory_code]),JSON_HEX_APOS|JSON_HEX_QUOT]) }}" onclick="openReturn(this)">Kembalikan</button></div>@else<span class="text-muted small">Selesai</span>@endif</td></tr>

@@ -10,6 +10,10 @@
             ['name' => 'search', 'label' => 'Pencarian', 'type' => 'text', 'placeholder' => 'Nama, NIS, atau nomor anggota'],
             ['name' => 'member_type', 'label' => 'Jenis Anggota', 'type' => 'select', 'options' => ['' => 'Semua jenis', 'student' => 'Santri', 'gtk' => 'GTK']],
         ];
+        $filterControls = [
+            ['type' => 'text', 'name' => 'search', 'label' => 'Pencarian', 'value' => request('search'), 'placeholder' => 'Nama, NIS, atau nomor anggota'],
+            ['type' => 'select', 'name' => 'member_type', 'label' => 'Jenis Anggota', 'options' => ['' => 'Semua jenis', 'student' => 'Santri', 'gtk' => 'GTK']],
+        ];
         $quickFilters = [
             ['label' => 'Semua Anggota', 'url' => route('user.perpustakaan.members.index', $quickBase), 'icon' => 'ri-team-line', 'active' => ! request('member_type')],
             ['label' => 'Santri', 'url' => route('user.perpustakaan.members.index', $quickBase + ['member_type' => 'student']), 'icon' => 'ri-user-star-line', 'active' => request('member_type') === 'student'],
@@ -28,10 +32,10 @@
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-id-card-line text-primary me-1"></i>Anggota {{ $unit->name }}</h5><p class="text-muted mb-0 small">Kartu ID-1 · kartu hilang harus diganti · QR tidak menggantikan kartu fisik.</p></div>
-            <div class="d-flex gap-2"><form method="GET" class="d-flex gap-2"><input type="hidden" name="unit_id" value="{{ $unit->id }}"><input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari nama / nomor"><select name="member_type" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua jenis</option><option value="student" @selected(request('member_type')==='student')>Santri</option><option value="gtk" @selected(request('member_type')==='gtk')>GTK</option></select><button class="btn btn-light btn-sm"><i class="ri-search-line"></i></button></form><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#libraryFilterModal"><i class="bx bx-filter-alt me-1"></i>Filter Lanjutan</button>
-                <a href="{{ route('user.perpustakaan.imports.members.form', ['userId'=>$userId, 'unit_id'=>$unit->id]) }}" class="btn btn-success btn-sm"><i class="ri-upload-cloud-2-line me-1"></i>Import</a>
+            <div class="d-flex gap-2"><a href="{{ route('user.perpustakaan.imports.members.form', ['userId'=>$userId, 'unit_id'=>$unit->id]) }}" class="btn btn-success btn-sm"><i class="ri-upload-cloud-2-line me-1"></i>Import</a>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#memberModal" onclick="openMemberCreate()"><i class="ri-user-add-line me-1"></i>Daftar Anggota</button></div>
         </div>
+        @include('perpustakaan._filter-panel')
         @include('perpustakaan._quick-filters')
         <form method="GET" action="{{ route('user.perpustakaan.members.cards',['userId'=>$userId]) }}" target="_blank"><input type="hidden" name="library_unit_id" value="{{ $unit->id }}">
         <div class="px-3 py-2 bg-light border-bottom d-flex gap-2 align-items-center"><span class="text-muted small"><i class="ri-printer-line me-1"></i>Cetak kartu:</span><button class="btn btn-sm btn-outline-primary">Cetak kartu terpilih</button><span class="text-muted small">Centang anggota.</span></div>
