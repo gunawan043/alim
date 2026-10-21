@@ -55,6 +55,9 @@ class EnsurePersonaliaPermission
         }
 
         $route = $request->route()?->getName() ?? '';
+        if ($this->requiresHead($route) && ! $this->isPersonaliaHead($user)) {
+            abort(403, 'Aksi ini hanya dapat dilakukan Kepala Personalia.');
+        }
         $approvalAction = str_contains($route, 'approve') || str_contains($route, 'reject');
         $specialPermission = match (true) {
             $module === 'cuti' && $approvalAction => 'cuti_approve',
@@ -82,5 +85,38 @@ class EnsurePersonaliaPermission
         abort_unless($allowed, 403, 'Anda tidak memiliki izin untuk modul Personalia ini.');
 
         return $next($request);
+    }
+
+    private function requiresHead(string $route): bool
+    {
+        foreach ([
+            'user.cuti.approval', 'user.cuti.approve', 'user.cuti.reject',
+            'user.cuti.rekap', 'user.cuti.quota', 'user.cuti.settings',
+            'user.kinerja.finalize', 'user.kinerja.periode.destroy',
+            'user.kesejahteraan.klaim.proses', 'user.kontrak.perpanjang',
+            'user.kontrak.destroy',
+        ] as $pattern) {
+            if (str_starts_with($route, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isPersonaliaHead($user): bool
+    {
+        $jabatan = strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+        if ($jabatan === '' && method_exists($user, 'employment')) {
+            $jabatan = strtolower(trim((string) ($user->employment()->value('jabatan') ?? '')));
+        }
+
+        foreach (['kepala humas & personalia', 'kepala humas', 'kepala personalia', 'wakil kepala personalia'] as $title) {
+            if (str_contains($jabatan, $title)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
