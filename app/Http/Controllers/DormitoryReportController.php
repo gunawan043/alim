@@ -47,10 +47,30 @@ class DormitoryReportController extends Controller
 
         $period = $this->getPeriod($request);
 
+        $stats = [
+            'attendance' => DormitoryAttendance::where('dormitory_id', $asramaUuid)
+                ->whereYear('attendance_date', $period['year'])
+                ->whereMonth('attendance_date', $period['month'])
+                ->count(),
+            'permits' => DormitoryPermit::where('dormitory_id', $asramaUuid)
+                ->whereYear('created_at', $period['year'])
+                ->whereMonth('created_at', $period['month'])
+                ->count(),
+            'violations' => DormitoryViolation::where('dormitory_id', $asramaUuid)
+                ->whereYear('violation_date', $period['year'])
+                ->whereMonth('violation_date', $period['month'])
+                ->count(),
+            'rewards' => DormitoryReward::where('dormitory_id', $asramaUuid)
+                ->whereYear('awarded_date', $period['year'])
+                ->whereMonth('awarded_date', $period['month'])
+                ->count(),
+        ];
+
         return view('dormitory.reports.index', compact(
             'dormitory',
             'period',
             'activeYear',
+            'stats',
             'userId',
             'asramaUuid',
         ));
