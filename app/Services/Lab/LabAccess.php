@@ -44,7 +44,10 @@ class LabAccess
             ->where('is_active', true)
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
-            ->where('task_name', 'like', '%Koordinator Laboratorium%')
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(TRIM(task_name)) = ?', ['koordinator laboratorium'])
+                    ->orWhere('task_code', 'koordinator-laboratorium');
+            })
             ->exists();
     }
 

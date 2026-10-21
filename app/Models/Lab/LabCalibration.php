@@ -13,6 +13,15 @@ class LabCalibration extends LabModel
     protected $casts = ['last_calibration_date' => 'date', 'next_calibration_date' => 'date'];
 
     protected $table = 'lab_calibrations';
+    public function getStatusAttribute($value): string
+    {
+        if ($this->next_calibration_date) {
+            return $this->next_calibration_date->lt(today()) ? 'OD' : 'OS';
+        }
+
+        return $value ?: 'OS';
+    }
+
 
     public function lab(): BelongsTo { return $this->belongsTo(\App\Models\Lab\LabProfile::class, 'lab_id'); }
     public function asset(): BelongsTo { return $this->belongsTo(\App\Models\Asset::class); }

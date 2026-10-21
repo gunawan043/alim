@@ -4,6 +4,8 @@ namespace App\Console\Commands\Lab;
 
 use App\Models\Lab\LabCalibration;
 use App\Models\Lab\LabIncident;
+use App\Models\Lab\LabItemBatch;
+use App\Models\Lab\LabItemProfile;
 use App\Models\Lab\LabInspection;
 use App\Models\Lab\LabProfile;
 use App\Models\Lab\LabSafetyInspection;
@@ -67,6 +69,42 @@ class SendLabRemindersCommand extends Command
                     'action_url' => route('lab.inspection.index', ['userId' => $lab->coordinator_user_id ?? $lab->head_user_id, 'lab_id' => $lab->id]),
                 ]);
             }
+
+            LabItemBatch::with('asset')
+                ->where('lab_id', $lab->id)
+                ->where('quantity', '>', 0)
+                ->whereNotNull('expiry_date')
+                ->whereDate('expiry_date', '<=', today()->addDays(30))
+                ->get()
+                ->each(function (LabItemBatch $batch) use ($notifier, $recipients, $dry, $lab, &$count) {
+                    $count += $this->send($notifier, $recipients, $dry, 'lab.batch.expiry', $batch->id, [
+                        'module' => 'lab',
+                        'type' => 'warning',
+                        'priority' => $batch->expiry_date?->isPast() ? 'high' : 'medium',
+                        'reference_type' => 'lab_item_batch',
+                        'reference_id' => $batch->id,
+                        'title' => $batch->expiry_date?->isPast() ? 'Batch bahan laboratorium kedaluwarsa' : 'Batch bahan laboratorium mendekati kedaluwarsa',
+                        'message' => ($batch->asset?->asset_name ?? 'Bahan').' — batch '.($batch->batch_code ?: '-').' kedaluwarsa '.$batch->expiry_date?->format('d/m/Y').'.',
+                        'action_text' => 'Buka Stok',
+                        'action_url' => route('lab.batches.index', ['userId' => $lab->coordinator_user_id ?? $lab->head_user_id, 'lab_id' => $lab->id]),
+                    ]);
+                });
+
+            LabItemProfile::with('asset')->where('lab_id', $lab->id)->where('min_stock', '>', 0)->get()
+                ->filter(fn (LabItemProfile $item) => $item->asset && (int) $item->asset->quantity <= (int) $item->min_stock)
+                ->each(function (LabItemProfile $item) use ($notifier, $recipients, $dry, $lab, &$count) {
+                    $count += $this->send($notifier, $recipients, $dry, 'lab.stock.minimum', $item->id, [
+                        'module' => 'lab',
+                        'type' => 'warning',
+                        'priority' => 'medium',
+                        'reference_type' => 'lab_item_profile',
+                        'reference_id' => $item->id,
+                        'title' => 'Stok bahan laboratorium minimum',
+                        'message' => ($item->asset?->asset_name ?? 'Bahan').' tersisa '.($item->asset?->quantity ?? 0).' '.($item->asset?->unit ?? 'unit').'.',
+                        'action_text' => 'Buka Inventaris',
+                        'action_url' => route('lab.index', ['userId' => $lab->coordinator_user_id ?? $lab->head_user_id, 'lab_id' => $lab->id]),
+                    ]);
+                });
 
             LabSafetyInspection::where('lab_id', $lab->id)
                 ->whereNotNull('follow_up_date')

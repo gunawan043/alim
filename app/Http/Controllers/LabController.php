@@ -31,8 +31,8 @@ use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\User;
-use App\Models\Uks\UksPatient;
 use App\Models\Uks\UksReferral;
+use App\Services\Uks\UksClinicService;
 use App\Services\Lab\LabAccess;
 use App\Services\Pdf\DocumentPdfService;
 use Carbon\Carbon;
@@ -127,7 +127,7 @@ class LabController extends Controller
             'good' => $inventory->where('condition', 'baik')->count(),
             'damaged' => $inventory->whereIn('condition', ['rusak_ringan', 'rusak_sedang', 'rusak_berat'])->count(),
             'due_inspection' => $lab ? $lab->inspections()->whereIn('status', ['scheduled', 'overdue'])->count() : 0,
-            'due_calibration' => $lab ? $lab->calibrations()->where('status', 'OD')->count() : 0,
+            'due_calibration' => $lab ? $lab->calibrations()->whereNotNull('next_calibration_date')->whereDate('next_calibration_date', '<', today())->count() : 0,
             'active_loans' => $lab ? $lab->loans()->whereIn('status', ['submitted', 'approved', 'handed_over', 'partially_returned', 'overdue'])->count() : 0,
             'upcoming_activities' => $lab ? $lab->activities()->whereDate('activity_date', '>=', today())->whereIn('status', ['draft', 'scheduled'])->count() : 0,
         ];
@@ -398,6 +398,24 @@ class LabController extends Controller
 
             return $inspection;
         });
+
+        $nextDate = $inspection->performed_date?->copy()->addMonths(3);
+        if ($nextDate) {
+            LabInspection::firstOrCreate(
+                [
+                    'lab_id' => $lab->id,
+                    'scheduled_date' => $nextDate->toDateString(),
+                    'status' => 'scheduled',
+                ],
+                [
+                    'school_id' => $ctx['schoolId'],
+                    'academic_year_id' => $ctx['yearId'],
+                    'semester' => $ctx['semester'],
+                    'inspector_id' => auth()->id(),
+                    'notes' => 'Jadwal pemeriksaan berkala otomatis tiga bulan setelah pemeriksaan terakhir.',
+                ]
+            );
+        }
 
         return redirect()->route('lab.inspection.index', ['userId' => $request->route('userId'), 'lab_id' => $lab->id])
             ->with('success', 'Pemeriksaan berkala berhasil disimpan.');
@@ -1101,31 +1119,26 @@ class LabController extends Controller
             ]));
 
             if ($request->boolean('create_uks_referral') && ! empty($validated['victim_student_id'])) {
-                $patient = UksPatient::create([
-                    'student_id' => $validated['victim_student_id'],
+                $student = \App\Models\Student::findOrFail($validated['victim_student_id']);
+                $clinic = app(UksClinicService::class);
+                $patient = $clinic->register($student, [
                     'school_id' => $ctx['schoolId'],
                     'academic_year_id' => $ctx['yearId'],
                     'patient_type' => 'rawat',
                     'chief_complaint' => $validated['chronology'] ?? null,
                     'diagnosis' => $validated['injury_type'] ?? null,
                     'treatment' => $validated['first_aid'] ?? null,
-                    'admitted_at' => now(),
-                    'admitted_by' => auth()->id(),
                     'notes' => 'Dibuat otomatis dari laporan insiden laboratorium.',
-                ]);
+                ], $ctx['schoolId'], auth()->id());
 
-                $referral = UksReferral::create([
-                    'patient_id' => $patient->id,
-                    'school_id' => $ctx['schoolId'],
+                $referral = $clinic->createReferral($patient, [
                     'facility_name' => $validated['facility_name'],
-                    'facility_type' => $validated['facility_type'] ?? null,
+                    'facility_type' => $validated['facility_type'] ?? 'klinik',
                     'referred_at' => $incident->incident_date->setTimeFromTimeString($incident->incident_time ?: now()->format('H:i:s')),
                     'urgency' => $validated['urgency'] ?? 'rutin',
                     'diagnosis' => $validated['injury_type'] ?? null,
                     'reason' => $validated['referral_reason'],
-                    'status' => UksReferral::STATUS_REFERRED,
-                    'referred_by' => auth()->id(),
-                ]);
+                ], auth()->id());
 
                 $incident->update(['uks_referral_id' => $referral->id]);
             }
