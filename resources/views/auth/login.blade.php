@@ -308,10 +308,10 @@
             <form action="{{ route('login.process') }}" method="POST" id="login-form">
                 @csrf
                 <div class="mb-3">
-                    <label for="identity" class="form-label">Email atau NUPY <span>*</span></label>
+                    <label for="identity" class="form-label">Email, NUPY, atau NIS <span>*</span></label>
                     <input type="text" class="form-control @error('identity') is-invalid @enderror"
                            id="identity" name="identity"
-                           placeholder="Masukkan email atau NUPY"
+                           placeholder="Masukkan email, NUPY, atau NIS"
                            value="{{ old('identity', '') }}"
                            required autofocus>
                     @error('identity')

@@ -74,7 +74,9 @@
     // ── Deteksi View-As (Super Admin / pemegang permission impersonate) ───
     $viewAsRole   = null;
     $canUseViewAs = $isSystemAdmin
-        || (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('impersonate_role'));
+        || (method_exists($user, 'hasPermissionTo')
+            && \App\Models\Permission::where('name', 'impersonate_role')->where('guard_name', 'web')->exists()
+            && $user->hasPermissionTo('impersonate_role'));
     if ($canUseViewAs) {
         $viewAsRole = app(\App\Services\ViewAsService::class)->getCurrentViewRole();
     }
@@ -175,6 +177,7 @@
         'Departemen Tahfidz'    => 'departemen-tahfidz',
         'Departemen Bahasa'     => 'departemen-bahasa',
         'Perpustakaan'          => 'perpustakaan',
+        'Operator Perpustakaan Santri' => 'perpustakaan',
         'Satuan Keamanan'       => 'satpam',
         'Humas Personalia'      => 'humas-personalia',
         'Unit Rumah Tangga'     => 'unit-rumah-tangga',

@@ -1,7 +1,10 @@
 @extends('layouts.master')
 @section('title', 'Perpustakaan')
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+        $isStudentOperator = auth()->user()->hasRole('Operator Perpustakaan Santri');
+    @endphp
     @include('perpustakaan._styles')
 
     @component('components.breadcrumb') @slot('li_1') Perpustakaan @endslot @slot('title') Dashboard @endslot @endcomponent
@@ -15,10 +18,18 @@
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('user.perpustakaan.loans.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-primary btn-sm"><i class="ri-exchange-line me-1"></i>Peminjaman</a>
                 <a href="{{ route('user.perpustakaan.visits.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-primary btn-sm"><i class="ri-footprint-line me-1"></i>Kunjungan</a>
+                @if(! $isStudentOperator)
                 <a href="{{ route('user.perpustakaan.rooms.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-info btn-sm"><i class="ri-calendar-event-line me-1"></i>Ruang</a>
+                @endif
+                @if(! $isStudentOperator)
                 <a href="{{ route('user.perpustakaan.stock-opnames.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-file-list-2-line me-1"></i>Stock Opname</a>
+                @endif
+                @if(! $isStudentOperator)
                 <a href="{{ route('user.perpustakaan.fines.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-danger btn-sm"><i class="ri-money-dollar-circle-line me-1"></i>Denda</a>
+                @endif
+                @if(! $isStudentOperator)
                 <a href="{{ route('user.perpustakaan.reports.index', ['userId' => $userId, 'unit_id' => $units->first()?->id]) }}" class="btn btn-soft-secondary btn-sm"><i class="ri-bar-chart-2-line me-1"></i>Laporan</a>
+                @endif
             </div>
         </div>
     </div></div>

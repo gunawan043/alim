@@ -34,6 +34,7 @@ class User extends Authenticatable
         'password',
         'avatar',
         'is_active',
+        'must_change_password',
         'is_system_admin',
         'is_permanent',
         'last_login_at',
@@ -61,6 +62,7 @@ class User extends Authenticatable
         'locked_at' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
+        'must_change_password' => 'boolean',
         'is_system_admin' => 'boolean',
         'is_permanent' => 'boolean',
         'is_wali' => 'boolean',
@@ -93,6 +95,22 @@ class User extends Authenticatable
     public function gtkProfile()
     {
         return $this->hasOne(GtkProfile::class);
+    }
+
+    public function studentProfile()
+    {
+        return $this->hasOne(Student::class, 'user_id');
+    }
+
+    public function studentOperatorAssignments()
+    {
+        return $this->hasMany(StudentOperatorAssignment::class);
+    }
+
+    public function isStudentOperator(): bool
+    {
+        return $this->hasRole('Operator Perpustakaan Santri')
+            || $this->hasRole('Operator Asrama Santri');
     }
 
     public function gtkWorkUnits()

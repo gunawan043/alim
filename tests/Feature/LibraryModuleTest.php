@@ -15,6 +15,7 @@ use App\Models\LibraryUnit;
 use App\Models\RoomBooking;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\StudentOperatorAssignment;
 use App\Models\LibraryStockOpname;
 use App\Models\User;
 use App\Models\WorkUnit;
@@ -239,5 +240,40 @@ class LibraryModuleTest extends TestCase
             'user_id' => $gtkPutri->id,
         ])->assertRedirect();
         $this->assertDatabaseHas('library_members', ['library_unit_id' => $unit->id, 'user_id' => $gtkPutri->id]);
+    }
+
+    public function test_petugas_santri_login_nis_dan_akses_terbatas(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Operator Perpus', 'code' => 'PERPUS-OP', 'type' => 'Unit Akademik', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '44444444', 'name' => 'Sekolah Operator']);
+        $year = AcademicYear::create(['name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true, 'start_date' => '2026-07-01', 'end_date' => '2027-06-30']);
+        $admin = User::create(['name' => 'Admin Operator', 'email' => 'admin.operator@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $unit = LibraryUnit::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'code' => 'PERPUS-OP', 'name' => 'Perpustakaan Operator', 'gender_scope' => 'P', 'level_scope' => 'sd_smp', 'is_active' => true]);
+        $student = Student::create(['school_id' => $school->id, 'name' => 'Santri Operator', 'nis' => 'OP-001', 'nisn' => 'OP-N-001', 'gender' => 'P', 'status' => 'active']);
+
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/operators", [
+            'library_unit_id' => $unit->id,
+            'student_id' => $student->id,
+            'notes' => 'Petugas piket',
+        ])->assertRedirect();
+
+        $operator = User::where('username', 'OP-001')->firstOrFail();
+        $this->assertTrue($operator->must_change_password);
+        $this->assertTrue($operator->hasRole('Operator Perpustakaan Santri'));
+        $this->assertDatabaseHas('student_operator_assignments', ['student_id' => $student->id, 'library_unit_id' => $unit->id, 'user_id' => $operator->id, 'is_active' => 1]);
+
+        $this->post('/logout');
+        $this->post('/login', ['identity' => 'OP-001', 'password' => 'OP-001'])
+            ->assertRedirect(route('user.perpustakaan.index', ['userId' => $operator->id]));
+
+        $this->actingAs($operator)->get("/{$operator->id}/perpustakaan")->assertRedirect(route('password.force'));
+        $this->actingAs($operator)->get('/force-password')->assertOk();
+
+        $operator->update(['must_change_password' => false]);
+        $this->actingAs($operator)->get("/{$operator->id}/perpustakaan")->assertOk();
+        $this->actingAs($operator)->get("/{$operator->id}/perpustakaan/loans?unit_id={$unit->id}")->assertOk();
+        $this->actingAs($operator)->get("/{$operator->id}/perpustakaan/visits?unit_id={$unit->id}")->assertOk();
+        $this->actingAs($operator)->get("/{$operator->id}/perpustakaan/catalog?unit_id={$unit->id}")->assertForbidden();
+        $this->actingAs($operator)->get("/{$operator->id}/ai")->assertForbidden();
     }
 }

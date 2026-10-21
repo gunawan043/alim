@@ -35,7 +35,7 @@ class LoginController extends Controller
     {
         $request->validate([
             'identity' => 'required|string|min:3',
-            'password' => 'required|min:6',
+            'password' => 'required|string',
         ]);
 
         $identity = trim($request->identity);
@@ -43,6 +43,9 @@ class LoginController extends Controller
 
         $user = User::where('email', strtolower($identity))
             ->orWhereHas('employment', fn ($q) => $q->whereRaw("REPLACE(nupy, '-', '') = REPLACE(?, '-', '')", [$identity]))
+            ->orWhere(function ($query) use ($identity) {
+                $query->where('username', $identity)->whereHas('studentProfile');
+            })
             ->first();
 
         $email = $user ? $user->email : null;
@@ -190,6 +193,10 @@ class LoginController extends Controller
         }
 
         $roles = $user->getRoleNames();
+
+        if ($roles->contains('Operator Perpustakaan Santri')) {
+            return redirect()->route('user.perpustakaan.index', ['userId' => $user->id]);
+        }
 
         if ($roles->contains(fn ($name) => stripos($name, 'applicant') !== false)) {
             return redirect()->away(config('app.recruitment_url', 'https://recruitment.abuhurairah.id'))

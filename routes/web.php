@@ -107,6 +107,7 @@ use App\Http\Controllers\Perpustakaan\LibraryLoanController;
 use App\Http\Controllers\Perpustakaan\LibraryMemberController;
 use App\Http\Controllers\Perpustakaan\LibraryRoomController;
 use App\Http\Controllers\Perpustakaan\LibraryStockOpnameController;
+use App\Http\Controllers\Perpustakaan\LibraryStudentOperatorController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
 use App\Http\Controllers\Perpustakaan\LibraryVisitController;
 use App\Http\Controllers\Kurikulum\AiContentController;
@@ -299,6 +300,7 @@ use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WorkUnitController;
 use App\Http\Middleware\EnsureBoardingSchool;
+use App\Http\Middleware\DenyStudentOperatorAi;
 use App\Http\Middleware\EnsureLibraryUnit;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
@@ -360,6 +362,11 @@ Route::pattern('adminBookId', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9
 |--------------------------------------------------------------------------
 */
 Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/force-password', [\App\Http\Controllers\Auth\ForcePasswordController::class, 'show'])->name('password.force');
+    Route::post('/force-password', [\App\Http\Controllers\Auth\ForcePasswordController::class, 'update'])->name('password.force.update');
+});
 Route::post('/login', [LoginController::class, 'login'])->name('login.process');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
@@ -463,7 +470,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── CHAT AI (widget pojok kanan) ─────────────────────
-            Route::prefix('ai-chat')->name('ai-chat.')->group(function () {
+            Route::prefix('ai-chat')->name('ai-chat.')->middleware(DenyStudentOperatorAi::class)->group(function () {
                 Route::get('/latest', [AiChatController::class, 'latest'])->name('latest');
                 Route::get('/conversations', [AiChatController::class, 'conversations'])->name('conversations');
                 Route::post('/send', [AiChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
@@ -572,6 +579,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/units', [LibraryUnitController::class, 'store'])->name('units.store');
                     Route::put('/units/{id}', [LibraryUnitController::class, 'update'])->name('units.update');
                     Route::post('/units/{id}/settings', [LibraryUnitController::class, 'updateSettings'])->name('units.settings');
+                Route::get('/operators', [LibraryStudentOperatorController::class, 'index'])->name('operators.index');
+                Route::post('/operators', [LibraryStudentOperatorController::class, 'store'])->name('operators.store');
+                Route::post('/operators/{id}/toggle', [LibraryStudentOperatorController::class, 'toggle'])->name('operators.toggle');
+                Route::post('/operators/{id}/reset-password', [LibraryStudentOperatorController::class, 'resetPassword'])->name('operators.reset-password');
                     Route::get('/genres', [LibraryGenreController::class, 'index'])->name('genres.index');
                     Route::post('/genres', [LibraryGenreController::class, 'store'])->name('genres.store');
                     Route::put('/genres/{id}', [LibraryGenreController::class, 'update'])->name('genres.update');

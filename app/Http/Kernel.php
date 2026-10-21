@@ -11,6 +11,8 @@ use App\Http\Middleware\EnsureEmployeeAccess;
 use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSarprasAccess;
+use App\Http\Middleware\DenyStudentOperatorAi;
+use App\Http\Middleware\EnsureStudentPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
 use App\Http\Middleware\MinRoleLevel;
@@ -84,6 +86,8 @@ class Kernel extends HttpKernel
             SchoolContextMiddleware::class,
             BindOrganizationContext::class,
             CheckIpBlocked::class,
+            EnsureStudentPasswordChanged::class,
+            DenyStudentOperatorAi::class,
         ],
 
         'api' => [

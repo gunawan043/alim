@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LibraryStaff;
+use App\Models\StudentOperatorAssignment;
 use App\Models\LibraryUnit;
 use App\Models\User;
 
@@ -18,9 +19,23 @@ class LibraryAccess
         return $user->hasRole('Perpustakaan') || $this->isSuperAdmin($user);
     }
 
+    public function isStudentOperator(User $user): bool
+    {
+        return $user->hasRole('Operator Perpustakaan Santri');
+    }
+
     public function unitsFor(User $user)
     {
         $query = LibraryUnit::query()->active();
+
+        if ($this->isStudentOperator($user)) {
+            $unitIds = StudentOperatorAssignment::query()
+                ->where('user_id', $user->id)->where('operator_type', 'library')
+                ->where('is_active', true)->whereNotNull('library_unit_id')
+                ->pluck('library_unit_id');
+
+            return $query->whereIn('id', $unitIds)->orderBy('name')->get();
+        }
 
         if ($this->isSuperAdmin($user)) {
             return $query->orderBy('name')->get();
@@ -54,6 +69,23 @@ class LibraryAccess
     public function canManage(User $user): bool
     {
         return $this->hasLibraryRole($user);
+    }
+
+    public function canOperate(User $user, ?LibraryUnit $unit = null): bool
+    {
+        if ($this->canManage($user)) {
+            return $unit === null || $this->canAccessUnit($user, $unit);
+        }
+
+        if (! $this->isStudentOperator($user)) {
+            return false;
+        }
+
+        return StudentOperatorAssignment::query()
+            ->where('user_id', $user->id)->where('operator_type', 'library')
+            ->where('is_active', true)
+            ->when($unit, fn ($q) => $q->where('library_unit_id', $unit->id))
+            ->exists();
     }
 
     public function canManageUnit(User $user, ?LibraryUnit $unit): bool

@@ -16,7 +16,7 @@ class LibraryVisitController extends Controller
 
     public function index(Request $request, string $userId)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        abort_unless($this->access->canOperate($request->user()), 403);
         $units = $this->access->unitsFor($request->user());
         $unit = $units->firstWhere('id', $request->input('unit_id')) ?? $units->first();
         abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
@@ -38,7 +38,7 @@ class LibraryVisitController extends Controller
 
     public function store(Request $request, string $userId)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        abort_unless($this->access->canOperate($request->user()), 403);
         $validated = $request->validate([
             'library_unit_id' => 'required|exists:library_units,id',
             'library_member_id' => 'nullable|exists:library_members,id',

@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class RoleSeeder extends Seeder
 {
@@ -23,6 +23,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Departemen Tahfidz', 'level' => 6, 'description' => 'Departemen Tahfidz'],
             ['name' => 'Departemen Bahasa', 'level' => 7, 'description' => 'Departemen Bahasa Arab'],
             ['name' => 'Perpustakaan', 'level' => 8, 'description' => 'Unit Perpustakaan'],
+            ['name' => 'Operator Perpustakaan Santri', 'level' => 20, 'description' => 'Operator perpustakaan dari santri; akses terbatas.'],
             ['name' => 'Satuan Keamanan', 'level' => 9, 'description' => 'Unit Keamanan & Ketertiban'],
             ['name' => 'Humas Personalia', 'level' => 10, 'description' => 'Unit Humas & Personalia'],
             ['name' => 'Unit Rumah Tangga', 'level' => 11, 'description' => 'Unit Sarana Prasarana & Tata Usaha'],

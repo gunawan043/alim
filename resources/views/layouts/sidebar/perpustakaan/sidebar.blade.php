@@ -9,7 +9,8 @@
     };
     $isKoordinator = $hasJabatan('Koordinator Perpustakaan') || $hasJabatan('Kepala Perpustakaan');
     $isStaf = $hasJabatan('Staf Perpustakaan');
-    $isPustaka = $showAll || $isKoordinator || $isStaf;
+    $isStudentOperator = $hasRole('Operator Perpustakaan Santri');
+    $isPustaka = $showAll || $isKoordinator || $isStaf || $isStudentOperator;
 @endphp
 
 <li class="menu-title"><span>Utama</span></li>
@@ -42,6 +43,12 @@
 @endif
 
 @if($isPustaka && menu_allowed('perpustakaan'))
+    @if($isStudentOperator)
+        <li class="menu-title"><span>Operator Santri</span></li>
+        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.index') }}"><i class="ri-dashboard-3-line"></i><span>Dashboard</span></a></li>
+        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.loans.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.loans.index') }}"><i class="ri-exchange-line"></i><span>Peminjaman &amp; Pengembalian</span></a></li>
+        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.visits.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.visits.index') }}"><i class="ri-footprint-line"></i><span>Kunjungan Harian</span></a></li>
+    @else
     <li class="menu-title"><span>Dashboard</span></li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.index') }}">
@@ -84,6 +91,11 @@
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.units.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.units.index') }}">
                 <i class="ri-settings-4-line"></i><span>Aturan Peminjaman</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.operators.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.operators.index') }}">
+                <i class="ri-user-star-line"></i><span>Petugas Santri</span>
             </a>
         </li>
     @endif
@@ -253,4 +265,5 @@
             <i class="ri-folder-shield-2-line"></i><span>Dokumen Mutu (ISO)</span>
         </a>
     </li>
+    @endif
 @endif

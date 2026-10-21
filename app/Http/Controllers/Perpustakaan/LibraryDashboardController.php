@@ -18,7 +18,7 @@ class LibraryDashboardController extends Controller
     public function index(Request $request, string $userId)
     {
         $user = $request->user();
-        abort_unless($this->access->hasLibraryRole($user) || $this->access->unitsFor($user)->isNotEmpty(), 403);
+        abort_unless($this->access->canOperate($user) || $this->access->unitsFor($user)->isNotEmpty(), 403);
 
         $units = $this->access->unitsFor($user);
         $unitIds = $units->pluck('id');

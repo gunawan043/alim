@@ -21,7 +21,7 @@ class LibraryLoanController extends Controller
 
     public function index(Request $request, string $userId)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        abort_unless($this->access->canOperate($request->user()), 403);
         $units = $this->access->unitsFor($request->user());
         $unit = $units->firstWhere('id', $request->input('unit_id')) ?? $units->first();
         abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
@@ -48,7 +48,7 @@ class LibraryLoanController extends Controller
 
     public function store(Request $request, string $userId)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        abort_unless($this->access->canOperate($request->user()), 403);
         $validated = $request->validate([
             'library_unit_id' => 'required|exists:library_units,id',
             'library_member_id' => 'required|exists:library_members,id',
@@ -102,7 +102,7 @@ class LibraryLoanController extends Controller
 
     public function renew(Request $request, string $userId, string $id)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        abort_unless($this->access->canOperate($request->user()), 403);
         $loan = LibraryLoan::with('unit')->findOrFail($id);
         abort_unless($this->access->canAccessUnit($request->user(), $loan->unit), 403);
         abort_unless($loan->status === LibraryLoan::STATUS_ACTIVE, 422, 'Hanya pinjaman aktif yang dapat diperpanjang.');
