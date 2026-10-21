@@ -304,6 +304,10 @@ class PermissionSeeder extends Seeder
             'lab_approve',
             'lab_request',
             'lab_master_manage',
+            'osipp_view',
+            'osipp_manage',
+            'osipp_verify',
+            'osipp_evaluate',
             'inventory_view',
             'inventory_create',
             'inventory_edit',
@@ -530,6 +534,9 @@ class PermissionSeeder extends Seeder
         if (str_starts_with($permission, 'pelatihan_')) {
             return 'Pelatihan';
         }
+        if (str_starts_with($permission, 'osipp_')) {
+            return 'OSIPP';
+        }
         if (str_starts_with($permission, 'inventory_')) {
             return 'Inventory';
         }
@@ -720,6 +727,10 @@ class PermissionSeeder extends Seeder
             'lab_approve' => 'Laboratorium: setujui peminjaman/penghapusan',
             'lab_request' => 'Laboratorium: ajukan izin penggunaan',
             'lab_master_manage' => 'Laboratorium: kelola profil/master lab',
+            'osipp_view' => 'OSIPP: lihat workspace',
+            'osipp_manage' => 'OSIPP: kelola kepengurusan, program, kegiatan, dan administrasi',
+            'osipp_verify' => 'OSIPP: verifikasi kegiatan dan administrasi',
+            'osipp_evaluate' => 'OSIPP: evaluasi kepengurusan',
             'inventory_view' => 'Can view inventory',
             'inventory_create' => 'Can create inventory items',
             'inventory_edit' => 'Can edit inventory items',

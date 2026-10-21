@@ -27,6 +27,7 @@ class NotificationUniversalService
         'education',
         'competency',
         'training',
+        'osipp',
     ];
 
     /**

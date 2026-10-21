@@ -74,6 +74,7 @@ class GtkAdditionalTaskController extends Controller
                 'Waka Kesiswaan',
                 'Waka Sarana & Prasarana',
                 'Coordinator Bahasa Arab',
+                'Guru Koordinator OSIPP',
                 'Coordinator OSIS',
                 'Coordinator Ekstrakurikuler',
                 'Wali Kelas',

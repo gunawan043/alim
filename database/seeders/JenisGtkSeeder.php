@@ -91,6 +91,7 @@ class JenisGtkSeeder extends Seeder
                     'Koordinator Ekstrakurikuler',
                     'Koordinator Kurikulum',
                     'Koordinator Kesiswaan',
+                    'Guru Koordinator OSIPP',
                     'Koordinator Laboratorium',
                     'Pembina Ekstrakurikuler',
                     'Tim Kurikulum',

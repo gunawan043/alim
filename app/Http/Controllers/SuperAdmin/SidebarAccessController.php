@@ -68,6 +68,7 @@ class SidebarAccessController extends Controller
         'tugas-koordinator-guru-tahfidz' => 'Tugas: Koordinator Guru Tahfidz',
         'tugas-koordinator-ekskul'    => 'Tugas: Koordinator Ekskul',
         'tugas-koordinator-kesiswaan' => 'Tugas: Koordinator Kesiswaan',
+        'tugas-koordinator-osipp'     => 'Tugas: Guru Koordinator OSIPP',
         'tugas-koordinator-kurikulum' => 'Tugas: Koordinator Kurikulum',
         'tugas-koordinator-lab'       => 'Tugas: Koordinator Laboratorium',
         'tugas-koordinator-sarpras'   => 'Tugas: Koordinator Sarpras',

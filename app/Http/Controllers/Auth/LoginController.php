@@ -340,13 +340,26 @@ class LoginController extends Controller
         }
 
         $userTugas = method_exists($user, 'tugasTambahan')
-            ? $user->tugasTambahan->pluck('nama')->toArray()
+            ? $user->tugasTambahan->pluck('nama')->all()
             : [];
+
+        if (class_exists(\App\Models\OtherTeacherTask::class)) {
+            $userTugas = array_merge($userTugas, \App\Models\OtherTeacherTask::query()
+                ->where('teacher_id', $user->id)
+                ->where('is_active', true)
+                ->pluck('task_name')
+                ->all());
+        }
+
+        $userTugas = array_values(array_unique(array_filter($userTugas)));
 
         $tugasMap = [
             'Wali Kelas'                  => 'user.dashboard.wali-kelas',
             'Koordinator Kurikulum'       => 'user.dashboard.koordinator-kurikulum',
             'Koordinator Kesiswaan'       => 'user.dashboard.koordinator-kesiswaan',
+            'Guru Koordinator OSIPP'      => 'osipp.dashboard',
+            'Koordinator OSIPP'           => 'osipp.dashboard',
+            'Pembina OSIPP'               => 'osipp.dashboard',
             'Koordinator Ekstrakurikuler' => 'user.dashboard.koordinator-ekskul',
             'Koordinator Laboratorium'    => 'user.dashboard.koordinator-lab',
             'Koordinator Sarpras Satuan Pendidikan' => 'user.dashboard.koordinator-sarpras',

@@ -135,6 +135,7 @@ class Kernel extends HttpKernel
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
         'sarpras.access' => EnsureSarprasAccess::class,
         'lab.access' => \App\Http\Middleware\EnsureLabAccess::class,
+        'osipp.access' => \App\Http\Middleware\EnsureOsippAccess::class,
         'satuan.feature' => \App\Http\Middleware\EnsureSatuanPendidikanFeature::class,
         'pos.api-key' => VerifyPosApiKey::class,
         'period.book' => EnsureBookPeriodWritable::class,

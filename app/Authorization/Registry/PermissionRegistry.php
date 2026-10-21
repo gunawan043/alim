@@ -113,6 +113,12 @@ final class PermissionRegistry
         'lab_request' => 'Laboratorium: ajukan izin penggunaan',
         'lab_master_manage' => 'Laboratorium: kelola profil/master lab',
 
+        // OSIPP (dipakai modul ruang kerja Guru Koordinator OSIPP)
+        'osipp_view' => 'OSIPP: lihat workspace',
+        'osipp_manage' => 'OSIPP: kelola kepengurusan, program, kegiatan, dan administrasi',
+        'osipp_verify' => 'OSIPP: verifikasi kegiatan dan administrasi',
+        'osipp_evaluate' => 'OSIPP: evaluasi kepengurusan',
+
         // Full sarpras access groups (used by SarprasWorkspacePolicy)
         'sarpras_all_access' => 'Full sarpras admin access',
         'sarpras_create' => 'Sarpras: create',

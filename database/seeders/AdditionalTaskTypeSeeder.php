@@ -26,6 +26,7 @@ class AdditionalTaskTypeSeeder extends Seeder
                     'Koordinator Ekstrakurikuler',
                     'Koordinator Kurikulum',
                     'Koordinator Kesiswaan',
+                    'Guru Koordinator OSIPP',
                     'Koordinator Guru Tahfidz',
                     'Koordinator Laboratorium',
                     'Koordinator Sarpras Satuan Pendidikan',

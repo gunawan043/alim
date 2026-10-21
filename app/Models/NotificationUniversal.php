@@ -116,6 +116,7 @@ class NotificationUniversal extends Model
             'education' => 'Pendidikan',
             'competency' => 'Kompetensi',
             'training' => 'Pelatihan',
+            'osipp' => 'OSIPP',
         ][$this->module] ?? ucfirst($this->module ?? 'Lainnya');
     }
 
@@ -148,6 +149,7 @@ class NotificationUniversal extends Model
             'education' => 'bx bx-book-open',
             'competency' => 'bx bx-star',
             'training' => 'bx bx-graduation',
+            'osipp' => 'bx bx-group',
         ][$this->module] ?? 'bx bx-bell';
     }
 
