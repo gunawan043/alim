@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\Student;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Illuminate\Support\Collection;
 
 /**
  * Template import nama Arab santri — sudah terisi NIS/NISN/nama Latin;
@@ -14,7 +15,7 @@ class StudentArabicNameTemplateExport implements FromCollection, WithHeadings
 {
     public function __construct(private readonly string $schoolId) {}
 
-    public function collection()
+    public function collection(): Collection
     {
         return Student::query()
             ->where('school_id', $this->schoolId)
