@@ -63,6 +63,11 @@ class OsippPeriod extends OsippModel
         return $this->members()->where('status', OsippMember::STATUS_ACTIVE);
     }
 
+    public function qisms(): HasMany
+    {
+        return $this->hasMany(OsippQism::class, 'period_id');
+    }
+
     public function programs(): HasMany
     {
         return $this->hasMany(OsippProgram::class, 'period_id');

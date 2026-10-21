@@ -20,6 +20,8 @@ class OsippDashboardController extends OsippBaseController
         $stats = $period ? $this->workspace->statsForPeriod($period) : [
             'members' => 0,
             'core_members' => 0,
+            'qisms' => 0,
+            'qism_members' => 0,
             'programs' => 0,
             'programs_running' => 0,
             'programs_completed' => 0,

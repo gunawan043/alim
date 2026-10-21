@@ -10,6 +10,7 @@ use App\Models\Osipp\OsippEvaluation;
 use App\Models\Osipp\OsippMember;
 use App\Models\Osipp\OsippPeriod;
 use App\Models\Osipp\OsippProgram;
+use App\Models\Osipp\OsippQism;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -42,6 +43,7 @@ class OsippWorkspaceService
             ->where('school_id', $schoolId)
             ->withCount([
                 'members',
+                'qisms',
                 'programs',
                 'activities',
                 'documents',
@@ -103,6 +105,9 @@ class OsippWorkspaceService
             'members' => (clone $memberQuery)->where('status', OsippMember::STATUS_ACTIVE)->count(),
             'core_members' => (clone $memberQuery)->where('status', OsippMember::STATUS_ACTIVE)
                 ->where('member_role', OsippMember::ROLE_PENGURUS)->count(),
+            'qisms' => OsippQism::query()->where('period_id', $period->id)->where('is_active', true)->count(),
+            'qism_members' => (clone $memberQuery)->where('status', OsippMember::STATUS_ACTIVE)
+                ->whereNotNull('qism_id')->count(),
             'programs' => (clone $programQuery)->count(),
             'programs_running' => (clone $programQuery)->where('status', OsippProgram::STATUS_RUNNING)->count(),
             'programs_completed' => (clone $programQuery)->where('status', OsippProgram::STATUS_COMPLETED)->count(),

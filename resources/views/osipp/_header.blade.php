@@ -9,6 +9,7 @@
         ['route' => 'osipp.dashboard', 'label' => 'Ringkasan', 'icon' => 'ri-dashboard-3-line'],
         ['route' => 'osipp.periode.index', 'label' => 'Kepengurusan', 'icon' => 'ri-calendar-event-line'],
         ['route' => 'osipp.anggota.index', 'label' => 'Anggota', 'icon' => 'ri-group-line'],
+        ['route' => 'osipp.qism.index', 'label' => 'Qism', 'icon' => 'ri-node-tree'],
         ['route' => 'osipp.program.index', 'label' => 'Program Kerja', 'icon' => 'ri-list-check-2'],
         ['route' => 'osipp.kegiatan.index', 'label' => 'Kegiatan', 'icon' => 'ri-flag-line'],
         ['route' => 'osipp.administrasi.index', 'label' => 'Administrasi', 'icon' => 'ri-folder-shield-2-line'],

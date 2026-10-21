@@ -23,12 +23,20 @@ class OsippMember extends OsippModel
         self::STATUS_INACTIVE => 'Nonaktif',
     ];
 
-    public const ROLE_PENGURUS = 'pengurus';
+    public const ROLE_PENGURUS_INTI = 'pengurus_inti';
+
+    public const ROLE_KETUA_QISM = 'ketua_qism';
 
     public const ROLE_ANGGOTA = 'anggota';
 
+    /**
+     * Alias kompatibilitas untuk data/kode lama.
+     */
+    public const ROLE_PENGURUS = self::ROLE_PENGURUS_INTI;
+
     public const ROLE_OPTIONS = [
-        self::ROLE_PENGURUS => 'Pengurus',
+        self::ROLE_PENGURUS_INTI => 'Pengurus Inti',
+        self::ROLE_KETUA_QISM => 'Ketua Qism',
         self::ROLE_ANGGOTA => 'Anggota',
     ];
 
@@ -53,6 +61,11 @@ class OsippMember extends OsippModel
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function qism(): BelongsTo
+    {
+        return $this->belongsTo(OsippQism::class, 'qism_id');
+    }
+
     public function responsiblePrograms(): HasMany
     {
         return $this->hasMany(OsippProgram::class, 'responsible_member_id');
@@ -71,6 +84,16 @@ class OsippMember extends OsippModel
     public function scopeActive($query)
     {
         return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public function scopeCore($query)
+    {
+        return $query->where('member_role', self::ROLE_PENGURUS_INTI);
+    }
+
+    public function scopeInQism($query, string $qismId)
+    {
+        return $query->where('qism_id', $qismId);
     }
 
     public function getStatusLabelAttribute(): string

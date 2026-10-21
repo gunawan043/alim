@@ -8,6 +8,7 @@ use App\Http\Controllers\Osipp\OsippEvaluationController;
 use App\Http\Controllers\Osipp\OsippMemberController;
 use App\Http\Controllers\Osipp\OsippPeriodController;
 use App\Http\Controllers\Osipp\OsippProgramController;
+use App\Http\Controllers\Osipp\OsippQismController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,6 +39,13 @@ Route::middleware(['auth', 'employee.access', 'school.context', 'organization.co
             Route::post('/', [OsippMemberController::class, 'store'])->name('store');
             Route::put('/{member}', [OsippMemberController::class, 'update'])->name('update');
             Route::delete('/{member}', [OsippMemberController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('qism')->name('qism.')->group(function () {
+            Route::get('/', [OsippQismController::class, 'index'])->name('index');
+            Route::post('/', [OsippQismController::class, 'store'])->name('store');
+            Route::put('/{qism}', [OsippQismController::class, 'update'])->name('update');
+            Route::delete('/{qism}', [OsippQismController::class, 'destroy'])->name('destroy');
         });
 
         Route::prefix('program')->name('program.')->group(function () {

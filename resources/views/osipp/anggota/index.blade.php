@@ -13,6 +13,14 @@
 
         @include('osipp._header')
 
+        <div class="alert alert-light border d-flex align-items-start gap-2">
+            <i class="ri-information-line fs-5 text-primary"></i>
+            <div class="small text-muted">
+                <strong>Pengurus inti</strong> (Ketua, Wakil Ketua, Sekretaris, Bendahara) dapat terdiri dari lebih dari satu orang.
+                Anggota yang masuk <strong>Qism</strong> diposisikan sebagai anggota bidang; satu Qism dipimpin satu Ketua Qism.
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
@@ -57,6 +65,7 @@
                             <th>Jabatan</th>
                             <th>Divisi</th>
                             <th>Peran</th>
+                            <th>Qism</th>
                             <th>Masa Tugas</th>
                             <th>Status</th>
                             <th class="text-end">Aksi</th>
@@ -77,6 +86,7 @@
                                 <td><span class="badge bg-primary-subtle text-primary">{{ $member->position }}</span></td>
                                 <td>{{ $member->division ?: '—' }}</td>
                                 <td>{{ $member->role_label }}</td>
+                                <td class="small text-muted">{{ $member->qism?->name ?? '—' }}</td>
                                 <td class="small text-muted">
                                     {{ $member->start_date?->translatedFormat('d M Y') ?? '—' }}
                                     @if($member->end_date) s.d. {{ $member->end_date->translatedFormat('d M Y') }} @endif
@@ -98,7 +108,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-5">
+                                <td colspan="8" class="text-center text-muted py-5">
                                     <i class="ri-group-line fs-3 d-block mb-2"></i>
                                     Belum ada anggota kepengurusan yang didata.
                                 </td>
@@ -143,7 +153,7 @@
                                         <label class="form-label">Jabatan <span class="text-danger">*</span></label>
                                         <input type="text" name="position" id="memberPosition" class="form-control" required list="positionSuggestions" placeholder="Ketua, Sekretaris, Koordinator...">
                                         <datalist id="positionSuggestions">
-                                            @foreach($positions as $position)
+                                            @foreach(collect(['Ketua OSIPP', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Ketua Qism', 'Anggota'])->merge($positions)->unique() as $position)
                                                 <option value="{{ $position }}"></option>
                                             @endforeach
                                         </datalist>
@@ -160,7 +170,16 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Qism / Bidang</label>
+                                        <select name="qism_id" id="memberQism" class="form-select">
+                                            <option value="">— Tanpa Qism —</option>
+                                            @foreach($qisms as $qism)
+                                                <option value="{{ $qism->id }}">{{ $qism->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
                                         <label class="form-label">Divisi / Bidang</label>
                                         <input type="text" name="division" id="memberDivision" class="form-control" placeholder="Keagamaan, Pendidikan, Humas...">
                                     </div>
@@ -232,7 +251,8 @@
         document.getElementById('memberPosition').value = data ? (data.position || '') : '';
         document.getElementById('memberPositionCode').value = data ? (data.position_code || '') : '';
         document.getElementById('memberDivision').value = data ? (data.division || '') : '';
-        document.getElementById('memberRole').value = data ? (data.member_role || 'pengurus') : 'pengurus';
+        document.getElementById('memberRole').value = data ? (data.member_role || 'pengurus_inti') : 'pengurus_inti';
+        document.getElementById('memberQism').value = data ? (data.qism_id || '') : '';
         document.getElementById('memberStart').value = data ? (data.start_date || '') : '';
         document.getElementById('memberEnd').value = data ? (data.end_date || '') : '';
         document.getElementById('memberSort').value = data ? (data.sort_order || 0) : 0;

@@ -30,7 +30,8 @@ Nama yang dikenali: `Guru Koordinator OSIPP`, `Koordinator OSIPP`, `Pembina OSIP
 Tabel baru:
 
 - `osipp_periods`
-- `osipp_members`
+- `osipp_members` (pengurus inti, ketua qism, anggota)
+- `osipp_qisms` (bidang/Qism, ketua, dan anggotanya)
 - `osipp_programs`
 - `osipp_activities`
 - `osipp_documents`
@@ -39,6 +40,14 @@ Tabel baru:
 - `osipp_evaluations`
 
 `school_id` menjadi sumber cakupan pada periode; seluruh data turunannya mengikuti periode. Anggota memakai `students`, bukan tabel anggota baru. Penugasan memakai `other_teacher_tasks`/SK yang sudah ada.
+
+Struktur kepengurusan:
+
+- `pengurus_inti`: Ketua, Wakil Ketua, Sekretaris, Bendahara; boleh lebih dari satu orang.
+- `ketua_qism`: memimpin satu Qism.
+- `anggota`: anggota OSIPP; dapat ditempatkan pada Qism.
+
+Qism disimpan pada `osipp_qisms` dan setiap anggota memiliki `qism_id`. Satu Qism memiliki satu ketua Qism dan banyak anggota.
 
 ## Alur Verifikasi
 

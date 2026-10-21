@@ -36,7 +36,7 @@
                                 <p class="text-uppercase fw-semibold text-muted mb-0 stat-label">Pengurus Aktif</p>
                             </div>
                             <h3 class="fw-bold mb-1">{{ number_format($stats['members']) }}</h3>
-                            <p class="text-muted small mb-0">{{ number_format($stats['core_members']) }} pengurus inti · {{ $period->name }}</p>
+                            <p class="text-muted small mb-0">{{ number_format($stats['core_members']) }} pengurus inti · {{ number_format($stats['qisms'] ?? 0) }} Qism · {{ $period->name }}</p>
                         </div>
                     </div>
                 </div>

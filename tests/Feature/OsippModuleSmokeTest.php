@@ -10,6 +10,7 @@ use App\Models\Osipp\OsippEvaluation;
 use App\Models\Osipp\OsippMember;
 use App\Models\Osipp\OsippPeriod;
 use App\Models\Osipp\OsippProgram;
+use App\Models\Osipp\OsippQism;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -197,12 +198,40 @@ class OsippModuleSmokeTest extends TestCase
             'period_id' => $period->id,
             'student_id' => $student2->id,
             'position' => 'Sekretaris',
-            'member_role' => 'pengurus',
+            'member_role' => 'anggota',
             'status' => 'active',
         ])->assertRedirect();
 
         $member2 = OsippMember::query()->where('student_id', $student2->id)->firstOrFail();
         $this->assertSame('Sekretaris', $member2->position);
+
+        $this->post(route('osipp.qism.store', ['userId' => $admin->id]), [
+            'period_id' => $period->id,
+            'name' => 'Qism Uji',
+            'code' => 'QISM-UJI',
+            'leader_member_id' => $member2->id,
+            'member_ids' => [$member2->id],
+            'is_active' => 1,
+        ])->assertRedirect();
+
+        $qism = OsippQism::query()->where('name', 'Qism Uji')->firstOrFail();
+        $this->assertSame($qism->id, $member2->fresh()->qism_id);
+        $this->assertSame(OsippMember::ROLE_KETUA_QISM, $member2->fresh()->member_role);
+
+        $this->get(route('osipp.qism.index', ['userId' => $admin->id, 'period_id' => $period->id]))
+            ->assertOk()
+            ->assertSee('Qism Uji');
+
+        $this->put(route('osipp.qism.update', ['userId' => $admin->id, 'qism' => $qism->id]), [
+            'period_id' => $period->id,
+            'name' => 'Qism Uji Update',
+            'code' => 'QISM-UJI',
+            'leader_member_id' => $member2->id,
+            'member_ids' => [$member2->id],
+            'is_active' => 1,
+        ])->assertRedirect();
+
+        $this->assertSame('Qism Uji Update', $qism->fresh()->name);
 
         $this->post(route('osipp.program.store', ['userId' => $admin->id]), [
             'period_id' => $period->id,

@@ -26,6 +26,12 @@
     </a>
 </li>
 <li class="nav-item">
+    <a class="nav-link menu-link{{ $osippActive('osipp.qism.') ? ' active' : '' }}"
+       href="{{ $osippUrl('osipp.qism.index') }}">
+        <i class="ri-node-tree"></i><span>Qism & Bidang</span>
+    </a>
+</li>
+<li class="nav-item">
     <a class="nav-link menu-link{{ $osippActive('osipp.program.') ? ' active' : '' }}"
        href="{{ $osippUrl('osipp.program.index') }}">
         <i class="ri-list-check-2"></i><span>Program Kerja</span>
