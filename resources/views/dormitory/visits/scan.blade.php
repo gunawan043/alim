@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Scan QR Kunjungan @endsection
+@section('title') Scan QR Kunjungan Santri @endsection
 
 @section('css')
 <style>
@@ -86,7 +86,7 @@
         @slot('li_2') <a href="{{ route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">{{ $dormitory->name }}</a> @endslot
         @slot('li_3') <a href="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Kunjungan</a> @endslot
         @slot('li_4') Scan QR @endslot
-        @slot('title') Scan QR Kunjungan Tamu @endslot
+        @slot('title') Scan QR Kunjungan Santri @endslot
     @endcomponent
 
     @if(session('success'))
@@ -114,7 +114,7 @@
             {{-- Scanner Card --}}
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line me-2 text-primary"></i>Scan QR Kunjungan Tamu</h5>
+                    <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line me-2 text-primary"></i>Scan QR Kunjungan Santri</h5>
                 </div>
                 <div class="card-body">
                     <ul class="nav nav-pills mb-3" id="scanTabs" role="tablist">

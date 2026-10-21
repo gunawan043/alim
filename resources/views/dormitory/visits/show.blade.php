@@ -152,7 +152,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Waktu Datang (Rencana)</label>
+                            <label class="form-label text-muted small">Rencana Kunjungan</label>
                             <div class="fw-semibold">
                                 @if($visit->expected_arrival)
                                     {{ $visit->expected_arrival->format('d M Y, H:i') }} WIB
@@ -162,22 +162,22 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Waktu Datang (Aktual)</label>
+                            <label class="form-label text-muted small">Waktu Santri Keluar</label>
                             <div class="fw-semibold">
                                 @if($visit->check_in_at)
                                     <span class="text-success">{{ $visit->check_in_at->format('d M Y, H:i') }} WIB</span>
                                 @else
-                                    <span class="text-muted">Belum check-in</span>
+                                    <span class="text-muted">Belum keluar</span>
                                 @endif
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Waktu Pergi (Aktual)</label>
+                            <label class="form-label text-muted small">Waktu Santri Kembali</label>
                             <div class="fw-semibold">
                                 @if($visit->check_out_at)
                                     <span class="text-info">{{ $visit->check_out_at->format('d M Y, H:i') }} WIB</span>
                                 @else
-                                    <span class="text-muted">Belum check-out</span>
+                                    <span class="text-muted">Belum kembali</span>
                                 @endif
                             </div>
                         </div>
