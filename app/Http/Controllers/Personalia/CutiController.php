@@ -184,7 +184,19 @@ class CutiController extends Controller
             return redirect()->back()->with('error', 'Cuti sudah diproses.');
         }
 
+        try {
         DB::transaction(function () use ($cuti, $userId) {
+            $balance = CutiBalance::query()
+                ->where('user_id', $cuti->user_id)
+                ->where('cuti_template_id', $cuti->cuti_template_id)
+                ->when($cuti->cuti_period_id, fn ($q) => $q->where('cuti_period_id', $cuti->cuti_period_id))
+                ->lockForUpdate()
+                ->first();
+
+            if ($balance && $balance->tersisa < $cuti->jumlah_hari) {
+                throw new \RuntimeException('Sisa kuota cuti tidak mencukupi saat approval.');
+            }
+
             $cuti->update([
                 'status' => CutiRequest::STATUS_APPROVED,
                 'approved_at' => now(),
@@ -192,11 +204,16 @@ class CutiController extends Controller
                 'approval_notes' => request('notes'),
             ]);
 
-            // Kurangi saldo
-            CutiBalance::where('user_id', $cuti->user_id)
-                ->where('cuti_template_id', $cuti->cuti_template_id)
-                ->decrement('tersisa', $cuti->jumlah_hari);
+            if ($balance) {
+                $balance->update([
+                    'digunakan' => $balance->digunakan + $cuti->jumlah_hari,
+                    'tersisa' => $balance->tersisa - $cuti->jumlah_hari,
+                ]);
+            }
         });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         try {
             $this->notif->notifyCutiDecision($cuti, 'approved');

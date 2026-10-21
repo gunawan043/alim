@@ -21,6 +21,11 @@ class Kesejahteraan extends Model
         return $this->hasMany(KesejahteraanPenerima::class);
     }
 
+    public function penerima(): HasMany
+    {
+        return $this->penerimas();
+    }
+
     public function scopeActive($q)
     {
         return $q->where('is_active', true);

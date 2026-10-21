@@ -259,12 +259,12 @@ class KesejahteraanController extends Controller
     public function benefitStore(Request $request, string $userId)
     {
         $validated = $request->validate([
-            'kesejahteraan_id' => 'required|exists:kesejahteraans,id',
+            'kesejahteraan_id' => 'required|exists:kesejahteraan,id',
             'user_id' => 'required|exists:users,id',
             'nilai' => 'nullable|numeric|min:0',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'status' => 'nullable|in:disetujui,ditolak,pending',
+            'status' => 'nullable|in:aktif,nonaktif,pending',
             'catatan' => 'nullable|string',
         ]);
 
@@ -291,12 +291,12 @@ class KesejahteraanController extends Controller
         $penerima = KesejahteraanPenerima::findOrFail($id);
 
         $validated = $request->validate([
-            'kesejahteraan_id' => 'sometimes|required|exists:kesejahteraans,id',
+            'kesejahteraan_id' => 'sometimes|required|exists:kesejahteraan,id',
             'user_id' => 'sometimes|required|exists:users,id',
             'nilai' => 'nullable|numeric|min:0',
             'tanggal_mulai' => 'sometimes|required|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'status' => 'nullable|in:disetujui,ditolak,pending',
+            'status' => 'nullable|in:aktif,nonaktif,pending',
             'catatan' => 'nullable|string',
         ]);
 
@@ -347,10 +347,12 @@ class KesejahteraanController extends Controller
                 ->addColumn('nilai_diminta', fn ($r) => $r->nilai_diminta ? number_format($r->nilai_diminta, 0, ',', '.') : '-')
                 ->addColumn('status_badge', function ($r) {
                     $badges = [
+                        'pengajuan' => '<span class="badge bg-warning-subtle text-warning">Pengajuan</span>',
                         'pending' => '<span class="badge bg-warning-subtle text-warning">Pending</span>',
                         'disetujui' => '<span class="badge bg-success-subtle text-success">Disetujui</span>',
                         'ditolak' => '<span class="badge bg-danger-subtle text-danger">Ditolak</span>',
                         'diproses' => '<span class="badge bg-info-subtle text-info">Diproses</span>',
+                        'dibayar' => '<span class="badge bg-primary-subtle text-primary">Dibayar</span>',
                     ];
 
                     return $badges[$r->status] ?? $r->status;
@@ -368,17 +370,17 @@ class KesejahteraanController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'kesejahteraan_id' => 'required|exists:kesejahteraans,id',
-            'nomor_klaim' => 'required|string|max:50|unique:kesejahteraan_klaim,nomor_klaim',
+            'kesejahteraan_id' => 'required|exists:kesejahteraan,id',
+            'nomor_klaim' => 'nullable|string|max:50|unique:kesejahteraan_klaim,nomor_klaim',
             'nilai_diminta' => 'required|numeric|min:0',
             'nilai_disetujui' => 'nullable|numeric|min:0',
             'deskripsi_kejadian' => 'nullable|string',
             'dokumen_path' => 'nullable|string|max:255',
-            'status' => 'nullable|in:pending,disetujui,ditolak,diproses',
+            'status' => 'nullable|in:pengajuan,diproses,disetujui,ditolak,dibayar',
             'catatan_admin' => 'nullable|string',
         ]);
 
-        $validated['status'] = $validated['status'] ?? 'pending';
+        $validated['status'] = $validated['status'] ?? 'pengajuan';
         $validated['nomor_klaim'] = $validated['nomor_klaim'] ?? 'KLAIM-'.strtoupper(Str::random(8));
 
         try {
@@ -395,7 +397,7 @@ class KesejahteraanController extends Controller
 
     public function klaimProses(Request $request, string $userId, string $id, string $status)
     {
-        $validStatuses = ['pending', 'disetujui', 'ditolak', 'diproses'];
+        $validStatuses = ['pengajuan', 'diproses', 'disetujui', 'ditolak', 'dibayar'];
         if (! in_array($status, $validStatuses, true)) {
             return redirect()->back()->with('error', 'Status tidak valid.');
         }
@@ -415,10 +417,11 @@ class KesejahteraanController extends Controller
         }
 
         $messages = [
-            'pending' => 'Klaim dikembalikan ke status pending.',
+            'pengajuan' => 'Klaim dikembalikan ke status pengajuan.',
             'disetujui' => 'Klaim berhasil disetujui.',
             'ditolak' => 'Klaim berhasil ditolak.',
             'diproses' => 'Klaim sedang diproses.',
+            'dibayar' => 'Klaim ditandai sudah dibayar.',
         ];
 
         return redirect()->route('user.kesejahteraan.klaim', $userId)

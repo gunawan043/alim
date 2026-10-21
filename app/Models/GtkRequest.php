@@ -49,7 +49,7 @@ class GtkRequest extends Model
         'letter_attachment',
         'established_city',
         'established_date',
-        'status',
+        'status', 'approved_by', 'approved_at', 'rejection_reason',
     ];
 
     protected $casts = [
@@ -57,6 +57,7 @@ class GtkRequest extends Model
         'work_unit_id' => 'string',
         'academic_year_id' => 'string',
         'established_date' => 'date',
+        'approved_at' => 'datetime',
         'created_at' => 'datetime',
     ];
 
@@ -75,6 +76,11 @@ class GtkRequest extends Model
     public function requestedBy()
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function items()

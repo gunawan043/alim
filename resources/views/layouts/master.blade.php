@@ -20,6 +20,9 @@
     <link href="{{ URL::asset('build/vendor/select2/css/select2.min.css') }}" rel="stylesheet" />
     <script src="{{ URL::asset('build/vendor/select2/js/select2.min.js') }}"></script>
     @include('layouts.head-css')
+    @if(request()->routeIs('user.dashboard', 'user.payroll.*', 'user.payroll-slip.*', 'user.cuti.*', 'user.kontrak.*', 'user.kinerja.*', 'user.pelatihan.*', 'user.kesejahteraan.*', 'user.peraturan.*', 'user.jam-kerja.*', 'user.absensi-gtk.*', 'user.kehadiran.*', 'user.personalia.*', 'user.analisis-gtk.*', 'user.rapor-gtk.*'))
+        @include('personalia._gtk-ui')
+    @endif
     <link rel="stylesheet" href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}">
     <link rel="stylesheet" href="{{ URL::asset('build/libs/toastify-js/src/toastify.css') }}">
 

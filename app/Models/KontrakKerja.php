@@ -14,7 +14,7 @@ class KontrakKerja extends Model
     protected $table = 'kontrak_kerja';
 
     protected $fillable = [
-        'gtk_uuid', 'school_id', 'nomor_kontrak', 'jenis', 'tanggal_mulai', 'tanggal_selesai',
+        'gtk_uuid', 'school_id', 'nomor_kontrak', 'jenis', 'kontrak_template_id', 'tanggal_mulai', 'tanggal_selesai',
         'durasi_bulan', 'jabatan', 'unit_kerja', 'ruanglingkup', 'ketentuan_pkwt',
         'lokasi_kerja', 'gaji_pokok', 'tunjangan_tetap', 'tunjangan_tidak_tetap',
         'status', 'tanggal_berakhir', 'dokumen_path', 'nama_penanda_tangan',
@@ -29,6 +29,26 @@ class KontrakKerja extends Model
     public function gtk()
     {
         return $this->belongsTo(GtkProfile::class, 'gtk_uuid', 'uuid');
+    }
+
+    public function template()
+    {
+        return $this->belongsTo(KontrakTemplate::class, 'kontrak_template_id');
+    }
+
+    public function getJenisKontrakAttribute(): ?string
+    {
+        return $this->jenis;
+    }
+
+    public function getGtkIdAttribute(): ?string
+    {
+        return $this->gtk_uuid;
+    }
+
+    public function getStatusAttribute($value): string
+    {
+        return strtoupper((string) $value);
     }
 
     public function school()

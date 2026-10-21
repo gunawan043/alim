@@ -37,7 +37,7 @@ class KinerjaController extends Controller
         $periodes = KinerjaPeriode::orderBy('tanggal_mulai', 'desc')->get();
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('users.name')->get();
+            ->orderByUserName()->get();
 
         return view('personalia.kinerja.index', compact('userId', 'penilaians', 'stats', 'periodes', 'gtkList'));
     }
@@ -46,7 +46,7 @@ class KinerjaController extends Controller
     {
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('users.name')->get();
+            ->orderByUserName()->get();
         $periodes = KinerjaPeriode::where('status', 'aktif')->orderBy('tanggal_mulai', 'desc')->get();
         $komponens = KinerjaKomponen::where('is_active', true)->with('indikators')->orderBy('urutan')->get();
 
@@ -109,7 +109,7 @@ class KinerjaController extends Controller
         $penilaian = KinerjaPenilaian::findOrFail($id);
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('users.name')->get();
+            ->orderByUserName()->get();
         $periodes = KinerjaPeriode::orderBy('tanggal_mulai', 'desc')->get();
         $komponens = KinerjaKomponen::where('is_active', true)->with('indikators')->orderBy('urutan')->get();
 
@@ -360,7 +360,7 @@ class KinerjaController extends Controller
             'dokumen_path' => 'nullable|string',
         ]);
 
-        $validated['user_id'] = $validated['gtk_id'];
+        $validated['user_id'] = GtkProfile::findOrFail($validated['gtk_id'])->user_id;
         $validated['jenis'] = 'reward';
         $validated['diberikan_oleh'] = Auth::id();
         unset($validated['gtk_id']);
@@ -389,7 +389,7 @@ class KinerjaController extends Controller
             'dokumen_path' => 'nullable|string',
         ]);
 
-        $validated['user_id'] = $validated['gtk_id'];
+        $validated['user_id'] = GtkProfile::findOrFail($validated['gtk_id'])->user_id;
         $validated['jenis'] = 'punishment';
         $validated['diberikan_oleh'] = Auth::id();
         unset($validated['gtk_id']);
@@ -411,24 +411,24 @@ class KinerjaController extends Controller
     {
         $periodes = KinerjaPeriode::orderBy('tanggal_mulai', 'desc')->get();
 
-        $ranking = KinerjaPenilaian::with('gtk')
-            ->selectRaw('gtk_id, AVG(skor_total) as avg_skor, COUNT(*) as total_penilaian')
-            ->groupBy('gtk_id')
+        $ranking = KinerjaPenilaian::with('user.gtkProfile')
+            ->selectRaw('user_id, AVG(total_skor) as avg_skor, COUNT(*) as total_penilaian')
+            ->groupBy('user_id')
             ->orderByDesc('avg_skor')
             ->limit(20)->get();
 
         $scoreByPeriod = KinerjaPenilaian::with('periode')
-            ->selectRaw('periode_id, AVG(skor_total) as avg_skor')
-            ->groupBy('periode_id')
-            ->orderBy('periode_id')
+            ->selectRaw('kinerja_periode_id, AVG(total_skor) as avg_skor')
+            ->groupBy('kinerja_periode_id')
+            ->orderBy('kinerja_periode_id')
             ->get();
 
-        $kategoriDist = KinerjaPenilaian::selectRaw('kategori, COUNT(*) as total')
-            ->groupBy('kategori')->get()->keyBy('kategori');
+        $kategoriDist = KinerjaPenilaian::selectRaw('kategori_hasil, COUNT(*) as total')
+            ->groupBy('kategori_hasil')->get()->keyBy('kategori_hasil');
 
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('users.name')->get();
+            ->orderByUserName()->get();
 
         return view('personalia.kinerja.laporan', compact('userId', 'periodes', 'ranking', 'scoreByPeriod', 'kategoriDist', 'gtkList'));
     }

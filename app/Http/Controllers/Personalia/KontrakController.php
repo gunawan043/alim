@@ -10,6 +10,7 @@ use App\Services\HRDNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class KontrakController extends Controller
 {
@@ -18,16 +19,16 @@ class KontrakController extends Controller
     public function index(Request $request, string $userId)
     {
         $query = KontrakKerja::with('gtk')
-            ->when($request->get('status'), fn ($q, $s) => $q->where('status', $s))
-            ->when($request->get('jenis'), fn ($q, $j) => $q->where('jenis_kontrak', $j))
+            ->when($request->get('status'), fn ($q, $s) => $q->where('status', strtolower($s)))
+            ->when($request->get('jenis'), fn ($q, $j) => $q->where('jenis', $j))
             ->when($request->get('bulan'), fn ($q, $b) => $q->whereMonth('tanggal_mulai', $b));
 
         $statusCounts = KontrakKerja::selectRaw("
-            SUM(CASE WHEN status = 'AKTIF' THEN 1 ELSE 0 END) as aktif,
-            SUM(CASE WHEN status = 'MENJADI_TETAP' THEN 1 ELSE 0 END) as menjadi_tetap,
-            SUM(CASE WHEN status = 'SELESAI' THEN 1 ELSE 0 END) as selesai,
-            SUM(CASE WHEN status = 'DIBATALKAN' THEN 1 ELSE 0 END) as dibatalkan,
-            SUM(CASE WHEN DATEDIFF(tanggal_selesai, CURDATE()) BETWEEN 0 AND 90 AND status = 'AKTIF' THEN 1 ELSE 0 END) as expiring
+            SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
+            SUM(CASE WHEN status = 'perpanjangan' THEN 1 ELSE 0 END) as menjadi_tetap,
+            SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as selesai,
+            SUM(CASE WHEN status = 'diputus' THEN 1 ELSE 0 END) as dibatalkan,
+            SUM(CASE WHEN DATEDIFF(tanggal_selesai, CURDATE()) BETWEEN 0 AND 90 AND status = 'aktif' THEN 1 ELSE 0 END) as expiring
         ")->first();
 
         $kontraks = $query->orderBy('tanggal_mulai', 'desc')->paginate(20);
@@ -38,7 +39,7 @@ class KontrakController extends Controller
     public function create(Request $request, string $userId)
     {
         $templates = KontrakTemplate::where('is_active', true)->orderBy('nama')->get();
-        $gtkList = GtkProfile::with('user')->whereHas('user', fn ($q) => $q->where('is_active', true))->orderBy('users.name')->get();
+        $gtkList = GtkProfile::with('user')->whereHas('user', fn ($q) => $q->where('is_active', true))->orderByUserName()->get();
 
         return view('personalia.kontrak.create', compact('userId', 'templates', 'gtkList'));
     }
@@ -47,7 +48,7 @@ class KontrakController extends Controller
     {
         $validated = $request->validate([
             'gtk_id' => 'required|uuid|exists:gtk_profiles,id',
-            'jenis_kontrak' => 'required|in:PKWT,PKWTT,MITRA',
+            'jenis' => 'required|in:pkwt,pkwt_perpanjangan,perjanjian_kerja_harian,magang,mitra',
             'kontrak_template_id' => 'nullable|uuid|exists:kontrak_templates,id',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
@@ -62,17 +63,18 @@ class KontrakController extends Controller
         $durasi = $start->diffInMonths($end);
 
         KontrakKerja::create([
-            'gtk_id' => $validated['gtk_id'],
-            'jenis_kontrak' => $validated['jenis_kontrak'],
+            'gtk_uuid' => $validated['gtk_id'],
+            'jenis' => $validated['jenis'],
             'kontrak_template_id' => $validated['kontrak_template_id'] ?? null,
+            'nomor_kontrak' => 'KTR-'.now()->format('YmdHis').'-'.strtoupper(Str::random(3)),
             'tanggal_mulai' => $validated['tanggal_mulai'],
             'tanggal_selesai' => $validated['tanggal_selesai'],
             'durasi_bulan' => $durasi,
-            'jabatan' => $validated['jabatan'] ?? null,
+            'jabatan' => $validated['jabatan'] ?: '-',
             'lokasi_kerja' => $validated['lokasi_kerja'] ?? null,
             'gaji_pokok' => $validated['gaji_pokok'] ?? null,
             'catatan' => $validated['catatan'] ?? null,
-            'status' => 'AKTIF',
+            'status' => 'aktif',
         ]);
 
         return redirect()->route('user.kontrak.index', $userId)
@@ -83,7 +85,7 @@ class KontrakController extends Controller
     {
         $kontrak = KontrakKerja::findOrFail($id);
         $templates = KontrakTemplate::where('is_active', true)->orderBy('nama')->get();
-        $gtkList = GtkProfile::with('user')->whereHas('user', fn ($q) => $q->where('is_active', true))->orderBy('users.name')->get();
+        $gtkList = GtkProfile::with('user')->whereHas('user', fn ($q) => $q->where('is_active', true))->orderByUserName()->get();
 
         return view('personalia.kontrak.edit', compact('userId', 'kontrak', 'templates', 'gtkList'));
     }
@@ -93,7 +95,7 @@ class KontrakController extends Controller
         $kontrak = KontrakKerja::findOrFail($id);
         $validated = $request->validate([
             'gtk_id' => 'required|uuid|exists:gtk_profiles,id',
-            'jenis_kontrak' => 'required|in:PKWT,PKWTT,MITRA',
+            'jenis' => 'required|in:pkwt,pkwt_perpanjangan,perjanjian_kerja_harian,magang,mitra',
             'kontrak_template_id' => 'nullable|uuid|exists:kontrak_templates,id',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
@@ -108,13 +110,13 @@ class KontrakController extends Controller
         $durasi = $start->diffInMonths($end);
 
         $kontrak->update([
-            'gtk_id' => $validated['gtk_id'],
-            'jenis_kontrak' => $validated['jenis_kontrak'],
+            'gtk_uuid' => $validated['gtk_id'],
+            'jenis' => $validated['jenis'],
             'kontrak_template_id' => $validated['kontrak_template_id'] ?? null,
             'tanggal_mulai' => $validated['tanggal_mulai'],
             'tanggal_selesai' => $validated['tanggal_selesai'],
             'durasi_bulan' => $durasi,
-            'jabatan' => $validated['jabatan'] ?? null,
+            'jabatan' => $validated['jabatan'] ?: '-',
             'lokasi_kerja' => $validated['lokasi_kerja'] ?? null,
             'gaji_pokok' => $validated['gaji_pokok'] ?? null,
             'catatan' => $validated['catatan'] ?? null,
@@ -136,7 +138,7 @@ class KontrakController extends Controller
     public function show(Request $request, string $userId, string $id)
     {
         $kontrak = KontrakKerja::with(['gtk', 'template', 'dibuatOleh'])->findOrFail($id);
-        $riwayat = KontrakKerja::where('gtk_id', $kontrak->gtk_id)
+        $riwayat = KontrakKerja::where('gtk_uuid', $kontrak->gtk_uuid)
             ->orderBy('tanggal_mulai', 'desc')->get();
 
         return view('personalia.kontrak.show', compact('userId', 'kontrak', 'riwayat'));
@@ -151,11 +153,12 @@ class KontrakController extends Controller
         ]);
 
         DB::transaction(function () use ($kontrak, $validated) {
-            $kontrak->update(['status' => 'SELESAI']);
+            $kontrak->update(['status' => 'selesai']);
             KontrakKerja::create([
-                'gtk_id' => $kontrak->gtk_id,
-                'jenis_kontrak' => $kontrak->jenis_kontrak,
+                'gtk_uuid' => $kontrak->gtk_uuid,
+                'jenis' => $kontrak->jenis,
                 'kontrak_template_id' => $kontrak->kontrak_template_id,
+                'nomor_kontrak' => 'KTR-'.now()->format('YmdHis').'-'.strtoupper(Str::random(3)),
                 'tanggal_mulai' => $kontrak->tanggal_selesai,
                 'tanggal_selesai' => $validated['tanggal_selesai_baru'],
                 'durasi_bulan' => Carbon::parse($kontrak->tanggal_selesai)->diffInMonths(Carbon::parse($validated['tanggal_selesai_baru'])),
@@ -163,7 +166,7 @@ class KontrakController extends Controller
                 'lokasi_kerja' => $kontrak->lokasi_kerja,
                 'gaji_pokok' => $kontrak->gaji_pokok,
                 'catatan' => $validated['alasan'],
-                'status' => 'AKTIF',
+                'status' => 'aktif',
             ]);
         });
 
@@ -199,7 +202,7 @@ class KontrakController extends Controller
     {
         $days = (int) $request->get('days', 90);
         $kontraks = KontrakKerja::with('gtk')
-            ->where('status', 'AKTIF')
+            ->where('status', 'aktif')
             ->whereDate('tanggal_selesai', '>=', now())
             ->whereDate('tanggal_selesai', '<=', now()->addDays($days))
             ->orderBy('tanggal_selesai', 'asc')
@@ -211,7 +214,7 @@ class KontrakController extends Controller
     public function remindExpiring(Request $request, string $userId)
     {
         $kontraks = KontrakKerja::with('gtk')
-            ->where('status', 'AKTIF')
+            ->where('status', 'aktif')
             ->whereDate('tanggal_selesai', '>=', now())
             ->whereDate('tanggal_selesai', '<=', now()->addDays(60))
             ->get();

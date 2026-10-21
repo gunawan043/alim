@@ -23,7 +23,7 @@ class AbsensiGtkController extends Controller
             ->orderBy('tanggal', 'desc')
             ->paginate(20);
 
-        $gtkList = GtkProfile::orderBy('nama')->get();
+        $gtkList = GtkProfile::with('user')->orderByUserName()->get();
 
         // Agregat ringan dari query terfilter (bukan query per-baris)
         $statusCounts = (clone $baseQuery)
@@ -54,7 +54,7 @@ class AbsensiGtkController extends Controller
             ->whereDate('tanggal', $tanggal)
             ->orderBy('jam_masuk')
             ->get();
-        $gtkList = GtkProfile::orderBy('nama')->get();
+        $gtkList = GtkProfile::with('user')->orderByUserName()->get();
 
         return view('personalia.absensi-gtk.harian', compact('userId', 'absensis', 'gtkList', 'tanggal'));
     }

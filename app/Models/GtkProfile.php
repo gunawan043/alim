@@ -173,6 +173,17 @@ class GtkProfile extends Model
             ->orderByDesc('created_at');
     }
 
+    /**
+     * Urutkan GTK berdasarkan nama akun user tanpa kolom `nama` di gtk_profiles.
+     */
+    public function scopeOrderByUserName($query)
+    {
+        return $query
+            ->leftJoin('users', 'users.id', '=', 'gtk_profiles.user_id')
+            ->orderBy('users.name')
+            ->select('gtk_profiles.*');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | ENCRYPTED FIELDS

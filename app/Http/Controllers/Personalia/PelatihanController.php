@@ -38,7 +38,7 @@ class PelatihanController extends Controller
     {
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('nama')
+            ->orderByUserName()
             ->get();
 
         $categories = [
@@ -100,7 +100,7 @@ class PelatihanController extends Controller
 
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('nama')
+            ->orderByUserName()
             ->get();
 
         $categories = [
@@ -177,7 +177,7 @@ class PelatihanController extends Controller
 
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('nama')
+            ->orderByUserName()
             ->get();
 
         return view('personalia.pelatihan.peserta', compact('userId', 'pelatihan', 'pesertas', 'gtkList'));
@@ -257,7 +257,7 @@ class PelatihanController extends Controller
 
         $gtkList = GtkProfile::with('user')
             ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('nama')
+            ->orderByUserName()
             ->get();
 
         return view('personalia.pelatihan.sertifikasi', compact('userId', 'sertifikasis', 'gtkList'));

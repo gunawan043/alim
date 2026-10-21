@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
+use App\Models\AbsensiGtk;
 use App\Models\GtkEmployment;
+use App\Models\KontrakKerja;
 use App\Models\GtkProfile;
 use App\Models\PensionSetting;
 use App\Models\User;
@@ -67,21 +69,21 @@ class PersonaliaDashboardController extends Controller
             ->count();
 
         $guru = User::where('is_active', true)
-            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'Guru'))
+            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'like', '%Guru%'))
             ->count();
 
         $tendik = User::where('is_active', true)
-            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'Tendik'))
+            ->whereHas('employment', fn ($q) => $q->where('jenis_gtk', 'like', '%Tenaga%'))
             ->count();
 
         $male = User::where('is_active', true)
             ->whereHas('employment')
-            ->whereHas('gtkProfile', fn ($q) => $q->where('jenis_kelamin', 'Laki-laki'))
+            ->whereHas('gtkProfile', fn ($q) => $q->whereRaw('UPPER(jenis_kelamin) = ?', ['L']))
             ->count();
 
         $female = User::where('is_active', true)
             ->whereHas('employment')
-            ->whereHas('gtkProfile', fn ($q) => $q->where('jenis_kelamin', 'Perempuan'))
+            ->whereHas('gtkProfile', fn ($q) => $q->whereRaw('UPPER(jenis_kelamin) = ?', ['P']))
             ->count();
 
         return [
@@ -136,14 +138,18 @@ class PersonaliaDashboardController extends Controller
 
     private function getExpiringContracts()
     {
-        // For now, return mock data since kontrak table might not exist
-        return collect([]);
+        return KontrakKerja::with('gtk')
+            ->where('status', 'aktif')
+            ->whereDate('tanggal_selesai', '>=', today())
+            ->whereDate('tanggal_selesai', '<=', today()->addDays(90))
+            ->orderBy('tanggal_selesai')
+            ->limit(10)->get();
     }
 
     private function getGtkByGender()
     {
-        $male = GtkProfile::where('jenis_kelamin', 'Laki-laki')->count();
-        $female = GtkProfile::where('jenis_kelamin', 'Perempuan')->count();
+        $male = GtkProfile::whereRaw('UPPER(jenis_kelamin) = ?', ['L'])->count();
+        $female = GtkProfile::whereRaw('UPPER(jenis_kelamin) = ?', ['P'])->count();
 
         return [
             'male' => $male,
@@ -164,18 +170,24 @@ class PersonaliaDashboardController extends Controller
 
     private function getGtkWithoutKontrak()
     {
-        // Count GTK without active kontrsk - placeholder
-        return 0;
+        $contractUserIds = KontrakKerja::with('gtk')
+            ->whereIn('status', ['aktif', 'perpanjangan'])
+            ->get()->pluck('gtk.user_id')->filter()->unique();
+
+        return User::where('is_active', true)->whereHas('employment')
+            ->whereNotIn('id', $contractUserIds)->count();
     }
 
     private function getAttendanceSummary()
     {
-        // Placeholder for attendance data
+        $today = today();
+        $query = AbsensiGtk::whereDate('tanggal', $today);
+
         return [
-            'present' => 0,
-            'absent' => 0,
-            'permission' => 0,
-            'late' => 0,
+            'present' => (clone $query)->where('status', 'hadir')->count(),
+            'absent' => (clone $query)->whereIn('status', ['alpa', 'alpha'])->count(),
+            'permission' => (clone $query)->whereIn('status', ['izin', 'sakit', 'cuti'])->count(),
+            'late' => (clone $query)->where('status', 'hadir')->where('terlambat_menit', '>', 0)->count(),
         ];
     }
 

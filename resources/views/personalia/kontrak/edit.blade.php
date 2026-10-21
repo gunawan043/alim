@@ -119,13 +119,15 @@ $kontrak = $kontrak ?? null;
                         </div>
                         <div class="col-md-6">
                             <label class="form-label required">Jenis Kontrak</label>
-                            <select name="jenis_kontrak" class="form-select @error('jenis_kontrak') is-invalid @enderror">
+                            <select name="jenis" class="form-select @error('jenis') is-invalid @enderror">
                                 <option value="">-- Pilih --</option>
-                                <option {{ ($kontrak->jenis_kontrak ?? '') == 'PKWT' ? 'selected' : '' }}>PKWT</option>
-                                <option {{ ($kontrak->jenis_kontrak ?? '') == 'PKWTT' ? 'selected' : '' }}>PKWTT</option>
-                                <option {{ ($kontrak->jenis_kontrak ?? '') == 'Kontrak Projet' ? 'selected' : '' }}>Kontrak Projet</option>
+                                <option value="pkwt" {{ ($kontrak->jenis ?? '') == 'pkwt' ? 'selected' : '' }}>PKWT</option>
+                                <option value="pkwt_perpanjangan" {{ ($kontrak->jenis ?? '') == 'pkwt_perpanjangan' ? 'selected' : '' }}>PKWT Perpanjangan</option>
+                                <option value="perjanjian_kerja_harian" {{ ($kontrak->jenis ?? '') == 'perjanjian_kerja_harian' ? 'selected' : '' }}>Perjanjian Kerja Harian</option>
+                                <option value="magang" {{ ($kontrak->jenis ?? '') == 'magang' ? 'selected' : '' }}>Magang</option>
+                                <option value="mitra" {{ ($kontrak->jenis ?? '') == 'mitra' ? 'selected' : '' }}>Mitra</option>
                             </select>
-                            @error('jenis_kontrak')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @error('jenis')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Status</label>

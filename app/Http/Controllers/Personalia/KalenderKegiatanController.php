@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kaldik;
+use App\Models\KinerjaPenilaian;
+use App\Models\KontrakKerja;
+use App\Models\Pelatihan;
 use App\Models\School;
 use Illuminate\Http\Request;
 
@@ -70,7 +73,26 @@ class KalenderKegiatanController extends Controller
      */
     public function kontrak(Request $request, string $userId)
     {
-        return view('personalia.kalender-kegiatan.kontrak', compact('userId'));
+        $kontrakList = KontrakKerja::with('gtk.user')
+            ->orderBy('tanggal_selesai')
+            ->limit(200)->get()
+            ->map(function (KontrakKerja $kontrak) {
+                $sisa = $kontrak->tanggal_selesai && $kontrak->tanggal_selesai->gte(today())
+                    ? (int) today()->diffInDays($kontrak->tanggal_selesai)
+                    : 0;
+                $status = $sisa <= 0 ? 'habis' : ($sisa <= 30 ? 'akan_habis' : 'aktif');
+
+                return [
+                    'nama' => $kontrak->gtk?->nama ?? $kontrak->gtk?->user?->name ?? '-',
+                    'jenis' => $kontrak->jenis_kontrak,
+                    'tanggal_mulai' => $kontrak->tanggal_mulai?->format('d/m/Y'),
+                    'tanggal_selesai' => $kontrak->tanggal_selesai?->format('d/m/Y'),
+                    'sisa_hari' => $sisa,
+                    'status' => $status,
+                ];
+            });
+
+        return view('personalia.kalender-kegiatan.kontrak', compact('userId', 'kontrakList'));
     }
 
     /**
@@ -78,7 +100,16 @@ class KalenderKegiatanController extends Controller
      */
     public function evaluasi(Request $request, string $userId)
     {
-        return view('personalia.kalender-kegiatan.evaluasi', compact('userId'));
+        $evaluasiList = KinerjaPenilaian::with(['user', 'penilai', 'periode'])
+            ->orderByDesc('tanggal_penilaian')->limit(200)->get()
+            ->map(fn (KinerjaPenilaian $item) => [
+                'nama_gtk' => $item->user?->name ?? '-',
+                'tanggal' => $item->tanggal_penilaian?->format('d/m/Y') ?? '-',
+                'penilai' => $item->penilai?->name ?? '-',
+                'status' => $item->status === 'final' ? 'selesai' : 'menunggu',
+            ]);
+
+        return view('personalia.kalender-kegiatan.evaluasi', compact('userId', 'evaluasiList'));
     }
 
     /**
@@ -86,6 +117,17 @@ class KalenderKegiatanController extends Controller
      */
     public function training(Request $request, string $userId)
     {
-        return view('personalia.kalender-kegiatan.training', compact('userId'));
+        $trainingList = Pelatihan::withCount('pesertas')
+            ->orderByDesc('tanggal_mulai')->limit(200)->get()
+            ->map(fn (Pelatihan $item) => [
+                'nama' => $item->nama,
+                'tanggal_mulai' => $item->tanggal_mulai?->format('d/m/Y'),
+                'tanggal_selesai' => $item->tanggal_selesai?->format('d/m/Y'),
+                'peserta' => $item->pesertas_count,
+                'penyelenggara' => $item->vendor ?: 'Internal',
+                'status' => $item->status === 'selesai' ? 'selesai' : ($item->tanggal_mulai?->isPast() ? 'berlangsung' : 'akan_datang'),
+            ]);
+
+        return view('personalia.kalender-kegiatan.training', compact('userId', 'trainingList'));
     }
 }

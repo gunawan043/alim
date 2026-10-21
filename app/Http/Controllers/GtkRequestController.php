@@ -7,6 +7,7 @@ use App\Models\GtkProfile;
 use App\Models\GtkRequest;
 use App\Models\GtkRequestItem;
 use App\Models\WorkUnit;
+use App\Services\NotificationBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +16,9 @@ class GtkRequestController extends Controller
     public function index(Request $request)
     {
         $userId = request()->route('userId');
+        $user = $request->user();
         $query = GtkRequest::with(['workUnit', 'requestedBy', 'items'])
+            ->when(! $user->hasRole('Humas Personalia') && ! $user->isSystemAdmin() && ! $user->isSuperAdmin(), fn ($q) => $q->where('requested_by', $user->id))
             ->orderByDesc('created_at');
 
         if ($request->filled('search')) {
@@ -86,17 +89,105 @@ class GtkRequestController extends Controller
     {
         $userId = $request->route('userId');
         $gtkRequest = GtkRequest::with(['workUnit', 'academicYear', 'requestedBy', 'items'])->findOrFail($requestUuid);
+        $user = $request->user();
+        abort_unless($gtkRequest->requested_by === $user->id || $user->hasRole('Humas Personalia') || $user->isSystemAdmin() || $user->isSuperAdmin(), 403);
 
         return view('gtk-requests.show', compact('gtkRequest', 'userId'));
     }
 
-    public function submit(string $id)
+    public function submit(Request $request, string $id)
     {
-        $gtkRequest = GtkRequest::with('items')->findOrFail($id);
-        $gtkRequest->status = 'submitted';
-        $gtkRequest->save();
+        $gtkRequest = GtkRequest::with(['items', 'workUnit', 'requestedBy'])->findOrFail($id);
+        abort_unless($gtkRequest->requested_by === $request->user()->id || $request->user()->hasRole('Humas Personalia') || $request->user()->isSystemAdmin() || $request->user()->isSuperAdmin(), 403);
 
-        return back()->with('success', 'Request GTK berhasil diajukan.');
+        if ($gtkRequest->status !== GtkRequest::STATUS_DRAFT) {
+            return back()->with('error', 'Request sudah diajukan.');
+        }
+
+        $gtkRequest->update(['status' => GtkRequest::STATUS_SUBMITTED]);
+        $this->notifyPersonalia($gtkRequest, $request->user());
+
+        return back()->with('success', 'Request GTK berhasil diajukan dan notifikasi dikirim ke Personalia.');
+    }
+
+    public function approve(Request $request, string $id)
+    {
+        $gtkRequest = GtkRequest::findOrFail($id);
+        $this->authorizePersonalia($request);
+        abort_unless($gtkRequest->status === GtkRequest::STATUS_SUBMITTED, 422, 'Hanya request yang diajukan yang dapat disetujui.');
+        $gtkRequest->update([
+            'status' => GtkRequest::STATUS_APPROVED,
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+        $this->notifyRequester($gtkRequest, 'approved');
+
+        return back()->with('success', 'Request GTK disetujui.');
+    }
+
+    public function reject(Request $request, string $id)
+    {
+        $validated = $request->validate(['rejection_reason' => 'required|string|max:1000']);
+        $gtkRequest = GtkRequest::findOrFail($id);
+        $this->authorizePersonalia($request);
+        abort_unless($gtkRequest->status === GtkRequest::STATUS_SUBMITTED, 422, 'Hanya request yang diajukan yang dapat ditolak.');
+        $gtkRequest->update([
+            'status' => GtkRequest::STATUS_REJECTED,
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+        $this->notifyRequester($gtkRequest, 'rejected', $validated['rejection_reason']);
+
+        return back()->with('success', 'Request GTK ditolak.');
+    }
+
+    private function authorizePersonalia(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user->hasRole('Humas Personalia') || $user->isSystemAdmin() || $user->isSuperAdmin(), 403, 'Hanya Personalia yang dapat memproses request ini.');
+    }
+
+    private function notifyPersonalia(GtkRequest $gtkRequest, $requester): void
+    {
+        $service = app(NotificationBroadcastService::class);
+        $userIds = \App\Models\User::where('is_active', true)
+            ->role('Humas Personalia')
+            ->where('id', '!=', $requester->id)
+            ->pluck('id');
+
+        foreach ($userIds as $personaliaId) {
+            $service->send((string) $personaliaId, [
+                'module' => 'gtk',
+                'type' => 'warning',
+                'priority' => 'high',
+                'title' => 'Pengajuan GTK baru',
+                'message' => ($gtkRequest->workUnit?->name ?? 'Divisi').' mengajukan '.$gtkRequest->type_text.'.',
+                'action_url' => route('user.gtk-requests.show', ['userId' => $personaliaId, 'requestUuid' => $gtkRequest->id]),
+                'reference_type' => GtkRequest::class,
+                'reference_id' => $gtkRequest->id,
+                'action_text' => 'Tinjau Pengajuan',
+            ]);
+        }
+    }
+
+    private function notifyRequester(GtkRequest $gtkRequest, string $status, ?string $reason = null): void
+    {
+        $requesterId = $gtkRequest->requested_by;
+        if (! $requesterId) {
+            return;
+        }
+        app(NotificationBroadcastService::class)->send((string) $requesterId, [
+            'module' => 'gtk',
+            'type' => $status === 'approved' ? 'success' : 'error',
+            'priority' => 'high',
+            'title' => $status === 'approved' ? 'Pengajuan GTK disetujui' : 'Pengajuan GTK ditolak',
+            'message' => 'Pengajuan '.$gtkRequest->type_text.' '.($status === 'approved' ? 'telah disetujui.' : 'ditolak.'.($reason ? ' Alasan: '.$reason : '')),
+            'action_url' => route('user.gtk-requests.show', ['userId' => $requesterId, 'requestUuid' => $gtkRequest->id]),
+            'reference_type' => GtkRequest::class,
+            'reference_id' => $gtkRequest->id,
+            'action_text' => 'Lihat Pengajuan',
+        ]);
     }
 
     public function edit(string $requestUuid)

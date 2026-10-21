@@ -1383,6 +1383,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/create', [GtkRequestController::class, 'create'])->name('create');
                 Route::post('/', [GtkRequestController::class, 'store'])->name('store');
                 Route::post('/{id}/submit', [GtkRequestController::class, 'submit'])->name('submit');
+                Route::post('/{id}/approve', [GtkRequestController::class, 'approve'])->name('approve');
+                Route::post('/{id}/reject', [GtkRequestController::class, 'reject'])->name('reject');
                 Route::prefix('{requestUuid}')->group(function () {
                     Route::get('/', [GtkRequestController::class, 'show'])->name('show');
                     Route::get('/edit', [GtkRequestController::class, 'edit'])->name('edit');

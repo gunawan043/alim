@@ -82,13 +82,15 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label required">Jenis Kontrak</label>
-                            <select name="jenis_kontrak" class="form-select @error('jenis_kontrak') is-invalid @enderror">
+                            <select name="jenis" class="form-select @error('jenis') is-invalid @enderror">
                                 <option value="">-- Pilih --</option>
-                                <option value="PKWT" {{ old('jenis_kontrak')=='PKWT'?'selected':'' }}>PKWT</option>
-                                <option value="PKWTT" {{ old('jenis_kontrak')=='PKWTT'?'selected':'' }}>PKWTT</option>
-                                <option value="MITRA" {{ old('jenis_kontrak')=='MITRA'?'selected':'' }}>MITRA</option>
+                                <option value="pkwt" {{ old('jenis')=='pkwt'?'selected':'' }}>PKWT</option>
+                                <option value="pkwt_perpanjangan" {{ old('jenis')=='pkwt_perpanjangan'?'selected':'' }}>PKWT Perpanjangan</option>
+                                <option value="perjanjian_kerja_harian" {{ old('jenis')=='perjanjian_kerja_harian'?'selected':'' }}>Perjanjian Kerja Harian</option>
+                                <option value="magang" {{ old('jenis')=='magang'?'selected':'' }}>Magang</option>
+                                <option value="mitra" {{ old('jenis')=='mitra'?'selected':'' }}>Mitra</option>
                             </select>
-                            @error('jenis_kontrak')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @error('jenis')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Template</label>

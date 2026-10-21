@@ -37,6 +37,10 @@
                                 </button>
                             </form>
                         @endif
+                        @if($gtkRequest->status === 'submitted' && (auth()->user()->hasRole('Humas Personalia') || auth()->user()->isSystemAdmin() || auth()->user()->isSuperAdmin()))
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveRequestModal"><i class="ri-check-line me-1"></i>Setujui</button>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectRequestModal"><i class="ri-close-line me-1"></i>Tolak</button>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body">
@@ -258,4 +262,6 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="approveRequestModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="POST" action="{{ route('user.gtk-requests.approve', $gtkRequest->id) }}">@csrf<div class="modal-header"><h5 class="modal-title">Setujui Pengajuan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p class="mb-0">Setujui pengajuan <strong>{{ $gtkRequest->type_text }}</strong> dari {{ $gtkRequest->workUnit?->name }}?</p></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success">Ya, Setujui</button></div></form></div></div></div>
+    <div class="modal fade" id="rejectRequestModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="POST" action="{{ route('user.gtk-requests.reject', $gtkRequest->id) }}">@csrf<div class="modal-header"><h5 class="modal-title">Tolak Pengajuan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">Alasan Penolakan</label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-danger">Tolak Pengajuan</button></div></form></div></div></div>
 @endsection

@@ -40,7 +40,7 @@ class PeraturanController extends Controller
     public function create(Request $request, string $userId)
     {
         $kategoris = PeraturanKategori::where('is_active', true)->orderBy('urutan')->get();
-        $gtkList = GtkProfile::with('user')->orderBy('nama')->get();
+        $gtkList = GtkProfile::with('user')->orderByUserName()->get();
 
         return view('personalia.peraturan.create', compact('userId', 'kategoris', 'gtkList'));
     }
@@ -288,7 +288,7 @@ class PeraturanController extends Controller
                 ->whereYear('tanggal', Carbon::parse($b)->year));
 
         $violations = $query->orderBy('tanggal', 'desc')->paginate(20);
-        $gtkList = GtkProfile::with('user')->orderBy('nama')->get();
+        $gtkList = GtkProfile::with('user')->orderByUserName()->get();
 
         $stats = [
             'active_violations' => PeraturanViolation::where('status', 'aktif')->count(),
